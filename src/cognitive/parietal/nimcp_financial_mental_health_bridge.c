@@ -514,6 +514,7 @@ financial_mental_health_bridge_t* financial_mental_health_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_MENTAL_HEALTH, "financial_mental_health") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_mental_health_bridge_create: validation failed");
         return NULL;
     }
 

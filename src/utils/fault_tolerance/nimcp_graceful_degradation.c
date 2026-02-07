@@ -317,6 +317,7 @@ static void* gd_monitor_thread(void* arg) {
         nanosleep(&ts, NULL);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_monitor_thread: operation failed");
     return NULL;
 }
 
@@ -367,6 +368,7 @@ gd_context_t* gd_create(const gd_config_t* config) {
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("GD", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "gd_create: validation failed");
         return NULL;
     }
 
@@ -420,7 +422,10 @@ void gd_destroy(gd_context_t* ctx) {
 }
 
 bool gd_start(gd_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_start: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -434,11 +439,12 @@ bool gd_start(gd_context_t* ctx) {
     ctx->tier_start_time_ms = gd_get_time_ms();
 
     /* Start monitoring thread */
-    if (nimcp_thread_create(&ctx->monitor_thread, NULL, gd_monitor_thread, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->monitor_thread, gd_monitor_thread, ctx, NULL) != 0) {
         LOG_ERROR("GD", "Failed to start monitoring thread");
         ctx->running = false;
         ctx->monitor_running = false;
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_start: validation failed");
         return false;
     }
 
@@ -451,7 +457,10 @@ bool gd_start(gd_context_t* ctx) {
 }
 
 bool gd_stop(gd_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_stop: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -464,7 +473,7 @@ bool gd_stop(gd_context_t* ctx) {
     nimcp_mutex_unlock(&ctx->mutex);
 
     /* Wait for thread to finish */
-    nimcp_thread_join(&ctx->monitor_thread, NULL);
+    nimcp_thread_join(ctx->monitor_thread, NULL);
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
@@ -511,7 +520,10 @@ uint32_t gd_register_feature(gd_context_t* ctx, const gd_feature_t* feature) {
 }
 
 bool gd_unregister_feature(gd_context_t* ctx, uint32_t feature_id) {
-    if (!ctx || feature_id == 0) return false;
+    if (!ctx || feature_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_unregister_feature: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -528,11 +540,15 @@ bool gd_unregister_feature(gd_context_t* ctx, uint32_t feature_id) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_unregister_feature: operation failed");
     return false;
 }
 
 bool gd_is_feature_enabled(gd_context_t* ctx, uint32_t feature_id) {
-    if (!ctx || feature_id == 0) return false;
+    if (!ctx || feature_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_is_feature_enabled: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -545,6 +561,7 @@ bool gd_is_feature_enabled(gd_context_t* ctx, uint32_t feature_id) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_is_feature_enabled: validation failed");
     return false;
 }
 
@@ -566,7 +583,10 @@ float gd_get_feature_quality(gd_context_t* ctx, uint32_t feature_id) {
 }
 
 bool gd_set_feature_enabled(gd_context_t* ctx, uint32_t feature_id, bool enabled) {
-    if (!ctx || feature_id == 0) return false;
+    if (!ctx || feature_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_feature_enabled: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -579,12 +599,19 @@ bool gd_set_feature_enabled(gd_context_t* ctx, uint32_t feature_id, bool enabled
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_feature_enabled: validation failed");
     return false;
 }
 
 bool gd_set_feature_quality(gd_context_t* ctx, uint32_t feature_id, float quality) {
-    if (!ctx || feature_id == 0) return false;
-    if (quality < 0.0f || quality > 100.0f) return false;
+    if (!ctx || feature_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_feature_quality: ctx is NULL");
+        return false;
+    }
+    if (quality < 0.0f || quality > 100.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_feature_quality: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -603,6 +630,7 @@ bool gd_set_feature_quality(gd_context_t* ctx, uint32_t feature_id, float qualit
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_feature_quality: operation failed");
     return false;
 }
 
@@ -611,9 +639,18 @@ bool gd_set_feature_quality(gd_context_t* ctx, uint32_t feature_id, float qualit
 //=============================================================================
 
 bool gd_update_resource(gd_context_t* ctx, gd_resource_t resource, float usage) {
-    if (!ctx) return false;
-    if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
-    if (usage < 0.0f || usage > 100.0f) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_update_resource: ctx is NULL");
+        return false;
+    }
+    if (resource < 0 || resource >= GD_RESOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gd_update_resource: capacity exceeded");
+        return false;
+    }
+    if (usage < 0.0f || usage > 100.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_update_resource: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -637,8 +674,14 @@ float gd_get_resource_usage(gd_context_t* ctx, gd_resource_t resource) {
 }
 
 bool gd_set_resource_budget(gd_context_t* ctx, const gd_resource_budget_t* budget) {
-    if (!ctx || !budget) return false;
-    if (budget->type < 0 || budget->type >= GD_RESOURCE_COUNT) return false;
+    if (!ctx || !budget) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_set_resource_budget: required parameter is NULL (ctx, budget)");
+        return false;
+    }
+    if (budget->type < 0 || budget->type >= GD_RESOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gd_set_resource_budget: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->resources[budget->type] = *budget;
@@ -648,8 +691,14 @@ bool gd_set_resource_budget(gd_context_t* ctx, const gd_resource_budget_t* budge
 }
 
 bool gd_get_resource_budget(gd_context_t* ctx, gd_resource_t resource, gd_resource_budget_t* budget) {
-    if (!ctx || !budget) return false;
-    if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
+    if (!ctx || !budget) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_get_resource_budget: required parameter is NULL (ctx, budget)");
+        return false;
+    }
+    if (resource < 0 || resource >= GD_RESOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gd_get_resource_budget: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     *budget = ctx->resources[resource];
@@ -659,8 +708,14 @@ bool gd_get_resource_budget(gd_context_t* ctx, gd_resource_t resource, gd_resour
 }
 
 bool gd_is_resource_critical(gd_context_t* ctx, gd_resource_t resource) {
-    if (!ctx) return false;
-    if (resource < 0 || resource >= GD_RESOURCE_COUNT) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_is_resource_critical: ctx is NULL");
+        return false;
+    }
+    if (resource < 0 || resource >= GD_RESOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gd_is_resource_critical: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     bool critical = ctx->current_usage[resource] >= ctx->resources[resource].critical_threshold;
@@ -684,8 +739,14 @@ gd_tier_t gd_get_current_tier(gd_context_t* ctx) {
 }
 
 bool gd_set_tier(gd_context_t* ctx, gd_tier_t tier, const char* reason) {
-    if (!ctx) return false;
-    if (tier < GD_TIER_FULL || tier > GD_TIER_EMERGENCY) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_set_tier: ctx is NULL");
+        return false;
+    }
+    if (tier < GD_TIER_FULL || tier > GD_TIER_EMERGENCY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_set_tier: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -736,13 +797,17 @@ bool gd_set_tier(gd_context_t* ctx, gd_tier_t tier, const char* reason) {
 }
 
 bool gd_evaluate_tier(gd_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_evaluate_tier: ctx is NULL");
+        return false;
+    }
 
     /* Already locked by caller or monitor thread */
     gd_tier_t target = gd_evaluate_target_tier(ctx);
     gd_tier_t current = ctx->current_tier;
 
     if (target == current) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_evaluate_tier: validation failed");
         return false;
     }
 
@@ -751,6 +816,7 @@ bool gd_evaluate_tier(gd_context_t* ctx) {
     uint64_t elapsed = now - ctx->tier_start_time_ms;
 
     if (elapsed < ctx->config.tier_cooldown_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_evaluate_tier: validation failed");
         return false;
     }
 
@@ -854,7 +920,10 @@ uint32_t gd_create_profile(gd_context_t* ctx, const gd_profile_t* profile) {
 }
 
 bool gd_delete_profile(gd_context_t* ctx, uint32_t profile_id) {
-    if (!ctx || profile_id == 0) return false;
+    if (!ctx || profile_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_delete_profile: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -877,11 +946,15 @@ bool gd_delete_profile(gd_context_t* ctx, uint32_t profile_id) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_delete_profile: operation failed");
     return false;
 }
 
 bool gd_activate_profile(gd_context_t* ctx, uint32_t profile_id) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_activate_profile: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -904,16 +977,21 @@ bool gd_activate_profile(gd_context_t* ctx, uint32_t profile_id) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_activate_profile: operation failed");
     return false;
 }
 
 bool gd_get_active_profile(gd_context_t* ctx, gd_profile_t* profile) {
-    if (!ctx || !profile) return false;
+    if (!ctx || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_get_active_profile: required parameter is NULL (ctx, profile)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->active_profile_id == 0) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_get_active_profile: ctx->active_profile_id is zero");
         return false;
     }
 
@@ -926,6 +1004,7 @@ bool gd_get_active_profile(gd_context_t* ctx, gd_profile_t* profile) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_get_active_profile: validation failed");
     return false;
 }
 
@@ -934,8 +1013,14 @@ bool gd_get_active_profile(gd_context_t* ctx, gd_profile_t* profile) {
 //=============================================================================
 
 bool gd_start_load_shedding(gd_context_t* ctx, float shed_rate, gd_priority_t min_priority, uint64_t duration_ms) {
-    if (!ctx) return false;
-    if (shed_rate < 0.0f || shed_rate > 100.0f) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_start_load_shedding: ctx is NULL");
+        return false;
+    }
+    if (shed_rate < 0.0f || shed_rate > 100.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_start_load_shedding: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -958,7 +1043,10 @@ bool gd_start_load_shedding(gd_context_t* ctx, float shed_rate, gd_priority_t mi
 }
 
 bool gd_stop_load_shedding(gd_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_stop_load_shedding: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1007,7 +1095,10 @@ bool gd_should_accept_request(gd_context_t* ctx, gd_priority_t priority) {
 }
 
 bool gd_get_load_shed_status(gd_context_t* ctx, gd_load_shed_config_t* config) {
-    if (!ctx || !config) return false;
+    if (!ctx || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_get_load_shed_status: required parameter is NULL (ctx, config)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     *config = ctx->load_shed;
@@ -1022,12 +1113,16 @@ bool gd_get_load_shed_status(gd_context_t* ctx, gd_load_shed_config_t* config) {
 //=============================================================================
 
 bool gd_register_callback(gd_context_t* ctx, gd_tier_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_register_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->callback_count >= 8) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gd_register_callback: capacity exceeded");
         return false;
     }
 
@@ -1042,7 +1137,10 @@ bool gd_register_callback(gd_context_t* ctx, gd_tier_callback_t callback, void* 
 }
 
 bool gd_unregister_callback(gd_context_t* ctx, gd_tier_callback_t callback) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_unregister_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1055,6 +1153,7 @@ bool gd_unregister_callback(gd_context_t* ctx, gd_tier_callback_t callback) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gd_unregister_callback: validation failed");
     return false;
 }
 
@@ -1063,7 +1162,10 @@ bool gd_unregister_callback(gd_context_t* ctx, gd_tier_callback_t callback) {
 //=============================================================================
 
 bool gd_get_stats(gd_context_t* ctx, gd_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gd_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     *stats = ctx->stats;

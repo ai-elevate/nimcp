@@ -140,6 +140,7 @@ bool nimcp_brain_factory_init_quantum_reasoning(brain_t brain,
                                                   const brain_qreason_config_t* config) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("Cannot init quantum reasoning: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_modulation: brain is NULL");
         return false;
     }
 
@@ -157,6 +158,7 @@ bool nimcp_brain_factory_init_quantum_reasoning(brain_t brain,
     brain_qreason_ctx_t* ctx = nimcp_malloc(sizeof(brain_qreason_ctx_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate quantum reasoning context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_modulation: ctx is NULL");
         return false;
     }
     memset(ctx, 0, sizeof(brain_qreason_ctx_t));
@@ -176,6 +178,7 @@ bool nimcp_brain_factory_init_quantum_reasoning(brain_t brain,
     if (!ctx->reasoner) {
         NIMCP_LOGGING_ERROR("Failed to create quantum reasoner");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_modulation: ctx->reasoner is NULL");
         return false;
     }
 
@@ -215,13 +218,19 @@ void nimcp_brain_qreason_destroy(brain_t brain) {
 }
 
 bool nimcp_brain_qreason_is_enabled(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_is_enabled: brain is NULL");
+        return false;
+    }
     struct brain_struct* b = (struct brain_struct*)brain;
     return b->quantum_reasoning_enabled && b->quantum_reasoner != NULL;
 }
 
 int nimcp_brain_qreason_set_enabled(brain_t brain, bool enabled) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
     brain_qreason_ctx_t* ctx = get_ctx(brain);
@@ -246,16 +255,21 @@ int nimcp_brain_qreason_set_enabled(brain_t brain, bool enabled) {
 int nimcp_brain_qreason_solve_sat(brain_t brain,
                                    const brain_reasoning_query_t* query,
                                    brain_reasoning_result_t* result) {
-    if (!brain || !query || !result) return -1;
+    if (!brain || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (brain, query, result)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
     if (!ctx || !ctx->reasoner) {
         NIMCP_LOGGING_WARN("Quantum reasoning not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (ctx, ctx->reasoner)");
         return -1;
     }
 
     if (!ctx->config.enabled) {
         NIMCP_LOGGING_DEBUG("Quantum reasoning disabled, skipping");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: ctx->config is NULL");
         return -1;
     }
 
@@ -272,6 +286,7 @@ int nimcp_brain_qreason_solve_sat(brain_t brain,
     if (status != 0) {
         NIMCP_LOGGING_ERROR("Quantum SAT solve failed");
         ctx->stats.timeout_count++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_qreason_set_enabled: validation failed");
         return -1;
     }
 
@@ -333,10 +348,16 @@ int nimcp_brain_qreason_check_goal_feasibility(brain_t brain,
                                                  uint32_t num_constraints,
                                                  bool* feasible,
                                                  float* confidence) {
-    if (!brain || !feasible || !confidence) return -1;
+    if (!brain || !feasible || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (brain, feasible, confidence)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     /* Build CNF from goal and constraints */
     brain_reasoning_query_t query = {0};
@@ -365,6 +386,7 @@ int nimcp_brain_qreason_check_goal_feasibility(brain_t brain,
     if (status != 0) {
         *feasible = false;
         *confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_qreason_set_enabled: validation failed");
         return -1;
     }
 
@@ -378,10 +400,16 @@ int nimcp_brain_qreason_query_ternary(brain_t brain,
                                         uint32_t variable,
                                         qreason_truth_t* value,
                                         float* confidence) {
-    if (!brain || !value || !confidence) return -1;
+    if (!brain || !value || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (brain, value, confidence)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     *value = qreason_get_fact(ctx->reasoner, variable, confidence);
     return 0;
@@ -396,7 +424,10 @@ int nimcp_brain_qreason_set_fact(brain_t brain,
                                    qreason_truth_t value,
                                    float confidence) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     return qreason_set_fact(ctx->reasoner, variable, value, confidence);
 }
@@ -405,10 +436,16 @@ int nimcp_brain_qreason_get_fact(brain_t brain,
                                    uint32_t variable,
                                    qreason_truth_t* value,
                                    float* confidence) {
-    if (!value || !confidence) return -1;
+    if (!value || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (value, confidence)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_enabled: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     *value = qreason_get_fact(ctx->reasoner, variable, confidence);
     return 0;
@@ -420,7 +457,10 @@ int nimcp_brain_qreason_add_rule(brain_t brain,
                                    uint32_t consequent,
                                    float confidence) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     return qreason_add_rule(ctx->reasoner, antecedents, num_antecedents,
                             consequent, confidence);
@@ -428,7 +468,10 @@ int nimcp_brain_qreason_add_rule(brain_t brain,
 
 int nimcp_brain_qreason_clear_kb(brain_t brain) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx || !ctx->reasoner) return -1;
+    if (!ctx || !ctx->reasoner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_clear_kb: required parameter is NULL (ctx, ctx->reasoner)");
+        return -1;
+    }
 
     qreason_clear_facts(ctx->reasoner);
     qreason_clear_rules(ctx->reasoner);
@@ -441,7 +484,10 @@ int nimcp_brain_qreason_clear_kb(brain_t brain) {
 
 int nimcp_brain_qreason_set_fatigue(brain_t brain, float fatigue_level) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_fatigue: ctx is NULL");
+        return -1;
+    }
 
     ctx->fatigue_level = fatigue_level < 0.0f ? 0.0f :
                          (fatigue_level > 1.0f ? 1.0f : fatigue_level);
@@ -455,7 +501,10 @@ int nimcp_brain_qreason_set_fatigue(brain_t brain, float fatigue_level) {
 
 int nimcp_brain_qreason_set_stress(brain_t brain, float stress_level) {
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_set_stress: ctx is NULL");
+        return -1;
+    }
 
     ctx->stress_level = stress_level < 0.0f ? 0.0f :
                         (stress_level > 1.0f ? 1.0f : stress_level);
@@ -472,11 +521,15 @@ int nimcp_brain_qreason_set_stress(brain_t brain, float stress_level) {
 //=============================================================================
 
 int nimcp_brain_qreason_get_stats(brain_t brain, brain_qreason_stats_t* stats) {
-    if (!stats) return -1;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_get_stats: stats is NULL");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
     if (!ctx) {
         memset(stats, 0, sizeof(*stats));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_qreason_get_stats: ctx is NULL");
         return -1;
     }
 
@@ -512,7 +565,10 @@ qreason_t nimcp_brain_qreason_get_handle(brain_t brain) {
  * - negative literal -i means variable i is false
  */
 static bool convert_to_qmc_cnf(const qreason_cnf_t* src, qmc_cnf_t* dst) {
-    if (!src || !dst) return false;
+    if (!src || !dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "convert_to_qmc_cnf: required parameter is NULL (src, dst)");
+        return false;
+    }
 
     memset(dst, 0, sizeof(*dst));
     dst->num_variables = src->n_variables;
@@ -520,7 +576,10 @@ static bool convert_to_qmc_cnf(const qreason_cnf_t* src, qmc_cnf_t* dst) {
 
     /* Allocate clause storage */
     dst->clauses = nimcp_calloc(dst->num_clauses, sizeof(qmc_clause_t));
-    if (!dst->clauses) return false;
+    if (!dst->clauses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "convert_to_qmc_cnf: dst->clauses is NULL");
+        return false;
+    }
 
     for (uint32_t c = 0; c < src->n_clauses; c++) {
         const qreason_clause_t* sq = &src->clauses[c];
@@ -537,6 +596,7 @@ static bool convert_to_qmc_cnf(const qreason_cnf_t* src, qmc_cnf_t* dst) {
             }
             nimcp_free(dst->clauses);
             dst->clauses = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "convert_to_qmc_cnf: validation failed");
             return false;
         }
 
@@ -583,10 +643,16 @@ static void free_qmc_cnf(qmc_cnf_t* cnf) {
 int nimcp_brain_qreason_solve_sat_mcts(brain_t brain,
                                         const brain_reasoning_query_t* query,
                                         brain_reasoning_result_t* result) {
-    if (!brain || !query || !result) return -1;
+    if (!brain || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_qmc_cnf: required parameter is NULL (brain, query, result)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_qmc_cnf: ctx is NULL");
+        return -1;
+    }
 
     if (g_bqr_mc_seed == 0) {
         g_bqr_mc_seed = mc_seed_from_time();
@@ -599,6 +665,7 @@ int nimcp_brain_qreason_solve_sat_mcts(brain_t brain,
     qmc_cnf_t qmc_cnf;
     if (!convert_to_qmc_cnf(&query->cnf, &qmc_cnf)) {
         NIMCP_LOGGING_ERROR("Failed to convert CNF for MCTS solver");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "free_qmc_cnf: convert_to_qmc_cnf is NULL");
         return -1;
     }
 
@@ -672,10 +739,16 @@ int nimcp_brain_qreason_estimate_sat_prob_mc(brain_t brain,
                                               uint32_t num_samples,
                                               float* probability_out,
                                               float* variance_out) {
-    if (!brain || !query || !probability_out) return -1;
+    if (!brain || !query || !probability_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_qmc_cnf: required parameter is NULL (brain, query, probability_out)");
+        return -1;
+    }
 
     brain_qreason_ctx_t* ctx = get_ctx(brain);
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_qmc_cnf: ctx is NULL");
+        return -1;
+    }
 
     if (g_bqr_mc_seed == 0) {
         g_bqr_mc_seed = mc_seed_from_time();

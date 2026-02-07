@@ -258,6 +258,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
 
     if (num_regions == 0) {
         set_error("Invalid num_regions: must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learner_create: num_regions is zero");
         return NULL;
     }
 
@@ -269,6 +270,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
     if (!meta) {
         set_error("Failed to allocate meta_learner_s (%zu bytes)",
                  sizeof(struct meta_learner_s));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learner_create: meta is NULL");
         return NULL;
     }
 
@@ -315,6 +317,7 @@ meta_learner_t meta_learner_create(const meta_learning_config_t* config,
     if (!meta->task_history) {
         set_error("Failed to allocate task history");
         nimcp_free(meta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learner_create: meta->task_history is NULL");
         return NULL;
     }
 
@@ -467,6 +470,7 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
 
     if (!meta) {
         set_error("NULL meta-learner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: meta is NULL");
         return false;
     }
 
@@ -481,21 +485,25 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
 
     if (!brain) {
         set_error("NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: brain is NULL");
         return false;
     }
 
     if (!support_inputs || !support_labels) {
         set_error("NULL support set");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: required parameter is NULL (support_inputs, support_labels)");
         return false;
     }
 
     if (num_support == 0) {
         set_error("Empty support set");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_maml_inner_loop: num_support is zero");
         return false;
     }
 
     if (!adapted_brain) {
         set_error("NULL output pointer for adapted_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: adapted_brain is NULL");
         return false;
     }
 
@@ -509,6 +517,7 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
     brain_t cloned = clone_brain_parameters(brain);
     if (!cloned) {
         set_error("Failed to clone brain for inner loop");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: cloned is NULL");
         return false;
     }
 
@@ -531,6 +540,7 @@ bool meta_maml_inner_loop(meta_learner_t meta, brain_t brain,
         if (!success) {
             set_error("Inner loop gradient step %u failed", step);
             brain_destroy(cloned);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_inner_loop: success is NULL");
             return false;
         }
 
@@ -592,6 +602,7 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
 
     if (!meta || !brain || !tasks) {
         set_error("NULL parameter in meta_maml_outer_loop");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_maml_outer_loop: required parameter is NULL (meta, brain, tasks)");
         return false;
     }
 
@@ -601,6 +612,7 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
 
     if (num_tasks == 0) {
         set_error("Empty task batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_maml_outer_loop: num_tasks is zero");
         return false;
     }
 
@@ -655,6 +667,7 @@ bool meta_maml_outer_loop(meta_learner_t meta, brain_t brain,
 
     if (successful_adaptations == 0) {
         set_error("No valid tasks in batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_maml_outer_loop: successful_adaptations is zero");
         return false;
     }
 
@@ -699,6 +712,7 @@ bool meta_evaluate_adaptation(meta_learner_t meta, brain_t brain, brain_t adapte
 
     if (!meta || !brain || !adapted_brain || !query_inputs || !query_labels || !stats) {
         set_error("NULL parameter in meta_evaluate_adaptation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_evaluate_adaptation: required parameter is NULL (meta, brain, adapted_brain, query_inputs, query_labels, stats)");
         return false;
     }
 
@@ -708,6 +722,7 @@ bool meta_evaluate_adaptation(meta_learner_t meta, brain_t brain, brain_t adapte
 
     if (num_query == 0) {
         set_error("Empty query set");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_evaluate_adaptation: num_query is zero");
         return false;
     }
 
@@ -853,6 +868,7 @@ bool meta_transfer_knowledge(meta_learner_t meta,
 
     if (!meta || !source_brain || !target_brain) {
         set_error("NULL parameter in meta_transfer_knowledge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_transfer_knowledge: required parameter is NULL (meta, source_brain, target_brain)");
         return false;
     }
 
@@ -867,6 +883,7 @@ bool meta_transfer_knowledge(meta_learner_t meta,
     if (similarity >= 0.0F && similarity < meta->config.similarity_threshold) {
         NIMCP_LOGGING_DEBUG("Transfer skipped: similarity %.2f < threshold %.2f",
                            similarity, meta->config.similarity_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_transfer_knowledge: capacity exceeded");
         return false;
     }
 
@@ -981,6 +998,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
 {
     if (!name || num_classes == 0 || input_dim == 0) {
         set_error("Invalid task parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_task_create: name is NULL");
         return NULL;
     }
 
@@ -991,6 +1009,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
     meta_task_t* task = nimcp_calloc(1, sizeof(meta_task_t));
     if (!task) {
         set_error("Failed to allocate meta_task_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_task_create: task is NULL");
         return NULL;
     }
 
@@ -1003,6 +1022,7 @@ meta_task_t* meta_task_create(const char* name, uint32_t num_classes, uint32_t i
     if (!task->class_prototypes) {
         set_error("Failed to allocate class prototypes");
         nimcp_free(task);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_task_create: task->class_prototypes is NULL");
         return NULL;
     }
 
@@ -1049,6 +1069,7 @@ bool meta_task_update_prototypes(meta_task_t* task,
                                  uint32_t num_examples)
 {
     if (!task || !inputs || !labels || num_examples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_task_update_prototypes: required parameter is NULL (task, inputs, labels)");
         return false;
     }
 
@@ -1104,6 +1125,7 @@ bool meta_get_statistics(meta_learner_t meta,
                         float* avg_steps_to_converge)
 {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_get_statistics: meta is NULL");
         return false;
     }
 
@@ -1288,6 +1310,7 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
     (void)learning_rate;
 
     if (!brain || !inputs || !labels || num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_gradient_step: required parameter is NULL (brain, inputs, labels)");
         return false;
     }
 
@@ -1295,6 +1318,7 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
     brain_example_t* examples = (brain_example_t*)nimcp_calloc(
         num_samples, sizeof(brain_example_t));
     if (!examples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "apply_gradient_step: examples is NULL");
         return false;
     }
 
@@ -1340,6 +1364,7 @@ static bool apply_gradient_step(brain_t brain, const float** inputs,
 static bool add_task_to_history(meta_learner_t meta, const meta_task_t* task)
 {
     if (!meta || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_task_to_history: required parameter is NULL (meta, task)");
         return false;
     }
 
@@ -1356,6 +1381,7 @@ static bool add_task_to_history(meta_learner_t meta, const meta_task_t* task)
     // Add new task (deep copy)
     meta_task_t* task_copy = meta_task_create(task->name, task->num_classes, task->input_dim);
     if (!task_copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_task_to_history: task_copy is NULL");
         return false;
     }
 

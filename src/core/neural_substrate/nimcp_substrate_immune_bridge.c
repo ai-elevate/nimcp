@@ -41,7 +41,7 @@ static float get_cytokine_concentration(
 
     float total = 0.0f;
     for (size_t i = 0; i < immune->cytokine_count; i++) {
-        if (immune->cytokines[i].type == type && !immune->cytokines[i].delivered) {
+        if (immune->cytokines[i].type == type && immune->cytokines[i].delivered) {
             total += immune->cytokines[i].concentration;
         }
     }
@@ -222,6 +222,7 @@ int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_immune_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -245,7 +246,10 @@ int substrate_immune_disconnect_bio_async(substrate_immune_bridge_t* bridge) {
 }
 
 bool substrate_immune_is_bio_async_connected(const substrate_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -690,7 +694,10 @@ int substrate_immune_get_trigger_state(
 }
 
 bool substrate_immune_is_modulated(const substrate_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_is_modulated: bridge is NULL");
+        return false;
+    }
     return bridge->cytokine_effects.fever_intensity > 0.05f ||
            bridge->cytokine_effects.metabolic_burden > 0.05f ||
            bridge->cytokine_effects.damage_severity > 0.05f;

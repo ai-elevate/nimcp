@@ -101,6 +101,7 @@ static int32_t sparse_find_col(
             end = mid;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_find_col: validation failed");
     return -1;  /* Not found */
 }
 
@@ -146,6 +147,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_create(
         mat->row_ptr = nimcp_malloc((rows + 1) * sizeof(uint32_t));
         if (!mat->row_ptr) {
             nimcp_free(mat);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_create: mat->row_ptr is NULL");
             return NULL;
         }
         memset(mat->row_ptr, 0, (rows + 1) * sizeof(uint32_t));
@@ -156,6 +158,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_create(
         mat->dense = trit_matrix_create(rows, cols, pack_mode);
         if (!mat->dense) {
             nimcp_free(mat);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_create: mat->dense is NULL");
             return NULL;
         }
     }
@@ -209,7 +212,10 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_from_float(
     lnn_ternary_matrix_t* mat = lnn_ternary_matrix_create(
         rows, cols, pack_mode, actual_sparse
     );
-    if (!mat) return NULL;
+    if (!mat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_from_float: mat is NULL");
+        return NULL;
+    }
 
     mat->threshold = threshold;
     mat->scale_factor = scale;
@@ -225,6 +231,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_from_float(
             mat->signs = nimcp_malloc(nnz * sizeof(trit_t));
             if (!mat->col_idx || !mat->signs) {
                 lnn_ternary_matrix_destroy(mat);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_from_float: required parameter is NULL (mat->col_idx, mat->signs)");
                 return NULL;
             }
         }
@@ -279,10 +286,16 @@ void lnn_ternary_matrix_destroy(lnn_ternary_matrix_t* mat) {
 }
 
 lnn_ternary_matrix_t* lnn_ternary_matrix_clone(const lnn_ternary_matrix_t* src) {
-    if (!src || src->magic != LNN_TERNARY_MAGIC) return NULL;
+    if (!src || src->magic != LNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_matrix_clone: src is NULL");
+        return NULL;
+    }
 
     lnn_ternary_matrix_t* dst = nimcp_malloc(sizeof(lnn_ternary_matrix_t));
-    if (!dst) return NULL;
+    if (!dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_clone: dst is NULL");
+        return NULL;
+    }
 
     /* Copy structure */
     memcpy(dst, src, sizeof(lnn_ternary_matrix_t));
@@ -292,6 +305,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_clone(const lnn_ternary_matrix_t* src) 
         dst->row_ptr = nimcp_malloc((src->rows + 1) * sizeof(uint32_t));
         if (!dst->row_ptr) {
             nimcp_free(dst);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_clone: dst->row_ptr is NULL");
             return NULL;
         }
         memcpy(dst->row_ptr, src->row_ptr, (src->rows + 1) * sizeof(uint32_t));
@@ -303,6 +317,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_clone(const lnn_ternary_matrix_t* src) 
                 nimcp_free(dst->row_ptr);
                 if (dst->col_idx) nimcp_free(dst->col_idx);
                 nimcp_free(dst);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_matrix_clone: validation failed");
                 return NULL;
             }
             memcpy(dst->col_idx, src->col_idx, src->nnz * sizeof(uint32_t));
@@ -316,6 +331,7 @@ lnn_ternary_matrix_t* lnn_ternary_matrix_clone(const lnn_ternary_matrix_t* src) 
         dst->dense = trit_matrix_clone(src->dense);
         if (!dst->dense) {
             nimcp_free(dst);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_matrix_clone: dst->dense is NULL");
             return NULL;
         }
     }
@@ -432,12 +448,18 @@ int lnn_ternary_matmul_int(
 }
 
 nimcp_tensor_t* lnn_ternary_matrix_to_float(const lnn_ternary_matrix_t* mat) {
-    if (!mat || mat->magic != LNN_TERNARY_MAGIC) return NULL;
+    if (!mat || mat->magic != LNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_matrix_to_float: mat is NULL");
+        return NULL;
+    }
 
     /* Create output tensor */
     uint32_t dims[2] = {mat->rows, mat->cols};
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
-    if (!tensor) return NULL;
+    if (!tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_matrix_to_float: tensor is NULL");
+        return NULL;
+    }
 
     float* data = nimcp_tensor_data(tensor);
     float scale = mat->scale_factor;
@@ -641,11 +663,13 @@ int lnn_ternary_config_validate(const lnn_ternary_config_t* config) {
 bool lnn_layer_is_ternary(const lnn_layer_t* layer) {
     /* TODO: Check layer's ternary config flag */
     (void)layer;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_layer_is_ternary: operation failed");
     return false;
 }
 
 const lnn_ternary_matrix_t* lnn_layer_get_ternary_W_rec(const lnn_layer_t* layer) {
     /* TODO: Return layer's ternary W_rec if enabled */
     (void)layer;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_layer_get_ternary_W_rec: operation failed");
     return NULL;
 }

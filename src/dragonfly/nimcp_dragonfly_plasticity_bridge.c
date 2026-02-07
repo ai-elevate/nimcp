@@ -117,7 +117,10 @@ dragonfly_plasticity_config_t dragonfly_plasticity_default_config(void) {
 }
 
 bool dragonfly_plasticity_validate_config(const dragonfly_plasticity_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->tsdn_learning_rate < 0.0f ||
         config->tsdn_learning_rate > 1.0f) return false;
@@ -129,12 +132,27 @@ bool dragonfly_plasticity_validate_config(const dragonfly_plasticity_config_t* c
     if (config->eligibility_decay < 0.0f ||
         config->eligibility_decay > 1.0f) return false;
 
-    if (config->min_nav_gain <= 0.0f) return false;
-    if (config->max_nav_gain < config->min_nav_gain) return false;
-    if (config->min_tuning_width <= 0.0f) return false;
-    if (config->max_tuning_width < config->min_tuning_width) return false;
+    if (config->min_nav_gain <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_nav_gain < config->min_nav_gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
+        return false;
+    }
+    if (config->min_tuning_width <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_tuning_width < config->min_tuning_width) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->homeostasis_rate < 0.0f) return false;
+    if (config->homeostasis_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_validate_config: validation failed");
+        return false;
+    }
     if (config->target_activity < 0.0f ||
         config->target_activity > 1.0f) return false;
 
@@ -223,7 +241,10 @@ int dragonfly_plasticity_bridge_connect(
     dragonfly_system_t* dragonfly,
     plasticity_coordinator_t plasticity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
@@ -235,7 +256,10 @@ int dragonfly_plasticity_bridge_connect(
 }
 
 int dragonfly_plasticity_bridge_disconnect(dragonfly_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
@@ -254,7 +278,10 @@ int dragonfly_plasticity_learn(
     dragonfly_plasticity_bridge_t bridge,
     const plasticity_event_t* event
 ) {
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_learn: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -374,7 +401,10 @@ int dragonfly_plasticity_update_eligibility(
     uint32_t motion_model,
     float dt_s
 ) {
-    if (!bridge || dt_s <= 0.0f) return -1;
+    if (!bridge || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_plasticity_update_eligibility: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -409,7 +439,10 @@ int dragonfly_plasticity_update_eligibility(
 //=============================================================================
 
 int dragonfly_plasticity_apply_adaptations(dragonfly_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_apply_adaptations: bridge is NULL");
+        return -1;
+    }
 
     /* In a full implementation, this would apply the learned parameters
        back to the dragonfly system's TSDN, IMM, and interception modules */
@@ -418,7 +451,10 @@ int dragonfly_plasticity_apply_adaptations(dragonfly_plasticity_bridge_t bridge)
 }
 
 int dragonfly_plasticity_reset_adaptations(dragonfly_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_reset_adaptations: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -450,7 +486,10 @@ int dragonfly_plasticity_get_tsdn_params(
     const dragonfly_plasticity_bridge_t bridge,
     tsdn_tuning_state_t* params
 ) {
-    if (!bridge || !params) return -1;
+    if (!bridge || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_get_tsdn_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.tsdn_state;
@@ -463,7 +502,10 @@ int dragonfly_plasticity_get_imm_params(
     const dragonfly_plasticity_bridge_t bridge,
     imm_adaptation_state_t* params
 ) {
-    if (!bridge || !params) return -1;
+    if (!bridge || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_get_imm_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.imm_state;
@@ -476,7 +518,10 @@ int dragonfly_plasticity_get_intercept_params(
     const dragonfly_plasticity_bridge_t bridge,
     intercept_adaptation_state_t* params
 ) {
-    if (!bridge || !params) return -1;
+    if (!bridge || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_get_intercept_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.intercept_state;
@@ -493,7 +538,10 @@ int dragonfly_plasticity_get_state(
     const dragonfly_plasticity_bridge_t bridge,
     dragonfly_plasticity_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
@@ -506,7 +554,10 @@ int dragonfly_plasticity_get_stats(
     const dragonfly_plasticity_bridge_t bridge,
     dragonfly_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;

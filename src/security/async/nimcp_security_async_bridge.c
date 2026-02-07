@@ -148,6 +148,7 @@ security_async_bridge_t* security_async_bridge_create(
     if (!config) {
         if (security_async_default_config(&default_config) != 0) {
             NIMCP_LOGGING_ERROR("Failed to get default config");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_bridge_create: validation failed");
             return NULL;
         }
         config = &default_config;
@@ -460,6 +461,7 @@ int security_async_disconnect_bio_async(security_async_bridge_t* bridge) {
 
 bool security_async_is_bio_async_connected(const security_async_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -518,7 +520,7 @@ int security_async_broadcast_threat(
     /* Send via bio-async if connected */
     if (bridge->base.bio_async_enabled) {
         int result = send_bio_message(bridge,
-                                      BIO_MSG_SECURITY_THREAT_DETECTED,
+                                      BIO_MSG_SECURITY_THREAT_DETECTED_EXT,
                                       &event,
                                       sizeof(event),
                                       bridge->config.threat_channel);
@@ -570,12 +572,37 @@ int security_async_publish_event(
         (int)event->severity >= (int)bridge->config.broadcast_threshold) {
 
         nimcp_bio_channel_type_t channel = bridge->config.policy_channel;
-        if (event->category == SECURITY_EVENT_CATEGORY_THREAT) {
-            channel = bridge->config.threat_channel;
+        uint32_t msg_type = BIO_MSG_SECURITY_EVENT;
+
+        /* Map event category to extended message type */
+        switch (event->category) {
+            case SECURITY_EVENT_CATEGORY_THREAT:
+                msg_type = BIO_MSG_SECURITY_THREAT_DETECTED_EXT;
+                channel = bridge->config.threat_channel;
+                break;
+            case SECURITY_EVENT_CATEGORY_POLICY:
+                msg_type = BIO_MSG_SECURITY_POLICY_CHANGE_EXT;
+                break;
+            case SECURITY_EVENT_CATEGORY_PATTERN:
+                msg_type = BIO_MSG_SECURITY_PATTERN_UPDATE_EXT;
+                break;
+            case SECURITY_EVENT_CATEGORY_RATE_LIMIT:
+                msg_type = BIO_MSG_SECURITY_RATE_LIMIT_HIT_EXT;
+                break;
+            case SECURITY_EVENT_CATEGORY_BBB:
+                msg_type = BIO_MSG_SECURITY_BBB_ALERT_EXT;
+                channel = bridge->config.threat_channel;
+                break;
+            case SECURITY_EVENT_CATEGORY_ANOMALY:
+                msg_type = BIO_MSG_SECURITY_ANOMALY_DETECTED_EXT;
+                channel = bridge->config.threat_channel;
+                break;
+            default:
+                break;
         }
 
         result = send_bio_message(bridge,
-                                  BIO_MSG_SECURITY_EVENT,
+                                  msg_type,
                                   event,
                                   sizeof(*event),
                                   channel);
@@ -662,7 +689,7 @@ int security_async_announce_policy_change(
     /* Send via bio-async */
     if (bridge->base.bio_async_enabled) {
         int result = send_bio_message(bridge,
-                                      BIO_MSG_SECURITY_POLICY_UPDATE,
+                                      BIO_MSG_SECURITY_POLICY_CHANGE_EXT,
                                       &event,
                                       sizeof(event),
                                       bridge->config.policy_channel);
@@ -724,7 +751,7 @@ int security_async_broadcast_bbb_alert(
     /* Send via bio-async */
     if (bridge->base.bio_async_enabled) {
         int result = send_bio_message(bridge,
-                                      BIO_MSG_SECURITY_ALERT,
+                                      BIO_MSG_SECURITY_BBB_ALERT_EXT,
                                       &event,
                                       sizeof(event),
                                       bridge->config.threat_channel);
@@ -791,7 +818,7 @@ int security_async_broadcast_rate_limit(
     /* Send via bio-async */
     if (bridge->base.bio_async_enabled) {
         int result = send_bio_message(bridge,
-                                      BIO_MSG_SECURITY_RATE_LIMIT,
+                                      BIO_MSG_SECURITY_RATE_LIMIT_HIT_EXT,
                                       &event,
                                       sizeof(event),
                                       BIO_CHANNEL_ACETYLCHOLINE);
@@ -852,7 +879,7 @@ int security_async_broadcast_pattern_update(
     /* Send via bio-async */
     if (bridge->base.bio_async_enabled) {
         int result = send_bio_message(bridge,
-                                      BIO_MSG_SECURITY_POLICY_UPDATE,
+                                      BIO_MSG_SECURITY_PATTERN_UPDATE_EXT,
                                       &event,
                                       sizeof(event),
                                       bridge->config.policy_channel);
@@ -1127,6 +1154,11 @@ int security_async_update_security_effects(security_async_bridge_t* bridge) {
     if (bridge->state.emergency_mode) {
         bridge->security_effects.rate_reduction_factor = 0.5f;
         bridge->security_effects.emergency_throttle = true;
+        bridge->security_effects.active_threat = true;
+        /* Emergency mode overrides threat-level priority boost */
+        if (bridge->security_effects.priority_boost < 1.0f) {
+            bridge->security_effects.priority_boost = 1.0f;
+        }
     } else {
         bridge->security_effects.rate_reduction_factor = 1.0f;
         bridge->security_effects.emergency_throttle = false;
@@ -1319,6 +1351,7 @@ int security_async_reset_stats(security_async_bridge_t* bridge) {
 
 bool security_async_is_connected(const security_async_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_connected: bridge is NULL");
         return false;
     }
 
@@ -1377,6 +1410,7 @@ bool security_async_lookup_threat_intel(
     threat_intel_entry_t* entry
 ) {
     if (!bridge || !threat_hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_lookup_threat_intel: required parameter is NULL (bridge, threat_hash)");
         return false;
     }
 
@@ -1395,6 +1429,7 @@ bool security_async_lookup_threat_intel(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_async_lookup_threat_intel: operation failed");
     return false;
 }
 
@@ -1522,6 +1557,7 @@ int security_async_exit_emergency_mode(security_async_bridge_t* bridge) {
 
 bool security_async_is_emergency_mode(const security_async_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_async_is_emergency_mode: bridge is NULL");
         return false;
     }
     return bridge->state.emergency_mode;

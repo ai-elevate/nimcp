@@ -106,7 +106,10 @@ static float lif_update(float v, float i_syn, float tau, float dt) {
 //=============================================================================
 
 int dragonfly_snn_bridge_default_config(dragonfly_snn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -162,12 +165,30 @@ int dragonfly_snn_bridge_default_config(dragonfly_snn_config_t* config) {
 }
 
 int dragonfly_snn_bridge_validate_config(const dragonfly_snn_config_t* config) {
-    if (!config) return -1;
-    if (config->algorithm >= DRAGONFLY_TRAIN_HYBRID + 1) return -1;
-    if (config->surrogate.method >= DRAGONFLY_SURROGATE_COUNT) return -1;
-    if (config->learning_rate <= 0.0f) return -1;
-    if (config->unroll_steps == 0) return -1;
-    if (config->neuron_params.tau_membrane <= 0.0f) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_bridge_validate_config: config is NULL");
+        return -1;
+    }
+    if (config->algorithm >= DRAGONFLY_TRAIN_HYBRID + 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: capacity exceeded");
+        return -1;
+    }
+    if (config->surrogate.method >= DRAGONFLY_SURROGATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_snn_bridge_validate_config: capacity exceeded");
+        return -1;
+    }
+    if (config->learning_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->unroll_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: config->unroll_steps is zero");
+        return -1;
+    }
+    if (config->neuron_params.tau_membrane <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_bridge_validate_config: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -254,7 +275,10 @@ void dragonfly_snn_bridge_destroy(dragonfly_snn_bridge_t* bridge) {
 }
 
 int dragonfly_snn_bridge_reset(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset neuron state */
     for (int i = 0; i < TSDN_NUM_NEURONS; i++) {
@@ -286,7 +310,10 @@ int dragonfly_snn_forward(
     uint32_t input_size,
     uint32_t timesteps
 ) {
-    if (!bridge || !input) return -1;
+    if (!bridge || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_forward: required parameter is NULL (bridge, input)");
+        return -1;
+    }
 
     float dt = 1.0f;  /* 1ms timestep */
     float tau = bridge->config.neuron_params.tau_membrane;
@@ -342,7 +369,10 @@ int dragonfly_snn_get_spikes(
     float* spikes,
     uint32_t max_spikes
 ) {
-    if (!bridge || !spikes) return -1;
+    if (!bridge || !spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_get_spikes: required parameter is NULL (bridge, spikes)");
+        return -1;
+    }
 
     uint32_t count = max_spikes < TSDN_NUM_NEURONS ? max_spikes : TSDN_NUM_NEURONS;
     memcpy(spikes, bridge->spikes, count * sizeof(float));
@@ -355,7 +385,10 @@ int dragonfly_snn_get_potentials(
     float* potentials,
     uint32_t num_neurons
 ) {
-    if (!bridge || !potentials) return -1;
+    if (!bridge || !potentials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_get_potentials: required parameter is NULL (bridge, potentials)");
+        return -1;
+    }
 
     uint32_t count = num_neurons < TSDN_NUM_NEURONS ? num_neurons : TSDN_NUM_NEURONS;
     memcpy(potentials, bridge->membrane_potentials, count * sizeof(float));
@@ -407,7 +440,10 @@ float dragonfly_snn_compute_loss(
 }
 
 int dragonfly_snn_backward(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_backward: bridge is NULL");
+        return -1;
+    }
 
     float beta = bridge->config.surrogate.beta;
     dragonfly_surrogate_t method = bridge->config.surrogate.method;
@@ -464,7 +500,10 @@ int dragonfly_snn_get_gradients(
     const dragonfly_snn_bridge_t* bridge,
     dragonfly_snn_gradients_t* gradients
 ) {
-    if (!bridge || !gradients) return -1;
+    if (!bridge || !gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_get_gradients: required parameter is NULL (bridge, gradients)");
+        return -1;
+    }
 
     gradients->weight_gradients = bridge->weight_gradients;
     gradients->bias_gradients = bridge->bias_gradients;
@@ -477,7 +516,10 @@ int dragonfly_snn_get_gradients(
 }
 
 int dragonfly_snn_apply_gradients(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_apply_gradients: bridge is NULL");
+        return -1;
+    }
 
     float lr = bridge->config.learning_rate;
     float wd = bridge->config.weight_decay;
@@ -543,7 +585,10 @@ int dragonfly_snn_apply_reward(
     dragonfly_snn_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     float advantage = reward - bridge->config.reward_baseline;
     if (bridge->config.use_advantage) {
@@ -571,7 +616,10 @@ int dragonfly_snn_update_eligibility(
     dragonfly_snn_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_update_eligibility: bridge is NULL");
+        return -1;
+    }
 
     float tau = bridge->config.eligibility.tau_eligibility;
     float decay = expf(-dt_ms / tau);
@@ -604,7 +652,10 @@ int dragonfly_snn_update_eligibility(
 }
 
 int dragonfly_snn_set_learning_rate(dragonfly_snn_bridge_t* bridge, float lr) {
-    if (!bridge || lr <= 0.0f) return -1;
+    if (!bridge || lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_snn_set_learning_rate: bridge is NULL");
+        return -1;
+    }
     bridge->config.learning_rate = lr;
     bridge->stats.learning_rate_current = lr;
     return 0;
@@ -629,13 +680,19 @@ float dragonfly_snn_decay_learning_rate(dragonfly_snn_bridge_t* bridge) {
 //=============================================================================
 
 int dragonfly_snn_sync_from_tsdn(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_sync_from_tsdn: bridge is NULL");
+        return -1;
+    }
     /* Would sync from dragonfly TSDN module if connected */
     return 0;
 }
 
 int dragonfly_snn_push_to_tsdn(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_push_to_tsdn: bridge is NULL");
+        return -1;
+    }
     /* Would push trained weights to dragonfly TSDN */
     return 0;
 }
@@ -684,7 +741,10 @@ int dragonfly_snn_connect_dragonfly(
     dragonfly_snn_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_connect_dragonfly: bridge is NULL");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -693,7 +753,10 @@ int dragonfly_snn_connect_trainer(
     dragonfly_snn_bridge_t* bridge,
     void* trainer
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_connect_trainer: bridge is NULL");
+        return -1;
+    }
     bridge->snn_trainer = trainer;
     return 0;
 }
@@ -703,7 +766,10 @@ bool dragonfly_snn_is_training(const dragonfly_snn_bridge_t* bridge) {
 }
 
 int dragonfly_snn_set_training(dragonfly_snn_bridge_t* bridge, bool training) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_set_training: bridge is NULL");
+        return -1;
+    }
     bridge->is_training = training;
     return 0;
 }
@@ -716,13 +782,19 @@ int dragonfly_snn_bridge_get_stats(
     const dragonfly_snn_bridge_t* bridge,
     dragonfly_snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_snn_bridge_reset_stats(dragonfly_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_snn_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

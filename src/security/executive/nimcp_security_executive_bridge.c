@@ -209,6 +209,7 @@ security_executive_bridge_t* security_executive_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, SECURITY_EXEC_MODULE_ID, "security_executive_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "security_executive_bridge_create: validation failed");
         return NULL;
     }
 
@@ -222,6 +223,7 @@ security_executive_bridge_t* security_executive_bridge_create(
     if (!bridge->audit_buffer) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_executive_bridge_create: bridge->audit_buffer is NULL");
         return NULL;
     }
     memset(bridge->audit_buffer, 0, sizeof(security_audit_record_t) * audit_size);

@@ -112,7 +112,10 @@ static pattern_candidate_t* find_candidate_unlocked(
     heal_bridge_t* bridge,
     uint64_t candidate_id)
 {
-    if (bridge == NULL || bridge->candidates == NULL) return NULL;
+    if (bridge == NULL || bridge->candidates == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_candidate_unlocked: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->candidate_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -125,6 +128,7 @@ static pattern_candidate_t* find_candidate_unlocked(
             return &bridge->candidates[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_candidate_unlocked: validation failed");
     return NULL;
 }
 
@@ -135,7 +139,10 @@ static fix_chain_t* find_chain_unlocked(
     heal_bridge_t* bridge,
     uint64_t chain_id)
 {
-    if (bridge == NULL || bridge->active_chains == NULL) return NULL;
+    if (bridge == NULL || bridge->active_chains == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_chain_unlocked: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->chain_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -148,6 +155,7 @@ static fix_chain_t* find_chain_unlocked(
             return &bridge->active_chains[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_chain_unlocked: validation failed");
     return NULL;
 }
 
@@ -158,7 +166,10 @@ static rollback_entry_t* find_rollback_entry(
     heal_bridge_t* bridge,
     uint64_t antibody_id)
 {
-    if (bridge == NULL || bridge->rollback_history == NULL) return NULL;
+    if (bridge == NULL || bridge->rollback_history == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rollback_entry: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->rollback_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -171,6 +182,7 @@ static rollback_entry_t* find_rollback_entry(
             return &bridge->rollback_history[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rollback_entry: validation failed");
     return NULL;
 }
 
@@ -183,7 +195,10 @@ static int add_rollback_entry(
     const char* original_code,
     void* original_function)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_rollback_entry: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_rollback) return 0;
 
     if (bridge->rollback_count >= bridge->rollback_capacity) {
@@ -258,6 +273,7 @@ static bool should_chain_fixes(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "should_chain_fixes: validation failed");
     return false;
 }
 
@@ -441,7 +457,10 @@ int heal_bridge_process_crash(
     const char* source_code,
     uint64_t* antibody_id_out)
 {
-    if (bridge == NULL || source_code == NULL) return -1;
+    if (bridge == NULL || source_code == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_process_crash", 0.0f);
@@ -500,6 +519,7 @@ int heal_bridge_process_crash(
         nimcp_mutex_unlock(bridge->base.mutex);
 
         LOG_MODULE_WARN(LOG_TAG, "Fix generation failed for antigen %lu", antigen_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash: validation failed");
         return -1;
     }
 
@@ -521,6 +541,7 @@ int heal_bridge_process_crash(
 
             LOG_MODULE_WARN(LOG_TAG, "Fix validation failed: %s",
                            heal_bridge_sandbox_result_to_string(sandbox_result));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash: operation failed");
             return -1;
         }
     }
@@ -617,7 +638,10 @@ int heal_bridge_process_crash_chain(
     const char* source_code,
     uint64_t* chain_id_out)
 {
-    if (bridge == NULL || source_code == NULL) return -1;
+    if (bridge == NULL || source_code == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash_chain: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_fix_chains) {
         /* Fall back to single fix */
         return heal_bridge_process_crash(bridge, antigen_id, source_code, NULL);
@@ -630,7 +654,10 @@ int heal_bridge_process_crash_chain(
 
     uint64_t chain_id;
     int ret = heal_bridge_create_chain(bridge, antigen_id, source_code, &chain_id);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_process_crash_chain: validation failed");
+        return -1;
+    }
 
     /* Execute chain */
     ret = heal_bridge_execute_chain(bridge, chain_id);
@@ -652,6 +679,7 @@ int heal_bridge_validate_fix(
     sandbox_result_t* result_out)
 {
     if (bridge == NULL || fix == NULL || result_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -676,6 +704,7 @@ int heal_bridge_validate_fix(
     int pipefd[2];
     if (pipe(pipefd) == -1) {
         *result_out = SANDBOX_RESULT_COMPILE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -686,6 +715,7 @@ int heal_bridge_validate_fix(
         close(pipefd[0]);
         close(pipefd[1]);
         *result_out = SANDBOX_RESULT_COMPILE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_validate_fix: validation failed");
         return -1;
     }
 
@@ -806,7 +836,10 @@ int heal_bridge_run_regression(
     const heal_result_t* fix,
     const char* test_command)
 {
-    if (bridge == NULL || fix == NULL) return -1;
+    if (bridge == NULL || fix == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_run_regression: validation failed");
+        return -1;
+    }
 
     /* Store test command for future use */
     if (test_command != NULL) {
@@ -821,7 +854,10 @@ int heal_bridge_run_regression(
     sandbox_result_t result;
     int ret = heal_bridge_validate_fix(bridge, fix, &result);
 
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_run_regression: validation failed");
+        return -1;
+    }
 
     return (result == SANDBOX_RESULT_SUCCESS ||
             result == SANDBOX_RESULT_SKIPPED) ? 0 : -1;
@@ -837,7 +873,10 @@ int heal_bridge_register_candidate(
     const heal_result_t* fix,
     uint64_t* candidate_id_out)
 {
-    if (bridge == NULL || features == NULL || fix == NULL) return -1;
+    if (bridge == NULL || features == NULL || fix == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_register_candidate: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_pattern_evolution) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -900,7 +939,10 @@ int heal_bridge_record_candidate_outcome(
     bool success,
     float confidence)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_record_candidate_outcome: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_record_candidate_out", 0.0f);
@@ -911,6 +953,7 @@ int heal_bridge_record_candidate_outcome(
     pattern_candidate_t* candidate = find_candidate_unlocked(bridge, candidate_id);
     if (candidate == NULL) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_record_candidate_outcome: validation failed");
         return -1;
     }
 
@@ -970,7 +1013,10 @@ int heal_bridge_promote_candidate(
     uint64_t candidate_id,
     uint32_t* pattern_id_out)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_promote_candidate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_promote_candidate", 0.0f);
@@ -981,6 +1027,7 @@ int heal_bridge_promote_candidate(
     pattern_candidate_t* candidate = find_candidate_unlocked(bridge, candidate_id);
     if (candidate == NULL || candidate->state == PATTERN_EVO_PROMOTED) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_promote_candidate: validation failed");
         return -1;
     }
 
@@ -1095,7 +1142,10 @@ int heal_bridge_create_chain(
     const char* source_code,
     uint64_t* chain_id_out)
 {
-    if (bridge == NULL || source_code == NULL) return -1;
+    if (bridge == NULL || source_code == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_create_chain: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_create_chain", 0.0f);
@@ -1106,6 +1156,7 @@ int heal_bridge_create_chain(
     /* Check capacity */
     if (bridge->chain_count >= bridge->chain_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_bridge_create_chain: capacity exceeded");
         return -1;
     }
 
@@ -1182,7 +1233,10 @@ int heal_bridge_add_to_chain(
     fix_dependency_t dependency,
     int depends_on)
 {
-    if (bridge == NULL || fix == NULL) return -1;
+    if (bridge == NULL || fix == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_add_to_chain: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_add_to_chain", 0.0f);
@@ -1193,6 +1247,7 @@ int heal_bridge_add_to_chain(
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL || chain->fix_count >= HEAL_BRIDGE_MAX_FIX_CHAIN) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_bridge_add_to_chain: capacity exceeded");
         return -1;
     }
 
@@ -1217,7 +1272,10 @@ int heal_bridge_execute_chain(
     heal_bridge_t* bridge,
     uint64_t chain_id)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_execute_chain: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_execute_chain", 0.0f);
@@ -1228,6 +1286,7 @@ int heal_bridge_execute_chain(
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL || chain->fix_count == 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_execute_chain: chain->fix_count is zero");
         return -1;
     }
 
@@ -1325,7 +1384,10 @@ int heal_bridge_get_chain_status(
     chain_status_t* status_out,
     size_t* applied_count_out)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_get_chain_status: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_get_chain_status", 0.0f);
@@ -1336,6 +1398,7 @@ int heal_bridge_get_chain_status(
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_get_chain_status: validation failed");
         return -1;
     }
 
@@ -1360,8 +1423,14 @@ int heal_bridge_rollback(
     heal_bridge_t* bridge,
     uint64_t antibody_id)
 {
-    if (bridge == NULL) return -1;
-    if (!bridge->config.enable_rollback) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_rollback: validation failed");
+        return -1;
+    }
+    if (!bridge->config.enable_rollback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_bridge_rollback: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_rollback", 0.0f);
@@ -1372,6 +1441,7 @@ int heal_bridge_rollback(
     rollback_entry_t* entry = find_rollback_entry(bridge, antibody_id);
     if (entry == NULL || !entry->can_rollback) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_bridge_rollback: entry->can_rollback is NULL");
         return -1;
     }
 
@@ -1383,6 +1453,7 @@ int heal_bridge_rollback(
 
         LOG_MODULE_WARN(LOG_TAG, "Rollback window expired for antibody %lu",
                         antibody_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_rollback: validation failed");
         return -1;
     }
 
@@ -1414,7 +1485,10 @@ int heal_bridge_rollback_chain(
     heal_bridge_t* bridge,
     uint64_t chain_id)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_rollback_chain: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_rollback_chain", 0.0f);
@@ -1425,6 +1499,7 @@ int heal_bridge_rollback_chain(
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_rollback_chain: validation failed");
         return -1;
     }
 
@@ -1492,7 +1567,10 @@ int heal_bridge_get_stats(
     heal_bridge_t* bridge,
     heal_bridge_stats_t* stats)
 {
-    if (bridge == NULL || stats == NULL) return -1;
+    if (bridge == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_get_stats: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_get_stats", 0.0f);
@@ -1517,7 +1595,10 @@ int heal_bridge_get_stats(
 
 int heal_bridge_reset_stats(heal_bridge_t* bridge)
 {
-    if (bridge == NULL) return -1;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_bridge_reset_stats: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     heal_bridge_heartbeat("heal_bridge_reset_stats", 0.0f);

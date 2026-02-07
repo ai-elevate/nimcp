@@ -136,6 +136,7 @@ bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
 
 fail:
     bgt_bridge_destroy(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgt_bridge_create: operation failed");
     return NULL;
 }
 
@@ -195,7 +196,10 @@ int bgt_bridge_connect_thalamus(bgt_bridge_t* bridge, thalamus_t* thalamus) {
 }
 
 bool bgt_bridge_is_connected(const bgt_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bg != NULL && bridge->thalamus != NULL;
 }
 

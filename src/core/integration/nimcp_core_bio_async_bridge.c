@@ -180,6 +180,7 @@ core_bio_async_bridge_t* core_bio_async_bridge_create(
     core_bio_async_bridge_t* bridge = nimcp_malloc(sizeof(core_bio_async_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate core bio-async bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "core_bio_async_bridge_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(core_bio_async_bridge_t));
@@ -187,6 +188,7 @@ core_bio_async_bridge_t* core_bio_async_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, BIO_MODULE_BRAIN, "core_bio_async") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "core_bio_async_bridge_create: validation failed");
         return NULL;
     }
 
@@ -205,6 +207,7 @@ core_bio_async_bridge_t* core_bio_async_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to allocate spike queue");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "core_bio_async_bridge_create: bridge->pending_spikes is NULL");
         return NULL;
     }
     bridge->pending_spike_count = 0;
@@ -469,9 +472,11 @@ bool core_bio_async_get_module(
     core_module_entry_t* entry)
 {
     if (!bridge || type >= CORE_MODULE_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "core_bio_async_get_module: bridge is NULL");
         return false;
     }
     if (!bridge->modules[type].active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_get_module: bridge->modules is NULL");
         return false;
     }
     if (entry) {
@@ -495,6 +500,7 @@ int core_bio_async_process_inbox(
 {
     /* Guard clause */
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -569,6 +575,7 @@ int core_bio_async_broadcast_brain_state(
 {
     /* Guard clause */
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_broadcast_brain_state: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -601,6 +608,7 @@ int core_bio_async_broadcast_brain_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "core_bio_async_broadcast_brain_state: validation failed");
     return -1;
 }
 
@@ -612,6 +620,7 @@ int core_bio_async_broadcast_medulla_state(
 {
     /* Guard clause */
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_broadcast_medulla_state: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -644,6 +653,7 @@ int core_bio_async_broadcast_medulla_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "core_bio_async_broadcast_medulla_state: validation failed");
     return -1;
 }
 
@@ -655,6 +665,7 @@ int core_bio_async_broadcast_topology_update(
 {
     /* Guard clause */
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_broadcast_topology_update: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -687,6 +698,7 @@ int core_bio_async_broadcast_topology_update(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "core_bio_async_broadcast_topology_update: validation failed");
     return -1;
 }
 
@@ -770,6 +782,7 @@ int core_bio_async_route_spike_batch(
 {
     /* Guard clauses */
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_route_spike_batch: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
     if (!neuron_ids || !amplitudes || spike_count == 0) {
@@ -961,9 +974,11 @@ bool core_bio_async_get_module_health(
     float* health_score)
 {
     if (!bridge || type >= CORE_MODULE_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "core_bio_async_get_module_health: bridge is NULL");
         return false;
     }
     if (!bridge->modules[type].active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_get_module_health: bridge->modules is NULL");
         return false;
     }
 
@@ -983,6 +998,7 @@ int core_bio_async_get_stats(
     core_bio_async_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_bio_async_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
     *stats = bridge->stats;

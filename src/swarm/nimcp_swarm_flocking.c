@@ -38,13 +38,17 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_flocking)
  * @brief Find boid index by ID
  */
 static int flocking_find_boid_index(const nimcp_flocking_engine_t *engine, uint32_t boid_id) {
-    if (!engine || !engine->boids) return -1;
+    if (!engine || !engine->boids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flocking_find_boid_index: required parameter is NULL (engine, engine->boids)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < engine->boid_count; i++) {
         if (engine->boids[i].id == boid_id) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flocking_find_boid_index: validation failed");
     return -1;
 }
 
@@ -408,6 +412,7 @@ uint32_t nimcp_flocking_add_boid(nimcp_flocking_engine_t *engine,
 
 int nimcp_flocking_remove_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id) {
     if (!engine || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_flocking_remove_boid: engine is NULL");
         return -1;
     }
 
@@ -416,6 +421,7 @@ int nimcp_flocking_remove_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) {
         nimcp_platform_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_flocking_remove_boid: validation failed");
         return -1;
     }
 
@@ -440,11 +446,13 @@ int nimcp_flocking_remove_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id
 
 nimcp_boid_t *nimcp_flocking_get_boid(nimcp_flocking_engine_t *engine, uint32_t boid_id) {
     if (!engine || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_flocking_get_boid: engine is NULL");
         return NULL;
     }
 
     int index = flocking_find_boid_index(engine, boid_id);
     if (index < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_flocking_get_boid: validation failed");
         return NULL;
     }
 
@@ -456,6 +464,7 @@ int nimcp_flocking_update_boid(nimcp_flocking_engine_t *engine,
                                const nimcp_vec3_t *position,
                                const nimcp_vec3_t *velocity) {
     if (!engine || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_flocking_get_boid: engine is NULL");
         return -1;
     }
 
@@ -464,6 +473,7 @@ int nimcp_flocking_update_boid(nimcp_flocking_engine_t *engine,
     nimcp_boid_t *boid = nimcp_flocking_get_boid(engine, boid_id);
     if (!boid) {
         nimcp_platform_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_get_boid: boid is NULL");
         return -1;
     }
 
@@ -525,6 +535,7 @@ uint32_t nimcp_flocking_add_obstacle(nimcp_flocking_engine_t *engine,
 
 int nimcp_flocking_remove_obstacle(nimcp_flocking_engine_t *engine, uint32_t obstacle_id) {
     if (!engine || obstacle_id == 0 || obstacle_id > engine->obstacle_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_flocking_remove_obstacle: engine is NULL");
         return -1;
     }
 
@@ -547,6 +558,7 @@ int nimcp_flocking_update_obstacle(nimcp_flocking_engine_t *engine,
                                    uint32_t obstacle_id,
                                    const nimcp_vec3_t *position) {
     if (!engine || !position || obstacle_id == 0 || obstacle_id > engine->obstacle_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_remove_obstacle: required parameter is NULL (engine, position)");
         return -1;
     }
 
@@ -618,7 +630,10 @@ void nimcp_flocking_clear_predator(nimcp_flocking_engine_t *engine) {
 int nimcp_flocking_set_formation(nimcp_flocking_engine_t *engine,
                                  nimcp_formation_type_t formation,
                                  uint32_t leader_id) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_predator: engine is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(engine->mutex);
 
@@ -674,10 +689,16 @@ void nimcp_flocking_clear_formation(nimcp_flocking_engine_t *engine) {
 static int flocking_get_formation_position_unlocked(nimcp_flocking_engine_t *engine,
                                                      uint32_t boid_id,
                                                      nimcp_vec3_t *position) {
-    if (!engine || !position || boid_id == 0) return -1;
+    if (!engine || !position || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: required parameter is NULL (engine, position)");
+        return -1;
+    }
 
     int index = flocking_find_boid_index(engine, boid_id);
-    if (index < 0) return -1;
+    if (index < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_flocking_clear_formation: validation failed");
+        return -1;
+    }
 
     switch (engine->formation_type) {
         case NIMCP_FORMATION_V:
@@ -709,7 +730,10 @@ static int flocking_get_formation_position_unlocked(nimcp_flocking_engine_t *eng
 int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
                                           uint32_t boid_id,
                                           nimcp_vec3_t *position) {
-    if (!engine || !position || boid_id == 0) return -1;
+    if (!engine || !position || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: required parameter is NULL (engine, position)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(engine->mutex);
     int result = flocking_get_formation_position_unlocked(engine, boid_id, position);
@@ -725,10 +749,16 @@ int nimcp_flocking_get_formation_position(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_find_neighbors(nimcp_flocking_engine_t *engine,
                                   uint32_t boid_id,
                                   float radius) {
-    if (!engine || boid_id == 0) return -1;
+    if (!engine || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_flocking_clear_formation: engine is NULL");
+        return -1;
+    }
 
     nimcp_boid_t *boid = nimcp_flocking_get_boid(engine, boid_id);
-    if (!boid) return -1;
+    if (!boid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: boid is NULL");
+        return -1;
+    }
 
     boid->neighbor_count = 0;
     float radius_sq = radius * radius;
@@ -746,6 +776,7 @@ int nimcp_flocking_find_neighbors(nimcp_flocking_engine_t *engine,
                 uint32_t *new_neighbors = (uint32_t *)nimcp_realloc(
                     boid->neighbor_ids, new_capacity * sizeof(uint32_t));
                 if (!new_neighbors) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_flocking_clear_formation: new_neighbors is NULL");
                     return -1;
                 }
                 boid->neighbor_ids = new_neighbors;
@@ -770,7 +801,10 @@ int nimcp_flocking_find_neighbors(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_separation(nimcp_flocking_engine_t *engine,
                               const nimcp_boid_t *boid,
                               nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -811,7 +845,10 @@ int nimcp_flocking_separation(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_alignment(nimcp_flocking_engine_t *engine,
                              const nimcp_boid_t *boid,
                              nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -848,7 +885,10 @@ int nimcp_flocking_alignment(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_cohesion(nimcp_flocking_engine_t *engine,
                             const nimcp_boid_t *boid,
                             nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_clear_formation: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -892,7 +932,10 @@ int nimcp_flocking_cohesion(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_obstacle_avoidance(nimcp_flocking_engine_t *engine,
                                       const nimcp_boid_t *boid,
                                       nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -932,7 +975,10 @@ int nimcp_flocking_obstacle_avoidance(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_goal_seek(nimcp_flocking_engine_t *engine,
                              const nimcp_boid_t *boid,
                              nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -962,7 +1008,10 @@ int nimcp_flocking_goal_seek(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_boundary_containment(nimcp_flocking_engine_t *engine,
                                         const nimcp_boid_t *boid,
                                         nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -997,7 +1046,10 @@ int nimcp_flocking_boundary_containment(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_predator_evasion(nimcp_flocking_engine_t *engine,
                                     const nimcp_boid_t *boid,
                                     nimcp_vec3_t *force) {
-    if (!engine || !boid || !force) return -1;
+    if (!engine || !boid || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, boid, force)");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -1029,10 +1081,16 @@ int nimcp_flocking_predator_evasion(nimcp_flocking_engine_t *engine,
 int nimcp_flocking_calculate_force(nimcp_flocking_engine_t *engine,
                                    uint32_t boid_id,
                                    nimcp_vec3_t *force) {
-    if (!engine || !force || boid_id == 0) return -1;
+    if (!engine || !force || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (engine, force)");
+        return -1;
+    }
 
     nimcp_boid_t *boid = nimcp_flocking_get_boid(engine, boid_id);
-    if (!boid) return -1;
+    if (!boid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: boid is NULL");
+        return -1;
+    }
 
     *force = nimcp_vec3_create(0, 0, 0);
 
@@ -1087,7 +1145,10 @@ int nimcp_flocking_calculate_force(nimcp_flocking_engine_t *engine,
 }
 
 int nimcp_flocking_update(nimcp_flocking_engine_t *engine, float dt) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_update: engine is NULL");
+        return -1;
+    }
 
     if (dt <= 0) {
         dt = engine->config.update_dt;
@@ -1185,7 +1246,10 @@ int nimcp_flocking_update(nimcp_flocking_engine_t *engine, float dt) {
 
 int nimcp_flocking_center_of_mass(nimcp_flocking_engine_t *engine,
                                   nimcp_vec3_t *center) {
-    if (!engine || !center || engine->boid_count == 0) return -1;
+    if (!engine || !center || engine->boid_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_update: required parameter is NULL (engine, center)");
+        return -1;
+    }
 
     *center = nimcp_vec3_create(0, 0, 0);
 
@@ -1199,7 +1263,10 @@ int nimcp_flocking_center_of_mass(nimcp_flocking_engine_t *engine,
 
 int nimcp_flocking_get_stats(nimcp_flocking_engine_t *engine,
                              nimcp_flocking_stats_t *stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_update: required parameter is NULL (engine, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(nimcp_flocking_stats_t));
 
@@ -1369,7 +1436,10 @@ static int flocking_wiring_handler_callback(
 
 int nimcp_flocking_register_bioasync(nimcp_flocking_engine_t *engine,
                                      bio_router_t *router) {
-    if (!engine || !router) return -1;
+    if (!engine || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flocking_wiring_handler_callback: required parameter is NULL (engine, router)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(engine->mutex);
 
@@ -1434,10 +1504,16 @@ int nimcp_flocking_process_messages(nimcp_flocking_engine_t *engine) {
 }
 
 int nimcp_flocking_broadcast_state(nimcp_flocking_engine_t *engine, uint32_t boid_id) {
-    if (!engine || !engine->bio_async_enabled || boid_id == 0) return -1;
+    if (!engine || !engine->bio_async_enabled || boid_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_broadcast_state: required parameter is NULL (engine, engine->bio_async_enabled)");
+        return -1;
+    }
 
     nimcp_boid_t *boid = nimcp_flocking_get_boid(engine, boid_id);
-    if (!boid) return -1;
+    if (!boid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_flocking_broadcast_state: boid is NULL");
+        return -1;
+    }
 
     // Create and send position/velocity message
     flocking_state_msg_t msg;

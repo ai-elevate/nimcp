@@ -351,10 +351,12 @@ nimcp_no_source_t* nimcp_no_get_source(
     uint32_t source_id
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_no_get_source: required parameter is NULL (system, system->initialized)");
         return NULL;
     }
 
     if (source_id >= system->num_sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_no_get_source: capacity exceeded");
         return NULL;
     }
 

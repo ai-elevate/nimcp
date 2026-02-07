@@ -273,6 +273,7 @@ static bool init_feature_column(
     uint32_t num_weights
 ) {
     if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_feature_column: col is NULL");
         return false;
     }
 
@@ -285,6 +286,7 @@ static bool init_feature_column(
     if (num_weights > 0) {
         col->weights = (float*)nimcp_malloc(num_weights * sizeof(float));
         if (!col->weights) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_feature_column: col->weights is NULL");
             return false;
         }
 
@@ -303,6 +305,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
 ) {
     if (!dimensions || num_dimensions == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid dimensions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create: dimensions is NULL");
         return NULL;
     }
 
@@ -323,6 +326,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     );
     if (!hcol->dimensions) {
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create: hcol->dimensions is NULL");
         return NULL;
     }
     memcpy(hcol->dimensions, dimensions,
@@ -341,6 +345,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     if (!hcol->columns) {
         nimcp_free(hcol->dimensions);
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: hcol->columns is NULL");
         return NULL;
     }
 
@@ -381,6 +386,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
             nimcp_free(hcol->columns);
             nimcp_free(hcol->dimensions);
             nimcp_free(hcol);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: validation failed");
             return NULL;
         }
     }
@@ -404,6 +410,7 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         nimcp_free(hcol->columns);
         nimcp_free(hcol->dimensions);
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_hypercolumn_create: validation failed");
         return NULL;
     }
 
@@ -449,6 +456,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_orientation(
 ) {
     if (num_orientations == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid orientation count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create_orientation: num_orientations is zero");
         return NULL;
     }
 
@@ -466,6 +474,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_direction(
 ) {
     if (num_directions == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid direction count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_hypercolumn_create_direction: num_directions is zero");
         return NULL;
     }
 
@@ -485,6 +494,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_spatial_freq(
 ) {
     if (num_octaves == 0 || min_freq <= 0.0F || max_freq <= min_freq) {
         LOG_ERROR(LOG_MODULE, "Invalid spatial frequency parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create_spatial_freq: num_octaves is zero");
         return NULL;
     }
 
@@ -503,6 +513,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_color(
 ) {
     if (num_hues == 0 || num_saturations == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid color parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create_color: num_hues is zero");
         return NULL;
     }
 
@@ -531,6 +542,7 @@ feature_hypercolumn_t* feature_hypercolumn_create_disparity(
 ) {
     if (num_disparities == 0 || max_disparity <= 0.0F) {
         LOG_ERROR(LOG_MODULE, "Invalid disparity parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_hypercolumn_create_disparity: num_disparities is zero");
         return NULL;
     }
 
@@ -754,7 +766,10 @@ void feature_hypercolumn_softmax(
 static int compare_activations_desc(const void* a, const void* b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    if (fa > fb) return -1;
+    if (fa > fb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_activations_desc: validation failed");
+        return -1;
+    }
     if (fa < fb) return 1;
     return 0;
 }
@@ -1048,7 +1063,10 @@ static int compare_pairs_desc(const void* a, const void* b) {
     const index_activation_pair_t* pa = (const index_activation_pair_t*)a;
     const index_activation_pair_t* pb = (const index_activation_pair_t*)b;
 
-    if (pa->activation > pb->activation) return -1;
+    if (pa->activation > pb->activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_pairs_desc: validation failed");
+        return -1;
+    }
     if (pa->activation < pb->activation) return 1;
     return 0;
 }

@@ -141,8 +141,14 @@ int language_thalamic_bridge_route_phoneme(
     const void* phoneme_data,
     uint32_t size)
 {
-    if (!bridge || !phoneme_data) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !phoneme_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_phoneme: required parameter is NULL (bridge, phoneme_data)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_phoneme: bridge->active is NULL");
+        return -1;
+    }
 
     (void)size;  /* Would use in actual routing */
 
@@ -163,8 +169,14 @@ int language_thalamic_bridge_route_word(
     const void* word_data,
     uint32_t size)
 {
-    if (!bridge || !word_data) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !word_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_word: required parameter is NULL (bridge, word_data)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_word: bridge->active is NULL");
+        return -1;
+    }
 
     (void)size;
 
@@ -184,8 +196,14 @@ int language_thalamic_bridge_route_motor_speech(
     const void* motor_data,
     uint32_t size)
 {
-    if (!bridge || !motor_data) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !motor_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_motor_speech: required parameter is NULL (bridge, motor_data)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_motor_speech: bridge->active is NULL");
+        return -1;
+    }
 
     (void)size;
 
@@ -205,8 +223,14 @@ int language_thalamic_bridge_route_semantic(
     const void* semantic_data,
     uint32_t size)
 {
-    if (!bridge || !semantic_data) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !semantic_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_semantic: required parameter is NULL (bridge, semantic_data)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_route_semantic: bridge->active is NULL");
+        return -1;
+    }
 
     (void)size;
 
@@ -225,8 +249,14 @@ int language_thalamic_bridge_send_signal(
     language_thalamic_bridge_t* bridge,
     const language_thalamic_signal_t* signal)
 {
-    if (!bridge || !signal) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_send_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_send_signal: bridge->active is NULL");
+        return -1;
+    }
 
     /* Check gating for target nucleus */
     float gating = bridge->gating_state[signal->target];
@@ -332,7 +362,10 @@ int language_thalamic_bridge_get_stats(
     const language_thalamic_bridge_t* bridge,
     language_thalamic_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_thalamic_stats_t));
     return 0;
 }

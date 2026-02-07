@@ -179,7 +179,10 @@ static void create_instability_epitope(
  * ============================================================================ */
 
 int training_immune_default_config(training_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(training_immune_config_t));
 
@@ -253,6 +256,7 @@ training_immune_system_t* training_immune_create(
     );
     if (!system->history) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_immune_create: system->history is NULL");
         return NULL;
     }
 
@@ -264,6 +268,7 @@ training_immune_system_t* training_immune_create(
     if (!system->events) {
         nimcp_free(system->history);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_create: system->events is NULL");
         return NULL;
     }
 
@@ -281,6 +286,7 @@ training_immune_system_t* training_immune_create(
         nimcp_free(system->events);
         nimcp_free(system->history);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_immune_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -289,6 +295,7 @@ training_immune_system_t* training_immune_create(
         nimcp_free(system->events);
         nimcp_free(system->history);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_immune_create: validation failed");
         return NULL;
     }
 
@@ -327,7 +334,10 @@ void training_immune_destroy(training_immune_system_t* system) {
 }
 
 int training_immune_start(training_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_start: system is NULL");
+        return -1;
+    }
     if (system->running) return 0;
 
     SAFE_MUTEX_LOCK(system->mutex, "training_immune_start");
@@ -347,7 +357,10 @@ int training_immune_start(training_immune_system_t* system) {
 }
 
 int training_immune_stop(training_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_stop: system is NULL");
+        return -1;
+    }
     if (!system->running) return 0;
 
     SAFE_MUTEX_LOCK(system->mutex, "training_immune_stop");
@@ -373,7 +386,10 @@ int training_immune_connect_brain_immune(
     training_immune_system_t* system,
     brain_immune_system_t* brain_immune
 ) {
-    if (!system || !brain_immune) return -1;
+    if (!system || !brain_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_brain_immune: required parameter is NULL (system, brain_immune)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -394,7 +410,10 @@ int training_immune_connect_optimizer(
     training_immune_system_t* system,
     nimcp_optimizer_context_t* optimizer
 ) {
-    if (!system || !optimizer) return -1;
+    if (!system || !optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_optimizer: required parameter is NULL (system, optimizer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -415,7 +434,10 @@ int training_immune_connect_gradient_manager(
     training_immune_system_t* system,
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
-    if (!system || !grad_manager) return -1;
+    if (!system || !grad_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_gradient_manager: required parameter is NULL (system, grad_manager)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -436,7 +458,10 @@ int training_immune_connect_callbacks(
     training_immune_system_t* system,
     tcb_context_t* callbacks
 ) {
-    if (!system || !callbacks) return -1;
+    if (!system || !callbacks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_callbacks: required parameter is NULL (system, callbacks)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -457,7 +482,10 @@ int training_immune_connect_perception_training(
     training_immune_system_t* system,
     perception_training_bridge_t* perception_training
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_perception_training: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -483,7 +511,10 @@ int training_immune_connect_cortical_training(
     training_immune_system_t* system,
     cortical_training_bridge_t* cortical_training
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_connect_cortical_training: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -513,7 +544,10 @@ int training_immune_update_inflammation(
     training_immune_system_t* system,
     brain_inflammation_level_t inflammation
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_update_inflammation: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -594,9 +628,15 @@ float training_immune_get_lr_factor(
 int training_immune_apply_lr_modulation(
     training_immune_system_t* system
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_apply_lr_modulation: system is NULL");
+        return -1;
+    }
     if (!system->config.enable_lr_modulation) return 0;
-    if (!system->config.has_optimizer) return -1;
+    if (!system->config.has_optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_apply_lr_modulation: system->config is NULL");
+        return -1;
+    }
 
     /* Get current base LR from optimizer */
     float base_lr = nimcp_optimizer_get_lr(system->optimizer);
@@ -632,7 +672,10 @@ int training_immune_update_metrics(
     float grad_norm,
     float learning_rate
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_update_metrics: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -732,14 +775,21 @@ int training_immune_report_instability(
     uint32_t severity,
     uint32_t* event_id
 ) {
-    if (!system || !event_id) return -1;
-    if (type >= TRAINING_INSTABILITY_COUNT) return -1;
+    if (!system || !event_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_report_instability: required parameter is NULL (system, event_id)");
+        return -1;
+    }
+    if (type >= TRAINING_INSTABILITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_immune_report_instability: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     /* Check capacity */
     if (system->event_count >= system->event_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_immune_report_instability: capacity exceeded");
         return -1;
     }
 
@@ -775,8 +825,14 @@ int training_immune_trigger_immune_response(
     training_immune_system_t* system,
     uint32_t event_id
 ) {
-    if (!system) return -1;
-    if (!system->config.has_brain_immune) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_trigger_immune_response: system is NULL");
+        return -1;
+    }
+    if (!system->config.has_brain_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_trigger_immune_response: system->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -791,6 +847,7 @@ int training_immune_trigger_immune_response(
 
     if (!event) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_trigger_immune_response: event is NULL");
         return -1;
     }
 
@@ -945,7 +1002,10 @@ int training_immune_get_stats(
     const training_immune_system_t* system,
     training_immune_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -982,7 +1042,10 @@ int training_immune_get_current_metrics(
     const training_immune_system_t* system,
     training_immune_metrics_t* metrics
 ) {
-    if (!system || !metrics) return -1;
+    if (!system || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_get_current_metrics: required parameter is NULL (system, metrics)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     *metrics = system->current_metrics;
@@ -1009,6 +1072,7 @@ const training_instability_event_t* training_immune_get_event(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_immune_get_event: validation failed");
     return NULL;
 }
 

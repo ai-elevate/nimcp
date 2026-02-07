@@ -76,6 +76,7 @@ static kg_bridge_module_t* find_module(
             return &bridge->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
     return NULL;
 }
 
@@ -87,8 +88,14 @@ static bool modules_connected_direct(
     kg_bridge_module_t* from_mod = find_module(bridge, from_id);
     kg_bridge_module_t* to_mod = find_module(bridge, to_id);
 
-    if (!from_mod || !to_mod) return false;
-    if (!from_mod->has_wiring || !to_mod->has_wiring) return false;
+    if (!from_mod || !to_mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modules_connected_direct: required parameter is NULL (from_mod, to_mod)");
+        return false;
+    }
+    if (!from_mod->has_wiring || !to_mod->has_wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modules_connected_direct: required parameter is NULL (from_mod->has_wiring, to_mod->has_wiring)");
+        return false;
+    }
 
     /* Check if 'from' outputs to 'to' */
     for (uint32_t i = 0; i < from_mod->wiring.output_count; i++) {
@@ -110,6 +117,7 @@ static bool modules_connected_direct(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "modules_connected_direct: operation failed");
     return false;
 }
 
@@ -140,12 +148,14 @@ mesh_kg_routing_bridge_t* mesh_kg_bridge_create(
 ) {
     if (!router) {
         LOG_ERROR("Cannot create KG bridge without pattern router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_bridge_create: router is NULL");
         return NULL;
     }
 
     mesh_kg_routing_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate KG routing bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -504,6 +514,7 @@ bool mesh_kg_bridge_has_connection(
     mesh_participant_id_t to_id
 ) {
     if (!bridge || bridge->magic != MESH_KG_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_kg_bridge_has_connection: bridge is NULL");
         return false;
     }
 

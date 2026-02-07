@@ -182,6 +182,7 @@ static bool expand_env_vars(const char* input, char* output, size_t output_size)
                     remaining -= vallen;
                     expanded = true;
                 } else {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
                     return false;  // Output buffer too small
                 }
             }
@@ -221,6 +222,7 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
     if (schema_entry->type != type) {
         LOG_MODULE_ERROR("config", "Type mismatch for key '%s': expected %d, got %d",
                         key, schema_entry->type, type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
         return false;
     }
 
@@ -230,6 +232,7 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
             LOG_MODULE_ERROR("config", "Value for '%s' (%lld) below minimum (%lld)",
                             key, (long long)value->int_val,
                             (long long)schema_entry->min_value.int_val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -239,6 +242,7 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
             LOG_MODULE_ERROR("config", "Value for '%s' (%lld) above maximum (%lld)",
                             key, (long long)value->int_val,
                             (long long)schema_entry->max_value.int_val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -247,6 +251,7 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
         if (value->float_val < schema_entry->min_value.float_val) {
             LOG_MODULE_ERROR("config", "Value for '%s' (%f) below minimum (%f)",
                             key, value->float_val, schema_entry->min_value.float_val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -255,6 +260,7 @@ static bool validate_value_against_schema(const char* key, config_value_type_t t
         if (value->float_val > schema_entry->max_value.float_val) {
             LOG_MODULE_ERROR("config", "Value for '%s' (%f) above maximum (%f)",
                             key, value->float_val, schema_entry->max_value.float_val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_vars: validation failed");
             return false;
         }
     }
@@ -291,6 +297,7 @@ static bool parse_config_file(const char* path) {
     FILE* file = fopen(path, "r");
     if (!file) {
         LOG_MODULE_ERROR("config", "Failed to open config file: %s", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_config_file: file is NULL");
         return false;
     }
 
@@ -433,11 +440,13 @@ static void config_reload_callback(void) {
 bool config_init(const char* config_path) {
     if (!config_path) {
         LOG_MODULE_ERROR("config", "config_init: NULL config path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_init: config_path is NULL");
         return false;
     }
 
     if (nimcp_atomic_load_bool(&g_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         LOG_MODULE_WARN("config", "config_init: Already initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_init: validation failed");
         return false;
     }
 
@@ -460,6 +469,7 @@ bool config_init(const char* config_path) {
     g_config_table = hash_table_create(&hash_config);
     if (!g_config_table) {
         LOG_MODULE_ERROR("config", "Failed to create config hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_init: g_config_table is NULL");
         return false;
     }
 
@@ -468,6 +478,7 @@ bool config_init(const char* config_path) {
         LOG_MODULE_ERROR("config", "Failed to parse config file: %s", g_config_path);
         hash_table_destroy(g_config_table);
         g_config_table = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_init: parse_config_file is NULL");
         return false;
     }
 
@@ -631,7 +642,10 @@ const char* config_get_string(const char* key, const char* default_value) {
 }
 
 bool config_set_int(const char* key, int64_t value) {
-    if (!key || !g_config_table) return false;
+    if (!key || !g_config_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_int: required parameter is NULL (key, g_config_table)");
+        return false;
+    }
 
     nimcp_platform_rwlock_wrlock(&g_config_lock);
 
@@ -641,6 +655,7 @@ bool config_set_int(const char* key, int64_t value) {
         if (existing->type != CONFIG_TYPE_INT) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_int: validation failed");
             return false;
         }
 
@@ -651,6 +666,7 @@ bool config_set_int(const char* key, int64_t value) {
         // Validate
         if (!validate_value_against_schema(key, CONFIG_TYPE_INT, &new_value)) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_int: validate_value_against_schema is NULL");
             return false;
         }
 
@@ -663,11 +679,15 @@ bool config_set_int(const char* key, int64_t value) {
     }
 
     nimcp_platform_rwlock_unlock(&g_config_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_int: operation failed");
     return false;
 }
 
 bool config_set_float(const char* key, double value) {
-    if (!key || !g_config_table) return false;
+    if (!key || !g_config_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_float: required parameter is NULL (key, g_config_table)");
+        return false;
+    }
 
     nimcp_platform_rwlock_wrlock(&g_config_lock);
 
@@ -676,6 +696,7 @@ bool config_set_float(const char* key, double value) {
         if (existing->type != CONFIG_TYPE_FLOAT) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_float: validation failed");
             return false;
         }
 
@@ -685,6 +706,7 @@ bool config_set_float(const char* key, double value) {
 
         if (!validate_value_against_schema(key, CONFIG_TYPE_FLOAT, &new_value)) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_float: validate_value_against_schema is NULL");
             return false;
         }
 
@@ -697,11 +719,15 @@ bool config_set_float(const char* key, double value) {
     }
 
     nimcp_platform_rwlock_unlock(&g_config_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_float: operation failed");
     return false;
 }
 
 bool config_set_bool(const char* key, bool value) {
-    if (!key || !g_config_table) return false;
+    if (!key || !g_config_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_bool: required parameter is NULL (key, g_config_table)");
+        return false;
+    }
 
     nimcp_platform_rwlock_wrlock(&g_config_lock);
 
@@ -710,6 +736,7 @@ bool config_set_bool(const char* key, bool value) {
         if (existing->type != CONFIG_TYPE_BOOL) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_bool: validation failed");
             return false;
         }
 
@@ -726,11 +753,15 @@ bool config_set_bool(const char* key, bool value) {
     }
 
     nimcp_platform_rwlock_unlock(&g_config_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_bool: operation failed");
     return false;
 }
 
 bool config_set_string(const char* key, const char* value) {
-    if (!key || !value || !g_config_table) return false;
+    if (!key || !value || !g_config_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_string: required parameter is NULL (key, value, g_config_table)");
+        return false;
+    }
 
     nimcp_platform_rwlock_wrlock(&g_config_lock);
 
@@ -739,6 +770,7 @@ bool config_set_string(const char* key, const char* value) {
         if (existing->type != CONFIG_TYPE_STRING) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
             LOG_MODULE_ERROR("config", "Type mismatch for key '%s'", key);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_string: validation failed");
             return false;
         }
 
@@ -748,6 +780,7 @@ bool config_set_string(const char* key, const char* value) {
 
         if (!new_value.string_val) {
             nimcp_platform_rwlock_unlock(&g_config_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_string: new_value is NULL");
             return false;
         }
 
@@ -768,6 +801,7 @@ bool config_set_string(const char* key, const char* value) {
     }
 
     nimcp_platform_rwlock_unlock(&g_config_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_set_string: operation failed");
     return false;
 }
 
@@ -805,6 +839,7 @@ static bool dump_entry_callback(const void* key, size_t key_size,
 
     config_dump_context_t* ctx = (config_dump_context_t*)user_data;
     if (!ctx || !ctx->file || ctx->error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_print: required parameter is NULL (ctx, ctx->file)");
         return false;  // Stop iteration
     }
 
@@ -856,6 +891,7 @@ static bool dump_entry_callback(const void* key, size_t key_size,
     if (written < 0) {
         ctx->error = true;
         LOG_MODULE_ERROR("config", "Failed to write entry '%s' to dump file", key_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_print: validation failed");
         return false;  // Stop iteration
     }
 
@@ -866,6 +902,7 @@ static bool dump_entry_callback(const void* key, size_t key_size,
 bool config_dump(const char* output_path) {
     if (!output_path) {
         LOG_MODULE_ERROR("config", "config_dump: NULL output path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_dump: output_path is NULL");
         return false;
     }
 
@@ -874,6 +911,7 @@ bool config_dump(const char* output_path) {
     if (!g_config_table) {
         nimcp_rwlock_unlock(&g_config_lock);
         LOG_MODULE_ERROR("config", "config_dump: config not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_dump: g_config_table is NULL");
         return false;
     }
 
@@ -882,6 +920,7 @@ bool config_dump(const char* output_path) {
         nimcp_rwlock_unlock(&g_config_lock);
         LOG_MODULE_ERROR("config", "config_dump: failed to open '%s' for writing",
                         output_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_dump: file is NULL");
         return false;
     }
 
@@ -907,11 +946,13 @@ bool config_dump(const char* output_path) {
     if (fclose(file) != 0) {
         LOG_MODULE_ERROR("config", "config_dump: failed to close file '%s'",
                         output_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_dump: validation failed");
         return false;
     }
 
     if (ctx.error) {
         LOG_MODULE_ERROR("config", "config_dump: errors occurred during dump");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_dump: validation failed");
         return false;
     }
 
@@ -934,6 +975,7 @@ bool config_validate(const char* config_path) {
     FILE* file = fopen(config_path, "r");
     if (!file) {
         LOG_MODULE_ERROR("config", "Cannot open config file: %s", config_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_validate: file is NULL");
         return false;
     }
 

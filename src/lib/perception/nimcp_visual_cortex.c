@@ -280,11 +280,13 @@ bool conv_layer_set_kernel(conv_layer_t* layer, uint32_t filter_idx, const float
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(layer, "layer") || !nimcp_validate_pointer(kernel, "kernel")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "conv_layer_set_kernel: required parameter is NULL (nimcp_validate_pointer, nimcp_validate_pointer)");
         return false;
     }
 
     if (filter_idx >= layer->num_filters) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid filter index: %u >= %u", filter_idx, layer->num_filters);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "conv_layer_set_kernel: capacity exceeded");
         return false;
     }
 
@@ -304,6 +306,7 @@ bool conv_layer_forward(conv_layer_t* layer, const float* input, float* output)
     if (!nimcp_validate_pointer(layer, "layer") ||
         !nimcp_validate_pointer(input, "input") ||
         !nimcp_validate_pointer(output, "output")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "conv_layer_forward: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -456,6 +459,7 @@ bool pool_layer_forward(pool_layer_t* layer, const float* input, float* output)
     if (!nimcp_validate_pointer(layer, "layer") ||
         !nimcp_validate_pointer(input, "input") ||
         !nimcp_validate_pointer(output, "output")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pool_layer_forward: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -520,11 +524,13 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(params, "params")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_create_kernel: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     if (kernel_size <= 0 || kernel_size % 2 == 0) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid kernel size: %d (must be positive and odd)", kernel_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_create_kernel: 2 is zero");
         return NULL;
     }
 
@@ -541,6 +547,7 @@ float* gabor_create_kernel(int kernel_size, const gabor_params_t* params)
     float* kernel = gabor_create_kernel_data(kernel_size, &filter_params);
     if (!kernel) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create Gabor kernel via shared library");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_create_kernel: kernel is NULL");
         return NULL;
     }
 
@@ -564,12 +571,14 @@ attention_map_t* attention_map_create(uint32_t width, uint32_t height)
 {
     if (width == 0 || height == 0) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid attention map dimensions: %u x %u", width, height);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_map_create: width is zero");
         return NULL;
     }
 
     attention_map_t* map = (attention_map_t*)nimcp_calloc(1, sizeof(attention_map_t));
     if (!nimcp_validate_pointer(map, "map")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate attention map");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_map_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -580,6 +589,7 @@ attention_map_t* attention_map_create(uint32_t width, uint32_t height)
     if (!nimcp_validate_pointer(map->values, "map->values")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate attention map values");
         nimcp_free(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_map_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -624,11 +634,13 @@ float attention_map_get(const attention_map_t* map, uint32_t x, uint32_t y)
 bool attention_map_set(attention_map_t* map, uint32_t x, uint32_t y, float value)
 {
     if (!nimcp_validate_pointer(map, "map")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_map_set: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (x >= map->width || y >= map->height) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Attention map coordinates out of bounds: (%u, %u) >= (%u, %u)", x, y, map->width, map->height);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_map_set: capacity exceeded");
         return false;
     }
 
@@ -739,12 +751,14 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(config, "config")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     if (config->input_width == 0 || config->input_height == 0 ||
         config->num_v1_filters == 0 || config->feature_dim == 0) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid visual cortex configuration parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -819,6 +833,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     if (!nimcp_validate_pointer(cortex->v1_layer, "v1_layer")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create V1 convolution layer");
         visual_cortex_destroy(cortex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -859,6 +874,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     if (!nimcp_validate_pointer(cortex->pool_layer, "pool_layer")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to create pooling layer");
         visual_cortex_destroy(cortex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -868,6 +884,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     if (!nimcp_validate_pointer(cortex->feature_weights, "feature_weights")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate feature weights");
         visual_cortex_destroy(cortex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -964,6 +981,7 @@ visual_cortex_t* visual_cortex_create(const visual_cortex_config_t* config)
     } else {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate memory pool mutex");
         visual_cortex_destroy(cortex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: validation failed");
         return NULL;
     }
 
@@ -1167,6 +1185,7 @@ bool visual_cortex_process(
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(image, "image") ||
         !nimcp_validate_pointer(features, "features")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1175,6 +1194,7 @@ bool visual_cortex_process(
     if (!bbb_check_pointer(image, "visual_cortex_process")) {
         bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "invalid_image_ptr",
                       "NULL image pointer rejected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1187,6 +1207,7 @@ bool visual_cortex_process(
         !bbb_validate_range_u(channels, 1, MAX_CHANNELS, "visual_cortex_process")) {
         bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "invalid_dimensions",
                       "width=%u height=%u channels=%u rejected", width, height, channels);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: bbb_validate_range_u is NULL");
         return false;
     }
 
@@ -1195,6 +1216,7 @@ bool visual_cortex_process(
     if (expected_size > (uint64_t)UINT32_MAX) {
         bbb_audit_log(BBB_AUDIT_WARNING, VISUAL_LOG_MODULE, "size_overflow",
                       "Image size %llu exceeds maximum", (unsigned long long)expected_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: validation failed");
         return false;
     }
 
@@ -1202,6 +1224,7 @@ bool visual_cortex_process(
     if (width != cortex->input_width || height != cortex->input_height || channels == 0) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid image dimensions: %ux%ux%u (expected %ux%ux>0)",
                            width, height, channels, cortex->input_width, cortex->input_height);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: channels is zero");
         return false;
     }
 
@@ -1213,6 +1236,7 @@ bool visual_cortex_process(
     float* input_float = (float*)nimcp_calloc(input_size, sizeof(float));
     if (!nimcp_validate_pointer(input_float, "input_float")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate input buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_process: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1234,12 +1258,14 @@ bool visual_cortex_process(
     if (!nimcp_validate_pointer(v1_output, "v1_output")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate V1 output buffer");
         nimcp_free(input_float);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_process: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!conv_layer_forward(cortex->v1_layer, input_float, v1_output)) {
         nimcp_free(input_float);
         nimcp_free(v1_output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: conv_layer_forward is NULL");
         return false;
     }
 
@@ -1280,6 +1306,7 @@ bool visual_cortex_process(
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate pooled output buffer");
         nimcp_free(input_float);
         nimcp_free(v1_output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_process: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1287,6 +1314,7 @@ bool visual_cortex_process(
         nimcp_free(input_float);
         nimcp_free(v1_output);
         nimcp_free(pooled_output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_process: pool_layer_forward is NULL");
         return false;
     }
 
@@ -1355,10 +1383,12 @@ bool visual_cortex_compute_attention(
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(image, "image") ||
         !nimcp_validate_pointer(attn_map, "attn_map")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_compute_attention: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!cortex->enable_attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_compute_attention: cortex->enable_attention is NULL");
         return false;
     }
 
@@ -1395,14 +1425,17 @@ bool visual_cortex_store_memory(
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(features, "features")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_store_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!cortex->enable_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_store_memory: cortex->enable_memory is NULL");
         return false;
     }
 
     if (cortex->num_memories >= MAX_VISUAL_MEMORIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_cortex_store_memory: capacity exceeded");
         return false;  // Memory full
     }
 
@@ -1420,6 +1453,7 @@ bool visual_cortex_store_memory(
     }
     if (!nimcp_validate_pointer(memory, "memory")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate visual memory entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_store_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1459,6 +1493,7 @@ bool visual_cortex_recall_memory(
         !nimcp_validate_pointer(query_features, "query_features") ||
         !nimcp_validate_pointer(memories, "memories") ||
         !nimcp_validate_pointer(num_memories, "num_memories")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_recall_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1478,6 +1513,7 @@ bool visual_cortex_recall_memory(
         cortex->num_memories, sizeof(memory_similarity_t));
     if (!nimcp_validate_pointer(similarities, "similarities")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate similarity buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_recall_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1509,6 +1545,7 @@ bool visual_cortex_recall_memory(
     if (!nimcp_validate_pointer(*memories, "result_memories")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to allocate memory results array");
         nimcp_free(similarities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_recall_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1528,6 +1565,7 @@ bool visual_cortex_get_stats(const visual_cortex_t* cortex, visual_cortex_stats_
 {
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(stats, "stats")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1626,11 +1664,13 @@ bool visual_cortex_get_attention_peak(
         !nimcp_validate_pointer(max_x, "max_x") ||
         !nimcp_validate_pointer(max_y, "max_y") ||
         !nimcp_validate_pointer(max_value, "max_value")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_attention_peak: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(attn_map->values, "attn_map->values")) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Attention map has no values");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_attention_peak: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1675,11 +1715,13 @@ bool visual_cortex_consolidate_memory(
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(features, "features")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_consolidate_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Store in local visual memory
     if (!visual_cortex_store_memory(cortex, features, salience)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_consolidate_memory: visual_cortex_store_memory is NULL");
         return false;
     }
 
@@ -1733,11 +1775,13 @@ const phasic_tonic_state_t* visual_cortex_get_neuromod_state(
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_neuromod_state: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u (max %u)", neuromod_type, NUM_NEUROMOD_TYPES - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_neuromod_state: capacity exceeded");
         return NULL;
     }
 
@@ -1755,11 +1799,13 @@ bool visual_cortex_set_receptor_profile(
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(receptors, "receptors")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_set_receptor_profile: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_set_receptor_profile: capacity exceeded");
         return false;
     }
 
@@ -1777,11 +1823,13 @@ const receptor_expression_t* visual_cortex_get_receptor_profile(
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_receptor_profile: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_receptor_profile: capacity exceeded");
         return NULL;
     }
 
@@ -1834,11 +1882,13 @@ bool visual_cortex_trigger_phasic_burst(
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_phasic_burst: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u", neuromod_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_phasic_burst: capacity exceeded");
         return false;
     }
 
@@ -1865,11 +1915,13 @@ bool visual_cortex_set_tonic_level(
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_set_tonic_level: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (neuromod_type >= NUM_NEUROMOD_TYPES) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid neuromod_type: %u", neuromod_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_set_tonic_level: capacity exceeded");
         return false;
     }
 
@@ -1901,11 +1953,13 @@ bool visual_cortex_compute_neuromod_effects(
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(effects, "effects")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_compute_neuromod_effects: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u", layer_idx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_compute_neuromod_effects: capacity exceeded");
         return false;
     }
 
@@ -2042,11 +2096,13 @@ bool visual_cortex_trigger_receptor(
 {
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_receptor: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_receptor: capacity exceeded");
         return false;
     }
 
@@ -2058,6 +2114,7 @@ bool visual_cortex_trigger_receptor(
     // Guard: Check if second messengers enabled
     if (!cortex->second_messengers_enabled || !cortex->second_messengers) {
         LOG_WARN(VISUAL_LOG_MODULE, "Second messengers not enabled, cannot trigger receptor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_trigger_receptor: required parameter is NULL (cortex->second_messengers_enabled, cortex->second_messengers)");
         return false;
     }
 
@@ -2103,11 +2160,13 @@ bool visual_cortex_trigger_receptor(
 
         default:
             LOG_ERROR(VISUAL_LOG_MODULE, "Unknown receptor type: %d", receptor_type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_receptor: operation failed");
             return false;
     }
 
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to activate receptor cascade: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_trigger_receptor: validation failed");
         return false;
     }
 
@@ -2129,11 +2188,13 @@ bool visual_cortex_get_second_messenger_state(
     // Guard: Validate inputs
     if (!nimcp_validate_pointer(cortex, "cortex") ||
         !nimcp_validate_pointer(state, "state")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_second_messenger_state: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (layer_idx >= NUM_V1_LAYERS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Invalid layer_idx: %u (max %u)", layer_idx, NUM_V1_LAYERS - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_second_messenger_state: capacity exceeded");
         return false;
     }
 
@@ -2153,6 +2214,7 @@ bool visual_cortex_get_second_messenger_state(
 
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR(VISUAL_LOG_MODULE, "Failed to get second messenger state: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_get_second_messenger_state: validation failed");
         return false;
     }
 

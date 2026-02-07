@@ -150,6 +150,7 @@ security_rcog_bridge_t* security_rcog_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_RCOG_BRIDGE,
                          "security_rcog_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_rcog_bridge_create: operation failed");
         return NULL;
     }
 
@@ -170,6 +171,7 @@ security_rcog_bridge_t* security_rcog_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to allocate tool whitelist");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_rcog_bridge_create: bridge->whitelist is NULL");
         return NULL;
     }
 
@@ -183,6 +185,7 @@ security_rcog_bridge_t* security_rcog_bridge_create(
         nimcp_free(bridge->whitelist);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_rcog_bridge_create: bridge->approval_queue is NULL");
         return NULL;
     }
 
@@ -307,6 +310,7 @@ int security_rcog_connect_rate_limiter(
  */
 bool security_rcog_is_connected(const security_rcog_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_rcog_is_connected: bridge is NULL");
         return false;
     }
     /* Minimum required: engine and tool_router */
@@ -327,6 +331,7 @@ bool security_rcog_is_tool_whitelisted(
     rcog_capability_tier_t tier
 ) {
     if (!bridge || !tool_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_rcog_is_tool_whitelisted: required parameter is NULL (bridge, tool_name)");
         return false;
     }
 
@@ -337,6 +342,7 @@ bool security_rcog_is_tool_whitelisted(
 
     /* Emergency lockdown blocks all non-essential tools */
     if (bridge->state.emergency_lockdown) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_rcog_is_tool_whitelisted: validation failed");
         return false;
     }
 
@@ -345,6 +351,7 @@ bool security_rcog_is_tool_whitelisted(
     size_t index;
     if (find_whitelist_entry(bridge, tool_name, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK((security_rcog_bridge_t*)bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "security_rcog_is_tool_whitelisted: validation failed");
         return false;  /* Tool not in whitelist */
     }
 
@@ -731,6 +738,7 @@ bool security_rcog_check_recursion_depth(
     uint32_t current_depth
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_rcog_check_recursion_depth: bridge is NULL");
         return false;
     }
 
@@ -1243,6 +1251,7 @@ int security_rcog_exit_lockdown(security_rcog_bridge_t* bridge) {
  */
 bool security_rcog_is_lockdown(const security_rcog_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_rcog_is_lockdown: bridge is NULL");
         return false;
     }
     return bridge->state.emergency_lockdown;
@@ -1376,6 +1385,7 @@ static bool is_suspicious_output(
 ) {
     if (!output || output_size == 0 || !score) {
         *score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_suspicious_output: required parameter is NULL (output, score)");
         return false;
     }
 

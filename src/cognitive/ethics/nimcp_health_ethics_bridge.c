@@ -224,7 +224,10 @@ bool health_ethics_check_asimov(
     health_asimov_law_t* violated_law,
     health_asimov_law_t* required_by_law
 ) {
-    if (!context) return false;
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_ethics_check_asimov: context is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     health_ethics_bridge_heartbeat("health_ethic_health_ethics_check_", 0.0f);
@@ -240,6 +243,7 @@ bool health_ethics_check_asimov(
             context->proposed_action == HEALTH_RECOVERY_ACTION_LOG_ONLY) {
             /* Inaction when harm is imminent violates First Law */
             if (violated_law) *violated_law = ASIMOV_LAW_FIRST;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
             return false;
         }
         if (required_by_law) *required_by_law = ASIMOV_LAW_FIRST;
@@ -255,6 +259,7 @@ bool health_ethics_check_asimov(
     if (action_harm > prevented_harm && !context->is_emergency) {
         /* Action causes more harm than it prevents - violates First Law */
         if (violated_law) *violated_law = ASIMOV_LAW_FIRST;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
         return false;
     }
 
@@ -264,6 +269,7 @@ bool health_ethics_check_asimov(
         !context->is_emergency) {
         /* Large-scale aggressive action without emergency could harm whole system */
         if (violated_law) *violated_law = ASIMOV_LAW_ZEROTH;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_ethics_check_asimov: validation failed");
         return false;
     }
 
@@ -344,7 +350,10 @@ int health_ethics_apply_mercy(
     const health_action_context_t* context,
     health_mercy_evaluation_t* mercy_eval
 ) {
-    if (!context || !mercy_eval) return -1;
+    if (!context || !mercy_eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_ethics_apply_mercy: required parameter is NULL (context, mercy_eval)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     health_ethics_bridge_heartbeat("health_ethic_health_ethics_apply_", 0.0f);
@@ -484,7 +493,10 @@ int health_ethics_evaluate_action(
 
     (void)engine;  /* May be used for more complex evaluation later */
 
-    if (!context || !evaluation) return -1;
+    if (!context || !evaluation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_ethics_evaluate_action: required parameter is NULL (context, evaluation)");
+        return -1;
+    }
 
     memset(evaluation, 0, sizeof(health_ethics_evaluation_t));
 
@@ -748,8 +760,14 @@ bool health_psych_needs_human_help(
     const health_agent_psych_state_t* state,
     const health_agent_psych_config_t* config
 ) {
-    if (!state) return false;
-    if (config && !config->enable_human_escalation) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_psych_needs_human_help: state is NULL");
+        return false;
+    }
+    if (config && !config->enable_human_escalation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_psych_needs_human_help: config->enable_human_escalation is NULL");
+        return false;
+    }
 
     /* Panic mode requires human help */
     if (state->in_panic_mode) return true;
@@ -768,6 +786,7 @@ bool health_psych_needs_human_help(
     /* Very high stress requires help */
     if (state->stress_level > 0.9f) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_psych_needs_human_help: validation failed");
     return false;
 }
 
@@ -776,7 +795,10 @@ bool health_psych_permits_action(
     health_action_severity_t action_severity,
     const health_agent_psych_config_t* config
 ) {
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_psych_permits_action: state is NULL");
+        return false;
+    }
 
     /* Always permit minimal and low severity actions */
     if (action_severity <= HEALTH_ACTION_SEVERITY_LOW) return true;
@@ -793,15 +815,20 @@ bool health_psych_permits_action(
     required_confidence *= severity_factor;
     if (required_confidence > 0.95f) required_confidence = 0.95f;
 
-    if (state->decision_confidence < required_confidence) return false;
+    if (state->decision_confidence < required_confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_psych_permits_action: validation failed");
+        return false;
+    }
 
     /* In panic mode, only permit moderate or lower actions */
     if (state->in_panic_mode && action_severity > HEALTH_ACTION_SEVERITY_MODERATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_psych_permits_action: validation failed");
         return false;
     }
 
     /* Very high stress blocks extreme actions */
     if (state->stress_level > 0.8f && action_severity >= HEALTH_ACTION_SEVERITY_EXTREME) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_psych_permits_action: capacity exceeded");
         return false;
     }
 

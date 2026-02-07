@@ -188,6 +188,7 @@ security_cl_fep_bridge_t* security_cl_fep_create(
     /* Validate required handles */
     if (!fep_system || !security_cl) {
         NIMCP_LOGGING_ERROR("Security CL FEP bridge: NULL system handles");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_create: required parameter is NULL (fep_system, security_cl)");
         return NULL;
     }
 
@@ -197,6 +198,7 @@ security_cl_fep_bridge_t* security_cl_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security CL FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_cl_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -218,6 +220,7 @@ security_cl_fep_bridge_t* security_cl_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security CL FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -307,6 +310,7 @@ int security_cl_fep_get_config(
     security_cl_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -319,6 +323,7 @@ int security_cl_fep_set_config(
     const security_cl_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -335,6 +340,7 @@ int security_cl_fep_set_config(
 
 int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
     if (!bridge || !bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_compute_effects: required parameter is NULL (bridge, bridge->state)");
         return -1;
     }
 
@@ -346,6 +352,7 @@ int security_cl_fep_compute_effects(security_cl_fep_bridge_t* bridge) {
     cl_security_effects_t cl_effects;
     if (security_cl_get_cl_effects(bridge->security_cl, &cl_effects) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_cl_fep_compute_effects: validation failed");
         return -1;
     }
 
@@ -558,6 +565,7 @@ int security_cl_fep_select_response(
     float* urgency
 ) {
     if (!bridge || !response || !urgency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_select_response: required parameter is NULL (bridge, response, urgency)");
         return -1;
     }
 
@@ -695,6 +703,7 @@ bool security_cl_fep_detect_attack(
     if (!bridge || !bridge->fep_effects.valid) {
         if (severity) *severity = SECURITY_CL_FEP_SEVERITY_NONE;
         if (confidence) *confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_cl_fep_detect_attack: validation failed");
         return false;
     }
 
@@ -760,6 +769,7 @@ int security_cl_fep_get_effects(
     security_cl_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -772,6 +782,7 @@ int security_cl_fep_get_cl_effects(
     fep_security_cl_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_get_cl_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -808,6 +819,7 @@ int security_cl_fep_get_stats(
     security_cl_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

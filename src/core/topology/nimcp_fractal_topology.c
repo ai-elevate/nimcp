@@ -161,6 +161,7 @@ bool topology_validate_config(const topology_config_t* config) {
     // Guard: Invalid topology type
     if (config->type < TOPOLOGY_RANDOM || config->type > TOPOLOGY_SPATIAL) {
         set_error("Invalid topology type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
         return false;
     }
 
@@ -171,24 +172,28 @@ bool topology_validate_config(const topology_config_t* config) {
         // Guard: Invalid power law exponent
         if (sf->power_law_gamma >= 0.0F || sf->power_law_gamma < -5.0F) {
             set_error("Power law gamma must be between -5.0 and 0.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: capacity exceeded");
             return false;
         }
 
         // Guard: Invalid hub ratio
         if (sf->hub_ratio < 0.0F || sf->hub_ratio > 0.5F) {
             set_error("Hub ratio must be between 0.0 and 0.5");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
 
         // Guard: Invalid minimum degree
         if (sf->min_degree < 1) {
             set_error("Minimum degree must be at least 1");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
 
         // Guard: Invalid spatial constraint
         if (sf->spatial_constraint < 0.0F || sf->spatial_constraint > 1.0F) {
             set_error("Spatial constraint must be between 0.0 and 1.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
     } else if (config->type == TOPOLOGY_FRACTAL) {
@@ -197,24 +202,28 @@ bool topology_validate_config(const topology_config_t* config) {
         // Guard: Invalid fractal dimension
         if (frac->fractal_dimension < 1.0F || frac->fractal_dimension > 3.0F) {
             set_error("Fractal dimension must be between 1.0 and 3.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
 
         // Guard: Invalid hierarchy levels
         if (frac->hierarchy_levels < 2 || frac->hierarchy_levels > 10) {
             set_error("Hierarchy levels must be between 2 and 10");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
 
         // Guard: Invalid branching factor
         if (frac->branching_factor < 1.5F || frac->branching_factor > 10.0F) {
             set_error("Branching factor must be between 1.5 and 10.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: validation failed");
             return false;
         }
 
         // Guard: Invalid scale factor
         if (frac->scale_factor <= 0.0F || frac->scale_factor >= 1.0F) {
             set_error("Scale factor must be between 0.0 and 1.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_validate_config: capacity exceeded");
             return false;
         }
     }
@@ -273,13 +282,17 @@ static uint32_t* compute_degree_distribution(neural_network_t network, uint32_t 
     }
 
     // Guard: Zero neurons
-    if (num_neurons == 0) return NULL;
+    if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_degree_distribution: num_neurons is zero");
+        return NULL;
+    }
 
     uint32_t* degrees = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
 
     // Guard: Allocation failure
     if (!degrees) {
         set_error("Failed to allocate degree array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_degree_distribution: degrees is NULL");
         return NULL;
     }
 
@@ -397,6 +410,7 @@ bool topology_generate_scale_free(
 
     // Guard: Invalid config
     if (!topology_validate_config(&temp_config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate_scale_free: topology_validate_config is NULL");
         return false;  // Error message already set by validate
     }
 
@@ -406,6 +420,7 @@ bool topology_generate_scale_free(
     // Guard: Too few neurons
     if (num_neurons < 3) {
         set_error("Network must have at least 3 neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate_scale_free: validation failed");
         return false;
     }
 
@@ -542,6 +557,7 @@ bool topology_generate_fractal(
 
     // Guard: Invalid config
     if (!topology_validate_config(&temp_config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate_fractal: topology_validate_config is NULL");
         return false;
     }
 
@@ -554,6 +570,7 @@ bool topology_generate_fractal(
     // Guard: Too few neurons for hierarchical structure
     if (num_neurons < config->hierarchy_levels) {
         set_error("Network must have at least as many neurons as hierarchy levels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate_fractal: validation failed");
         return false;
     }
 
@@ -701,6 +718,7 @@ bool topology_generate(
 
     // Validate configuration first
     if (!topology_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate: topology_validate_config is NULL");
         return false;
     }
 
@@ -716,10 +734,12 @@ bool topology_generate(
         case TOPOLOGY_SMALL_WORLD:
         case TOPOLOGY_SPATIAL:
             set_error("Topology type not yet implemented");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate: operation failed");
             return false;
 
         default:
             set_error("Unknown topology type");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_generate: operation failed");
             return false;
     }
 }
@@ -1258,6 +1278,7 @@ bool topology_is_small_world(
     // First compute basic stats to get clustering and path length
     topology_stats_t stats;
     if (!topology_compute_stats(network, &stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_is_small_world: topology_compute_stats is NULL");
         return false;
     }
 
@@ -1303,6 +1324,7 @@ bool topology_fit_power_law(
     uint32_t num_neurons = network->num_neurons;
     if (num_neurons == 0) {
         set_error("Network has no neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_fit_power_law: num_neurons is zero");
         return false;
     }
 
@@ -1310,6 +1332,7 @@ bool topology_fit_power_law(
     uint32_t* degrees = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
     if (!degrees) {
         set_error("Failed to allocate degree array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topology_fit_power_law: degrees is NULL");
         return false;
     }
 
@@ -1335,6 +1358,7 @@ bool topology_fit_power_law(
     if (!histogram) {
         nimcp_free(degrees);
         set_error("Failed to allocate histogram");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topology_fit_power_law: histogram is NULL");
         return false;
     }
 
@@ -1432,6 +1456,7 @@ bool topology_identify_hubs(
     if (n_neurons == 0) {
         set_error("Network has no neurons");
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_identify_hubs: n_neurons is zero");
         return false;
     }
 
@@ -1456,6 +1481,7 @@ bool topology_identify_hubs(
     if (!degree_scores) {
         set_error("Failed to compute degree centrality");
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topology_identify_hubs: degree_scores is NULL");
         return false;
     }
 
@@ -1465,6 +1491,7 @@ bool topology_identify_hubs(
         set_error("Failed to allocate hub list");
         nimcp_centrality_scores_destroy(degree_scores);
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topology_identify_hubs: hub_list is NULL");
         return false;
     }
 
@@ -1475,6 +1502,7 @@ bool topology_identify_hubs(
         set_error("Invalid hub_list pointer");
         nimcp_centrality_scores_destroy(degree_scores);
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_identify_hubs: validation failed");
         return false;
     }
 
@@ -1491,6 +1519,7 @@ bool topology_identify_hubs(
             nimcp_free(hub_list);
             nimcp_centrality_scores_destroy(degree_scores);
             nimcp_graph_destroy(graph);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_identify_hubs: validation failed");
             return false;
         }
         memcpy(*hub_indices, hub_list, *num_hubs * sizeof(uint32_t));
@@ -1539,6 +1568,7 @@ bool topology_compute_betweenness(
     if (n_neurons == 0) {
         set_error("Network has no neurons");
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topology_compute_betweenness: n_neurons is zero");
         return false;
     }
 
@@ -1563,6 +1593,7 @@ bool topology_compute_betweenness(
     if (!betweenness_scores) {
         set_error("Failed to compute betweenness centrality");
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topology_compute_betweenness: betweenness_scores is NULL");
         return false;
     }
 

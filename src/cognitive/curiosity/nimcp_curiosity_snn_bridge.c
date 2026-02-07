@@ -328,7 +328,10 @@ void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
 }
 
 int curiosity_snn_reset(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_reset", 0.0f);
@@ -386,8 +389,14 @@ int curiosity_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
@@ -465,7 +474,10 @@ int curiosity_snn_encode_novelty(
     float novelty,
     float surprise
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_encode_novelty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
@@ -490,7 +502,10 @@ int curiosity_snn_encode_knowledge_gap(
     float gap_size,
     uint32_t gap_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_encode_knowledge_gap: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
@@ -512,7 +527,10 @@ int curiosity_snn_encode_info_gain(
     float info_gain,
     uint32_t info_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_encode_info_gain: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_encode", 0.0f);
@@ -547,8 +565,14 @@ int curiosity_snn_encode_info_gain(
 //=============================================================================
 
 int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_simula", 0.0f);
@@ -634,7 +658,10 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int curiosity_snn_step(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_step", 0.0f);
 
@@ -647,16 +674,23 @@ int curiosity_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_forwar", 0.0f);
 
 
     int spike_count = curiosity_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_forward: validation failed");
+        return -1;
+    }
 
     if (curiosity_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_forward: validation failed");
         return -1;
     }
 
@@ -671,7 +705,10 @@ int curiosity_snn_get_drive(
     curiosity_snn_bridge_t* bridge,
     curiosity_drive_t* drive
 ) {
-    if (!bridge || !drive) return -1;
+    if (!bridge || !drive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_get_drive: required parameter is NULL (bridge, drive)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_dr", 0.0f);
@@ -689,8 +726,14 @@ int curiosity_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_ac", 0.0f);
@@ -715,7 +758,10 @@ bool curiosity_snn_check_novelty(
     curiosity_snn_bridge_t* bridge,
     float* novelty_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_novelty: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
@@ -736,7 +782,10 @@ bool curiosity_snn_check_interest(
     curiosity_snn_bridge_t* bridge,
     float* interest_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_interest: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
@@ -757,7 +806,10 @@ bool curiosity_snn_check_state_change(
     curiosity_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_check_", 0.0f);
@@ -796,8 +848,14 @@ int curiosity_snn_get_dim_state(
     uint32_t dim,
     curiosity_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_di", 0.0f);
@@ -814,7 +872,10 @@ int curiosity_snn_get_state(
     curiosity_snn_bridge_t* bridge,
     curiosity_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_st", 0.0f);
@@ -848,7 +909,10 @@ int curiosity_snn_get_state(
 }
 
 int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_get_st", 0.0f);
@@ -862,7 +926,10 @@ int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_
 }
 
 int curiosity_snn_reset_stats(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_reset_", 0.0f);
@@ -921,7 +988,10 @@ int curiosity_snn_register_novelty_callback(
     curiosity_snn_novelty_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_register_novelty_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
@@ -940,7 +1010,10 @@ int curiosity_snn_register_drive_callback(
     curiosity_snn_drive_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_register_drive_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
@@ -959,7 +1032,10 @@ int curiosity_snn_register_interest_callback(
     curiosity_snn_interest_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_register_interest_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_regist", 0.0f);
@@ -978,8 +1054,14 @@ int curiosity_snn_register_interest_callback(
 //=============================================================================
 
 int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_bio_as", 0.0f);
@@ -994,7 +1076,10 @@ int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
 }
 
 int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_bio_as", 0.0f);
@@ -1008,7 +1093,10 @@ int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
 }
 
 bool curiosity_snn_is_bio_async_connected(curiosity_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_snn_bridge_heartbeat("curiosity_sn_curiosity_snn_is_bio", 0.0f);

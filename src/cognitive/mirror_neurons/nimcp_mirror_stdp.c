@@ -182,7 +182,10 @@ static void add_spike_to_history(stdp_spike_t* history, uint8_t* count,
  */
 static const stdp_spike_t* find_recent_spike(const stdp_spike_t* history, uint8_t count,
                                               uint64_t current_us, float window_ms) {
-    if (count == 0) return NULL;
+    if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_action: count is zero");
+        return NULL;
+    }
 
     uint64_t window_us = (uint64_t)(window_ms * 1000.0F);
 
@@ -193,6 +196,7 @@ static const stdp_spike_t* find_recent_spike(const stdp_spike_t* history, uint8_
             return &history[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_action: validation failed");
     return NULL;
 }
 
@@ -228,6 +232,7 @@ static nimcp_error_t handle_mirror_neuron_activation(
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, -1);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_mirror_neuron_activation: validation failed");
         return -1;
     }
 
@@ -268,6 +273,7 @@ static nimcp_error_t handle_stdp_event(
         if (response_promise) {
             nimcp_bio_promise_fail(response_promise, -1);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_stdp_event: validation failed");
         return -1;
     }
 
@@ -441,6 +447,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
 
     if (max_synapses == 0) {
         LOG_ERROR("mirror_stdp_create: max_synapses cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_stdp_create: max_synapses is zero");
         return NULL;
     }
 
@@ -464,6 +471,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     if (!stdp->synapses) {
         LOG_ERROR("mirror_stdp_create: failed to allocate synapse storage");
         nimcp_free(stdp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_stdp_create: stdp->synapses is NULL");
         return NULL;
     }
     stdp->max_synapses = max_synapses;
@@ -476,6 +484,7 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
         LOG_ERROR("mirror_stdp_create: failed to allocate action map");
         nimcp_free(stdp->synapses);
         nimcp_free(stdp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_stdp_create: stdp->action_map is NULL");
         return NULL;
     }
     // Initialize map to invalid
@@ -646,6 +655,7 @@ uint32_t mirror_stdp_create_synapse(mirror_stdp_t stdp, uint32_t action_id, floa
 
 bool mirror_stdp_get_synapse(mirror_stdp_t stdp, uint32_t synapse_id, mirror_stdp_synapse_t* out_synapse) {
     if (!stdp || !out_synapse || synapse_id >= stdp->num_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_stdp_get_synapse: required parameter is NULL (stdp, out_synapse)");
         return false;
     }
 

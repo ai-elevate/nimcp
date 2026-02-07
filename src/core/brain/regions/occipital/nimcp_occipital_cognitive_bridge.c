@@ -179,6 +179,7 @@ static int enqueue_event(occipital_cognitive_bridge_t* bridge,
 
     if (next_tail == bridge->event_queue_head) {
         /* Queue full */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_time_us: validation failed");
         return -1;
     }
 
@@ -197,6 +198,7 @@ static int enqueue_modulation(occipital_cognitive_bridge_t* bridge,
     uint32_t next_tail = (bridge->mod_queue_tail + 1) % MAX_PENDING_MODULATIONS;
 
     if (next_tail == bridge->mod_queue_head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_time_us: validation failed");
         return -1;
     }
 
@@ -433,7 +435,10 @@ int occipital_cognitive_connect_module(
 
 
     }
-    if (type >= COG_MODULE_COUNT) return -1;
+    if (type >= COG_MODULE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        return -1;
+    }
 
     bridge->modules[type].handle = module_handle;
     bridge->modules[type].connected = (module_handle != NULL);
@@ -458,7 +463,10 @@ int occipital_cognitive_disconnect_module(
 
 
     }
-    if (type >= COG_MODULE_COUNT) return -1;
+    if (type >= COG_MODULE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        return -1;
+    }
 
     bridge->modules[type].handle = NULL;
     bridge->modules[type].connected = false;
@@ -522,10 +530,16 @@ int occipital_cognitive_send_event(
     occipital_cognitive_bridge_t* bridge,
     const visual_cognitive_event_t* event) {
 
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_cognitive_bridge_reset: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     cognitive_module_type_t target = event->target;
-    if (target >= COG_MODULE_COUNT) return -1;
+    if (target >= COG_MODULE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_cognitive_bridge_reset: capacity exceeded");
+        return -1;
+    }
 
     if (!bridge->modules[target].enabled) {
         return 0; /* Silently ignore disabled modules */
@@ -551,7 +565,10 @@ int occipital_cognitive_broadcast(
     uint32_t feature_count,
     float salience) {
 
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_cognitive_bridge_reset: required parameter is NULL (bridge, features)");
+        return -1;
+    }
 
     int modules_notified = 0;
     uint64_t now = get_time_us();
@@ -591,7 +608,10 @@ int occipital_cognitive_apply_modulation(
     occipital_cognitive_bridge_t* bridge,
     const cognitive_modulation_t* modulation) {
 
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     if (!bridge->config.enable_bidirectional) {
         return 0;

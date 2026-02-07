@@ -228,6 +228,7 @@ static binding_entry_t* find_binding(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_binding: operation failed");
     return NULL;
 }
 
@@ -295,6 +296,7 @@ static bool remove_binding_entry(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_binding_entry: operation failed");
     return false;
 }
 
@@ -372,6 +374,7 @@ static int find_best_phoneme_match(
     }
 
     if (best_sim < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_best_phoneme_match: validation failed");
         return -1;
     }
 
@@ -447,6 +450,7 @@ static int find_free_simulation_slot(const mirror_language_bridge_t* bridge)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_simulation_slot: bridge->simulations is NULL");
     return -1;
 }
 
@@ -460,6 +464,7 @@ static int start_simulation(
 {
     int slot = find_free_simulation_slot(bridge);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "start_simulation: validation failed");
         return -1;
     }
 
@@ -535,6 +540,7 @@ static int send_to_broca(
     float activation)
 {
     if (!bridge->broca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_to_broca: bridge->broca is NULL");
         return -1;
     }
 
@@ -562,6 +568,7 @@ static int query_wernicke_semantics(
     semantic_action_context_t* context)
 {
     if (!bridge->wernicke) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query_wernicke_semantics: bridge->wernicke is NULL");
         return -1;
     }
 
@@ -801,6 +808,7 @@ int mirror_language_bridge_update(
     uint64_t timestamp_ms)
 {
     if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
         return -1;
     }
 
@@ -848,6 +856,7 @@ int mirror_language_observe_speech(
     const speech_observation_t* observation)
 {
     if (!bridge || !observation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_observe_speech: required parameter is NULL (bridge, observation)");
         return -1;
     }
     BRIDGE_BBB_VALIDATE(bridge, observation, sizeof(*observation));
@@ -873,6 +882,7 @@ int mirror_language_observe_speech(
             &confidence
         );
         if (ret < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_language_observe_speech: validation failed");
             return -1;
         }
     }
@@ -941,6 +951,7 @@ int mirror_language_get_phoneme_activation(
     phoneme_mirror_activation_t* activation)
 {
     if (!bridge || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_phoneme_activation: required parameter is NULL (bridge, activation)");
         return -1;
     }
 
@@ -949,6 +960,7 @@ int mirror_language_get_phoneme_activation(
 
 
     if (phoneme_id >= MAX_PHONEME_TEMPLATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_get_phoneme_activation: capacity exceeded");
         return -1;
     }
 
@@ -968,6 +980,7 @@ int mirror_language_get_action_semantics(
     uint32_t* num_retrieved)
 {
     if (!bridge || !contexts || !num_retrieved) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_action_semantics: required parameter is NULL (bridge, contexts, num_retrieved)");
         return -1;
     }
 
@@ -1010,6 +1023,7 @@ int mirror_language_get_action_words(
     uint32_t* num_bindings)
 {
     if (!bridge || !bindings || !num_bindings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_action_words: required parameter is NULL (bridge, bindings, num_bindings)");
         return -1;
     }
 
@@ -1241,6 +1255,7 @@ int mirror_language_get_primed_actions(
     uint32_t* num_actions)
 {
     if (!bridge || !action_ids || !activations || !num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_primed_actions: required parameter is NULL (bridge, action_ids, activations, num_actions)");
         return -1;
     }
 
@@ -1289,6 +1304,7 @@ int mirror_language_create_binding(
 
 
     if (bridge->num_bindings >= bridge->config.binding_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_create_binding: capacity exceeded");
         return -1;  /* At capacity */
     }
 
@@ -1372,6 +1388,7 @@ int mirror_language_get_binding(
     action_word_binding_t* binding)
 {
     if (!bridge || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_binding: required parameter is NULL (bridge, binding)");
         return -1;
     }
 
@@ -1409,6 +1426,7 @@ int mirror_language_remove_binding(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_language_remove_binding: validation failed");
     return -1;
 }
 
@@ -1423,6 +1441,7 @@ int mirror_language_register_phoneme(
     uint32_t num_features)
 {
     if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_register_phoneme: required parameter is NULL (bridge, features)");
         return -1;
     }
     BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
@@ -1432,6 +1451,7 @@ int mirror_language_register_phoneme(
 
 
     if (bridge->num_templates >= MAX_PHONEME_TEMPLATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_language_register_phoneme: capacity exceeded");
         return -1;
     }
 
@@ -1472,6 +1492,7 @@ int mirror_language_match_phoneme(
     float* confidence)
 {
     if (!bridge || !features || !best_phoneme || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_match_phoneme: required parameter is NULL (bridge, features, best_phoneme, confidence)");
         return -1;
     }
     BRIDGE_BBB_VALIDATE(bridge, features, num_features * sizeof(float));
@@ -1589,6 +1610,7 @@ int mirror_language_get_stats(
     mirror_language_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1621,6 +1643,7 @@ int mirror_language_get_config(
     mirror_language_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -1637,6 +1660,7 @@ int mirror_language_set_config(
     const mirror_language_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -1651,6 +1675,7 @@ int mirror_language_set_config(
 bool mirror_language_has_broca(const mirror_language_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_has_broca: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1663,6 +1688,7 @@ bool mirror_language_has_broca(const mirror_language_bridge_t* bridge)
 bool mirror_language_has_wernicke(const mirror_language_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_language_has_wernicke: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

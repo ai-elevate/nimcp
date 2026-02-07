@@ -858,12 +858,24 @@ static uint64_t generate_random_canary(void) {
  * Uses randomized canary values for better security against buffer overflow attacks.
  */
 static bool validate_agent(const nimcp_health_agent_t* agent) {
-    if (!agent) return false;
-    if (agent->magic != HEALTH_AGENT_MAGIC) return false;
+    if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_agent: agent is NULL");
+        return false;
+    }
+    if (agent->magic != HEALTH_AGENT_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
+        return false;
+    }
 
     /* Check canaries against the expected randomized value */
-    if (agent->canary_front != agent->expected_canary) return false;
-    if (agent->canary_back != agent->expected_canary) return false;
+    if (agent->canary_front != agent->expected_canary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
+        return false;
+    }
+    if (agent->canary_back != agent->expected_canary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_agent: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -950,7 +962,10 @@ const char* health_agent_recovery_to_string(health_agent_recovery_t recovery) {
  * ============================================================================ */
 
 static bool msg_queue_init(health_msg_queue_t* queue, uint32_t capacity) {
-    if (!queue || capacity == 0) return false;
+    if (!queue || capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "msg_queue_init: queue is NULL");
+        return false;
+    }
 
     /* Round up capacity to power of 2 */
     capacity = next_power_of_2(capacity);
@@ -959,6 +974,7 @@ static bool msg_queue_init(health_msg_queue_t* queue, uint32_t capacity) {
     queue->nodes = (health_msg_node_t*)nimcp_calloc(capacity, sizeof(health_msg_node_t));
     if (!queue->nodes) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate message queue nodes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "msg_queue_init: queue->nodes is NULL");
         return false;
     }
 
@@ -987,7 +1003,10 @@ static void msg_queue_destroy(health_msg_queue_t* queue) {
 }
 
 static bool msg_queue_push(health_msg_queue_t* queue, const health_agent_message_t* msg) {
-    if (!queue || !msg || !queue->nodes) return false;
+    if (!queue || !msg || !queue->nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg_queue_push: required parameter is NULL (queue, msg, queue->nodes)");
+        return false;
+    }
 
     uint64_t head;
     health_msg_node_t* node;
@@ -1011,6 +1030,7 @@ static bool msg_queue_push(health_msg_queue_t* queue, const health_agent_message
         } else if (diff < 0) {
             /* Queue is full */
             atomic_fetch_add_explicit(&queue->dropped_count, 1, memory_order_relaxed);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "msg_queue_push: operation failed");
             return false;
         }
         /* Otherwise retry */
@@ -1026,7 +1046,10 @@ static bool msg_queue_push(health_msg_queue_t* queue, const health_agent_message
 }
 
 static bool msg_queue_pop(health_msg_queue_t* queue, health_agent_message_t* msg) {
-    if (!queue || !msg || !queue->nodes) return false;
+    if (!queue || !msg || !queue->nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg_queue_pop: required parameter is NULL (queue, msg, queue->nodes)");
+        return false;
+    }
 
     uint64_t tail;
     health_msg_node_t* node;
@@ -1049,6 +1072,7 @@ static bool msg_queue_pop(health_msg_queue_t* queue, health_agent_message_t* msg
             }
         } else if (diff < 0) {
             /* Queue is empty */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "msg_queue_pop: diff is zero");
             return false;
         }
         /* Otherwise retry */
@@ -1170,6 +1194,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     );
     if (!agent) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate health agent");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_create: agent is NULL");
         return NULL;
     }
 
@@ -1204,6 +1229,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
     if (!msg_queue_init(&agent->msg_queue, queue_capacity)) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to initialize message queue");
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_health_agent_create: msg_queue_init is NULL");
         return NULL;
     }
 
@@ -1213,6 +1239,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create state mutex");
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_create: agent->state_mutex is NULL");
         return NULL;
     }
 
@@ -1223,6 +1250,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_create: agent->stats_mutex is NULL");
         return NULL;
     }
 
@@ -1236,6 +1264,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create: agent->stop_cond is NULL");
         return NULL;
     }
 
@@ -1251,6 +1280,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create: operation failed");
         return NULL;
     }
 
@@ -1268,6 +1298,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create: operation failed");
         return NULL;
     }
 
@@ -1287,6 +1318,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create: operation failed");
         return NULL;
     }
 
@@ -1308,6 +1340,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create: operation failed");
         return NULL;
     }
 
@@ -1471,6 +1504,7 @@ nimcp_health_agent_t* nimcp_health_agent_create(const health_agent_config_t* con
 
         msg_queue_destroy(&agent->msg_queue);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -1618,6 +1652,7 @@ health_agent_message_t nimcp_health_agent_create_message(
 int nimcp_health_agent_connect_brain(nimcp_health_agent_t* agent, brain_t brain) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_brain: validate_agent is NULL");
         return -1;
     }
 
@@ -1630,6 +1665,7 @@ int nimcp_health_agent_connect_immune(nimcp_health_agent_t* agent,
                                        brain_immune_system_t* immune) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_brain: validate_agent is NULL");
         return -1;
     }
 
@@ -1643,6 +1679,7 @@ int nimcp_health_agent_connect_monitor(nimcp_health_agent_t* agent,
                                         health_monitor_t* monitor) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_brain: validate_agent is NULL");
         return -1;
     }
 
@@ -1659,6 +1696,7 @@ int nimcp_health_agent_connect_monitor(nimcp_health_agent_t* agent,
 int nimcp_health_agent_start(nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in start");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_start: validate_agent is NULL");
         return -1;
     }
 
@@ -1667,6 +1705,7 @@ int nimcp_health_agent_start(nimcp_health_agent_t* agent) {
     if (atomic_load(&agent->running)) {
         nimcp_log(LOG_LEVEL_WARN, "Agent '%s' already running", agent->config.agent_name);
         nimcp_mutex_unlock(agent->state_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_start: validation failed");
         return -1;
     }
 
@@ -1693,6 +1732,7 @@ int nimcp_health_agent_start(nimcp_health_agent_t* agent) {
     if (rc != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create agent thread: error %d", rc);
         nimcp_mutex_unlock(agent->state_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_start: validation failed");
         return -1;
     }
 
@@ -1707,6 +1747,7 @@ int nimcp_health_agent_start(nimcp_health_agent_t* agent) {
 int nimcp_health_agent_stop(nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in stop");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_stop: validate_agent is NULL");
         return -1;
     }
 
@@ -1715,6 +1756,7 @@ int nimcp_health_agent_stop(nimcp_health_agent_t* agent) {
     if (!atomic_load(&agent->running)) {
         nimcp_log(LOG_LEVEL_WARN, "Agent '%s' not running", agent->config.agent_name);
         nimcp_mutex_unlock(agent->state_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_stop: atomic_load is NULL");
         return -1;
     }
 
@@ -1745,6 +1787,7 @@ static void* agent_thread_main(void* arg) {
 
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in thread main");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_thread_main: validate_agent is NULL");
         return NULL;
     }
 
@@ -1915,6 +1958,7 @@ static void* agent_thread_main(void* arg) {
     }
 
     nimcp_log(LOG_LEVEL_DEBUG, "Agent thread '%s' exiting", agent->config.agent_name);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_thread_main: operation failed");
     return NULL;
 }
 
@@ -1959,6 +2003,7 @@ void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
 int nimcp_health_agent_report_anomaly(nimcp_health_agent_t* agent,
                                        const health_agent_message_t* msg) {
     if (!validate_agent(agent) || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_heartbeat: required parameter is NULL (validate_agent, msg)");
         return -1;
     }
 
@@ -1973,6 +2018,7 @@ int nimcp_health_agent_report_anomaly(nimcp_health_agent_t* agent,
     /* Queue message */
     if (!msg_queue_push(&agent->msg_queue, &queued_msg)) {
         nimcp_log(LOG_LEVEL_WARN, "Message queue full, dropping anomaly report");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_heartbeat: msg_queue_push is NULL");
         return -1;
     }
 
@@ -2000,7 +2046,10 @@ int nimcp_health_agent_report_anomaly(nimcp_health_agent_t* agent,
 }
 
 int nimcp_health_agent_request_check(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_request_check: validate_agent is NULL");
+        return -1;
+    }
 
     /* Signal thread to run consistency check on next iteration (Phase 3) */
     atomic_store(&agent->consistency_check_pending, true);
@@ -2010,7 +2059,10 @@ int nimcp_health_agent_request_check(nimcp_health_agent_t* agent) {
 
 int nimcp_health_agent_request_emergency_checkpoint(nimcp_health_agent_t* agent,
                                                      const char* reason) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_request_check: validate_agent is NULL");
+        return -1;
+    }
 
     health_agent_message_t msg = nimcp_health_agent_create_message(
         HEALTH_MSG_EMERGENCY,
@@ -2028,7 +2080,10 @@ int nimcp_health_agent_request_emergency_checkpoint(nimcp_health_agent_t* agent,
  * ============================================================================ */
 
 bool nimcp_health_agent_is_running(const nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return false;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_running: validate_agent is NULL");
+        return false;
+    }
     return atomic_load(&agent->running);
 }
 
@@ -2060,7 +2115,10 @@ uint32_t nimcp_health_agent_pending_messages(const nimcp_health_agent_t* agent) 
 
 bool nimcp_health_agent_dequeue_message(nimcp_health_agent_t* agent,
                                          health_agent_message_t* msg) {
-    if (!validate_agent(agent) || !msg) return false;
+    if (!validate_agent(agent) || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_pending_messages: required parameter is NULL (validate_agent, msg)");
+        return false;
+    }
     return msg_queue_pop(&agent->msg_queue, msg);
 }
 
@@ -2083,6 +2141,7 @@ int nimcp_health_agent_update_detector(nimcp_health_agent_t* agent,
                                         const char* detector,
                                         const health_agent_detector_config_t* config) {
     if (!validate_agent(agent) || !detector || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_queue_depth: required parameter is NULL (validate_agent, detector, config)");
         return -1;
     }
 
@@ -2100,6 +2159,7 @@ int nimcp_health_agent_update_detector(nimcp_health_agent_t* agent,
         target = &agent->config.resource_detector;
     } else {
         nimcp_log(LOG_LEVEL_ERROR, "Unknown detector: %s", detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_queue_depth: operation failed");
         return -1;
     }
 
@@ -2112,6 +2172,7 @@ int nimcp_health_agent_set_detector_enabled(nimcp_health_agent_t* agent,
                                              const char* detector,
                                              bool enabled) {
     if (!validate_agent(agent) || !detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_queue_depth: required parameter is NULL (validate_agent, detector)");
         return -1;
     }
 
@@ -2129,6 +2190,7 @@ int nimcp_health_agent_set_detector_enabled(nimcp_health_agent_t* agent,
         target = &agent->config.resource_detector;
     } else {
         nimcp_log(LOG_LEVEL_ERROR, "Unknown detector: %s", detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_queue_depth: operation failed");
         return -1;
     }
 
@@ -2273,6 +2335,7 @@ int nimcp_health_agent_connect_hypothalamus(
 ) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_hypothalamus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_hypothalamus: validate_agent is NULL");
         return -1;
     }
 
@@ -2327,6 +2390,7 @@ int nimcp_health_agent_connect_homeostasis(
 ) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_homeostasis: validate_agent is NULL");
         return -1;
     }
 
@@ -2345,6 +2409,7 @@ int nimcp_health_agent_connect_hypo_immune_bridge(
 ) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_hypo_immune_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_hypo_immune_bridge: validate_agent is NULL");
         return -1;
     }
 
@@ -2363,6 +2428,7 @@ int nimcp_health_agent_connect_drives(
 ) {
     if (!validate_agent(agent)) {
         nimcp_log(LOG_LEVEL_ERROR, "Invalid agent in connect_drives");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_drives: validate_agent is NULL");
         return -1;
     }
 
@@ -2384,7 +2450,10 @@ int nimcp_health_agent_connect_connectivity(
     connectivity_health_t* connectivity,
     const health_agent_connectivity_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_connectivity: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->connectivity = connectivity;
@@ -2409,7 +2478,10 @@ int nimcp_health_agent_connect_oscillations(
     brain_oscillations_t* oscillations,
     const health_agent_oscillations_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_oscillations: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->oscillations = oscillations;
@@ -2435,7 +2507,10 @@ int nimcp_health_agent_connect_gc(
     kg_gc_context_t* gc_context,
     const health_agent_gc_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_gc: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->gc_context = gc_context;
@@ -2460,7 +2535,10 @@ int nimcp_health_agent_connect_checkpoint(
     checkpoint_manager_t* checkpoint,
     const health_agent_checkpoint_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_checkpoint: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->checkpoint = checkpoint;
@@ -2485,7 +2563,10 @@ int nimcp_health_agent_connect_deadlock_detector(
     nimcp_health_agent_t* agent,
     deadlock_detector_t* deadlock_detector
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_deadlock_detector: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->deadlock_detector_ptr = deadlock_detector;
@@ -2501,7 +2582,10 @@ int nimcp_health_agent_connect_bio_async(
     bio_router_t router,
     const health_agent_bio_async_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_bio_async: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->bio_async_router = router;
@@ -2543,7 +2627,10 @@ int nimcp_health_agent_connect_runtime_adaptation(
     nimcp_health_agent_t* agent,
     runtime_adaptation_context_t ra_ctx
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_runtime_adaptation: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->runtime_adaptation = ra_ctx;
@@ -2559,7 +2646,10 @@ int nimcp_health_agent_connect_exception_bridge(
     exception_immune_t* exception_bridge,
     const health_agent_exception_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_exception_bridge: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->exception_bridge = exception_bridge;
@@ -2587,7 +2677,10 @@ int nimcp_health_agent_connect_snn(
     snn_immune_bridge_t* snn_bridge,
     const health_agent_snn_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_snn: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -2629,7 +2722,10 @@ int nimcp_health_agent_connect_lnn(
     lnn_immune_bridge_t* lnn_bridge,
     const health_agent_lnn_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_lnn: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -2673,8 +2769,14 @@ int nimcp_health_agent_get_neural_metrics(
     const nimcp_health_agent_t* agent,
     neural_health_metrics_t* metrics
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!metrics) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_neural_metrics: validate_agent is NULL");
+        return -1;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_neural_metrics: metrics is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->neural_mutex);
     *metrics = agent->neural_metrics;
@@ -2688,7 +2790,10 @@ int nimcp_health_agent_configure_neural(
     const health_agent_snn_config_t* snn_config,
     const health_agent_lnn_config_t* lnn_config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_configure_neural: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -2707,7 +2812,10 @@ int nimcp_health_agent_configure_neural(
 }
 
 bool nimcp_health_agent_is_neural_unhealthy(const nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return false;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_neural_unhealthy: validate_agent is NULL");
+        return false;
+    }
 
     /* Quick check without full lock */
     return agent->neural_metrics.any_neural_unhealthy;
@@ -2734,7 +2842,10 @@ int nimcp_health_agent_connect_dragonfly_immune(
     dragonfly_immune_bridge_t bridge,
     const health_agent_dragonfly_immune_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_dragonfly_immune: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->dragonfly_immune = bridge;
@@ -2782,7 +2893,10 @@ int nimcp_health_agent_connect_portia_monitor(
     portia_monitor_t monitor,
     const health_agent_portia_monitor_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_portia_monitor: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->portia_monitor = monitor;
@@ -2833,8 +2947,14 @@ int nimcp_health_agent_get_behavioral_metrics(
     const nimcp_health_agent_t* agent,
     behavioral_health_metrics_t* metrics
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!metrics) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_behavioral_metrics: validate_agent is NULL");
+        return -1;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_behavioral_metrics: metrics is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->behavioral_mutex);
     *metrics = agent->behavioral_metrics;
@@ -2848,7 +2968,10 @@ int nimcp_health_agent_configure_behavioral(
     const health_agent_dragonfly_immune_config_t* dragonfly_config,
     const health_agent_portia_monitor_config_t* portia_config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_configure_behavioral: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -2867,7 +2990,10 @@ int nimcp_health_agent_configure_behavioral(
 }
 
 bool nimcp_health_agent_is_behavioral_unhealthy(const nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return false;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_is_behavioral_unhealthy: validate_agent is NULL");
+        return false;
+    }
 
     return agent->behavioral_metrics.any_behavioral_unhealthy;
 }
@@ -2890,8 +3016,14 @@ int nimcp_health_agent_request_behavioral_coordination(
     const char* action,
     const char* reason
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!action) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_request_behavioral_coordination: validate_agent is NULL");
+        return -1;
+    }
+    if (!action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_request_behavioral_coordination: action is NULL");
+        return -1;
+    }
 
     nimcp_log(LOG_LEVEL_INFO, "Agent '%s' behavioral coordination request: %s - %s",
               agent->config.agent_name, action, reason ? reason : "no reason");
@@ -2928,7 +3060,10 @@ int nimcp_health_agent_connect_failure_prediction(
     failure_predictor_t* predictor,
     const health_agent_prediction_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_failure_prediction: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->failure_predictor = predictor;
@@ -2953,7 +3088,10 @@ int nimcp_health_agent_connect_metacognition(
     metacognition_t* metacog,
     const health_agent_metacog_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_metacognition: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->metacognition = metacog;
@@ -2978,7 +3116,10 @@ int nimcp_health_agent_connect_ethics(
     ethics_engine_t ethics,
     const health_agent_ethics_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_ethics: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->ethics = ethics;
@@ -3004,7 +3145,10 @@ int nimcp_health_agent_connect_emotion(
     emotion_immune_bridge_t* emotion_immune,
     const health_agent_emotion_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_emotion: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->emotion = emotion;
@@ -3030,7 +3174,10 @@ int nimcp_health_agent_connect_wellbeing(
     wellbeing_monitor_t* wellbeing,
     const health_agent_wellbeing_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_wellbeing: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->wellbeing = wellbeing;
@@ -3053,7 +3200,10 @@ int nimcp_health_agent_connect_mental_health(
     nimcp_health_agent_t* agent,
     mental_health_monitor_t* mental_health
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_mental_health: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->mental_health = mental_health;
@@ -3069,7 +3219,10 @@ int nimcp_health_agent_connect_collective(
     collective_cognition_t* collective,
     const health_agent_collective_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_collective: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->collective = collective;
@@ -3094,7 +3247,10 @@ int nimcp_health_agent_connect_rcog(
     rcog_engine_t* rcog,
     const health_agent_rcog_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_rcog: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->rcog = rcog;
@@ -3119,7 +3275,10 @@ int nimcp_health_agent_connect_gpu(
     gpu_health_monitor_t* gpu_health,
     const health_agent_gpu_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_gpu: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
     agent->gpu_health = gpu_health;
@@ -3148,10 +3307,14 @@ int nimcp_health_agent_trigger_stress_response(
     const char* reason,
     health_agent_severity_t severity
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_trigger_stress_response: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->hypothalamus) {
         nimcp_log(LOG_LEVEL_WARN, "No hypothalamus connected for stress response");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_trigger_stress_response: agent->hypothalamus is NULL");
         return -1;
     }
 
@@ -3181,9 +3344,13 @@ int nimcp_health_agent_trigger_stress_response(
 }
 
 int nimcp_health_agent_release_stress_response(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_release_stress_response: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->hypothalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_release_stress_response: agent->hypothalamus is NULL");
         return -1;
     }
 
@@ -3213,10 +3380,14 @@ int nimcp_health_agent_enter_sickness_mode(
     nimcp_health_agent_t* agent,
     float threat_level
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_enter_sickness_mode: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->hypo_immune_bridge && !agent->hypothalamus) {
         nimcp_log(LOG_LEVEL_WARN, "No hypothalamus/immune bridge for sickness mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_enter_sickness_mode: required parameter is NULL (agent->hypo_immune_bridge, agent->hypothalamus)");
         return -1;
     }
 
@@ -3245,7 +3416,10 @@ int nimcp_health_agent_enter_sickness_mode(
 }
 
 int nimcp_health_agent_exit_sickness_mode(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_exit_sickness_mode: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -3303,10 +3477,14 @@ int nimcp_health_agent_get_alignment_reward(
     nimcp_health_agent_t* agent,
     float* reward_out
 ) {
-    if (!validate_agent(agent) || !reward_out) return -1;
+    if (!validate_agent(agent) || !reward_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_alignment_reward: required parameter is NULL (validate_agent, reward_out)");
+        return -1;
+    }
 
     if (!agent->homeostasis) {
         *reward_out = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_alignment_reward: agent->homeostasis is NULL");
         return -1;
     }
 
@@ -3322,9 +3500,13 @@ int nimcp_health_agent_report_drive(
     float drive_level,
     const char* description
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_report_drive: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->hypothalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_report_drive: agent->hypothalamus is NULL");
         return -1;
     }
 
@@ -3365,7 +3547,10 @@ int nimcp_health_agent_get_drive_state(
     float* drive_level_out,
     bool* is_stressed_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_drive_state: validate_agent is NULL");
+        return -1;
+    }
 
     if (drive_level_out) {
         /* Query hypothalamus for unified drive level */
@@ -3402,10 +3587,14 @@ int nimcp_health_agent_get_drive_state(
  * ============================================================================ */
 
 int nimcp_health_agent_trigger_gc(nimcp_health_agent_t* agent, bool force) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_trigger_gc: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->gc_context) {
         nimcp_log(LOG_LEVEL_WARN, "No GC context connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_trigger_gc: agent->gc_context is NULL");
         return -1;
     }
 
@@ -3440,10 +3629,14 @@ int nimcp_health_agent_create_checkpoint(
     nimcp_health_agent_t* agent,
     const char* reason
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_create_checkpoint: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->checkpoint) {
         nimcp_log(LOG_LEVEL_WARN, "No checkpoint manager connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create_checkpoint: agent->checkpoint is NULL");
         return -1;
     }
 
@@ -3460,6 +3653,7 @@ int nimcp_health_agent_create_checkpoint(
         bool success = checkpoint_save(agent->brain, checkpoint_path);
         if (!success) {
             nimcp_log(LOG_LEVEL_WARN, "Failed to create checkpoint: %s", checkpoint_path);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_create_checkpoint: success is NULL");
             return -1;
         }
     }
@@ -3475,10 +3669,14 @@ int nimcp_health_agent_rollback(
     nimcp_health_agent_t* agent,
     uint64_t checkpoint_id
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_rollback: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->checkpoint) {
         nimcp_log(LOG_LEVEL_WARN, "No checkpoint manager connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_rollback: agent->checkpoint is NULL");
         return -1;
     }
 
@@ -3496,14 +3694,17 @@ int nimcp_health_agent_rollback(
             bool success = checkpoint_load(&agent->brain, checkpoint_path);
             if (!success) {
                 nimcp_log(LOG_LEVEL_ERROR, "Failed to rollback to checkpoint");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_rollback: success is NULL");
                 return -1;
             }
         } else {
             nimcp_log(LOG_LEVEL_WARN, "No valid checkpoint found for rollback");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_rollback: success is NULL");
             return -1;
         }
     } else if (checkpoint_id != 0) {
         nimcp_log(LOG_LEVEL_WARN, "Checkpoint ID lookup not yet implemented");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_rollback: operation failed");
         return -1;
     }
 
@@ -3517,10 +3718,14 @@ int nimcp_health_agent_reduce_load(
     nimcp_health_agent_t* agent,
     float reduction_factor
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_reduce_load: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->runtime_adaptation) {
         nimcp_log(LOG_LEVEL_WARN, "No runtime adaptation connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_reduce_load: agent->runtime_adaptation is NULL");
         return -1;
     }
 
@@ -3558,9 +3763,13 @@ int nimcp_health_agent_reduce_load(
 }
 
 int nimcp_health_agent_restore_load(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_restore_load: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->runtime_adaptation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_restore_load: agent->runtime_adaptation is NULL");
         return -1;
     }
 
@@ -3579,11 +3788,15 @@ int nimcp_health_agent_check_oscillations(
     bool* is_abnormal_out,
     uint32_t* anomaly_type_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_oscillations: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->oscillations) {
         if (is_abnormal_out) *is_abnormal_out = false;
         if (anomaly_type_out) *anomaly_type_out = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_oscillations: validation failed");
         return -1;
     }
 
@@ -3624,11 +3837,15 @@ int nimcp_health_agent_check_connectivity(
     char* isolated_module_out,
     size_t module_name_size
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_connectivity: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->connectivity) {
         if (isolation_detected_out) *isolation_detected_out = false;
         if (isolated_module_out && module_name_size > 0) isolated_module_out[0] = '\0';
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_connectivity: validation failed");
         return -1;
     }
 
@@ -3672,9 +3889,13 @@ int nimcp_health_agent_publish_event(
     nimcp_health_agent_t* agent,
     const health_agent_message_t* msg
 ) {
-    if (!validate_agent(agent) || !msg) return -1;
+    if (!validate_agent(agent) || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_publish_event: required parameter is NULL (validate_agent, msg)");
+        return -1;
+    }
 
     if (!agent->bio_async_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_publish_event: agent->bio_async_router is NULL");
         return -1;
     }
 
@@ -3715,11 +3936,15 @@ int nimcp_health_agent_check_deadlocks(
     bool* deadlock_detected_out,
     bool* contention_high_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_deadlocks: validate_agent is NULL");
+        return -1;
+    }
 
     if (!agent->deadlock_detector_ptr) {
         if (deadlock_detected_out) *deadlock_detected_out = false;
         if (contention_high_out) *contention_high_out = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_check_deadlocks: validation failed");
         return -1;
     }
 
@@ -3986,7 +4211,10 @@ static void agent_auto_checkpoint_if_needed(nimcp_health_agent_t* agent, float h
 
 static int hypo_drive_event_callback(const void* event, void* user_data) {
     nimcp_health_agent_t* agent = (nimcp_health_agent_t*)user_data;
-    if (!validate_agent(agent) || !event) return -1;
+    if (!validate_agent(agent) || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_event_callback: required parameter is NULL (validate_agent, event)");
+        return -1;
+    }
 
     /* Process drive event from hypothalamus
      * The event structure contains drive type and urgency level.
@@ -4972,6 +5200,7 @@ static bool agent_check_ethics_permission(nimcp_health_agent_t* agent,
             if (msg->severity < HEALTH_SEVERITY_CRITICAL) {
                 nimcp_log(LOG_LEVEL_WARN, "Ethics (1st Law): blocking full reset for non-critical");
                 atomic_fetch_add(&agent->ethics_blocks, 1);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_run_cross_module_coordination: validation failed");
                 return false;
             }
         }
@@ -5159,7 +5388,10 @@ static int agent_get_collective_consensus(nimcp_health_agent_t* agent,
 static int agent_run_rcog_diagnosis(nimcp_health_agent_t* agent,
                                      const health_agent_message_t* msg,
                                      health_agent_recovery_t* suggested_action) {
-    if (!agent || !agent->rcog) return -1;
+    if (!agent || !agent->rcog) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, agent->rcog)");
+        return -1;
+    }
 
     /* Run RCOG (Recursive Cognition) diagnosis
      * RCOG provides meta-level reasoning about health issues and recovery strategies.
@@ -5433,7 +5665,10 @@ int nimcp_health_agent_connect_portia(
     portia_context_t* portia,
     const health_agent_portia_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_portia: validate_agent is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(agent->modules_mutex);
 
@@ -5472,9 +5707,13 @@ int nimcp_health_agent_connect_dragonfly(
     dragonfly_system_t* dragonfly,
     const health_agent_dragonfly_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_dragonfly: validate_agent is NULL");
+        return -1;
+    }
     if (!dragonfly) {
         nimcp_log(LOG_LEVEL_ERROR, "Null dragonfly system in connect_dragonfly");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_dragonfly: dragonfly is NULL");
         return -1;
     }
 
@@ -5505,9 +5744,13 @@ int nimcp_health_agent_connect_swarm_immune(
     void* swarm_immune_ptr,
     const health_agent_swarm_immune_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_swarm_immune: validate_agent is NULL");
+        return -1;
+    }
     if (!swarm_immune_ptr) {
         nimcp_log(LOG_LEVEL_ERROR, "Null swarm immune in connect_swarm_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_swarm_immune: swarm_immune_ptr is NULL");
         return -1;
     }
 
@@ -5537,9 +5780,13 @@ int nimcp_health_agent_connect_swarm_memory(
     void* swarm_memory_ptr,
     const health_agent_swarm_memory_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_swarm_memory: validate_agent is NULL");
+        return -1;
+    }
     if (!swarm_memory_ptr) {
         nimcp_log(LOG_LEVEL_ERROR, "Null swarm memory in connect_swarm_memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_connect_swarm_memory: swarm_memory_ptr is NULL");
         return -1;
     }
 
@@ -5569,9 +5816,13 @@ int nimcp_health_agent_connect_engram(
     engram_system_t* engram,
     const health_agent_engram_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_engram: validate_agent is NULL");
+        return -1;
+    }
     if (!engram) {
         nimcp_log(LOG_LEVEL_ERROR, "Null engram system in connect_engram");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_engram: engram is NULL");
         return -1;
     }
 
@@ -5601,9 +5852,13 @@ int nimcp_health_agent_connect_memory_consolidation(
     systems_consolidation_system_t* consolidation,
     const health_agent_memory_consolidation_config_t* config
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_memory_consolidation: validate_agent is NULL");
+        return -1;
+    }
     if (!consolidation) {
         nimcp_log(LOG_LEVEL_ERROR, "Null consolidation system in connect_memory_consolidation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_memory_consolidation: consolidation is NULL");
         return -1;
     }
 
@@ -5635,9 +5890,13 @@ int nimcp_health_agent_use_portia_set_tier(
     nimcp_health_agent_t* agent,
     uint32_t tier
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_set_tier: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->portia_config.enable_portia) {
         nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for set_tier");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_portia_set_tier: agent->portia_config is NULL");
         return -1;
     }
 
@@ -5648,6 +5907,7 @@ int nimcp_health_agent_use_portia_set_tier(
     nimcp_error_t result = portia_set_tier((platform_tier_t)tier);
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Portia set_tier failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_set_tier: validation failed");
         return -1;
     }
     return 0;
@@ -5657,9 +5917,13 @@ int nimcp_health_agent_use_portia_degrade(
     nimcp_health_agent_t* agent,
     uint32_t level
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_degrade: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->portia_config.enable_portia) {
         nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for degrade");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_portia_degrade: agent->portia_config is NULL");
         return -1;
     }
 
@@ -5670,6 +5934,7 @@ int nimcp_health_agent_use_portia_degrade(
     nimcp_error_t result = portia_set_degradation_level((portia_degradation_level_t)level);
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Portia set_degradation_level failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_degrade: validation failed");
         return -1;
     }
     return 0;
@@ -5679,10 +5944,17 @@ int nimcp_health_agent_use_portia_get_recommended_neurons(
     nimcp_health_agent_t* agent,
     uint32_t* recommended_count
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!recommended_count) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_get_recommended_neurons: validate_agent is NULL");
+        return -1;
+    }
+    if (!recommended_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_portia_get_recommended_neurons: recommended_count is NULL");
+        return -1;
+    }
     if (!agent->portia_config.enable_portia) {
         nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for get_recommended_neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_portia_get_recommended_neurons: agent->portia_config is NULL");
         return -1;
     }
 
@@ -5697,9 +5969,13 @@ int nimcp_health_agent_use_portia_get_status(
     uint32_t* thermal_state,
     uint32_t* degradation_level
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_get_status: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->portia_config.enable_portia) {
         nimcp_log(LOG_LEVEL_WARN, "Portia not enabled for get_status");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_portia_get_status: agent->portia_config is NULL");
         return -1;
     }
 
@@ -5708,6 +5984,7 @@ int nimcp_health_agent_use_portia_get_status(
     nimcp_error_t result = portia_get_status(&status);
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Portia get_status failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_portia_get_status: validation failed");
         return -1;
     }
 
@@ -5726,10 +6003,17 @@ int nimcp_health_agent_use_dragonfly_track_anomaly(
     const health_agent_message_t* msg,
     uint32_t* target_id
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!msg || !target_id) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_track_anomaly: validate_agent is NULL");
+        return -1;
+    }
+    if (!msg || !target_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_track_anomaly: required parameter is NULL (msg, target_id)");
+        return -1;
+    }
     if (!agent->dragonfly) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly not connected for track_anomaly");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_track_anomaly: agent->dragonfly is NULL");
         return -1;
     }
 
@@ -5753,6 +6037,7 @@ int nimcp_health_agent_use_dragonfly_track_anomaly(
     int result = dragonfly_process_detection(agent->dragonfly, &detection);
     if (result != 0) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly process_detection failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_track_anomaly: validation failed");
         return -1;
     }
 
@@ -5767,9 +6052,13 @@ int nimcp_health_agent_use_dragonfly_predict(
     float* time_to_failure_out,
     float* confidence_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_predict: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->dragonfly) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly not connected for predict");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_predict: agent->dragonfly is NULL");
         return -1;
     }
 
@@ -5796,9 +6085,13 @@ int nimcp_health_agent_use_dragonfly_predict(
 }
 
 int nimcp_health_agent_use_dragonfly_pursue(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_pursue: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->dragonfly) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly not connected for pursue");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_pursue: agent->dragonfly is NULL");
         return -1;
     }
 
@@ -5809,15 +6102,20 @@ int nimcp_health_agent_use_dragonfly_pursue(nimcp_health_agent_t* agent) {
     int result = dragonfly_start_pursuit(agent->dragonfly);
     if (result != 0) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly start_pursuit failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_pursue: validation failed");
         return -1;
     }
     return 0;
 }
 
 int nimcp_health_agent_use_dragonfly_abort(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_abort: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->dragonfly) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly not connected for abort");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_abort: agent->dragonfly is NULL");
         return -1;
     }
 
@@ -5828,6 +6126,7 @@ int nimcp_health_agent_use_dragonfly_abort(nimcp_health_agent_t* agent) {
     int result = dragonfly_abort_pursuit(agent->dragonfly);
     if (result != 0) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly abort_pursuit failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_abort: validation failed");
         return -1;
     }
     return 0;
@@ -5837,10 +6136,17 @@ int nimcp_health_agent_use_dragonfly_get_mode(
     nimcp_health_agent_t* agent,
     uint32_t* mode_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!mode_out) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_dragonfly_get_mode: validate_agent is NULL");
+        return -1;
+    }
+    if (!mode_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_get_mode: mode_out is NULL");
+        return -1;
+    }
     if (!agent->dragonfly) {
         nimcp_log(LOG_LEVEL_WARN, "Dragonfly not connected for get_mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_dragonfly_get_mode: agent->dragonfly is NULL");
         return -1;
     }
 
@@ -5862,10 +6168,17 @@ int nimcp_health_agent_use_swarm_detect_threat(
     bool* threat_detected_out,
     uint32_t* threat_id_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!data || !threat_detected_out) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_detect_threat: validate_agent is NULL");
+        return -1;
+    }
+    if (!data || !threat_detected_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_detect_threat: required parameter is NULL (data, threat_detected_out)");
+        return -1;
+    }
     if (!agent->swarm_immune) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune not connected for detect_threat");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_detect_threat: agent->swarm_immune is NULL");
         return -1;
     }
 
@@ -5883,6 +6196,7 @@ int nimcp_health_agent_use_swarm_detect_threat(
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune detect_threat failed: %d", result);
         *threat_detected_out = false;
         if (threat_id_out) *threat_id_out = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_detect_threat: validation failed");
         return -1;
     }
 
@@ -5905,9 +6219,13 @@ int nimcp_health_agent_use_swarm_generate_response(
     uint32_t threat_id,
     uint32_t* response_id_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_generate_response: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->swarm_immune) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune not connected for generate_response");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_generate_response: agent->swarm_immune is NULL");
         return -1;
     }
 
@@ -5926,6 +6244,7 @@ int nimcp_health_agent_use_swarm_generate_response(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune generate_response failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_generate_response: validation failed");
         return -1;
     }
     return 0;
@@ -5936,10 +6255,17 @@ int nimcp_health_agent_use_swarm_check_behavior(
     uint32_t component_id,
     float* anomaly_score_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!anomaly_score_out) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_check_behavior: validate_agent is NULL");
+        return -1;
+    }
+    if (!anomaly_score_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_check_behavior: anomaly_score_out is NULL");
+        return -1;
+    }
     if (!agent->swarm_immune) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune not connected for check_behavior");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_check_behavior: agent->swarm_immune is NULL");
         return -1;
     }
 
@@ -5968,6 +6294,7 @@ int nimcp_health_agent_use_swarm_check_behavior(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune check_behavior failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_check_behavior: validation failed");
         return -1;
     }
     return 0;
@@ -5980,10 +6307,17 @@ int nimcp_health_agent_use_swarm_add_memory_cell(
     uint32_t response_type,
     uint32_t* cell_id_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!pattern) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_add_memory_cell: validate_agent is NULL");
+        return -1;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_add_memory_cell: pattern is NULL");
+        return -1;
+    }
     if (!agent->swarm_immune) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune not connected for add_memory_cell");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_add_memory_cell: agent->swarm_immune is NULL");
         return -1;
     }
 
@@ -6013,6 +6347,7 @@ int nimcp_health_agent_use_swarm_add_memory_cell(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm immune add_memory_cell failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_add_memory_cell: validation failed");
         return -1;
     }
     return 0;
@@ -6030,10 +6365,17 @@ int nimcp_health_agent_use_swarm_memory_store(
     uint32_t importance,
     char* pattern_id_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!pattern_data) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_store: validate_agent is NULL");
+        return -1;
+    }
+    if (!pattern_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_swarm_memory_store: pattern_data is NULL");
+        return -1;
+    }
     if (!agent->swarm_memory) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory not connected for store");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_swarm_memory_store: agent->swarm_memory is NULL");
         return -1;
     }
 
@@ -6058,6 +6400,7 @@ int nimcp_health_agent_use_swarm_memory_store(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory store failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_store: validation failed");
         return -1;
     }
     return 0;
@@ -6067,9 +6410,13 @@ int nimcp_health_agent_use_swarm_memory_replay(
     nimcp_health_agent_t* agent,
     uint32_t count
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_replay: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->swarm_memory) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory not connected for replay");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_swarm_memory_replay: agent->swarm_memory is NULL");
         return -1;
     }
 
@@ -6087,15 +6434,20 @@ int nimcp_health_agent_use_swarm_memory_replay(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory replay failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_replay: validation failed");
         return -1;
     }
     return (int)replays_performed;
 }
 
 int nimcp_health_agent_use_swarm_memory_consolidate(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_consolidate: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->swarm_memory) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory not connected for consolidate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_swarm_memory_consolidate: agent->swarm_memory is NULL");
         return -1;
     }
 
@@ -6110,6 +6462,7 @@ int nimcp_health_agent_use_swarm_memory_consolidate(nimcp_health_agent_t* agent)
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory consolidate failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_consolidate: validation failed");
         return -1;
     }
 
@@ -6123,9 +6476,13 @@ int nimcp_health_agent_use_swarm_memory_get_stats(
     uint64_t* consolidated_out,
     float* avg_strength_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_get_stats: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->swarm_memory) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory not connected for get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_swarm_memory_get_stats: agent->swarm_memory is NULL");
         return -1;
     }
 
@@ -6138,6 +6495,7 @@ int nimcp_health_agent_use_swarm_memory_get_stats(
 
     if (result != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_WARN, "Swarm memory get_statistics failed: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_swarm_memory_get_stats: validation failed");
         return -1;
     }
 
@@ -6156,10 +6514,17 @@ int nimcp_health_agent_use_engram_encode(
     const health_agent_message_t* msg,
     uint64_t* engram_id_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!msg) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_engram_encode: validate_agent is NULL");
+        return -1;
+    }
+    if (!msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_engram_encode: msg is NULL");
+        return -1;
+    }
     if (!agent->engram) {
         nimcp_log(LOG_LEVEL_WARN, "Engram not connected for encode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_engram_encode: agent->engram is NULL");
         return -1;
     }
 
@@ -6185,10 +6550,17 @@ int nimcp_health_agent_use_engram_recall(
     uint32_t max_recalls,
     uint32_t* num_recalled_out
 ) {
-    if (!validate_agent(agent)) return -1;
-    if (!msg || !num_recalled_out) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_engram_recall: validate_agent is NULL");
+        return -1;
+    }
+    if (!msg || !num_recalled_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_engram_recall: required parameter is NULL (msg, num_recalled_out)");
+        return -1;
+    }
     if (!agent->engram) {
         nimcp_log(LOG_LEVEL_WARN, "Engram not connected for recall");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_engram_recall: agent->engram is NULL");
         return -1;
     }
 
@@ -6213,9 +6585,13 @@ int nimcp_health_agent_use_engram_get_stats(
     uint32_t* consolidated_out,
     float* avg_strength_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_engram_get_stats: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->engram) {
         nimcp_log(LOG_LEVEL_WARN, "Engram not connected for get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_engram_get_stats: agent->engram is NULL");
         return -1;
     }
 
@@ -6237,9 +6613,13 @@ int nimcp_health_agent_use_consolidation_replay(
     nimcp_health_agent_t* agent,
     uint32_t replay_count
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_consolidation_replay: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->memory_consolidation) {
         nimcp_log(LOG_LEVEL_WARN, "Memory consolidation not connected for replay");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_consolidation_replay: agent->memory_consolidation is NULL");
         return -1;
     }
 
@@ -6254,9 +6634,13 @@ int nimcp_health_agent_use_consolidation_replay(
 }
 
 int nimcp_health_agent_use_consolidation_extract_semantics(nimcp_health_agent_t* agent) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_consolidation_extract_semantics: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->memory_consolidation) {
         nimcp_log(LOG_LEVEL_WARN, "Memory consolidation not connected for extract_semantics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_consolidation_extract_semantics: agent->memory_consolidation is NULL");
         return -1;
     }
 
@@ -6276,9 +6660,13 @@ int nimcp_health_agent_use_consolidation_get_stats(
     uint64_t* total_replays_out,
     uint64_t* total_transfers_out
 ) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_use_consolidation_get_stats: validate_agent is NULL");
+        return -1;
+    }
     if (!agent->memory_consolidation) {
         nimcp_log(LOG_LEVEL_WARN, "Memory consolidation not connected for get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_health_agent_use_consolidation_get_stats: agent->memory_consolidation is NULL");
         return -1;
     }
 
@@ -6311,7 +6699,10 @@ int nimcp_health_agent_use_consolidation_get_stats(
  */
 static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
                                           health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t errors = 0;
@@ -6372,7 +6763,10 @@ static bool agent_check_reference_counts(nimcp_health_agent_t* agent,
  */
 static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
                                          health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t corruptions = 0;
@@ -6414,7 +6808,10 @@ static bool agent_check_pointer_canaries(nimcp_health_agent_t* agent,
  */
 static bool agent_check_struct_magic(nimcp_health_agent_t* agent,
                                        health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t violations = 0;
@@ -6456,7 +6853,10 @@ static bool agent_check_struct_magic(nimcp_health_agent_t* agent,
  */
 static bool agent_check_mutex_state(nimcp_health_agent_t* agent,
                                       health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_use_consolidation_get_stats: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t anomalies = 0;
@@ -6518,7 +6918,10 @@ static bool agent_check_mutex_state(nimcp_health_agent_t* agent,
  */
 static bool agent_check_circular_buffers(nimcp_health_agent_t* agent,
                                           health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t errors = 0;
@@ -6595,7 +6998,10 @@ static bool agent_check_circular_buffers(nimcp_health_agent_t* agent,
  */
 static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent,
                                          health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t inconsistencies = 0;
@@ -6622,7 +7028,10 @@ static bool agent_check_knowledge_graph(nimcp_health_agent_t* agent,
  */
 static bool agent_check_neuron_values(nimcp_health_agent_t* agent,
                                        health_agent_consistency_result_t* result) {
-    if (!agent || !result) return false;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (agent, result)");
+        return false;
+    }
 
     bool passed = true;
     uint32_t nan_inf_count = 0;
@@ -6839,7 +7248,10 @@ static void agent_run_consistency_checks(nimcp_health_agent_t* agent) {
 
 int nimcp_health_agent_check_consistency(nimcp_health_agent_t* agent,
                                           health_agent_consistency_result_t* result) {
-    if (!validate_agent(agent)) return -1;
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_run_consistency_checks: validate_agent is NULL");
+        return -1;
+    }
 
     /* Run all consistency checks immediately */
     health_agent_consistency_result_t local_result;
@@ -6883,8 +7295,14 @@ int nimcp_health_agent_check_consistency(nimcp_health_agent_t* agent,
 
 int nimcp_health_agent_get_consistency_status(const nimcp_health_agent_t* agent,
                                                health_agent_consistency_result_t* result) {
-    if (!agent || !result) return -1;
-    if (!validate_agent(agent)) return -1;
+    if (!agent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_run_consistency_checks: required parameter is NULL (agent, result)");
+        return -1;
+    }
+    if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_run_consistency_checks: validate_agent is NULL");
+        return -1;
+    }
 
     /* Cast away const for mutex lock (safe since we're only reading) */
     nimcp_health_agent_t* mutable_agent = (nimcp_health_agent_t*)agent;
@@ -6895,12 +7313,16 @@ int nimcp_health_agent_get_consistency_status(const nimcp_health_agent_t* agent,
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_run_consistency_checks: validation failed");
     return -1;
 }
 
 int nimcp_health_agent_update_consistency_config(nimcp_health_agent_t* agent,
                                                   const health_agent_consistency_config_t* config) {
-    if (!validate_agent(agent) || !config) return -1;
+    if (!validate_agent(agent) || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_run_consistency_checks: required parameter is NULL (validate_agent, config)");
+        return -1;
+    }
 
     /* Update consistency config with lock */
     if (nimcp_mutex_lock(agent->state_mutex) == 0) {
@@ -6911,6 +7333,7 @@ int nimcp_health_agent_update_consistency_config(nimcp_health_agent_t* agent,
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -6919,6 +7342,7 @@ bool nimcp_health_agent_validate_magic(const void* ptr, uint32_t expected_magic,
     if (!ptr) {
         nimcp_log(LOG_LEVEL_ERROR, "Cannot validate magic: NULL pointer for '%s'",
                   struct_name ? struct_name : "unknown");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ptr is NULL");
         return false;
     }
 
@@ -6926,6 +7350,7 @@ bool nimcp_health_agent_validate_magic(const void* ptr, uint32_t expected_magic,
     if (actual_magic != expected_magic) {
         nimcp_log(LOG_LEVEL_ERROR, "Magic validation failed for '%s': expected 0x%X, got 0x%X",
                   struct_name ? struct_name : "unknown", expected_magic, actual_magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -6934,7 +7359,10 @@ bool nimcp_health_agent_validate_magic(const void* ptr, uint32_t expected_magic,
 
 int nimcp_health_agent_register_struct(nimcp_health_agent_t* agent, void* ptr,
                                         uint32_t expected_magic, const char* name) {
-    if (!validate_agent(agent) || !ptr || !name) return -1;
+    if (!validate_agent(agent) || !ptr || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (validate_agent, ptr, name)");
+        return -1;
+    }
 
     int result = -1;
 
@@ -6965,7 +7393,10 @@ int nimcp_health_agent_register_struct(nimcp_health_agent_t* agent, void* ptr,
 }
 
 int nimcp_health_agent_unregister_struct(nimcp_health_agent_t* agent, void* ptr) {
-    if (!validate_agent(agent) || !ptr) return -1;
+    if (!validate_agent(agent) || !ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_unregister_struct: required parameter is NULL (validate_agent, ptr)");
+        return -1;
+    }
 
     int result = -1;
 
@@ -7036,11 +7467,13 @@ int nimcp_health_agent_connect_hippocampus(
     const health_agent_hippocampus_config_t* config)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_hippocampus: validate_agent is NULL");
         return -1;
     }
 
     if (!hippocampus) {
         nimcp_log(LOG_LEVEL_ERROR, "Null hippocampus in connect_hippocampus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_hippocampus: hippocampus is NULL");
         return -1;
     }
 
@@ -7067,11 +7500,13 @@ int nimcp_health_agent_connect_mammillary(
     const health_agent_mammillary_config_t* config)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_mammillary: validate_agent is NULL");
         return -1;
     }
 
     if (!mammillary) {
         nimcp_log(LOG_LEVEL_ERROR, "Null mammillary in connect_mammillary");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_mammillary: mammillary is NULL");
         return -1;
     }
 
@@ -7097,6 +7532,7 @@ int nimcp_health_agent_get_memory_metrics(
     memory_health_metrics_t* metrics)
 {
     if (!validate_agent(agent) || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_memory_metrics: required parameter is NULL (validate_agent, metrics)");
         return -1;
     }
 
@@ -7172,6 +7608,7 @@ int nimcp_health_agent_validate_memory_consistency(
     nimcp_health_agent_t* agent)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_validate_memory_consistency: validate_agent is NULL");
         return -1;
     }
 
@@ -7213,6 +7650,7 @@ int nimcp_health_agent_memory_recovery(
     int target_module)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_memory_recovery: validate_agent is NULL");
         return -1;
     }
 
@@ -7276,6 +7714,7 @@ bool nimcp_health_agent_memory_needs_attention(
     const nimcp_health_agent_t* agent)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_memory_needs_attention: validate_agent is NULL");
         return false;
     }
 
@@ -7294,6 +7733,7 @@ bool nimcp_health_agent_memory_needs_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_memory_needs_attention: validation failed");
     return false;
 }
 
@@ -7306,10 +7746,12 @@ int nimcp_health_agent_register_capacity_manager(
     capacity_manager_t* cm)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_register_capacity_manager: validate_agent is NULL");
         return -1;
     }
     if (!cm) {
         nimcp_log(LOG_LEVEL_WARN, "Null capacity manager in registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_register_capacity_manager: cm is NULL");
         return -1;
     }
 
@@ -7319,6 +7761,7 @@ int nimcp_health_agent_register_capacity_manager(
         agent->capacity_mutex = nimcp_mutex_create(&attr);
         if (!agent->capacity_mutex) {
             nimcp_log(LOG_LEVEL_ERROR, "Failed to create capacity mutex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_register_capacity_manager: agent->capacity_mutex is NULL");
             return -1;
         }
     }
@@ -7331,6 +7774,7 @@ int nimcp_health_agent_register_capacity_manager(
         nimcp_mutex_unlock(agent->capacity_mutex);
         nimcp_log(LOG_LEVEL_ERROR, "Max capacity managers reached (%u)",
                   HEALTH_AGENT_MAX_CAPACITY_MANAGERS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_register_capacity_manager: capacity exceeded");
         return -1;
     }
 
@@ -7358,9 +7802,11 @@ int nimcp_health_agent_unregister_capacity_manager(
     capacity_manager_t* cm)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_unregister_capacity_manager: validate_agent is NULL");
         return -1;
     }
     if (!cm || !agent->capacity_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_unregister_capacity_manager: required parameter is NULL (cm, agent->capacity_mutex)");
         return -1;
     }
 
@@ -7394,6 +7840,7 @@ int nimcp_health_agent_get_capacity_metrics(
     capacity_health_metrics_t* metrics)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_capacity_metrics: validate_agent is NULL");
         return -1;
     }
     if (!metrics) {
@@ -7465,6 +7912,7 @@ bool nimcp_health_agent_capacity_needs_attention(
     const nimcp_health_agent_t* agent)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_capacity_needs_attention: validate_agent is NULL");
         return false;
     }
 
@@ -7480,6 +7928,7 @@ bool nimcp_health_agent_capacity_needs_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_capacity_needs_attention: capacity exceeded");
     return false;
 }
 
@@ -7532,10 +7981,12 @@ int nimcp_health_agent_connect_symbolic_logic(
     const health_agent_symbolic_logic_config_t* config)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_symbolic_logic: validate_agent is NULL");
         return -1;
     }
     if (!logic) {
         nimcp_log(LOG_LEVEL_WARN, "Null symbolic logic engine in connection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_symbolic_logic: logic is NULL");
         return -1;
     }
 
@@ -7545,6 +7996,7 @@ int nimcp_health_agent_connect_symbolic_logic(
         agent->logic_mutex = nimcp_mutex_create(&attr);
         if (!agent->logic_mutex) {
             nimcp_log(LOG_LEVEL_ERROR, "Failed to create logic mutex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_symbolic_logic: agent->logic_mutex is NULL");
             return -1;
         }
     }
@@ -7556,6 +8008,7 @@ int nimcp_health_agent_connect_symbolic_logic(
     if (count >= HEALTH_AGENT_MAX_LOGIC_ENGINES) {
         nimcp_mutex_unlock(agent->logic_mutex);
         nimcp_log(LOG_LEVEL_WARN, "Max logic engines reached (%u)", HEALTH_AGENT_MAX_LOGIC_ENGINES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_connect_symbolic_logic: capacity exceeded");
         return -1;
     }
 
@@ -7594,6 +8047,7 @@ int nimcp_health_agent_disconnect_symbolic_logic(
     symbolic_logic_t* logic)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_disconnect_symbolic_logic: validate_agent is NULL");
         return -1;
     }
     if (!logic) {
@@ -7635,6 +8089,7 @@ int nimcp_health_agent_get_logic_metrics(
     logic_health_metrics_t* metrics)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_get_logic_metrics: validate_agent is NULL");
         return -1;
     }
     if (!metrics) {
@@ -7788,12 +8243,14 @@ int nimcp_health_agent_logic_recovery(
     int engine_index)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_logic_recovery: validate_agent is NULL");
         return -1;
     }
 
     uint32_t count = atomic_load(&agent->num_logic_engines);
     if (count == 0) {
         nimcp_log(LOG_LEVEL_WARN, "No logic engines connected for recovery");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_logic_recovery: count is zero");
         return -1;
     }
 
@@ -7804,6 +8261,7 @@ int nimcp_health_agent_logic_recovery(
     if (engine_index >= 0) {
         if ((uint32_t)engine_index >= count) {
             nimcp_log(LOG_LEVEL_WARN, "Invalid logic engine index: %d", engine_index);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_logic_recovery: capacity exceeded");
             return -1;
         }
         start_idx = (uint32_t)engine_index;
@@ -7899,11 +8357,13 @@ bool nimcp_health_agent_logic_needs_attention(
     const nimcp_health_agent_t* agent)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_logic_needs_attention: validate_agent is NULL");
         return false;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_logic_engines);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_logic_needs_attention: count is zero");
         return false;  /* No engines, no attention needed */
     }
 
@@ -7939,6 +8399,7 @@ bool nimcp_health_agent_logic_needs_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_logic_needs_attention: operation failed");
     return false;
 }
 
@@ -7962,6 +8423,7 @@ int nimcp_health_agent_update_logic_config(
     const health_agent_symbolic_logic_config_t* config)
 {
     if (!validate_agent(agent)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_update_logic_config: validate_agent is NULL");
         return -1;
     }
     if (!config) {
@@ -8043,6 +8505,7 @@ int nimcp_health_agent_connect_substrate(
     }
     if (!substrate) {
         nimcp_log(LOG_LEVEL_WARN, "Null neural substrate in connection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_substrate: substrate is NULL");
         return -1;
     }
 
@@ -8052,6 +8515,7 @@ int nimcp_health_agent_connect_substrate(
         agent->substrate_mutex = nimcp_mutex_create(&attr);
         if (!agent->substrate_mutex) {
             nimcp_log(LOG_LEVEL_ERROR, "Failed to create substrate mutex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_substrate: agent->substrate_mutex is NULL");
             return -1;
         }
     }
@@ -8063,6 +8527,7 @@ int nimcp_health_agent_connect_substrate(
     if (count >= HEALTH_AGENT_MAX_NEURAL_SUBSTRATES) {
         nimcp_mutex_unlock(agent->substrate_mutex);
         nimcp_log(LOG_LEVEL_WARN, "Maximum neural substrates reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_connect_substrate: capacity exceeded");
         return -1;
     }
 
@@ -8101,10 +8566,12 @@ int nimcp_health_agent_disconnect_substrate(
     neural_substrate_t* substrate
 ) {
     if (!agent || !substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_substrate: required parameter is NULL (agent, substrate)");
         return -1;
     }
 
     if (!agent->substrate_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_substrate: agent->substrate_mutex is NULL");
         return -1;  /* No substrates registered */
     }
 
@@ -8140,6 +8607,7 @@ int nimcp_health_agent_get_substrate_metrics(
     substrate_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_substrate_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -8320,11 +8788,13 @@ int nimcp_health_agent_substrate_recovery(
     uint32_t count = atomic_load(&agent->num_substrates);
     if (count == 0) {
         nimcp_log(LOG_LEVEL_WARN, "No neural substrates connected for recovery");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_substrate_recovery: count is zero");
         return -1;
     }
 
     if (substrate_index >= 0 && (uint32_t)substrate_index >= count) {
         nimcp_log(LOG_LEVEL_WARN, "Invalid substrate index: %d", substrate_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_substrate_recovery: capacity exceeded");
         return -1;
     }
 
@@ -8402,11 +8872,13 @@ bool nimcp_health_agent_substrate_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_substrate_needs_attention: agent is NULL");
         return false;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_substrates);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_substrate_needs_attention: count is zero");
         return false;  /* No substrates to check */
     }
 
@@ -8427,6 +8899,7 @@ bool nimcp_health_agent_substrate_needs_attention(
         /* For now, assume healthy if we got this far */
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_substrate_needs_attention: sub is NULL");
     return false;
 }
 
@@ -8450,6 +8923,7 @@ int nimcp_health_agent_update_substrate_config(
     const health_agent_substrate_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_substrate_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -8567,6 +9041,7 @@ int nimcp_health_agent_connect_thalamic(
 ) {
     if (!agent || !bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "connect_thalamic: NULL agent or bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_thalamic: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -8594,6 +9069,7 @@ int nimcp_health_agent_connect_thalamic(
         }
         nimcp_log(LOG_LEVEL_ERROR, "Maximum thalamic bridges exceeded (%u)",
                   HEALTH_AGENT_MAX_THALAMIC_BRIDGES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_thalamic: validation failed");
         return -1;
     }
 
@@ -8625,6 +9101,7 @@ int nimcp_health_agent_disconnect_thalamic(
     omni_wm_thalamic_bridge_t* bridge
 ) {
     if (!agent || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_thalamic: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -8659,6 +9136,7 @@ int nimcp_health_agent_disconnect_thalamic(
     }
 
     nimcp_log(LOG_LEVEL_WARN, "Thalamic bridge not found for disconnect");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_disconnect_thalamic: validation failed");
     return -1;
 }
 
@@ -8673,6 +9151,7 @@ int nimcp_health_agent_connect_middleware(
 ) {
     if (!agent || !training_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "connect_middleware: NULL agent or context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_middleware: required parameter is NULL (agent, training_ctx)");
         return -1;
     }
 
@@ -8700,6 +9179,7 @@ int nimcp_health_agent_connect_middleware(
         }
         nimcp_log(LOG_LEVEL_ERROR, "Maximum training contexts exceeded (%u)",
                   HEALTH_AGENT_MAX_TRAINING_CONTEXTS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_middleware: validation failed");
         return -1;
     }
 
@@ -8731,6 +9211,7 @@ int nimcp_health_agent_disconnect_middleware(
     nimcp_brain_training_ctx_t* training_ctx
 ) {
     if (!agent || !training_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_middleware: required parameter is NULL (agent, training_ctx)");
         return -1;
     }
 
@@ -8765,6 +9246,7 @@ int nimcp_health_agent_disconnect_middleware(
     }
 
     nimcp_log(LOG_LEVEL_WARN, "Training context not found for disconnect");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_disconnect_middleware: validation failed");
     return -1;
 }
 
@@ -8777,6 +9259,7 @@ int nimcp_health_agent_get_thalamic_metrics(
     thalamic_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_thalamic_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -8951,6 +9434,7 @@ int nimcp_health_agent_get_middleware_metrics(
     middleware_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_middleware_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -9037,6 +9521,7 @@ int nimcp_health_agent_thalamic_recovery(
     uint32_t count = atomic_load(&agent->num_thalamic_bridges);
     if (count == 0) {
         nimcp_log(LOG_LEVEL_WARN, "Thalamic recovery: no bridges registered");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_thalamic_recovery: count is zero");
         return -1;
     }
 
@@ -9046,6 +9531,7 @@ int nimcp_health_agent_thalamic_recovery(
 
     if (start_idx >= count) {
         nimcp_log(LOG_LEVEL_ERROR, "Thalamic recovery: invalid bridge index %d", bridge_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_thalamic_recovery: capacity exceeded");
         return -1;
     }
 
@@ -9165,6 +9651,7 @@ int nimcp_health_agent_middleware_recovery(
     uint32_t count = atomic_load(&agent->num_training_contexts);
     if (count == 0) {
         nimcp_log(LOG_LEVEL_WARN, "Middleware recovery: no contexts registered");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_middleware_recovery: count is zero");
         return -1;
     }
 
@@ -9174,6 +9661,7 @@ int nimcp_health_agent_middleware_recovery(
 
     if (start_idx >= count) {
         nimcp_log(LOG_LEVEL_ERROR, "Middleware recovery: invalid context index %d", context_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_middleware_recovery: capacity exceeded");
         return -1;
     }
 
@@ -9253,11 +9741,13 @@ bool nimcp_health_agent_thalamic_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_thalamic_needs_attention: agent is NULL");
         return false;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_thalamic_bridges);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_thalamic_needs_attention: count is zero");
         return false;  /* No bridges = no attention needed */
     }
 
@@ -9297,6 +9787,7 @@ bool nimcp_health_agent_thalamic_needs_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_thalamic_needs_attention: operation failed");
     return false;
 }
 
@@ -9323,11 +9814,13 @@ bool nimcp_health_agent_middleware_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_middleware_needs_attention: agent is NULL");
         return false;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_training_contexts);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_middleware_needs_attention: count is zero");
         return false;  /* No contexts = no attention needed */
     }
 
@@ -9344,6 +9837,7 @@ bool nimcp_health_agent_middleware_needs_attention(
      * update the health score which is then checked here.
      */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_middleware_needs_attention: operation failed");
     return false;
 }
 
@@ -9371,6 +9865,7 @@ int nimcp_health_agent_update_thalamic_config(
     const health_agent_thalamic_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_thalamic_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -9393,6 +9888,7 @@ int nimcp_health_agent_update_middleware_config(
     const health_agent_middleware_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_middleware_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -9511,6 +10007,7 @@ int nimcp_health_agent_connect_visual(
     const health_agent_perception_config_t* config
 ) {
     if (!agent || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_visual: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -9534,6 +10031,7 @@ int nimcp_health_agent_connect_visual(
             nimcp_mutex_unlock(agent->perception_mutex);
         }
         nimcp_log(LOG_LEVEL_WARN, "Maximum visual bridges reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_visual: validation failed");
         return -1;
     }
 
@@ -9558,6 +10056,7 @@ int nimcp_health_agent_disconnect_visual(
     visual_cortical_bridge_t* bridge
 ) {
     if (!agent || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_visual: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -9587,6 +10086,7 @@ int nimcp_health_agent_disconnect_visual(
         nimcp_mutex_unlock(agent->perception_mutex);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_disconnect_visual: validation failed");
     return -1;  /* Not found */
 }
 
@@ -9600,6 +10100,7 @@ int nimcp_health_agent_connect_audio(
     const health_agent_perception_config_t* config
 ) {
     if (!agent || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_audio: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -9623,6 +10124,7 @@ int nimcp_health_agent_connect_audio(
             nimcp_mutex_unlock(agent->perception_mutex);
         }
         nimcp_log(LOG_LEVEL_WARN, "Maximum audio bridges reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_audio: validation failed");
         return -1;
     }
 
@@ -9647,6 +10149,7 @@ int nimcp_health_agent_disconnect_audio(
     audio_cortical_bridge_t* bridge
 ) {
     if (!agent || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_audio: required parameter is NULL (agent, bridge)");
         return -1;
     }
 
@@ -9676,6 +10179,7 @@ int nimcp_health_agent_disconnect_audio(
         nimcp_mutex_unlock(agent->perception_mutex);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_disconnect_audio: validation failed");
     return -1;  /* Not found */
 }
 
@@ -9689,6 +10193,7 @@ int nimcp_health_agent_connect_cortical_immune(
     const health_agent_cortical_config_t* config
 ) {
     if (!agent || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_cortical_immune: required parameter is NULL (agent, immune_system)");
         return -1;
     }
 
@@ -9712,6 +10217,7 @@ int nimcp_health_agent_connect_cortical_immune(
             nimcp_mutex_unlock(agent->cortical_mutex);
         }
         nimcp_log(LOG_LEVEL_WARN, "Maximum cortical immune systems reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_cortical_immune: validation failed");
         return -1;
     }
 
@@ -9736,6 +10242,7 @@ int nimcp_health_agent_disconnect_cortical_immune(
     cortical_immune_system_t* immune_system
 ) {
     if (!agent || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_cortical_immune: required parameter is NULL (agent, immune_system)");
         return -1;
     }
 
@@ -9765,6 +10272,7 @@ int nimcp_health_agent_disconnect_cortical_immune(
         nimcp_mutex_unlock(agent->cortical_mutex);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_disconnect_cortical_immune: validation failed");
     return -1;  /* Not found */
 }
 
@@ -9778,6 +10286,7 @@ int nimcp_health_agent_connect_cortical_column(
     const health_agent_cortical_config_t* config
 ) {
     if (!agent || !column) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_cortical_column: required parameter is NULL (agent, column)");
         return -1;
     }
 
@@ -9801,6 +10310,7 @@ int nimcp_health_agent_connect_cortical_column(
             nimcp_mutex_unlock(agent->cortical_mutex);
         }
         nimcp_log(LOG_LEVEL_WARN, "Maximum cortical columns reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_connect_cortical_column: validation failed");
         return -1;
     }
 
@@ -9825,6 +10335,7 @@ int nimcp_health_agent_disconnect_cortical_column(
     hypercolumn_t* column
 ) {
     if (!agent || !column) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_disconnect_cortical_column: required parameter is NULL (agent, column)");
         return -1;
     }
 
@@ -9854,6 +10365,7 @@ int nimcp_health_agent_disconnect_cortical_column(
         nimcp_mutex_unlock(agent->cortical_mutex);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_disconnect_cortical_column: validation failed");
     return -1;  /* Not found */
 }
 
@@ -9866,6 +10378,7 @@ int nimcp_health_agent_get_perception_metrics(
     perception_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_perception_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -9966,6 +10479,7 @@ int nimcp_health_agent_get_cortical_metrics(
     cortical_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_cortical_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -10100,6 +10614,7 @@ int nimcp_health_agent_perception_recovery(
             break;
         default:
             nimcp_log(LOG_LEVEL_ERROR, "Perception recovery: Unknown action %d", action);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_perception_recovery: operation failed");
             return -1;
     }
 
@@ -10172,6 +10687,7 @@ int nimcp_health_agent_cortical_recovery(
             break;
         default:
             nimcp_log(LOG_LEVEL_ERROR, "Cortical recovery: Unknown action %d", action);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_cortical_recovery: operation failed");
             return -1;
     }
 
@@ -10188,6 +10704,7 @@ bool nimcp_health_agent_perception_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_perception_needs_attention: agent is NULL");
         return false;
     }
 
@@ -10195,6 +10712,7 @@ bool nimcp_health_agent_perception_needs_attention(
     uint32_t audio_count = atomic_load(&((nimcp_health_agent_t*)agent)->num_audio_bridges);
 
     if (visual_count == 0 && audio_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_perception_needs_attention: visual_count is zero");
         return false;  /* No bridges = no attention needed */
     }
 
@@ -10210,6 +10728,7 @@ bool nimcp_health_agent_cortical_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_cortical_needs_attention: agent is NULL");
         return false;
     }
 
@@ -10217,6 +10736,7 @@ bool nimcp_health_agent_cortical_needs_attention(
     uint32_t column_count = atomic_load(&((nimcp_health_agent_t*)agent)->num_cortical_columns);
 
     if (immune_count == 0 && column_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_cortical_needs_attention: immune_count is zero");
         return false;  /* No cortical components = no attention needed */
     }
 
@@ -10275,6 +10795,7 @@ int nimcp_health_agent_update_perception_config(
     const health_agent_perception_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_perception_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -10301,6 +10822,7 @@ int nimcp_health_agent_update_cortical_config(
     const health_agent_cortical_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_cortical_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -10382,6 +10904,7 @@ int nimcp_health_agent_register_brain_probe(
     const health_agent_brain_probe_config_t* config
 ) {
     if (!agent || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_register_brain_probe: required parameter is NULL (agent, brain)");
         return -1;
     }
 
@@ -10395,6 +10918,7 @@ int nimcp_health_agent_register_brain_probe(
             nimcp_mutex_unlock(agent->brain_probe_mutex);
         }
         nimcp_log(LOG_LEVEL_WARN, "Maximum brain probe slots reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_register_brain_probe: validation failed");
         return -1;
     }
 
@@ -10442,6 +10966,7 @@ int nimcp_health_agent_unregister_brain_probe(
     brain_t brain
 ) {
     if (!agent || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_unregister_brain_probe: required parameter is NULL (agent, brain)");
         return -1;
     }
 
@@ -10463,6 +10988,7 @@ int nimcp_health_agent_unregister_brain_probe(
         if (agent->brain_probe_mutex) {
             nimcp_mutex_unlock(agent->brain_probe_mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_health_agent_unregister_brain_probe: validation failed");
         return -1;
     }
 
@@ -10724,11 +11250,13 @@ int nimcp_health_agent_get_brain_probe_metrics(
     brain_probe_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_brain_probe_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_monitored_brains);
     if (brain_index >= count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_get_brain_probe_metrics: capacity exceeded");
         return -1;
     }
 
@@ -10763,6 +11291,7 @@ int nimcp_health_agent_brain_probe_recovery(
 
     uint32_t count = atomic_load(&agent->num_monitored_brains);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_brain_probe_recovery: count is zero");
         return -1;
     }
 
@@ -10771,6 +11300,7 @@ int nimcp_health_agent_brain_probe_recovery(
     uint32_t end_idx = count;
     if (brain_index >= 0) {
         if ((uint32_t)brain_index >= count) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_health_agent_brain_probe_recovery: capacity exceeded");
             return -1;
         }
         start_idx = (uint32_t)brain_index;
@@ -10846,11 +11376,13 @@ bool nimcp_health_agent_brain_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_brain_needs_attention: agent is NULL");
         return false;
     }
 
     uint32_t count = atomic_load(&((nimcp_health_agent_t*)agent)->num_monitored_brains);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_brain_needs_attention: count is zero");
         return false;
     }
 
@@ -10864,6 +11396,7 @@ bool nimcp_health_agent_brain_needs_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_brain_needs_attention: validation failed");
     return false;
 }
 
@@ -10901,6 +11434,7 @@ int nimcp_health_agent_update_brain_probe_config(
     const health_agent_brain_probe_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_brain_probe_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -11046,6 +11580,7 @@ int nimcp_health_agent_connect_jepa(
     const health_agent_wm_imagination_config_t* config
 ) {
     if (!agent || !jepa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_jepa: required parameter is NULL (agent, jepa)");
         return -1;
     }
 
@@ -11114,6 +11649,7 @@ int nimcp_health_agent_connect_world_model(
     const health_agent_wm_imagination_config_t* config
 ) {
     if (!agent || !world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_world_model: required parameter is NULL (agent, world_model)");
         return -1;
     }
 
@@ -11184,6 +11720,7 @@ int nimcp_health_agent_connect_imagination(
     const health_agent_wm_imagination_config_t* config
 ) {
     if (!agent || !imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_connect_imagination: required parameter is NULL (agent, imagination)");
         return -1;
     }
 
@@ -11252,6 +11789,7 @@ int nimcp_health_agent_get_jepa_metrics(
     jepa_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_jepa_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -11273,6 +11811,7 @@ int nimcp_health_agent_get_world_model_metrics(
     omni_wm_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_world_model_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -11294,6 +11833,7 @@ int nimcp_health_agent_get_imagination_metrics(
     imagination_health_metrics_t* metrics
 ) {
     if (!agent || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_imagination_metrics: required parameter is NULL (agent, metrics)");
         return -1;
     }
 
@@ -11315,6 +11855,7 @@ int nimcp_health_agent_get_world_imagination_health(
     world_imagination_health_t* health
 ) {
     if (!agent || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_world_imagination_health: required parameter is NULL (agent, health)");
         return -1;
     }
 
@@ -11466,6 +12007,7 @@ int nimcp_health_agent_world_model_recovery(
 
         default:
             nimcp_log(LOG_LEVEL_ERROR, "Unknown recovery action: %d", action);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_world_model_recovery: operation failed");
             return -1;
     }
 
@@ -11480,12 +12022,14 @@ bool nimcp_health_agent_world_model_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_world_model_needs_attention: agent is NULL");
         return false;
     }
 
     /* No attention needed if nothing is connected */
     if (!((nimcp_health_agent_t*)agent)->jepa_predictor &&
         !((nimcp_health_agent_t*)agent)->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_world_model_needs_attention: validation failed");
         return false;
     }
 
@@ -11514,6 +12058,7 @@ bool nimcp_health_agent_world_model_needs_attention(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_world_model_needs_attention: validation failed");
     return false;
 }
 
@@ -11521,11 +12066,13 @@ bool nimcp_health_agent_imagination_needs_attention(
     const nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_imagination_needs_attention: agent is NULL");
         return false;
     }
 
     /* No attention needed if nothing is connected */
     if (!((nimcp_health_agent_t*)agent)->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_imagination_needs_attention: validation failed");
         return false;
     }
 
@@ -11561,6 +12108,7 @@ bool nimcp_health_agent_imagination_needs_attention(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_imagination_needs_attention: validation failed");
     return false;
 }
 
@@ -11593,6 +12141,7 @@ int nimcp_health_agent_update_wm_imagination_config(
     const health_agent_wm_imagination_config_t* config
 ) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_update_wm_imagination_config: required parameter is NULL (agent, config)");
         return -1;
     }
 

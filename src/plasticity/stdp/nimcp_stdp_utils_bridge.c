@@ -767,7 +767,10 @@ bool stdp_utils_extract_phase(
     uint32_t num_samples,
     float* phases
 ) {
-    if (!signal || !phases || num_samples == 0) return false;
+    if (!signal || !phases || num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_extract_phase: required parameter is NULL (signal, phases)");
+        return false;
+    }
 
     /* Simple phase extraction using zero-crossing */
     /* For production, use full Hilbert transform from complex_math */

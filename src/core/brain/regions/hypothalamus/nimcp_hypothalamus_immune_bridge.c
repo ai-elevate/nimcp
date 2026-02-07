@@ -257,6 +257,7 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "hypothalamus_immune") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_immune_bridge_create: validation failed");
         return NULL;
     }
 
@@ -291,7 +292,10 @@ int hypo_immune_bridge_update_cytokines(
     hypo_immune_bridge_t* bridge,
     const hypo_cytokine_state_t* cytokines)
 {
-    if (!bridge || !cytokines) return -1;
+    if (!bridge || !cytokines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_update_cytokines: required parameter is NULL (bridge, cytokines)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -380,7 +384,10 @@ int hypo_immune_bridge_get_sickness_state(
     const hypo_immune_bridge_t* bridge,
     hypo_sickness_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_get_sickness_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *state = bridge->sickness;
@@ -471,7 +478,10 @@ int hypo_immune_bridge_get_hpa_state(
     const hypo_immune_bridge_t* bridge,
     hypo_hpa_axis_t* hpa)
 {
-    if (!bridge || !hpa) return -1;
+    if (!bridge || !hpa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_get_hpa_state: required parameter is NULL (bridge, hpa)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *hpa = bridge->hpa;
@@ -637,7 +647,10 @@ int hypo_immune_bridge_apply_sickness_behavior(hypo_immune_bridge_t* bridge) {
 }
 
 bool hypo_immune_bridge_is_cytokine_storm(const hypo_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_is_cytokine_storm: bridge is NULL");
+        return false;
+    }
     return bridge->sickness.cytokine_storm;
 }
 
@@ -714,7 +727,10 @@ bool hypo_immune_bridge_register_bio(
     hypo_immune_bridge_t* bridge,
     bool use_kg_wiring)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring; /* Future KG wiring integration */
@@ -729,6 +745,7 @@ bool hypo_immune_bridge_register_bio(
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge: failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 
@@ -835,7 +852,10 @@ int hypo_immune_bridge_get_stats(
     const hypo_immune_bridge_t* bridge,
     hypo_immune_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -1126,7 +1146,10 @@ int hypo_immune_receive_cytokines(
     hypo_immune_bridge_t* bridge,
     const hypo_immune_cytokines_t* cytokines)
 {
-    if (!bridge || !cytokines) return -1;
+    if (!bridge || !cytokines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_receive_cytokines: required parameter is NULL (bridge, cytokines)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1187,7 +1210,10 @@ int hypo_immune_get_state(
     const hypo_immune_bridge_t* bridge,
     hypo_immune_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
 
@@ -1244,7 +1270,10 @@ float hypo_immune_get_fever_signal(const hypo_immune_bridge_t* bridge)
 
 bool hypo_immune_is_sickness_behavior(const hypo_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_immune_is_sickness_behavior: bridge is NULL");
+        return false;
+    }
     return bridge->sickness.level >= SICKNESS_MILD;
 }
 

@@ -220,6 +220,7 @@ static bool predicate_exists(const occipital_logic_bridge_t* bridge,
 static int add_predicate(occipital_logic_bridge_t* bridge,
                          const visual_predicate_t* pred) {
     if (bridge->predicate_count >= bridge->config.max_predicates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_time_us: capacity exceeded");
         return -1;
     }
 
@@ -875,6 +876,7 @@ int occipital_logic_query_predicate(
     if (truth_value) *truth_value = 0.0f;
     if (confidence) *confidence = 0.0f;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_logic_ground_predicates: validation failed");
     return -1;
 }
 

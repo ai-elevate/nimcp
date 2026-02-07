@@ -287,10 +287,16 @@ int vae_thalamic_bridge_default_config(vae_thalamic_bridge_config_t* config)
 
 vae_thalamic_bridge_t* vae_thalamic_bridge_create(const vae_thalamic_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_thalamic_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_thalamic_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_THAL_STATE_DISCONNECTED;
@@ -434,7 +440,10 @@ int vae_thalamic_bridge_disconnect(vae_thalamic_bridge_t* bridge)
 
 bool vae_thalamic_bridge_is_connected(const vae_thalamic_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_thalamic_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_THAL_STATE_CONNECTED ||
            bridge->state == VAE_THAL_STATE_RELAYING ||
            bridge->state == VAE_THAL_STATE_GATING;
@@ -843,7 +852,10 @@ int vae_thalamic_trigger_burst(vae_thalamic_bridge_t* bridge,
 bool vae_thalamic_is_bursting(const vae_thalamic_bridge_t* bridge,
                                vae_thalamic_nucleus_t nucleus)
 {
-    if (!bridge || nucleus >= VAE_THAL_NUC_COUNT) return false;
+    if (!bridge || nucleus >= VAE_THAL_NUC_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vae_thalamic_is_bursting: bridge is NULL");
+        return false;
+    }
     return bridge->thalamic_state.nuclei[nucleus].is_bursting;
 }
 

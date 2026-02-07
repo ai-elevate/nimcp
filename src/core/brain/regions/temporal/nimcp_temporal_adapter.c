@@ -238,6 +238,7 @@ static auditory_processor_t* create_auditory_processor(const temporal_config_t* 
     proc->spectral_buffer = (float*)nimcp_calloc(proc->num_bands, sizeof(float));
     if (!proc->spectral_buffer) {
         nimcp_free(proc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_auditory_processor: proc->spectral_buffer is NULL");
         return NULL;
     }
 
@@ -272,6 +273,7 @@ static object_recognition_t* create_object_recognition(const temporal_config_t* 
     obj->prototypes = (prototype_node_t**)nimcp_calloc(obj->prototype_capacity, sizeof(prototype_node_t*));
     if (!obj->prototypes) {
         nimcp_free(obj);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_object_recognition: obj->prototypes is NULL");
         return NULL;
     }
 
@@ -320,6 +322,7 @@ static semantic_memory_core_t* create_semantic_memory(const temporal_config_t* c
     sem->concepts = (concept_node_t**)nimcp_calloc(sem->concept_capacity, sizeof(concept_node_t*));
     if (!sem->concepts) {
         nimcp_free(sem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_semantic_memory: sem->concepts is NULL");
         return NULL;
     }
 
@@ -400,6 +403,7 @@ temporal_adapter_t* temporal_create(const temporal_config_t* config) {
     if (!adapter->auditory) {
         LOG_ERROR("[%s] Failed to create auditory processor", TEMPORAL_LOG_MODULE);
         temporal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_create: adapter->auditory is NULL");
         return NULL;
     }
 
@@ -407,6 +411,7 @@ temporal_adapter_t* temporal_create(const temporal_config_t* config) {
     if (!adapter->object) {
         LOG_ERROR("[%s] Failed to create object recognition", TEMPORAL_LOG_MODULE);
         temporal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_create: adapter->object is NULL");
         return NULL;
     }
 
@@ -414,6 +419,7 @@ temporal_adapter_t* temporal_create(const temporal_config_t* config) {
     if (!adapter->semantic) {
         LOG_ERROR("[%s] Failed to create semantic memory", TEMPORAL_LOG_MODULE);
         temporal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_create: adapter->semantic is NULL");
         return NULL;
     }
 
@@ -424,6 +430,7 @@ temporal_adapter_t* temporal_create(const temporal_config_t* config) {
         if (!adapter->working_memory) {
             LOG_ERROR("[%s] Failed to create working memory", TEMPORAL_LOG_MODULE);
             temporal_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_create: adapter->working_memory is NULL");
             return NULL;
         }
     }
@@ -490,6 +497,7 @@ bool temporal_process_audio(
 ) {
     if (!adapter || !frame) {
         if (adapter) set_error(adapter, TEMPORAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_process_audio: validation failed");
         return false;
     }
 
@@ -594,6 +602,7 @@ bool temporal_recognize_object(
 ) {
     if (!adapter || !input || !result) {
         if (adapter) set_error(adapter, TEMPORAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_recognize_object: validation failed");
         return false;
     }
 
@@ -682,6 +691,7 @@ bool temporal_add_object_prototype(
                 memcpy(node->features, features, feature_dim * sizeof(float));
                 return true;
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_add_object_prototype: validation failed");
             return false; /* Dimension mismatch */
         }
         node = node->next;
@@ -689,7 +699,10 @@ bool temporal_add_object_prototype(
 
     /* Create new node */
     prototype_node_t* new_node = (prototype_node_t*)nimcp_calloc(1, sizeof(prototype_node_t));
-    if (!new_node) return false;
+    if (!new_node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_add_object_prototype: new_node is NULL");
+        return false;
+    }
 
     new_node->object_id = object_id;
     strncpy(new_node->name, name, sizeof(new_node->name) - 1);
@@ -697,6 +710,7 @@ bool temporal_add_object_prototype(
     new_node->features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!new_node->features) {
         nimcp_free(new_node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_add_object_prototype: new_node->features is NULL");
         return false;
     }
     memcpy(new_node->features, features, feature_dim * sizeof(float));
@@ -765,7 +779,10 @@ bool temporal_add_concept(
 
     /* Create new node */
     concept_node_t* new_node = (concept_node_t*)nimcp_calloc(1, sizeof(concept_node_t));
-    if (!new_node) return false;
+    if (!new_node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_add_concept: new_node is NULL");
+        return false;
+    }
 
     memcpy(&new_node->concept, concept_entry, sizeof(temporal_concept_t));
 
@@ -774,6 +791,7 @@ bool temporal_add_concept(
         new_node->concept.embedding = (float*)nimcp_malloc(concept_entry->embedding_dim * sizeof(float));
         if (!new_node->concept.embedding) {
             nimcp_free(new_node);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_add_concept: new_node->concept is NULL");
             return false;
         }
         memcpy(new_node->concept.embedding, concept_entry->embedding,
@@ -787,6 +805,7 @@ bool temporal_add_concept(
         if (!new_node->concept.related_concepts) {
             if (new_node->concept.embedding) nimcp_free(new_node->concept.embedding);
             nimcp_free(new_node);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_add_concept: validation failed");
             return false;
         }
         memcpy(new_node->concept.related_concepts, concept_entry->related_concepts,
@@ -823,6 +842,7 @@ bool temporal_get_concept(
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_concept: validation failed");
     return false;
 }
 
@@ -881,6 +901,7 @@ bool temporal_get_related(
     temporal_concept_t source;
     if (!temporal_get_concept(adapter, concept_id, &source)) {
         set_error(adapter, TEMPORAL_ERROR_CONCEPT_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_get_related: temporal_get_concept is NULL");
         return false;
     }
 
@@ -937,6 +958,7 @@ bool temporal_apply_priming(
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_apply_priming: operation failed");
     return false;
 }
 
@@ -953,6 +975,7 @@ bool temporal_wm_push(temporal_adapter_t* adapter, uint32_t concept_id) {
 
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         set_error(adapter, TEMPORAL_ERROR_WORKING_MEMORY_FULL);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_wm_push: capacity exceeded");
         return false;
     }
 
@@ -1225,6 +1248,7 @@ nimcp_bio_future_t temporal_request_semantic_async(
     }
     (void)concept_id;
     /* TODO: Implement async semantic request */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_request_semantic_async: adapter is NULL");
     return NULL;
 }
 

@@ -169,7 +169,10 @@ static void prune_spike_history(physics_lnn_bridge_t* bridge, float current_time
 //=============================================================================
 
 int physics_lnn_default_config(physics_lnn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_default_config: config is NULL");
+        return -1;
+    }
 
     config->encode_method = PHYSICS_LNN_ENCODE_EXPONENTIAL;
     config->spike_tau = PHYSICS_LNN_SPIKE_TAU;
@@ -287,7 +290,10 @@ int physics_lnn_connect_hh(
     physics_lnn_bridge_t* bridge,
     nimcp_hh_population_t* hh_pop
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_connect_hh: bridge is NULL");
+        return -1;
+    }
 
     bridge->hh_pop = hh_pop;
 
@@ -326,7 +332,10 @@ int physics_lnn_connect_lnn(
     physics_lnn_bridge_t* bridge,
     lnn_network_t* network
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_connect_lnn: bridge is NULL");
+        return -1;
+    }
 
     bridge->lnn_network = network;
 
@@ -337,7 +346,10 @@ int physics_lnn_connect_lnn(
 }
 
 int physics_lnn_reset(physics_lnn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Clear spike history */
     bridge->spike_history_count = 0;
@@ -381,8 +393,14 @@ int physics_lnn_register_spike(
     uint32_t neuron_id,
     float spike_time
 ) {
-    if (!bridge) return -1;
-    if (neuron_id >= bridge->num_encoded_channels) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_register_spike: bridge is NULL");
+        return -1;
+    }
+    if (neuron_id >= bridge->num_encoded_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_lnn_register_spike: capacity exceeded");
+        return -1;
+    }
 
     int result = add_spike_to_history(
         bridge,
@@ -403,7 +421,10 @@ int physics_lnn_encode_spikes(
     float current_time,
     physics_lnn_encoded_t* encoded
 ) {
-    if (!bridge || !encoded) return -1;
+    if (!bridge || !encoded) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_encode_spikes: required parameter is NULL (bridge, encoded)");
+        return -1;
+    }
 
     /* Prune old spikes */
     prune_spike_history(bridge, current_time);
@@ -478,8 +499,14 @@ int physics_lnn_detect_spikes(
     float current_time,
     float threshold
 ) {
-    if (!bridge || !bridge->hh_pop) return -1;
-    if (!bridge->prev_voltages) return -1;
+    if (!bridge || !bridge->hh_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_detect_spikes: required parameter is NULL (bridge, bridge->hh_pop)");
+        return -1;
+    }
+    if (!bridge->prev_voltages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_detect_spikes: bridge->prev_voltages is NULL");
+        return -1;
+    }
 
     int spikes_detected = 0;
 
@@ -517,7 +544,10 @@ int physics_lnn_get_modulation(
     physics_lnn_bridge_t* bridge,
     physics_lnn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     /* In a full implementation, we would read LNN output layer */
     /* For now, initialize to neutral values */
@@ -555,7 +585,10 @@ int physics_lnn_apply_modulation(
     physics_lnn_bridge_t* bridge,
     const physics_lnn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_apply_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     if (!bridge->hh_pop) return 0;  /* Nothing to modulate */
 
     /* Apply modulation based on mode */
@@ -604,7 +637,10 @@ int physics_lnn_set_temperature(
     physics_lnn_bridge_t* bridge,
     float temperature
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_set_temperature: bridge is NULL");
+        return -1;
+    }
 
     bridge->temperature = temperature;
 
@@ -639,7 +675,10 @@ int physics_lnn_update(
     physics_lnn_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_update: bridge is NULL");
+        return -1;
+    }
 
     float new_time = bridge->current_time_ms + dt;
 
@@ -676,7 +715,10 @@ int physics_lnn_forward_step(
     physics_lnn_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_forward_step: bridge is NULL");
+        return -1;
+    }
     if (!bridge->lnn_network) return 0;  /* No LNN connected */
 
     /* In full implementation, would call LNN forward pass with encoded input */
@@ -695,13 +737,19 @@ int physics_lnn_get_stats(
     const physics_lnn_bridge_t* bridge,
     physics_lnn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 bool physics_lnn_is_connected(const physics_lnn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->hh_pop != NULL && bridge->lnn_network != NULL;
 }
 
@@ -709,7 +757,10 @@ int physics_lnn_get_encoded(
     const physics_lnn_bridge_t* bridge,
     physics_lnn_encoded_t* encoded
 ) {
-    if (!bridge || !encoded) return -1;
+    if (!bridge || !encoded) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_lnn_get_encoded: required parameter is NULL (bridge, encoded)");
+        return -1;
+    }
 
     encoded->currents = bridge->encoded_currents;
     encoded->num_channels = bridge->num_encoded_channels;

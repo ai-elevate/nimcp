@@ -478,6 +478,7 @@ bool hypo_medulla_bridge_get_status(
     hypo_medulla_status_t* status) {
 
     if (!bridge || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_update: required parameter is NULL (bridge, status)");
         return false;
     }
 
@@ -497,6 +498,7 @@ bool hypo_medulla_bridge_connect(
     medulla_t medulla) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_update: bridge is NULL");
         return false;
     }
 
@@ -535,6 +537,7 @@ int hypo_medulla_bridge_send_arousal(
         return hypo_medulla_bridge_broadcast_arousal(bridge) == NIMCP_SUCCESS ? 0 : -1;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -559,6 +562,7 @@ int hypo_medulla_bridge_send_protection(
         return hypo_medulla_bridge_broadcast_protection(bridge) == NIMCP_SUCCESS ? 0 : -1;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -587,6 +591,7 @@ int hypo_medulla_bridge_request_emergency(
         return hypo_medulla_bridge_send_protection(bridge, &cmd);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return -1;
 }
 
@@ -599,6 +604,7 @@ bool hypo_medulla_bridge_register_bio(
     bool use_kg_wiring) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
@@ -612,12 +618,14 @@ bool hypo_medulla_bridge_register_bio(
 
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 
     /* Register handlers for incoming messages */
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_MEDULLA_STATE,
                                      med_handle_state) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 

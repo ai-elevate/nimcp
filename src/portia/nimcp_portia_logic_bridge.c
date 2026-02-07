@@ -284,6 +284,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_logic_bridge_create: validation failed");
         return NULL;
     }
 
@@ -297,6 +298,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_logic_bridge_create: bridge->logic_network is NULL");
         return NULL;
     }
 
@@ -306,6 +308,7 @@ portia_logic_bridge_t* portia_logic_bridge_create(
         neural_logic_destroy(bridge->logic_network);
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_logic_bridge_create: validation failed");
         return NULL;
     }
 
@@ -449,10 +452,12 @@ bool portia_logic_can_upgrade_tier(
     uint8_t target_tier)
 {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_can_upgrade_tier: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
     if (target_tier <= current_tier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_logic_can_upgrade_tier: validation failed");
         return false;  /* Not an upgrade */
     }
 
@@ -483,6 +488,7 @@ bool portia_logic_must_downgrade_tier(
     uint8_t current_tier)
 {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_must_downgrade_tier: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -515,6 +521,7 @@ bool portia_logic_can_disable_feature(
     uint32_t feature_id)
 {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_can_disable_feature: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -548,12 +555,14 @@ bool portia_logic_can_allocate_resource(
     float amount)
 {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_can_allocate_resource: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
     (void)target_id;  /* For now, generic allocation logic */
 
     if (amount < 0.0f || amount > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_logic_can_allocate_resource: validation failed");
         return false;  /* Invalid amount */
     }
 
@@ -642,6 +651,7 @@ int portia_logic_add_custom_gate(
 
 bool portia_logic_evaluate_gate(portia_logic_bridge_t* bridge, uint32_t gate_id) {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_evaluate_gate: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -842,6 +852,7 @@ int portia_logic_disconnect_bio_async(portia_logic_bridge_t* bridge) {
 
 bool portia_logic_is_bio_async_connected(const portia_logic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_logic_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

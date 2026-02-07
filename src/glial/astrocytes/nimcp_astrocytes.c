@@ -448,12 +448,14 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type, float x, float
     /* Validate spatial coordinates are finite (not NaN or Inf) */
     if (!isfinite(x) || !isfinite(y) || !isfinite(z)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid spatial coordinates: (%.2f, %.2f, %.2f)", x, y, z);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_create: required parameter is NULL (isfinite, isfinite, isfinite)");
         return NULL;
     }
 
     /* Validate coverage radius is positive and finite */
     if (coverage_radius < 0.0F || !isfinite(coverage_radius)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Invalid coverage radius: %.2f", coverage_radius);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_create: isfinite is NULL");
         return NULL;
     }
 
@@ -1159,17 +1161,21 @@ nimcp_result_t astrocyte_network_build_spatial_index(astrocyte_network_t* networ
 astrocyte_t* astrocyte_network_find_nearest(astrocyte_network_t* network, const float point[3])
 {
     if (!network || !point || network->num_astrocytes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_network_find_nearest: required parameter is NULL (network, point)");
         return NULL;
     }
     if (!network->astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_network_find_nearest: network->astrocytes is NULL");
         return NULL;
     }
     /* Validate spatial coordinates are finite */
     if (!isfinite(point[0]) || !isfinite(point[1]) || !isfinite(point[2])) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astrocyte_network_find_nearest: required parameter is NULL (isfinite, isfinite, isfinite)");
         return NULL;
     }
     /* Bounds check: num_astrocytes should not exceed capacity */
     if (network->num_astrocytes > network->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_network_find_nearest: validation failed");
         return NULL;
     }
 
@@ -1668,10 +1674,14 @@ int astrocyte_network_state_serialize(void* module_state, uint8_t* buffer, size_
  * @return 0 on success, negative on error
  */
 int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffer, size_t size) {
-    if (!module_state || !buffer) return -1;
+    if (!module_state || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_network_state_deserialize: required parameter is NULL (module_state, buffer)");
+        return -1;
+    }
 
     if (size < sizeof(astrocyte_network_state_header_t)) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: buffer too small for header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 
@@ -1685,12 +1695,14 @@ int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffe
 
     if (header.magic != ASTROCYTE_NETWORK_STATE_MAGIC) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: invalid magic (0x%08X)", header.magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 
     if (header.version != ASTROCYTE_NETWORK_STATE_VERSION) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: version mismatch (%u != %u)",
                          header.version, ASTROCYTE_NETWORK_STATE_VERSION);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 
@@ -1702,6 +1714,7 @@ int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffe
     if (size < expected_size) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: buffer too small (%zu < %zu)",
                          size, expected_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 
@@ -1713,6 +1726,7 @@ int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffe
     if (computed_checksum != header.checksum) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: checksum mismatch (0x%08X != 0x%08X)",
                          computed_checksum, header.checksum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 
@@ -1720,6 +1734,7 @@ int astrocyte_network_state_deserialize(void* module_state, const uint8_t* buffe
     if (header.num_astrocytes != network->num_astrocytes) {
         LOG_MODULE_ERROR("ASTROCYTE", "Deserialize: astrocyte count mismatch (%u != %u)",
                          header.num_astrocytes, network->num_astrocytes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_network_state_deserialize: validation failed");
         return -1;
     }
 

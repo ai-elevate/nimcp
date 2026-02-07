@@ -296,6 +296,7 @@ nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
 
 error:
     perirhinal_destroy(pr);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_create: operation failed");
     return NULL;
 }
 
@@ -355,7 +356,10 @@ void perirhinal_destroy(nimcp_perirhinal_t* pr) {
 }
 
 int perirhinal_reset(nimcp_perirhinal_t* pr) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_reset: pr is NULL");
+        return -1;
+    }
 
     /* Reset statistics */
     pr->updates_processed = 0;
@@ -401,7 +405,10 @@ int perirhinal_reset(nimcp_perirhinal_t* pr) {
 }
 
 int perirhinal_update(nimcp_perirhinal_t* pr, float dt) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_update: pr is NULL");
+        return -1;
+    }
 
     uint64_t start_time = get_current_time_ms();
 
@@ -443,7 +450,10 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
     const float* visual_features, uint32_t feature_dim,
     const char* name, uint32_t* object_id_out) {
 
-    if (!pr || !visual_features || feature_dim == 0) return -1;
+    if (!pr || !visual_features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_update: required parameter is NULL (pr, visual_features)");
+        return -1;
+    }
 
     /* Find empty slot */
     uint32_t slot = UINT32_MAX;
@@ -456,6 +466,7 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
 
     if (slot == UINT32_MAX) {
         pr->last_error = PERIRHINAL_ERROR_MEMORY_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_update: validation failed");
         return -1;
     }
 
@@ -474,6 +485,7 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
     if (!obj->visual_features) {
         obj->object_id = UINT32_MAX;
         pr->last_error = PERIRHINAL_ERROR_ENCODING_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perirhinal_update: obj->visual_features is NULL");
         return -1;
     }
     memcpy(obj->visual_features, visual_features, feature_dim * sizeof(float));
@@ -485,6 +497,7 @@ int perirhinal_encode_object(nimcp_perirhinal_t* pr,
         nimcp_free(obj->visual_features);
         obj->object_id = UINT32_MAX;
         pr->last_error = PERIRHINAL_ERROR_ENCODING_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perirhinal_update: obj->identity_vector is NULL");
         return -1;
     }
 
@@ -534,7 +547,10 @@ int perirhinal_recognize_object(nimcp_perirhinal_t* pr,
     const float* visual_features, uint32_t feature_dim,
     perirhinal_recognition_result_t* result) {
 
-    if (!pr || !visual_features || !result) return -1;
+    if (!pr || !visual_features || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_update: required parameter is NULL (pr, visual_features, result)");
+        return -1;
+    }
 
     pr->status = PERIRHINAL_STATUS_RECOGNIZING;
     memset(result, 0, sizeof(perirhinal_recognition_result_t));
@@ -617,26 +633,37 @@ int perirhinal_recognize_object(nimcp_perirhinal_t* pr,
 int perirhinal_add_object_view(nimcp_perirhinal_t* pr,
     uint32_t object_id, const float* view_features, uint32_t feature_dim) {
 
-    if (!pr || !view_features || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || !view_features || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (pr, view_features)");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
     if (obj->object_id == UINT32_MAX) {
         pr->last_error = PERIRHINAL_ERROR_OBJECT_NOT_FOUND;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     if (obj->num_views >= pr->config.max_views_per_object) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return -1;  /* Max views reached */
     }
 
     /* Reallocate view array */
     float** new_views = (float**)nimcp_realloc(obj->view_vectors,
         (obj->num_views + 1) * sizeof(float*));
-    if (!new_views) return -1;
+    if (!new_views) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: new_views is NULL");
+        return -1;
+    }
 
     obj->view_vectors = new_views;
     obj->view_vectors[obj->num_views] = (float*)nimcp_malloc(feature_dim * sizeof(float));
-    if (!obj->view_vectors[obj->num_views]) return -1;
+    if (!obj->view_vectors[obj->num_views]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: obj->view_vectors is NULL");
+        return -1;
+    }
 
     memcpy(obj->view_vectors[obj->num_views], view_features, feature_dim * sizeof(float));
     obj->num_views++;
@@ -647,16 +674,28 @@ int perirhinal_add_object_view(nimcp_perirhinal_t* pr,
 const nimcp_stored_object_t* perirhinal_get_object(const nimcp_perirhinal_t* pr,
     uint32_t object_id) {
 
-    if (!pr || object_id >= pr->max_stored_objects) return NULL;
-    if (pr->stored_objects[object_id].object_id == UINT32_MAX) return NULL;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: pr is NULL");
+        return NULL;
+    }
+    if (pr->stored_objects[object_id].object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
+        return NULL;
+    }
     return &pr->stored_objects[object_id];
 }
 
 int perirhinal_update_familiarity(nimcp_perirhinal_t* pr, uint32_t object_id) {
-    if (!pr || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_update_familiarity: pr is NULL");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_update_familiarity: validation failed");
+        return -1;
+    }
 
     /* Increase familiarity with diminishing returns */
     obj->familiarity_strength += (1.0f - obj->familiarity_strength) * 0.1f;
@@ -668,10 +707,16 @@ int perirhinal_update_familiarity(nimcp_perirhinal_t* pr, uint32_t object_id) {
 }
 
 int perirhinal_forget_object(nimcp_perirhinal_t* pr, uint32_t object_id) {
-    if (!pr || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_forget_object: pr is NULL");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_forget_object: validation failed");
+        return -1;
+    }
 
     /* Free allocated memory */
     nimcp_free(obj->visual_features);
@@ -755,7 +800,10 @@ familiarity_type_t perirhinal_classify_familiarity(const nimcp_perirhinal_t* pr,
 bool perirhinal_is_familiar(const nimcp_perirhinal_t* pr,
     const float* visual_features, uint32_t feature_dim) {
 
-    if (!pr || !visual_features) return false;
+    if (!pr || !visual_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_forget_object: required parameter is NULL (pr, visual_features)");
+        return false;
+    }
 
     /* Cast away const for internal computation */
     float familiarity = perirhinal_compute_familiarity(
@@ -840,7 +888,10 @@ float perirhinal_get_surprise_signal(const nimcp_perirhinal_t* pr) {
 int perirhinal_habituate(nimcp_perirhinal_t* pr,
     const float* visual_features, uint32_t feature_dim) {
 
-    if (!pr || !visual_features) return -1;
+    if (!pr || !visual_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_get_surprise_signal: required parameter is NULL (pr, visual_features)");
+        return -1;
+    }
 
     /* Update expected features (running average) */
     float alpha = pr->config.habituation_rate;
@@ -864,10 +915,16 @@ int perirhinal_habituate(nimcp_perirhinal_t* pr,
  *===========================================================================*/
 
 int perirhinal_update_recency(nimcp_perirhinal_t* pr, uint32_t object_id) {
-    if (!pr || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_update_recency: pr is NULL");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_update_recency: validation failed");
+        return -1;
+    }
 
     obj->last_seen_ms = get_current_time_ms();
     obj->recency_signal = 1.0f;
@@ -894,7 +951,10 @@ uint64_t perirhinal_get_time_since_encounter(const nimcp_perirhinal_t* pr,
 }
 
 int perirhinal_decay_recency(nimcp_perirhinal_t* pr, float dt) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: pr is NULL");
+        return -1;
+    }
 
     pr->status = PERIRHINAL_STATUS_RECENCY_UPDATING;
 
@@ -928,7 +988,10 @@ int perirhinal_create_association(nimcp_perirhinal_t* pr,
     nimcp_stored_object_t* obj_a = &pr->stored_objects[object_id_a];
     nimcp_stored_object_t* obj_b = &pr->stored_objects[object_id_b];
 
-    if (obj_a->object_id == UINT32_MAX || obj_b->object_id == UINT32_MAX) return -1;
+    if (obj_a->object_id == UINT32_MAX || obj_b->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_decay_recency: validation failed");
+        return -1;
+    }
 
     /* Check if association already exists */
     for (uint32_t i = 0; i < obj_a->num_associations; i++) {
@@ -947,6 +1010,7 @@ int perirhinal_create_association(nimcp_perirhinal_t* pr,
     if (!new_ids || !new_strengths) {
         nimcp_free(new_ids);
         nimcp_free(new_strengths);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: required parameter is NULL (new_ids, new_strengths)");
         return -1;
     }
 
@@ -963,10 +1027,16 @@ int perirhinal_get_associations(const nimcp_perirhinal_t* pr,
     uint32_t object_id, uint32_t* associated_ids, float* strengths,
     uint32_t max_associations, uint32_t* num_found) {
 
-    if (!pr || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_decay_recency: pr is NULL");
+        return -1;
+    }
 
     const nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_decay_recency: validation failed");
+        return -1;
+    }
 
     uint32_t count = (obj->num_associations < max_associations) ?
                      obj->num_associations : max_associations;
@@ -987,10 +1057,16 @@ int perirhinal_get_associations(const nimcp_perirhinal_t* pr,
 int perirhinal_strengthen_association(nimcp_perirhinal_t* pr,
     uint32_t object_id_a, uint32_t object_id_b, float delta) {
 
-    if (!pr || object_id_a >= pr->max_stored_objects) return -1;
+    if (!pr || object_id_a >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_decay_recency: pr is NULL");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id_a];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_decay_recency: validation failed");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < obj->num_associations; i++) {
         if (obj->associated_objects[i] == object_id_b) {
@@ -1000,6 +1076,7 @@ int perirhinal_strengthen_association(nimcp_perirhinal_t* pr,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_decay_recency: validation failed");
     return -1;  /* Association not found */
 }
 
@@ -1010,17 +1087,26 @@ int perirhinal_strengthen_association(nimcp_perirhinal_t* pr,
 int perirhinal_bind_spatial_context(nimcp_perirhinal_t* pr,
     uint32_t object_id, const float* spatial_context, uint32_t spatial_dim) {
 
-    if (!pr || !spatial_context || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || !spatial_context || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: required parameter is NULL (pr, spatial_context)");
+        return -1;
+    }
 
     nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX) return -1;
+    if (obj->object_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_decay_recency: validation failed");
+        return -1;
+    }
 
     /* Free old context if exists */
     nimcp_free(obj->spatial_context);
 
     obj->spatial_dim = spatial_dim;
     obj->spatial_context = (float*)nimcp_malloc(spatial_dim * sizeof(float));
-    if (!obj->spatial_context) return -1;
+    if (!obj->spatial_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perirhinal_decay_recency: obj->spatial_context is NULL");
+        return -1;
+    }
 
     memcpy(obj->spatial_context, spatial_context, spatial_dim * sizeof(float));
     obj->context_binding_strength = 1.0f;
@@ -1031,10 +1117,16 @@ int perirhinal_bind_spatial_context(nimcp_perirhinal_t* pr,
 int perirhinal_get_spatial_context(const nimcp_perirhinal_t* pr,
     uint32_t object_id, float* context_out, uint32_t max_dim) {
 
-    if (!pr || !context_out || object_id >= pr->max_stored_objects) return -1;
+    if (!pr || !context_out || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: required parameter is NULL (pr, context_out)");
+        return -1;
+    }
 
     const nimcp_stored_object_t* obj = &pr->stored_objects[object_id];
-    if (obj->object_id == UINT32_MAX || !obj->spatial_context) return -1;
+    if (obj->object_id == UINT32_MAX || !obj->spatial_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: obj->spatial_context is NULL");
+        return -1;
+    }
 
     uint32_t copy_dim = (obj->spatial_dim < max_dim) ? obj->spatial_dim : max_dim;
     memcpy(context_out, obj->spatial_context, copy_dim * sizeof(float));
@@ -1047,7 +1139,10 @@ int perirhinal_find_by_context(const nimcp_perirhinal_t* pr,
     uint32_t* object_ids, float* match_strengths,
     uint32_t max_results, uint32_t* num_found) {
 
-    if (!pr || !spatial_context) return -1;
+    if (!pr || !spatial_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_decay_recency: required parameter is NULL (pr, spatial_context)");
+        return -1;
+    }
 
     uint32_t found = 0;
 
@@ -1075,8 +1170,14 @@ int perirhinal_find_by_context(const nimcp_perirhinal_t* pr,
  *===========================================================================*/
 
 int perirhinal_send_to_entorhinal(nimcp_perirhinal_t* pr, uint32_t object_id) {
-    if (!pr || object_id >= pr->max_stored_objects) return -1;
-    if (!pr->entorhinal_bridge.entorhinal) return -1;
+    if (!pr || object_id >= pr->max_stored_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perirhinal_send_to_entorhinal: pr is NULL");
+        return -1;
+    }
+    if (!pr->entorhinal_bridge.entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_send_to_entorhinal: pr->entorhinal_bridge is NULL");
+        return -1;
+    }
 
     /* In real implementation, would send object representation */
     pr->entorhinal_bridge.items_transferred++;
@@ -1086,7 +1187,10 @@ int perirhinal_send_to_entorhinal(nimcp_perirhinal_t* pr, uint32_t object_id) {
 int perirhinal_receive_from_entorhinal(nimcp_perirhinal_t* pr,
     const float* spatial_context, uint32_t spatial_dim) {
 
-    if (!pr || !spatial_context) return -1;
+    if (!pr || !spatial_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_send_to_entorhinal: required parameter is NULL (pr, spatial_context)");
+        return -1;
+    }
 
     /* Store as current spatial context for binding */
     /* Implementation would bind to currently active objects */
@@ -1096,7 +1200,10 @@ int perirhinal_receive_from_entorhinal(nimcp_perirhinal_t* pr,
 }
 
 int perirhinal_sync_entorhinal(nimcp_perirhinal_t* pr) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_sync_entorhinal: pr is NULL");
+        return -1;
+    }
     if (!pr->entorhinal_bridge.entorhinal) return 0;
 
     /* Synchronization logic would go here */
@@ -1108,7 +1215,10 @@ int perirhinal_sync_entorhinal(nimcp_perirhinal_t* pr) {
  *===========================================================================*/
 
 int perirhinal_process_incoming(nimcp_perirhinal_t* pr) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_process_incoming: pr is NULL");
+        return -1;
+    }
 
     /* Process from perception layer if connected */
     if (pr->perception_bridge.perception && pr->perception_bridge.visual_input) {
@@ -1121,7 +1231,10 @@ int perirhinal_process_incoming(nimcp_perirhinal_t* pr) {
 }
 
 int perirhinal_send_outgoing(nimcp_perirhinal_t* pr) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_send_outgoing: pr is NULL");
+        return -1;
+    }
 
     /* Send to cognitive bridge if connected */
     if (pr->cognitive_bridge.hub) {
@@ -1135,7 +1248,10 @@ int perirhinal_send_outgoing(nimcp_perirhinal_t* pr) {
 }
 
 int perirhinal_bidirectional_update(nimcp_perirhinal_t* pr, float dt) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
 
     perirhinal_process_incoming(pr);
     perirhinal_update(pr, dt);
@@ -1147,13 +1263,19 @@ int perirhinal_bidirectional_update(nimcp_perirhinal_t* pr, float dt) {
 int perirhinal_process_visual_input(nimcp_perirhinal_t* pr,
     const float* visual_features, uint32_t feature_dim) {
 
-    if (!pr || !visual_features) return -1;
+    if (!pr || !visual_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: required parameter is NULL (pr, visual_features)");
+        return -1;
+    }
 
     /* Store current input */
     if (feature_dim != pr->current_input_dim) {
         float* new_input = (float*)nimcp_realloc(pr->current_visual_input,
             feature_dim * sizeof(float));
-        if (!new_input) return -1;
+        if (!new_input) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perirhinal_bidirectional_update: new_input is NULL");
+            return -1;
+        }
         pr->current_visual_input = new_input;
         pr->current_input_dim = feature_dim;
     }
@@ -1186,7 +1308,10 @@ int perirhinal_process_visual_input(nimcp_perirhinal_t* pr,
 int perirhinal_init_entorhinal_bridge(nimcp_perirhinal_t* pr,
     nimcp_entorhinal_t* entorhinal) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->entorhinal_bridge.entorhinal = entorhinal;
     pr->entorhinal_bridge.spatial_context_weight = 0.5f;
     pr->entorhinal_bridge.object_context_binding = 0.7f;
@@ -1197,7 +1322,10 @@ int perirhinal_init_security_bridge(nimcp_perirhinal_t* pr,
     nimcp_security_context_t* security_ctx,
     nimcp_access_control_t* access_control) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->security_bridge.security_ctx = security_ctx;
     pr->security_bridge.access_control = access_control;
     pr->security_bridge.access_level = 1;
@@ -1207,7 +1335,10 @@ int perirhinal_init_security_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_immune_bridge(nimcp_perirhinal_t* pr,
     brain_immune_system_t* immune) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->immune_bridge.immune = immune;
     pr->immune_bridge.health_score = 1.0f;
     return 0;
@@ -1216,7 +1347,10 @@ int perirhinal_init_immune_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_bio_async_bridge(nimcp_perirhinal_t* pr,
     nimcp_bio_router_t* router) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->bio_async_bridge.router = router;
     return 0;
 }
@@ -1224,7 +1358,10 @@ int perirhinal_init_bio_async_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_snn_bridge(nimcp_perirhinal_t* pr,
     nimcp_snn_network_t* snn) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->snn_bridge.snn = snn;
     return 0;
 }
@@ -1233,7 +1370,10 @@ int perirhinal_init_plasticity_bridge(nimcp_perirhinal_t* pr,
     nimcp_plasticity_manager_t* plasticity,
     nimcp_stdp_rule_t* stdp_rule) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->plasticity_bridge.plasticity = plasticity;
     pr->plasticity_bridge.stdp_rule = stdp_rule;
     pr->plasticity_bridge.learning_rate = pr->config.learning_rate;
@@ -1245,7 +1385,10 @@ int perirhinal_init_cognitive_bridge(nimcp_perirhinal_t* pr,
     attention_system_t* attention,
     cognitive_integration_hub_t* hub) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->cognitive_bridge.working_memory = wm;
     pr->cognitive_bridge.attention = attention;
     pr->cognitive_bridge.hub = hub;
@@ -1255,7 +1398,10 @@ int perirhinal_init_cognitive_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_training_bridge(nimcp_perirhinal_t* pr,
     nimcp_training_context_t* training_ctx) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->training_bridge.training_ctx = training_ctx;
     return 0;
 }
@@ -1263,7 +1409,10 @@ int perirhinal_init_training_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_substrate_bridge(nimcp_perirhinal_t* pr,
     nimcp_neural_substrate_t* substrate) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->substrate_bridge.substrate = substrate;
     pr->substrate_bridge.atp_level = 1.0f;
     pr->substrate_bridge.oxygen_level = 1.0f;
@@ -1274,7 +1423,10 @@ int perirhinal_init_substrate_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_resonance_bridge(nimcp_perirhinal_t* pr,
     nimcp_prime_resonance_t* resonance) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->resonance_bridge.resonance = resonance;
     return 0;
 }
@@ -1282,7 +1434,10 @@ int perirhinal_init_resonance_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_thalamic_bridge(nimcp_perirhinal_t* pr,
     thalamus_adapter_t* thalamus) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->thalamic_bridge.thalamus = thalamus;
     pr->thalamic_bridge.relay_gain = 1.0f;
     return 0;
@@ -1291,7 +1446,10 @@ int perirhinal_init_thalamic_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_hippocampus_bridge(nimcp_perirhinal_t* pr,
     hippocampus_adapter_t* hippocampus) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->hippocampus_bridge.hippocampus = hippocampus;
     return 0;
 }
@@ -1299,7 +1457,10 @@ int perirhinal_init_hippocampus_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_perception_bridge(nimcp_perirhinal_t* pr,
     nimcp_perception_layer_t* perception) {
 
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: pr is NULL");
+        return -1;
+    }
     pr->perception_bridge.perception = perception;
     return 0;
 }
@@ -1307,7 +1468,10 @@ int perirhinal_init_perception_bridge(nimcp_perirhinal_t* pr,
 int perirhinal_init_all_bridges(nimcp_perirhinal_t* pr,
     nimcp_brain_t* brain) {
 
-    if (!pr || !brain) return -1;
+    if (!pr || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_bidirectional_update: required parameter is NULL (pr, brain)");
+        return -1;
+    }
     /* Would initialize all bridges from brain structure */
     return 0;
 }
@@ -1360,7 +1524,10 @@ const char* perirhinal_status_string(perirhinal_status_t status) {
 }
 
 int perirhinal_get_stats(const nimcp_perirhinal_t* pr, perirhinal_stats_t* stats) {
-    if (!pr || !stats) return -1;
+    if (!pr || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_get_stats: required parameter is NULL (pr, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(perirhinal_stats_t));
 
@@ -1387,7 +1554,10 @@ int perirhinal_get_stats(const nimcp_perirhinal_t* pr, perirhinal_stats_t* stats
 }
 
 int perirhinal_get_config(const nimcp_perirhinal_t* pr, perirhinal_config_t* config) {
-    if (!pr || !config) return -1;
+    if (!pr || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_get_config: required parameter is NULL (pr, config)");
+        return -1;
+    }
     *config = pr->config;
     return 0;
 }
@@ -1408,7 +1578,10 @@ float perirhinal_get_health_status(const nimcp_perirhinal_t* pr) {
 }
 
 int perirhinal_log_diagnostics(const nimcp_perirhinal_t* pr) {
-    if (!pr) return -1;
+    if (!pr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_log_diagnostics: pr is NULL");
+        return -1;
+    }
     /* Logging would be implemented here */
     return 0;
 }
@@ -1460,11 +1633,17 @@ float perirhinal_get_current_novelty(const nimcp_perirhinal_t* pr) {
 int perirhinal_serialize(const nimcp_perirhinal_t* pr,
     uint8_t* buffer, size_t buffer_size, size_t* bytes_written) {
 
-    if (!pr || !buffer || !bytes_written) return -1;
+    if (!pr || !buffer || !bytes_written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_get_current_novelty: required parameter is NULL (pr, buffer, bytes_written)");
+        return -1;
+    }
 
     /* Simplified serialization - just store key values */
     size_t needed = sizeof(perirhinal_config_t) + sizeof(uint64_t) * 5;
-    if (buffer_size < needed) return -1;
+    if (buffer_size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_get_current_novelty: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(buffer + offset, &pr->config, sizeof(perirhinal_config_t));
@@ -1492,10 +1671,16 @@ int perirhinal_serialize(const nimcp_perirhinal_t* pr,
 int perirhinal_deserialize(nimcp_perirhinal_t* pr,
     const uint8_t* buffer, size_t buffer_size) {
 
-    if (!pr || !buffer) return -1;
+    if (!pr || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perirhinal_get_current_novelty: required parameter is NULL (pr, buffer)");
+        return -1;
+    }
 
     size_t needed = sizeof(perirhinal_config_t) + sizeof(uint64_t) * 5;
-    if (buffer_size < needed) return -1;
+    if (buffer_size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perirhinal_get_current_novelty: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(&pr->config, buffer + offset, sizeof(perirhinal_config_t));

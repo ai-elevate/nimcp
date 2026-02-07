@@ -456,6 +456,7 @@ lip_reading_system_t* lip_reading_create(const lip_reading_config_t* config) {
 
 error:
     lip_reading_destroy(system);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_create: system->feature_buffer is NULL");
     return NULL;
 }
 
@@ -475,7 +476,10 @@ void lip_reading_destroy(lip_reading_system_t* system) {
 }
 
 bool lip_reading_reset(lip_reading_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_reset: system is NULL");
+        return false;
+    }
 
     /* Reset face detector */
     if (system->face_detector) {
@@ -590,6 +594,7 @@ bool lip_reading_detect_face(
         /* Not enough skin-colored pixels - likely no face */
         system->last_error = LIP_READING_ERROR_NO_FACE_DETECTED;
         system->stats.face_detection_failures++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_detect_face: validation failed");
         return false;
     }
 
@@ -661,6 +666,7 @@ bool lip_reading_extract_mouth_roi(
 
     if (!face_result->face_detected) {
         system->last_error = LIP_READING_ERROR_NO_FACE_DETECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_extract_mouth_roi: face_result->face_detected is NULL");
         return false;
     }
 
@@ -678,6 +684,7 @@ bool lip_reading_extract_mouth_roi(
 
     if (src_w <= 0 || src_h <= 0) {
         system->last_error = LIP_READING_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_extract_mouth_roi: validation failed");
         return false;
     }
 
@@ -1137,6 +1144,7 @@ bool lip_reading_classify_viseme_from_roi(
     visual_speech_features_t features;
     if (!lip_reading_extract_features(system, mouth_roi, roi_width, roi_height,
                                        NULL, &features)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_classify_viseme_from_roi: validation failed");
         return false;
     }
 
@@ -1489,7 +1497,10 @@ bool lip_reading_viseme_to_motor_command(
     viseme_t viseme,
     articulatory_action_t* action)
 {
-    if (!action) return false;
+    if (!action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_viseme_to_motor_command: action is NULL");
+        return false;
+    }
 
     memset(action, 0, sizeof(articulatory_action_t));
 
@@ -1573,7 +1584,10 @@ bool lip_reading_simulate_articulation(
     viseme_t viseme,
     const articulatory_action_t* action)
 {
-    if (!system || !action) return false;
+    if (!system || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_simulate_articulation: required parameter is NULL (system, action)");
+        return false;
+    }
 
     /* In a full implementation, this would activate mirror neuron circuits
      * to simulate the articulatory gesture internally. For now, we just
@@ -1637,7 +1651,10 @@ bool lip_reading_update_speaker_profile(
     const visual_speech_features_t* features,
     phoneme_t actual_phoneme)
 {
-    if (!system || !features || speaker_id == 0) return false;
+    if (!system || !features || speaker_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_update_speaker_profile: required parameter is NULL (system, features)");
+        return false;
+    }
 
     /* Find speaker */
     speaker_slot_t* s = NULL;
@@ -1649,7 +1666,10 @@ bool lip_reading_update_speaker_profile(
         }
     }
 
-    if (!s) return false;
+    if (!s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_update_speaker_profile: s is NULL");
+        return false;
+    }
 
     /* Update running statistics */
     float n = (float)s->profile.frames_observed;
@@ -1697,7 +1717,10 @@ bool lip_reading_get_speaker_profile(
     uint32_t speaker_id,
     speaker_profile_t* profile)
 {
-    if (!system || !profile || speaker_id == 0) return false;
+    if (!system || !profile || speaker_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_get_speaker_profile: required parameter is NULL (system, profile)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < system->config.max_speakers; i++) {
         if (system->speakers[i].active &&
@@ -1707,6 +1730,7 @@ bool lip_reading_get_speaker_profile(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_get_speaker_profile: operation failed");
     return false;
 }
 
@@ -1714,7 +1738,10 @@ bool lip_reading_set_active_speaker(
     lip_reading_system_t* system,
     uint32_t speaker_id)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_set_active_speaker: system is NULL");
+        return false;
+    }
 
     if (speaker_id == 0) {
         system->active_speaker_id = 0;
@@ -1730,6 +1757,7 @@ bool lip_reading_set_active_speaker(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_set_active_speaker: operation failed");
     return false;
 }
 
@@ -1969,7 +1997,10 @@ bool lip_reading_connect_visual_cortex(
     lip_reading_system_t* system,
     visual_cortex_t* visual_cortex)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_connect_visual_cortex: system is NULL");
+        return false;
+    }
     system->visual_cortex = visual_cortex;
     return true;
 }
@@ -1978,7 +2009,10 @@ bool lip_reading_connect_speech_cortex(
     lip_reading_system_t* system,
     speech_cortex_t* speech_cortex)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_connect_speech_cortex: system is NULL");
+        return false;
+    }
     system->speech_cortex = speech_cortex;
     return true;
 }
@@ -1987,7 +2021,10 @@ bool lip_reading_connect_brain(
     lip_reading_system_t* system,
     brain_t* brain)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_connect_brain: system is NULL");
+        return false;
+    }
     system->brain = brain;
     return true;
 }
@@ -1996,7 +2033,10 @@ bool lip_reading_connect_bio_router(
     lip_reading_system_t* system,
     bio_router_t* router)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_connect_bio_router: system is NULL");
+        return false;
+    }
     system->router = router;
 
     if (router && system->config.enable_bio_async) {
@@ -2048,13 +2088,19 @@ bool lip_reading_get_stats(
     const lip_reading_system_t* system,
     lip_reading_stats_t* stats)
 {
-    if (!system || !stats) return false;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_get_stats: required parameter is NULL (system, stats)");
+        return false;
+    }
     *stats = system->stats;
     return true;
 }
 
 bool lip_reading_reset_stats(lip_reading_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lip_reading_reset_stats: system is NULL");
+        return false;
+    }
     memset(&system->stats, 0, sizeof(lip_reading_stats_t));
     return true;
 }

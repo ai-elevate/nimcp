@@ -180,6 +180,7 @@ static bool ensure_initialized(void) {
     if (!g_mem_manager) {
         LOG_ERROR("Failed to create unified memory manager for config validation");
         nimcp_platform_mutex_unlock(&g_init_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_initialized: g_mem_manager is NULL");
         return false;
     }
 
@@ -200,6 +201,7 @@ config_validation_schema_t config_schema_create(void) {
 
     if (!ensure_initialized()) {
         LOG_ERROR("Failed to initialize validation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_create: ensure_initialized is NULL");
         return NULL;
     }
 
@@ -239,6 +241,7 @@ config_validation_schema_t config_schema_create(void) {
     if (nimcp_platform_rwlock_init(&schema->lock) != 0) {
         LOG_ERROR("Failed to initialize schema lock");
         unified_mem_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "config_schema_create: validation failed");
         return NULL;
     }
 
@@ -277,6 +280,7 @@ config_validation_schema_t config_schema_clone(config_validation_schema_t schema
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC) {
         LOG_ERROR("Invalid schema for cloning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_clone: schema is NULL");
         return NULL;
     }
 
@@ -323,18 +327,21 @@ bool config_schema_add_int(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
         LOG_ERROR("Invalid arguments to config_schema_add_int");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_int: required parameter is NULL (schema, key)");
         return false;
     }
 
     if (min > max) {
         LOG_ERROR("Invalid range for field '%s': min=%lld > max=%lld",
                   key, (long long)min, (long long)max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_int: validation failed");
         return false;
     }
 
     if (!required && (default_value < min || default_value > max)) {
         LOG_ERROR("Default value %lld for field '%s' out of range [%lld, %lld]",
                   (long long)default_value, key, (long long)min, (long long)max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_int: required is NULL");
         return false;
     }
 
@@ -347,6 +354,7 @@ bool config_schema_add_int(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_int: capacity exceeded");
             return false;
         }
 
@@ -363,6 +371,7 @@ bool config_schema_add_int(
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_add_int: field is NULL");
         return false;
     }
 
@@ -406,17 +415,20 @@ bool config_schema_add_float(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
         LOG_ERROR("Invalid arguments to config_schema_add_float");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_float: required parameter is NULL (schema, key)");
         return false;
     }
 
     if (min > max) {
         LOG_ERROR("Invalid range for field '%s': min=%f > max=%f", key, min, max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_float: validation failed");
         return false;
     }
 
     if (!required && (default_value < min || default_value > max)) {
         LOG_ERROR("Default value %f for field '%s' out of range [%f, %f]",
                   default_value, key, min, max);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_float: required is NULL");
         return false;
     }
 
@@ -427,6 +439,7 @@ bool config_schema_add_float(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_float: capacity exceeded");
             return false;
         }
 
@@ -442,6 +455,7 @@ bool config_schema_add_float(
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_add_float: field is NULL");
         return false;
     }
 
@@ -481,6 +495,7 @@ bool config_schema_add_bool(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
         LOG_ERROR("Invalid arguments to config_schema_add_bool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_bool: required parameter is NULL (schema, key)");
         return false;
     }
 
@@ -491,6 +506,7 @@ bool config_schema_add_bool(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_bool: capacity exceeded");
             return false;
         }
 
@@ -506,6 +522,7 @@ bool config_schema_add_bool(
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_add_bool: field is NULL");
         return false;
     }
 
@@ -544,12 +561,14 @@ bool config_schema_add_string(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
         LOG_ERROR("Invalid arguments to config_schema_add_string");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_string: required parameter is NULL (schema, key)");
         return false;
     }
 
     if (!required && default_value && max_len > 0 && strlen(default_value) > max_len) {
         LOG_ERROR("Default value for field '%s' exceeds max length %zu",
                   key, max_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_string: required is NULL");
         return false;
     }
 
@@ -560,6 +579,7 @@ bool config_schema_add_string(
         if (schema->field_count >= CONFIG_SCHEMA_MAX_FIELDS) {
             LOG_ERROR("Schema full, cannot add field '%s'", key);
             nimcp_platform_rwlock_unlock(&schema->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_string: capacity exceeded");
             return false;
         }
 
@@ -575,6 +595,7 @@ bool config_schema_add_string(
     if (!field) {
         LOG_ERROR("Failed to allocate field for '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_schema_add_string: field is NULL");
         return false;
     }
 
@@ -617,6 +638,7 @@ bool config_schema_add_validator(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !validator) {
         LOG_ERROR("Invalid arguments to config_schema_add_validator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_validator: required parameter is NULL (schema, key, validator)");
         return false;
     }
 
@@ -626,12 +648,14 @@ bool config_schema_add_validator(
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_validator: field is NULL");
         return false;
     }
 
     if (field->validator_count >= CONFIG_MAX_VALIDATORS_PER_FIELD) {
         LOG_ERROR("Max validators reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_validator: capacity exceeded");
         return false;
     }
 
@@ -656,6 +680,7 @@ bool config_schema_remove_validator(
     // HOW:  Find and remove validator from array
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !validator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_remove_validator: required parameter is NULL (schema, key, validator)");
         return false;
     }
 
@@ -664,6 +689,7 @@ bool config_schema_remove_validator(
     config_field_t* field = find_field(schema, key);
     if (!field) {
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_remove_validator: field is NULL");
         return false;
     }
 
@@ -701,6 +727,7 @@ bool config_schema_add_dependency(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !depends_on) {
         LOG_ERROR("Invalid arguments to config_schema_add_dependency");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_dependency: required parameter is NULL (schema, key, depends_on)");
         return false;
     }
 
@@ -710,12 +737,14 @@ bool config_schema_add_dependency(
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_dependency: field is NULL");
         return false;
     }
 
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_dependency: capacity exceeded");
         return false;
     }
 
@@ -724,6 +753,7 @@ bool config_schema_add_dependency(
     if (has_circular_dependency_from(schema, depends_on, key, visited)) {
         LOG_ERROR("Circular dependency detected: %s -> %s", key, depends_on);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_dependency: validation failed");
         return false;
     }
 
@@ -752,6 +782,7 @@ bool config_schema_add_dependency_with_constraint(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !depends_on) {
         LOG_ERROR("Invalid arguments to config_schema_add_dependency_with_constraint");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_dependency_with_constraint: required parameter is NULL (schema, key, depends_on)");
         return false;
     }
 
@@ -761,12 +792,14 @@ bool config_schema_add_dependency_with_constraint(
     if (!field) {
         LOG_ERROR("Field '%s' not found in schema", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_add_dependency_with_constraint: field is NULL");
         return false;
     }
 
     if (field->dependency_count >= CONFIG_MAX_DEPENDENCIES_PER_FIELD) {
         LOG_ERROR("Max dependencies reached for field '%s'", key);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_schema_add_dependency_with_constraint: capacity exceeded");
         return false;
     }
 
@@ -775,6 +808,7 @@ bool config_schema_add_dependency_with_constraint(
     if (has_circular_dependency_from(schema, depends_on, key, visited)) {
         LOG_ERROR("Circular dependency detected: %s -> %s", key, depends_on);
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_add_dependency_with_constraint: validation failed");
         return false;
     }
 
@@ -802,6 +836,7 @@ bool config_schema_remove_dependency(
     // HOW:  Find and remove dependency from array
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !depends_on) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_remove_dependency: required parameter is NULL (schema, key, depends_on)");
         return false;
     }
 
@@ -810,6 +845,7 @@ bool config_schema_remove_dependency(
     config_field_t* field = find_field(schema, key);
     if (!field) {
         nimcp_platform_rwlock_unlock(&schema->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_remove_dependency: field is NULL");
         return false;
     }
 
@@ -839,6 +875,7 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
     // HOW:  DFS from each field
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_has_circular_dependencies: schema is NULL");
         return false;
     }
 
@@ -858,6 +895,7 @@ bool config_schema_has_circular_dependencies(config_validation_schema_t schema) 
     }
 
     nimcp_platform_rwlock_unlock(&schema->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_schema_has_circular_dependencies: operation failed");
     return false;
 }
 
@@ -875,6 +913,7 @@ bool config_validate_against_schema(
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC) {
         LOG_ERROR("Invalid schema for validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_validate_against_schema: schema is NULL");
         return false;
     }
 
@@ -976,6 +1015,7 @@ bool config_validate_value_range(
     // HOW:  Check value against min/max bounds
 
     if (!key || !value || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_validate_value_range: required parameter is NULL (key, value, error)");
         return false;
     }
 
@@ -988,6 +1028,7 @@ bool config_validate_value_range(
                         "Field '%s' value %lld out of range [%lld, %lld]",
                         key, (long long)value->int_val,
                         (long long)min, (long long)max);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_validate_value_range: validation failed");
                 return false;
             }
             break;
@@ -999,6 +1040,7 @@ bool config_validate_value_range(
                 snprintf(error, error_size,
                         "Field '%s' value %f out of range [%f, %f]",
                         key, value->float_val, fmin, fmax);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_validate_value_range: validation failed");
                 return false;
             }
             break;
@@ -1014,6 +1056,7 @@ bool config_validate_value_range(
                 snprintf(error, error_size,
                         "Field '%s' string too long: %zu > %lld",
                         key, strlen(value->string_val), (long long)max);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_validate_value_range: validation failed");
                 return false;
             }
             break;
@@ -1034,6 +1077,7 @@ bool config_validate_string_length(
     // HOW:  Check strlen against max
 
     if (!key || !value || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_validate_string_length: required parameter is NULL (key, value, error)");
         return false;
     }
 
@@ -1042,6 +1086,7 @@ bool config_validate_string_length(
         snprintf(error, error_size,
                 "Field '%s' string too long: %zu > %zu",
                 key, len, max_len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_validate_string_length: validation failed");
         return false;
     }
 
@@ -1055,6 +1100,7 @@ bool config_apply_defaults(config_validation_schema_t schema) {
 
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC) {
         LOG_ERROR("Invalid schema for apply defaults");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_apply_defaults: schema is NULL");
         return false;
     }
 
@@ -1105,6 +1151,7 @@ bool config_apply_defaults(config_validation_schema_t schema) {
 
 bool config_schema_has_field(config_validation_schema_t schema, const char* key) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_has_field: required parameter is NULL (schema, key)");
         return false;
     }
 
@@ -1121,6 +1168,7 @@ bool config_schema_get_field_type(
     config_value_type_t* type
 ) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key || !type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_get_field_type: required parameter is NULL (schema, key, type)");
         return false;
     }
 
@@ -1138,6 +1186,7 @@ bool config_schema_get_field_type(
 
 bool config_schema_is_field_required(config_validation_schema_t schema, const char* key) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_is_field_required: required parameter is NULL (schema, key)");
         return false;
     }
 
@@ -1156,6 +1205,7 @@ bool config_schema_get_stats(
     config_schema_stats_t* stats
 ) {
     if (!schema || schema->magic != CONFIG_VALIDATION_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_schema_get_stats: required parameter is NULL (schema, stats)");
         return false;
     }
 
@@ -1196,6 +1246,7 @@ static config_field_t* find_field(config_validation_schema_t schema, const char*
             return &schema->fields[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_field: operation failed");
     return NULL;
 }
 
@@ -1344,6 +1395,7 @@ static bool has_circular_dependency_from(
 
     config_field_t* field = find_field(schema, key);
     if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "has_circular_dependency_from: field is NULL");
         return false;
     }
 
@@ -1370,6 +1422,7 @@ static bool has_circular_dependency_from(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "has_circular_dependency_from: operation failed");
     return false;
 }
 

@@ -141,6 +141,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
     system->options = nimcp_calloc(system->config.max_options, sizeof(bg_option_t));
     if (!system->options) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_hrl_create: system->options is NULL");
         return NULL;
     }
 
@@ -149,6 +150,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
     if (!system->primitives) {
         nimcp_free(system->options);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_hrl_create: system->primitives is NULL");
         return NULL;
     }
 
@@ -158,6 +160,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
         nimcp_free(system->primitives);
         nimcp_free(system->options);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_hrl_create: system->goals is NULL");
         return NULL;
     }
 
@@ -168,6 +171,7 @@ bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
         nimcp_free(system->primitives);
         nimcp_free(system->options);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_create: system->option_stack is NULL");
         return NULL;
     }
 
@@ -201,7 +205,10 @@ void bg_hrl_destroy(bg_hrl_system_t* system) {
 }
 
 int bg_hrl_reset(bg_hrl_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -236,12 +243,16 @@ int bg_hrl_reset(bg_hrl_system_t* system) {
 
 int bg_hrl_register_primitive(bg_hrl_system_t* system,
                                const bg_primitive_t* primitive) {
-    if (!system || !primitive) return -1;
+    if (!system || !primitive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: required parameter is NULL (system, primitive)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->num_primitives >= system->config.max_primitives) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 
@@ -256,12 +267,16 @@ int bg_hrl_register_primitive(bg_hrl_system_t* system,
 int bg_hrl_create_option(bg_hrl_system_t* system,
                           const bg_option_t* option_def,
                           uint32_t* out_id) {
-    if (!system || !option_def) return -1;
+    if (!system || !option_def) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: required parameter is NULL (system, option_def)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->num_options >= system->config.max_options) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 
@@ -284,8 +299,14 @@ int bg_hrl_create_sequence_option(bg_hrl_system_t* system,
                                    const uint32_t* actions,
                                    uint32_t num_actions,
                                    uint32_t* out_id) {
-    if (!system || !name || !actions || num_actions == 0) return -1;
-    if (num_actions > BG_HRL_MAX_SEQUENCE_LEN) return -1;
+    if (!system || !name || !actions || num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: required parameter is NULL (system, name, actions)");
+        return -1;
+    }
+    if (num_actions > BG_HRL_MAX_SEQUENCE_LEN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_reset: validation failed");
+        return -1;
+    }
 
     bg_option_t option;
     memset(&option, 0, sizeof(option));
@@ -301,7 +322,10 @@ int bg_hrl_create_hierarchical_option(bg_hrl_system_t* system,
                                        const uint32_t* sub_options,
                                        uint32_t num_sub,
                                        uint32_t* out_id) {
-    if (!system || !name || !sub_options || num_sub == 0) return -1;
+    if (!system || !name || !sub_options || num_sub == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: required parameter is NULL (system, name, sub_options)");
+        return -1;
+    }
 
     bg_option_t option;
     memset(&option, 0, sizeof(option));
@@ -314,7 +338,10 @@ int bg_hrl_create_hierarchical_option(bg_hrl_system_t* system,
 
 const bg_option_t* bg_hrl_get_option(const bg_hrl_system_t* system,
                                       uint32_t option_id) {
-    if (!system || option_id >= system->num_options) return NULL;
+    if (!system || option_id >= system->num_options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_hrl_reset: system is NULL");
+        return NULL;
+    }
     return &system->options[option_id];
 }
 
@@ -325,12 +352,16 @@ const bg_option_t* bg_hrl_get_option(const bg_hrl_system_t* system,
 int bg_hrl_register_goal(bg_hrl_system_t* system,
                           const bg_goal_t* goal,
                           uint32_t* out_id) {
-    if (!system || !goal) return -1;
+    if (!system || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_reset: required parameter is NULL (system, goal)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->num_goals >= system->config.max_goals) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_hrl_reset: capacity exceeded");
         return -1;
     }
 
@@ -349,7 +380,10 @@ int bg_hrl_register_goal(bg_hrl_system_t* system,
 }
 
 int bg_hrl_activate_goal(bg_hrl_system_t* system, uint32_t goal_id) {
-    if (!system || goal_id >= system->num_goals) return -1;
+    if (!system || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_activate_goal: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->goals[goal_id].state = BG_GOAL_STATE_ACTIVE;
@@ -358,7 +392,10 @@ int bg_hrl_activate_goal(bg_hrl_system_t* system, uint32_t goal_id) {
 }
 
 int bg_hrl_deactivate_goal(bg_hrl_system_t* system, uint32_t goal_id) {
-    if (!system || goal_id >= system->num_goals) return -1;
+    if (!system || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_deactivate_goal: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->goals[goal_id].state = BG_GOAL_STATE_INACTIVE;
@@ -369,7 +406,10 @@ int bg_hrl_deactivate_goal(bg_hrl_system_t* system, uint32_t goal_id) {
 int bg_hrl_update_goal_progress(bg_hrl_system_t* system,
                                  uint32_t goal_id,
                                  const float* current_state) {
-    if (!system || goal_id >= system->num_goals) return -1;
+    if (!system || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_deactivate_goal: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -402,7 +442,10 @@ int bg_hrl_update_goal_progress(bg_hrl_system_t* system,
 int bg_hrl_select_option(bg_hrl_system_t* system,
                           const float* state,
                           uint32_t* out_option_id) {
-    if (!system || !out_option_id) return -1;
+    if (!system || !out_option_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_deactivate_goal: required parameter is NULL (system, out_option_id)");
+        return -1;
+    }
     (void)state; /* Unused in stub */
 
     nimcp_mutex_lock(system->mutex);
@@ -435,13 +478,17 @@ int bg_hrl_select_option(bg_hrl_system_t* system,
 int bg_hrl_get_action(bg_hrl_system_t* system,
                        const float* state,
                        uint32_t* out_action_id) {
-    if (!system || !out_action_id) return -1;
+    if (!system || !out_action_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_deactivate_goal: required parameter is NULL (system, out_action_id)");
+        return -1;
+    }
     (void)state; /* Unused in stub */
 
     nimcp_mutex_lock(system->mutex);
 
     if (system->active_option == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_deactivate_goal: validation failed");
         return -1;
     }
 
@@ -454,6 +501,7 @@ int bg_hrl_get_action(bg_hrl_system_t* system,
             opt->current_step++;
         } else {
             nimcp_mutex_unlock(system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_deactivate_goal: validation failed");
             return -1;
         }
     } else {
@@ -496,7 +544,10 @@ bool bg_hrl_should_terminate(bg_hrl_system_t* system,
 }
 
 int bg_hrl_interrupt_option(bg_hrl_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_interrupt_option: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -514,7 +565,10 @@ int bg_hrl_step(bg_hrl_system_t* system,
                  const float* state,
                  float reward,
                  float dt_ms) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_interrupt_option: system is NULL");
+        return -1;
+    }
     (void)state;
     (void)reward;
     (void)dt_ms;
@@ -547,7 +601,10 @@ int bg_hrl_update_values(bg_hrl_system_t* system,
                           float reward,
                           const float* next_state,
                           bool terminal) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_interrupt_option: system is NULL");
+        return -1;
+    }
     (void)state;
     (void)next_state;
     (void)terminal;
@@ -570,7 +627,10 @@ int bg_hrl_update_intra_option(bg_hrl_system_t* system,
                                 const float* state,
                                 uint32_t action,
                                 float reward) {
-    if (!system || option_id >= system->num_options) return -1;
+    if (!system || option_id >= system->num_options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_interrupt_option: system is NULL");
+        return -1;
+    }
     (void)state;
     (void)action;
     (void)reward;
@@ -583,7 +643,10 @@ int bg_hrl_update_termination(bg_hrl_system_t* system,
                                uint32_t option_id,
                                const float* state,
                                bool did_terminate) {
-    if (!system || option_id >= system->num_options) return -1;
+    if (!system || option_id >= system->num_options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_hrl_interrupt_option: system is NULL");
+        return -1;
+    }
     (void)state;
 
     nimcp_mutex_lock(system->mutex);
@@ -600,7 +663,10 @@ int bg_hrl_update_termination(bg_hrl_system_t* system,
 }
 
 int bg_hrl_discover_options(bg_hrl_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_discover_options: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -636,7 +702,10 @@ float bg_hrl_get_option_value(const bg_hrl_system_t* system,
 int bg_hrl_get_option_q_values(const bg_hrl_system_t* system,
                                 const float* state,
                                 float* q_values) {
-    if (!system || !q_values) return -1;
+    if (!system || !q_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_get_hierarchy_depth: required parameter is NULL (system, q_values)");
+        return -1;
+    }
     (void)state;
 
     for (uint32_t i = 0; i < system->num_options; i++) {
@@ -646,7 +715,10 @@ int bg_hrl_get_option_q_values(const bg_hrl_system_t* system,
 }
 
 int bg_hrl_get_stats(const bg_hrl_system_t* system, bg_hrl_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_hrl_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
     *stats = system->stats;
     return 0;
 }

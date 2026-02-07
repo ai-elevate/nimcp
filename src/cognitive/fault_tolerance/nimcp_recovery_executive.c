@@ -611,6 +611,7 @@ recovery_executive_t* recovery_executive_create(
     // GUARD: NULL config check
     if (!config) {
         LOG_ERROR("NULL config in recovery_executive_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create: config is NULL");
         return NULL;
     }
 
@@ -621,6 +622,7 @@ recovery_executive_t* recovery_executive_create(
         sizeof(recovery_executive_t));
     if (!exec) {
         LOG_ERROR("Failed to allocate recovery executive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create: exec is NULL");
         return NULL;
     }
 
@@ -711,6 +713,7 @@ void recovery_executive_destroy(recovery_executive_t* exec) {
 
 bool recovery_executive_is_ready(const recovery_executive_t* exec) {
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_is_ready: exec is NULL");
         return false;
     }
 
@@ -733,6 +736,7 @@ bool recovery_executive_decompose_goal(
     // GUARD: Parameter validation
     if (!subgoals || !subgoal_count) {
         LOG_ERROR("NULL parameters in recovery_executive_decompose_goal");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_decompose_goal: required parameter is NULL (subgoals, subgoal_count)");
         return false;
     }
 
@@ -773,6 +777,7 @@ bool recovery_executive_decompose_goal(
 
         default:
             LOG_WARNING("Unknown goal type in decompose_goal: %d", (int)goal);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_executive_decompose_goal: operation failed");
             return false;
     }
 
@@ -805,11 +810,13 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
     // GUARD: Parameter validation
     if (!exec) {
         LOG_ERROR("NULL exec in create_plan");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create_plan_with_brain_input: exec is NULL");
         return NULL;
     }
 
     if (!diagnosis) {
         LOG_ERROR("NULL diagnosis in create_plan");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create_plan_with_brain_input: diagnosis is NULL");
         return NULL;
     }
 
@@ -821,6 +828,7 @@ recovery_plan_t* recovery_executive_create_plan_with_brain_input(
     recovery_plan_t* plan = (recovery_plan_t*)nimcp_malloc(sizeof(recovery_plan_t));
     if (!plan) {
         LOG_ERROR("Failed to allocate recovery plan");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_executive_create_plan_with_brain_input: plan is NULL");
         return NULL;
     }
 
@@ -1025,6 +1033,7 @@ recovery_execution_result_t recovery_executive_execute_plan(
 
 bool recovery_executive_is_plan_working(const recovery_executive_t* exec) {
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_is_plan_working: exec is NULL");
         return false;
     }
 
@@ -1045,6 +1054,7 @@ bool recovery_executive_get_monitoring_state(
     plan_monitoring_state_t* state
 ) {
     if (!exec || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_monitoring_state: required parameter is NULL (exec, state)");
         return false;
     }
 
@@ -1067,17 +1077,20 @@ recovery_plan_t* recovery_executive_replan(
     // GUARD: Parameter validation
     if (!exec) {
         LOG_ERROR("NULL exec in replan");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan: exec is NULL");
         return NULL;
     }
 
     if (!reason) {
         LOG_ERROR("NULL reason in replan");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan: reason is NULL");
         return NULL;
     }
 
     // Must have stored diagnosis for replanning
     if (!exec->has_diagnosis) {
         LOG_ERROR("No stored diagnosis for replanning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan: exec->has_diagnosis is NULL");
         return NULL;
     }
 
@@ -1131,11 +1144,13 @@ recovery_plan_t* recovery_executive_replan_with_brain_input(
     const char* reason
 ) {
     if (!exec || !brain_decision || !reason) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan_with_brain_input: required parameter is NULL (exec, brain_decision, reason)");
         return NULL;
     }
 
     if (!exec->has_diagnosis) {
         LOG_ERROR("No stored diagnosis for replanning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_replan_with_brain_input: exec->has_diagnosis is NULL");
         return NULL;
     }
 
@@ -1165,6 +1180,7 @@ bool recovery_executive_set_decision_criteria(
     const decision_criteria_t* criteria
 ) {
     if (!exec || !criteria) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_set_decision_criteria: required parameter is NULL (exec, criteria)");
         return false;
     }
 
@@ -1181,6 +1197,7 @@ bool recovery_executive_get_decision_criteria(
     decision_criteria_t* criteria
 ) {
     if (!exec || !criteria) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_decision_criteria: required parameter is NULL (exec, criteria)");
         return false;
     }
 
@@ -1201,6 +1218,7 @@ bool recovery_executive_get_config(
     recovery_executive_config_t* config
 ) {
     if (!exec || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_config: required parameter is NULL (exec, config)");
         return false;
     }
 
@@ -1217,6 +1235,7 @@ bool recovery_executive_update_config(
     const recovery_executive_config_t* config
 ) {
     if (!exec || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_update_config: required parameter is NULL (exec, config)");
         return false;
     }
 
@@ -1237,6 +1256,7 @@ bool recovery_executive_get_stats(
     recovery_executive_stats_t* stats
 ) {
     if (!exec || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_stats: required parameter is NULL (exec, stats)");
         return false;
     }
 

@@ -114,7 +114,10 @@ static wernicke_immune_state_t impairment_to_state(float impairment, bool recove
  */
 static bool allocate_error_history(wernicke_error_history_t* history, size_t capacity) {
     history->errors = nimcp_calloc(capacity, sizeof(wernicke_comp_error_t));
-    if (!history->errors) return false;
+    if (!history->errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_error_history: history->errors is NULL");
+        return false;
+    }
     history->error_capacity = capacity;
     history->error_count = 0;
     return true;
@@ -214,6 +217,7 @@ wernicke_immune_bridge_t* wernicke_immune_bridge_create(
     if (!allocate_error_history(&bridge->error_history, bridge->config.max_error_history)) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate error history");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_immune_bridge_create: allocate_error_history is NULL");
         return NULL;
     }
 
@@ -278,7 +282,10 @@ int wernicke_immune_bridge_stop(wernicke_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int wernicke_immune_apply_inflammation_effects(wernicke_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_inflammation_impairment) return 0;
 
     /* Query current inflammation level */
@@ -323,7 +330,10 @@ int wernicke_immune_apply_inflammation_effects(wernicke_immune_bridge_t* bridge)
 }
 
 int wernicke_immune_apply_cytokine_effects(wernicke_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_cytokine_modulation) return 0;
 
     /* Query cytokine levels from immune system */
@@ -367,7 +377,10 @@ int wernicke_immune_compute_impairment(
     wernicke_immune_bridge_t* bridge,
     wernicke_comprehension_impairment_t* impairment)
 {
-    if (!bridge || !impairment) return -1;
+    if (!bridge || !impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_compute_impairment: required parameter is NULL (bridge, impairment)");
+        return -1;
+    }
 
     /* Apply inflammation effects first */
     wernicke_immune_apply_inflammation_effects(bridge);
@@ -532,7 +545,10 @@ int wernicke_immune_analyze_error_patterns(
 }
 
 int wernicke_immune_trigger_from_errors(wernicke_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_trigger_from_errors: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
 
     /* Analyze current error patterns */
     float phon_dmg, lex_dmg, sem_dmg, syn_dmg;
@@ -542,6 +558,7 @@ int wernicke_immune_trigger_from_errors(wernicke_immune_bridge_t* bridge) {
     float max_damage = fmaxf(fmaxf(phon_dmg, lex_dmg), fmaxf(sem_dmg, syn_dmg));
 
     if (max_damage < bridge->config.error_trigger_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_immune_trigger_from_errors: validation failed");
         return -1;  /* No trigger needed */
     }
 
@@ -654,7 +671,10 @@ int wernicke_immune_get_impairment(
     const wernicke_immune_bridge_t* bridge,
     wernicke_comprehension_impairment_t* impairment)
 {
-    if (!bridge || !impairment) return -1;
+    if (!bridge || !impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_get_impairment: required parameter is NULL (bridge, impairment)");
+        return -1;
+    }
     *impairment = bridge->impairment;
     return 0;
 }
@@ -663,7 +683,10 @@ int wernicke_immune_get_stats(
     const wernicke_immune_bridge_t* bridge,
     wernicke_immune_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

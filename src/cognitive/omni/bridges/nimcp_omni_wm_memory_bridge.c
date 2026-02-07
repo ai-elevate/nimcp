@@ -576,6 +576,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
     omni_wm_memory_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_memory_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM memory bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge is NULL");
         return NULL;
     }
 
@@ -584,6 +585,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
                          "wm_memory_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -600,6 +602,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate replay buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -610,6 +613,7 @@ omni_wm_memory_bridge_t* omni_wm_memory_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate context cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -845,7 +849,10 @@ nimcp_error_t omni_wm_memory_bridge_connect_consolidation(
 }
 
 bool omni_wm_memory_bridge_is_connected(const omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_memory_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_memory_bridge_heartbeat("omni_wm_memo_is_connected", 0.0f);
 
@@ -1054,6 +1061,7 @@ nimcp_error_t omni_wm_memory_bridge_encode_engram(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(engram_id_out, NIMCP_ERROR_INVALID_PARAM, "encode_engram: engram_id_out is NULL");
     if (!bridge->config.enable_engram_encoding) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1111,6 +1119,7 @@ nimcp_error_t omni_wm_memory_bridge_retrieve_episodic_context(
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(context_out, NIMCP_ERROR_INVALID_PARAM, "context_out is NULL");
+    NIMCP_CHECK_THROW(confidence_out, NIMCP_ERROR_INVALID_PARAM, "confidence_out is NULL");
     NIMCP_CHECK_THROW(context_dim > 0, NIMCP_ERROR_INVALID_PARAM, "context_dim must be greater than 0");
     if (!bridge->config.enable_context_retrieval) return NIMCP_SUCCESS;
 

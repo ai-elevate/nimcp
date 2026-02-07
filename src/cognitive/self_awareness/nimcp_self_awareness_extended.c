@@ -134,6 +134,7 @@ bool metacognition_assess(introspection_context_t introspection,
 {
     // Guard: NULL checks
     if (!assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_assess: assessment is NULL");
         return false;
     }
 
@@ -251,12 +252,14 @@ bool generate_self_narrative(self_model_system_t self_model,
 {
     // Guard: NULL checks
     if (!self_model || !narrative || narrative_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_self_narrative: required parameter is NULL (self_model, narrative)");
         return false;
     }
 
     // Get current self-model
     self_model_t model;
     if (!self_model_get(self_model, &model)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_self_narrative: self_model_get is NULL");
         return false;
     }
 
@@ -367,6 +370,7 @@ bool compute_temporal_self(self_model_system_t self_model,
 {
     // Guard: NULL checks
     if (!self_model || !temporal_self) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_temporal_self: required parameter is NULL (self_model, temporal_self)");
         return false;
     }
 
@@ -375,6 +379,7 @@ bool compute_temporal_self(self_model_system_t self_model,
 
     // Get current self-model
     if (!self_model_get(self_model, &temporal_self->current_self)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_temporal_self: self_model_get is NULL");
         return false;
     }
 
@@ -443,6 +448,7 @@ bool attribute_agency(const char* action_description,
 {
     // Guard: NULL checks
     if (!action_description || !attribution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attribute_agency: required parameter is NULL (action_description, attribution)");
         return false;
     }
 
@@ -503,6 +509,7 @@ bool detect_self_harm(introspection_context_t introspection,
 {
     // Guard: NULL checks
     if (!detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_self_harm: detection is NULL");
         return false;
     }
 
@@ -520,6 +527,7 @@ bool detect_self_harm(introspection_context_t introspection,
     // Get current self-model
     self_model_t model;
     if (!self_model_get(self_model, &model)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_self_harm: self_model_get is NULL");
         return false;
     }
 
@@ -603,6 +611,7 @@ self_awareness_system_t self_awareness_create(const char* name,
 {
     // Guard: NULL checks
     if (!name || !role || !purpose) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_create: required parameter is NULL (name, role, purpose)");
         return NULL;
     }
 
@@ -624,6 +633,7 @@ self_awareness_system_t self_awareness_create(const char* name,
     system->self_model = self_model_create(name, role, purpose);
     if (!system->self_model) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_create: system->self_model is NULL");
         return NULL;
     }
 
@@ -631,6 +641,7 @@ self_awareness_system_t self_awareness_create(const char* name,
     if (!system->autobio) {
         self_model_destroy(system->self_model);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_create: system->autobio is NULL");
         return NULL;
     }
 
@@ -643,6 +654,7 @@ self_awareness_system_t self_awareness_create(const char* name,
         autobio_destroy(system->autobio);
         self_model_destroy(system->self_model);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_create: validation failed");
         return NULL;
     }
 
@@ -690,6 +702,7 @@ bool self_awareness_reflect(self_awareness_system_t system,
 {
     // Guard: NULL check
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_reflect: system is NULL");
         return false;
     }
 
@@ -728,6 +741,7 @@ bool self_awareness_get_summary(self_awareness_system_t system,
 {
     // Guard: NULL checks
     if (!system || !summary || summary_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_get_summary: required parameter is NULL (system, summary)");
         return false;
     }
 
@@ -749,6 +763,7 @@ bool self_awareness_check_health(self_awareness_system_t system,
 {
     // Guard: NULL checks
     if (!system || !health_score || !issues || issues_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_check_health: required parameter is NULL (system, health_score, issues)");
         return false;
     }
 

@@ -392,6 +392,7 @@ bool nimcp_brain_factory_init_motor_subsystem(brain_t brain) {
     brain->motor = motor_create(&motor_cfg);
     if (!brain->motor) {
         set_error("Failed to create Motor Cortex adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_motor_subsystem: brain->motor is NULL");
         return false;
     }
 
@@ -479,6 +480,7 @@ bool nimcp_brain_factory_init_motor_substrate_bridge(brain_t brain) {
 
     if (!brain->motor_substrate_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create motor substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_motor_substrate_bridge: brain->motor_substrate_bridge is NULL");
         return false;
     }
 
@@ -525,6 +527,7 @@ bool nimcp_brain_factory_init_motor_thalamic_bridge(brain_t brain) {
 
     if (!brain->motor_thalamic_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create motor thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_motor_thalamic_bridge: brain->motor_thalamic_bridge is NULL");
         return false;
     }
 
@@ -575,6 +578,7 @@ bool nimcp_brain_factory_init_motor_quantum_bridge(brain_t brain) {
 
     if (!brain->motor_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create motor quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_motor_quantum_bridge: brain->motor_quantum_bridge is NULL");
         return false;
     }
 

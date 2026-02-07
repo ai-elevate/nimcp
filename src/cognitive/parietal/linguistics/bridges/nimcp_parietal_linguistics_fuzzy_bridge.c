@@ -414,6 +414,7 @@ ling_fuzzy_bridge_t* ling_fuzzy_bridge_create(
     ling_fuzzy_bridge_t* bridge = (ling_fuzzy_bridge_t*)nimcp_calloc(1, sizeof(ling_fuzzy_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fuzzy bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_fuzzy_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -1044,6 +1045,7 @@ const char* ling_fuzzy_hedge_name(fuzzy_hedge_t hedge) {
 
 int ling_fuzzy_parse_hedge(const char* str, fuzzy_hedge_t* hedge) {
     if (!str || !hedge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ling_fuzzy_parse_hedge: required parameter is NULL (str, hedge)");
         return -1;
     }
 
@@ -1064,6 +1066,7 @@ int ling_fuzzy_parse_hedge(const char* str, fuzzy_hedge_t* hedge) {
         *hedge = FUZZY_HEDGE_INDEED;
     } else {
         *hedge = FUZZY_HEDGE_NONE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ling_fuzzy_parse_hedge: operation failed");
         return -1;  /* Unknown hedge */
     }
 

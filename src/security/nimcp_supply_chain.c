@@ -295,6 +295,7 @@ nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t
         nimcp_free(sc->dependencies);
         nimcp_free(sc);
         LOG_ERROR("nimcp_supply_chain_create: Source allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_supply_chain_create: sc->sources is NULL");
         return NULL;
     }
 
@@ -304,6 +305,7 @@ nimcp_supply_chain_t nimcp_supply_chain_create(const nimcp_supply_chain_config_t
         nimcp_free(sc->dependencies);
         nimcp_free(sc);
         LOG_ERROR("nimcp_supply_chain_create: Mutex initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_supply_chain_create: validation failed");
         return NULL;
     }
 

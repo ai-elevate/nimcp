@@ -368,6 +368,7 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
         fprintf(stderr, "[PARIETAL] ERROR: Failed to create parietal lobe\n");
         brain->parietal = NULL;
         brain->parietal_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_parietal_subsystem: parietal is NULL");
         return false;
     }
 
@@ -666,6 +667,7 @@ bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain) {
         fprintf(stderr, "[INTUITION] ERROR: Failed to create intuition system\n");
         brain->intuition_system = NULL;
         brain->intuition_system_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_intuition_subsystem: intuition is NULL");
         return false;
     }
 

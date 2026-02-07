@@ -40,6 +40,7 @@ normalization_immune_context_t* normalization_immune_create(
     size_t num_channels
 ) {
     if (!immune_system || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "normalization_immune_create: immune_system is NULL");
         return NULL;
     }
 
@@ -58,6 +59,7 @@ normalization_immune_context_t* normalization_immune_create(
     ctx->outliers = nimcp_calloc(ctx->outlier_capacity, sizeof(normalization_outlier_t));
     if (!ctx->outliers) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "normalization_immune_create: ctx->outliers is NULL");
         return NULL;
     }
 
@@ -73,6 +75,7 @@ normalization_immune_context_t* normalization_immune_create(
         nimcp_free(ctx->zscore_original_mean);
         nimcp_free(ctx->outliers);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_create: operation failed");
         return NULL;
     }
 
@@ -127,6 +130,7 @@ int normalization_immune_connect_adaptive(
     adaptive_normalizer_t* adaptive
 ) {
     if (!ctx || !adaptive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_connect_adaptive: required parameter is NULL (ctx, adaptive)");
         return -1;
     }
 
@@ -152,6 +156,7 @@ int normalization_immune_connect_homeostatic(
     homeostatic_normalizer_t* homeostatic
 ) {
     if (!ctx || !homeostatic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_connect_homeostatic: required parameter is NULL (ctx, homeostatic)");
         return -1;
     }
 
@@ -177,6 +182,7 @@ int normalization_immune_connect_zscore(
     zscore_normalizer_t* zscore
 ) {
     if (!ctx || !zscore) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_connect_zscore: required parameter is NULL (ctx, zscore)");
         return -1;
     }
 
@@ -202,6 +208,7 @@ int normalization_immune_connect_minmax(
     void* minmax
 ) {
     if (!ctx || !minmax) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_connect_minmax: required parameter is NULL (ctx, minmax)");
         return -1;
     }
 
@@ -230,6 +237,7 @@ static normalization_outlier_t* create_outlier(
     float severity
 ) {
     if (!ctx || ctx->outlier_count >= ctx->outlier_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "create_outlier: ctx is NULL");
         return NULL;
     }
 
@@ -263,6 +271,7 @@ int normalization_immune_detect_zscore_outlier(
     uint32_t* outlier_id
 ) {
     if (!ctx || !ctx->enabled || !outlier_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_detect_zscore_outlier: required parameter is NULL (ctx, ctx->enabled, outlier_id)");
         return -1;
     }
 
@@ -270,6 +279,7 @@ int normalization_immune_detect_zscore_outlier(
 
     /* Check if outlier (use < so that exact threshold value is an outlier) */
     if (fabsf(zscore) < threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "normalization_immune_detect_zscore_outlier: validation failed");
         return -1;  /* Not an outlier */
     }
 
@@ -338,6 +348,7 @@ int normalization_immune_detect_rapid_shift(
     uint32_t* outlier_id
 ) {
     if (!ctx || !ctx->enabled || !outlier_id || delta_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_detect_rapid_shift: required parameter is NULL (ctx, ctx->enabled, outlier_id)");
         return -1;
     }
 
@@ -349,6 +360,7 @@ int normalization_immune_detect_rapid_shift(
     float threshold = 0.5f;
 
     if (velocity <= threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "normalization_immune_detect_rapid_shift: validation failed");
         return -1;  /* Not rapid */
     }
 
@@ -414,12 +426,14 @@ int normalization_immune_detect_homeostatic_drift(
     uint32_t* outlier_id
 ) {
     if (!ctx || !ctx->enabled || !outlier_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_detect_homeostatic_drift: required parameter is NULL (ctx, ctx->enabled, outlier_id)");
         return -1;
     }
 
     float threshold = 0.3f;  /* 30% drift is excessive */
 
     if (fabsf(target_drift) <= threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "normalization_immune_detect_homeostatic_drift: validation failed");
         return -1;  /* Not excessive */
     }
 
@@ -486,6 +500,7 @@ int normalization_immune_report_range_violation(
     uint32_t* outlier_id
 ) {
     if (!ctx || !ctx->enabled || !outlier_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_report_range_violation: required parameter is NULL (ctx, ctx->enabled, outlier_id)");
         return -1;
     }
 
@@ -561,12 +576,14 @@ int normalization_immune_report_range_violation(
  */
 int normalization_immune_update_modulation(normalization_immune_context_t* ctx) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_update_modulation: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
     /* Get immune system stats */
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(ctx->immune_system, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "normalization_immune_update_modulation: validation failed");
         return -1;
     }
 
@@ -637,6 +654,7 @@ int normalization_immune_apply_fever_shift(
     float il6_level
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_fever_shift: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -668,6 +686,7 @@ int normalization_immune_apply_storm_clamping(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_storm_clamping: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -694,6 +713,7 @@ int normalization_immune_apply_learning_rate_modulation(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_learning_rate_modulation: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -720,6 +740,7 @@ int normalization_immune_apply_homeostatic_shift(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx || !ctx->enabled || !ctx->homeostatic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_homeostatic_shift: required parameter is NULL (ctx, ctx->enabled, ctx->homeostatic)");
         return -1;
     }
 
@@ -741,6 +762,7 @@ int normalization_immune_apply_variance_expansion(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_variance_expansion: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -761,6 +783,7 @@ int normalization_immune_apply_range_expansion(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_apply_range_expansion: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -790,6 +813,7 @@ int normalization_immune_restore_baselines(
     uint64_t delta_ms
 ) {
     if (!ctx || !ctx->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_restore_baselines: required parameter is NULL (ctx, ctx->enabled)");
         return -1;
     }
 
@@ -889,6 +913,7 @@ int normalization_immune_get_modulation(
     normalization_immune_modulation_t* modulation
 ) {
     if (!ctx || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_get_modulation: required parameter is NULL (ctx, modulation)");
         return -1;
     }
 
@@ -919,6 +944,7 @@ const normalization_outlier_t* normalization_immune_get_outlier(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_immune_get_outlier: validation failed");
     return NULL;
 }
 

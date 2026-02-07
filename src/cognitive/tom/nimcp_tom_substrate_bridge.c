@@ -420,12 +420,14 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for ToM substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for ToM substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tom_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -516,6 +518,7 @@ int tom_substrate_disconnect_bio_async(tom_substrate_bridge_t* bridge) {
 bool tom_substrate_is_bio_async_connected(const tom_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -678,6 +681,7 @@ int tom_substrate_get_effects(
 bool tom_substrate_is_impaired(const tom_substrate_bridge_t* bridge) {
     /* Guard: validate bridge pointer */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

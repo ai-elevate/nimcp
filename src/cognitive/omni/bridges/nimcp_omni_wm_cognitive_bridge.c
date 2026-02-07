@@ -218,7 +218,10 @@ static uint64_t get_current_time_us(void) {
  * @brief Find goal index by ID
  */
 static int find_goal_by_id(const omni_wm_cognitive_bridge_t* bridge, uint32_t goal_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal_by_id: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_goals; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -231,6 +234,7 @@ static int find_goal_by_id(const omni_wm_cognitive_bridge_t* bridge, uint32_t go
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_goal_by_id: validation failed");
     return -1;
 }
 
@@ -696,6 +700,7 @@ omni_wm_cognitive_bridge_t* omni_wm_cognitive_bridge_create(
     omni_wm_cognitive_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_cognitive_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM cognitive bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_cognitive_bridge_default_config: bridge is NULL");
         return NULL;
     }
 
@@ -704,6 +709,7 @@ omni_wm_cognitive_bridge_t* omni_wm_cognitive_bridge_create(
                          "wm_cognitive_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cognitive_bridge_default_config: operation failed");
         return NULL;
     }
 
@@ -720,6 +726,7 @@ omni_wm_cognitive_bridge_t* omni_wm_cognitive_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate prediction buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cognitive_bridge_default_config: validation failed");
         return NULL;
     }
 
@@ -730,6 +737,7 @@ omni_wm_cognitive_bridge_t* omni_wm_cognitive_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate WM context cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cognitive_bridge_default_config: validation failed");
         return NULL;
     }
 
@@ -985,7 +993,10 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_attention(
 }
 
 bool omni_wm_cognitive_bridge_is_connected(const omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cognitive_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_cognitive_bridge_heartbeat("omni_wm_cogn_is_connected", 0.0f);
 
@@ -1006,6 +1017,21 @@ nimcp_error_t omni_wm_cognitive_bridge_update(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Validate dt - negative timesteps are invalid */
+    if (dt < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "omni_wm_cognitive_bridge_update: negative dt (%.4f)", dt);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Must be connected (world_model set) to perform updates */
+    if (!bridge->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+            "omni_wm_cognitive_bridge_update: bridge not connected (world_model is NULL)");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -1227,8 +1253,15 @@ nimcp_error_t omni_wm_cognitive_bridge_remove_goal(
         return NIMCP_ERROR_NOT_FOUND;
     }
 
-    /* Mark as inactive - will be compacted on next update */
+    /* Remove goal by shifting remaining goals down to compact the array */
     bridge->goals[idx].is_active = false;
+    for (uint32_t i = (uint32_t)idx; i + 1 < bridge->num_goals; i++) {
+        bridge->goals[i] = bridge->goals[i + 1];
+    }
+    bridge->num_goals--;
+
+    /* Clear the now-unused last slot */
+    memset(&bridge->goals[bridge->num_goals], 0, sizeof(wm_cognitive_goal_t));
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1962,7 +1995,10 @@ const wm_cognitive_goal_t* omni_wm_cognitive_bridge_get_goal(
 
 
     int idx = find_goal_by_id(bridge, goal_id);
-    if (idx < 0) return NULL;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
+        return NULL;
+    }
 
     return &bridge->goals[idx];
 }

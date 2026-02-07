@@ -124,7 +124,10 @@ static uint32_t hash_synapse_id(uint64_t id, uint32_t size) {
 
 static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity) {
     buf->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
-    if (!buf->timestamps) return false;
+    if (!buf->timestamps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_buffer_init: buf->timestamps is NULL");
+        return false;
+    }
     buf->capacity = capacity;
     buf->head = 0;
     buf->count = 0;
@@ -173,10 +176,14 @@ static synapse_tracker_t* get_or_create_tracker(struct stdp_guard_internal* g,
             t->synapse_id = synapse_id;
             t->occupied = true;
 
-            if (!spike_buffer_init(&t->pre_spikes, 64)) return NULL;
+            if (!spike_buffer_init(&t->pre_spikes, 64)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_buffer_add: spike_buffer_init is NULL");
+                return NULL;
+            }
             if (!spike_buffer_init(&t->post_spikes, 64)) {
                 spike_buffer_destroy(&t->pre_spikes);
                 t->occupied = false;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "spike_buffer_add: spike_buffer_init is NULL");
                 return NULL;
             }
 
@@ -191,6 +198,7 @@ static synapse_tracker_t* get_or_create_tracker(struct stdp_guard_internal* g,
         idx = (idx + 1) % g->tracker_hashmap_size;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_buffer_add: validation failed");
     return NULL; /* Hashmap full */
 }
 
@@ -215,7 +223,10 @@ static float compute_stdp_delta(const stdp_guard_config_t* config, float dt_ms) 
  * Detect suspicious regularity in inter-spike intervals
  */
 static bool detect_timing_regularity(struct stdp_guard_internal* g) {
-    if (g->dt_history_count < 10) return false;
+    if (g->dt_history_count < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_timing_regularity: validation failed");
+        return false;
+    }
 
     /* Calculate variance of dt values */
     float sum = 0.0f, sum_sq = 0.0f;
@@ -238,7 +249,10 @@ static bool detect_timing_regularity(struct stdp_guard_internal* g) {
  */
 static bool detect_burst(spike_buffer_t* buf, uint32_t threshold_count,
                          float interval_ms, uint32_t* burst_count_out) {
-    if (buf->count < threshold_count) return false;
+    if (buf->count < threshold_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_timing_regularity: validation failed");
+        return false;
+    }
 
     uint64_t current_time = get_time_us();
     uint64_t interval_us = (uint64_t)(interval_ms * 1000.0f);
@@ -307,6 +321,7 @@ stdp_guard_t stdp_guard_create(
     guard->trackers = nimcp_calloc(guard->tracker_hashmap_size, sizeof(synapse_tracker_t));
     if (!guard->trackers) {
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_guard_create: guard->trackers is NULL");
         return NULL;
     }
 
@@ -316,6 +331,7 @@ stdp_guard_t stdp_guard_create(
     if (!guard->dt_history) {
         nimcp_free(guard->trackers);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_guard_create: guard->dt_history is NULL");
         return NULL;
     }
 

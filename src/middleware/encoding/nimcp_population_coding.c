@@ -180,7 +180,10 @@ static int compare_rate_index_desc(const void* a, const void* b) {
     const rate_index_pair_t* pair_a = (const rate_index_pair_t*)a;
     const rate_index_pair_t* pair_b = (const rate_index_pair_t*)b;
 
-    if (pair_a->rate > pair_b->rate) return -1;
+    if (pair_a->rate > pair_b->rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_rate_index_desc: validation failed");
+        return -1;
+    }
     if (pair_a->rate < pair_b->rate) return 1;
     return 0;
 }
@@ -202,6 +205,7 @@ static bool compute_principal_component(
     float* eigenvalue_out
 ) {
     if (!data_centered || !component_out || !eigenvalue_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_principal_component: required parameter is NULL (data_centered, component_out, eigenvalue_out)");
         return false;
     }
 
@@ -222,6 +226,7 @@ static bool compute_principal_component(
             norm = (float)nimcp_tensor_norm_p(t, 2.0);
             if (norm < FLT_EPSILON) {
                 nimcp_tensor_destroy(t);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_principal_component: validation failed");
                 return false;
             }
             nimcp_tensor_mul_scalar_(t, 1.0 / (double)norm);
@@ -233,6 +238,7 @@ static bool compute_principal_component(
             }
             norm = sqrtf(norm);
             if (norm < FLT_EPSILON) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_principal_component: validation failed");
                 return false;
             }
             for (uint32_t i = 0; i < num_features; i++) {
@@ -244,6 +250,7 @@ static bool compute_principal_component(
     // Power iteration
     float* temp = (float*)nimcp_malloc(num_features * sizeof(float));
     if (!temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_principal_component: temp is NULL");
         return false;
     }
 
@@ -354,6 +361,7 @@ population_coding_encoder_t population_coding_create(
     );
     if (!encoder->work_buffer) {
         nimcp_free(encoder);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_create: encoder->work_buffer is NULL");
         return NULL;
     }
 
@@ -361,6 +369,7 @@ population_coding_encoder_t population_coding_create(
     if (nimcp_mutex_init(&encoder->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(encoder->work_buffer);
         nimcp_free(encoder);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "population_coding_create: validation failed");
         return NULL;
     }
 
@@ -424,9 +433,11 @@ bool population_coding_encode_vector_sum(
 ) {
     // Guard clauses
     if (!encoder || !rates || !tuning_curves || !vector_out || num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_vector_sum: required parameter is NULL (encoder, rates, tuning_curves, vector_out)");
         return false;
     }
     if (num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_vector_sum: validation failed");
         return false;
     }
 
@@ -473,9 +484,11 @@ bool population_coding_decode_vector_sum(
 ) {
     // Guard clauses
     if (!encoder || !vector || !tuning_curves || !rates_out || num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_decode_vector_sum: required parameter is NULL (encoder, vector, tuning_curves, rates_out)");
         return false;
     }
     if (num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_decode_vector_sum: validation failed");
         return false;
     }
 
@@ -521,9 +534,11 @@ bool population_coding_encode_center_of_mass(
 ) {
     // Guard clauses
     if (!encoder || !rates || !positions || !center_out || num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_center_of_mass: required parameter is NULL (encoder, rates, positions, center_out)");
         return false;
     }
     if (num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_center_of_mass: validation failed");
         return false;
     }
 
@@ -549,6 +564,7 @@ bool population_coding_encode_center_of_mass(
     // HOW: Check total_rate and return false for degenerate case
     if (total_rate <= 0.0F) {
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_center_of_mass: validation failed");
         return false;
     }
 
@@ -577,15 +593,19 @@ bool population_coding_encode_pca(
 ) {
     // Guard clauses
     if (!encoder || !activity_matrix || !result_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_pca: required parameter is NULL (encoder, activity_matrix, result_out)");
         return false;
     }
     if (num_samples == 0 || num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_pca: num_samples is zero");
         return false;
     }
     if (!encoder->config.enable_pca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_pca: encoder->config is NULL");
         return false;
     }
     if (result_out->n_components == 0 || result_out->n_components > num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_pca: result_out->n_components is zero");
         return false;
     }
 
@@ -604,6 +624,7 @@ bool population_coding_encode_pca(
     float* centered = (float*)nimcp_malloc(num_samples * num_neurons * sizeof(float));
     if (!centered) {
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_encode_pca: centered is NULL");
         return false;
     }
 
@@ -619,6 +640,7 @@ bool population_coding_encode_pca(
     if (!residual) {
         nimcp_free(centered);
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_encode_pca: residual is NULL");
         return false;
     }
     memcpy(residual, centered, num_samples * num_neurons * sizeof(float));
@@ -634,6 +656,7 @@ bool population_coding_encode_pca(
             nimcp_free(centered);
             nimcp_free(residual);
             nimcp_mutex_unlock(&encoder->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_pca: operation failed");
             return false;
         }
 
@@ -668,9 +691,11 @@ bool population_coding_project_pca(
 ) {
     // Guard clauses
     if (!encoder || !activity || !pca_result || !projection_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_project_pca: required parameter is NULL (encoder, activity, pca_result, projection_out)");
         return false;
     }
     if (num_neurons != pca_result->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_project_pca: validation failed");
         return false;
     }
 
@@ -680,6 +705,7 @@ bool population_coding_project_pca(
     float* centered = (float*)nimcp_malloc(num_neurons * sizeof(float));
     if (!centered) {
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_project_pca: centered is NULL");
         return false;
     }
 
@@ -716,9 +742,11 @@ bool population_coding_compute_synchrony(
 ) {
     // Guard clauses
     if (!encoder || !spike_trains || !result_out || num_neurons < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_compute_synchrony: required parameter is NULL (encoder, spike_trains, result_out)");
         return false;
     }
     if (!encoder->config.enable_synchrony) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_compute_synchrony: encoder->config is NULL");
         return false;
     }
 
@@ -809,6 +837,7 @@ bool population_coding_correlation_matrix(
 ) {
     // Guard clauses
     if (!encoder || !spike_trains || !correlation_matrix_out || num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_correlation_matrix: required parameter is NULL (encoder, spike_trains, correlation_matrix_out)");
         return false;
     }
 
@@ -926,9 +955,11 @@ pca_result_t* population_coding_pca_result_create(
 ) {
     // Guard clauses
     if (n_components == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_pca_result_create: n_components is zero");
         return NULL;
     }
     if (n_components > POPULATION_MAX_PCA_COMPONENTS || n_components > dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_pca_result_create: validation failed");
         return NULL;
     }
 
@@ -947,6 +978,7 @@ pca_result_t* population_coding_pca_result_create(
 
     if (!result->components || !result->eigenvalues || !result->mean) {
         population_coding_pca_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_pca_result_create: required parameter is NULL (result->components, result->eigenvalues, result->mean)");
         return NULL;
     }
 
@@ -1018,11 +1050,13 @@ float population_coding_vector3d_dot(const vector3d_t* v1, const vector3d_t* v2)
 
 bool population_coding_vector3d_normalize(vector3d_t* v) {
     if (!v) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_vector3d_normalize: v is NULL");
         return false;
     }
 
     float mag = calculate_magnitude(v);
     if (mag < FLT_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_vector3d_normalize: validation failed");
         return false;  // Cannot normalize zero vector
     }
 
@@ -1056,15 +1090,19 @@ bool population_coding_set_pe_config(
 ) {
     // Guard clauses
     if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_set_pe_config: encoder is NULL");
         return false;
     }
     if (embedding_dim == 0 || embedding_dim > NIMCP_POS_MAX_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_set_pe_config: embedding_dim is zero");
         return false;
     }
     if (frequency_base <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_set_pe_config: validation failed");
         return false;
     }
     if (position_weight < 0.0F || position_weight > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_set_pe_config: validation failed");
         return false;
     }
 
@@ -1102,6 +1140,7 @@ bool population_coding_set_pe_config(
     if (!encoder->pos_encoder) {
         encoder->config.enable_positional_encoding = false;
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_set_pe_config: encoder->pos_encoder is NULL");
         return false;
     }
 
@@ -1127,15 +1166,19 @@ bool population_coding_encode_neuron_positions(
 ) {
     // Guard clauses
     if (!encoder || !position_encodings_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_neuron_positions: required parameter is NULL (encoder, position_encodings_out)");
         return false;
     }
     if (num_neurons == 0 || num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_encode_neuron_positions: num_neurons is zero");
         return false;
     }
     if (!encoder->config.enable_positional_encoding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_neuron_positions: encoder->config is NULL");
         return false;
     }
     if (!encoder->pe_initialized || !encoder->pos_encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_encode_neuron_positions: required parameter is NULL (encoder->pe_initialized, encoder->pos_encoder)");
         return false;
     }
 
@@ -1177,18 +1220,23 @@ bool population_coding_position_aware_decode(
 ) {
     // Guard clauses
     if (!encoder || !rates || !position_encodings || !query_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_position_aware_decode: required parameter is NULL (encoder, rates, position_encodings, query_position)");
         return false;
     }
     if (!tuning_curves || !vector_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_position_aware_decode: required parameter is NULL (tuning_curves, vector_out)");
         return false;
     }
     if (num_neurons == 0 || num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_position_aware_decode: num_neurons is zero");
         return false;
     }
     if (!encoder->config.enable_positional_encoding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_position_aware_decode: encoder->config is NULL");
         return false;
     }
     if (!encoder->pe_initialized || !encoder->pos_encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_position_aware_decode: required parameter is NULL (encoder->pe_initialized, encoder->pos_encoder)");
         return false;
     }
 
@@ -1201,6 +1249,7 @@ bool population_coding_position_aware_decode(
     float* weighted_rates = (float*)nimcp_malloc(num_neurons * sizeof(float));
     if (!weighted_rates) {
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_position_aware_decode: weighted_rates is NULL");
         return false;
     }
 
@@ -1259,6 +1308,7 @@ bool population_coding_position_aware_decode(
         // No active neurons
         nimcp_free(weighted_rates);
         nimcp_mutex_unlock(&encoder->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_coding_position_aware_decode: validation failed");
         return false;
     }
 

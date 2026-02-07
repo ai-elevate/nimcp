@@ -134,11 +134,17 @@ static float compute_originality(const style_embedding_t* blend,
 static int blend_linear(const creative_influence_t* influences,
                         uint32_t num_influences,
                         style_embedding_t* out) {
-    if (!influences || num_influences == 0 || !out) return -1;
+    if (!influences || num_influences == 0 || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_config_defaults: required parameter is NULL (influences, out)");
+        return -1;
+    }
 
     /* Get dimension from first influence */
     uint32_t dim = influences[0].style.embedding_dim;
-    if (dim == 0) return -1;
+    if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_config_defaults: dim is zero");
+        return -1;
+    }
 
     style_embedding_create(out, dim);
 
@@ -156,6 +162,7 @@ static int blend_linear(const creative_influence_t* influences,
 
     if (total_positive_weight < 0.001f) {
         LOG_WARN(LOG_MODULE, "No positive influences");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_config_defaults: validation failed");
         return -1;
     }
 
@@ -184,7 +191,10 @@ static int blend_linear(const creative_influence_t* influences,
 static int blend_spherical(const creative_influence_t* influences,
                            uint32_t num_influences,
                            style_embedding_t* out) {
-    if (!influences || num_influences == 0 || !out) return -1;
+    if (!influences || num_influences == 0 || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_config_defaults: required parameter is NULL (influences, out)");
+        return -1;
+    }
 
     /* For spherical interpolation with multiple points, iteratively slerp pairs */
     /* Start with first influence */
@@ -256,11 +266,17 @@ static int blend_adaptive(influence_blender_t* blender,
                           const creative_influence_t* influences,
                           uint32_t num_influences,
                           style_embedding_t* out) {
-    if (!blender || !influences || num_influences == 0 || !out) return -1;
+    if (!blender || !influences || num_influences == 0 || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_config_defaults: required parameter is NULL (blender, influences, out)");
+        return -1;
+    }
 
     /* Compute pairwise compatibilities and adjust weights */
     float* adjusted_weights = nimcp_calloc(num_influences, sizeof(float));
-    if (!adjusted_weights) return -1;
+    if (!adjusted_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "influence_blender_config_defaults: adjusted_weights is NULL");
+        return -1;
+    }
 
     /* Copy original weights */
     for (uint32_t i = 0; i < num_influences; i++) {
@@ -304,6 +320,7 @@ static int blend_adaptive(influence_blender_t* blender,
                                                          sizeof(creative_influence_t));
     if (!adj_influences) {
         nimcp_free(adjusted_weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: adj_influences is NULL");
         return -1;
     }
 
@@ -332,6 +349,7 @@ influence_blender_t* influence_blender_create(
     influence_blender_t* blender = nimcp_calloc(1, sizeof(influence_blender_t));
     if (!blender) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate influence blender");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: blender is NULL");
         return NULL;
     }
 
@@ -350,6 +368,7 @@ influence_blender_t* influence_blender_create(
     if (!blender->current_influences) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate influences");
         nimcp_free(blender);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: blender->current_influences is NULL");
         return NULL;
     }
 
@@ -390,15 +409,20 @@ int influence_blender_add(influence_blender_t* blender,
                           float weight,
                           const char* source_work,
                           const char* source_artist) {
-    if (!blender || !style) return -1;
+    if (!blender || !style) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_clear: required parameter is NULL (blender, style)");
+        return -1;
+    }
 
     if (blender->num_current_influences >= blender->influences_capacity) {
         LOG_WARN(LOG_MODULE, "Influence capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "influence_blender_clear: capacity exceeded");
         return -1;
     }
 
     if (weight < blender->config.min_influence_weight) {
         LOG_DEBUG(LOG_MODULE, "Weight below minimum threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_clear: validation failed");
         return -1;
     }
 
@@ -425,10 +449,14 @@ int influence_blender_add_negative(influence_blender_t* blender,
                                     const style_embedding_t* style,
                                     float weight,
                                     const char* source_work) {
-    if (!blender || !style) return -1;
+    if (!blender || !style) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_clear: required parameter is NULL (blender, style)");
+        return -1;
+    }
 
     if (blender->num_current_influences >= blender->influences_capacity) {
         LOG_WARN(LOG_MODULE, "Influence capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "influence_blender_clear: capacity exceeded");
         return -1;
     }
 
@@ -453,13 +481,17 @@ int influence_blender_add_archetype(influence_blender_t* blender,
                                      int32_t archetype_id,
                                      float weight,
                                      bool is_positive) {
-    if (!blender || !blender->style_repr) return -1;
+    if (!blender || !blender->style_repr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_clear: required parameter is NULL (blender, blender->style_repr)");
+        return -1;
+    }
 
     style_embedding_t emb;
     memset(&emb, 0, sizeof(emb));
 
     if (style_repr_get_archetype_embedding(blender->style_repr, modality,
                                             archetype_id, &emb) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_clear: required parameter is NULL (blender, blender->style_repr)");
         return -1;
     }
 
@@ -476,7 +508,10 @@ int influence_blender_add_archetype(influence_blender_t* blender,
 }
 
 int influence_blender_remove(influence_blender_t* blender, uint32_t index) {
-    if (!blender || index >= blender->num_current_influences) return -1;
+    if (!blender || index >= blender->num_current_influences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_remove: blender is NULL");
+        return -1;
+    }
 
     style_embedding_destroy(&blender->current_influences[index].style);
 
@@ -492,7 +527,10 @@ int influence_blender_remove(influence_blender_t* blender, uint32_t index) {
 
 int influence_blender_set_weight(influence_blender_t* blender,
                                   uint32_t index, float new_weight) {
-    if (!blender || index >= blender->num_current_influences) return -1;
+    if (!blender || index >= blender->num_current_influences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_remove: blender is NULL");
+        return -1;
+    }
 
     blender->current_influences[index].weight = new_weight;
 
@@ -506,7 +544,10 @@ int influence_blender_set_weight(influence_blender_t* blender,
 int influence_blender_blend(influence_blender_t* blender,
                             blend_mode_t mode,
                             influence_blend_result_t* result) {
-    if (!blender || !result) return -1;
+    if (!blender || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_remove: required parameter is NULL (blender, result)");
+        return -1;
+    }
 
     return influence_blender_blend_explicit(blender,
                                              blender->current_influences,
@@ -519,7 +560,10 @@ int influence_blender_blend_explicit(influence_blender_t* blender,
                                       uint32_t num_influences,
                                       blend_mode_t mode,
                                       influence_blend_result_t* result) {
-    if (!blender || !influences || num_influences == 0 || !result) return -1;
+    if (!blender || !influences || num_influences == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_remove: required parameter is NULL (blender, influences, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(influence_blend_result_t));
 
@@ -552,7 +596,10 @@ int influence_blender_blend_explicit(influence_blender_t* blender,
             blend_result = -1;
     }
 
-    if (blend_result < 0) return -1;
+    if (blend_result < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_remove: validation failed");
+        return -1;
+    }
 
     /* Compute metrics */
     result->coherence = compute_coherence(&result->style, influences, num_influences);
@@ -591,7 +638,10 @@ int influence_blender_blend_explicit(influence_blender_t* blender,
 
 int influence_blender_analyze(influence_blender_t* blender,
                                blend_analysis_t* analysis) {
-    if (!blender || !analysis) return -1;
+    if (!blender || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_remove: required parameter is NULL (blender, analysis)");
+        return -1;
+    }
 
     memset(analysis, 0, sizeof(blend_analysis_t));
 
@@ -601,7 +651,10 @@ int influence_blender_analyze(influence_blender_t* blender,
     /* Compute pairwise compatibilities */
     uint32_t num_pairs = n * (n - 1) / 2;
     analysis->compatibilities = nimcp_calloc(num_pairs, sizeof(influence_compatibility_t));
-    if (!analysis->compatibilities) return -1;
+    if (!analysis->compatibilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "influence_blender_remove: analysis->compatibilities is NULL");
+        return -1;
+    }
 
     uint32_t pair_idx = 0;
     float total_compat = 0.0f;
@@ -685,12 +738,18 @@ float influence_blender_compatibility(const influence_blender_t* blender,
 }
 
 int influence_blender_optimize_weights(influence_blender_t* blender) {
-    if (!blender || blender->num_current_influences == 0) return -1;
+    if (!blender || blender->num_current_influences == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "influence_blender_optimize_weights: blender is NULL");
+        return -1;
+    }
 
     /* Simple optimization: adjust weights to maximize coherence */
     uint32_t n = blender->num_current_influences;
     float* weights = nimcp_calloc(n, sizeof(float));
-    if (!weights) return -1;
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "influence_blender_optimize_weights: weights is NULL");
+        return -1;
+    }
 
     /* Initialize with current weights */
     for (uint32_t i = 0; i < n; i++) {
@@ -783,7 +842,10 @@ int influence_blender_homage(influence_blender_t* blender,
                               const style_embedding_t* primary,
                               const style_embedding_t* accent,
                               influence_blend_result_t* result) {
-    if (!blender || !primary || !accent || !result) return -1;
+    if (!blender || !primary || !accent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_optimize_weights: required parameter is NULL (blender, primary, accent, result)");
+        return -1;
+    }
 
     influence_blender_clear(blender);
     influence_blender_add(blender, primary, 0.8f, "primary", NULL);
@@ -796,7 +858,10 @@ int influence_blender_fusion(influence_blender_t* blender,
                               const style_embedding_t* styles,
                               uint32_t num_styles,
                               influence_blend_result_t* result) {
-    if (!blender || !styles || num_styles == 0 || !result) return -1;
+    if (!blender || !styles || num_styles == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_optimize_weights: required parameter is NULL (blender, styles, result)");
+        return -1;
+    }
 
     influence_blender_clear(blender);
 
@@ -812,7 +877,10 @@ int influence_blender_contrast(influence_blender_t* blender,
                                 const style_embedding_t* toward,
                                 const style_embedding_t* away,
                                 influence_blend_result_t* result) {
-    if (!blender || !toward || !away || !result) return -1;
+    if (!blender || !toward || !away || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_optimize_weights: required parameter is NULL (blender, toward, away, result)");
+        return -1;
+    }
 
     influence_blender_clear(blender);
     influence_blender_add(blender, toward, 1.0f, "target", NULL);
@@ -830,7 +898,10 @@ int influence_blender_refine(influence_blender_t* blender,
                               float coherence_target,
                               uint32_t iterations,
                               influence_blend_result_t* result) {
-    if (!blender || !current || !result) return -1;
+    if (!blender || !current || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "influence_blender_optimize_weights: required parameter is NULL (blender, current, result)");
+        return -1;
+    }
 
     /* Copy current result */
     *result = *current;

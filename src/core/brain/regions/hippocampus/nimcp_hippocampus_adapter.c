@@ -299,6 +299,7 @@ static place_cell_network_t* create_place_cells(const hippocampus_config_t* conf
         if (net->field_radii) nimcp_free(net->field_radii);
         if (net->features) nimcp_free(net->features);
         nimcp_free(net);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_place_cells: validation failed");
         return NULL;
     }
 
@@ -348,6 +349,7 @@ static grid_cell_network_t* create_grid_cells(const hippocampus_config_t* config
         if (net->phases_x) nimcp_free(net->phases_x);
         if (net->phases_y) nimcp_free(net->phases_y);
         nimcp_free(net);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_grid_cells: validation failed");
         return NULL;
     }
 
@@ -398,6 +400,7 @@ static pattern_separator_t* create_pattern_separator(const hippocampus_config_t*
         if (sep->weights) nimcp_free(sep->weights);
         if (sep->activations) nimcp_free(sep->activations);
         nimcp_free(sep);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_pattern_separator: validation failed");
         return NULL;
     }
 
@@ -441,6 +444,7 @@ static memory_encoder_t* create_memory_encoder(const hippocampus_config_t* confi
         if (enc->ca3_activations) nimcp_free(enc->ca3_activations);
         if (enc->ca1_activations) nimcp_free(enc->ca1_activations);
         nimcp_free(enc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_memory_encoder: validation failed");
         return NULL;
     }
 
@@ -586,6 +590,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     hippocampus_adapter_t* adapter = nimcp_calloc(1, sizeof(hippocampus_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", HIPPOCAMPUS_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter is NULL");
         return NULL;
     }
 
@@ -605,6 +610,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     if (!adapter->place_cells) {
         LOG_ERROR("[%s] Failed to create place cell network", HIPPOCAMPUS_LOG_MODULE);
         hippocampus_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->place_cells is NULL");
         return NULL;
     }
 
@@ -615,6 +621,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     if (!adapter->grid_cells) {
         LOG_ERROR("[%s] Failed to create grid cell network", HIPPOCAMPUS_LOG_MODULE);
         hippocampus_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->grid_cells is NULL");
         return NULL;
     }
 
@@ -626,6 +633,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
         if (!adapter->pattern_separator) {
             LOG_ERROR("[%s] Failed to create pattern separator", HIPPOCAMPUS_LOG_MODULE);
             hippocampus_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->pattern_separator is NULL");
             return NULL;
         }
     }
@@ -637,6 +645,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     if (!adapter->memory_encoder) {
         LOG_ERROR("[%s] Failed to create memory encoder", HIPPOCAMPUS_LOG_MODULE);
         hippocampus_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->memory_encoder is NULL");
         return NULL;
     }
 
@@ -646,6 +655,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     if (!adapter->memory_store) {
         LOG_ERROR("[%s] Failed to allocate memory store", HIPPOCAMPUS_LOG_MODULE);
         hippocampus_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->memory_store is NULL");
         return NULL;
     }
     adapter->next_memory_id = 1;
@@ -663,6 +673,7 @@ hippocampus_adapter_t* hippocampus_create(const hippocampus_config_t* config) {
     if (!adapter->pattern_pool) {
         LOG_ERROR("[%s] Failed to create pattern memory pool", HIPPOCAMPUS_LOG_MODULE);
         hippocampus_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_create: adapter->pattern_pool is NULL");
         return NULL;
     }
 
@@ -928,6 +939,7 @@ bool hippocampus_retrieve_by_cue(
 ) {
     if (!adapter || !cue || cue_size == 0 || !result) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_retrieve_by_cue: required parameter is NULL (adapter, cue, result)");
         return false;
     }
 
@@ -955,6 +967,7 @@ bool hippocampus_retrieve_by_cue(
         if (result->similarities) nimcp_free(result->similarities);
         if (completed_cue) nimcp_free(completed_cue);
         set_error(adapter, HIPPOCAMPUS_ERROR_RETRIEVAL_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_retrieve_by_cue: validation failed");
         return false;
     }
 
@@ -970,6 +983,7 @@ bool hippocampus_retrieve_by_cue(
         nimcp_free(result->similarities);
         if (completed_cue) nimcp_free(completed_cue);
         set_error(adapter, HIPPOCAMPUS_ERROR_RETRIEVAL_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_retrieve_by_cue: validation failed");
         return false;
     }
 
@@ -1034,6 +1048,7 @@ bool hippocampus_retrieve_by_location(
 ) {
     if (!adapter || !location || !result) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_retrieve_by_location: required parameter is NULL (adapter, location, result)");
         return false;
     }
 
@@ -1050,6 +1065,7 @@ bool hippocampus_retrieve_by_location(
         if (result->memories) nimcp_free(result->memories);
         if (result->similarities) nimcp_free(result->similarities);
         set_error(adapter, HIPPOCAMPUS_ERROR_RETRIEVAL_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_retrieve_by_location: validation failed");
         return false;
     }
 
@@ -1093,7 +1109,10 @@ bool hippocampus_get_memory(
     uint32_t memory_id,
     hippocampus_memory_t* memory
 ) {
-    if (!adapter || memory_id == 0 || !memory) return false;
+    if (!adapter || memory_id == 0 || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_get_memory: required parameter is NULL (adapter, memory)");
+        return false;
+    }
 
     uint32_t idx = hash_memory_id(memory_id, adapter->memory_capacity);
     memory_entry_t* entry = adapter->memory_store[idx];
@@ -1106,6 +1125,7 @@ bool hippocampus_get_memory(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_get_memory: validation failed");
     return false;
 }
 
@@ -1121,6 +1141,7 @@ bool hippocampus_pattern_separate(
 ) {
     if (!adapter || !input || !result || !adapter->pattern_separator) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_pattern_separate: required parameter is NULL (adapter, input, result, adapter->pattern_separator)");
         return false;
     }
 
@@ -1147,6 +1168,7 @@ bool hippocampus_pattern_separate(
     float* sorted = nimcp_calloc(sep->output_size, sizeof(float));
     if (!sorted) {
         set_error(adapter, HIPPOCAMPUS_ERROR_PATTERN_SEPARATION_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_pattern_separate: sorted is NULL");
         return false;
     }
     memcpy(sorted, sep->activations, sep->output_size * sizeof(float));
@@ -1181,6 +1203,7 @@ bool hippocampus_pattern_separate(
     result->sparse_code = nimcp_calloc(sep->output_size, sizeof(float));
     if (!result->sparse_code) {
         set_error(adapter, HIPPOCAMPUS_ERROR_PATTERN_SEPARATION_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_pattern_separate: result->sparse_code is NULL");
         return false;
     }
     memcpy(result->sparse_code, sep->activations, sep->output_size * sizeof(float));
@@ -1202,6 +1225,7 @@ bool hippocampus_pattern_complete(
 ) {
     if (!adapter || !partial_cue || !result || !adapter->memory_encoder) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_pattern_complete: required parameter is NULL (adapter, partial_cue, result, adapter->memory_encoder)");
         return false;
     }
 
@@ -1219,6 +1243,7 @@ bool hippocampus_pattern_complete(
     float* new_activations = nimcp_calloc(enc->ca3_size, sizeof(float));
     if (!new_activations) {
         set_error(adapter, HIPPOCAMPUS_ERROR_PATTERN_COMPLETION_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_pattern_complete: new_activations is NULL");
         return false;
     }
 
@@ -1242,6 +1267,7 @@ bool hippocampus_pattern_complete(
     result->completed_pattern = nimcp_calloc(enc->ca3_size, sizeof(float));
     if (!result->completed_pattern) {
         set_error(adapter, HIPPOCAMPUS_ERROR_PATTERN_COMPLETION_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_pattern_complete: result->completed_pattern is NULL");
         return false;
     }
     memcpy(result->completed_pattern, enc->ca3_activations, enc->ca3_size * sizeof(float));
@@ -1272,6 +1298,7 @@ bool hippocampus_update_position(
 ) {
     if (!adapter || !location) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_update_position: required parameter is NULL (adapter, location)");
         return false;
     }
 
@@ -1319,6 +1346,7 @@ bool hippocampus_get_position_estimate(
     hippocampus_location_t* location
 ) {
     if (!adapter || !location || !adapter->place_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_get_position_estimate: required parameter is NULL (adapter, location, adapter->place_cells)");
         return false;
     }
 
@@ -1343,6 +1371,7 @@ bool hippocampus_get_position_estimate(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_get_position_estimate: validation failed");
     return false;
 }
 
@@ -1352,6 +1381,7 @@ bool hippocampus_set_navigation_goal(
 ) {
     if (!adapter || !goal) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_set_navigation_goal: required parameter is NULL (adapter, goal)");
         return false;
     }
 
@@ -1370,11 +1400,13 @@ bool hippocampus_get_navigation_guidance(
 ) {
     if (!adapter || !result) {
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_get_navigation_guidance: required parameter is NULL (adapter, result)");
         return false;
     }
 
     if (!adapter->has_goal) {
         set_error(adapter, HIPPOCAMPUS_ERROR_NAVIGATION_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_get_navigation_guidance: adapter->has_goal is NULL");
         return false;
     }
 
@@ -1416,6 +1448,7 @@ bool hippocampus_get_place_cell_activity(
     uint32_t* count
 ) {
     if (!adapter || !activities || !count || !adapter->place_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_get_place_cell_activity: required parameter is NULL (adapter, activities, count, adapter->place_cells)");
         return false;
     }
 
@@ -1440,6 +1473,7 @@ bool hippocampus_get_grid_cell_activity(
     uint32_t* count
 ) {
     if (!adapter || !activities || !count || !adapter->grid_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_get_grid_cell_activity: required parameter is NULL (adapter, activities, count, adapter->grid_cells)");
         return false;
     }
 
@@ -1580,25 +1614,32 @@ bool hippocampus_train_association(
 ) {
     if (!adapter) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_association: adapter is NULL");
         return false;
     }
     if (!cue) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: cue");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_association: cue is NULL");
         return false;
     }
     if (cue_size == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: cue_size must be > 0");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_train_association: cue_size is zero");
         return false;
     }
     if (target_memory_id == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: target_memory_id must be > 0");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_train_association: target_memory_id is zero");
         return false;
     }
 
-    if (!adapter->config.enable_training) return false;
+    if (!adapter->config.enable_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_association: adapter->config is NULL");
+        return false;
+    }
 
     if (learning_rate <= 0.0f) {
         learning_rate = adapter->config.learning_rate;
@@ -1607,6 +1648,7 @@ bool hippocampus_train_association(
     /* Find target memory */
     hippocampus_memory_t target;
     if (!hippocampus_get_memory(adapter, target_memory_id, &target)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_train_association: hippocampus_get_memory is NULL");
         return false;
     }
 
@@ -1627,25 +1669,32 @@ bool hippocampus_train_place_field(
 ) {
     if (!adapter) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_place_field: adapter is NULL");
         return false;
     }
     if (!location) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: location");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_place_field: location is NULL");
         return false;
     }
     if (!features) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: features");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_place_field: features is NULL");
         return false;
     }
     if (num_features == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_features must be > 0");
         set_error(adapter, HIPPOCAMPUS_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_train_place_field: num_features is zero");
         return false;
     }
 
-    if (!adapter->config.enable_training || !adapter->place_cells) return false;
+    if (!adapter->config.enable_training || !adapter->place_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_train_place_field: required parameter is NULL (adapter->config, adapter->place_cells)");
+        return false;
+    }
 
     /* Find most active place cell and associate features */
     uint32_t max_idx = 0;
@@ -1820,6 +1869,7 @@ nimcp_bio_future_t hippocampus_request_encode_async(
     const hippocampus_location_t* location
 ) {
     if (!adapter || !adapter->bio_ctx || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_request_encode_async: required parameter is NULL (adapter, adapter->bio_ctx, features)");
         return NULL;
     }
 
@@ -1851,6 +1901,7 @@ nimcp_bio_future_t hippocampus_request_encode_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send encode request", HIPPOCAMPUS_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_request_encode_async: promise is NULL");
         return NULL;
     }
 
@@ -1863,6 +1914,7 @@ nimcp_bio_future_t hippocampus_request_retrieve_async(
     uint32_t cue_size
 ) {
     if (!adapter || !adapter->bio_ctx || !cue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_request_retrieve_async: required parameter is NULL (adapter, adapter->bio_ctx, cue)");
         return NULL;
     }
 
@@ -1886,6 +1938,7 @@ nimcp_bio_future_t hippocampus_request_retrieve_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send retrieve request", HIPPOCAMPUS_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_request_retrieve_async: promise is NULL");
         return NULL;
     }
 

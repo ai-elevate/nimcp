@@ -222,6 +222,7 @@ motor_quantum_bridge_t* motor_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -244,6 +245,7 @@ motor_quantum_bridge_t* motor_quantum_bridge_create(
     if (!bridge->trajectory_candidates || !bridge->program_candidates ||
         !bridge->timing_candidates || !bridge->waypoint_storage) {
         motor_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -295,8 +297,14 @@ int motor_quantum_optimize_trajectory(
     uint32_t num_alternatives,
     quantum_trajectory_result_t* result
 ) {
-    if (!bridge || !start_position || !end_position || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !start_position || !end_position || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_trajectory: required parameter is NULL (bridge, start_position, end_position, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_trajectory: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -322,7 +330,10 @@ int motor_quantum_optimize_trajectory(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &traj_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_quantum_optimize_trajectory: validation failed");
+        return -1;
+    }
 
     /* Generate trajectory candidates */
     float distance = vec3_distance(start_position, end_position);
@@ -404,8 +415,14 @@ int motor_quantum_optimize_path(
     uint32_t num_waypoints,
     quantum_trajectory_result_t* result
 ) {
-    if (!bridge || !waypoints || num_waypoints < 2 || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !waypoints || num_waypoints < 2 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_path: required parameter is NULL (bridge, waypoints, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_path: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -431,8 +448,14 @@ int motor_quantum_select_program(
     uint32_t num_programs,
     quantum_program_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_select_program: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_select_program: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -452,7 +475,10 @@ int motor_quantum_select_program(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &prog_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_quantum_select_program: validation failed");
+        return -1;
+    }
 
     /* Generate program candidates */
     uint32_t num_candidates = (num_programs < bridge->max_candidates) ?
@@ -511,8 +537,14 @@ int motor_quantum_optimize_timing(
     uint32_t num_phases,
     quantum_timing_result_t* result
 ) {
-    if (!bridge || !base_timing || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !base_timing || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_timing: required parameter is NULL (bridge, base_timing, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_optimize_timing: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -532,7 +564,10 @@ int motor_quantum_optimize_timing(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &timing_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_quantum_optimize_timing: validation failed");
+        return -1;
+    }
 
     /* Generate timing candidates */
     uint32_t num_candidates = (8 < bridge->max_candidates) ? 8 : bridge->max_candidates;
@@ -606,8 +641,14 @@ int motor_quantum_parallel_evaluate(
     const quantum_motor_vec3_t* goal_position,
     quantum_program_result_t* result
 ) {
-    if (!bridge || !program_ids || !goal_position || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !program_ids || !goal_position || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_parallel_evaluate: required parameter is NULL (bridge, program_ids, goal_position, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_parallel_evaluate: bridge->config is NULL");
+        return -1;
+    }
 
     /* Use program selection with the given IDs */
     return motor_quantum_select_program(bridge, NULL, 0, num_programs, result);
@@ -621,7 +662,10 @@ int motor_quantum_get_stats(
     const motor_quantum_bridge_t* bridge,
     motor_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -636,7 +680,10 @@ int motor_quantum_get_config(
     const motor_quantum_bridge_t* bridge,
     motor_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_quantum_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

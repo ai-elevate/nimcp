@@ -123,7 +123,10 @@ static uint64_t get_timestamp_us(void) {
  * ============================================================================ */
 
 int neuromod_logging_bridge_default_config(neuromod_logging_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_logging_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_lc_logging = true;
     config->enable_vta_logging = true;
@@ -173,6 +176,7 @@ neuromod_logging_bridge_t* neuromod_logging_bridge_create(const neuromod_logging
     bridge->buffer = nimcp_calloc(bridge->config.log_buffer_size, sizeof(neuromod_log_entry_t));
     if (!bridge->buffer) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_logging_bridge_create: bridge->buffer is NULL");
         return NULL;
     }
 
@@ -205,7 +209,10 @@ void neuromod_logging_bridge_destroy(neuromod_logging_bridge_t* bridge) {
  * ============================================================================ */
 
 int neuromod_logging_bridge_connect_logging(neuromod_logging_bridge_t* bridge, nimcp_logging_context_t logging) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_connect_logging: bridge is NULL");
+        return -1;
+    }
 
     bridge->logging = logging;
     bridge->connected = true;
@@ -214,7 +221,10 @@ int neuromod_logging_bridge_connect_logging(neuromod_logging_bridge_t* bridge, n
 }
 
 int neuromod_logging_bridge_disconnect(neuromod_logging_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->logging = NULL;
     bridge->connected = false;
@@ -223,7 +233,10 @@ int neuromod_logging_bridge_disconnect(neuromod_logging_bridge_t* bridge) {
 }
 
 bool neuromod_logging_bridge_is_connected(const neuromod_logging_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 
@@ -232,25 +245,37 @@ bool neuromod_logging_bridge_is_connected(const neuromod_logging_bridge_t* bridg
  * ============================================================================ */
 
 int neuromod_logging_bridge_register_lc(neuromod_logging_bridge_t* bridge, nimcp_lc_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_register_lc: bridge is NULL");
+        return -1;
+    }
     bridge->lc_adapter = adapter;
     return 0;
 }
 
 int neuromod_logging_bridge_register_vta(neuromod_logging_bridge_t* bridge, nimcp_vta_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_register_vta: bridge is NULL");
+        return -1;
+    }
     bridge->vta_adapter = adapter;
     return 0;
 }
 
 int neuromod_logging_bridge_register_raphe(neuromod_logging_bridge_t* bridge, nimcp_raphe_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_register_raphe: bridge is NULL");
+        return -1;
+    }
     bridge->raphe_adapter = adapter;
     return 0;
 }
 
 int neuromod_logging_bridge_register_habenula(neuromod_logging_bridge_t* bridge, nimcp_habenula_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_register_habenula: bridge is NULL");
+        return -1;
+    }
     bridge->habenula_adapter = adapter;
     return 0;
 }
@@ -261,7 +286,10 @@ int neuromod_logging_bridge_register_habenula(neuromod_logging_bridge_t* bridge,
 
 /* Return values: 0 = added, 1 = filtered by level, -1 = error */
 static int add_log_entry(neuromod_logging_bridge_t* bridge, const neuromod_log_entry_t* entry) {
-    if (!bridge || !entry) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_log_entry: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
 
     /* Check log level filter - return 1 to indicate filtered */
     if (entry->level < bridge->config.min_log_level) return 1;
@@ -276,6 +304,7 @@ static int add_log_entry(neuromod_logging_bridge_t* bridge, const neuromod_log_e
     } else {
         /* Buffer full - drop oldest or increment drop counter */
         bridge->stats.events_dropped++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_log_entry: validation failed");
         return -1;
     }
 
@@ -301,7 +330,10 @@ static void update_level_stats(neuromod_logging_bridge_t* bridge, neuromod_log_l
 
 int neuromod_logging_log_lc_event(neuromod_logging_bridge_t* bridge, neuromod_log_event_t event,
                                   neuromod_log_level_t level, float ne_level, float value, const char* message) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_level_stats: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_lc_logging) return 0;
 
     neuromod_log_entry_t entry = {0};
@@ -334,7 +366,10 @@ int neuromod_logging_log_lc_event(neuromod_logging_bridge_t* bridge, neuromod_lo
 
 int neuromod_logging_log_vta_event(neuromod_logging_bridge_t* bridge, neuromod_log_event_t event,
                                    neuromod_log_level_t level, float da_level, float rpe, const char* message) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_level_stats: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_vta_logging) return 0;
 
     neuromod_log_entry_t entry = {0};
@@ -366,7 +401,10 @@ int neuromod_logging_log_vta_event(neuromod_logging_bridge_t* bridge, neuromod_l
 
 int neuromod_logging_log_raphe_event(neuromod_logging_bridge_t* bridge, neuromod_log_event_t event,
                                      neuromod_log_level_t level, float ht_level, float mood, const char* message) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_level_stats: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_raphe_logging) return 0;
 
     neuromod_log_entry_t entry = {0};
@@ -398,7 +436,10 @@ int neuromod_logging_log_raphe_event(neuromod_logging_bridge_t* bridge, neuromod
 
 int neuromod_logging_log_habenula_event(neuromod_logging_bridge_t* bridge, neuromod_log_event_t event,
                                         neuromod_log_level_t level, float hab_level, float value, const char* message) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_level_stats: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_habenula_logging) return 0;
 
     neuromod_log_entry_t entry = {0};
@@ -429,7 +470,10 @@ int neuromod_logging_log_habenula_event(neuromod_logging_bridge_t* bridge, neuro
 }
 
 int neuromod_logging_log_entry(neuromod_logging_bridge_t* bridge, const neuromod_log_entry_t* entry) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !entry) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_logging_log_entry: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
     return add_log_entry(bridge, entry);
 }
 
@@ -438,7 +482,10 @@ int neuromod_logging_log_entry(neuromod_logging_bridge_t* bridge, const neuromod
  * ============================================================================ */
 
 int neuromod_logging_flush(neuromod_logging_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_flush: bridge is NULL");
+        return -1;
+    }
 
     /* In a real implementation, this would write to the logging system */
     /* For now, just clear the buffer */
@@ -451,7 +498,10 @@ int neuromod_logging_flush(neuromod_logging_bridge_t* bridge) {
 }
 
 int neuromod_logging_update(neuromod_logging_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->time_since_flush_ms += delta_ms;
 
@@ -469,7 +519,10 @@ int neuromod_logging_update(neuromod_logging_bridge_t* bridge, float delta_ms) {
  * ============================================================================ */
 
 int neuromod_logging_analyze_patterns(neuromod_logging_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_analyze_patterns: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_pattern_analysis) return 0;
 
     /* Simple pattern detection - stub for demonstration */
@@ -521,8 +574,14 @@ int neuromod_logging_analyze_patterns(neuromod_logging_bridge_t* bridge) {
 }
 
 int neuromod_logging_get_pattern(const neuromod_logging_bridge_t* bridge, uint32_t index, neuromod_log_pattern_t* pattern) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !pattern) return -1;
-    if (index >= bridge->pattern_count) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_logging_get_pattern: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
+    if (index >= bridge->pattern_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neuromod_logging_get_pattern: capacity exceeded");
+        return -1;
+    }
 
     *pattern = bridge->patterns[index];
     return 0;
@@ -538,13 +597,19 @@ uint32_t neuromod_logging_get_pattern_count(const neuromod_logging_bridge_t* bri
  * ============================================================================ */
 
 int neuromod_logging_bridge_get_stats(const neuromod_logging_bridge_t* bridge, neuromod_logging_bridge_stats_t* stats) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !stats) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_logging_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int neuromod_logging_bridge_reset_stats(neuromod_logging_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_LOGGING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_logging_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

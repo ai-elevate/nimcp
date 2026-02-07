@@ -837,6 +837,7 @@ int stdp_state_deserialize(void* module_state, const uint8_t* buffer, size_t siz
     size_t required_size = stdp_state_get_size(module_state);
     if (size < required_size) {
         LOG_ERROR("STDP deserialize: buffer too small (%zu < %zu)", size, required_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_state_deserialize: validation failed");
         return -1;
     }
 
@@ -850,11 +851,13 @@ int stdp_state_deserialize(void* module_state, const uint8_t* buffer, size_t siz
 
     if (header.magic != STDP_STATE_MAGIC) {
         LOG_ERROR("STDP deserialize: invalid magic (0x%08X)", header.magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_state_deserialize: validation failed");
         return -1;
     }
 
     if (header.version != STDP_STATE_VERSION) {
         LOG_ERROR("STDP deserialize: version mismatch (%u != %u)", header.version, STDP_STATE_VERSION);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_state_deserialize: validation failed");
         return -1;
     }
 
@@ -866,6 +869,7 @@ int stdp_state_deserialize(void* module_state, const uint8_t* buffer, size_t siz
     if (computed_checksum != header.checksum) {
         LOG_ERROR("STDP deserialize: checksum mismatch (0x%08X != 0x%08X)",
                   computed_checksum, header.checksum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_state_deserialize: validation failed");
         return -1;
     }
 

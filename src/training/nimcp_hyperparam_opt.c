@@ -368,6 +368,7 @@ hpo_study_t* hpo_get_study(
     bool create_if_missing
 ) {
     if (!ctx || !study_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_get_study: required parameter is NULL (ctx, study_name)");
         return NULL;
     }
 
@@ -414,17 +415,22 @@ int hpo_add_float(
     bool log_scale
 ) {
     if (!space || !name || low >= high) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_add_float: required parameter is NULL (space, name)");
         return -1;
     }
 
     if (space->num_params >= HPO_MAX_PARAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_add_float: capacity exceeded");
         return -1;
     }
 
     /* Allocate params array if needed */
     if (!space->params) {
         space->params = nimcp_calloc(HPO_MAX_PARAMS, sizeof(hpo_param_def_t));
-        if (!space->params) return -1;
+        if (!space->params) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_add_float: space->params is NULL");
+            return -1;
+        }
     }
 
     hpo_param_def_t* param = &space->params[space->num_params];
@@ -447,16 +453,21 @@ int hpo_add_int(
     int64_t step
 ) {
     if (!space || !name || low >= high) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_add_int: required parameter is NULL (space, name)");
         return -1;
     }
 
     if (space->num_params >= HPO_MAX_PARAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_add_int: capacity exceeded");
         return -1;
     }
 
     if (!space->params) {
         space->params = nimcp_calloc(HPO_MAX_PARAMS, sizeof(hpo_param_def_t));
-        if (!space->params) return -1;
+        if (!space->params) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_add_int: space->params is NULL");
+            return -1;
+        }
     }
 
     hpo_param_def_t* param = &space->params[space->num_params];
@@ -478,16 +489,21 @@ int hpo_add_categorical(
     uint32_t num_choices
 ) {
     if (!space || !name || !choices || num_choices == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_add_categorical: required parameter is NULL (space, name, choices)");
         return -1;
     }
 
     if (space->num_params >= HPO_MAX_PARAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_add_categorical: capacity exceeded");
         return -1;
     }
 
     if (!space->params) {
         space->params = nimcp_calloc(HPO_MAX_PARAMS, sizeof(hpo_param_def_t));
-        if (!space->params) return -1;
+        if (!space->params) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_add_categorical: space->params is NULL");
+            return -1;
+        }
     }
 
     hpo_param_def_t* param = &space->params[space->num_params];
@@ -509,16 +525,21 @@ int hpo_add_conditional(
     const char* depends_value
 ) {
     if (!space || !name || !def || !depends_on || !depends_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_add_conditional: required parameter is NULL (space, name, def, depends_on, depends_value)");
         return -1;
     }
 
     if (space->num_params >= HPO_MAX_PARAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_add_conditional: capacity exceeded");
         return -1;
     }
 
     if (!space->params) {
         space->params = nimcp_calloc(HPO_MAX_PARAMS, sizeof(hpo_param_def_t));
-        if (!space->params) return -1;
+        if (!space->params) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_add_conditional: space->params is NULL");
+            return -1;
+        }
     }
 
     hpo_param_def_t* param = &space->params[space->num_params];
@@ -619,6 +640,7 @@ double hpo_optimize(
 
 int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
     if (!ctx || !params || !ctx->study) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_suggest: required parameter is NULL (ctx, params, ctx->study)");
         return -1;
     }
 
@@ -627,6 +649,7 @@ int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
     /* Check capacity */
     if (ctx->study->num_trials >= ctx->study->max_trials) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_suggest: capacity exceeded");
         return -1;
     }
 
@@ -634,6 +657,7 @@ int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
     hpo_params_t* p = nimcp_calloc(1, sizeof(hpo_params_t));
     if (!p) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_suggest: p is NULL");
         return -1;
     }
 
@@ -645,6 +669,7 @@ int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
     if (!p->param_names || !p->param_values || !p->param_choices) {
         hpo_free_params(p);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hpo_suggest: required parameter is NULL (p->param_names, p->param_values, p->param_choices)");
         return -1;
     }
 
@@ -734,6 +759,7 @@ int hpo_suggest(hpo_ctx_t* ctx, hpo_params_t** params) {
 
 int hpo_report(hpo_ctx_t* ctx, int trial_id, double objective) {
     if (!ctx || !ctx->study || trial_id < 0 || trial_id >= (int)ctx->study->num_trials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_report: required parameter is NULL (ctx, ctx->study)");
         return -1;
     }
 
@@ -787,6 +813,7 @@ int hpo_report_intermediate(
     double value
 ) {
     if (!ctx || !ctx->study || trial_id < 0 || trial_id >= (int)ctx->study->num_trials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_report_intermediate: required parameter is NULL (ctx, ctx->study)");
         return -1;
     }
 
@@ -814,6 +841,7 @@ int hpo_report_intermediate(
 
 int hpo_prune_trial(hpo_ctx_t* ctx, int trial_id) {
     if (!ctx || !ctx->study || trial_id < 0 || trial_id >= (int)ctx->study->num_trials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_prune_trial: required parameter is NULL (ctx, ctx->study)");
         return -1;
     }
 
@@ -829,6 +857,7 @@ int hpo_prune_trial(hpo_ctx_t* ctx, int trial_id) {
 
 int hpo_fail_trial(hpo_ctx_t* ctx, int trial_id, const char* error_msg) {
     if (!ctx || !ctx->study || trial_id < 0 || trial_id >= (int)ctx->study->num_trials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_fail_trial: required parameter is NULL (ctx, ctx->study)");
         return -1;
     }
 
@@ -852,6 +881,7 @@ int hpo_fail_trial(hpo_ctx_t* ctx, int trial_id, const char* error_msg) {
 
 int hpo_get_best_trial(hpo_ctx_t* ctx, hpo_trial_result_t* result) {
     if (!ctx || !ctx->study || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_get_best_trial: required parameter is NULL (ctx, ctx->study, result)");
         return -1;
     }
 
@@ -859,6 +889,7 @@ int hpo_get_best_trial(hpo_ctx_t* ctx, hpo_trial_result_t* result) {
 
     if (ctx->stats.completed_trials == 0) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_get_best_trial: ctx->stats.completed_trials is zero");
         return -1;
     }
 
@@ -891,6 +922,7 @@ int hpo_get_all_trials(
     uint32_t* num_results
 ) {
     if (!ctx || !ctx->study || !results || !num_results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_get_all_trials: required parameter is NULL (ctx, ctx->study, results, num_results)");
         return -1;
     }
 
@@ -908,6 +940,7 @@ int hpo_get_all_trials(
     *results = nimcp_calloc(n, sizeof(hpo_trial_result_t));
     if (!*results) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_get_all_trials: validation failed");
         return -1;
     }
 
@@ -932,6 +965,7 @@ int hpo_get_importance(
     uint32_t* num_params
 ) {
     if (!ctx || !param_names || !importance || !num_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_get_importance: required parameter is NULL (ctx, param_names, importance, num_params)");
         return -1;
     }
 
@@ -947,6 +981,7 @@ int hpo_get_importance(
         if (*param_names) nimcp_free((void*)*param_names);
         if (*importance) nimcp_free(*importance);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_get_importance: validation failed");
         return -1;
     }
 
@@ -967,6 +1002,7 @@ int hpo_get_importance(
 
 int hpo_connect_distributed(hpo_ctx_t* ctx, void* dist_ctx) {
     if (!ctx || !dist_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_connect_distributed: required parameter is NULL (ctx, dist_ctx)");
         return -1;
     }
 
@@ -979,6 +1015,7 @@ int hpo_connect_distributed(hpo_ctx_t* ctx, void* dist_ctx) {
 
 int hpo_connect_callbacks(hpo_ctx_t* ctx, void* callbacks) {
     if (!ctx || !callbacks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_connect_callbacks: required parameter is NULL (ctx, callbacks)");
         return -1;
     }
 
@@ -995,6 +1032,7 @@ int hpo_connect_callbacks(hpo_ctx_t* ctx, void* callbacks) {
 
 int hpo_get_stats(const hpo_ctx_t* ctx, hpo_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -1043,16 +1081,19 @@ int hpo_validate_config(const hpo_config_t* config) {
 
     /* Validate algorithm */
     if (config->algorithm >= HPO_ALG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hpo_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate trials */
     if (config->n_trials == 0 || config->n_trials > HPO_MAX_TRIALS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_validate_config: config->n_trials is zero");
         return -1;
     }
 
     /* Validate parallel */
     if (config->n_parallel > HPO_MAX_PARALLEL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_validate_config: validation failed");
         return -1;
     }
 
@@ -1181,16 +1222,19 @@ static void update_tpe(tpe_sampler_t* sampler, double value, double objective, b
  */
 static bool should_prune(hpo_ctx_t* ctx, trial_state_t* trial) {
     if (!ctx || !trial || ctx->config.pruner.strategy == HPO_PRUNE_NONE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_prune: required parameter is NULL (ctx, trial)");
         return false;
     }
 
     /* Wait for startup trials */
     if (ctx->stats.completed_trials < ctx->config.pruner.n_startup_trials) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_prune: validation failed");
         return false;
     }
 
     /* Wait for warmup steps */
     if (trial->num_intermediate < ctx->config.pruner.n_warmup_steps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_prune: validation failed");
         return false;
     }
 
@@ -1209,6 +1253,7 @@ static bool should_prune(hpo_ctx_t* ctx, trial_state_t* trial) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_prune: is_minimize is NULL");
     return false;
 }
 

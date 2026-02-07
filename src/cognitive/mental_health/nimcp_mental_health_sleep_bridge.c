@@ -140,7 +140,10 @@ static void mental_health_on_sleep_state_change(sleep_state_t new_state, void* u
 }
 
 int mental_health_sleep_default_config(mental_health_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
 
@@ -236,7 +239,10 @@ void mental_health_sleep_bridge_destroy(mental_health_sleep_bridge_t bridge) {
 }
 
 int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
@@ -290,7 +296,10 @@ int mental_health_sleep_update(mental_health_sleep_bridge_t bridge) {
 }
 
 int mental_health_sleep_get_effects(const mental_health_sleep_bridge_t bridge, mental_health_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
 
@@ -314,7 +323,10 @@ float mental_health_sleep_get_stability(const mental_health_sleep_bridge_t bridg
 }
 
 bool mental_health_sleep_is_restoration_active(const mental_health_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_sleep_is_restoration_active: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_sleep_bridge_heartbeat("mental_healt_mental_health_sleep_", 0.0f);
 

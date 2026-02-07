@@ -111,6 +111,7 @@ static bool init_layer_pool(
 {
     /* Guard: Validate parameters */
     if (!pool || capacity == 0 || block_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_layer_pool: pool is NULL");
         return false;
     }
 
@@ -120,6 +121,7 @@ static bool init_layer_pool(
     /* Allocate contiguous memory */
     pool->memory = nimcp_calloc(capacity, block_size);
     if (!pool->memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_layer_pool: pool->memory is NULL");
         return false;
     }
 
@@ -128,6 +130,7 @@ static bool init_layer_pool(
     if (!pool->free_list) {
         nimcp_free(pool->memory);
         pool->memory = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_layer_pool: pool->free_list is NULL");
         return false;
     }
 
@@ -176,6 +179,7 @@ static void* acquire_from_pool(layer_pool_t* pool)
     /* Guard: Check pool validity and availability */
     if (!pool || !pool->free_list || pool->free_count == 0) {
         if (pool) pool->stats.failed_acquires++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_from_pool: validation failed");
         return NULL;
     }
 
@@ -353,6 +357,7 @@ layer_pools_t layer_pools_create(
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&pools->mutex, false) != 0) {
         nimcp_free(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "layer_pools_create: validation failed");
         return NULL;
     }
 
@@ -366,6 +371,7 @@ layer_pools_t layer_pools_create(
         if (!pools->brain_pools) {
             nimcp_platform_mutex_destroy(&pools->mutex);
             nimcp_free(pools);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "layer_pools_create: pools->brain_pools is NULL");
             return NULL;
         }
         pools->owns_brain_pools = true;
@@ -376,6 +382,7 @@ layer_pools_t layer_pools_create(
                          config->workspace_pool_capacity,
                          config->workspace_entry_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -383,6 +390,7 @@ layer_pools_t layer_pools_create(
                          config->knowledge_pool_capacity,
                          config->knowledge_entry_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -391,6 +399,7 @@ layer_pools_t layer_pools_create(
                          config->event_pool_capacity,
                          config->event_entry_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -398,6 +407,7 @@ layer_pools_t layer_pools_create(
                          config->pattern_pool_capacity,
                          config->pattern_node_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -405,6 +415,7 @@ layer_pools_t layer_pools_create(
                          config->route_pool_capacity,
                          config->route_node_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -412,6 +423,7 @@ layer_pools_t layer_pools_create(
                          config->subscriber_pool_capacity,
                          LAYER_POOL_SUBSCRIBER_ENTRY_SIZE)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -420,6 +432,7 @@ layer_pools_t layer_pools_create(
                          config->signal_pool_capacity,
                          config->signal_entry_size)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -427,6 +440,7 @@ layer_pools_t layer_pools_create(
                          config->gradient_pool_capacity,
                          LAYER_POOL_GRADIENT_BUFFER_SIZE)) {
         layer_pools_destroy(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_create: operation failed");
         return NULL;
     }
 
@@ -538,7 +552,10 @@ void layer_pools_release_knowledge_entry(layer_pools_t pools, void* entry)
 
 void* layer_pools_acquire_working_memory_item(layer_pools_t pools, size_t item_size)
 {
-    if (!pools || !pools->brain_pools) return NULL;
+    if (!pools || !pools->brain_pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_acquire_working_memory_item: required parameter is NULL (pools, pools->brain_pools)");
+        return NULL;
+    }
 
     /* Delegate to brain pools feature buffer */
     size_t actual_size = 0;
@@ -635,7 +652,10 @@ void layer_pools_release_route_node(layer_pools_t pools, void* node)
 
 float* layer_pools_acquire_feature_buffer(layer_pools_t pools, size_t num_features)
 {
-    if (!pools || !pools->brain_pools) return NULL;
+    if (!pools || !pools->brain_pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_acquire_feature_buffer: required parameter is NULL (pools, pools->brain_pools)");
+        return NULL;
+    }
 
     /* Delegate to brain pools activation pool */
     return brain_pools_acquire_activation(pools->brain_pools, num_features);
@@ -710,12 +730,14 @@ bool layer_pools_acquire_target_prediction(
     float** prediction)
 {
     if (!pools || !pools->brain_pools || !target || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_acquire_target_prediction: required parameter is NULL (pools, pools->brain_pools, target, prediction)");
         return false;
     }
 
     /* Acquire both buffers from brain pools activation pool */
     *target = brain_pools_acquire_activation(pools->brain_pools, num_outputs);
     if (!*target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "layer_pools_acquire_target_prediction: validation failed");
         return false;
     }
 
@@ -723,6 +745,7 @@ bool layer_pools_acquire_target_prediction(
     if (!*prediction) {
         brain_pools_release_activation(pools->brain_pools, *target);
         *target = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "layer_pools_acquire_target_prediction: validation failed");
         return false;
     }
 
@@ -791,7 +814,10 @@ void* layer_pools_acquire_batch_buffer(
     size_t batch_size,
     size_t example_size)
 {
-    if (!pools || !pools->brain_pools) return NULL;
+    if (!pools || !pools->brain_pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_acquire_batch_buffer: required parameter is NULL (pools, pools->brain_pools)");
+        return NULL;
+    }
 
     size_t total_size = batch_size * example_size;
     size_t actual_size = 0;
@@ -843,7 +869,10 @@ void layer_pools_return(
 
 bool layer_pools_rebalance(layer_pools_t pools)
 {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_rebalance: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     pools->last_rebalance_ms = nimcp_time_monotonic_ms();
@@ -890,7 +919,10 @@ static float calculate_jains_fairness(const float* utils, size_t n)
 
 bool layer_pools_get_metrics(layer_pools_t pools, layer_pools_metrics_t* metrics)
 {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_get_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     memset(metrics, 0, sizeof(layer_pools_metrics_t));
 
@@ -959,7 +991,10 @@ bool layer_pools_get_layer_stats(
     uint32_t layer,
     layer_stats_t* stats)
 {
-    if (!pools || !stats || layer >= LAYER_POOL_COUNT) return false;
+    if (!pools || !stats || layer >= LAYER_POOL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_get_layer_stats: required parameter is NULL (pools, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1010,7 +1045,10 @@ bool layer_pools_get_fairness_metrics(
     layer_pools_t pools,
     fairness_metrics_t* fairness)
 {
-    if (!pools || !fairness) return false;
+    if (!pools || !fairness) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_get_fairness_metrics: required parameter is NULL (pools, fairness)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1058,7 +1096,10 @@ bool layer_pools_get_cross_entropy_metrics(
     layer_pools_t pools,
     cross_entropy_metrics_t* ce)
 {
-    if (!pools || !ce) return false;
+    if (!pools || !ce) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_get_cross_entropy_metrics: required parameter is NULL (pools, ce)");
+        return false;
+    }
 
     /* Simplified cross-entropy calculation */
     ce->expected_entropy = 2.0F;  /* log2(4) for 4 layers */
@@ -1093,7 +1134,10 @@ void layer_pools_reset_metrics(layer_pools_t pools)
 
 bool layer_pools_is_performant(layer_pools_t pools)
 {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_is_performant: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1132,7 +1176,10 @@ bool layer_pools_get_recommended_config(
     layer_pools_t pools,
     layer_pools_config_t* recommended)
 {
-    if (!pools || !recommended) return false;
+    if (!pools || !recommended) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer_pools_get_recommended_config: required parameter is NULL (pools, recommended)");
+        return false;
+    }
 
     /* Start with current config */
     *recommended = pools->config;

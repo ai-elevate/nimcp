@@ -108,6 +108,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
     const checkpoint_pool_config_t* config
 ) {
     if (!config || config->max_brain_size == 0 || config->num_buffers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_pool_create: config is NULL");
         return NULL;
     }
 
@@ -132,6 +133,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
     pool->buffer_pool = memory_pool_create(&pool_config);
     if (!pool->buffer_pool) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_pool_create: pool->buffer_pool is NULL");
         return NULL;
     }
 
@@ -142,6 +144,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
         if (!template_data) {
             memory_pool_destroy(pool->buffer_pool);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_pool_create: template_data is NULL");
             return NULL;
         }
 
@@ -155,6 +158,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
         if (!pool->cow_manager) {
             memory_pool_destroy(pool->buffer_pool);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_create: pool->cow_manager is NULL");
             return NULL;
         }
     }
@@ -167,6 +171,7 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
         cow_manager_destroy(pool->cow_manager);
         memory_pool_destroy(pool->buffer_pool);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "checkpoint_pool_create: validation failed");
         return NULL;
     }
 
@@ -186,7 +191,10 @@ NIMCP_EXPORT checkpoint_handle_t checkpoint_pool_snapshot(
     checkpoint_pool_t pool,
     brain_t brain
 ) {
-    if (!pool || !brain) return NULL;
+    if (!pool || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_snapshot: required parameter is NULL (pool, brain)");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -196,6 +204,7 @@ NIMCP_EXPORT checkpoint_handle_t checkpoint_pool_snapshot(
     checkpoint_handle_t handle = nimcp_calloc(1, sizeof(struct checkpoint_handle_struct));
     if (!handle) {
         nimcp_platform_mutex_unlock(&pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_pool_snapshot: handle is NULL");
         return NULL;
     }
 
@@ -207,6 +216,7 @@ NIMCP_EXPORT checkpoint_handle_t checkpoint_pool_snapshot(
         if (!handle->cow_handle) {
             nimcp_free(handle);
             nimcp_platform_mutex_unlock(&pool->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_snapshot: handle->cow_handle is NULL");
             return NULL;
         }
 
@@ -221,6 +231,7 @@ NIMCP_EXPORT checkpoint_handle_t checkpoint_pool_snapshot(
         if (!handle->buffer) {
             nimcp_free(handle);
             nimcp_platform_mutex_unlock(&pool->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_pool_snapshot: handle->buffer is NULL");
             return NULL;
         }
 
@@ -263,7 +274,10 @@ NIMCP_EXPORT bool checkpoint_pool_save_sync(
     checkpoint_handle_t handle,
     const char* filepath
 ) {
-    if (!pool || !handle || !filepath) return false;
+    if (!pool || !handle || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_save_sync: required parameter is NULL (pool, handle, filepath)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -273,6 +287,7 @@ NIMCP_EXPORT bool checkpoint_pool_save_sync(
     FILE* f = fopen(filepath, "wb");
     if (!f) {
         nimcp_platform_mutex_unlock(&pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_save_sync: f is NULL");
         return false;
     }
 
@@ -323,7 +338,10 @@ NIMCP_EXPORT bool checkpoint_pool_get_stats(
     checkpoint_pool_t pool,
     checkpoint_pool_stats_t* stats
 ) {
-    if (!pool || !stats) return false;
+    if (!pool || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_pool_get_stats: required parameter is NULL (pool, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 

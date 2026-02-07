@@ -88,6 +88,7 @@ action_history_t* action_history_create(const action_history_config_t* config) {
     if (config->max_history_size == 0 ||
         config->max_history_size > ACTION_HISTORY_MAX_ENTRIES) {
         NIMCP_LOGGING_ERROR("Invalid max_history_size: %u", config->max_history_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_history_create: config is NULL");
         return NULL;
     }
 
@@ -116,6 +117,7 @@ action_history_t* action_history_create(const action_history_config_t* config) {
     if (!history->buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate circular buffer");
         nimcp_free(history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "action_history_create: history->buffer is NULL");
         return NULL;
     }
 
@@ -130,6 +132,7 @@ action_history_t* action_history_create(const action_history_config_t* config) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(history->buffer);
         nimcp_free(history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "action_history_create: history->mutex is NULL");
         return NULL;
     }
 
@@ -512,6 +515,7 @@ int action_history_disconnect_bio_async(action_history_t* history) {
 
 bool action_history_is_bio_async_connected(const action_history_t* history) {
     if (!history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_history_is_bio_async_connected: history is NULL");
         return false;
     }
 

@@ -120,8 +120,14 @@ int physics_swarm_register_partition(
     physics_swarm_bridge_t* bridge,
     const physics_swarm_partition_t* partition
 ) {
-    if (!bridge || !partition) return -1;
-    if (bridge->num_partitions >= PHYSICS_SWARM_MAX_NODES) return -1;
+    if (!bridge || !partition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_register_partition: required parameter is NULL (bridge, partition)");
+        return -1;
+    }
+    if (bridge->num_partitions >= PHYSICS_SWARM_MAX_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "physics_swarm_register_partition: capacity exceeded");
+        return -1;
+    }
 
     bridge->partitions[bridge->num_partitions] = *partition;
     bridge->num_partitions++;
@@ -141,8 +147,14 @@ int physics_swarm_get_partition(
     uint32_t index,
     physics_swarm_partition_t* partition
 ) {
-    if (!bridge || !partition) return -1;
-    if (index >= bridge->num_partitions) return -1;
+    if (!bridge || !partition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_get_partition: required parameter is NULL (bridge, partition)");
+        return -1;
+    }
+    if (index >= bridge->num_partitions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "physics_swarm_get_partition: capacity exceeded");
+        return -1;
+    }
 
     *partition = bridge->partitions[index];
     return 0;
@@ -156,7 +168,10 @@ int physics_swarm_serialize_state(
     physics_swarm_bridge_t* bridge,
     physics_swarm_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_serialize_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     bridge->local_state.active_partitions = bridge->num_partitions;
     bridge->local_state.sim_time_ms = bridge->sim_time;
@@ -172,8 +187,14 @@ int physics_swarm_receive_state(
     uint32_t source_node,
     const physics_swarm_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (source_node >= PHYSICS_SWARM_MAX_NODES) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_receive_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (source_node >= PHYSICS_SWARM_MAX_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "physics_swarm_receive_state: capacity exceeded");
+        return -1;
+    }
 
     bridge->remote_states[source_node] = *state;
     bridge->remote_valid[source_node] = true;
@@ -189,7 +210,10 @@ int physics_swarm_sync_boundary(
     physics_swarm_bridge_t* bridge,
     const physics_swarm_boundary_t* boundary
 ) {
-    if (!bridge || !boundary) return -1;
+    if (!bridge || !boundary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_sync_boundary: required parameter is NULL (bridge, boundary)");
+        return -1;
+    }
 
     /* In full implementation, would apply boundary field values */
     bridge->stats.boundary_updates++;
@@ -237,12 +261,18 @@ int physics_swarm_get_stats(
     const physics_swarm_bridge_t* bridge,
     physics_swarm_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 bool physics_swarm_needs_sync(const physics_swarm_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_swarm_needs_sync: bridge is NULL");
+        return false;
+    }
     return bridge->sync_timer >= bridge->config.sync_interval_ms;
 }

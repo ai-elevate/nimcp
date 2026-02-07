@@ -173,7 +173,10 @@ static void memory_on_sleep_state_change(sleep_state_t new_state, void* user_dat
  */
 int memory_sleep_default_config(memory_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_default", 0.0f);
@@ -258,6 +261,7 @@ memory_sleep_bridge_t memory_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "memory_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -347,7 +351,10 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
  */
 int memory_sleep_update(memory_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_update", 0.0f);
@@ -422,7 +429,10 @@ int memory_sleep_get_effects(
     const memory_sleep_bridge_t bridge,
     memory_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_get_eff", 0.0f);
@@ -480,7 +490,10 @@ float memory_sleep_get_replay_frequency(const memory_sleep_bridge_t bridge)
  */
 bool memory_sleep_is_replay_active(const memory_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_is_replay_active: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_is_repl", 0.0f);
@@ -638,7 +651,10 @@ float memory_sleep_semantic_for_state(sleep_state_t state)
 int memory_sleep_connect_bio_async(memory_sleep_bridge_t bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
@@ -677,7 +693,10 @@ int memory_sleep_connect_bio_async(memory_sleep_bridge_t bridge)
 int memory_sleep_disconnect_bio_async(memory_sleep_bridge_t bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
@@ -710,7 +729,10 @@ int memory_sleep_disconnect_bio_async(memory_sleep_bridge_t bridge)
 bool memory_sleep_is_bio_async_connected(const memory_sleep_bridge_t bridge)
 {
     /* Guard clause */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_sleep_bridge_heartbeat("memory_sleep_memory_sleep_is_bio_", 0.0f);

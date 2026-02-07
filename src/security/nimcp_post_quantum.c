@@ -209,6 +209,7 @@ nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
     if (nimcp_mutex_init(&ctx->stats_lock, NULL) != 0) {
         LOG_ERROR("nimcp_pq_context_create: Mutex initialization failed");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pq_context_create: validation failed");
         return NULL;
     }
 

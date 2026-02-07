@@ -231,10 +231,16 @@ int vae_world_bridge_default_config(vae_world_bridge_config_t* config) {
 }
 
 vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_world_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_world_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_WORLD_STATE_DISCONNECTED;
@@ -244,6 +250,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
     bridge->fused_latent = nimcp_calloc(config->fused_latent_dim, sizeof(float));
     if (!bridge->fused_latent) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->fused_latent is NULL");
         return NULL;
     }
 
@@ -253,6 +260,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
     if (!bridge->attention_weights) {
         nimcp_free(bridge->fused_latent);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->attention_weights is NULL");
         return NULL;
     }
 
@@ -263,6 +271,7 @@ vae_world_bridge_t* vae_world_bridge_create(const vae_world_bridge_config_t* con
             nimcp_free(bridge->attention_weights);
             nimcp_free(bridge->fused_latent);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_world_bridge_create: bridge->entities is NULL");
             return NULL;
         }
     }

@@ -231,12 +231,14 @@ predictive_network_t predictive_create(const predictive_config_t* config)
                  actual_config.num_layers, PRED_MAX_LAYERS);
         LOG_ERROR("Invalid num_layers: %u (must be 1-%d)",
                  actual_config.num_layers, PRED_MAX_LAYERS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_create: actual_config.num_layers is zero");
         return NULL;
     }
 
     if (!actual_config.layer_sizes) {
         set_error("NULL layer_sizes");
         LOG_ERROR("NULL layer_sizes provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_create: actual_config is NULL");
         return NULL;
     }
 
@@ -302,6 +304,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
     if (!net->layers) {
         set_error("Failed to allocate layers array");
         nimcp_free(net);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_create: net->layers is NULL");
         return NULL;
     }
 
@@ -342,6 +345,7 @@ predictive_network_t predictive_create(const predictive_config_t* config)
             set_error("Failed to allocate layer %u vectors", i);
             nimcp_free(layer);
             predictive_destroy(net);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_create: operation failed");
             return NULL;
         }
 
@@ -541,11 +545,13 @@ bool predictive_get_layer_prediction(predictive_network_t net,
 
     if (!net || !output) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_get_layer_prediction: required parameter is NULL (net, output)");
         return false;
     }
 
     if (layer_index >= net->num_layers) {
         set_error("Invalid layer_index: %u (max %u)", layer_index, net->num_layers - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "predictive_get_layer_prediction: capacity exceeded");
         return false;
     }
 
@@ -568,6 +574,7 @@ bool predictive_get_layer_error(predictive_network_t net,
 {
     if (!net || !output) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_get_layer_error: required parameter is NULL (net, output)");
         return false;
     }
 
@@ -577,6 +584,7 @@ bool predictive_get_layer_error(predictive_network_t net,
 
     if (layer_index >= net->num_layers) {
         set_error("Invalid layer_index: %u", layer_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "predictive_get_layer_error: capacity exceeded");
         return false;
     }
 
@@ -605,6 +613,7 @@ bool predictive_update_model(predictive_network_t net)
 {
     if (!net) {
         set_error("NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_update_model: net is NULL");
         return false;
     }
 
@@ -633,6 +642,7 @@ bool predictive_update_precision(predictive_network_t net, uint32_t layer_index)
 {
     if (!net) {
         set_error("NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_update_precision: net is NULL");
         return false;
     }
 
@@ -642,6 +652,7 @@ bool predictive_update_precision(predictive_network_t net, uint32_t layer_index)
 
     if (layer_index >= net->num_layers) {
         set_error("Invalid layer_index");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "predictive_update_precision: capacity exceeded");
         return false;
     }
 
@@ -750,6 +761,7 @@ bool predictive_get_statistics(predictive_network_t net, predictive_stats_t* sta
 {
     if (!net || !stats) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_get_statistics: required parameter is NULL (net, stats)");
         return false;
     }
 
@@ -871,6 +883,7 @@ bool predictive_reset(predictive_network_t net)
 {
     if (!net) {
         set_error("NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_reset: net is NULL");
         return false;
     }
 

@@ -217,6 +217,7 @@ security_game_theory_bridge_t* security_gt_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, SECURITY_GT_MODULE_ID, "security_gt_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "security_gt_bridge_create: validation failed");
         return NULL;
     }
 
@@ -309,6 +310,9 @@ int security_gt_bridge_connect_equilibrium(
 
     BRIDGE_LOCK(bridge);
     bridge->equilibrium = equilibrium;
+    bridge->base.system_a = equilibrium;
+    bridge->base.system_a_connected = true;
+    bridge->base.bridge_active = true;
     BRIDGE_UNLOCK(bridge);
 
     return 0;

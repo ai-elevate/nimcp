@@ -64,14 +64,17 @@ static int acquire_read_lock(nimcp_platform_rwlock_t* lock, unsigned long timeou
 static btree_node_t* create_node(bool leaf)
 {
     btree_node_t* node = nimcp_calloc(1, sizeof(btree_node_t));
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_node: node is NULL");
         return NULL;
+    }
 
     node->leaf = leaf;
     node->n = 0;
 
     if (nimcp_platform_rwlock_init(&node->lock) != 0) {
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "create_node: validation failed");
         return NULL;
     }
 
@@ -342,10 +345,12 @@ static void* search_node(const btree_t* tree, btree_node_t* node, const char* ke
     }
 
     if (node->leaf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "search_node: validation failed");
         return NULL;
     }
 
     if (acquire_read_lock(&node->children[i]->lock, LOCK_TIMEOUT_MS) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "search_node: validation failed");
         return NULL;
     }
 
@@ -356,10 +361,13 @@ static void* search_node(const btree_t* tree, btree_node_t* node, const char* ke
 
 void* btree_find(const btree_t* tree, const char* key)
 {
-    if (!tree || !key)
+    if (!tree || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "btree_find: required parameter is NULL (tree, key)");
         return NULL;
+    }
 
     if (acquire_read_lock(&tree->root->lock, LOCK_TIMEOUT_MS) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "btree_find: validation failed");
         return NULL;
     }
 
@@ -561,6 +569,7 @@ static bool remove_from_node_internal(btree_t* tree, btree_node_t* node, const c
         return remove_from_node_internal(tree, child, key, should_free_key);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_from_node_internal: operation failed");
     return false;  // Key not found
 }
 
@@ -672,8 +681,10 @@ void btree_iterator_destroy(btree_iterator_t* iterator)
 
 bool btree_iterator_next(btree_iterator_t* iterator, void** data)
 {
-    if (!iterator || !data)
+    if (!iterator || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "btree_iterator_next: required parameter is NULL (iterator, data)");
         return false;
+    }
 
     nimcp_platform_mutex_lock(&iterator->lock);
 
@@ -683,6 +694,7 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data)
         while (node) {
             if (acquire_read_lock(&node->lock, LOCK_TIMEOUT_MS) != 0) {
                 nimcp_platform_mutex_unlock(&iterator->lock);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "btree_iterator_next: validation failed");
                 return false;
             }
 
@@ -714,6 +726,7 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data)
             while (node) {
                 if (acquire_read_lock(&node->lock, LOCK_TIMEOUT_MS) != 0) {
                     nimcp_platform_mutex_unlock(&iterator->lock);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "btree_iterator_next: validation failed");
                     return false;
                 }
 
@@ -728,6 +741,7 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data)
                     if (!new_stack || !new_index_stack) {
                         nimcp_platform_rwlock_rdunlock(&node->lock);
                         nimcp_platform_mutex_unlock(&iterator->lock);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "btree_iterator_next: required parameter is NULL (new_stack, new_index_stack)");
                         return false;
                     }
 
@@ -751,6 +765,7 @@ bool btree_iterator_next(btree_iterator_t* iterator, void** data)
     }
 
     nimcp_platform_mutex_unlock(&iterator->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "btree_iterator_next: operation failed");
     return false;
 }
 

@@ -136,6 +136,7 @@ emergency_halt_t* emergency_halt_create(const emergency_halt_config_t* config) {
     if (!halt) {
         NIMCP_LOGGING_ERROR("%s Failed to allocate emergency halt system",
                            HALT_LOG_PREFIX);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emergency_halt_create: halt is NULL");
         return NULL;
     }
 
@@ -166,6 +167,7 @@ emergency_halt_t* emergency_halt_create(const emergency_halt_config_t* config) {
     if (!halt->mutex) {
         NIMCP_LOGGING_ERROR("%s Failed to create mutex", HALT_LOG_PREFIX);
         nimcp_free(halt);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emergency_halt_create: halt->mutex is NULL");
         return NULL;
     }
 
@@ -774,6 +776,7 @@ static bool halt_verify_kill_phrase(const emergency_halt_t* halt, const char* ph
     uint8_t computed_hash[HALT_KILL_PHRASE_HASH_SIZE];
 
     if (!bbb_calculate_hash(phrase, strlen(phrase), computed_hash)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "halt_verify_kill_phrase: bbb_calculate_hash is NULL");
         return false;
     }
 

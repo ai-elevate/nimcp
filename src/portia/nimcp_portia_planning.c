@@ -136,6 +136,7 @@ static portia_plan_t* find_plan(portia_planner_t planner, uint32_t plan_id)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_plan: validation failed");
     return NULL;
 }
 
@@ -223,18 +224,21 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
     // Validate configuration
     if (!config) {
         portia_set_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_init: config is NULL");
         return NULL;
     }
 
     if (!bbb_validate_range(config->max_waypoints, 2, 1024,
                              "portia_planning_init")) {
         portia_set_error("Invalid max_waypoints: %u", config->max_waypoints);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_init: config is NULL");
         return NULL;
     }
 
     if (!bbb_validate_range(config->max_plans, 1, 256,
                              "portia_planning_init")) {
         portia_set_error("Invalid max_plans: %u", config->max_plans);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_init: operation failed");
         return NULL;
     }
 
@@ -246,6 +250,7 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
     if (!planner) {
         portia_set_error("Failed to allocate planner");
         LOG_ERROR("Failed to allocate planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_planning_init: planner is NULL");
         return NULL;
     }
 
@@ -258,6 +263,7 @@ portia_planner_t portia_planning_init(const portia_planning_config_t* config,
         portia_set_error("Failed to allocate plan array");
         LOG_ERROR("Failed to allocate plan array");
         nimcp_free(planner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_planning_init: planner->plans is NULL");
         return NULL;
     }
 
@@ -308,6 +314,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_create_plan: planner is NULL");
         return NULL;
     }
 
@@ -318,6 +325,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Max plans reached: %u", planner->config.max_plans);
         LOG_WARN("Cannot create plan: max plans reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_planning_create_plan: capacity exceeded");
         return NULL;
     }
 
@@ -333,6 +341,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("No plan slot available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_create_plan: plan is NULL");
         return NULL;
     }
 
@@ -353,6 +362,7 @@ portia_plan_t* portia_planning_create_plan(portia_planner_t planner,
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Failed to allocate waypoints");
         LOG_ERROR("Failed to allocate waypoints");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_planning_create_plan: plan->waypoints is NULL");
         return NULL;
     }
 
@@ -385,12 +395,14 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_add_waypoint: planner is NULL");
         return false;
     }
 
     // Validate confidence
     if (confidence < 0.0F || confidence > 1.0F) {
         portia_set_error("Invalid confidence: %.2f", confidence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_add_waypoint: validation failed");
         return false;
     }
 
@@ -400,6 +412,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_add_waypoint: plan is NULL");
         return false;
     }
 
@@ -409,6 +422,7 @@ bool portia_planning_add_waypoint(portia_planner_t planner, uint32_t plan_id,
         portia_set_error("Max waypoints reached: %u",
                           planner->config.max_waypoints);
         LOG_WARN("Cannot add waypoint: max reached for plan %u", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_planning_add_waypoint: capacity exceeded");
         return false;
     }
 
@@ -435,6 +449,7 @@ bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_evaluate: planner is NULL");
         return false;
     }
 
@@ -444,6 +459,7 @@ bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_evaluate: plan is NULL");
         return false;
     }
 
@@ -481,6 +497,7 @@ bool portia_planning_evaluate(portia_planner_t planner, uint32_t plan_id)
         LOG_WARN("Plan %u: detour depth %u exceeds limit %u",
                  plan_id, plan->detour_depth, planner->config.max_detour_depth);
         nimcp_mutex_unlock(&planner->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_evaluate: validation failed");
         return false;
     }
 
@@ -499,6 +516,7 @@ bool portia_planning_execute_step(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_execute_step: planner is NULL");
         return false;
     }
 
@@ -508,6 +526,7 @@ bool portia_planning_execute_step(portia_planner_t planner, uint32_t plan_id)
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_execute_step: plan is NULL");
         return false;
     }
 
@@ -555,6 +574,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_handle_obstacle: planner is NULL");
         return false;
     }
 
@@ -564,6 +584,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_handle_obstacle: plan is NULL");
         return false;
     }
 
@@ -576,6 +597,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
         LOG_ERROR("Plan %u: failed (backtracking disabled)", plan_id);
         broadcast_plan_event(planner, plan_id, "plan_failed");
         nimcp_mutex_unlock(&planner->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_handle_obstacle: planner->config is NULL");
         return false;
     }
 
@@ -596,6 +618,7 @@ bool portia_planning_handle_obstacle(portia_planner_t planner, uint32_t plan_id,
     broadcast_plan_event(planner, plan_id, "plan_failed");
 
     nimcp_mutex_unlock(&planner->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_planning_handle_obstacle: operation failed");
     return false;
 }
 
@@ -603,6 +626,7 @@ bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_can_detour: planner is NULL");
         return false;
     }
 
@@ -612,6 +636,7 @@ bool portia_planning_can_detour(portia_planner_t planner, uint32_t plan_id)
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_can_detour: plan is NULL");
         return false;
     }
 
@@ -652,6 +677,7 @@ portia_plan_t* portia_planning_get_plan(portia_planner_t planner, uint32_t plan_
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_get_plan: planner is NULL");
         return NULL;
     }
 
@@ -666,6 +692,7 @@ bool portia_planning_delete_plan(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
         portia_set_error("NULL planner");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_delete_plan: planner is NULL");
         return false;
     }
 
@@ -675,6 +702,7 @@ bool portia_planning_delete_plan(portia_planner_t planner, uint32_t plan_id)
     if (!plan) {
         nimcp_mutex_unlock(&planner->lock);
         portia_set_error("Plan %u not found", plan_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_planning_delete_plan: plan is NULL");
         return false;
     }
 

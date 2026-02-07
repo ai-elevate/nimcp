@@ -112,6 +112,7 @@ executive_thalamic_bridge_t* executive_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "executive_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -139,7 +140,10 @@ void executive_thalamic_bridge_destroy(executive_thalamic_bridge_t* bridge) {
 }
 
 int executive_thalamic_bridge_reset(executive_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_reset", 0.0f);
 
@@ -156,7 +160,10 @@ int executive_thalamic_route_signal(
     executive_thalamic_bridge_t* bridge,
     const executive_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
@@ -213,6 +220,7 @@ int executive_thalamic_route_signal(
             break;
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -233,7 +241,10 @@ int executive_thalamic_route_inhibition(
     float strength,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_route_inhibition: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
@@ -258,7 +269,10 @@ int executive_thalamic_route_switch(
     float cost,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_route_switch: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_r", 0.0f);
@@ -279,7 +293,10 @@ int executive_thalamic_route_switch(
 }
 
 int executive_thalamic_set_attention(executive_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_s", 0.0f);
 
@@ -291,7 +308,10 @@ int executive_thalamic_set_attention(executive_thalamic_bridge_t* bridge, float 
 }
 
 int executive_thalamic_get_attention(const executive_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_executive_thalamic_g", 0.0f);
 
@@ -307,7 +327,10 @@ int executive_thalamic_bridge_get_stats(
     const executive_thalamic_bridge_t* bridge,
     executive_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_thalamic_bridge_heartbeat("executive_th_get_stats", 0.0f);
 

@@ -205,6 +205,7 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
 
     if (!topographic_map_validate_config(config)) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_create: topographic_map_validate_config is NULL");
         return NULL;
     }
 
@@ -229,6 +230,7 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     if (!map->mutex) {
         TOPO_LOG_ERROR("[TopographicMaps] Failed to create mutex");
         nimcp_free(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create: map->mutex is NULL");
         return NULL;
     }
 
@@ -257,6 +259,7 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     if (!topographic_initialize_cache(map)) {
         TOPO_LOG_ERROR("[TopographicMaps] Failed to initialize cache");
         topographic_map_destroy(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "topographic_map_create: topographic_initialize_cache is NULL");
         return NULL;
     }
 
@@ -315,6 +318,7 @@ topographic_map_t* topographic_map_create_retinotopic(
     /* Guard: Validate inputs */
     if (!params || cortical_width == 0 || cortical_height == 0) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid retinotopic parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_create_retinotopic: params is NULL");
         return NULL;
     }
 
@@ -356,6 +360,7 @@ topographic_map_t* topographic_map_create_tonotopic(
     /* Guard: Validate inputs */
     if (!params || num_frequency_bands == 0) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid tonotopic parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_create_tonotopic: params is NULL");
         return NULL;
     }
 
@@ -393,6 +398,7 @@ topographic_map_t* topographic_map_create_somatotopic(uint32_t num_body_regions)
     /* Guard: Validate input */
     if (num_body_regions == 0) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid number of body regions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create_somatotopic: num_body_regions is zero");
         return NULL;
     }
 
@@ -410,6 +416,7 @@ topographic_map_t* topographic_map_create_somatotopic(uint32_t num_body_regions)
 
     if (!config.somatotopic.regions) {
         TOPO_LOG_ERROR("[TopographicMaps] Failed to allocate regions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_map_create_somatotopic: config is NULL");
         return NULL;
     }
 
@@ -954,6 +961,7 @@ bool topographic_map_add_body_region(
     /* Guard: Validate inputs */
     if (!map || !region || map->config.type != TOPOGRAPHIC_SOMATOTOPIC) {
         TOPO_LOG_ERROR("[TopographicMaps] Invalid body region");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_add_body_region: required parameter is NULL (map, region)");
         return false;
     }
 
@@ -973,6 +981,7 @@ bool topographic_map_add_body_region(
     nimcp_platform_mutex_unlock(map->mutex);
 
     TOPO_LOG_ERROR("[TopographicMaps] No free region slots");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_add_body_region: operation failed");
     return false;
 }
 
@@ -985,22 +994,26 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
 {
     /* Guard: NULL check */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_validate_config: config is NULL");
         return false;
     }
 
     /* Check dimensions */
     if (config->input_dims == 0 || config->input_dims > 3 ||
         config->cortical_dims == 0 || config->cortical_dims > 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "topographic_map_validate_config: config is NULL");
         return false;
     }
 
     /* Check ranges */
     if (config->input_range[1] <= config->input_range[0]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "topographic_map_validate_config: validation failed");
         return false;
     }
 
     if (config->cortical_range[1] <= config->cortical_range[0] ||
         config->cortical_range[3] <= config->cortical_range[2]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "topographic_map_validate_config: validation failed");
         return false;
     }
 
@@ -1010,6 +1023,7 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
             if (config->retinotopic.foveal_radius <= 0.0F ||
                 config->retinotopic.cortical_magnification <= 0.0F ||
                 config->retinotopic.log_polar_a < 0.0F) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_validate_config: operation failed");
                 return false;
             }
             break;
@@ -1017,12 +1031,14 @@ bool topographic_map_validate_config(const topographic_map_config_t* config)
         case TOPOGRAPHIC_TONOTOPIC:
             if (config->tonotopic.min_frequency <= 0.0F ||
                 config->tonotopic.max_frequency <= config->tonotopic.min_frequency) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_validate_config: operation failed");
                 return false;
             }
             break;
 
         case TOPOGRAPHIC_SOMATOTOPIC:
             if (config->somatotopic.num_regions == 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "topographic_map_validate_config: config->somatotopic.num_regions is zero");
                 return false;
             }
             break;
@@ -1083,6 +1099,7 @@ static bool topographic_initialize_cache(topographic_map_t* map)
 
     if (!map->column_rf_centers || !map->column_rf_sizes || !map->column_magnifications) {
         topographic_free_cache(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "topographic_initialize_cache: required parameter is NULL (map->column_rf_centers, map->column_rf_sizes, map->column_magnifications)");
         return false;
     }
 

@@ -378,6 +378,7 @@ static bool unit_propagate(sat_solver_t* solver) {
 
             if (status == CLAUSE_CONFLICTING) {
                 solver->stats.conflicts++;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unit_propagate: validation failed");
                 return false;  /* Conflict! */
             }
 
@@ -399,6 +400,7 @@ static bool unit_propagate(sat_solver_t* solver) {
 
             if (status == CLAUSE_CONFLICTING) {
                 solver->stats.conflicts++;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unit_propagate: validation failed");
                 return false;
             }
 
@@ -614,6 +616,7 @@ sat_solver_t* sat_solver_create(const sat_solver_config_t* config) {
     sat_solver_t* solver = nimcp_calloc(1, sizeof(sat_solver_t));
     if (!solver) {
         LOG_ERROR("Failed to allocate SAT solver");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sat_solver_create: solver is NULL");
         return NULL;
     }
 

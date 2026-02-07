@@ -152,20 +152,47 @@ territory_config_t territory_default_config(void) {
 }
 
 bool territory_validate_config(const territory_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "territory_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->default_radius_m <= 0.0f) return false;
-    if (config->patrol_speed_m_s <= 0.0f) return false;
-    if (config->waypoint_tolerance_m <= 0.0f) return false;
-    if (config->scan_time_s < 0.0f) return false;
+    if (config->default_radius_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
+    if (config->patrol_speed_m_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
+    if (config->waypoint_tolerance_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
+    if (config->scan_time_s < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->intruder_detect_radius_m <= 0.0f) return false;
-    if (config->chase_abandon_distance_m <= 0.0f) return false;
-    if (config->chase_max_duration_s <= 0.0f) return false;
+    if (config->intruder_detect_radius_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
+    if (config->chase_abandon_distance_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
+    if (config->chase_max_duration_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
 
     if (config->perch_energy_threshold < 0.0f ||
         config->perch_energy_threshold > 1.0f) return false;
-    if (config->perch_duration_s < 0.0f) return false;
+    if (config->perch_duration_s < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "territory_validate_config: validation failed");
+        return false;
+    }
 
     if (config->landmark_decay_rate < 0.0f ||
         config->landmark_decay_rate > 1.0f) return false;
@@ -655,7 +682,10 @@ bool dragonfly_territory_contains(
     const dragonfly_territory_t territory,
     const float position[3]
 ) {
-    if (!territory || !position || !territory->boundary_set) return false;
+    if (!territory || !position || !territory->boundary_set) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_territory_contains: required parameter is NULL (territory, position, territory->boundary_set)");
+        return false;
+    }
 
     float dist = vec3_distance(position, territory->boundary.center);
     return dist <= territory->boundary.radius_m;

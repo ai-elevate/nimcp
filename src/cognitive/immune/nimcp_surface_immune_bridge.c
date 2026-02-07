@@ -176,6 +176,7 @@ surface_immune_bridge_t* surface_immune_bridge_create(
     if (!bridge->active_antigens) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_immune_bridge_create: bridge->active_antigens is NULL");
         return NULL;
     }
     memset(bridge->active_antigens, 0,
@@ -190,6 +191,7 @@ surface_immune_bridge_t* surface_immune_bridge_create(
         nimcp_free(bridge->active_antigens);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_immune_bridge_create: bridge->antibodies is NULL");
         return NULL;
     }
     memset(bridge->antibodies, 0,
@@ -368,6 +370,7 @@ static surface_antigen_t* find_antigen(
             return &bridge->active_antigens[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen: operation failed");
     return NULL;
 }
 
@@ -389,6 +392,7 @@ static surface_antigen_t* find_similar_antigen(
             return ag;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_similar_antigen: operation failed");
     return NULL;
 }
 
@@ -406,6 +410,7 @@ static surface_antigen_t* find_empty_antigen_slot(
             return &bridge->active_antigens[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_antigen_slot: bridge->active_antigens is NULL");
     return NULL;
 }
 
@@ -425,6 +430,7 @@ static surface_antibody_t* find_antibody(
             return &bridge->antibodies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody: operation failed");
     return NULL;
 }
 
@@ -444,6 +450,7 @@ static surface_antibody_t* find_antibody_for_type(
             return &bridge->antibodies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_for_type: operation failed");
     return NULL;
 }
 
@@ -618,6 +625,7 @@ int surface_immune_present_anomaly(
 
     if (antigen_id) *antigen_id = 0;
     if (type == SURFACE_ANTIGEN_NONE || type >= SURFACE_ANTIGEN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_immune_present_anomaly: capacity exceeded");
         return -1;
     }
 
@@ -646,6 +654,7 @@ int surface_immune_present_anomaly(
         if (!ag) {
             bridge->stats.anomalies_detected++;  /* Count but can't track */
             BRIDGE_UNLOCK(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_immune_present_anomaly: ag is NULL");
             return -1;  /* No room */
         }
 
@@ -795,6 +804,7 @@ static int produce_antibody_unlocked(
     }
 
     if (!ab) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "produce_antibody_unlocked: ab is NULL");
         return -1;  /* No room */
     }
 
@@ -854,6 +864,7 @@ int surface_immune_apply_antibody(
     surface_antibody_t* ab = find_antibody(bridge, antibody_id);
     if (!ab) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_immune_apply_antibody: ab is NULL");
         return -1;
     }
 

@@ -158,6 +158,7 @@ bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
     if (first) {
         // No common features found
         nimcp_free(common_features);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rule_learning_mesh_unregister: validation failed");
         return false;
     }
 

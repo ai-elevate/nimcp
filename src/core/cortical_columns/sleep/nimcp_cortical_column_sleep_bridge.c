@@ -157,6 +157,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     /* Guard clauses: Validate required parameters */
     if (!hypercolumn || !sleep) {
         NIMCP_LOGGING_ERROR("NULL hypercolumn or sleep system in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_sleep_bridge_create: required parameter is NULL (hypercolumn, sleep)");
         return NULL;
     }
 
@@ -166,6 +167,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
             sizeof(struct cortical_column_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate cortical column sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_sleep_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -187,6 +189,7 @@ cortical_column_sleep_bridge_t cortical_column_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for cortical column sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -306,6 +309,7 @@ int cortical_column_sleep_get_effects(
 {
     /* Guard clauses: Validate parameters */
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_sleep_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -348,6 +352,7 @@ bool cortical_column_sleep_is_offline(const cortical_column_sleep_bridge_t bridg
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_sleep_is_offline: bridge is NULL");
         return false;
     }
 

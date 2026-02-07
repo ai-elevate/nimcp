@@ -273,6 +273,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         nimcp_calloc(1, sizeof(nimcp_cascade_system_t));
     if (!system) {
         LOG_ERROR( "Cascade: Failed to allocate system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cascade_create: system is NULL");
         return NULL;
     }
 
@@ -286,6 +287,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     if (!system->telemetry_history.samples) {
         LOG_ERROR( "Cascade: Failed to allocate telemetry history");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cascade_create: system->telemetry_history is NULL");
         return NULL;
     }
 
@@ -297,6 +299,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         LOG_ERROR( "Cascade: Failed to allocate breakers");
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cascade_create: system->breakers is NULL");
         return NULL;
     }
 
@@ -309,6 +312,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         nimcp_free(system->breakers);
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cascade_create: system->capabilities is NULL");
         return NULL;
     }
 
@@ -322,6 +326,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         nimcp_free(system->breakers);
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cascade_create: system->groups is NULL");
         return NULL;
     }
 
@@ -339,6 +344,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
         nimcp_free(system->breakers);
         nimcp_free(system->telemetry_history.samples);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cascade_create: system->lock is NULL");
         return NULL;
     }
 

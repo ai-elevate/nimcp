@@ -62,7 +62,10 @@ static void cortical_dendritic_on_sleep_state_change(sleep_state_t new_state, vo
 
 int cortical_dendritic_sleep_default_config(cortical_dendritic_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_dendritic_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_excitability_modulation = true;
     config->modulation_strength = 1.0f;
     return 0;
@@ -73,7 +76,10 @@ cortical_dendritic_sleep_bridge_t cortical_dendritic_sleep_bridge_create(
     void* dendritic_module,
     sleep_system_t sleep)
 {
-    if (!dendritic_module || !sleep) return NULL;
+    if (!dendritic_module || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_dendritic_sleep_bridge_create: required parameter is NULL (dendritic_module, sleep)");
+        return NULL;
+    }
 
     struct cortical_dendritic_sleep_bridge_struct* bridge =
         (struct cortical_dendritic_sleep_bridge_struct*)nimcp_malloc(
@@ -97,6 +103,7 @@ cortical_dendritic_sleep_bridge_t cortical_dendritic_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "cortical_dendritic_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_dendritic_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -124,7 +131,10 @@ void cortical_dendritic_sleep_bridge_destroy(cortical_dendritic_sleep_bridge_t b
 
 int cortical_dendritic_sleep_update(cortical_dendritic_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_dendritic_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 

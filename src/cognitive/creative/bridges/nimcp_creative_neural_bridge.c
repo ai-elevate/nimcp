@@ -126,12 +126,14 @@ creative_neural_bridge_t* creative_neural_bridge_create(
 
     if (!config) {
         set_neural_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_neural_bridge_config_defaults: config is NULL");
         return NULL;
     }
 
     creative_neural_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_neural_bridge_t));
     if (!bridge) {
         set_neural_error("Failed to allocate neural bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_neural_bridge_config_defaults: bridge is NULL");
         return NULL;
     }
 
@@ -189,7 +191,10 @@ void creative_neural_bridge_destroy(creative_neural_bridge_t* bridge) {
 
 int creative_neural_bridge_load_backend(creative_neural_bridge_t* bridge,
                                          neural_backend_t backend) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_neural_bridge_destroy: bridge is NULL");
+        return -1;
+    }
 
     switch (backend) {
         case NEURAL_BACKEND_DIFFUSION_LOCAL:
@@ -197,6 +202,7 @@ int creative_neural_bridge_load_backend(creative_neural_bridge_t* bridge,
                 bridge->diffusion = diffusion_bridge_create(&bridge->config.diffusion_config);
                 if (!bridge->diffusion) {
                     set_neural_error("Failed to load diffusion backend");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_neural_bridge_destroy: bridge->diffusion is NULL");
                     return -1;
                 }
             }
@@ -208,6 +214,7 @@ int creative_neural_bridge_load_backend(creative_neural_bridge_t* bridge,
                 bridge->gan = gan_bridge_create(&bridge->config.gan_config);
                 if (!bridge->gan) {
                     set_neural_error("Failed to load GAN backend");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_neural_bridge_destroy: bridge->gan is NULL");
                     return -1;
                 }
             }
@@ -219,6 +226,7 @@ int creative_neural_bridge_load_backend(creative_neural_bridge_t* bridge,
                 bridge->api = creative_api_client_create(&bridge->config.api_config);
                 if (!bridge->api) {
                     set_neural_error("Failed to load API backend");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_neural_bridge_destroy: bridge->api is NULL");
                     return -1;
                 }
             }
@@ -316,6 +324,7 @@ int neural_generate_image(creative_neural_bridge_t* bridge,
                            visual_generation_result_t* result) {
     if (!bridge || !prompt || !result) {
         set_neural_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_unload_unused: required parameter is NULL (bridge, prompt, result)");
         return -1;
     }
 
@@ -333,6 +342,7 @@ int neural_generate_image(creative_neural_bridge_t* bridge,
     /* Ensure backend is loaded */
     if (creative_neural_bridge_load_backend(bridge, backend) != 0) {
         if (!bridge->config.enable_fallback) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_unload_unused: bridge->config is NULL");
             return -1;
         }
         /* Try fallback backends */
@@ -347,6 +357,7 @@ int neural_generate_image(creative_neural_bridge_t* bridge,
         if (backend == NEURAL_BACKEND_API_CLOUD && bridge->config.enable_api) {
             if (creative_neural_bridge_load_backend(bridge, backend) != 0) {
                 set_neural_error("No backend available");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_unload_unused: validation failed");
                 return -1;
             }
             bridge->fallbacks++;
@@ -466,6 +477,7 @@ int neural_generate_styled(creative_neural_bridge_t* bridge,
                             uint32_t width, uint32_t height,
                             visual_generation_result_t* result) {
     if (!bridge || !prompt || !style || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_unload_unused: required parameter is NULL (bridge, prompt, style, result)");
         return -1;
     }
 
@@ -490,6 +502,7 @@ int neural_img2img(creative_neural_bridge_t* bridge,
                     float strength,
                     visual_generation_result_t* result) {
     if (!bridge || !init_image || !prompt || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, init_image, prompt, result)");
         return -1;
     }
 
@@ -518,6 +531,7 @@ int neural_img2img(creative_neural_bridge_t* bridge,
         set_neural_error("API img2img not implemented");
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -527,6 +541,7 @@ int neural_inpaint(creative_neural_bridge_t* bridge,
                     const char* prompt,
                     visual_generation_result_t* result) {
     if (!bridge || !image || !mask || !prompt || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, mask, prompt, result)");
         return -1;
     }
 
@@ -549,6 +564,7 @@ int neural_inpaint(creative_neural_bridge_t* bridge,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: ret is zero");
     return -1;
 }
 
@@ -560,6 +576,7 @@ int neural_generate_from_latent(creative_neural_bridge_t* bridge,
                                  const gan_latent_t* latent,
                                  visual_generation_result_t* result) {
     if (!bridge || !latent || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, latent, result)");
         return -1;
     }
 
@@ -568,6 +585,7 @@ int neural_generate_from_latent(creative_neural_bridge_t* bridge,
     if (creative_neural_bridge_load_backend(bridge, NEURAL_BACKEND_GAN_LOCAL) != 0 ||
         !bridge->gan) {
         set_neural_error("GAN backend not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -586,12 +604,14 @@ int neural_encode_to_latent(creative_neural_bridge_t* bridge,
                              const visual_image_t* image,
                              gan_latent_t* latent) {
     if (!bridge || !image || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, latent)");
         return -1;
     }
 
     if (creative_neural_bridge_load_backend(bridge, NEURAL_BACKEND_GAN_LOCAL) != 0 ||
         !bridge->gan) {
         set_neural_error("GAN backend not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -609,6 +629,7 @@ int neural_generate_batch(creative_neural_bridge_t* bridge,
                            uint32_t batch_size,
                            visual_generation_result_t* results) {
     if (!bridge || !prompt || !seeds || !results || batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, prompt, seeds, results)");
         return -1;
     }
 
@@ -635,6 +656,7 @@ int neural_get_backend_status(const creative_neural_bridge_t* bridge,
                                neural_backend_t backend,
                                backend_status_t* status) {
     if (!bridge || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, status)");
         return -1;
     }
 
@@ -666,6 +688,7 @@ int neural_get_backend_status(const creative_neural_bridge_t* bridge,
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
             return -1;
     }
 
@@ -734,6 +757,7 @@ neural_backend_t neural_select_backend(const creative_neural_bridge_t* bridge,
 int neural_warmup_backend(creative_neural_bridge_t* bridge,
                            neural_backend_t backend) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return -1;
     }
 
@@ -827,7 +851,10 @@ const char* neural_backend_name(neural_backend_t backend) {
 
 bool neural_backend_available(const creative_neural_bridge_t* bridge,
                                neural_backend_t backend) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_backend_name: bridge is NULL");
+        return false;
+    }
 
     switch (backend) {
         case NEURAL_BACKEND_DIFFUSION_LOCAL:
@@ -842,6 +869,7 @@ bool neural_backend_available(const creative_neural_bridge_t* bridge,
                    bridge->config.enable_gan ||
                    bridge->config.enable_api;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_backend_name: operation failed");
             return false;
     }
 }

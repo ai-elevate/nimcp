@@ -99,21 +99,25 @@ void bridge_gpu_context_destroy(bridge_gpu_context_t* ctx) {
 bool bridge_should_use_gpu(bridge_gpu_context_t* ctx, size_t data_size) {
     // NULL context -> use CPU
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge_should_use_gpu: ctx is NULL");
         return false;
     }
 
     // GPU not available -> use CPU
     if (!ctx->gpu_available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge_should_use_gpu: ctx->gpu_available is NULL");
         return false;
     }
 
     // Data too small -> kernel launch overhead makes CPU faster
     if (data_size < BRIDGE_GPU_MIN_ELEMENTS_THRESHOLD) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bridge_should_use_gpu: validation failed");
         return false;
     }
 
     // GPU context must be valid
     if (!nimcp_gpu_context_is_valid(ctx->gpu_ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bridge_should_use_gpu: nimcp_gpu_context_is_valid is NULL");
         return false;
     }
 
@@ -127,12 +131,14 @@ bool bridge_should_use_gpu(bridge_gpu_context_t* ctx, size_t data_size) {
 bool bridge_gpu_ensure_buffer(bridge_gpu_context_t* ctx, size_t min_size) {
     // NULL context -> failure
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge_gpu_ensure_buffer: ctx is NULL");
         return false;
     }
 
     // GPU not available -> can't allocate GPU buffer
     if (!ctx->gpu_available || !ctx->gpu_ctx) {
         NIMCP_LOGGING_WARN("Cannot allocate GPU buffer: GPU not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge_gpu_ensure_buffer: required parameter is NULL (ctx->gpu_available, ctx->gpu_ctx)");
         return false;
     }
 
@@ -164,6 +170,7 @@ bool bridge_gpu_ensure_buffer(bridge_gpu_context_t* ctx, size_t min_size) {
     ctx->work_buffer = nimcp_gpu_malloc(ctx->gpu_ctx, alloc_size);
     if (!ctx->work_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate GPU work buffer (%zu bytes)", alloc_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bridge_gpu_ensure_buffer: ctx->work_buffer is NULL");
         return false;
     }
 

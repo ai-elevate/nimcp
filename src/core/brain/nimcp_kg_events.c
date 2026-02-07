@@ -148,12 +148,14 @@ static bool filter_matches_event(
     const kg_event_t* event
 ) {
     if (!filter || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter_matches_event: required parameter is NULL (filter, event)");
         return false;
     }
 
     /* Check event type bitmask */
     uint32_t event_mask = (1U << event->type);
     if (!(filter->event_types & event_mask)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "filter_matches_event: validation failed");
         return false;
     }
 
@@ -325,6 +327,7 @@ kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* con
     stream->subscriptions = nimcp_calloc(stream->max_subscriptions, sizeof(kg_subscription_t));
     if (!stream->subscriptions) {
         nimcp_free(stream);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_events_create: stream->subscriptions is NULL");
         return NULL;
     }
 
@@ -334,6 +337,7 @@ kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* con
     if (!stream->webhooks) {
         nimcp_free(stream->subscriptions);
         nimcp_free(stream);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_events_create: stream->webhooks is NULL");
         return NULL;
     }
 
@@ -344,6 +348,7 @@ kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* con
         nimcp_free(stream->webhooks);
         nimcp_free(stream->subscriptions);
         nimcp_free(stream);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_events_create: stream->replay_buffer is NULL");
         return NULL;
     }
 
@@ -356,6 +361,7 @@ kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* con
         nimcp_free(stream->webhooks);
         nimcp_free(stream->subscriptions);
         nimcp_free(stream);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_create: stream->mutex is NULL");
         return NULL;
     }
 
@@ -478,6 +484,7 @@ kg_subscription_id_t kg_events_subscribe(
 
 int kg_events_unsubscribe(kg_event_stream_t* stream, kg_subscription_id_t sub_id) {
     if (!stream || sub_id == KG_SUBSCRIPTION_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_events_unsubscribe: stream is NULL");
         return -1;
     }
 
@@ -504,6 +511,7 @@ int kg_events_update_filter(
     const kg_subscription_filter_t* filter
 ) {
     if (!stream || !filter || sub_id == KG_SUBSCRIPTION_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_update_filter: required parameter is NULL (stream, filter)");
         return -1;
     }
 
@@ -553,6 +561,7 @@ int kg_events_default_webhook_config(kg_webhook_config_t* config) {
 
 int kg_events_add_webhook(kg_event_stream_t* stream, const kg_webhook_config_t* config) {
     if (!stream || !config || config->url[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_add_webhook: required parameter is NULL (stream, config)");
         return -1;
     }
 
@@ -563,6 +572,7 @@ int kg_events_add_webhook(kg_event_stream_t* stream, const kg_webhook_config_t* 
         if (stream->webhooks[i].active &&
             strncmp(stream->webhooks[i].config.url, config->url, KG_EVENTS_MAX_URL_LEN) == 0) {
             nimcp_mutex_unlock(stream->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_events_add_webhook: operation failed");
             return -1; /* Duplicate */
         }
     }
@@ -578,6 +588,7 @@ int kg_events_add_webhook(kg_event_stream_t* stream, const kg_webhook_config_t* 
 
     if (free_slot < 0) {
         nimcp_mutex_unlock(stream->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_events_add_webhook: validation failed");
         return -1;
     }
 
@@ -600,6 +611,7 @@ int kg_events_add_webhook(kg_event_stream_t* stream, const kg_webhook_config_t* 
 
 int kg_events_remove_webhook(kg_event_stream_t* stream, const char* url) {
     if (!stream || !url) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_remove_webhook: required parameter is NULL (stream, url)");
         return -1;
     }
 
@@ -667,6 +679,7 @@ int kg_events_replay(
     void* user_data
 ) {
     if (!stream || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_replay: required parameter is NULL (stream, callback)");
         return -1;
     }
 
@@ -700,6 +713,7 @@ int kg_events_replay_range(
     void* user_data
 ) {
     if (!stream || !callback || start_timestamp > end_timestamp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_replay_range: required parameter is NULL (stream, callback)");
         return -1;
     }
 
@@ -735,6 +749,7 @@ int kg_events_replay_filtered(
     void* user_data
 ) {
     if (!stream || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_replay_filtered: required parameter is NULL (stream, callback)");
         return -1;
     }
 
@@ -786,6 +801,7 @@ int kg_events_get_lag(
     uint64_t* lag
 ) {
     if (!stream || !lag || sub_id == KG_SUBSCRIPTION_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_events_get_lag: required parameter is NULL (stream, lag)");
         return -1;
     }
 
@@ -916,6 +932,7 @@ void kg_event_free(kg_event_t* event) {
 
 int kg_event_clone(const kg_event_t* event, kg_event_t* dest) {
     if (!event || !dest) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_event_clone: required parameter is NULL (event, dest)");
         return -1;
     }
 
@@ -933,6 +950,7 @@ int kg_event_clone(const kg_event_t* event, kg_event_t* dest) {
     if (event->payload_json && event->payload_size > 0) {
         dest->payload_json = nimcp_malloc(event->payload_size + 1);
         if (!dest->payload_json) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_event_clone: dest->payload_json is NULL");
             return -1;
         }
         memcpy(dest->payload_json, event->payload_json, event->payload_size);

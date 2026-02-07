@@ -282,6 +282,7 @@ prime_signature_t* prime_sig_from_content_config(
 ) {
     // Validate inputs
     if (!data || size == 0 || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_from_content_config: required parameter is NULL (data, config)");
         return NULL;
     }
 
@@ -344,6 +345,7 @@ prime_signature_t* prime_sig_from_content_config(
 
 prime_signature_t* prime_sig_from_text(const char* text) {
     if (!text || *text == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_from_text: text is NULL");
         return NULL;
     }
 
@@ -405,6 +407,7 @@ prime_signature_t* prime_sig_from_text(const char* text) {
 
 prime_signature_t* prime_sig_from_floats(const float* floats, size_t count) {
     if (!floats || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_from_floats: floats is NULL");
         return NULL;
     }
 
@@ -592,6 +595,7 @@ float prime_sig_cosine(const prime_signature_t* s1, const prime_signature_t* s2)
 
 int prime_sig_hamming(const prime_signature_t* s1, const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_hamming: required parameter is NULL (s1, s2)");
         return -1;
     }
 
@@ -708,6 +712,7 @@ float prime_sig_similarity(const prime_signature_t* s1,
 prime_signature_t* prime_sig_compose(const prime_signature_t* s1,
                                      const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_hamming: required parameter is NULL (s1, s2)");
         return NULL;
     }
 
@@ -745,6 +750,7 @@ prime_signature_t* prime_sig_compose(const prime_signature_t* s1,
 prime_signature_t* prime_sig_intersect(const prime_signature_t* s1,
                                        const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_hamming: required parameter is NULL (s1, s2)");
         return NULL;
     }
 
@@ -782,6 +788,7 @@ prime_signature_t* prime_sig_intersect(const prime_signature_t* s1,
 prime_signature_t* prime_sig_difference(const prime_signature_t* s1,
                                         const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_hamming: required parameter is NULL (s1, s2)");
         return NULL;
     }
 
@@ -818,6 +825,7 @@ prime_signature_t* prime_sig_difference(const prime_signature_t* s1,
 prime_signature_t* prime_sig_subtract(const prime_signature_t* s1,
                                       const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (s1, s2)");
         return NULL;
     }
 
@@ -868,6 +876,7 @@ uint64_t prime_sig_hash(const prime_signature_t* sig) {
 
 bool prime_sig_hash_equal(const prime_signature_t* s1, const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_hash_equal: required parameter is NULL (s1, s2)");
         return false;
     }
 
@@ -880,6 +889,7 @@ bool prime_sig_hash_equal(const prime_signature_t* s1, const prime_signature_t* 
 
 bool prime_sig_equal(const prime_signature_t* s1, const prime_signature_t* s2) {
     if (!s1 || !s2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_equal: required parameter is NULL (s1, s2)");
         return false;
     }
 
@@ -889,6 +899,7 @@ bool prime_sig_equal(const prime_signature_t* s1, const prime_signature_t* s2) {
 
 
     if (s1->hash != s2->hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_equal: validation failed");
         return false;
     }
 
@@ -918,6 +929,7 @@ bool prime_sig_is_empty(const prime_signature_t* sig) {
         }
 
         if (sig->exponents[i] > 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_is_empty: validation failed");
             return false;
         }
     }
@@ -1068,6 +1080,7 @@ uint8_t prime_sig_get_exponent(const prime_signature_t* sig, size_t index) {
 
 bool prime_sig_set_exponent(prime_signature_t* sig, size_t index, uint8_t value) {
     if (!sig || index >= PRIME_SIG_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_set_exponent: sig is NULL");
         return false;
     }
 
@@ -1119,6 +1132,7 @@ uint32_t prime_sig_total_weight(const prime_signature_t* sig) {
 
 bool prime_sig_normalize(prime_signature_t* sig) {
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prime_sig_normalize: sig is NULL");
         return false;
     }
 
@@ -1142,6 +1156,7 @@ bool prime_sig_normalize(prime_signature_t* sig) {
 
     // If empty or already at max, nothing to do
     if (max_exp == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prime_sig_normalize: max_exp is zero");
         return false;
     }
 

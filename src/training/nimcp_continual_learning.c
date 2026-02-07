@@ -377,7 +377,10 @@ uint32_t cl_get_num_tasks(const cl_ctx_t* ctx) {
 }
 
 int cl_end_task(cl_ctx_t* ctx) {
-    if (!ctx || !ctx->in_task) return -1;
+    if (!ctx || !ctx->in_task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl_end_task: required parameter is NULL (ctx, ctx->in_task)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -538,7 +541,10 @@ float cl_compute_penalty(
 }
 
 int cl_modify_gradients(cl_ctx_t* ctx, nimcp_tensor_t** gradients, uint32_t num_gradients) {
-    if (!ctx || !gradients || num_gradients != ctx->num_params) return -1;
+    if (!ctx || !gradients || num_gradients != ctx->num_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl_modify_gradients: required parameter is NULL (ctx, gradients)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -741,7 +747,10 @@ int cl_sample_replay(cl_ctx_t* ctx, float** inputs, float** targets,
 //=============================================================================
 
 int cl_get_stats(const cl_ctx_t* ctx, cl_stats_t* stats) {
-    if (!ctx || !stats) return -1;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl_get_stats: required parameter is NULL (ctx, stats)");
+        return -1;
+    }
     nimcp_mutex_lock((nimcp_mutex_t*)ctx->mutex);
     memcpy(stats, &ctx->stats, sizeof(cl_stats_t));
     nimcp_mutex_unlock((nimcp_mutex_t*)ctx->mutex);
@@ -773,7 +782,10 @@ int cl_validate_config(const cl_config_t* config) {
 
     }
     if (config->strategy >= CL_STRATEGY_COUNT) return -1;
-    if (config->ewc.lambda < 0.0f) return -1;
+    if (config->ewc.lambda < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cl_validate_config: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -870,7 +882,10 @@ static float sample_from_replay_buffer(cl_ctx_t* ctx, float** input, float** tar
  * @return 0 on success, -1 on error
  */
 int cl_update_replay_priority(cl_ctx_t* ctx, uint32_t idx, float new_priority) {
-    if (!ctx || !ctx->replay_buffer || idx >= ctx->buffer_count) return -1;
+    if (!ctx || !ctx->replay_buffer || idx >= ctx->buffer_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl_update_replay_priority: required parameter is NULL (ctx, ctx->replay_buffer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -894,7 +909,10 @@ int cl_update_replay_priority(cl_ctx_t* ctx, uint32_t idx, float new_priority) {
  * @return 0 on success, -1 on error
  */
 int cl_normalize_replay_priorities(cl_ctx_t* ctx) {
-    if (!ctx || !ctx->replay_buffer || ctx->buffer_count == 0) return -1;
+    if (!ctx || !ctx->replay_buffer || ctx->buffer_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl_normalize_replay_priorities: required parameter is NULL (ctx, ctx->replay_buffer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 

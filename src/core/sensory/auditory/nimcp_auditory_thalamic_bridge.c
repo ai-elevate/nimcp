@@ -168,6 +168,7 @@ int auditory_thalamic_set_attention(auditory_thalamic_bridge_t* bridge, float at
     }
 
     if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auditory_thalamic_set_attention: validation failed");
         return -1;
     }
 

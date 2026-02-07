@@ -381,6 +381,7 @@ static bio_module_context_t g_brain_module_ctx = NULL;
  */
 static bio_module_context_t get_brain_module_ctx(void) {
     if (!bio_router_is_initialized()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_brain_module_ctx: bio_router_is_initialized is NULL");
         return NULL;
     }
 

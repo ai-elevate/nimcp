@@ -160,6 +160,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for mirror-omni bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -170,6 +171,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     if (!bridge->agent_states) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_omni_bridge_create: bridge->agent_states is NULL");
         return NULL;
     }
     bridge->num_agent_states = 0;
@@ -182,6 +184,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         nimcp_free(bridge->agent_states);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_omni_bridge_create: bridge->action_priors is NULL");
         return NULL;
     }
     bridge->num_action_priors = 0;
@@ -434,6 +437,7 @@ int mirror_omni_feed_agent_state(
     mirror_neuron_stats_t mirror_stats;
     if (!mirror_neurons_get_stats(bridge->mirror_system, &mirror_stats)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_feed_agent_state: mirror_neurons_get_stats is NULL");
         return -1;
     }
 
@@ -533,6 +537,7 @@ int mirror_omni_update_state_transitions(
     mirror_neuron_stats_t stats;
     if (!mirror_neurons_get_stats(bridge->mirror_system, &stats)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_update_state_transitions: mirror_neurons_get_stats is NULL");
         return -1;
     }
 
@@ -585,6 +590,7 @@ int mirror_omni_get_agent_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_get_agent_state: validation failed");
     return -1;  /* Agent not found */
 }
 
@@ -610,6 +616,7 @@ int mirror_omni_provide_action_priors(
     mirror_neuron_stats_t stats;
     if (!mirror_neurons_get_stats(bridge->mirror_system, &stats)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_provide_action_priors: mirror_neurons_get_stats is NULL");
         return -1;
     }
 

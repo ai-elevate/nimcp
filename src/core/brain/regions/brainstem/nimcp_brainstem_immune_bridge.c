@@ -179,6 +179,7 @@ brainstem_immune_bridge_t brainstem_immune_create(
     /* Guard: Null checks */
     if (!brainstem || !immune) {
         NIMCP_LOGGING_ERROR("Null brainstem or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_immune_create: required parameter is NULL (brainstem, immune)");
         return NULL;
     }
 
@@ -211,6 +212,7 @@ brainstem_immune_bridge_t brainstem_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -577,6 +579,9 @@ int brainstem_immune_disconnect_bio_async(brainstem_immune_bridge_t bridge) {
 }
 
 bool brainstem_immune_is_bio_async_connected(brainstem_immune_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }

@@ -182,6 +182,7 @@ static bool should_skip_sample(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_sample: validation failed");
     return false;
 }
 
@@ -286,7 +287,10 @@ void occipital_training_bridge_destroy(occipital_training_bridge_t* bridge) {
 }
 
 int occipital_training_bridge_reset(occipital_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset effects to defaults */
     bridge->effects.v1_confidence = 0.5f;
@@ -317,7 +321,10 @@ int occipital_training_connect_occipital(
     occipital_training_bridge_t* bridge,
     occipital_adapter_t* occipital)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_connect_occipital: bridge is NULL");
+        return -1;
+    }
 
     bridge->occipital = occipital;
     bridge->occipital_connected = (occipital != NULL);
@@ -330,7 +337,10 @@ int occipital_training_connect_training(
     occipital_training_bridge_t* bridge,
     nimcp_brain_training_ctx_t* training)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_connect_training: bridge is NULL");
+        return -1;
+    }
 
     bridge->training = training;
     bridge->training_connected = (training != NULL);
@@ -344,7 +354,10 @@ int occipital_training_connect_training(
  *===========================================================================*/
 
 int occipital_training_update_effects(occipital_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_update_effects: bridge is NULL");
+        return -1;
+    }
 
     /* Compute per-area confidences */
     bridge->effects.v1_confidence = compute_area_confidence(bridge, VISUAL_AREA_V1);
@@ -397,7 +410,10 @@ int occipital_training_get_effects(
     const occipital_training_bridge_t* bridge,
     occipital_training_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->effects;
     /* Don't copy the attention pointer - it's internal */
@@ -421,7 +437,10 @@ float occipital_training_get_modulated_lr(
 bool occipital_training_should_skip(
     const occipital_training_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_should_skip: bridge is NULL");
+        return false;
+    }
     return bridge->effects.skip_sample;
 }
 
@@ -430,7 +449,10 @@ int occipital_training_get_attention_scaling(
     float* factors,
     uint32_t num_features)
 {
-    if (!bridge || !factors || num_features == 0) return -1;
+    if (!bridge || !factors || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_get_attention_scaling: required parameter is NULL (bridge, factors)");
+        return -1;
+    }
 
     /* If we have cached attention weights, use them */
     if (bridge->attention_buffer && bridge->effects.num_features > 0) {
@@ -460,8 +482,14 @@ int occipital_training_apply_targets(
     occipital_training_bridge_t* bridge,
     const occipital_training_targets_t* targets)
 {
-    if (!bridge || !targets) return -1;
-    if (!bridge->occipital_connected || !bridge->occipital) return -1;
+    if (!bridge || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_apply_targets: required parameter is NULL (bridge, targets)");
+        return -1;
+    }
+    if (!bridge->occipital_connected || !bridge->occipital) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_apply_targets: required parameter is NULL (bridge->occipital_connected, bridge->occipital)");
+        return -1;
+    }
 
     /* Apply targets to occipital for supervised learning */
     /* The occipital adapter's train function handles this */
@@ -476,8 +504,14 @@ int occipital_training_train_area(
     occipital_training_area_t area,
     float learning_rate)
 {
-    if (!bridge) return -1;
-    if (!bridge->occipital_connected || !bridge->occipital) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_train_area: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->occipital_connected || !bridge->occipital) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_train_area: required parameter is NULL (bridge->occipital_connected, bridge->occipital)");
+        return -1;
+    }
 
     /* Check if area training is enabled */
     const occipital_training_config_t* cfg = &bridge->config;
@@ -505,6 +539,7 @@ int occipital_training_train_area(
             bridge->stats.v5_updates++;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_training_train_area: operation failed");
             return -1;
     }
 
@@ -521,7 +556,10 @@ int occipital_training_compute_loss(
     occipital_training_area_t area,
     float* loss)
 {
-    if (!bridge || !loss) return -1;
+    if (!bridge || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_compute_loss: required parameter is NULL (bridge, loss)");
+        return -1;
+    }
 
     /* Compute loss based on confidence (inverse relationship) */
     /* High confidence = low loss, low confidence = high loss */
@@ -543,6 +581,7 @@ int occipital_training_compute_loss(
             break;
         default:
             *loss = 0.5f;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_training_compute_loss: operation failed");
             return -1;
     }
 
@@ -557,7 +596,10 @@ int occipital_training_update(
     occipital_training_bridge_t* bridge,
     uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_update: bridge is NULL");
+        return -1;
+    }
 
     (void)delta_ms;
 
@@ -581,7 +623,10 @@ int occipital_training_get_stats(
     const occipital_training_bridge_t* bridge,
     occipital_training_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_training_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;

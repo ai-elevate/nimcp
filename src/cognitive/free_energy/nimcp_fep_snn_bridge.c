@@ -228,12 +228,14 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > FEP_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "fep_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fep_snn_create: validation failed");
         return NULL;
     }
 
@@ -251,6 +253,7 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -263,6 +266,7 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->belief_buffer || !bridge->prev_state) {
         fep_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_create: operation failed");
         return NULL;
     }
 
@@ -326,7 +330,10 @@ void fep_snn_destroy(fep_snn_bridge_t* bridge) {
 }
 
 int fep_snn_reset(fep_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_reset", 0.0f);
@@ -385,8 +392,14 @@ int fep_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_encode_state", 0.0f);
@@ -470,7 +483,10 @@ int fep_snn_encode_prediction_error(
     float pred_error,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_encode_prediction_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_encode_predi", 0.0f);
@@ -496,7 +512,10 @@ int fep_snn_encode_free_energy(
     float free_energy,
     float complexity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_encode_free_energy: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_encode_free_", 0.0f);
@@ -526,7 +545,10 @@ int fep_snn_encode_active_inference(
     float action_drive,
     uint32_t action_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_encode_active_inference: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_encode_activ", 0.0f);
@@ -550,8 +572,14 @@ int fep_snn_encode_active_inference(
 //=============================================================================
 
 int fep_snn_simulate(fep_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_simulate", 0.0f);
@@ -651,7 +679,10 @@ int fep_snn_simulate(fep_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int fep_snn_step(fep_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_step", 0.0f);
 
@@ -664,16 +695,23 @@ int fep_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_forward", 0.0f);
 
 
     int spike_count = fep_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_forward: validation failed");
+        return -1;
+    }
 
     if (fep_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_forward: validation failed");
         return -1;
     }
 
@@ -688,7 +726,10 @@ int fep_snn_get_belief(
     fep_snn_bridge_t* bridge,
     fep_belief_state_t* belief
 ) {
-    if (!bridge || !belief) return -1;
+    if (!bridge || !belief) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_get_belief: required parameter is NULL (bridge, belief)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_get_belief", 0.0f);
@@ -706,8 +747,14 @@ int fep_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_get_activati", 0.0f);
@@ -732,7 +779,10 @@ bool fep_snn_check_pred_error(
     fep_snn_bridge_t* bridge,
     float* pred_error_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_pred_error: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_check_pred_e", 0.0f);
@@ -753,7 +803,10 @@ bool fep_snn_check_belief_update(
     fep_snn_bridge_t* bridge,
     float* update_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_belief_update: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_check_belief", 0.0f);
@@ -774,7 +827,10 @@ bool fep_snn_check_state_change(
     fep_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_check_state_", 0.0f);
@@ -813,8 +869,14 @@ int fep_snn_get_dim_state(
     uint32_t dim,
     fep_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_get_dim_stat", 0.0f);
@@ -831,7 +893,10 @@ int fep_snn_get_state(
     fep_snn_bridge_t* bridge,
     fep_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_get_state", 0.0f);
@@ -865,7 +930,10 @@ int fep_snn_get_state(
 }
 
 int fep_snn_get_stats(fep_snn_bridge_t* bridge, fep_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_get_stats", 0.0f);
@@ -879,7 +947,10 @@ int fep_snn_get_stats(fep_snn_bridge_t* bridge, fep_snn_stats_t* stats) {
 }
 
 int fep_snn_reset_stats(fep_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_reset_stats", 0.0f);
@@ -938,7 +1009,10 @@ int fep_snn_register_pred_error_callback(
     fep_snn_pred_error_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_register_pred_error_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_register_pre", 0.0f);
@@ -957,7 +1031,10 @@ int fep_snn_register_belief_callback(
     fep_snn_belief_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_register_belief_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_register_bel", 0.0f);
@@ -976,7 +1053,10 @@ int fep_snn_register_free_energy_callback(
     fep_snn_free_energy_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_register_free_energy_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_register_fre", 0.0f);
@@ -995,8 +1075,14 @@ int fep_snn_register_free_energy_callback(
 //=============================================================================
 
 int fep_snn_bio_async_connect(fep_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_bio_async_co", 0.0f);
@@ -1011,7 +1097,10 @@ int fep_snn_bio_async_connect(fep_snn_bridge_t* bridge) {
 }
 
 int fep_snn_bio_async_disconnect(fep_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_bio_async_di", 0.0f);
@@ -1025,7 +1114,10 @@ int fep_snn_bio_async_disconnect(fep_snn_bridge_t* bridge) {
 }
 
 bool fep_snn_is_bio_async_connected(fep_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_snn_bridge_heartbeat("fep_snn_brid_fep_snn_is_bio_async", 0.0f);

@@ -132,7 +132,10 @@ static void working_memory_on_sleep_state_change(sleep_state_t new_state, void* 
 }
 
 int working_memory_sleep_default_config(working_memory_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_capacity_modulation = true;
     config->enable_decay_modulation = true;
     config->enable_transfer_on_sleep = true;
@@ -218,7 +221,10 @@ void working_memory_sleep_bridge_destroy(working_memory_sleep_bridge_t bridge) {
 }
 
 int working_memory_sleep_update(working_memory_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "working_memory_sleep_update");
@@ -264,7 +270,10 @@ int working_memory_sleep_get_effects(
     const working_memory_sleep_bridge_t bridge,
     working_memory_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -280,7 +289,10 @@ float working_memory_sleep_get_capacity(const working_memory_sleep_bridge_t brid
 }
 
 bool working_memory_sleep_is_offline(const working_memory_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.wm_offline;
     nimcp_mutex_unlock(bridge->base.mutex);

@@ -12,7 +12,7 @@
 #define EXPECT_VALID_NIMCP(expr) do { \
     auto _r = (int)(expr); \
     EXPECT_NE(_r, -1) << #expr " returned bare -1 (P2-7 violation)"; \
-    if (_r != 0) { EXPECT_GE(_r, (int)NIMCP_ERROR_GENERIC) << #expr " returned non-standard error " << _r; } \
+    if (_r != 0) { EXPECT_GE(_r, (int)NIMCP_ERROR_UNKNOWN) << #expr " returned non-standard error " << _r; } \
 } while(0)
 
 // --- Directive System ---
@@ -80,11 +80,11 @@ TEST(SecErrCode, Skepticism_NullClaim) {
 
 // --- Security Audit/Stats ---
 TEST(SecErrCode, LogEvent_Valid) {
-    EXPECT_VALID_NIMCP(nimcp_security_log_event(NIMCP_SECURITY_EVENT_LOGIN, NIMCP_THREAT_LEVEL_LOW, "test event"));
+    EXPECT_VALID_NIMCP(nimcp_security_log_event(NIMCP_SECURITY_EVENT_DIRECTIVE_VERIFIED, NIMCP_THREAT_LOW, "test event"));
 }
 
 TEST(SecErrCode, LogEvent_NullDetails) {
-    EXPECT_VALID_NIMCP(nimcp_security_log_event(NIMCP_SECURITY_EVENT_LOGIN, NIMCP_THREAT_LEVEL_LOW, nullptr));
+    EXPECT_VALID_NIMCP(nimcp_security_log_event(NIMCP_SECURITY_EVENT_DIRECTIVE_VERIFIED, NIMCP_THREAT_LOW, nullptr));
 }
 
 TEST(SecErrCode, GetStats_NullArgs) {
@@ -112,7 +112,7 @@ TEST(SecErrCode, PQGetStats_NullStats) {
 }
 
 TEST(SecErrCode, KyberKeygen_NullKeypair) {
-    EXPECT_VALID_NIMCP(nimcp_kyber_keygen(NIMCP_KYBER_512, nullptr));
+    EXPECT_VALID_NIMCP(nimcp_kyber_keygen(NIMCP_PQ_KYBER_512, nullptr));
 }
 
 // --- Consensus ---
@@ -153,7 +153,7 @@ TEST(SecErrCode, ConsensusProposePolicy_NullCtx) {
 }
 
 TEST(SecErrCode, ConsensusInitiateResponse_NullCtx) {
-    EXPECT_VALID_NIMCP(nimcp_consensus_initiate_response(nullptr, NIMCP_RESPONSE_QUARANTINE, nullptr));
+    EXPECT_VALID_NIMCP(nimcp_consensus_initiate_response(nullptr, NIMCP_RESPONSE_ISOLATE_NODE, nullptr));
 }
 
 // --- Verify error code constants ---

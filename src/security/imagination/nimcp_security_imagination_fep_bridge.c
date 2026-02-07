@@ -128,6 +128,7 @@ security_imagination_fep_bridge_t* security_imagination_fep_create(
 ) {
     if (!security_bridge || !fep_system) {
         NIMCP_LOGGING_ERROR("Security imagination FEP bridge: NULL pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_create: required parameter is NULL (security_bridge, fep_system)");
         return NULL;
     }
 
@@ -137,6 +138,7 @@ security_imagination_fep_bridge_t* security_imagination_fep_create(
         );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security imagination FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_imagination_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -146,6 +148,7 @@ security_imagination_fep_bridge_t* security_imagination_fep_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_IMAGINATION_FEP,
                          "security_imagination_fep_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_create: operation failed");
         return NULL;
     }
 
@@ -247,6 +250,7 @@ int security_imagination_fep_get_config(
     security_imagination_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -262,6 +266,7 @@ int security_imagination_fep_set_config(
     const security_imagination_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -289,6 +294,7 @@ int security_imagination_fep_compute_effects(
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -366,6 +372,7 @@ int security_imagination_fep_update_from_detection(
     const security_imagination_confab_result_t* confab_result
 ) {
     if (!bridge || !confab_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_update_from_detection: required parameter is NULL (bridge, confab_result)");
         return -1;
     }
 
@@ -419,6 +426,7 @@ int security_imagination_fep_detect(
     security_imagination_confab_result_t* result
 ) {
     if (!bridge || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_detect: required parameter is NULL (bridge, content, result)");
         return -1;
     }
 
@@ -433,6 +441,7 @@ int security_imagination_fep_detect(
     );
     if (err != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_imagination_fep_detect: validation failed");
         return -1;
     }
 
@@ -581,6 +590,7 @@ int security_imagination_fep_ground(
 
     if (err != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_imagination_fep_ground: validation failed");
         return -1;
     }
 
@@ -817,6 +827,7 @@ int security_imagination_fep_get_fep_effects(
     fep_to_security_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -832,6 +843,7 @@ int security_imagination_fep_get_security_effects(
     security_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_get_security_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -847,6 +859,7 @@ int security_imagination_fep_get_stats(
     security_imagination_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

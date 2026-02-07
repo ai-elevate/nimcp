@@ -1082,6 +1082,7 @@ nimcp_ica_t* nimcp_ica_create(
     nimcp_ica_algorithm_t algorithm)
 {
     if (n_components == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ica_create: n_components is zero");
         return NULL;
     }
 
@@ -1377,7 +1378,10 @@ nimcp_factor_t* nimcp_factor_create(
     uint32_t n_factors,
     nimcp_factor_rotation_t rotation)
 {
-    if (n_factors == 0) return NULL;
+    if (n_factors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_factor_create: n_factors is zero");
+        return NULL;
+    }
 
     nimcp_factor_t* fa = (nimcp_factor_t*)nimcp_calloc(1, sizeof(nimcp_factor_t));
     if (!fa) {
@@ -2349,7 +2353,10 @@ nimcp_mv_result_t nimcp_qda_predict_proba(
 //=============================================================================
 
 nimcp_cca_t* nimcp_cca_create(uint32_t n_components, bool scale) {
-    if (n_components == 0) return NULL;
+    if (n_components == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cca_create: n_components is zero");
+        return NULL;
+    }
 
     nimcp_cca_t* cca = (nimcp_cca_t*)nimcp_calloc(1, sizeof(nimcp_cca_t));
     if (!cca) {

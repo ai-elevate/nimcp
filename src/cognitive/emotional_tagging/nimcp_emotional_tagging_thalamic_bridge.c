@@ -113,6 +113,7 @@ emotional_tagging_thalamic_bridge_t* emotional_tagging_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "emotional_tagging_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -139,7 +140,10 @@ void emotional_tagging_thalamic_bridge_destroy(emotional_tagging_thalamic_bridge
 }
 
 int emotional_tagging_thalamic_bridge_reset(emotional_tagging_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_reset", 0.0f);
 
@@ -155,7 +159,10 @@ int emotional_tagging_thalamic_route_signal(
     emotional_tagging_thalamic_bridge_t* bridge,
     const emotional_tagging_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_emotional_tagging_th", 0.0f);
@@ -194,6 +201,7 @@ int emotional_tagging_thalamic_route_signal(
             break;
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tagging_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -214,7 +222,10 @@ int emotional_tagging_thalamic_apply_tag(
     float intensity,
     float valence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_apply_tag: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_emotional_tagging_th", 0.0f);
@@ -234,7 +245,10 @@ int emotional_tagging_thalamic_apply_tag(
 }
 
 int emotional_tagging_thalamic_set_attention(emotional_tagging_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_emotional_tagging_th", 0.0f);
 
@@ -246,7 +260,10 @@ int emotional_tagging_thalamic_set_attention(emotional_tagging_thalamic_bridge_t
 }
 
 int emotional_tagging_thalamic_get_attention(const emotional_tagging_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_emotional_tagging_th", 0.0f);
 
@@ -261,7 +278,10 @@ int emotional_tagging_thalamic_bridge_get_stats(
     const emotional_tagging_thalamic_bridge_t* bridge,
     emotional_tagging_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_tagging_thalamic_bridge_heartbeat("emotional_ta_get_stats", 0.0f);
 

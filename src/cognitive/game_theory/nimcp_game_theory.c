@@ -151,6 +151,7 @@ nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
 
     if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_gt_create: validation failed");
         return NULL;
     }
 
@@ -265,6 +266,7 @@ bool nimcp_is_pareto_optimal(const float* utilities, uint32_t n,
                               const float* feasible_utilities,
                               uint32_t num_feasible) {
     if (!utilities || !feasible_utilities || n == 0 || num_feasible == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_compute_fairness_index: required parameter is NULL (utilities, feasible_utilities)");
         return false;
     }
 
@@ -303,6 +305,7 @@ bool nimcp_is_pareto_optimal(const float* utilities, uint32_t n,
 
         // Other dominates current -> not Pareto optimal
         if (all_at_least_as_good && at_least_one_better) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_compute_fairness_index: validation failed");
             return false;
         }
     }
@@ -494,6 +497,7 @@ int nimcp_gt_expected_utility_mc(
     void* user_data
 ) {
     if (!system || !players || !payoff_fn || !expected_utilities || num_players == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_expected_utility_mc: required parameter is NULL (system, players, payoff_fn, expected_utilities)");
         return -1;
     }
 
@@ -518,7 +522,10 @@ int nimcp_gt_expected_utility_mc(
 
     /* Allocate action profile */
     uint32_t* actions = nimcp_calloc(num_players, sizeof(uint32_t));
-    if (!actions) return -1;
+    if (!actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_expected_utility_mc: actions is NULL");
+        return -1;
+    }
 
     /* Monte Carlo sampling */
     for (uint32_t s = 0; s < num_samples; s++) {
@@ -599,6 +606,7 @@ int nimcp_gt_fictitious_play_update_mc(
     float learning_rate
 ) {
     if (!player || !opponent_frequencies || !payoff_matrix || !player->strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_fictitious_play_update_mc: required parameter is NULL (player, opponent_frequencies, payoff_matrix, player->strategy)");
         return -1;
     }
 
@@ -612,7 +620,10 @@ int nimcp_gt_fictitious_play_update_mc(
 
     /* Compute expected payoff for each of my actions */
     float* expected_payoffs = nimcp_calloc(player->num_actions, sizeof(float));
-    if (!expected_payoffs) return -1;
+    if (!expected_payoffs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_fictitious_play_update_mc: expected_payoffs is NULL");
+        return -1;
+    }
 
     float max_payoff = -1e30f;
     uint32_t best_action = 0;

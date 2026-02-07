@@ -215,11 +215,15 @@ typedef struct {
 
 static query_cache_t* cache_create(uint32_t capacity) {
     query_cache_t* cache = nimcp_calloc(1, sizeof(query_cache_t));
-    if (!cache) return NULL;
+    if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cache_create: cache is NULL");
+        return NULL;
+    }
 
     cache->entries = nimcp_calloc(capacity, sizeof(cache_entry_t));
     if (!cache->entries) {
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cache_create: cache->entries is NULL");
         return NULL;
     }
     cache->capacity = capacity;
@@ -244,15 +248,27 @@ static void cache_destroy(query_cache_t* cache) {
 //=============================================================================
 
 static bool artist_matches_name(const art_artist_info_t* artist, const char* name) {
-    if (!artist || !name) return false;
+    if (!artist || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "artist_matches_name: required parameter is NULL (artist, name)");
+        return false;
+    }
     return strcasestr(artist->name, name) != NULL;
 }
 
 static bool artist_matches_style(const art_artist_info_t* artist,
                                   art_modality_t modality, int32_t archetype) {
-    if (!artist) return false;
-    if (artist->primary_modality != modality) return false;
-    if (archetype >= 0 && artist->primary_archetype != archetype) return false;
+    if (!artist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "artist_matches_name: artist is NULL");
+        return false;
+    }
+    if (artist->primary_modality != modality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "artist_matches_name: validation failed");
+        return false;
+    }
+    if (archetype >= 0 && artist->primary_archetype != archetype) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "artist_matches_name: capacity exceeded");
+        return false;
+    }
     return true;
 }
 
@@ -266,6 +282,7 @@ creative_knowledge_bridge_t* creative_knowledge_bridge_create(
     creative_knowledge_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_knowledge_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate knowledge bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "artist_matches_name: bridge is NULL");
         return NULL;
     }
 
@@ -310,7 +327,10 @@ void creative_knowledge_set_brain_kg(creative_knowledge_bridge_t* bridge,
 int creative_knowledge_get_artist(creative_knowledge_bridge_t* bridge,
                                    const char* name,
                                    art_artist_info_t* out) {
-    if (!bridge || !name || !out) return -1;
+    if (!bridge || !name || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_knowledge_bridge_destroy: required parameter is NULL (bridge, name, out)");
+        return -1;
+    }
 
     bridge->queries_performed++;
 
@@ -327,6 +347,7 @@ int creative_knowledge_get_artist(creative_knowledge_bridge_t* bridge,
         LOG_DEBUG(LOG_MODULE, "Would query external KG for artist: %s", name);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: validation failed");
     return -1;  /* Not found */
 }
 
@@ -381,7 +402,10 @@ uint32_t creative_knowledge_influenced_by(creative_knowledge_bridge_t* bridge,
 int creative_knowledge_get_work(creative_knowledge_bridge_t* bridge,
                                  const char* title,
                                  art_work_info_t* out) {
-    if (!bridge || !title || !out) return -1;
+    if (!bridge || !title || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_knowledge_bridge_destroy: required parameter is NULL (bridge, title, out)");
+        return -1;
+    }
 
     bridge->queries_performed++;
 
@@ -391,6 +415,7 @@ int creative_knowledge_get_work(creative_knowledge_bridge_t* bridge,
     strncpy(out->title, title, sizeof(out->title) - 1);
     strncpy(out->description, "Work information not in database", sizeof(out->description) - 1);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: operation failed");
     return -1;  /* Not implemented with real data */
 }
 
@@ -427,7 +452,10 @@ uint32_t creative_knowledge_key_works(creative_knowledge_bridge_t* bridge,
 int creative_knowledge_get_movement(creative_knowledge_bridge_t* bridge,
                                      const char* name,
                                      art_movement_info_t* out) {
-    if (!bridge || !name || !out) return -1;
+    if (!bridge || !name || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_knowledge_bridge_destroy: required parameter is NULL (bridge, name, out)");
+        return -1;
+    }
 
     bridge->queries_performed++;
 
@@ -438,6 +466,7 @@ int creative_knowledge_get_movement(creative_knowledge_bridge_t* bridge,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_knowledge_bridge_destroy: validation failed");
     return -1;
 }
 
@@ -509,7 +538,10 @@ void creative_knowledge_movement_lineage(creative_knowledge_bridge_t* bridge,
 int creative_knowledge_historical_context(creative_knowledge_bridge_t* bridge,
                                            const art_work_info_t* work,
                                            char* context) {
-    if (!bridge || !work || !context) return -1;
+    if (!bridge || !work || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, work, context)");
+        return -1;
+    }
 
     bridge->queries_performed++;
 
@@ -530,7 +562,10 @@ int creative_knowledge_style_significance(creative_knowledge_bridge_t* bridge,
                                            art_modality_t modality,
                                            int32_t archetype_id,
                                            char* significance) {
-    if (!bridge || !significance) return -1;
+    if (!bridge || !significance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, significance)");
+        return -1;
+    }
 
     bridge->queries_performed++;
 
@@ -592,7 +627,10 @@ int creative_knowledge_add_relation(creative_knowledge_bridge_t* bridge,
                                      uint64_t from_id,
                                      uint64_t to_id,
                                      art_relation_type_t relation_type) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
     (void)from_id;
     (void)to_id;
     (void)relation_type;

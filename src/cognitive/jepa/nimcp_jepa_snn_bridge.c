@@ -229,12 +229,14 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > JEPA_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize base (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "jepa_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_snn_create: validation failed");
         return NULL;
     }
 
@@ -252,6 +254,7 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -264,6 +267,7 @@ jepa_snn_bridge_t* jepa_snn_create(const jepa_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->prediction_buffer || !bridge->prev_state) {
         jepa_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_snn_create: operation failed");
         return NULL;
     }
 
@@ -657,6 +661,7 @@ int jepa_snn_forward(
     if (spike_count < 0) return -1;
 
     if (jepa_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_forward: validation failed");
         return -1;
     }
 

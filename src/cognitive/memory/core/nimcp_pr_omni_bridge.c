@@ -327,7 +327,10 @@ pr_omni_bridge_config_t pr_omni_bridge_config_default(void) {
 }
 
 bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_omni_bridge_config_validate: config is NULL");
+        return false;
+    }
 
     /* Validate binding thresholds */
     /* Phase 8: Heartbeat at operation start */
@@ -336,11 +339,13 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
 
     if (config->binding_threshold < 0.0f || config->binding_threshold > 1.0f) {
         set_error("binding_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     if (config->coherence_threshold < 0.0f || config->coherence_threshold > 1.0f) {
         set_error("coherence_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -348,18 +353,21 @@ bool pr_omni_bridge_config_validate(const pr_omni_bridge_config_t* config) {
     if (config->fusion_strategy < PR_OMNI_FUSION_UNION ||
         config->fusion_strategy > PR_OMNI_FUSION_DOMINANT) {
         set_error("Invalid fusion_strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Validate SLERP parameter */
     if (config->slerp_base_t < 0.0f || config->slerp_base_t > 1.0f) {
         set_error("slerp_base_t must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
     /* Validate Kuramoto coupling */
     if (config->kuramoto_coupling < 0.0f || config->kuramoto_coupling > 2.0f) {
         set_error("kuramoto_coupling should be in [0, 2]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_omni_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -402,6 +410,7 @@ pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
 
     /* Validate configuration */
     if (!pr_omni_bridge_config_validate(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_omni_bridge_create: pr_omni_bridge_config_validate is NULL");
         return NULL;
     }
 
@@ -431,6 +440,7 @@ pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
     if (!bridge->modal_oscillators) {
         set_error("Failed to create Kuramoto oscillator system");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_omni_bridge_create: bridge->modal_oscillators is NULL");
         return NULL;
     }
 
@@ -1709,7 +1719,10 @@ const char* pr_omni_bridge_error_string(pr_omni_error_t error) {
 }
 
 const char* pr_omni_bridge_get_last_error(void) {
-    if (g_last_error[0] == '\0') return NULL;
+    if (g_last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_omni_bridge_get_last_error: validation failed");
+        return NULL;
+    }
     return g_last_error;
 }
 
@@ -1810,7 +1823,10 @@ void pr_omni_bridge_print_state(const pr_omni_bridge_t* bridge) {
 }
 
 bool pr_omni_bridge_is_connected(const pr_omni_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_omni_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     pr_omni_bridge_heartbeat("pr_omni_brid_is_connected", 0.0f);
 

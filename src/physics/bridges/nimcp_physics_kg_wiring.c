@@ -70,7 +70,10 @@ static brain_kg_edge_id_t create_physics_edge(
 //=============================================================================
 
 int physics_kg_default_config(physics_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_hh = true;
     config->register_thermo = true;
@@ -92,7 +95,10 @@ int physics_kg_register_all(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     physics_kg_config_t local_config;
     if (config) {
@@ -113,6 +119,7 @@ int physics_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(PHYSICS_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -161,7 +168,10 @@ int physics_kg_register_hh(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_register_hh: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create HH subsystem node */
     state->hh_id = create_physics_node(
@@ -170,7 +180,10 @@ int physics_kg_register_hh(
         "Hodgkin-Huxley biophysics - ion channels and action potentials",
         admin_token
     );
-    if (state->hh_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->hh_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_kg_register_hh: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -240,7 +253,10 @@ int physics_kg_register_thermo(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_register_thermo: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create thermodynamics subsystem node */
     state->thermo_id = create_physics_node(
@@ -249,7 +265,10 @@ int physics_kg_register_thermo(
         "Thermodynamics - energy, entropy, Landauer computation",
         admin_token
     );
-    if (state->thermo_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->thermo_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_kg_register_thermo: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -296,7 +315,10 @@ int physics_kg_register_ephaptic(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_register_ephaptic: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create ephaptic coupling subsystem node */
     state->ephaptic_id = create_physics_node(
@@ -305,7 +327,10 @@ int physics_kg_register_ephaptic(
         "Ephaptic coupling - LFP and field effects",
         admin_token
     );
-    if (state->ephaptic_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->ephaptic_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_kg_register_ephaptic: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -351,7 +376,10 @@ int physics_kg_register_cross_edges(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Temperature modulates HH kinetics */
     if (state->heat_id != BRAIN_KG_INVALID_NODE &&
@@ -431,7 +459,10 @@ int physics_kg_update_state(
     float lfp_amplitude,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update heat pool metadata */
     if (state->heat_id != BRAIN_KG_INVALID_NODE) {
@@ -490,7 +521,10 @@ int physics_kg_unregister_all(
     physics_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Remove nodes in reverse order of creation */
     /* Child nodes first, then parents */

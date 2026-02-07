@@ -144,6 +144,7 @@ static const aligned_goal_t* find_goal(
             return &monitor->aligned_goals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: operation failed");
     return NULL;
 }
 
@@ -415,9 +416,11 @@ bool reward_alignment_detect_hacking(
     reward_hack_detection_t* detection)
 {
     if (!monitor || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reward_alignment_detect_hacking: required parameter is NULL (monitor, detection)");
         return false;
     }
     if (monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_detect_hacking: validation failed");
         return false;
     }
 
@@ -491,6 +494,7 @@ bool reward_alignment_detect_hacking(
 
     snprintf(detection->description, sizeof(detection->description),
             "No hacking detected");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_detect_hacking: operation failed");
     return false;
 }
 
@@ -499,11 +503,13 @@ bool reward_alignment_verify_external_cause(
     const reward_signal_t* signal)
 {
     if (!monitor || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reward_alignment_verify_external_cause: required parameter is NULL (monitor, signal)");
         return false;
     }
 
     /* Self-generated signals never have external cause */
     if (signal->source == REWARD_SOURCE_SELF_GENERATED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_verify_external_cause: validation failed");
         return false;
     }
 
@@ -596,6 +602,7 @@ int reward_alignment_unregister_goal(
 
     /* Pathway protection check */
     if (monitor->pathway_locked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "reward_alignment_unregister_goal: validation failed");
         return -1;  /* Cannot modify when locked */
     }
 
@@ -607,6 +614,7 @@ int reward_alignment_unregister_goal(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_unregister_goal: validation failed");
     return -1;  /* Not found */
 }
 
@@ -646,6 +654,7 @@ int reward_alignment_get_rate(
 
 bool reward_alignment_rate_ok(const reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_rate_ok: monitor is NULL");
         return false;
     }
 
@@ -691,6 +700,7 @@ int reward_alignment_lock_pathways(reward_alignment_monitor_t* monitor) {
 
 bool reward_alignment_pathways_locked(const reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_pathways_locked: monitor is NULL");
         return false;
     }
     return monitor->pathway_locked;
@@ -698,6 +708,7 @@ bool reward_alignment_pathways_locked(const reward_alignment_monitor_t* monitor)
 
 bool reward_alignment_verify_pathways(const reward_alignment_monitor_t* monitor) {
     if (!monitor || monitor->magic != REWARD_ALIGNMENT_MONITOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reward_alignment_verify_pathways: monitor is NULL");
         return false;
     }
     if (!monitor->pathway_locked) {

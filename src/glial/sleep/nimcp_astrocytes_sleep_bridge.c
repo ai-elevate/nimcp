@@ -280,6 +280,7 @@ int astro_sleep_default_config(astro_sleep_config_t* config)
     /* Guard clause: Validate config pointer */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -374,6 +375,7 @@ astro_sleep_bridge_t astro_sleep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for astrocyte-sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astro_sleep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -609,7 +611,10 @@ float astro_sleep_get_clearance_rate(const astro_sleep_bridge_t bridge)
 bool astro_sleep_is_glymphatic_active(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_glymphatic_active: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.glymphatic_active;
@@ -667,7 +672,10 @@ float astro_sleep_get_renormalization_factor(const astro_sleep_bridge_t bridge)
 bool astro_sleep_is_downscaling_active(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_downscaling_active: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.downscaling_active;
@@ -715,10 +723,12 @@ int astro_sleep_get_effects(
     /* Guard clauses: Validate inputs */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_get_effects: bridge is NULL");
         return -1;
     }
     if (!effects) {
         NIMCP_LOGGING_ERROR("NULL effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_get_effects: effects is NULL");
         return -1;
     }
 
@@ -738,6 +748,7 @@ int astro_sleep_update(astro_sleep_bridge_t bridge, float dt_ms)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_update: bridge is NULL");
         return -1;
     }
 
@@ -799,6 +810,7 @@ int astro_sleep_connect_bio_async(astro_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -826,6 +838,7 @@ int astro_sleep_connect_bio_async(astro_sleep_bridge_t bridge)
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astro_sleep_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -835,6 +848,7 @@ int astro_sleep_disconnect_bio_async(astro_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -861,7 +875,10 @@ int astro_sleep_disconnect_bio_async(astro_sleep_bridge_t bridge)
 bool astro_sleep_is_bio_async_connected(const astro_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->base.bio_async_enabled;
 }

@@ -99,6 +99,7 @@ static nimcp_thermo_internal_t* get_internal_state(
     const nimcp_thermodynamic_state_t* state
 ) {
     if (!state || state->module_id >= 256) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_internal_state: state is NULL");
         return NULL;
     }
     return s_internal_states[state->module_id];

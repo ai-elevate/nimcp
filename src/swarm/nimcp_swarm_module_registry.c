@@ -50,6 +50,7 @@ static uint64_t get_time_us(void) {
 int swarm_registry_default_config(swarm_registry_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_default_config: config is NULL");
         return -1;
     }
 
@@ -86,6 +87,7 @@ swarm_module_registry_t* swarm_registry_create(
     swarm_module_registry_t* registry = nimcp_malloc(sizeof(*registry));
     if (!registry) {
         NIMCP_LOGGING_ERROR("Failed to allocate registry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_registry_create: registry is NULL");
         return NULL;
     }
 
@@ -97,6 +99,7 @@ swarm_module_registry_t* swarm_registry_create(
     } else {
         if (swarm_registry_default_config(&registry->config) != 0) {
             nimcp_free(registry);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_create: validation failed");
             return NULL;
         }
     }
@@ -109,6 +112,7 @@ swarm_module_registry_t* swarm_registry_create(
     if (!registry->modules) {
         NIMCP_LOGGING_ERROR("Failed to allocate module array");
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_registry_create: registry->modules is NULL");
         return NULL;
     }
     memset(registry->modules, 0,
@@ -120,6 +124,7 @@ swarm_module_registry_t* swarm_registry_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(registry->modules);
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_registry_create: registry->mutex is NULL");
         return NULL;
     }
 
@@ -174,16 +179,19 @@ int swarm_registry_register_module(
     /* Guard clauses */
     if (!registry || !name || !handle || !interface || !module_id_out) {
         NIMCP_LOGGING_ERROR("Null parameter in register_module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_register_module: required parameter is NULL (registry, name, handle, interface, module_id_out)");
         return -1;
     }
 
     if (category >= SWARM_MODULE_CATEGORY_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid category: %u", category);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_register_module: capacity exceeded");
         return -1;
     }
 
     if (!interface->update_fn) {
         NIMCP_LOGGING_ERROR("Module must provide update function");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_register_module: interface->update_fn is NULL");
         return -1;
     }
 
@@ -194,6 +202,7 @@ int swarm_registry_register_module(
         NIMCP_LOGGING_ERROR("Registry full (%u/%u)",
                            registry->module_count, registry->module_capacity);
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_register_module: capacity exceeded");
         return -1;
     }
 
@@ -246,7 +255,10 @@ int swarm_registry_unregister_module(
     swarm_module_registry_t* registry,
     uint32_t module_id
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_unregister_module: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -262,6 +274,7 @@ int swarm_registry_unregister_module(
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(registry->mutex);
         NIMCP_LOGGING_WARN("Module ID %u not found", module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_unregister_module: validation failed");
         return -1;
     }
 
@@ -285,7 +298,10 @@ int swarm_registry_set_module_enabled(
     uint32_t module_id,
     bool enabled
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_enabled: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -300,6 +316,7 @@ int swarm_registry_set_module_enabled(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_enabled: entry is NULL");
         return -1;
     }
 
@@ -309,6 +326,7 @@ int swarm_registry_set_module_enabled(
         if (result != 0) {
             nimcp_platform_mutex_unlock(registry->mutex);
             NIMCP_LOGGING_WARN("Enable callback failed for module %u", module_id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_set_module_enabled: validation failed");
             return -1;
         }
     }
@@ -327,8 +345,14 @@ int swarm_registry_set_module_priority(
     uint32_t module_id,
     uint32_t priority
 ) {
-    if (!registry) return -1;
-    if (priority > SWARM_PRIORITY_CRITICAL) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_priority: registry is NULL");
+        return -1;
+    }
+    if (priority > SWARM_PRIORITY_CRITICAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_set_module_priority: validation failed");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -343,6 +367,7 @@ int swarm_registry_set_module_priority(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_module_priority: entry is NULL");
         return -1;
     }
 
@@ -372,6 +397,7 @@ const swarm_module_entry_t* swarm_registry_get_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_module: validation failed");
     return NULL;
 }
 
@@ -379,7 +405,10 @@ const swarm_module_entry_t* swarm_registry_find_module_by_name(
     const swarm_module_registry_t* registry,
     const char* name
 ) {
-    if (!registry || !name) return NULL;
+    if (!registry || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_find_module_by_name: required parameter is NULL (registry, name)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < registry->module_count; i++) {
         if (strncmp(registry->modules[i].module_name, name,
@@ -388,6 +417,7 @@ const swarm_module_entry_t* swarm_registry_find_module_by_name(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_find_module_by_name: required parameter is NULL (registry, name)");
     return NULL;
 }
 
@@ -419,7 +449,10 @@ int swarm_registry_update(
     swarm_module_registry_t* registry,
     uint64_t current_time_ms
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_update: registry is NULL");
+        return -1;
+    }
 
     uint64_t cycle_start = get_time_us();
     int modules_updated = 0;
@@ -508,7 +541,10 @@ int swarm_registry_update_category(
     swarm_module_category_t category,
     uint64_t current_time_ms
 ) {
-    if (!registry || category >= SWARM_MODULE_CATEGORY_COUNT) return -1;
+    if (!registry || category >= SWARM_MODULE_CATEGORY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_registry_update_category: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -545,7 +581,10 @@ int swarm_registry_update_module(
     uint32_t module_id,
     uint64_t delta_time_ms
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_update_module: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -559,6 +598,7 @@ int swarm_registry_update_module(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_update_module: entry is NULL");
         return -1;
     }
 
@@ -587,6 +627,7 @@ int swarm_registry_resolve_conflict(
     uint32_t* winner_id_out
 ) {
     if (!registry || !module_ids || !winner_id_out || module_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_resolve_conflict: required parameter is NULL (registry, module_ids, winner_id_out)");
         return -1;
     }
 
@@ -613,6 +654,7 @@ int swarm_registry_resolve_conflict(
         /* Not implemented - would need output blending logic */
         NIMCP_LOGGING_WARN("Weighted blend arbitration not implemented");
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_resolve_conflict: operation failed");
         return -1;
 
     case SWARM_ARBITRATION_SEQUENTIAL:
@@ -622,6 +664,7 @@ int swarm_registry_resolve_conflict(
 
     default:
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_resolve_conflict: operation failed");
         return -1;
     }
 
@@ -639,7 +682,10 @@ int swarm_registry_set_arbitration_strategy(
     swarm_module_registry_t* registry,
     swarm_arbitration_strategy_t strategy
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_set_arbitration_strategy: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
     registry->config.arbitration = strategy;
@@ -658,7 +704,10 @@ int swarm_registry_connect_swarm_brain(
     swarm_module_registry_t* registry,
     swarm_brain_t* swarm_brain
 ) {
-    if (!registry || !swarm_brain) return -1;
+    if (!registry || !swarm_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_connect_swarm_brain: required parameter is NULL (registry, swarm_brain)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
     registry->swarm_brain = swarm_brain;
@@ -682,7 +731,10 @@ int swarm_registry_disconnect_swarm_brain(swarm_module_registry_t* registry) {
 }
 
 int swarm_registry_connect_bio_async(swarm_module_registry_t* registry) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_connect_bio_async: registry is NULL");
+        return -1;
+    }
 
     bio_module_info_t info = {
         .module_id = SWARM_REGISTRY_BIO_MODULE_ID,
@@ -700,6 +752,7 @@ int swarm_registry_connect_bio_async(swarm_module_registry_t* registry) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -720,7 +773,10 @@ int swarm_registry_connect_brain_immune(
     swarm_module_registry_t* registry,
     brain_immune_system_t* immune
 ) {
-    if (!registry || !immune) return -1;
+    if (!registry || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_connect_brain_immune: required parameter is NULL (registry, immune)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
     registry->brain_immune = immune;
@@ -749,7 +805,10 @@ int swarm_registry_connect_internal_kg(
     swarm_module_registry_t* registry,
     brain_t brain
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_connect_internal_kg: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -762,6 +821,7 @@ int swarm_registry_connect_internal_kg(
 
     if (result != 0) {
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_connect_internal_kg: validation failed");
         return -1;
     }
 
@@ -822,7 +882,10 @@ int swarm_registry_create_module_kg_node(
     swarm_module_registry_t* registry,
     uint32_t module_id
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_create_module_kg_node: registry is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
 
@@ -843,6 +906,7 @@ int swarm_registry_create_module_kg_node(
 
     if (!entry) {
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_create_module_kg_node: entry is NULL");
         return -1;
     }
 
@@ -866,6 +930,7 @@ int swarm_registry_create_module_kg_node(
         NIMCP_LOGGING_WARN("Failed to create KG node for swarm module %s",
             entry->module_name);
         nimcp_platform_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_create_module_kg_node: validation failed");
         return -1;
     }
 
@@ -891,6 +956,7 @@ int swarm_registry_resolve_conflict_topology_aware(
     uint32_t* winner_id_out
 ) {
     if (!registry || !module_ids || module_count == 0 || !winner_id_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_resolve_conflict_topology_aware: required parameter is NULL (registry, module_ids, winner_id_out)");
         return -1;
     }
 
@@ -957,6 +1023,7 @@ int swarm_registry_resolve_conflict_topology_aware(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_resolve_conflict_topology_aware: validation failed");
     return -1;
 }
 
@@ -1014,7 +1081,10 @@ bool swarm_registry_is_module_registered(
     const swarm_module_registry_t* registry,
     uint32_t module_id
 ) {
-    if (!registry) return false;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_is_module_registered: registry is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < registry->module_count; i++) {
         if (registry->modules[i].module_id == module_id) {
@@ -1022,6 +1092,7 @@ bool swarm_registry_is_module_registered(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_registry_is_module_registered: validation failed");
     return false;
 }
 
@@ -1033,7 +1104,10 @@ int swarm_registry_get_stats(
     const swarm_module_registry_t* registry,
     swarm_registry_stats_t* stats
 ) {
-    if (!registry || !stats) return -1;
+    if (!registry || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_stats: required parameter is NULL (registry, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(registry->mutex);
     *stats = registry->stats;
@@ -1078,10 +1152,16 @@ int swarm_registry_get_module_stats(
     float* avg_time_us,
     uint32_t* error_count
 ) {
-    if (!registry) return -1;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_module_stats: registry is NULL");
+        return -1;
+    }
 
     const swarm_module_entry_t* entry = swarm_registry_get_module(registry, module_id);
-    if (!entry) return -1;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_registry_get_module_stats: entry is NULL");
+        return -1;
+    }
 
     if (update_count) *update_count = entry->update_count;
     if (error_count) *error_count = entry->error_count;

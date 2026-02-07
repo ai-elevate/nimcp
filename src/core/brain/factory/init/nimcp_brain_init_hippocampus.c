@@ -179,6 +179,7 @@ static hippocampus_substrate_bridge_t* hippocampus_substrate_bridge_create(
     (void)config;
     // Stub: Return NULL to indicate not yet implemented
     // Full implementation will integrate with neural_substrate module
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_substrate_bridge_create: operation failed");
     return NULL;
 }
 
@@ -211,6 +212,7 @@ static hippocampus_thalamic_bridge_t* hippocampus_thalamic_bridge_create(
     (void)config;
     // Stub: Return NULL to indicate not yet implemented
     // Full implementation will integrate with thalamic router module
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_thalamic_bridge_create: operation failed");
     return NULL;
 }
 
@@ -309,6 +311,7 @@ bool nimcp_brain_factory_init_hippocampus_subsystem(brain_t brain) {
     brain->hippocampus = hippocampus_create(&hippocampus_cfg);
     if (!brain->hippocampus) {
         set_error("Failed to create hippocampus adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_hippocampus_subsystem: brain->hippocampus is NULL");
         return false;
     }
 
@@ -524,6 +527,7 @@ bool nimcp_brain_factory_init_hippocampus_quantum_bridge(brain_t brain) {
 
     if (!brain->hippocampus_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create hippocampus quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_hippocampus_quantum_bridge: brain->hippocampus_quantum_bridge is NULL");
         return false;
     }
 

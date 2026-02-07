@@ -173,10 +173,16 @@ int vae_bio_async_default_config(vae_bio_async_config_t* config)
 
 vae_bio_async_bridge_t* vae_bio_async_create(const vae_bio_async_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_bio_async_create: config is NULL");
+        return NULL;
+    }
 
     vae_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_bio_async_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_BIO_ASYNC_DISCONNECTED;
@@ -302,7 +308,10 @@ int vae_bio_async_disconnect(vae_bio_async_bridge_t* bridge)
 
 bool vae_bio_async_is_connected(const vae_bio_async_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bio_async_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_BIO_ASYNC_CONNECTED ||
            bridge->state == VAE_BIO_ASYNC_PROCESSING;
 }
@@ -411,7 +420,10 @@ int vae_bio_async_send_encode_request(vae_bio_async_bridge_t* bridge,
                                        nimcp_bio_promise_t* promise)
 {
     if (!bridge || !input || !promise) return NIMCP_ERROR_VAE_BIO_ASYNC_NULL;
-    if (input_dim > VAE_BIO_ASYNC_MAX_INPUT_DIM) return -1;
+    if (input_dim > VAE_BIO_ASYNC_MAX_INPUT_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async_send_encode_request: validation failed");
+        return -1;
+    }
 
     vae_bio_msg_encode_request_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -433,7 +445,10 @@ int vae_bio_async_send_decode_request(vae_bio_async_bridge_t* bridge,
                                        nimcp_bio_promise_t* promise)
 {
     if (!bridge || !latent || !promise) return NIMCP_ERROR_VAE_BIO_ASYNC_NULL;
-    if (latent_dim > VAE_BIO_ASYNC_MAX_LATENT_DIM) return -1;
+    if (latent_dim > VAE_BIO_ASYNC_MAX_LATENT_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_bio_async_send_decode_request: validation failed");
+        return -1;
+    }
 
     vae_bio_msg_decode_request_t msg;
     memset(&msg, 0, sizeof(msg));

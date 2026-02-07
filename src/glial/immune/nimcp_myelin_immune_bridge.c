@@ -39,7 +39,10 @@ DEFINE_HANDLER_CALLBACK(myelin_immune, myelin_immune_bridge_t, bridge)
 
 int myelin_immune_default_config(myelin_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_immune_default_config: config is NULL");
+        return -1;
+    }
     memset(config, 0, sizeof(*config));
     config->il1_damage_rate = 0.2f;
     config->tnf_damage_rate = 0.3f;
@@ -78,6 +81,7 @@ myelin_immune_bridge_t* myelin_immune_create(
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "myelin_immune_create: validation failed");
         return NULL;
     }
 

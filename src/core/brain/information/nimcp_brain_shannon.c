@@ -144,6 +144,7 @@ bool brain_get_shannon_metrics(brain_t brain, shannon_network_metrics_t* metrics
 {
     if (!brain || !metrics) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_shannon_metrics: required parameter is NULL (brain, metrics)");
         return false;
     }
 
@@ -197,6 +198,7 @@ bool brain_enable_quantum_shannon_diffusion(brain_t brain, bool enable, uint32_t
     // Guard: Validate parameters
     if (!brain) {
         set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_quantum_shannon_diffusion: brain is NULL");
         return false;
     }
 
@@ -221,6 +223,7 @@ bool brain_enable_quantum_shannon_diffusion(brain_t brain, bool enable, uint32_t
         if (!network) {
             set_error("Failed to get base network");
             brain->enable_quantum_shannon_diffusion = false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_quantum_shannon_diffusion: network is NULL");
             return false;
         }
 
@@ -251,6 +254,7 @@ bool brain_enable_quantum_shannon_diffusion(brain_t brain, bool enable, uint32_t
         if (!brain->quantum_shannon_diffusion) {
             set_error("Failed to create quantum-Shannon diffusion system");
             brain->enable_quantum_shannon_diffusion = false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_quantum_shannon_diffusion: brain->quantum_shannon_diffusion is NULL");
             return false;
         }
     }
@@ -324,11 +328,13 @@ bool brain_get_quantum_shannon_metrics(brain_t brain, shannon_diffusion_metrics_
 {
     if (!brain || !metrics) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_quantum_shannon_metrics: required parameter is NULL (brain, metrics)");
         return false;
     }
 
     if (!brain->enable_quantum_shannon_diffusion) {
         set_error("Quantum-Shannon diffusion not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_quantum_shannon_metrics: brain->enable_quantum_shannon_diffusion is NULL");
         return false;
     }
 
@@ -352,11 +358,13 @@ bool brain_evolve_quantum_shannon(brain_t brain, uint32_t num_steps)
 {
     if (!brain) {
         set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evolve_quantum_shannon: brain is NULL");
         return false;
     }
 
     if (!brain->enable_quantum_shannon_diffusion || !brain->quantum_shannon_diffusion) {
         set_error("Quantum-Shannon diffusion not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evolve_quantum_shannon: required parameter is NULL (brain->enable_quantum_shannon_diffusion, brain->quantum_shannon_diffusion)");
         return false;
     }
 
@@ -371,6 +379,7 @@ bool brain_evolve_quantum_shannon(brain_t brain, uint32_t num_steps)
 
     if (!success) {
         set_error("Quantum-Shannon evolution failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evolve_quantum_shannon: success is NULL");
         return false;
     }
 
@@ -446,6 +455,7 @@ cross_modal_routing_graph_t* brain_get_cross_modal_graph(brain_t brain)
 
     if (!brain->enable_cross_modal_monitoring) {
         set_error("Cross-modal monitoring not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_cross_modal_graph: brain->enable_cross_modal_monitoring is NULL");
         return NULL;
     }
 
@@ -468,11 +478,13 @@ bool brain_get_cross_modal_metrics(brain_t brain, multi_modal_integration_t* met
 {
     if (!brain || !metrics) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_cross_modal_metrics: required parameter is NULL (brain, metrics)");
         return false;
     }
 
     if (!brain->enable_cross_modal_monitoring) {
         set_error("Cross-modal monitoring not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_cross_modal_metrics: brain->enable_cross_modal_monitoring is NULL");
         return false;
     }
 

@@ -66,7 +66,7 @@ TEST_F(ImmuneErrorRoutingTest, BBBThreat_NullData) {
 // --- Exception to Immune ---
 TEST_F(ImmuneErrorRoutingTest, ExceptionPresentedToImmune) {
     nimcp_exception_t* ex = nimcp_exception_create(
-        NIMCP_ERROR_BBB_REJECTED, NIMCP_EXCEPTION_SEVERITY_HIGH,
+        NIMCP_ERROR_BBB_REJECTED, EXCEPTION_SEVERITY_SEVERE,
         __FILE__, __LINE__, __func__, "Test BBB rejection");
     ASSERT_NE(ex, nullptr);
     nimcp_immune_response_t response;
@@ -85,11 +85,12 @@ TEST_F(ImmuneErrorRoutingTest, ExceptionPresent_NullException) {
 
 TEST_F(ImmuneErrorRoutingTest, ExceptionPresent_NullResponse) {
     nimcp_exception_t* ex = nimcp_exception_create(
-        NIMCP_ERROR_SECURITY_THREAT, NIMCP_EXCEPTION_SEVERITY_MEDIUM,
+        NIMCP_ERROR_SECURITY_THREAT, EXCEPTION_SEVERITY_ERROR,
         __FILE__, __LINE__, __func__, "Test threat");
     ASSERT_NE(ex, nullptr);
+    // response parameter is documented as optional (may be NULL) per API header
     int rc = nimcp_exception_present_to_immune(ex, nullptr);
-    EXPECT_NE(rc, 0);
+    EXPECT_EQ(rc, 0);
     nimcp_exception_unref(ex);
 }
 

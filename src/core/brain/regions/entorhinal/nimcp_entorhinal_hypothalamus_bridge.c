@@ -221,7 +221,10 @@ int entorhinal_hypothalamus_bridge_connect(
     nimcp_entorhinal_t* entorhinal,
     hypothalamus_adapter_t* hypothalamus)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->entorhinal = entorhinal;
     bridge->hypothalamus = hypothalamus;
@@ -233,7 +236,10 @@ int entorhinal_hypothalamus_bridge_connect(
 int entorhinal_hypothalamus_bridge_disconnect(
     entorhinal_hypothalamus_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->entorhinal = NULL;
     bridge->hypothalamus = NULL;
@@ -245,7 +251,10 @@ int entorhinal_hypothalamus_bridge_disconnect(
 int entorhinal_hypothalamus_bridge_reset(
     entorhinal_hypothalamus_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset motivation state */
     memset(&bridge->motivation, 0, sizeof(hypothalamic_motivational_state_t));
@@ -283,7 +292,10 @@ int entorhinal_hypothalamus_bridge_update(
     entorhinal_hypothalamus_bridge_state_t* bridge,
     float dt)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* Compute encoding modulation based on motivation */
     if (bridge->config.enable_motivation_modulation) {
@@ -362,7 +374,10 @@ int entorhinal_hypothalamus_receive_motivation(
     entorhinal_hypothalamus_bridge_state_t* bridge,
     const hypothalamic_motivational_state_t* motivation)
 {
-    if (!bridge || !motivation) return -1;
+    if (!bridge || !motivation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_receive_motivation: required parameter is NULL (bridge, motivation)");
+        return -1;
+    }
 
     bridge->motivation = *motivation;
     bridge->motivation.memory_encoding_boost = bridge->encoding_modulation;
@@ -375,7 +390,10 @@ int entorhinal_hypothalamus_send_spatial_context(
     const float* position, uint32_t dim,
     float memory_salience)
 {
-    if (!bridge || !position || dim < 2) return -1;
+    if (!bridge || !position || dim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_send_spatial_context: required parameter is NULL (bridge, position)");
+        return -1;
+    }
 
     /* Would send to hypothalamus adapter here */
     /* For now, just update local state */
@@ -388,7 +406,10 @@ int entorhinal_hypothalamus_process_reward(
     float reward,
     const float* position, uint32_t dim)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_process_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Update reward prediction error */
     bridge->motivation.reward_prediction_error = reward - bridge->motivation.reward_prediction;
@@ -443,7 +464,10 @@ int entorhinal_hypothalamus_modulate_encoding(
     entorhinal_hypothalamus_bridge_state_t* bridge,
     float* encoding_strength)
 {
-    if (!bridge || !encoding_strength) return -1;
+    if (!bridge || !encoding_strength) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_modulate_encoding: required parameter is NULL (bridge, encoding_strength)");
+        return -1;
+    }
 
     *encoding_strength *= bridge->encoding_modulation;
 
@@ -471,7 +495,10 @@ int entorhinal_hypothalamus_update_spatial_value(
     const float* position, uint32_t dim,
     float reward)
 {
-    if (!bridge || !bridge->value_map || !position || dim < 2) return -1;
+    if (!bridge || !bridge->value_map || !position || dim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_update_spatial_value: required parameter is NULL (bridge, bridge->value_map, position)");
+        return -1;
+    }
 
     uint32_t idx = position_to_value_map_index(bridge->value_map, position, dim);
 
@@ -479,6 +506,7 @@ int entorhinal_hypothalamus_update_spatial_value(
         /* Create new binding */
         if (bridge->value_map->num_bindings >= bridge->value_map->max_bindings) {
             /* Map is full, could implement replacement policy here */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "entorhinal_hypothalamus_update_spatial_value: capacity exceeded");
             return -1;
         }
 
@@ -510,7 +538,10 @@ int entorhinal_hypothalamus_get_value_gradient(
     const float* position, uint32_t dim,
     float* gradient_out)
 {
-    if (!bridge || !bridge->value_map || !position || !gradient_out || dim < 2) return -1;
+    if (!bridge || !bridge->value_map || !position || !gradient_out || dim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_get_value_gradient: required parameter is NULL (bridge, bridge->value_map, position, gradient_out)");
+        return -1;
+    }
 
     /* Compute numerical gradient */
     float delta = bridge->value_map->spatial_resolution;
@@ -535,7 +566,10 @@ int entorhinal_hypothalamus_decay_value_map(
     entorhinal_hypothalamus_bridge_state_t* bridge,
     float dt)
 {
-    if (!bridge || !bridge->value_map) return -1;
+    if (!bridge || !bridge->value_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_decay_value_map: required parameter is NULL (bridge, bridge->value_map)");
+        return -1;
+    }
 
     float decay_factor = expf(-bridge->value_map->decay_rate * dt);
 
@@ -560,7 +594,10 @@ float entorhinal_hypothalamus_get_circadian_consolidation(
 bool entorhinal_hypothalamus_in_consolidation_window(
     const entorhinal_hypothalamus_bridge_state_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_in_consolidation_window: bridge is NULL");
+        return false;
+    }
     return bridge->consolidation_modulation > 0.7f;
 }
 
@@ -574,7 +611,10 @@ int entorhinal_hypothalamus_bridge_get_stats(
     float* mean_motivation,
     float* mean_encoding_boost)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
 
     if (updates_processed) *updates_processed = bridge->updates_processed;
     if (mean_motivation) *mean_motivation = bridge->mean_motivation_signal;
@@ -586,7 +626,10 @@ int entorhinal_hypothalamus_bridge_get_stats(
 int entorhinal_hypothalamus_bridge_log_diagnostics(
     const entorhinal_hypothalamus_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_hypothalamus_bridge_log_diagnostics: bridge is NULL");
+        return -1;
+    }
 
     /* Would log to nimcp_logger here */
     /* For now, just return success */

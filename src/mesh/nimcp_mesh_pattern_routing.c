@@ -208,6 +208,7 @@ mesh_pattern_router_t* mesh_pattern_router_create(
     mesh_pattern_router_t* router = nimcp_calloc(1, sizeof(*router));
     if (!router) {
         LOG_ERROR("Failed to allocate pattern router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_pattern_router_create: router is NULL");
         return NULL;
     }
 

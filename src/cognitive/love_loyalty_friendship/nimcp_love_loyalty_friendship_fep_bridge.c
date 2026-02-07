@@ -113,6 +113,7 @@ social_bond_fep_bridge_t* social_bond_fep_bridge_create(const social_bond_fep_co
     if (bridge_base_init(&bridge->base, 0, "love_loyalty_friendship_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_bond_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
     return bridge;
@@ -393,19 +394,28 @@ void love_loyalty_friendship_fep_bridge_set_instance_health_agent(nimcp_health_a
  * ============================================================================ */
 
 int love_loyalty_friendship_fep_bridge_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "love_loyalty_friendship_fep_bridge_training_begin: ctx is NULL");
+        return -1;
+    }
     love_loyalty_friendship_fep_bridge_heartbeat_instance(g_love_loyalty_friendship_fep_bridge_instance_health_agent, "love_loyalty_fep_training_begin", 0.0f);
     return 0;
 }
 
 int love_loyalty_friendship_fep_bridge_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "love_loyalty_friendship_fep_bridge_training_end: ctx is NULL");
+        return -1;
+    }
     love_loyalty_friendship_fep_bridge_heartbeat_instance(g_love_loyalty_friendship_fep_bridge_instance_health_agent, "love_loyalty_fep_training_end", 1.0f);
     return 0;
 }
 
 int love_loyalty_friendship_fep_bridge_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "love_loyalty_friendship_fep_bridge_training_step: ctx is NULL");
+        return -1;
+    }
     love_loyalty_friendship_fep_bridge_heartbeat_instance(g_love_loyalty_friendship_fep_bridge_instance_health_agent, "love_loyalty_fep_training_step", progress);
     return 0;
 }

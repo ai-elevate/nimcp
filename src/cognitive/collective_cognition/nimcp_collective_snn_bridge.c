@@ -230,12 +230,14 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > COLLECTIVE_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "collective_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_snn_create: validation failed");
         return NULL;
     }
 
@@ -253,6 +255,7 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -265,6 +268,7 @@ collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* co
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->drive_buffer || !bridge->prev_state) {
         collective_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_create: operation failed");
         return NULL;
     }
 
@@ -329,7 +333,10 @@ void collective_snn_destroy(collective_snn_bridge_t* bridge) {
 }
 
 int collective_snn_reset(collective_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_reset", 0.0f);
@@ -387,8 +394,14 @@ int collective_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
@@ -466,7 +479,10 @@ int collective_snn_encode_swarm(
     float coherence,
     float sync
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_encode_swarm: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
@@ -491,7 +507,10 @@ int collective_snn_encode_decision(
     float consensus,
     uint32_t participant_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_encode_decision: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
@@ -513,7 +532,10 @@ int collective_snn_encode_intention(
     float intention,
     uint32_t intent_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_encode_intention: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_encod", 0.0f);
@@ -548,8 +570,14 @@ int collective_snn_encode_intention(
 //=============================================================================
 
 int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_simul", 0.0f);
@@ -635,7 +663,10 @@ int collective_snn_simulate(collective_snn_bridge_t* bridge, float duration_ms) 
 }
 
 int collective_snn_step(collective_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_step", 0.0f);
 
@@ -648,16 +679,23 @@ int collective_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_forwa", 0.0f);
 
 
     int spike_count = collective_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_forward: validation failed");
+        return -1;
+    }
 
     if (collective_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_forward: validation failed");
         return -1;
     }
 
@@ -672,7 +710,10 @@ int collective_snn_get_drive(
     collective_snn_bridge_t* bridge,
     collective_drive_t* drive
 ) {
-    if (!bridge || !drive) return -1;
+    if (!bridge || !drive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_get_drive: required parameter is NULL (bridge, drive)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_get_d", 0.0f);
@@ -690,8 +731,14 @@ int collective_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_get_a", 0.0f);
@@ -716,7 +763,10 @@ bool collective_snn_check_sync(
     collective_snn_bridge_t* bridge,
     float* sync_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_sync: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
@@ -737,7 +787,10 @@ bool collective_snn_check_coordination(
     collective_snn_bridge_t* bridge,
     float* coordination_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_coordination: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
@@ -758,7 +811,10 @@ bool collective_snn_check_state_change(
     collective_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_check", 0.0f);
@@ -797,8 +853,14 @@ int collective_snn_get_dim_state(
     uint32_t dim,
     collective_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_get_d", 0.0f);
@@ -815,7 +877,10 @@ int collective_snn_get_state(
     collective_snn_bridge_t* bridge,
     collective_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_get_s", 0.0f);
@@ -849,7 +914,10 @@ int collective_snn_get_state(
 }
 
 int collective_snn_get_stats(collective_snn_bridge_t* bridge, collective_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_get_s", 0.0f);
@@ -863,7 +931,10 @@ int collective_snn_get_stats(collective_snn_bridge_t* bridge, collective_snn_sta
 }
 
 int collective_snn_reset_stats(collective_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_reset", 0.0f);
@@ -922,7 +993,10 @@ int collective_snn_register_sync_callback(
     collective_snn_sync_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_register_sync_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
@@ -941,7 +1015,10 @@ int collective_snn_register_drive_callback(
     collective_snn_drive_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_register_drive_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
@@ -960,7 +1037,10 @@ int collective_snn_register_coordination_callback(
     collective_snn_coordination_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_register_coordination_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_regis", 0.0f);
@@ -979,8 +1059,14 @@ int collective_snn_register_coordination_callback(
 //=============================================================================
 
 int collective_snn_bio_async_connect(collective_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_bio_a", 0.0f);
@@ -995,7 +1081,10 @@ int collective_snn_bio_async_connect(collective_snn_bridge_t* bridge) {
 }
 
 int collective_snn_bio_async_disconnect(collective_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_bio_a", 0.0f);
@@ -1009,7 +1098,10 @@ int collective_snn_bio_async_disconnect(collective_snn_bridge_t* bridge) {
 }
 
 bool collective_snn_is_bio_async_connected(collective_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_snn_bridge_heartbeat("collective_s_collective_snn_is_bi", 0.0f);

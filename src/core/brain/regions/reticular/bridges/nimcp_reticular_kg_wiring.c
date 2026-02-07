@@ -156,7 +156,10 @@ static brain_kg_node_id_t get_autonomic_node_id(
 //=============================================================================
 
 int reticular_kg_default_config(reticular_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_nuclei = true;
     config->register_arousal = true;
@@ -181,7 +184,10 @@ int reticular_kg_register_all(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     reticular_kg_config_t local_config;
     if (config) {
@@ -211,6 +217,7 @@ int reticular_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(RETICULAR_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -277,7 +284,10 @@ int reticular_kg_register_nuclei(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_nuclei: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create nuclei subsystem root node */
     state->nuclei_root_id = create_reticular_node(
@@ -286,7 +296,10 @@ int reticular_kg_register_nuclei(
         "Reticular nuclei - sources of neuromodulatory projections",
         admin_token
     );
-    if (state->nuclei_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->nuclei_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_nuclei: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -506,7 +519,10 @@ int reticular_kg_register_arousal(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_arousal: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create arousal subsystem root node */
     state->arousal_root_id = create_reticular_node(
@@ -515,7 +531,10 @@ int reticular_kg_register_arousal(
         "Arousal states - sleep-wake continuum and consciousness levels",
         admin_token
     );
-    if (state->arousal_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->arousal_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_arousal: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -676,7 +695,10 @@ int reticular_kg_register_modulators(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_modulators: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create modulators subsystem root node */
     state->modulators_root_id = create_reticular_node(
@@ -685,7 +707,10 @@ int reticular_kg_register_modulators(
         "Neuromodulators - chemical messengers for state regulation",
         admin_token
     );
-    if (state->modulators_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->modulators_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_modulators: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -812,7 +837,10 @@ int reticular_kg_register_autonomic(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_autonomic: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create autonomic subsystem root node */
     state->autonomic_root_id = create_reticular_node(
@@ -821,7 +849,10 @@ int reticular_kg_register_autonomic(
         "Autonomic functions - vital homeostatic control",
         admin_token
     );
-    if (state->autonomic_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->autonomic_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_autonomic: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -896,7 +927,10 @@ int reticular_kg_register_reflexes(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_reflexes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create reflexes subsystem root node */
     state->reflexes_root_id = create_reticular_node(
@@ -905,7 +939,10 @@ int reticular_kg_register_reflexes(
         "Reflexes - protective and automatic motor patterns",
         admin_token
     );
-    if (state->reflexes_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->reflexes_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_reflexes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -1032,7 +1069,10 @@ int reticular_kg_register_motor(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_motor: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create motor control subsystem root node */
     state->motor_root_id = create_reticular_node(
@@ -1041,7 +1081,10 @@ int reticular_kg_register_motor(
         "Motor control - muscle tone and locomotion regulation",
         admin_token
     );
-    if (state->motor_root_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->motor_root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_register_motor: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -1101,7 +1144,10 @@ int reticular_kg_register_cross_edges(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* ==========================================
      * Nucleus -> Neuromodulator relationships
@@ -1373,7 +1419,10 @@ int reticular_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     char value_str[64];
 
@@ -1419,10 +1468,16 @@ int reticular_kg_update_nucleus(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_update_nucleus: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     brain_kg_node_id_t node_id = get_nucleus_node_id(state, nucleus_type);
-    if (node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_update_nucleus: validation failed");
+        return -1;
+    }
 
     char value_str[64];
 
@@ -1444,10 +1499,16 @@ int reticular_kg_update_autonomic(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_update_autonomic: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     brain_kg_node_id_t node_id = get_autonomic_node_id(state, autonomic_type);
-    if (node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_kg_update_autonomic: validation failed");
+        return -1;
+    }
 
     char value_str[64];
 
@@ -1518,7 +1579,10 @@ brain_kg_node_list_t* reticular_kg_get_nuclei_for_modulator(
     brain_kg_t* kg,
     brain_kg_node_id_t modulator_id
 ) {
-    if (!kg || modulator_id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || modulator_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_get_nuclei_for_modulator: kg is NULL");
+        return NULL;
+    }
 
     /* Get incoming edges to modulator (RELEASES edges from nuclei) */
     brain_kg_edge_list_t* edges = brain_kg_get_incoming(kg, modulator_id);
@@ -1534,6 +1598,7 @@ brain_kg_node_list_t* reticular_kg_get_nuclei_for_modulator(
     brain_kg_node_list_t* result = (brain_kg_node_list_t*)nimcp_malloc(sizeof(brain_kg_node_list_t));
     if (!result) {
         brain_kg_edge_list_destroy(edges);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_kg_get_nuclei_for_modulator: result is NULL");
         return NULL;
     }
 
@@ -1541,6 +1606,7 @@ brain_kg_node_list_t* reticular_kg_get_nuclei_for_modulator(
     if (!result->nodes) {
         nimcp_free(result);
         brain_kg_edge_list_destroy(edges);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_kg_get_nuclei_for_modulator: result->nodes is NULL");
         return NULL;
     }
     result->count = 0;
@@ -1564,7 +1630,10 @@ brain_kg_node_list_t* reticular_kg_get_modulators_from_nucleus(
     brain_kg_t* kg,
     brain_kg_node_id_t nucleus_id
 ) {
-    if (!kg || nucleus_id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || nucleus_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_get_modulators_from_nucleus: kg is NULL");
+        return NULL;
+    }
 
     /* Get outgoing edges from nucleus (RELEASES edges to modulators) */
     brain_kg_edge_list_t* edges = brain_kg_get_outgoing(kg, nucleus_id);
@@ -1580,6 +1649,7 @@ brain_kg_node_list_t* reticular_kg_get_modulators_from_nucleus(
     brain_kg_node_list_t* result = (brain_kg_node_list_t*)nimcp_malloc(sizeof(brain_kg_node_list_t));
     if (!result) {
         brain_kg_edge_list_destroy(edges);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_kg_get_modulators_from_nucleus: result is NULL");
         return NULL;
     }
 
@@ -1587,6 +1657,7 @@ brain_kg_node_list_t* reticular_kg_get_modulators_from_nucleus(
     if (!result->nodes) {
         nimcp_free(result);
         brain_kg_edge_list_destroy(edges);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_kg_get_modulators_from_nucleus: result->nodes is NULL");
         return NULL;
     }
     result->count = 0;
@@ -1611,7 +1682,10 @@ int reticular_kg_unregister_all(
     reticular_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* In a full implementation, would iterate and remove all nodes */
     /* For now, just mark as unregistered */

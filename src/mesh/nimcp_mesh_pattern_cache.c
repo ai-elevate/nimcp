@@ -167,7 +167,10 @@ nimcp_error_t pattern_cache_hash(
 }
 
 bool pattern_hash_equals(const pattern_hash_t* a, const pattern_hash_t* b) {
-    if (!a || !b) return false;
+    if (!a || !b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_hash_equals: required parameter is NULL (a, b)");
+        return false;
+    }
     return memcmp(a->bytes, b->bytes, PATTERN_HASH_SIZE) == 0;
 }
 
@@ -198,7 +201,10 @@ static bool patterns_similar(
     const mesh_pattern_t* b,
     float tolerance
 ) {
-    if (!a || !b) return false;
+    if (!a || !b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns_similar: required parameter is NULL (a, b)");
+        return false;
+    }
 
     float diff_sum = 0.0f;
     for (int i = 0; i < MESH_PATTERN_DIM; i++) {
@@ -235,6 +241,7 @@ pattern_cache_t* pattern_cache_create(const pattern_cache_config_t* config) {
     pattern_cache_t* cache = nimcp_calloc(1, sizeof(pattern_cache_t));
     if (!cache) {
         LOG_ERROR("Failed to allocate pattern cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cache_create: cache is NULL");
         return NULL;
     }
 
@@ -266,6 +273,7 @@ pattern_cache_t* pattern_cache_create(const pattern_cache_config_t* config) {
     if (!cache->table) {
         LOG_ERROR("Failed to create pattern cache hash table");
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cache_create: cache->table is NULL");
         return NULL;
     }
 
@@ -275,6 +283,7 @@ pattern_cache_t* pattern_cache_create(const pattern_cache_config_t* config) {
     if (!cache->lru.keys) {
         hash_table_destroy(cache->table);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cache_create: cache->lru is NULL");
         return NULL;
     }
     cache->lru.head = 0;
@@ -289,6 +298,7 @@ pattern_cache_t* pattern_cache_create(const pattern_cache_config_t* config) {
         nimcp_free(cache->lru.keys);
         hash_table_destroy(cache->table);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cache_create: cache->mutex is NULL");
         return NULL;
     }
 
@@ -298,6 +308,7 @@ pattern_cache_t* pattern_cache_create(const pattern_cache_config_t* config) {
         nimcp_free(cache->lru.keys);
         hash_table_destroy(cache->table);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pattern_cache_create: validation failed");
         return NULL;
     }
     cache->rwlock_initialized = true;
@@ -383,17 +394,20 @@ static cow_entry_wrapper_t* find_entry_wrapper(
 
     cow_entry_wrapper_t** wrapper_ptr = hash_table_lookup_string(cache->table, key_str);
     if (!wrapper_ptr || !*wrapper_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_wrapper: wrapper_ptr is NULL");
         return NULL;
     }
 
     cow_entry_wrapper_t* wrapper = *wrapper_ptr;
     if (!wrapper->entry.valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_wrapper: wrapper->entry is NULL");
         return NULL;
     }
 
     /* Verify with actual pattern comparison to handle hash collisions */
     if (!patterns_similar(&wrapper->entry.pattern, pattern,
                           cache->config.similarity_tolerance)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_wrapper: wrapper->entry is NULL");
         return NULL;
     }
 
@@ -409,6 +423,7 @@ static cow_entry_wrapper_t* allocate_cow_entry(pattern_cache_t* cache) {
         if (cache->config.enable_lru) {
             pattern_cache_evict_lru(cache, 1);
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_cow_entry: validation failed");
             return NULL;
         }
     }
@@ -417,6 +432,7 @@ static cow_entry_wrapper_t* allocate_cow_entry(pattern_cache_t* cache) {
     cow_entry_wrapper_t* wrapper = nimcp_cache_calloc(1, sizeof(cow_entry_wrapper_t));
     if (!wrapper) {
         LOG_ERROR("Failed to allocate CoW entry wrapper");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_cow_entry: wrapper is NULL");
         return NULL;
     }
 
@@ -741,7 +757,10 @@ const pattern_cache_entry_t* pattern_cache_acquire(
     pattern_cache_t* cache,
     const mesh_pattern_t* pattern
 ) {
-    if (!cache || !pattern) return NULL;
+    if (!cache || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_cache_acquire: required parameter is NULL (cache, pattern)");
+        return NULL;
+    }
 
     pattern_hash_t hash;
     pattern_cache_hash(pattern, &hash);

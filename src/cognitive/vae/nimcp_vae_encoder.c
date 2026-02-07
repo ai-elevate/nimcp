@@ -179,6 +179,7 @@ static int vae_encoder_layer_create(vae_encoder_layer_t* layer,
             nimcp_tensor_destroy(layer->weight_grad);
             nimcp_tensor_destroy(layer->bias);
             nimcp_tensor_destroy(layer->bias_grad);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "randn: required parameter is NULL (layer->bias, layer->bias_grad)");
             return -1;
         }
     }
@@ -204,6 +205,7 @@ static int vae_encoder_layer_create(vae_encoder_layer_t* layer,
             nimcp_tensor_destroy(layer->bn_beta);
             nimcp_tensor_destroy(layer->bn_running_mean);
             nimcp_tensor_destroy(layer->bn_running_var);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "randn: operation failed");
             return -1;
         }
 
@@ -327,6 +329,7 @@ vae_encoder_t* vae_encoder_create(const vae_encoder_config_t* config) {
             nimcp_free(encoder->layers);
             nimcp_mutex_destroy(encoder->mutex);
             nimcp_free(encoder);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_encoder_create: validation failed");
             return NULL;
         }
         prev_dim = out_dim;
@@ -365,6 +368,7 @@ vae_encoder_t* vae_encoder_create(const vae_encoder_config_t* config) {
     /* Initialize weights */
     if (vae_encoder_init_weights(encoder, 0) != 0) {
         vae_encoder_destroy(encoder);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "vae_encoder_create: validation failed");
         return NULL;
     }
 
@@ -889,6 +893,7 @@ int vae_encoder_forward(vae_encoder_t* encoder,
             nimcp_mutex_unlock(encoder->mutex);
             nimcp_tensor_destroy(current);
             nimcp_tensor_destroy(next);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return -1;
         }
 
@@ -1307,7 +1312,10 @@ float vae_encoder_grad_norm(const vae_encoder_t* encoder) {
 }
 
 bool vae_encoder_has_nan(const vae_encoder_t* encoder) {
-    if (!encoder) return false;
+    if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_encoder_has_nan: encoder is NULL");
+        return false;
+    }
 
     /* Check hidden layers */
     for (uint32_t i = 0; i < encoder->num_layers; i++) {
@@ -1338,6 +1346,7 @@ bool vae_encoder_has_nan(const vae_encoder_t* encoder) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_encoder_has_nan: validation failed");
     return false;
 }
 

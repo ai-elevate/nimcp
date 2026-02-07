@@ -156,9 +156,18 @@ int language_logic_bridge_check_entailment(
     const char* hypothesis,
     language_logic_inference_t* result)
 {
-    if (!bridge || !premise || !hypothesis || !result) return -1;
-    if (!bridge->active) return -1;
-    if (!bridge->config.enable_entailment_checking) return -1;
+    if (!bridge || !premise || !hypothesis || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_entailment: required parameter is NULL (bridge, premise, hypothesis, result)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_entailment: bridge->active is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_entailment_checking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_entailment: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(language_logic_inference_t));
 
@@ -196,9 +205,18 @@ int language_logic_bridge_check_consistency(
     uint32_t count,
     language_logic_inference_t* result)
 {
-    if (!bridge || !statements || count == 0 || !result) return -1;
-    if (!bridge->active) return -1;
-    if (!bridge->config.enable_consistency_checking) return -1;
+    if (!bridge || !statements || count == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_consistency: required parameter is NULL (bridge, statements, result)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_consistency: bridge->active is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_consistency_checking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_check_consistency: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(language_logic_inference_t));
 
@@ -244,9 +262,18 @@ int language_logic_bridge_resolve_reference(
     char* resolved,
     uint32_t resolved_size)
 {
-    if (!bridge || !text || !reference || !resolved || resolved_size == 0) return -1;
-    if (!bridge->active) return -1;
-    if (!bridge->config.enable_reference_resolution) return -1;
+    if (!bridge || !text || !reference || !resolved || resolved_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_resolve_reference: required parameter is NULL (bridge, text, reference, resolved)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_resolve_reference: bridge->active is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_reference_resolution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_resolve_reference: bridge->config is NULL");
+        return -1;
+    }
 
     /* Simple recency-based resolution (would use real coreference) */
     /* For now, just return the reference as-is */
@@ -261,8 +288,14 @@ int language_logic_bridge_query(
     const language_logic_query_t* query,
     language_logic_inference_t* result)
 {
-    if (!bridge || !query || !result) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_query: required parameter is NULL (bridge, query, result)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_query: bridge->active is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(language_logic_inference_t));
 
@@ -309,8 +342,14 @@ int language_logic_bridge_add_to_discourse(
     language_logic_bridge_t* bridge,
     const char* statement)
 {
-    if (!bridge || !statement) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !statement) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_add_to_discourse: required parameter is NULL (bridge, statement)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_add_to_discourse: bridge->active is NULL");
+        return -1;
+    }
 
     /* Would add to actual discourse representation */
     /* For now, just track that something was added */
@@ -322,7 +361,10 @@ int language_logic_bridge_get_discourse_state(
     const language_logic_bridge_t* bridge,
     language_discourse_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_get_discourse_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     memcpy(state, &bridge->discourse_state, sizeof(language_discourse_state_t));
     return 0;
 }
@@ -349,7 +391,10 @@ int language_logic_bridge_get_stats(
     const language_logic_bridge_t* bridge,
     language_logic_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_logic_stats_t));
     return 0;
 }

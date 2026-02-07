@@ -169,6 +169,7 @@ static cortical_area_t* find_area_by_id(
 {
     // Guard: Validate input
     if (!hierarchy || !hierarchy->areas) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_area_by_id: required parameter is NULL (hierarchy, hierarchy->areas)");
         return NULL;
     }
 
@@ -179,6 +180,7 @@ static cortical_area_t* find_area_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_area_by_id: validation failed");
     return NULL;
 }
 
@@ -193,6 +195,7 @@ static inter_area_connection_t* find_connection_by_id(
 {
     // Guard: Validate input
     if (!hierarchy || !hierarchy->connections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_connection_by_id: required parameter is NULL (hierarchy, hierarchy->connections)");
         return NULL;
     }
 
@@ -204,6 +207,7 @@ static inter_area_connection_t* find_connection_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_connection_by_id: operation failed");
     return NULL;
 }
 
@@ -235,6 +239,7 @@ cortical_hierarchy_t* cortical_hierarchy_create(
     // Guard: Validate config
     if (!config) {
         HIERARCHY_LOG_ERROR("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_create: config is NULL");
         return NULL;
     }
 
@@ -246,6 +251,7 @@ cortical_hierarchy_t* cortical_hierarchy_create(
         (cortical_hierarchy_t*)nimcp_malloc(sizeof(cortical_hierarchy_t));
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("Failed to allocate hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_hierarchy_create: hierarchy is NULL");
         return NULL;
     }
 
@@ -262,6 +268,7 @@ cortical_hierarchy_t* cortical_hierarchy_create(
     if (!hierarchy->areas) {
         HIERARCHY_LOG_ERROR("Failed to allocate area array");
         nimcp_free(hierarchy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_hierarchy_create: hierarchy->areas is NULL");
         return NULL;
     }
     memset(hierarchy->areas, 0, config->max_areas * sizeof(cortical_area_t*));
@@ -276,6 +283,7 @@ cortical_hierarchy_t* cortical_hierarchy_create(
         HIERARCHY_LOG_ERROR("Failed to allocate connection array");
         nimcp_free(hierarchy->areas);
         nimcp_free(hierarchy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_hierarchy_create: hierarchy->connections is NULL");
         return NULL;
     }
     memset(hierarchy->connections, 0,
@@ -355,6 +363,7 @@ int cortical_hierarchy_add_area(
     // Guard: Validate inputs
     if (!hierarchy || !config || !area_id_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_add_area: required parameter is NULL (hierarchy, config, area_id_out)");
         return -1;
     }
 
@@ -438,6 +447,7 @@ int cortical_hierarchy_remove_area(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_remove_area: hierarchy is NULL");
         return -1;
     }
 
@@ -534,6 +544,7 @@ int cortical_hierarchy_connect_areas(
     // Guard: Validate inputs
     if (!hierarchy || !config || !connection_id_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_connect_areas: required parameter is NULL (hierarchy, config, connection_id_out)");
         return -1;
     }
 
@@ -614,6 +625,7 @@ int cortical_hierarchy_disconnect_areas(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_disconnect_areas: hierarchy is NULL");
         return -1;
     }
 
@@ -642,6 +654,7 @@ int cortical_hierarchy_apply_canonical_connections(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_apply_canonical_connections: hierarchy is NULL");
         return -1;
     }
 
@@ -755,6 +768,7 @@ int cortical_hierarchy_propagate_feedforward(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_propagate_feedforward: hierarchy is NULL");
         return -1;
     }
 
@@ -822,6 +836,7 @@ int cortical_hierarchy_propagate_feedback(
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_propagate_feedback: hierarchy is NULL");
         return -1;
     }
 
@@ -901,6 +916,7 @@ int cortical_hierarchy_compute_prediction_error(
     // Guard: Validate inputs
     if (!hierarchy || !error_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_compute_prediction_error: required parameter is NULL (hierarchy, error_out)");
         return -1;
     }
 
@@ -946,6 +962,7 @@ int cortical_hierarchy_set_area_input(
     // Guard: Validate inputs
     if (!hierarchy || !activity) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_set_area_input: required parameter is NULL (hierarchy, activity)");
         return -1;
     }
 
@@ -987,6 +1004,7 @@ int cortical_hierarchy_get_area_activity(
     // Guard: Validate inputs
     if (!hierarchy || !activity_out || !actual_size_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_get_area_activity: required parameter is NULL (hierarchy, activity_out, actual_size_out)");
         return -1;
     }
 
@@ -1018,6 +1036,7 @@ int cortical_hierarchy_get_receptive_field_size(
     // Guard: Validate inputs
     if (!hierarchy || !rf_size_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_get_receptive_field_size: required parameter is NULL (hierarchy, rf_size_out)");
         return -1;
     }
 
@@ -1056,6 +1075,7 @@ int cortical_hierarchy_get_area_stats(
     // Guard: Validate inputs
     if (!hierarchy || !stats_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_get_area_stats: required parameter is NULL (hierarchy, stats_out)");
         return -1;
     }
 
@@ -1110,6 +1130,7 @@ int cortical_hierarchy_get_stats(
     // Guard: Validate inputs
     if (!hierarchy || !stats_out) {
         HIERARCHY_LOG_ERROR("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_get_stats: required parameter is NULL (hierarchy, stats_out)");
         return -1;
     }
 
@@ -1168,6 +1189,7 @@ int cortical_hierarchy_connect_bio_async(cortical_hierarchy_t* hierarchy)
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_connect_bio_async: hierarchy is NULL");
         return -1;
     }
 
@@ -1211,6 +1233,7 @@ int cortical_hierarchy_disconnect_bio_async(cortical_hierarchy_t* hierarchy)
     // Guard: Validate hierarchy
     if (!hierarchy) {
         HIERARCHY_LOG_ERROR("NULL hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_disconnect_bio_async: hierarchy is NULL");
         return -1;
     }
 
@@ -1239,6 +1262,7 @@ bool cortical_hierarchy_is_bio_async_connected(
 {
     // Guard: Validate hierarchy
     if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_is_bio_async_connected: hierarchy is NULL");
         return false;
     }
 

@@ -220,6 +220,7 @@ bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
     brain->neuromodulator_system = neuromodulator_system_create(&neuromod_config);
     if (!brain->neuromodulator_system) {
         set_error("Failed to create neuromodulator system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_neuromodulator_system: brain->neuromodulator_system is NULL");
         return false;
     }
 
@@ -396,6 +397,7 @@ bool nimcp_brain_factory_init_attention_subsystem(brain_t brain)
     brain->multihead_attention = multihead_attention_create(&attention_config);
     if (!brain->multihead_attention) {
         set_error("Failed to create multihead attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_attention_subsystem: brain->multihead_attention is NULL");
         return false;
     }
 
@@ -468,6 +470,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
     brain->brain_regions = brain_module_create(num_regions);
     if (!brain->brain_regions) {
         set_error("Failed to create brain regions module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_brain_regions_subsystem: brain->brain_regions is NULL");
         return false;
     }
 
@@ -485,6 +488,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
         brain_region_t* region = brain_region_create(region_types[i], neurons_per_region);
         if (!region) {
             set_error("Failed to create brain region");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_brain_regions_subsystem: region is NULL");
             return false;
         }
 
@@ -494,6 +498,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
         if (brain_region_organize_columns(region, columns_x, columns_y) != NIMCP_SUCCESS) {
             brain_region_destroy(region);
             set_error("Failed to organize brain region into minicolumns");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_brain_regions_subsystem: validation failed");
             return false;
         }
 
@@ -501,6 +506,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
         if (brain_module_add_region(brain->brain_regions, region) != NIMCP_SUCCESS) {
             brain_region_destroy(region);
             set_error("Failed to add region to brain module");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_brain_regions_subsystem: validation failed");
             return false;
         }
     }

@@ -439,6 +439,7 @@ counterfactual_config_t counterfactual_config_default(void) {
 bool counterfactual_config_validate(const counterfactual_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_config_validate: config is NULL");
         return false;
     }
 
@@ -448,21 +449,25 @@ bool counterfactual_config_validate(const counterfactual_config_t* config) {
 
     if (config->causal_dim == 0 || config->causal_dim > 4096) {
         set_error("causal_dim must be in [1, 4096]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_config_validate: config->causal_dim is zero");
         return false;
     }
 
     if (config->max_counterfactuals == 0 || config->max_counterfactuals > 1024) {
         set_error("max_counterfactuals must be in [1, 1024]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_config_validate: config->max_counterfactuals is zero");
         return false;
     }
 
     if (config->max_causes == 0 || config->max_causes > 256) {
         set_error("max_causes must be in [1, 256]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_config_validate: config->max_causes is zero");
         return false;
     }
 
     if (config->min_causal_strength < 0.0f || config->min_causal_strength > 1.0f) {
         set_error("min_causal_strength must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_config_validate: validation failed");
         return false;
     }
 
@@ -493,6 +498,7 @@ counterfactual_system_t counterfactual_create(
 
     // Validate configuration
     if (!counterfactual_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_create: counterfactual_config_validate is NULL");
         return NULL;  // Error already set
     }
 
@@ -517,6 +523,7 @@ counterfactual_system_t counterfactual_create(
     if (!system->causal_matrix) {
         set_error("Failed to allocate causal matrix");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_create: system->causal_matrix is NULL");
         return NULL;
     }
     system->causal_dim = cfg.causal_dim;
@@ -544,6 +551,7 @@ counterfactual_system_t counterfactual_create(
             nimcp_free(system->analysis_cache);
             nimcp_free(system->cache_memory_ids);
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_create: required parameter is NULL (system->analysis_cache, system->cache_memory_ids)");
             return NULL;
         }
         system->cache_capacity = cfg.max_analyses;
@@ -588,6 +596,7 @@ void counterfactual_destroy(counterfactual_system_t system) {
 bool counterfactual_clear_cache(counterfactual_system_t system) {
     if (!system) {
         set_error("NULL system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_clear_cache: system is NULL");
         return false;
     }
 
@@ -619,6 +628,7 @@ bool counterfactual_clear_cache(counterfactual_system_t system) {
 bool counterfactual_reset_causal_matrix(counterfactual_system_t system) {
     if (!system) {
         set_error("NULL system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_reset_causal_matrix: system is NULL");
         return false;
     }
 
@@ -656,6 +666,7 @@ bool counterfactual_analyze(
     if (!system || !memory || !analysis) {
         set_error("NULL pointer: system=%p, memory=%p, analysis=%p",
                   (void*)system, (void*)memory, (void*)analysis);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_analyze: required parameter is NULL (system, memory, analysis)");
         return false;
     }
 
@@ -906,6 +917,7 @@ bool counterfactual_generate(
 {
     if (!system || !memory || !result) {
         set_error("NULL pointer in counterfactual_generate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_generate: required parameter is NULL (system, memory, result)");
         return false;
     }
 
@@ -1013,6 +1025,7 @@ bool counterfactual_mutate_inaction(
 {
     if (!result) {
         set_error("NULL result pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_mutate_inaction: result is NULL");
         return false;
     }
 
@@ -1036,6 +1049,7 @@ bool counterfactual_mutate_timing(
 {
     if (!system || !memory || !result) {
         set_error("NULL pointer in counterfactual_mutate_timing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_mutate_timing: required parameter is NULL (system, memory, result)");
         return false;
     }
 
@@ -1112,6 +1126,7 @@ bool counterfactual_mutate_event(
 {
     if (!result) {
         set_error("NULL result pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_mutate_event: result is NULL");
         return false;
     }
 
@@ -1139,6 +1154,7 @@ bool counterfactual_evaluate_outcome(
 {
     if (!system || !cf) {
         set_error("NULL pointer in counterfactual_evaluate_outcome");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_evaluate_outcome: required parameter is NULL (system, cf)");
         return false;
     }
 
@@ -1165,6 +1181,7 @@ bool counterfactual_compute_affect(
 {
     if (!system || !cf) {
         set_error("NULL pointer in counterfactual_compute_affect");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_compute_affect: required parameter is NULL (system, cf)");
         return false;
     }
 
@@ -1212,6 +1229,7 @@ bool counterfactual_extract_causes(
 {
     if (!system || !memory || !num_causes) {
         set_error("NULL pointer in counterfactual_extract_causes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_extract_causes: required parameter is NULL (system, memory, num_causes)");
         return false;
     }
 
@@ -1269,6 +1287,7 @@ bool counterfactual_update_causal_model(
 {
     if (!system || !cause || !effect) {
         set_error("NULL pointer in counterfactual_update_causal_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_update_causal_model: required parameter is NULL (system, cause, effect)");
         return false;
     }
 
@@ -1331,6 +1350,7 @@ bool counterfactual_get_most_mutable(
 {
     if (!system || !memory) {
         set_error("NULL pointer in counterfactual_get_most_mutable");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_get_most_mutable: required parameter is NULL (system, memory)");
         return false;
     }
 
@@ -1461,6 +1481,7 @@ bool counterfactual_compare_updown(
 
     if (!analysis) {
         set_error("NULL analysis pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_compare_updown: analysis is NULL");
         return false;
     }
 
@@ -1517,6 +1538,7 @@ bool counterfactual_find_most_actionable(
 
     if (!analysis || !result) {
         set_error("NULL pointer in counterfactual_find_most_actionable");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_find_most_actionable: required parameter is NULL (analysis, result)");
         return false;
     }
 
@@ -1565,6 +1587,7 @@ bool counterfactual_analysis_init(
 {
     if (!analysis) {
         set_error("NULL analysis pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_analysis_init: analysis is NULL");
         return false;
     }
 
@@ -1581,6 +1604,7 @@ bool counterfactual_analysis_init(
         if (!analysis->causes || !analysis->causal_strengths) {
             set_error("Failed to allocate causes arrays");
             counterfactual_analysis_cleanup(analysis);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_analysis_init: required parameter is NULL (analysis->causes, analysis->causal_strengths)");
             return false;
         }
         analysis->max_causes = max_causes;
@@ -1593,6 +1617,7 @@ bool counterfactual_analysis_init(
         if (!analysis->counterfactuals) {
             set_error("Failed to allocate counterfactuals array");
             counterfactual_analysis_cleanup(analysis);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "counterfactual_analysis_init: analysis->counterfactuals is NULL");
             return false;
         }
         analysis->max_counterfactuals = max_counterfactuals;
@@ -1622,11 +1647,13 @@ bool counterfactual_analysis_copy(
 {
     if (!dest || !src) {
         set_error("NULL pointer in counterfactual_analysis_copy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_analysis_copy: required parameter is NULL (dest, src)");
         return false;
     }
 
     // Initialize destination with same capacities
     if (!counterfactual_analysis_init(dest, src->max_causes, src->max_counterfactuals)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "counterfactual_analysis_copy: counterfactual_analysis_init is NULL");
         return false;  // Error already set
     }
 
@@ -1694,6 +1721,7 @@ bool pr_counterfactual_get_stats(
 {
     if (!system || !stats) {
         set_error("NULL pointer in pr_counterfactual_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_counterfactual_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 

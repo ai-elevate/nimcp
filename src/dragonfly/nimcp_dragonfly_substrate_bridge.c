@@ -493,7 +493,10 @@ substrate_perf_impact_t dragonfly_substrate_get_impact(
 }
 
 bool dragonfly_substrate_is_fatigued(const dragonfly_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return false;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_substrate_is_fatigued: required parameter is NULL (bridge, bridge->initialized)");
+        return false;
+    }
     return bridge->is_fatigued;
 }
 

@@ -213,6 +213,7 @@ omni_rcog_bridge_t* omni_rcog_bridge_create(const omni_rcog_config_t* config) {
     if (bridge_base_init(&bridge->base, 0, "omni_rcog") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_rcog_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -410,7 +411,10 @@ uint32_t omni_rcog_get_suggested_depth(const omni_rcog_bridge_t* bridge) {
 }
 
 bool omni_rcog_needs_backward(const omni_rcog_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_rcog_needs_backward: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_needs_back", 0.0f);
 
@@ -563,7 +567,10 @@ int omni_rcog_disconnect_bio_async(omni_rcog_bridge_t* bridge) {
 }
 
 bool omni_rcog_is_bio_async_connected(const omni_rcog_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_rcog_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_rcog_bridge_heartbeat("omni_rcog_br_omni_rcog_is_bio_asy", 0.0f);
 

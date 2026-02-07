@@ -139,6 +139,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
     mb->hd_cells = (nimcp_hd_cell_t*)nimcp_calloc(cfg.num_hd_cells, sizeof(nimcp_hd_cell_t));
     if (!mb->hd_cells) {
         nimcp_free(mb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_create: mb->hd_cells is NULL");
         return NULL;
     }
 
@@ -164,6 +165,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
     if (!mb->relay_cells) {
         nimcp_free(mb->hd_cells);
         nimcp_free(mb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_create: mb->relay_cells is NULL");
         return NULL;
     }
 
@@ -182,6 +184,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
         nimcp_free(mb->relay_cells);
         nimcp_free(mb->hd_cells);
         nimcp_free(mb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_create: mb->spatial_cells is NULL");
         return NULL;
     }
 
@@ -198,6 +201,7 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
         nimcp_free(mb->relay_cells);
         nimcp_free(mb->hd_cells);
         nimcp_free(mb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_create: mb->memory_traces is NULL");
         return NULL;
     }
 
@@ -260,7 +264,10 @@ void mammillary_destroy(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_reset(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_reset: mb is NULL");
+        return -1;
+    }
 
     /* Reset HD cells */
     for (uint32_t i = 0; i < mb->num_hd_cells; i++) {
@@ -319,7 +326,10 @@ int mammillary_reset(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_update(nimcp_mammillary_t* mb, float dt) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update: mb is NULL");
+        return -1;
+    }
 
     mb->last_update_time = get_timestamp_ms();
 
@@ -403,7 +413,10 @@ int mammillary_update(nimcp_mammillary_t* mb, float dt) {
 int mammillary_update_head_direction(nimcp_mammillary_t* mb,
                                       float angular_velocity,
                                       float dt) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update: mb is NULL");
+        return -1;
+    }
 
     mb->angular_velocity = angular_velocity;
     mb->current_heading = normalize_angle(mb->current_heading + angular_velocity * dt);
@@ -441,7 +454,10 @@ int mammillary_update_head_direction(nimcp_mammillary_t* mb,
 int mammillary_set_hd_from_landmark(nimcp_mammillary_t* mb,
                                      float landmark_bearing,
                                      float confidence) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update: mb is NULL");
+        return -1;
+    }
 
     /* Blend landmark bearing with current estimate based on confidence */
     float blend_weight = confidence * mb->hd_cells[0].landmark_weight;
@@ -471,7 +487,10 @@ float mammillary_get_hd_confidence(nimcp_mammillary_t* mb) {
 int mammillary_get_hd_population_vector(nimcp_mammillary_t* mb,
                                          float* vector,
                                          uint32_t* dim) {
-    if (!mb || !vector || !dim) return -1;
+    if (!mb || !vector || !dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_hd_confidence: required parameter is NULL (mb, vector, dim)");
+        return -1;
+    }
 
     vector[0] = mb->hd_population_vector[0];
     vector[1] = mb->hd_population_vector[1];
@@ -481,7 +500,10 @@ int mammillary_get_hd_population_vector(nimcp_mammillary_t* mb,
 }
 
 int mammillary_correct_hd_drift(nimcp_mammillary_t* mb, float true_heading) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_correct_hd_drift: mb is NULL");
+        return -1;
+    }
 
     float error = true_heading - mb->current_heading;
     while (error > M_PI) error -= 2.0f * M_PI;
@@ -510,7 +532,10 @@ int mammillary_get_active_hd_cells(nimcp_mammillary_t* mb,
                                     float* firing_rates,
                                     uint32_t max_cells,
                                     uint32_t* num_active) {
-    if (!mb || !cell_ids || !firing_rates || !num_active) return -1;
+    if (!mb || !cell_ids || !firing_rates || !num_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_correct_hd_drift: required parameter is NULL (mb, cell_ids, firing_rates, num_active)");
+        return -1;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < mb->num_hd_cells && count < max_cells; i++) {
@@ -536,10 +561,14 @@ int mammillary_receive_hippocampal_input(nimcp_mammillary_t* mb,
                                           memory_trace_type_t type,
                                           float emotional_valence,
                                           uint32_t* trace_id_out) {
-    if (!mb || !trace || trace_dim == 0) return -1;
+    if (!mb || !trace || trace_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_correct_hd_drift: required parameter is NULL (mb, trace)");
+        return -1;
+    }
 
     if (mb->num_memory_traces >= mb->max_memory_traces) {
         mb->last_error = MAMMILLARY_ERROR_MEMORY_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_correct_hd_drift: capacity exceeded");
         return -1;
     }
 
@@ -558,6 +587,7 @@ int mammillary_receive_hippocampal_input(nimcp_mammillary_t* mb,
     mt->content = (float*)nimcp_malloc(trace_dim * sizeof(float));
     if (!mt->content) {
         mb->last_error = MAMMILLARY_ERROR_INTERNAL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_correct_hd_drift: mt->content is NULL");
         return -1;
     }
     memcpy(mt->content, trace, trace_dim * sizeof(float));
@@ -594,11 +624,15 @@ int mammillary_receive_hippocampal_input(nimcp_mammillary_t* mb,
 }
 
 int mammillary_relay_to_thalamus(nimcp_mammillary_t* mb, uint32_t trace_id) {
-    if (!mb || trace_id >= mb->max_memory_traces) return -1;
+    if (!mb || trace_id >= mb->max_memory_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_relay_to_thalamus: mb is NULL");
+        return -1;
+    }
 
     nimcp_memory_trace_t* mt = &mb->memory_traces[trace_id];
     if (!mt->content) {
         mb->last_error = MAMMILLARY_ERROR_RELAY_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_relay_to_thalamus: mt->content is NULL");
         return -1;
     }
 
@@ -620,7 +654,10 @@ int mammillary_relay_to_thalamus(nimcp_mammillary_t* mb, uint32_t trace_id) {
 }
 
 int mammillary_process_papez_cycle(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_process_papez_cycle: mb is NULL");
+        return -1;
+    }
 
     switch (mb->papez_phase) {
         case PAPEZ_PHASE_IDLE:
@@ -678,7 +715,10 @@ float mammillary_get_papez_activity(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_advance_papez_phase(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_advance_papez_phase: mb is NULL");
+        return -1;
+    }
 
     if (mb->papez_phase == PAPEZ_PHASE_IDLE) {
         mb->papez_phase = PAPEZ_PHASE_HIPPOCAMPAL_INPUT;
@@ -695,10 +735,16 @@ int mammillary_advance_papez_phase(nimcp_mammillary_t* mb) {
  *===========================================================================*/
 
 int mammillary_start_consolidation(nimcp_mammillary_t* mb, uint32_t trace_id) {
-    if (!mb || trace_id >= mb->max_memory_traces) return -1;
+    if (!mb || trace_id >= mb->max_memory_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_start_consolidation: mb is NULL");
+        return -1;
+    }
 
     nimcp_memory_trace_t* mt = &mb->memory_traces[trace_id];
-    if (!mt->content) return -1;
+    if (!mt->content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_start_consolidation: mt->content is NULL");
+        return -1;
+    }
 
     mt->state = CONSOLIDATION_STRENGTHENING;
     mb->consolidation_state = CONSOLIDATION_STRENGTHENING;
@@ -708,7 +754,10 @@ int mammillary_start_consolidation(nimcp_mammillary_t* mb, uint32_t trace_id) {
 }
 
 int mammillary_update_consolidation(nimcp_mammillary_t* mb, float dt) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update_consolidation: mb is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < mb->num_memory_traces; i++) {
         nimcp_memory_trace_t* mt = &mb->memory_traces[i];
@@ -759,18 +808,30 @@ consolidation_state_t mammillary_get_consolidation_state(nimcp_mammillary_t* mb)
 
 const nimcp_memory_trace_t* mammillary_get_trace(nimcp_mammillary_t* mb,
                                                   uint32_t trace_id) {
-    if (!mb || trace_id >= mb->max_memory_traces) return NULL;
-    if (!mb->memory_traces[trace_id].content) return NULL;
+    if (!mb || trace_id >= mb->max_memory_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_get_consolidation_state: mb is NULL");
+        return NULL;
+    }
+    if (!mb->memory_traces[trace_id].content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_get_consolidation_state: mb->memory_traces is NULL");
+        return NULL;
+    }
     return &mb->memory_traces[trace_id];
 }
 
 int mammillary_strengthen_trace(nimcp_mammillary_t* mb,
                                  uint32_t trace_id,
                                  float amount) {
-    if (!mb || trace_id >= mb->max_memory_traces) return -1;
+    if (!mb || trace_id >= mb->max_memory_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_get_consolidation_state: mb is NULL");
+        return -1;
+    }
 
     nimcp_memory_trace_t* mt = &mb->memory_traces[trace_id];
-    if (!mt->content) return -1;
+    if (!mt->content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_consolidation_state: mt->content is NULL");
+        return -1;
+    }
 
     mt->strength = fminf(1.0f, mt->strength + amount);
     mt->retrieval_count++;
@@ -784,7 +845,10 @@ int mammillary_get_traces_by_type(nimcp_mammillary_t* mb,
                                    uint32_t* trace_ids,
                                    uint32_t max_traces,
                                    uint32_t* num_found) {
-    if (!mb || !trace_ids || !num_found) return -1;
+    if (!mb || !trace_ids || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_consolidation_state: required parameter is NULL (mb, trace_ids, num_found)");
+        return -1;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < mb->max_memory_traces && count < max_traces; i++) {
@@ -802,7 +866,10 @@ int mammillary_get_strongest_traces(nimcp_mammillary_t* mb,
                                      float* strengths,
                                      uint32_t max_traces,
                                      uint32_t* num_returned) {
-    if (!mb || !trace_ids || !strengths || !num_returned) return -1;
+    if (!mb || !trace_ids || !strengths || !num_returned) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_consolidation_state: required parameter is NULL (mb, trace_ids, strengths, num_returned)");
+        return -1;
+    }
 
     /* Simple insertion sort to get top traces */
     uint32_t count = 0;
@@ -837,7 +904,10 @@ int mammillary_get_strongest_traces(nimcp_mammillary_t* mb,
 }
 
 int mammillary_decay_traces(nimcp_mammillary_t* mb, float decay_factor) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_decay_traces: mb is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < mb->max_memory_traces; i++) {
         if (mb->memory_traces[i].content) {
@@ -849,10 +919,16 @@ int mammillary_decay_traces(nimcp_mammillary_t* mb, float decay_factor) {
 }
 
 int mammillary_remove_trace(nimcp_mammillary_t* mb, uint32_t trace_id) {
-    if (!mb || trace_id >= mb->max_memory_traces) return -1;
+    if (!mb || trace_id >= mb->max_memory_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mammillary_remove_trace: mb is NULL");
+        return -1;
+    }
 
     nimcp_memory_trace_t* mt = &mb->memory_traces[trace_id];
-    if (!mt->content) return -1;
+    if (!mt->content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_remove_trace: mt->content is NULL");
+        return -1;
+    }
 
     nimcp_free(mt->content);
     memset(mt, 0, sizeof(nimcp_memory_trace_t));
@@ -874,7 +950,10 @@ int mammillary_remove_trace(nimcp_mammillary_t* mb, uint32_t trace_id) {
 int mammillary_update_spatial_cells(nimcp_mammillary_t* mb,
                                      const float* position,
                                      uint32_t dim) {
-    if (!mb || !position || dim == 0) return -1;
+    if (!mb || !position || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_remove_trace: required parameter is NULL (mb, position)");
+        return -1;
+    }
 
     mb->status = MAMMILLARY_STATUS_SPATIAL_ENCODING;
 
@@ -901,7 +980,10 @@ int mammillary_encode_spatial_memory(nimcp_mammillary_t* mb,
                                       const float* context,
                                       uint32_t context_dim,
                                       uint32_t* trace_id_out) {
-    if (!mb || !position) return -1;
+    if (!mb || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_remove_trace: required parameter is NULL (mb, position)");
+        return -1;
+    }
 
     /* Create memory trace with spatial context */
     uint32_t trace_id;
@@ -932,7 +1014,10 @@ int mammillary_retrieve_spatial_context(nimcp_mammillary_t* mb,
                                          uint32_t dim,
                                          float* context,
                                          uint32_t* context_dim) {
-    if (!mb || !position || !context || !context_dim) return -1;
+    if (!mb || !position || !context || !context_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_remove_trace: required parameter is NULL (mb, position, context, context_dim)");
+        return -1;
+    }
 
     /* Find closest spatial memory */
     float best_match = 0.0f;
@@ -957,6 +1042,7 @@ int mammillary_retrieve_spatial_context(nimcp_mammillary_t* mb,
 
     if (best_trace == UINT32_MAX) {
         *context_dim = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mammillary_remove_trace: validation failed");
         return -1;
     }
 
@@ -973,7 +1059,10 @@ int mammillary_get_spatial_activity(nimcp_mammillary_t* mb,
                                      float* activity,
                                      uint32_t max_cells,
                                      uint32_t* num_cells) {
-    if (!mb || !activity || !num_cells) return -1;
+    if (!mb || !activity || !num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_remove_trace: required parameter is NULL (mb, activity, num_cells)");
+        return -1;
+    }
 
     uint32_t count = (mb->num_spatial_cells < max_cells) ?
                      mb->num_spatial_cells : max_cells;
@@ -991,7 +1080,10 @@ int mammillary_get_spatial_activity(nimcp_mammillary_t* mb,
  *===========================================================================*/
 
 int mammillary_process_incoming(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_process_incoming: mb is NULL");
+        return -1;
+    }
 
     /* Process hippocampus input */
     if (mb->hippocampus_bridge.initialized && mb->hippocampus_bridge.input_buffer_size > 0) {
@@ -1044,7 +1136,10 @@ int mammillary_process_incoming(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_send_outgoing(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_send_outgoing: mb is NULL");
+        return -1;
+    }
 
     /* Send to thalamus */
     if (mb->thalamus_bridge.initialized && mb->thalamus_bridge.output_buffer_size > 0) {
@@ -1067,7 +1162,10 @@ int mammillary_send_outgoing(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_bidirectional_update(nimcp_mammillary_t* mb, float dt) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_bidirectional_update: mb is NULL");
+        return -1;
+    }
 
     mammillary_process_incoming(mb);
     mammillary_update(mb, dt);
@@ -1077,14 +1175,20 @@ int mammillary_bidirectional_update(nimcp_mammillary_t* mb, float dt) {
 }
 
 int mammillary_sync_hippocampus(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_sync_hippocampus: mb is NULL");
+        return -1;
+    }
 
     mb->hippocampus_bridge.last_sync_time = (float)get_timestamp_ms() / 1000.0f;
     return 0;
 }
 
 int mammillary_sync_thalamus(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_sync_thalamus: mb is NULL");
+        return -1;
+    }
 
     /* Ensure relay cells are synchronized with thalamic projections */
     for (uint32_t i = 0; i < mb->num_relay_cells; i++) {
@@ -1097,12 +1201,18 @@ int mammillary_sync_thalamus(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_send_to_thalamus(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_send_to_thalamus: mb is NULL");
+        return -1;
+    }
     return mammillary_sync_thalamus(mb);
 }
 
 int mammillary_receive_cingulate_feedback(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_receive_cingulate_feedback: mb is NULL");
+        return -1;
+    }
 
     if (mb->cingulate_bridge.initialized) {
         /* Modulate consolidation based on attention */
@@ -1118,7 +1228,10 @@ int mammillary_receive_cingulate_feedback(nimcp_mammillary_t* mb) {
  *===========================================================================*/
 
 int mammillary_init_hippocampus_bridge(nimcp_mammillary_t* mb, void* hippocampus) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_hippocampus_bridge: mb is NULL");
+        return -1;
+    }
     mb->hippocampus_bridge.initialized = true;
     mb->hippocampus_bridge.hippocampus_ref = hippocampus;
     mb->hippocampus_bridge.fornix_strength = 0.8f;
@@ -1129,7 +1242,10 @@ int mammillary_init_hippocampus_bridge(nimcp_mammillary_t* mb, void* hippocampus
 }
 
 int mammillary_init_thalamus_bridge(nimcp_mammillary_t* mb, void* thalamus) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_thalamus_bridge: mb is NULL");
+        return -1;
+    }
     mb->thalamus_bridge.initialized = true;
     mb->thalamus_bridge.thalamus_ref = thalamus;
     mb->thalamus_bridge.tract_strength = 0.8f;
@@ -1138,7 +1254,10 @@ int mammillary_init_thalamus_bridge(nimcp_mammillary_t* mb, void* thalamus) {
 }
 
 int mammillary_init_cingulate_bridge(nimcp_mammillary_t* mb, void* cingulate) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_cingulate_bridge: mb is NULL");
+        return -1;
+    }
     mb->cingulate_bridge.initialized = true;
     mb->cingulate_bridge.cingulate_ref = cingulate;
     mb->cingulate_bridge.feedback_strength = 0.5f;
@@ -1147,7 +1266,10 @@ int mammillary_init_cingulate_bridge(nimcp_mammillary_t* mb, void* cingulate) {
 }
 
 int mammillary_init_hypothalamus_bridge(nimcp_mammillary_t* mb, void* hypothalamus) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_hypothalamus_bridge: mb is NULL");
+        return -1;
+    }
     mb->hypothalamus_bridge.initialized = true;
     mb->hypothalamus_bridge.hypothalamus_ref = hypothalamus;
     mb->hypothalamus_bridge.modulation_strength = 0.5f;
@@ -1156,7 +1278,10 @@ int mammillary_init_hypothalamus_bridge(nimcp_mammillary_t* mb, void* hypothalam
 }
 
 int mammillary_init_vestibular_bridge(nimcp_mammillary_t* mb, void* vestibular) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_vestibular_bridge: mb is NULL");
+        return -1;
+    }
     mb->vestibular_bridge.initialized = true;
     mb->vestibular_bridge.vestibular_ref = vestibular;
     mb->vestibular_bridge.update_rate = 100.0f;
@@ -1165,7 +1290,10 @@ int mammillary_init_vestibular_bridge(nimcp_mammillary_t* mb, void* vestibular) 
 }
 
 int mammillary_init_entorhinal_bridge(nimcp_mammillary_t* mb, void* entorhinal) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_entorhinal_bridge: mb is NULL");
+        return -1;
+    }
     mb->entorhinal_bridge.initialized = true;
     mb->entorhinal_bridge.entorhinal_ref = entorhinal;
     mb->entorhinal_bridge.grid_cell_input_weight = 0.5f;
@@ -1174,7 +1302,10 @@ int mammillary_init_entorhinal_bridge(nimcp_mammillary_t* mb, void* entorhinal) 
 }
 
 int mammillary_init_security_bridge(nimcp_mammillary_t* mb, void* security_ctx, void* security_ops) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_security_bridge: mb is NULL");
+        return -1;
+    }
     mb->security_bridge.initialized = true;
     mb->security_bridge.security_ctx = security_ctx;
     mb->security_bridge.security_ops = security_ops;
@@ -1184,7 +1315,10 @@ int mammillary_init_security_bridge(nimcp_mammillary_t* mb, void* security_ctx, 
 }
 
 int mammillary_init_immune_bridge(nimcp_mammillary_t* mb, void* immune) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_immune_bridge: mb is NULL");
+        return -1;
+    }
     mb->immune_bridge.initialized = true;
     mb->immune_bridge.immune_system = immune;
     mb->immune_bridge.health_score = 1.0f;
@@ -1193,7 +1327,10 @@ int mammillary_init_immune_bridge(nimcp_mammillary_t* mb, void* immune) {
 }
 
 int mammillary_init_bio_async_bridge(nimcp_mammillary_t* mb, void* runtime) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_bio_async_bridge: mb is NULL");
+        return -1;
+    }
     mb->bio_async_bridge.initialized = true;
     mb->bio_async_bridge.runtime = runtime;
     mb->bio_async_bridge.async_efficiency = 1.0f;
@@ -1202,7 +1339,10 @@ int mammillary_init_bio_async_bridge(nimcp_mammillary_t* mb, void* runtime) {
 }
 
 int mammillary_init_logging_bridge(nimcp_mammillary_t* mb, void* logger) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_logging_bridge: mb is NULL");
+        return -1;
+    }
     mb->logging_bridge.initialized = true;
     mb->logging_bridge.logger = logger;
     mb->logging_bridge.log_level = 2;
@@ -1211,7 +1351,10 @@ int mammillary_init_logging_bridge(nimcp_mammillary_t* mb, void* logger) {
 }
 
 int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, nimcp_prime_resonance_t* resonance) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_resonance_bridge: mb is NULL");
+        return -1;
+    }
     mb->resonance_bridge.initialized = true;
     mb->resonance_bridge.resonance = resonance;
     mb->resonance_bridge.theta_phase = 0.0f;
@@ -1226,8 +1369,14 @@ int mammillary_init_resonance_bridge(nimcp_mammillary_t* mb, nimcp_prime_resonan
 }
 
 int mammillary_update_resonance_phase(nimcp_mammillary_t* mb, float theta_phase, float gamma_phase) {
-    if (!mb) return -1;
-    if (!mb->resonance_bridge.initialized) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update_resonance_phase: mb is NULL");
+        return -1;
+    }
+    if (!mb->resonance_bridge.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_update_resonance_phase: mb->resonance_bridge is NULL");
+        return -1;
+    }
 
     mb->resonance_bridge.theta_phase = theta_phase;
     mb->resonance_bridge.gamma_phase = gamma_phase;
@@ -1256,8 +1405,14 @@ float mammillary_get_hd_theta_sync(const nimcp_mammillary_t* mb) {
 }
 
 int mammillary_sync_papez_to_theta(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
-    if (!mb->resonance_bridge.initialized) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_sync_papez_to_theta: mb is NULL");
+        return -1;
+    }
+    if (!mb->resonance_bridge.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_sync_papez_to_theta: mb->resonance_bridge is NULL");
+        return -1;
+    }
 
     /* Papez circuit timing is synchronized to theta rhythm */
     /* Memory consolidation is most effective at specific theta phases */
@@ -1282,7 +1437,10 @@ int mammillary_sync_papez_to_theta(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_init_cognitive_bridge(nimcp_mammillary_t* mb, void* cognitive, void* training) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_cognitive_bridge: mb is NULL");
+        return -1;
+    }
     mb->cognitive_bridge.initialized = true;
     mb->cognitive_bridge.cognitive_ctx = cognitive;
     mb->cognitive_bridge.training_ctx = training;
@@ -1291,7 +1449,10 @@ int mammillary_init_cognitive_bridge(nimcp_mammillary_t* mb, void* cognitive, vo
 }
 
 int mammillary_init_logic_bridge(nimcp_mammillary_t* mb, void* logic) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_logic_bridge: mb is NULL");
+        return -1;
+    }
     mb->logic_bridge.initialized = true;
     mb->logic_bridge.logic_ctx = logic;
     mb->logic_bridge.inference_confidence = 0.8f;
@@ -1299,7 +1460,10 @@ int mammillary_init_logic_bridge(nimcp_mammillary_t* mb, void* logic) {
 }
 
 int mammillary_init_substrate_bridge(nimcp_mammillary_t* mb, void* substrate) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_substrate_bridge: mb is NULL");
+        return -1;
+    }
     mb->substrate_bridge.initialized = true;
     mb->substrate_bridge.substrate = substrate;
     mb->substrate_bridge.atp_level = 1.0f;
@@ -1310,7 +1474,10 @@ int mammillary_init_substrate_bridge(nimcp_mammillary_t* mb, void* substrate) {
 }
 
 int mammillary_init_thalamic_bridge(nimcp_mammillary_t* mb, void* thalamic_layers) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_thalamic_bridge: mb is NULL");
+        return -1;
+    }
     mb->thalamic_bridge.initialized = true;
     mb->thalamic_bridge.thalamic_layers = thalamic_layers;
     mb->thalamic_bridge.relay_gain = 1.0f;
@@ -1319,7 +1486,10 @@ int mammillary_init_thalamic_bridge(nimcp_mammillary_t* mb, void* thalamic_layer
 }
 
 int mammillary_init_perception_bridge(nimcp_mammillary_t* mb, void* perception) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_perception_bridge: mb is NULL");
+        return -1;
+    }
     mb->perception_bridge.initialized = true;
     mb->perception_bridge.perception_ctx = perception;
     mb->perception_bridge.salience_threshold = 0.5f;
@@ -1328,7 +1498,10 @@ int mammillary_init_perception_bridge(nimcp_mammillary_t* mb, void* perception) 
 }
 
 int mammillary_init_snn_bridge(nimcp_mammillary_t* mb, void* snn) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_snn_bridge: mb is NULL");
+        return -1;
+    }
     mb->snn_bridge.initialized = true;
     mb->snn_bridge.snn_network = snn;
     mb->snn_bridge.global_learning_rate = 0.01f;
@@ -1337,7 +1510,10 @@ int mammillary_init_snn_bridge(nimcp_mammillary_t* mb, void* snn) {
 }
 
 int mammillary_init_swarm_bridge(nimcp_mammillary_t* mb, void* swarm, void* dragonfly) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_swarm_bridge: mb is NULL");
+        return -1;
+    }
     mb->swarm_bridge.initialized = true;
     mb->swarm_bridge.swarm_ctx = swarm;
     mb->swarm_bridge.dragonfly_ctx = dragonfly;
@@ -1346,7 +1522,10 @@ int mammillary_init_swarm_bridge(nimcp_mammillary_t* mb, void* swarm, void* drag
 }
 
 int mammillary_init_cerebellum_bridge(nimcp_mammillary_t* mb, void* cerebellum) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_cerebellum_bridge: mb is NULL");
+        return -1;
+    }
     mb->cerebellum_bridge.initialized = true;
     mb->cerebellum_bridge.cerebellum = cerebellum;
     mb->cerebellum_bridge.timing_precision = 0.9f;
@@ -1355,7 +1534,10 @@ int mammillary_init_cerebellum_bridge(nimcp_mammillary_t* mb, void* cerebellum) 
 }
 
 int mammillary_init_medulla_bridge(nimcp_mammillary_t* mb, void* medulla) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_medulla_bridge: mb is NULL");
+        return -1;
+    }
     mb->medulla_bridge.initialized = true;
     mb->medulla_bridge.medulla = medulla;
     mb->medulla_bridge.autonomic_state = 0.5f;
@@ -1364,7 +1546,10 @@ int mammillary_init_medulla_bridge(nimcp_mammillary_t* mb, void* medulla) {
 }
 
 int mammillary_init_omni_bridge(nimcp_mammillary_t* mb, void* omni) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_init_omni_bridge: mb is NULL");
+        return -1;
+    }
     mb->omni_bridge.initialized = true;
     mb->omni_bridge.omni_ctx = omni;
     mb->omni_bridge.integration_weight = 0.5f;
@@ -1414,7 +1599,10 @@ const char* mammillary_status_string(mammillary_status_t status) {
 }
 
 int mammillary_get_stats(nimcp_mammillary_t* mb, mammillary_stats_t* stats) {
-    if (!mb || !stats) return -1;
+    if (!mb || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_stats: required parameter is NULL (mb, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(mammillary_stats_t));
 
@@ -1451,7 +1639,10 @@ int mammillary_get_stats(nimcp_mammillary_t* mb, mammillary_stats_t* stats) {
 }
 
 int mammillary_get_config(nimcp_mammillary_t* mb, mammillary_config_t* config) {
-    if (!mb || !config) return -1;
+    if (!mb || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_config: required parameter is NULL (mb, config)");
+        return -1;
+    }
     *config = mb->config;
     return 0;
 }
@@ -1490,7 +1681,10 @@ float mammillary_get_circuit_integrity(nimcp_mammillary_t* mb) {
 }
 
 int mammillary_log_diagnostics(nimcp_mammillary_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_log_diagnostics: mb is NULL");
+        return -1;
+    }
 
     /* Diagnostics would be logged via logging bridge if available */
     /* For now, just validate state */
@@ -1584,10 +1778,16 @@ int mammillary_serialize(nimcp_mammillary_t* mb,
                           uint8_t* buffer,
                           size_t buffer_size,
                           size_t* bytes_written) {
-    if (!mb || !buffer || !bytes_written) return -1;
+    if (!mb || !buffer || !bytes_written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mammillary_get_serialization_size: required parameter is NULL (mb, buffer, bytes_written)");
+        return -1;
+    }
 
     size_t required = mammillary_get_serialization_size(mb);
-    if (buffer_size < required) return -1;
+    if (buffer_size < required) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mammillary_get_serialization_size: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
 
@@ -1624,7 +1824,10 @@ int mammillary_serialize(nimcp_mammillary_t* mb,
 nimcp_mammillary_t* mammillary_deserialize(const uint8_t* buffer,
                                             size_t buffer_size,
                                             size_t* bytes_read) {
-    if (!buffer || buffer_size < sizeof(mammillary_config_t)) return NULL;
+    if (!buffer || buffer_size < sizeof(mammillary_config_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mammillary_get_serialization_size: buffer is NULL");
+        return NULL;
+    }
 
     size_t offset = 0;
 

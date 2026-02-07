@@ -151,6 +151,7 @@ static genius_training_task_t* find_task(genius_training_bridge_t* bridge, uint3
             return &bridge->tasks[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task: validation failed");
     return NULL;
 }
 
@@ -349,7 +350,10 @@ void genius_training_destroy(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_reset(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_rese", 0.0f);
@@ -384,7 +388,10 @@ int genius_training_reset(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathematical_genius* genius) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_link_genius: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_link", 0.0f);
@@ -397,7 +404,10 @@ int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathema
 
 int genius_training_link_brain_training(genius_training_bridge_t* bridge,
                                         struct nimcp_brain_training_ctx* ctx) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_link_genius: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_link", 0.0f);
@@ -415,7 +425,10 @@ int genius_training_link_brain_training(genius_training_bridge_t* bridge,
 
 int genius_training_register_task(genius_training_bridge_t* bridge,
                                   const genius_training_task_t* task) {
-    if (!bridge || !task) return -1;
+    if (!bridge || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_link_genius: required parameter is NULL (bridge, task)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
@@ -425,6 +438,7 @@ int genius_training_register_task(genius_training_bridge_t* bridge,
 
     if (bridge->task_count >= bridge->task_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_training_link_genius: capacity exceeded");
         return -1;
     }
 
@@ -439,7 +453,10 @@ int genius_training_register_task(genius_training_bridge_t* bridge,
 }
 
 int genius_training_unregister_task(genius_training_bridge_t* bridge, uint32_t task_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_unregister_task: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_unre", 0.0f);
@@ -463,13 +480,17 @@ int genius_training_unregister_task(genius_training_bridge_t* bridge, uint32_t t
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_training_unregister_task: validation failed");
     return -1;
 }
 
 int genius_training_get_task(genius_training_bridge_t* bridge,
                              uint32_t task_id,
                              genius_training_task_t* task) {
-    if (!bridge || !task) return -1;
+    if (!bridge || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_unregister_task: required parameter is NULL (bridge, task)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -485,6 +506,7 @@ int genius_training_get_task(genius_training_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_training_unregister_task: validation failed");
     return -1;
 }
 
@@ -493,7 +515,10 @@ int genius_training_get_task(genius_training_bridge_t* bridge,
 //=============================================================================
 
 int genius_training_start(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_start: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_star", 0.0f);
@@ -506,7 +531,10 @@ int genius_training_start(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_pause(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_pause: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_paus", 0.0f);
@@ -519,7 +547,10 @@ int genius_training_pause(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_resume(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_resume: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_resu", 0.0f);
@@ -534,7 +565,10 @@ int genius_training_resume(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_stop(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_stop: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_stop", 0.0f);
@@ -732,7 +766,10 @@ float genius_training_validate(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_consolidate(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_cons", 0.0f);
@@ -767,7 +804,10 @@ int genius_training_consolidate(genius_training_bridge_t* bridge) {
 
 int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
                                          genius_curriculum_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_consolidate: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -781,7 +821,10 @@ int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
 }
 
 int genius_training_advance_curriculum(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_advance_curriculum: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_adva", 0.0f);
@@ -807,12 +850,16 @@ int genius_training_advance_curriculum(genius_training_bridge_t* bridge) {
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_training_advance_curriculum: operation failed");
     return -1;
 }
 
 int genius_training_set_curriculum_stage(genius_training_bridge_t* bridge,
                                          genius_curriculum_stage_t stage) {
-    if (!bridge || stage > GENIUS_STAGE_RESEARCH) return -1;
+    if (!bridge || stage > GENIUS_STAGE_RESEARCH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_training_advance_curriculum: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_set_", 0.0f);
@@ -913,7 +960,10 @@ float genius_training_lr_step(genius_training_bridge_t* bridge) {
 
 int genius_training_get_progress(genius_training_bridge_t* bridge,
                                  genius_training_progress_t* progress) {
-    if (!bridge || !progress) return -1;
+    if (!bridge || !progress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_lr_step: required parameter is NULL (bridge, progress)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -928,7 +978,10 @@ int genius_training_get_progress(genius_training_bridge_t* bridge,
 
 int genius_training_get_mode_state(genius_training_bridge_t* bridge,
                                    genius_mode_training_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_lr_step: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -955,7 +1008,10 @@ int genius_training_get_mode_state(genius_training_bridge_t* bridge,
 
 int genius_training_get_state(genius_training_bridge_t* bridge,
                               genius_training_bridge_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_lr_step: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -978,7 +1034,10 @@ int genius_training_get_state(genius_training_bridge_t* bridge,
 
 int genius_training_get_stats(genius_training_bridge_t* bridge,
                               genius_training_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_lr_step: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
@@ -995,7 +1054,10 @@ int genius_training_get_stats(genius_training_bridge_t* bridge,
 }
 
 int genius_training_reset_stats(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_rese", 0.0f);
@@ -1012,7 +1074,10 @@ int genius_training_reset_stats(genius_training_bridge_t* bridge) {
 //=============================================================================
 
 int genius_training_save_checkpoint(genius_training_bridge_t* bridge, const char* path) {
-    if (!bridge || !path) return -1;
+    if (!bridge || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_save_checkpoint: required parameter is NULL (bridge, path)");
+        return -1;
+    }
 
     /* In a full implementation, this would serialize the bridge state to disk */
     /* For now, just log the action */
@@ -1026,7 +1091,10 @@ int genius_training_save_checkpoint(genius_training_bridge_t* bridge, const char
 }
 
 int genius_training_load_checkpoint(genius_training_bridge_t* bridge, const char* path) {
-    if (!bridge || !path) return -1;
+    if (!bridge || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_load_checkpoint: required parameter is NULL (bridge, path)");
+        return -1;
+    }
 
     /* In a full implementation, this would deserialize the bridge state from disk */
     /* Phase 8: Heartbeat at operation start */
@@ -1045,7 +1113,10 @@ int genius_training_load_checkpoint(genius_training_bridge_t* bridge, const char
 int genius_training_register_epoch_callback(genius_training_bridge_t* bridge,
                                             genius_training_epoch_callback_t callback,
                                             void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_load_checkpoint: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
@@ -1062,7 +1133,10 @@ int genius_training_register_epoch_callback(genius_training_bridge_t* bridge,
 int genius_training_register_curriculum_callback(genius_training_bridge_t* bridge,
                                                  genius_training_curriculum_callback_t callback,
                                                  void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_load_checkpoint: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
@@ -1079,7 +1153,10 @@ int genius_training_register_curriculum_callback(genius_training_bridge_t* bridg
 int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridge,
                                                  genius_training_checkpoint_callback_t callback,
                                                  void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_load_checkpoint: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_regi", 0.0f);
@@ -1098,7 +1175,10 @@ int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridg
 //=============================================================================
 
 int genius_training_bio_async_connect(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_bio_async_connect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_bio_", 0.0f);
@@ -1111,7 +1191,10 @@ int genius_training_bio_async_connect(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_bio_", 0.0f);
@@ -1124,7 +1207,10 @@ int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
 }
 
 bool genius_training_is_bio_async_connected(genius_training_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_is_b", 0.0f);
@@ -1272,7 +1358,10 @@ uint32_t genius_training_compute_checksum(const genius_training_serialized_t* se
 }
 
 bool genius_training_verify_checksum(const genius_training_serialized_t* serialized) {
-    if (!serialized) return false;
+    if (!serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_verify_checksum: serialized is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_veri", 0.0f);
@@ -1341,7 +1430,10 @@ kg_module_wiring_t* genius_training_create_kg_wiring(void) {
 }
 
 kg_module_wiring_t* genius_training_get_kg_wiring(genius_training_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_training_get_kg_wiring: bridge is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     genius_training_bridge_heartbeat("genius_train_genius_training_get_", 0.0f);
 

@@ -254,6 +254,7 @@ health_cognitive_bridge_t* health_cognitive_bridge_create(
         rcog_health_destroy(bridge->rcog_health);
         meta_health_destroy(bridge->meta_reflector);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_bridge_create: bridge->pending is NULL");
         return NULL;
     }
     bridge->num_pending = 0;
@@ -352,6 +353,7 @@ int health_cognitive_bridge_stop(health_cognitive_bridge_t* bridge) {
 
 bool health_cognitive_bridge_is_running(const health_cognitive_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_bridge_is_running: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -373,6 +375,7 @@ int health_cognitive_intelligent_handle(
     intelligent_handling_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_intelligent_handle: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -568,10 +571,12 @@ int health_cognitive_intelligent_handle_async(
     uint64_t* request_id
 ) {
     if (!bridge || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_intelligent_handle_async: required parameter is NULL (bridge, request_id)");
         return -1;
     }
 
     if (bridge->num_pending >= bridge->max_pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "health_cognitive_intelligent_handle_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -600,6 +605,7 @@ int health_cognitive_check_handling(
     intelligent_handling_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_check_handling: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -644,6 +650,7 @@ int health_cognitive_check_handling(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_cognitive_check_handling: operation failed");
     return -1;  /* Not found */
 }
 
@@ -684,6 +691,7 @@ int health_cognitive_get_status(
     cognitive_bridge_status_t* status
 ) {
     if (!bridge || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_get_status: required parameter is NULL (bridge, status)");
         return -1;
     }
 
@@ -738,6 +746,7 @@ int health_cognitive_force_reflection(
     meta_health_reflection_result_t* result
 ) {
     if (!bridge || !result || !bridge->meta_reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_force_reflection: required parameter is NULL (bridge, result, bridge->meta_reflector)");
         return -1;
     }
 
@@ -750,6 +759,7 @@ int health_cognitive_force_reflection(
 
 int health_cognitive_force_sync(health_cognitive_bridge_t* bridge) {
     if (!bridge || !bridge->collective_monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_force_sync: required parameter is NULL (bridge, bridge->collective_monitor)");
         return -1;
     }
 
@@ -768,6 +778,7 @@ int health_cognitive_diagnose_only(
     rcog_health_diagnosis_t* diagnosis
 ) {
     if (!bridge || !diagnosis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_diagnose_only: required parameter is NULL (bridge, diagnosis)");
         return -1;
     }
 
@@ -805,6 +816,7 @@ int health_cognitive_plan_only(
     rcog_health_recovery_plan_t* plan
 ) {
     if (!bridge || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_plan_only: required parameter is NULL (bridge, plan)");
         return -1;
     }
 
@@ -839,6 +851,7 @@ int health_cognitive_get_stats(
     health_cognitive_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_cognitive_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -999,6 +1012,7 @@ int nimcp_health_agent_connect_cognitive(
 
     if (result != 0) {
         health_cognitive_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_health_agent_connect_cognitive: validation failed");
         return -1;
     }
 
@@ -1030,6 +1044,7 @@ int nimcp_health_agent_get_bridge_status(
     cognitive_bridge_status_t* status
 ) {
     if (!agent || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_health_agent_get_bridge_status: required parameter is NULL (agent, status)");
         return -1;
     }
 

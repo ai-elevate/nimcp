@@ -76,7 +76,10 @@ static inline void gw_imagination_bridge_heartbeat_instance(
  * ============================================================================ */
 
 int gw_imagination_default_config(gw_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_defau", 0.0f);
@@ -101,34 +104,45 @@ int gw_imagination_default_config(gw_imagination_config_t* config) {
 }
 
 int gw_imagination_validate_config(const gw_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_validate_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_valid", 0.0f);
 
 
     if (config->attention_boost_factor < 1.0f || config->attention_boost_factor > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->focus_decay_rate < 0.0f || config->focus_decay_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_novelty < 0.0f || config->salience_weight_novelty > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_emotional < 0.0f || config->salience_weight_emotional > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->salience_weight_goal < 0.0f || config->salience_weight_goal > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->auto_submit_threshold < 0.0f || config->auto_submit_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -243,7 +257,10 @@ void gw_imagination_bridge_destroy(gw_imagination_bridge_t* bridge) {
 }
 
 int gw_imagination_reset(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reset", 0.0f);
@@ -287,7 +304,10 @@ int gw_imagination_connect_global_workspace(
     gw_imagination_bridge_t* bridge,
     global_workspace_t* gw)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_connect_global_workspace: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_conne", 0.0f);
@@ -312,7 +332,10 @@ int gw_imagination_connect_imagination(
     gw_imagination_bridge_t* bridge,
     struct imagination_engine* imagination)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_connect_imagination: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_conne", 0.0f);
@@ -350,7 +373,10 @@ int gw_imagination_disconnect_imagination(gw_imagination_bridge_t* bridge) {
 }
 
 bool gw_imagination_is_connected(const gw_imagination_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_co", 0.0f);
 
@@ -366,7 +392,10 @@ int gw_imagination_update(
     gw_imagination_bridge_t* bridge,
     float delta_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
 
     /* Phase 8: Heartbeat at operation start */
@@ -403,7 +432,10 @@ int gw_imagination_update(
 }
 
 int gw_imagination_compute_gw_effects(gw_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->global_workspace) return -1;
+    if (!bridge || !bridge->global_workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_compute_gw_effects: required parameter is NULL (bridge, bridge->global_workspace)");
+        return -1;
+    }
 
     /* Query global workspace for current state */
     /* In a full implementation, this would call global workspace APIs */
@@ -439,7 +471,10 @@ int gw_imagination_compute_gw_effects(gw_imagination_bridge_t* bridge) {
 }
 
 int gw_imagination_compute_imag_effects(gw_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->imagination) return -1;
+    if (!bridge || !bridge->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_compute_imag_effects: required parameter is NULL (bridge, bridge->imagination)");
+        return -1;
+    }
 
     /* Query imagination engine for current state */
     /* In a full implementation, this would call imagination engine APIs */
@@ -471,7 +506,10 @@ int gw_imagination_compute_imag_effects(gw_imagination_bridge_t* bridge) {
 }
 
 int gw_imagination_apply_effects(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     /* Apply GW effects to imagination */
     /* Phase 8: Heartbeat at operation start */
@@ -529,8 +567,14 @@ int gw_imagination_submit_for_broadcast(
     uint32_t scenario_id,
     float strength)
 {
-    if (!bridge) return -1;
-    if (strength < 0.0f || strength > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_submit_for_broadcast: bridge is NULL");
+        return -1;
+    }
+    if (strength < 0.0f || strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_submit_for_broadcast: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_submi", 0.0f);
@@ -542,6 +586,7 @@ int gw_imagination_submit_for_broadcast(
     if (bridge->num_pending >= bridge->config.max_pending_submissions) {
         nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("Pending submissions full, dropping request");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gw_imagination_submit_for_broadcast: capacity exceeded");
         return -1;
     }
 
@@ -572,8 +617,14 @@ int gw_imagination_request_attention_boost(
     gw_imagination_bridge_t* bridge,
     float boost_level)
 {
-    if (!bridge) return -1;
-    if (boost_level < 0.0f || boost_level > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_request_attention_boost: bridge is NULL");
+        return -1;
+    }
+    if (boost_level < 0.0f || boost_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_imagination_request_attention_boost: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reque", 0.0f);
@@ -594,7 +645,10 @@ int gw_imagination_set_conscious_goal(
     gw_imagination_bridge_t* bridge,
     const nimcp_tensor_t* goal_embedding)
 {
-    if (!bridge || !goal_embedding) return -1;
+    if (!bridge || !goal_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_set_conscious_goal: required parameter is NULL (bridge, goal_embedding)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_set_c", 0.0f);
@@ -619,7 +673,10 @@ int gw_imagination_set_conscious_goal(
 }
 
 int gw_imagination_clear_conscious_goal(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_clear_conscious_goal: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_clear", 0.0f);
@@ -638,7 +695,10 @@ int gw_imagination_clear_conscious_goal(gw_imagination_bridge_t* bridge) {
 }
 
 bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->global_workspace) return false;
+    if (!bridge || !bridge->global_workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_broadcasting: required parameter is NULL (bridge, bridge->global_workspace)");
+        return false;
+    }
 
     /* Check if imagination module is currently broadcasting */
     /* In full implementation, would check global_workspace_get_broadcast_source() */
@@ -646,6 +706,7 @@ bool gw_imagination_is_broadcasting(const gw_imagination_bridge_t* bridge) {
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_br", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_broadcasting: required parameter is NULL (bridge, bridge->global_workspace)");
     return false;  /* Placeholder */
 }
 
@@ -666,7 +727,10 @@ int gw_imagination_get_gw_effects(
     const gw_imagination_bridge_t* bridge,
     gw_to_imagination_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_get_gw_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->gw_to_imag;
     /* Phase 8: Heartbeat at operation start */
@@ -680,7 +744,10 @@ int gw_imagination_get_imag_effects(
     const gw_imagination_bridge_t* bridge,
     imagination_to_gw_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_get_imag_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->imag_to_gw;
     /* Phase 8: Heartbeat at operation start */
@@ -694,7 +761,10 @@ int gw_imagination_get_stats(
     const gw_imagination_bridge_t* bridge,
     gw_imagination_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -705,7 +775,10 @@ int gw_imagination_get_stats(
 }
 
 int gw_imagination_reset_stats(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_reset", 0.0f);
@@ -732,7 +805,10 @@ uint32_t gw_imagination_get_pending_count(const gw_imagination_bridge_t* bridge)
  * ============================================================================ */
 
 int gw_imagination_connect_bio_async(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper */
@@ -749,7 +825,10 @@ int gw_imagination_connect_bio_async(gw_imagination_bridge_t* bridge) {
 }
 
 int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
     /* Phase 8: Heartbeat at operation start */
@@ -765,7 +844,10 @@ int gw_imagination_disconnect_bio_async(gw_imagination_bridge_t* bridge) {
 }
 
 bool gw_imagination_is_bio_async_connected(const gw_imagination_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     gw_imagination_bridge_heartbeat("gw_imaginati_gw_imagination_is_bi", 0.0f);
 
@@ -774,7 +856,10 @@ bool gw_imagination_is_bio_async_connected(const gw_imagination_bridge_t* bridge
 }
 
 int gw_imagination_process_messages(gw_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_imagination_process_messages: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Process pending bio-async messages */

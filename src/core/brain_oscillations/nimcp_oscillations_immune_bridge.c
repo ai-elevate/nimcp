@@ -184,6 +184,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     if (!oscillation_analyzer || !immune_system) {
         LOG_MODULE_ERROR("oscillations_immune_bridge",
                   "Cannot create bridge without oscillation analyzer and immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_immune_bridge_create: required parameter is NULL (oscillation_analyzer, immune_system)");
         return NULL;
     }
 
@@ -229,6 +230,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "oscillations_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -266,6 +268,7 @@ int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge)
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_immune_establish_baseline: brain_oscillation_analyze is NULL");
         return -1;
     }
 
@@ -298,7 +301,10 @@ int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bri
 
     }
     if (!bridge->enable_cytokine_oscillation_modulation) return 0;
-    if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
+    if (!bridge->immune_system || !bridge->oscillation_analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->oscillation_analyzer)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -374,7 +380,10 @@ int oscillations_immune_apply_inflammation_effects(oscillations_immune_bridge_t*
 
     }
     if (!bridge->enable_inflammation_power_shift) return 0;
-    if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
+    if (!bridge->immune_system || !bridge->oscillation_analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_apply_inflammation_effects: required parameter is NULL (bridge->immune_system, bridge->oscillation_analyzer)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -468,7 +477,10 @@ int oscillations_immune_restore_with_il10(
 
     }
     if (!bridge->enable_il10_restoration) return 0;
-    if (!bridge->baseline.baseline_established) return -1;
+    if (!bridge->baseline.baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_restore_with_il10: bridge->baseline is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -497,9 +509,18 @@ cognitive_state_t oscillations_immune_compute_state_shift(
 
 bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return false;
-    if (!bridge->enable_abnormality_surveillance) return false;
-    if (!bridge->oscillation_analyzer) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_detect_abnormality: bridge is NULL");
+        return false;
+    }
+    if (!bridge->enable_abnormality_surveillance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_detect_abnormality: bridge->enable_abnormality_surveillance is NULL");
+        return false;
+    }
+    if (!bridge->oscillation_analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_detect_abnormality: bridge->oscillation_analyzer is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -509,6 +530,7 @@ bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_immune_detect_abnormality: brain_oscillation_analyze is NULL");
         return false;
     }
 
@@ -564,7 +586,10 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
 
     }
     if (!bridge->enable_oscillation_immune_trigger) return 0;
-    if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
+    if (!bridge->immune_system || !bridge->oscillation_analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_trigger_from_abnormality: required parameter is NULL (bridge->immune_system, bridge->oscillation_analyzer)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -586,6 +611,7 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
     oscillation_analysis_t analysis;
     if (!brain_oscillation_analyze(bridge->oscillation_analyzer, &analysis)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_immune_trigger_from_abnormality: brain_oscillation_analyze is NULL");
         return -1;
     }
 
@@ -601,6 +627,7 @@ int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* b
 
     if (epitope_len == 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_immune_trigger_from_abnormality: epitope_len is zero");
         return -1;
     }
 
@@ -702,7 +729,10 @@ int oscillations_immune_get_cytokine_effects(
     const oscillations_immune_bridge_t* bridge,
     cytokine_oscillation_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -714,7 +744,10 @@ int oscillations_immune_get_inflammation_state(
     const oscillations_immune_bridge_t* bridge,
     inflammation_oscillation_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
@@ -726,7 +759,10 @@ int oscillations_immune_get_trigger_state(
     const oscillations_immune_bridge_t* bridge,
     oscillation_immune_trigger_t* trigger
 ) {
-    if (!bridge || !trigger) return -1;
+    if (!bridge || !trigger) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_get_trigger_state: required parameter is NULL (bridge, trigger)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *trigger = bridge->immune_trigger;
@@ -735,7 +771,10 @@ int oscillations_immune_get_trigger_state(
 }
 
 bool oscillations_immune_is_modulated(const oscillations_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_is_modulated: bridge is NULL");
+        return false;
+    }
 
     /* Check if any cytokine effects are active */
     return (bridge->cytokine_effects.total_delta_amplification > 1.1f) ||
@@ -814,6 +853,9 @@ int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridg
 }
 
 bool oscillations_immune_is_bio_async_connected(const oscillations_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

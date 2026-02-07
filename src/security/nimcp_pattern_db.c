@@ -197,7 +197,10 @@ static bool is_quantifier(char c) {
  * 6. Excessive alternations in nested groups
  */
 static bool is_regex_safe(const char* pattern) {
-    if (!pattern) return false;
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_regex_safe: pattern is NULL");
+        return false;
+    }
 
     size_t len = strlen(pattern);
 
@@ -205,6 +208,7 @@ static bool is_regex_safe(const char* pattern) {
     if (len > PATTERN_DB_MAX_PATTERN_LENGTH) {
         LOG_MODULE_WARN("pattern_db", "Pattern rejected: length %zu exceeds maximum %d",
                         len, PATTERN_DB_MAX_PATTERN_LENGTH);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
         return false;
     }
 
@@ -265,6 +269,7 @@ static bool is_regex_safe(const char* pattern) {
                 if (group_depth >= 16) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: nesting depth %d exceeds maximum",
                                     group_depth);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: capacity exceeded");
                     return false;
                 }
                 /* Reset alternation count for this depth */
@@ -290,6 +295,7 @@ static bool is_regex_safe(const char* pattern) {
                     if (alternations_at_depth[group_depth] > PATTERN_DB_MAX_ALTERNATIONS) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: too many alternations (%d) at depth %d",
                                         alternations_at_depth[group_depth], group_depth);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
                 }
@@ -302,6 +308,7 @@ static bool is_regex_safe(const char* pattern) {
                 /* REDOS CHECK 1: Consecutive quantifiers (a**, a*+, a++) */
                 if (prev_was_quantifier) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                     return false;
                 }
 
@@ -349,12 +356,14 @@ static bool is_regex_safe(const char* pattern) {
                     /* REDOS CHECK 3: Nested quantifier with alternation */
                     if (has_alternation && (c == '*' || c == '+')) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: quantifier on group with alternation (ReDoS risk)");
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
 
                     /* REDOS CHECK 4: Nested quantifiers (quantifier on group containing quantifier) */
                     if (has_nested_quantifier && (c == '*' || c == '+')) {
                         LOG_MODULE_WARN("pattern_db", "Pattern rejected: nested quantifiers (ReDoS risk)");
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                         return false;
                     }
                 }
@@ -366,6 +375,7 @@ static bool is_regex_safe(const char* pattern) {
                 /* Range quantifier - check for consecutive */
                 if (prev_was_quantifier) {
                     LOG_MODULE_WARN("pattern_db", "Pattern rejected: consecutive quantifiers detected (range)");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
                     return false;
                 }
                 /* Skip to closing brace */
@@ -385,6 +395,7 @@ static bool is_regex_safe(const char* pattern) {
     if (max_depth > PATTERN_DB_MAX_QUANTIFIER_NESTING) {
         LOG_MODULE_WARN("pattern_db", "Pattern rejected: max nesting depth %d exceeds limit %d",
                         max_depth, PATTERN_DB_MAX_QUANTIFIER_NESTING);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_regex_safe: validation failed");
         return false;
     }
 
@@ -442,6 +453,7 @@ static pattern_slot_t* find_pattern(nimcp_pattern_db_t db, nimcp_pattern_id_t id
             return &db->patterns[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: validation failed");
     return NULL;
 }
 
@@ -890,14 +902,20 @@ nimcp_error_t nimcp_pattern_db_get(
  * @return true if conversion successful and within bounds
  */
 static bool safe_strtol(const char* str, long* result, long min, long max) {
-    if (!str || !result) return false;
+    if (!str || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safe_strtol: required parameter is NULL (str, result)");
+        return false;
+    }
 
     /* Skip leading whitespace */
     while (*str && isspace((unsigned char)*str)) {
         str++;
     }
 
-    if (*str == '\0') return false;
+    if (*str == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtol: validation failed");
+        return false;
+    }
 
     char* endptr;
     errno = 0;
@@ -905,11 +923,13 @@ static bool safe_strtol(const char* str, long* result, long min, long max) {
 
     /* Check for conversion errors */
     if (errno == ERANGE || val < min || val > max) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "safe_strtol: validation failed");
         return false;
     }
 
     /* Check that at least one digit was consumed */
     if (endptr == str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtol: validation failed");
         return false;
     }
 
@@ -929,14 +949,20 @@ static bool safe_strtol(const char* str, long* result, long min, long max) {
  * @return true if conversion successful
  */
 static bool safe_strtod(const char* str, double* result) {
-    if (!str || !result) return false;
+    if (!str || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safe_strtod: required parameter is NULL (str, result)");
+        return false;
+    }
 
     /* Skip leading whitespace */
     while (*str && isspace((unsigned char)*str)) {
         str++;
     }
 
-    if (*str == '\0') return false;
+    if (*str == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: validation failed");
+        return false;
+    }
 
     char* endptr;
     errno = 0;
@@ -944,11 +970,13 @@ static bool safe_strtod(const char* str, double* result) {
 
     /* Check for conversion errors */
     if (errno == ERANGE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "safe_strtod: validation failed");
         return false;
     }
 
     /* Check that at least one digit was consumed */
     if (endptr == str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: validation failed");
         return false;
     }
 
@@ -973,7 +1001,10 @@ static bool safe_strtod(const char* str, double* result) {
 static bool json_unescape_string(const char* src, const char* src_end,
                                   char* dest, size_t dest_size,
                                   size_t* chars_consumed) {
-    if (!src || !dest || dest_size == 0) return false;
+    if (!src || !dest || dest_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safe_strtod: required parameter is NULL (src, dest)");
+        return false;
+    }
 
     size_t di = 0;  /* Destination index */
     const char* p = src;
@@ -984,6 +1015,7 @@ static bool json_unescape_string(const char* src, const char* src_end,
             p++;
             if (p >= src_end) {
                 /* Unterminated escape */
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: capacity exceeded");
                 return false;
             }
 
@@ -999,9 +1031,15 @@ static bool json_unescape_string(const char* src, const char* src_end,
                 case 'u':
                     /* Unicode escape - validate but store as-is for now */
                     /* Full Unicode support would require UTF-8 encoding */
-                    if (p + 4 >= src_end) return false;
+                    if (p + 4 >= src_end) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: capacity exceeded");
+                        return false;
+                    }
                     for (int i = 1; i <= 4; i++) {
-                        if (!isxdigit((unsigned char)p[i])) return false;
+                        if (!isxdigit((unsigned char)p[i])) {
+                            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: isxdigit is NULL");
+                            return false;
+                        }
                     }
                     /* Skip \uXXXX, store as '?' placeholder */
                     dest[di++] = '?';
@@ -1010,11 +1048,13 @@ static bool json_unescape_string(const char* src, const char* src_end,
                 default:
                     /* Invalid escape sequence */
                     LOG_MODULE_WARN("pattern_db", "Invalid JSON escape sequence: \\%c", *p);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: isxdigit is NULL");
                     return false;
             }
         } else if ((unsigned char)*p < 0x20) {
             /* Control characters must be escaped in JSON */
             LOG_MODULE_WARN("pattern_db", "Invalid control character in JSON string");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: operation failed");
             return false;
         } else {
             dest[di++] = *p;
@@ -1048,29 +1088,44 @@ static bool json_unescape_string(const char* src, const char* src_end,
 static bool json_find_key_value(const char* json_start, const char* json_end,
                                 const char* key,
                                 const char** val_start, const char** val_end) {
-    if (!json_start || !json_end || !key || !val_start || !val_end) return false;
+    if (!json_start || !json_end || !key || !val_start || !val_end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safe_strtod: required parameter is NULL (json_start, json_end, key, val_start, val_end)");
+        return false;
+    }
 
     size_t key_len = strlen(key);
     char search_key[256];
-    if (key_len + 3 > sizeof(search_key)) return false;
+    if (key_len + 3 > sizeof(search_key)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: validation failed");
+        return false;
+    }
 
     /* Build search string: "key" */
     snprintf(search_key, sizeof(search_key), "\"%s\"", key);
 
     const char* key_pos = strstr(json_start, search_key);
-    if (!key_pos || key_pos >= json_end) return false;
+    if (!key_pos || key_pos >= json_end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: key_pos is NULL");
+        return false;
+    }
 
     /* Move past key and find colon */
     const char* p = key_pos + strlen(search_key);
     while (p < json_end && isspace((unsigned char)*p)) p++;
 
-    if (p >= json_end || *p != ':') return false;
+    if (p >= json_end || *p != ':') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: capacity exceeded");
+        return false;
+    }
     p++;
 
     /* Skip whitespace after colon */
     while (p < json_end && isspace((unsigned char)*p)) p++;
 
-    if (p >= json_end) return false;
+    if (p >= json_end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: capacity exceeded");
+        return false;
+    }
 
     *val_start = p;
 
@@ -1088,6 +1143,7 @@ static bool json_find_key_value(const char* json_start, const char* json_end,
                 p++;
             }
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strtod: validation failed");
         return false;  /* Unterminated string */
     } else if (*p == '{') {
         /* Object - find matching brace */
@@ -1129,7 +1185,10 @@ static bool json_find_key_value(const char* json_start, const char* json_end,
  * HOW:  Check for balanced braces, brackets, quotes
  */
 static bool json_validate_basic_structure(const char* json, size_t len) {
-    if (!json || len == 0) return false;
+    if (!json || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_validate_basic_structure: json is NULL");
+        return false;
+    }
 
     int brace_depth = 0;
     int bracket_depth = 0;
@@ -1160,14 +1219,20 @@ static bool json_validate_basic_structure(const char* json, size_t len) {
                     break;
                 case '}':
                     brace_depth--;
-                    if (brace_depth < 0) return false;
+                    if (brace_depth < 0) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_validate_basic_structure: validation failed");
+                        return false;
+                    }
                     break;
                 case '[':
                     bracket_depth++;
                     break;
                 case ']':
                     bracket_depth--;
-                    if (bracket_depth < 0) return false;
+                    if (bracket_depth < 0) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_validate_basic_structure: validation failed");
+                        return false;
+                    }
                     break;
             }
         }

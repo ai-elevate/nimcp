@@ -133,6 +133,7 @@ static synapse_entry_t* find_synapse(social_plasticity_bridge_t* bridge, uint32_
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -142,6 +143,7 @@ static synapse_entry_t* find_free_slot(social_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -207,6 +209,7 @@ social_plasticity_bridge_t* social_plasticity_create(
     /* Initialize base bridge (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "social_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -216,6 +219,7 @@ social_plasticity_bridge_t* social_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -251,7 +255,10 @@ void social_plasticity_destroy(social_plasticity_bridge_t* bridge) {
 }
 
 int social_plasticity_reset(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -290,13 +297,17 @@ int social_plasticity_register_synapse(
     social_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -304,6 +315,7 @@ int social_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -333,13 +345,17 @@ int social_plasticity_unregister_synapse(
     social_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -355,13 +371,17 @@ int social_plasticity_get_synapse(
     uint32_t synapse_id,
     social_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -376,13 +396,17 @@ int social_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -403,7 +427,10 @@ int social_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SOCIAL_PLASTICITY_STATE_LEARNING;
@@ -412,6 +439,7 @@ int social_plasticity_learn(
     if (!entry) {
         bridge->state = SOCIAL_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -569,7 +597,10 @@ int social_plasticity_apply_reward(
     social_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -600,8 +631,14 @@ int social_plasticity_update_bcm(
     social_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SOCIAL_PLASTICITY_STATE_UPDATING;
@@ -627,7 +664,10 @@ int social_plasticity_homeostatic_update(
     social_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "social_plasticity_homeostatic_update");
@@ -683,7 +723,10 @@ int social_plasticity_update_traces(
     social_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -700,7 +743,10 @@ int social_plasticity_update_traces(
 }
 
 int social_plasticity_consolidate(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SOCIAL_PLASTICITY_STATE_CONSOLIDATING;
@@ -771,7 +817,10 @@ int social_plasticity_get_bonding_state(
     social_plasticity_bridge_t* bridge,
     social_bonding_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_get_bonding_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->bonding_state;
@@ -784,7 +833,10 @@ int social_plasticity_get_state(
     social_plasticity_bridge_t* bridge,
     social_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -820,7 +872,10 @@ int social_plasticity_get_stats(
     social_plasticity_bridge_t* bridge,
     social_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -830,7 +885,10 @@ int social_plasticity_get_stats(
 }
 
 int social_plasticity_reset_stats(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(social_plasticity_stats_t));
@@ -848,7 +906,10 @@ int social_plasticity_register_learn_callback(
     social_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
@@ -863,7 +924,10 @@ int social_plasticity_register_bonding_callback(
     social_plasticity_bonding_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_register_bonding_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bonding_callback = callback;
@@ -878,8 +942,14 @@ int social_plasticity_register_bonding_callback(
 //=============================================================================
 
 int social_plasticity_bio_async_connect(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
@@ -890,7 +960,10 @@ int social_plasticity_bio_async_connect(social_plasticity_bridge_t* bridge) {
 }
 
 int social_plasticity_bio_async_disconnect(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -900,7 +973,10 @@ int social_plasticity_bio_async_disconnect(social_plasticity_bridge_t* bridge) {
 }
 
 bool social_plasticity_is_bio_async_connected(social_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

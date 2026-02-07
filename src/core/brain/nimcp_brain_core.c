@@ -126,26 +126,31 @@ bool brain_core_init_all_subsystems(brain_t brain)
     // Initialize in dependency order
     if (!init_attention_subsystem(brain)) {
         LOG_MODULE_ERROR("BRAIN_CORE", "Failed to initialize attention subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_core_init_all_subsystems: init_attention_subsystem is NULL");
         return false;
     }
 
     if (!init_brain_regions_subsystem(brain)) {
         LOG_MODULE_ERROR("BRAIN_CORE", "Failed to initialize brain regions subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_core_init_all_subsystems: init_brain_regions_subsystem is NULL");
         return false;
     }
 
     if (!init_symbolic_logic_subsystem(brain)) {
         LOG_MODULE_ERROR("BRAIN_CORE", "Failed to initialize symbolic logic subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_core_init_all_subsystems: init_symbolic_logic_subsystem is NULL");
         return false;
     }
 
     if (!init_symbolic_reasoning_subsystem(brain)) {
         LOG_MODULE_ERROR("BRAIN_CORE", "Failed to initialize symbolic reasoning subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_core_init_all_subsystems: init_symbolic_reasoning_subsystem is NULL");
         return false;
     }
 
     if (!init_epistemic_subsystem(brain)) {
         LOG_MODULE_ERROR("BRAIN_CORE", "Failed to initialize epistemic subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_core_init_all_subsystems: init_epistemic_subsystem is NULL");
         return false;
     }
 

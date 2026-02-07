@@ -131,6 +131,7 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "self_model_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -460,7 +461,10 @@ int self_model_fep_bridge_get_stats(
 }
 
 bool self_model_fep_is_exploring(const self_model_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_is_exploring: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_fep_bridge_heartbeat("self_model_f_self_model_fep_is_ex", 0.0f);
 
@@ -505,6 +509,7 @@ int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
 
     NIMCP_LOGGING_WARN(LOG_MODULE_SELF_MODEL_FEP
         " Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_model_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -531,7 +536,10 @@ int self_model_fep_bridge_disconnect_bio_async(
 bool self_model_fep_bridge_is_bio_async_connected(
     const self_model_fep_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_fep_bridge_heartbeat("self_model_f_is_bio_async_connect", 0.0f);
 

@@ -180,7 +180,10 @@ static void exponential_map(const float* x, const float* v, float* result, uint3
  * ============================================================================ */
 
 int vae_imag_bridge_default_config(vae_imag_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_imag_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -235,6 +238,7 @@ vae_imag_bridge_t* vae_imag_bridge_create(const vae_imag_bridge_config_t* config
     vae_imag_bridge_t* bridge = (vae_imag_bridge_t*)nimcp_calloc(1, sizeof(vae_imag_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_imag_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -350,7 +354,10 @@ bool vae_imag_bridge_is_connected(const vae_imag_bridge_t* bridge) {
 
 static int sample_from_prior(vae_imag_bridge_t* bridge, float temperature,
                              float* latent_out) {
-    if (!bridge || !latent_out) return -1;
+    if (!bridge || !latent_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_imag_bridge_is_connected: required parameter is NULL (bridge, latent_out)");
+        return -1;
+    }
 
     /* Sample from standard normal, scaled by temperature */
     sample_gaussian(latent_out, bridge->vae_latent_dim, 0.0f, temperature);
@@ -375,7 +382,10 @@ static int sample_from_prior(vae_imag_bridge_t* bridge, float temperature,
 static int sample_toward_target(vae_imag_bridge_t* bridge,
                                 const float* target, uint32_t target_dim,
                                 float temperature, float* latent_out) {
-    if (!bridge || !target || !latent_out) return -1;
+    if (!bridge || !target || !latent_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_imag_bridge_is_connected: required parameter is NULL (bridge, target, latent_out)");
+        return -1;
+    }
 
     /* Start with target (or encode it if it's observation space) */
     uint32_t copy_dim = (target_dim < bridge->vae_latent_dim) ?
@@ -392,7 +402,10 @@ static int sample_toward_target(vae_imag_bridge_t* bridge,
 
 static int decode_latent(vae_imag_bridge_t* bridge, const float* latent,
                          float* decoded_out) {
-    if (!bridge || !latent || !decoded_out) return -1;
+    if (!bridge || !latent || !decoded_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_imag_bridge_is_connected: required parameter is NULL (bridge, latent, decoded_out)");
+        return -1;
+    }
 
     nimcp_tensor_t* latent_tensor = nimcp_tensor_create_1d(bridge->vae_latent_dim,
                                                            NIMCP_DTYPE_F32);

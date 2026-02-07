@@ -437,6 +437,7 @@ bool swarm_protocol_validate(const swarm_phoneme_message_t* msg)
 {
     if (!msg) {
         LOG_ERROR("swarm_protocol_validate: NULL message pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_protocol_validate: msg is NULL");
         return false;
     }
 

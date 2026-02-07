@@ -163,7 +163,10 @@ int nimcp_temporal_reset(nimcp_temporal_system_t* system) {
  *===========================================================================*/
 
 int nimcp_temporal_update(nimcp_temporal_system_t* system, float ht_level, float dt) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_update: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     float dt_sec = dt / 1000.0f;
     system->current_5ht = ht_level;
@@ -210,15 +213,24 @@ int nimcp_temporal_discount_value(nimcp_temporal_system_t* system,
                                   float value,
                                   float delay,
                                   float* discounted_value) {
-    if (!system || !system->initialized || !discounted_value) return -1;
-    if (value < 0.0f) return -1;
+    if (!system || !system->initialized || !discounted_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_update: required parameter is NULL (system, system->initialized, discounted_value)");
+        return -1;
+    }
+    if (value < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_temporal_update: validation failed");
+        return -1;
+    }
 
     *discounted_value = hyperbolic_discount(value, delay, system->discount_rate);
     return 0;
 }
 
 int nimcp_temporal_get_current_k(nimcp_temporal_system_t* system, float* k) {
-    if (!system || !system->initialized || !k) return -1;
+    if (!system || !system->initialized || !k) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_current_k: required parameter is NULL (system, system->initialized, k)");
+        return -1;
+    }
 
     *k = system->discount_rate;
     return 0;
@@ -229,7 +241,10 @@ int nimcp_temporal_evaluate_choice(nimcp_temporal_system_t* system,
                                    float delayed_value,
                                    float delay,
                                    nimcp_temporal_choice_t* result) {
-    if (!system || !system->initialized || !result) return -1;
+    if (!system || !system->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_current_k: required parameter is NULL (system, system->initialized, result)");
+        return -1;
+    }
 
     /* Compute discounted value of delayed reward */
     float discounted = hyperbolic_discount(delayed_value, delay, system->discount_rate);
@@ -266,8 +281,14 @@ int nimcp_temporal_find_indifference(nimcp_temporal_system_t* system,
                                      float immediate_value,
                                      float delayed_value,
                                      float* indifference_delay) {
-    if (!system || !system->initialized || !indifference_delay) return -1;
-    if (immediate_value <= 0.0f) return -1;
+    if (!system || !system->initialized || !indifference_delay) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_current_k: required parameter is NULL (system, system->initialized, indifference_delay)");
+        return -1;
+    }
+    if (immediate_value <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_temporal_get_current_k: validation failed");
+        return -1;
+    }
 
     /* At indifference point: immediate = delayed / (1 + k*D) */
     /* Solving for D: D = (delayed/immediate - 1) / k */
@@ -295,7 +316,10 @@ int nimcp_temporal_find_indifference(nimcp_temporal_system_t* system,
  *===========================================================================*/
 
 int nimcp_temporal_get_discount_rate(nimcp_temporal_system_t* system, float* rate) {
-    if (!system || !system->initialized || !rate) return -1;
+    if (!system || !system->initialized || !rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_discount_rate: required parameter is NULL (system, system->initialized, rate)");
+        return -1;
+    }
 
     *rate = system->discount_rate;
     return 0;
@@ -303,7 +327,10 @@ int nimcp_temporal_get_discount_rate(nimcp_temporal_system_t* system, float* rat
 
 int nimcp_temporal_get_future_orientation(nimcp_temporal_system_t* system,
                                           float* orientation) {
-    if (!system || !system->initialized || !orientation) return -1;
+    if (!system || !system->initialized || !orientation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_discount_rate: required parameter is NULL (system, system->initialized, orientation)");
+        return -1;
+    }
 
     *orientation = system->future_orientation;
     return 0;
@@ -311,7 +338,10 @@ int nimcp_temporal_get_future_orientation(nimcp_temporal_system_t* system,
 
 int nimcp_temporal_get_delay_tolerance(nimcp_temporal_system_t* system,
                                        float* tolerance) {
-    if (!system || !system->initialized || !tolerance) return -1;
+    if (!system || !system->initialized || !tolerance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_temporal_get_discount_rate: required parameter is NULL (system, system->initialized, tolerance)");
+        return -1;
+    }
 
     *tolerance = system->delay_tolerance;
     return 0;

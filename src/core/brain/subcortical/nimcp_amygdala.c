@@ -286,6 +286,7 @@ amygdala_t* amygdala_create(const amyg_config_t* config) {
         if (amygdala_validate_config(config) != 0) {
             NIMCP_LOGGING_ERROR("Invalid amygdala configuration");
             nimcp_free(amyg);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_create: validation failed");
             return NULL;
         }
         amyg->config = *config;
@@ -305,6 +306,7 @@ amygdala_t* amygdala_create(const amyg_config_t* config) {
     if (!amyg->fear_memories) {
         NIMCP_LOGGING_ERROR("Failed to allocate fear memories");
         nimcp_free(amyg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_create: amyg->fear_memories is NULL");
         return NULL;
     }
     memset(amyg->fear_memories, 0, amyg->fear_memory_capacity * sizeof(amyg_fear_memory_t));
@@ -332,6 +334,7 @@ amygdala_t* amygdala_create(const amyg_config_t* config) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(amyg->fear_memories);
         nimcp_free(amyg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_create: amyg->mutex is NULL");
         return NULL;
     }
     nimcp_mutex_init(amyg->mutex, NULL);
@@ -1018,7 +1021,10 @@ int amygdala_disconnect_emotion_system(amygdala_t* amyg) {
 }
 
 bool amygdala_is_emotion_system_connected(const amygdala_t* amyg) {
-    if (!amyg) return false;
+    if (!amyg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_is_emotion_system_connected: amyg is NULL");
+        return false;
+    }
     return amyg->emotion_system_connected;
 }
 
@@ -1098,7 +1104,10 @@ int amygdala_disconnect_bio_async(amygdala_t* amyg) {
 }
 
 bool amygdala_is_bio_async_connected(const amygdala_t* amyg) {
-    if (!amyg) return false;
+    if (!amyg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_is_bio_async_connected: amyg is NULL");
+        return false;
+    }
     return amyg->bio_async_connected;
 }
 

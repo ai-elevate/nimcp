@@ -242,7 +242,10 @@ static int compare_confidence(const char* key1, const char* key2)
     float conf1 = strtof(key1, &endptr);
     float conf2 = strtof(key2, &endptr);
 
-    if (conf1 < conf2) return -1;
+    if (conf1 < conf2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_confidence: validation failed");
+        return -1;
+    }
     if (conf1 > conf2) return 1;
 
     // If confidence is equal, compare by full key (including index) for stable sorting
@@ -257,6 +260,7 @@ static int compare_confidence(const char* key1, const char* key2)
 static const char* extract_confidence_key(const void* data)
 {
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_confidence_key: data is NULL");
         return NULL;
     }
 
@@ -315,12 +319,15 @@ static uint32_t hash_concept(const char* concept_str)
 static knowledge_hash_table_t* knowledge_hash_table_create(void)
 {
     knowledge_hash_table_t* table = nimcp_calloc(1, sizeof(knowledge_hash_table_t));
-    if (!table)
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_create: table is NULL");
         return NULL;
+    }
 
     table->entries = nimcp_calloc(HASH_TABLE_SIZE, sizeof(hash_entry_t*));
     if (!table->entries) {
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_create: table->entries is NULL");
         return NULL;
     }
 
@@ -343,20 +350,25 @@ static knowledge_hash_table_t* knowledge_hash_table_create(void)
  */
 static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const char* concept_str, uint32_t index)
 {
-    if (!table || !concept_str)
+    if (!table || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_hash_table_insert: required parameter is NULL (table, concept_str)");
         return false;
+    }
 
     uint32_t hash = hash_concept(concept_str);
 
     hash_entry_t* entry = nimcp_malloc(sizeof(hash_entry_t));
-    if (!entry)
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_insert: entry is NULL");
         return false;
+    }
 
     // Use nimcp_malloc instead of strdup to match nimcp_free in destroy
     size_t concept_len = strlen(concept_str);
     entry->concept = nimcp_malloc(concept_len + 1);
     if (!entry->concept) {
         nimcp_free(entry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_hash_table_insert: entry->concept is NULL");
         return false;
     }
     strncpy(entry->concept, concept_str, concept_len + 1);
@@ -383,8 +395,10 @@ static bool knowledge_hash_table_insert(knowledge_hash_table_t* table, const cha
  */
 static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const char* concept_str)
 {
-    if (!table || !concept_str)
+    if (!table || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_hash_table_find: required parameter is NULL (table, concept_str)");
         return -1;
+    }
 
     uint32_t hash = hash_concept(concept_str);
     hash_entry_t* entry = table->entries[hash];
@@ -396,6 +410,7 @@ static int32_t knowledge_hash_table_find(knowledge_hash_table_t* table, const ch
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_hash_table_find: validation failed");
     return -1;
 }
 
@@ -454,12 +469,15 @@ static void knowledge_hash_table_destroy(knowledge_hash_table_t* table)
 static knowledge_repository_t* repository_create(uint32_t initial_capacity)
 {
     knowledge_repository_t* repo = nimcp_calloc(1, sizeof(knowledge_repository_t));
-    if (!repo)
+    if (!repo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo is NULL");
         return NULL;
+    }
 
     repo->items = nimcp_calloc(initial_capacity, sizeof(knowledge_item_t));
     if (!repo->items) {
         nimcp_free(repo);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->items is NULL");
         return NULL;
     }
 
@@ -467,6 +485,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
     if (!repo->index) {
         nimcp_free(repo->items);
         nimcp_free(repo);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->index is NULL");
         return NULL;
     }
 
@@ -476,6 +495,7 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
         knowledge_hash_table_destroy(repo->index);
         nimcp_free(repo->items);
         nimcp_free(repo);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "repository_create: repo->confidence_btree is NULL");
         return NULL;
     }
 
@@ -499,8 +519,10 @@ static knowledge_repository_t* repository_create(uint32_t initial_capacity)
  */
 static int32_t repository_find(knowledge_repository_t* repo, const char* concept_str)
 {
-    if (!repo || !concept_str)
+    if (!repo || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "repository_find: required parameter is NULL (repo, concept_str)");
         return -1;
+    }
     return knowledge_hash_table_find(repo->index, concept_str);
 }
 
@@ -518,10 +540,14 @@ static int32_t repository_find(knowledge_repository_t* repo, const char* concept
  */
 static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item_t* item)
 {
-    if (!repo || !item)
+    if (!repo || !item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "repository_add: required parameter is NULL (repo, item)");
         return -1;
-    if (repo->num_items >= repo->capacity)
+    }
+    if (repo->num_items >= repo->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "repository_add: capacity exceeded");
         return -1;
+    }
 
     uint32_t index = repo->num_items;
     repo->items[index] = *item;
@@ -535,6 +561,7 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
 
     if (!knowledge_hash_table_insert(repo->index, item->concept_name, index)) {
         repo->num_items--;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "repository_add: knowledge_hash_table_insert is NULL");
         return -1;
     }
 
@@ -561,8 +588,10 @@ static int32_t repository_add(knowledge_repository_t* repo, const knowledge_item
  */
 static knowledge_item_t* repository_get(knowledge_repository_t* repo, uint32_t index)
 {
-    if (!repo || index >= repo->num_items)
+    if (!repo || index >= repo->num_items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "repository_get: repo is NULL");
         return NULL;
+    }
     return &repo->items[index];
 }
 
@@ -645,6 +674,7 @@ static bool should_skip_word(const char* word)
             return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_word: validation failed");
     return false;
 }
 
@@ -764,12 +794,16 @@ static void normalize_concept_case(const char* concept_str, char* output, uint32
  */
 static char** deep_copy_string_array(char** src, uint32_t count)
 {
-    if (!src || count == 0)
+    if (!src || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deep_copy_string_array: src is NULL");
         return NULL;
+    }
 
     char** dest = (char**)nimcp_malloc(count * sizeof(char*));
-    if (!dest)
+    if (!dest) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deep_copy_string_array: dest is NULL");
         return NULL;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -811,10 +845,14 @@ static bool strategy_learn_narrative(void* system, const void* data)
     knowledge_system_t sys = (knowledge_system_t) system;
     const narrative_knowledge_t* story = (const narrative_knowledge_t*) data;
 
-    if (!sys || !story)
+    if (!sys || !story) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy_learn_narrative: required parameter is NULL (sys, story)");
         return false;
-    if (sys->num_narratives >= sys->narratives_capacity)
+    }
+    if (sys->num_narratives >= sys->narratives_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_narrative: capacity exceeded");
         return false;
+    }
 
     narrative_knowledge_t* new_story = &sys->narratives[sys->num_narratives++];
     memset(new_story, 0, sizeof(narrative_knowledge_t));
@@ -875,10 +913,14 @@ static bool strategy_learn_aesthetic(void* system, const void* data)
     knowledge_system_t sys = (knowledge_system_t) system;
     const aesthetic_knowledge_t* art = (const aesthetic_knowledge_t*) data;
 
-    if (!sys || !art)
+    if (!sys || !art) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy_learn_aesthetic: required parameter is NULL (sys, art)");
         return false;
-    if (sys->num_artworks >= sys->artworks_capacity)
+    }
+    if (sys->num_artworks >= sys->artworks_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_aesthetic: capacity exceeded");
         return false;
+    }
 
     aesthetic_knowledge_t* new_art = &sys->artworks[sys->num_artworks++];
     memset(new_art, 0, sizeof(aesthetic_knowledge_t));
@@ -934,10 +976,14 @@ static bool strategy_learn_historical(void* system, const void* data)
     knowledge_system_t sys = (knowledge_system_t) system;
     const historical_knowledge_t* event = (const historical_knowledge_t*) data;
 
-    if (!sys || !event)
+    if (!sys || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy_learn_historical: required parameter is NULL (sys, event)");
         return false;
-    if (sys->num_history >= sys->history_capacity)
+    }
+    if (sys->num_history >= sys->history_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "strategy_learn_historical: capacity exceeded");
         return false;
+    }
 
     historical_knowledge_t* new_event = &sys->history[sys->num_history++];
     memset(new_event, 0, sizeof(historical_knowledge_t));
@@ -1479,8 +1525,10 @@ void knowledge_system_destroy(knowledge_system_t system)
 static bool process_concept(knowledge_system_t system, const char* concept_str, const char* text,
                             knowledge_domain_t domain)
 {
-    if (!system || !concept_str)
+    if (!system || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_concept: required parameter is NULL (system, concept_str)");
         return false;
+    }
 
     // Normalize concept_str to lowercase for case-insensitive matching
     char normalized_concept[256];
@@ -1525,6 +1573,7 @@ static bool process_concept(knowledge_system_t system, const char* concept_str, 
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_concept: validation failed");
     return false;
 }
 
@@ -1599,8 +1648,10 @@ uint32_t knowledge_learn_from_text(knowledge_system_t system, const char* text,
  */
 bool knowledge_learn_from_story(knowledge_system_t system, const narrative_knowledge_t* story)
 {
-    if (!system || !story)
+    if (!system || !story) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_learn_from_story: required parameter is NULL (system, story)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_learn_from_story", 0.0f);
@@ -1620,8 +1671,10 @@ bool knowledge_learn_from_story(knowledge_system_t system, const narrative_knowl
  */
 bool knowledge_learn_from_art(knowledge_system_t system, const aesthetic_knowledge_t* art_piece)
 {
-    if (!system || !art_piece)
+    if (!system || !art_piece) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_learn_from_art: required parameter is NULL (system, art_piece)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_learn_from_art", 0.0f);
@@ -1641,8 +1694,10 @@ bool knowledge_learn_from_art(knowledge_system_t system, const aesthetic_knowled
  */
 bool knowledge_learn_from_history(knowledge_system_t system, const historical_knowledge_t* event)
 {
-    if (!system || !event)
+    if (!system || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_learn_from_history: required parameter is NULL (system, event)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_learn_from_history", 0.0f);
@@ -1693,8 +1748,10 @@ uint32_t knowledge_learn_from_conversation(knowledge_system_t system, const char
 bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* what_demonstrated,
                                         const char** steps, uint32_t num_steps)
 {
-    if (!system || !what_demonstrated || !steps)
+    if (!system || !what_demonstrated || !steps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_learn_from_demonstration: required parameter is NULL (system, what_demonstrated, steps)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_learn_from_demonstra", 0.0f);
@@ -1720,6 +1777,7 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_learn_from_demonstration: capacity exceeded");
     return false;
 }
 
@@ -1742,19 +1800,25 @@ bool knowledge_learn_from_demonstration(knowledge_system_t system, const char* w
  */
 bool knowledge_retrieve(knowledge_system_t system, const char* concept_str, knowledge_item_t* item)
 {
-    if (!system || !concept_str || !item)
+    if (!system || !concept_str || !item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_retrieve: required parameter is NULL (system, concept_str, item)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_retrieve", 0.0f);
 
     int32_t idx = repository_find(system->repository, concept_str);
-    if (idx < 0)
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_retrieve: validation failed");
         return false;
+    }
 
     knowledge_item_t* found = repository_get(system->repository, idx);
-    if (!found)
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_retrieve: found is NULL");
         return false;
+    }
 
     *item = *found;
     return true;
@@ -1860,10 +1924,14 @@ uint32_t knowledge_explain_simply(knowledge_system_t system, const char* concept
 static bool is_cross_domain_related(const knowledge_item_t* item1, const knowledge_item_t* item2,
                                     const char* target_concept)
 {
-    if (!item1 || !item2 || !target_concept)
+    if (!item1 || !item2 || !target_concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_cross_domain_related: required parameter is NULL (item1, item2, target_concept)");
         return false;
-    if (item1->domain == item2->domain)
+    }
+    if (item1->domain == item2->domain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_cross_domain_related: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -1942,8 +2010,10 @@ bool knowledge_transfer_learning(knowledge_system_t system, knowledge_domain_t s
                                  knowledge_domain_t target_domain, const char* situation,
                                  char* application, uint32_t max_length)
 {
-    if (!system || !situation || !application)
+    if (!system || !situation || !application) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_transfer_learning: required parameter is NULL (system, situation, application)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_transfer_learning", 0.0f);
@@ -1975,19 +2045,25 @@ bool knowledge_transfer_learning(knowledge_system_t system, knowledge_domain_t s
 bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
                         const char* based_on_concept, const char* differences)
 {
-    if (!system || !new_concept || !based_on_concept)
+    if (!system || !new_concept || !based_on_concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_build_on: required parameter is NULL (system, new_concept, based_on_concept)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_build_on", 0.0f);
 
     int32_t base_idx = repository_find(system->repository, based_on_concept);
-    if (base_idx < 0)
+    if (base_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_build_on: validation failed");
         return false;
+    }
 
     knowledge_item_t* base = repository_get(system->repository, base_idx);
-    if (!base)
+    if (!base) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_build_on: base is NULL");
         return false;
+    }
 
     knowledge_item_t new_item = *base;
     strncpy(new_item.concept_name, new_concept, sizeof(new_item.concept_name) - 1);
@@ -2018,19 +2094,25 @@ bool knowledge_build_on(knowledge_system_t system, const char* new_concept,
  */
 bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, const char* new_example)
 {
-    if (!system || !concept_str)
+    if (!system || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_reinforce: required parameter is NULL (system, concept_str)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_reinforce", 0.0f);
 
     int32_t idx = repository_find(system->repository, concept_str);
-    if (idx < 0)
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_reinforce: validation failed");
         return false;
+    }
 
     knowledge_item_t* item = repository_get(system->repository, idx);
-    if (!item)
+    if (!item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_reinforce: item is NULL");
         return false;
+    }
 
     // BUG FIX: Update B-tree when confidence changes
     // Remove old entry with old key (old confidence + index)
@@ -2054,8 +2136,10 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, con
     if (new_example && item->num_examples < 10) {
         if (!item->examples) {
             item->examples = nimcp_malloc(10 * sizeof(char*));
-            if (!item->examples)
+            if (!item->examples) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_reinforce: item->examples is NULL");
                 return false;
+            }
         }
         // Use nimcp_malloc instead of strdup to match nimcp_free in destroy
         size_t example_len = strlen(new_example);
@@ -2086,8 +2170,10 @@ bool knowledge_reinforce(knowledge_system_t system, const char* concept_str, con
  */
 bool knowledge_organize_domain(knowledge_system_t system, knowledge_domain_t domain)
 {
-    if (!system)
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_organize_domain: system is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_organize_domain", 0.0f);
@@ -2278,8 +2364,10 @@ uint32_t knowledge_get_reading_list(knowledge_system_t system, knowledge_domain_
 bool knowledge_assess_domain(knowledge_system_t system, knowledge_domain_t domain,
                              domain_knowledge_t* assessment)
 {
-    if (!system || !assessment)
+    if (!system || !assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_assess_domain: required parameter is NULL (system, assessment)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_assess_domain", 0.0f);
@@ -2413,15 +2501,19 @@ void knowledge_print_assessment(const domain_knowledge_t* assessment)
  */
 bool knowledge_save(knowledge_system_t system, const char* filepath)
 {
-    if (!system || !filepath)
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_save: required parameter is NULL (system, filepath)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_save", 0.0f);
 
     FILE* file = fopen(filepath, "wb");
-    if (!file)
+    if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_save: file is NULL");
         return false;
+    }
 
     uint32_t magic = 0x4B4E4F57;
     uint32_t version = 0x00020500;
@@ -2454,15 +2546,19 @@ bool knowledge_save(knowledge_system_t system, const char* filepath)
  */
 knowledge_system_t knowledge_load(const char* filepath)
 {
-    if (!filepath)
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_load: filepath is NULL");
         return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_heartbeat("knowledge_load", 0.0f);
 
     FILE* file = fopen(filepath, "rb");
-    if (!file)
+    if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_load: file is NULL");
         return NULL;
+    }
 
     uint32_t magic, version;
     fread(&magic, sizeof(uint32_t), 1, file);
@@ -2470,12 +2566,14 @@ knowledge_system_t knowledge_load(const char* filepath)
 
     if (magic != 0x4B4E4F57) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_load: validation failed");
         return NULL;
     }
 
     knowledge_system_t system = knowledge_system_create("loaded");
     if (!system) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_load: system is NULL");
         return NULL;
     }
 
@@ -2669,6 +2767,7 @@ uint32_t knowledge_get_all_ordered_by_confidence(knowledge_system_t system,
 bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
 {
     if (!system || !item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_add_item: required parameter is NULL (system, item)");
         return false;
     }
 
@@ -2693,11 +2792,13 @@ bool knowledge_add_item(knowledge_system_t system, const knowledge_item_t* item)
 static atomic_formula_t* create_simple_atomic(const char* predicate, const char* arg1, const char* arg2)
 {
     if (!predicate || !arg1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: required parameter is NULL (predicate, arg1)");
         return NULL;
     }
 
     atomic_formula_t* atom = (atomic_formula_t*)nimcp_calloc(1, sizeof(atomic_formula_t));
     if (!atom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom is NULL");
         return NULL;
     }
 
@@ -2710,6 +2811,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
     atom->terms = (logical_term_t**)nimcp_calloc(arity, sizeof(logical_term_t*));
     if (!atom->terms) {
         nimcp_free(atom);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
         return NULL;
     }
 
@@ -2718,6 +2820,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
     if (!atom->terms[0]) {
         nimcp_free(atom->terms);
         nimcp_free(atom);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
         return NULL;
     }
     atom->terms[0]->type = TERM_CONSTANT;
@@ -2732,6 +2835,7 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
             nimcp_free(atom->terms[0]);
             nimcp_free(atom->terms);
             nimcp_free(atom);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_simple_atomic: atom->terms is NULL");
             return NULL;
         }
         atom->terms[1]->type = TERM_CONSTANT;
@@ -2752,17 +2856,20 @@ static atomic_formula_t* create_simple_atomic(const char* predicate, const char*
 static logic_clause_t* create_clause_from_atomic(atomic_formula_t* atom, float confidence)
 {
     if (!atom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_clause_from_atomic: atom is NULL");
         return NULL;
     }
 
     logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
     if (!clause) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_clause_from_atomic: clause is NULL");
         return NULL;
     }
 
     clause->literals = (atomic_formula_t**)nimcp_calloc(1, sizeof(atomic_formula_t*));
     if (!clause->literals) {
         nimcp_free(clause);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_clause_from_atomic: clause->literals is NULL");
         return NULL;
     }
 

@@ -132,6 +132,7 @@ static value_stack_t* stack_create(void) {
     stack->values = nimcp_calloc(stack->capacity, sizeof(nimcp_policy_value_t));
     if (!stack->values) {
         nimcp_free(stack);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stack_create: stack->values is NULL");
         return NULL;
     }
 
@@ -218,6 +219,7 @@ nimcp_policy_context_t nimcp_policy_context_create(void) {
     struct nimcp_policy_context* ctx = nimcp_calloc(1, sizeof(struct nimcp_policy_context));
     if (!ctx) {
         LOG_ERROR("Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_policy_context_create: ctx is NULL");
         return NULL;
     }
 
@@ -227,6 +229,7 @@ nimcp_policy_context_t nimcp_policy_context_create(void) {
 
     if (!ctx->buckets) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_policy_context_create: ctx->buckets is NULL");
         return NULL;
     }
 
@@ -533,6 +536,7 @@ function_registry_t* registry_create(void) {
             }
             nimcp_free(registry->functions);
             nimcp_free(registry);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry_create: name_copy is NULL");
             return NULL;
         }
         registry->functions[registry->count].name = name_copy;
@@ -568,6 +572,7 @@ static nimcp_policy_function_t registry_lookup(
             return registry->functions[i].func;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry_lookup: validation failed");
     return NULL;
 }
 
@@ -586,6 +591,7 @@ static bool value_to_bool(const nimcp_policy_value_t* val) {
         case NIMCP_POLICY_VALUE_STRING:
             return val->string_val && val->string_val[0] != '\0';
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "value_to_bool: operation failed");
             return false;
     }
 }

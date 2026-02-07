@@ -211,6 +211,7 @@ static void update_plasticity_regime(calcium_dynamics_t calcium) {
 int calcium_default_config(calcium_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_default_config: config is NULL");
         return -1;
     }
 
@@ -278,6 +279,7 @@ calcium_dynamics_t calcium_create(const calcium_config_t* config) {
     if (!calcium->mutex) {
         nimcp_free(calcium);
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "calcium_create: calcium->mutex is NULL");
         return NULL;
     }
 
@@ -316,6 +318,7 @@ void calcium_destroy(calcium_dynamics_t calcium) {
 int calcium_update(calcium_dynamics_t calcium, float delta_ms) {
     if (!calcium) {
         NIMCP_LOGGING_ERROR("NULL calcium pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_update: calcium is NULL");
         return -1;
     }
     if (delta_ms <= 0.0f) return 0;
@@ -564,7 +567,10 @@ float calcium_get_learning_rate(const calcium_dynamics_t calcium) {
 }
 
 int calcium_get_state(const calcium_dynamics_t calcium, calcium_state_t* state) {
-    if (!calcium || !state) return -1;
+    if (!calcium || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_get_state: required parameter is NULL (calcium, state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
     *state = calcium->state;
@@ -574,7 +580,10 @@ int calcium_get_state(const calcium_dynamics_t calcium, calcium_state_t* state) 
 }
 
 int calcium_get_config(const calcium_dynamics_t calcium, calcium_config_t* config) {
-    if (!calcium || !config) return -1;
+    if (!calcium || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_get_config: required parameter is NULL (calcium, config)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
     *config = calcium->config;
@@ -592,7 +601,10 @@ int calcium_register_threshold_callback(
     calcium_threshold_callback_t callback,
     void* user_data
 ) {
-    if (!calcium || !callback) return -1;
+    if (!calcium || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_register_threshold_callback: required parameter is NULL (calcium, callback)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -614,6 +626,7 @@ int calcium_register_threshold_callback(
     if (slot < 0 || slot >= CALCIUM_MAX_THRESHOLD_CALLBACKS) {
         nimcp_platform_mutex_unlock(calcium->mutex);
         NIMCP_LOGGING_WARN("Callback array full or invalid slot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "calcium_register_threshold_callback: capacity exceeded");
         return -1;
     }
 
@@ -629,7 +642,10 @@ int calcium_unregister_threshold_callback(
     calcium_dynamics_t calcium,
     calcium_threshold_callback_t callback
 ) {
-    if (!calcium || !callback) return -1;
+    if (!calcium || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_unregister_threshold_callback: required parameter is NULL (calcium, callback)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -710,7 +726,10 @@ int calcium_disconnect_bio_async(calcium_dynamics_t calcium) {
 }
 
 bool calcium_is_bio_async_connected(const calcium_dynamics_t calcium) {
-    if (!calcium) return false;
+    if (!calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_is_bio_async_connected: calcium is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
     bool connected = calcium->bio_async_enabled;

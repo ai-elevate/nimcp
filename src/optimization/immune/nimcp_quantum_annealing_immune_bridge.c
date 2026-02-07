@@ -218,6 +218,7 @@ qa_immune_bridge_t* qa_immune_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qa_immune_create: bridge->events is NULL");
         return NULL;
     }
 
@@ -320,7 +321,10 @@ int qa_immune_disconnect_bio_async(qa_immune_bridge_t* bridge) {
 }
 
 bool qa_immune_is_bio_async_connected(const qa_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -558,6 +562,7 @@ int qa_immune_report_problem(
     if (bridge->event_count >= bridge->event_capacity) {
         NIMCP_LOGGING_WARN("Event buffer full, cannot record problem");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qa_immune_report_problem: capacity exceeded");
         return -1;
     }
 
@@ -617,6 +622,7 @@ int qa_immune_trigger_immune_response(
 
     if (!event) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_trigger_immune_response: event is NULL");
         return -1;
     }
 
@@ -757,6 +763,7 @@ const qa_immune_problem_event_t* qa_immune_get_event(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_event: validation failed");
     return NULL;
 }
 

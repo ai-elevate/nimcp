@@ -91,6 +91,7 @@ int kg_analytics_get_access_patterns(
     uint32_t* count
 ) {
     if (!kg || !patterns || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_get_access_patterns: required parameter is NULL (kg, patterns, count)");
         return -1;
     }
 
@@ -107,6 +108,7 @@ int kg_analytics_get_hot_nodes(
     uint32_t* count
 ) {
     if (!kg || !nodes || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_get_hot_nodes: required parameter is NULL (kg, nodes, count)");
         return -1;
     }
 
@@ -122,6 +124,7 @@ int kg_analytics_get_hot_nodes(
     int rc = kg_analytics_get_access_patterns(kg, patterns, max, &pattern_count);
     if (rc != 0) {
         nimcp_free(patterns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_analytics_get_hot_nodes: validation failed");
         return -1;
     }
 
@@ -145,6 +148,7 @@ int kg_analytics_get_cold_nodes(
     uint32_t* count
 ) {
     if (!kg || !nodes || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_get_cold_nodes: required parameter is NULL (kg, nodes, count)");
         return -1;
     }
 
@@ -160,6 +164,7 @@ int kg_analytics_get_cold_nodes(
     int rc = kg_analytics_get_access_patterns(kg, patterns, max, &pattern_count);
     if (rc != 0) {
         nimcp_free(patterns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_analytics_get_cold_nodes: validation failed");
         return -1;
     }
 
@@ -185,6 +190,7 @@ int kg_analytics_check_topology_health(
     kg_topology_health_t* health
 ) {
     if (!kg || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_check_topology_health: required parameter is NULL (kg, health)");
         return -1;
     }
 
@@ -216,6 +222,7 @@ int kg_analytics_find_bottlenecks(
     uint32_t* count
 ) {
     if (!kg || !nodes || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_find_bottlenecks: required parameter is NULL (kg, nodes, count)");
         return -1;
     }
 
@@ -233,6 +240,7 @@ int kg_analytics_find_isolated(
     uint32_t* count
 ) {
     if (!kg || !nodes || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_find_isolated: required parameter is NULL (kg, nodes, count)");
         return -1;
     }
 
@@ -251,6 +259,7 @@ int kg_analytics_forecast_capacity(
     kg_capacity_forecast_t* forecast
 ) {
     if (!kg || !forecast) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_forecast_capacity: required parameter is NULL (kg, forecast)");
         return -1;
     }
 
@@ -286,12 +295,14 @@ int kg_analytics_estimate_growth(
     uint64_t* projected_size
 ) {
     if (!kg || !projected_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_estimate_growth: required parameter is NULL (kg, projected_size)");
         return -1;
     }
 
     kg_capacity_forecast_t forecast;
     int rc = kg_analytics_forecast_capacity(kg, &forecast);
     if (rc != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_analytics_estimate_growth: validation failed");
         return -1;
     }
 
@@ -313,6 +324,7 @@ int kg_analytics_get_recommendations(
     uint32_t* count
 ) {
     if (!kg || !recommendations || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_get_recommendations: required parameter is NULL (kg, recommendations, count)");
         return -1;
     }
 
@@ -346,6 +358,7 @@ int kg_analytics_apply_recommendation(
     const kg_optimization_t* recommendation
 ) {
     if (!kg || !recommendation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_apply_recommendation: required parameter is NULL (kg, recommendation)");
         return -1;
     }
 
@@ -378,6 +391,7 @@ int kg_analytics_apply_recommendation(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_analytics_apply_recommendation: operation failed");
             return -1;
     }
 
@@ -395,6 +409,7 @@ int kg_analytics_get_slow_queries(
     uint32_t* count
 ) {
     if (!kg || !queries || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_get_slow_queries: required parameter is NULL (kg, queries, count)");
         return -1;
     }
 
@@ -411,6 +426,7 @@ int kg_analytics_explain_query(
     size_t max_size
 ) {
     if (!kg || !query || !explanation || max_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_analytics_explain_query: required parameter is NULL (kg, query, explanation)");
         return -1;
     }
 
@@ -435,6 +451,7 @@ int kg_analytics_explain_query(
         query);
 
     if (written < 0 || (size_t)written >= max_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_analytics_explain_query: capacity exceeded");
         return -1;
     }
 
@@ -503,6 +520,7 @@ int kg_analytics_set_access_thresholds(
     float cold_threshold
 ) {
     if (!kg || hot_threshold <= cold_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_analytics_set_access_thresholds: kg is NULL");
         return -1;
     }
 

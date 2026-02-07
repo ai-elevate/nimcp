@@ -154,6 +154,7 @@ static cs_primitive_t* find_primitive_by_id(
             return &cs->primitives[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_primitive_by_id: validation failed");
     return NULL;
 }
 
@@ -172,6 +173,7 @@ static cs_primitive_t* find_primitive_by_name(
             return &cs->primitives[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_primitive_by_name: validation failed");
     return NULL;
 }
 
@@ -190,6 +192,7 @@ static cs_rule_t* find_rule_by_id(
             return &cs->rules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule_by_id: validation failed");
     return NULL;
 }
 
@@ -370,11 +373,13 @@ static bool check_rule_applicable(
 {
     /* Check head type matches */
     if (head->type != rule->head_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rule_applicable: validation failed");
         return false;
     }
 
     /* Check we have enough bindings */
     if (num_bindings < rule->num_args) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rule_applicable: validation failed");
         return false;
     }
 
@@ -573,6 +578,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     cs->primitives = nimcp_calloc(cs->primitive_capacity, sizeof(cs_primitive_t));
     if (!cs->primitives) {
         nimcp_free(cs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->primitives is NULL");
         return NULL;
     }
     cs->num_primitives = 0;
@@ -584,6 +590,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
     if (!cs->compositions) {
         nimcp_free(cs->primitives);
         nimcp_free(cs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->compositions is NULL");
         return NULL;
     }
     cs->num_compositions = 0;
@@ -596,6 +603,7 @@ nimcp_compositional_t* cs_create(const cs_config_t* config) {
         nimcp_free(cs->compositions);
         nimcp_free(cs->primitives);
         nimcp_free(cs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cs_create: cs->rules is NULL");
         return NULL;
     }
     cs->num_rules = 0;

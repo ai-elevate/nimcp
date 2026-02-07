@@ -258,6 +258,7 @@ static void* executor_default_execute(nimcp_graphql_executor_t* self,
                                        nimcp_graph_query_t* query)
 {
     if (!self || !query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executor_default_execute: required parameter is NULL (self, query)");
         return NULL;
     }
 
@@ -273,6 +274,7 @@ static void* executor_default_execute(nimcp_graphql_executor_t* self,
         1, sizeof(nimcp_graphql_result_t));
     if (!result) {
         if (filter) nimcp_graphql_filter_destroy(filter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executor_default_execute: validation failed");
         return NULL;
     }
 
@@ -519,6 +521,7 @@ static bool parse_comparison(const char** str, nimcp_graphql_filter_node_t* node
     field_buf[field_len] = '\0';
 
     if (field_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_comparison: field_len is zero");
         return false;
     }
 
@@ -545,6 +548,7 @@ static bool parse_comparison(const char** str, nimcp_graphql_filter_node_t* node
 nimcp_graphql_filter_node_t* nimcp_graphql_parse_filter(const char* filter_str)
 {
     if (!filter_str || !*filter_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graphql_parse_filter: filter_str is NULL");
         return NULL;
     }
 
@@ -559,6 +563,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_parse_filter(const char* filter_str)
     const char* ptr = filter_str;
     if (!parse_comparison(&ptr, node)) {
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graphql_parse_filter: parse_comparison is NULL");
         return NULL;
     }
 
@@ -719,6 +724,7 @@ nimcp_graphql_filter_node_t* nimcp_graphql_filter_create_logical(
 {
     if (op != NIMCP_GRAPHQL_OP_AND && op != NIMCP_GRAPHQL_OP_OR &&
         op != NIMCP_GRAPHQL_OP_NOT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graphql_filter_create_logical: operation failed");
         return NULL;
     }
 

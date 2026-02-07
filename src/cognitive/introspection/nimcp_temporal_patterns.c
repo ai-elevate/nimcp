@@ -206,10 +206,12 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
     /* Guard clause: validate inputs */
     if (!bbb_check_pointer(context, "introspection_detect_patterns")) {
         if (num_patterns) *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_detect_patterns: validation failed");
         return NULL;
     }
 
     if (!bbb_check_pointer(num_patterns, "introspection_detect_patterns")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_detect_patterns: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -230,6 +232,7 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
     if (history == NULL || history_count < cfg->min_pattern_length) {
         LOG_DEBUG("Insufficient history for pattern detection: %u entries", history_count);
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_detect_patterns: validation failed");
         return NULL;
     }
 
@@ -246,6 +249,7 @@ temporal_pattern_t* introspection_detect_patterns(introspection_context_t contex
     if (patterns == NULL) {
         nimcp_free(history);
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_detect_patterns: validation failed");
         return NULL;
     }
 
@@ -666,10 +670,12 @@ bool introspection_register_pattern(introspection_context_t context,
 {
     /* Guard clause: validate inputs */
     if (!bbb_check_pointer(context, "introspection_register_pattern")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_register_pattern: bbb_check_pointer is NULL");
         return false;
     }
 
     if (!bbb_check_pointer(pattern, "introspection_register_pattern")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_register_pattern: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -679,6 +685,7 @@ bool introspection_register_pattern(introspection_context_t context,
 
     pattern_detection_context_t* ctx = get_pattern_context(context);
     if (ctx == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_register_pattern: validation failed");
         return false;
     }
 
@@ -689,6 +696,7 @@ bool introspection_register_pattern(introspection_context_t context,
         LOG_WARN("Pattern library full (%u patterns), cannot register '%s'",
                  ctx->library_size, pattern->name);
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "introspection_register_pattern: capacity exceeded");
         return false;
     }
 
@@ -698,6 +706,7 @@ bool introspection_register_pattern(introspection_context_t context,
 
     if (entry == NULL) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_register_pattern: validation failed");
         return false;
     }
 
@@ -803,10 +812,12 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
     /* Guard clause: validate inputs */
     if (!bbb_check_pointer(context, "introspection_get_pattern_library")) {
         if (num_patterns) *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_pattern_library: validation failed");
         return NULL;
     }
 
     if (!bbb_check_pointer(num_patterns, "introspection_get_pattern_library")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_pattern_library: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -817,6 +828,7 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
     pattern_detection_context_t* ctx = get_pattern_context(context);
     if (ctx == NULL) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_pattern_library: validation failed");
         return NULL;
     }
 
@@ -827,6 +839,7 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
     /* Guard clause: empty library */
     if (ctx->library_size == 0) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_get_pattern_library: ctx->library_size is zero");
         return NULL;
     }
 
@@ -837,6 +850,7 @@ temporal_pattern_t* introspection_get_pattern_library(introspection_context_t co
     if (patterns == NULL) {
         nimcp_mutex_unlock(&ctx->lock);
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_pattern_library: validation failed");
         return NULL;
     }
 
@@ -960,6 +974,7 @@ bool brain_enable_pattern_detection(brain_t brain,
 {
     /* Guard clause: validate brain */
     if (!bbb_check_pointer(brain, "brain_enable_pattern_detection")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_pattern_detection: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -971,11 +986,13 @@ bool brain_enable_pattern_detection(brain_t brain,
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         LOG_WARN("Brain does not have introspection enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_pattern_detection: validation failed");
         return false;
     }
 
     pattern_detection_context_t* ctx = get_pattern_context(intro);
     if (ctx == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_pattern_detection: validation failed");
         return false;
     }
 
@@ -1003,10 +1020,12 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
     /* Guard clause: validate inputs */
     if (!bbb_check_pointer(brain, "brain_get_active_patterns")) {
         if (num_patterns) *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_active_patterns: validation failed");
         return NULL;
     }
 
     if (!bbb_check_pointer(num_patterns, "brain_get_active_patterns")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_active_patterns: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -1018,12 +1037,14 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_active_patterns: validation failed");
         return NULL;
     }
 
     pattern_detection_context_t* ctx = get_pattern_context(intro);
     if (ctx == NULL) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_active_patterns: validation failed");
         return NULL;
     }
 
@@ -1033,6 +1054,7 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
 
     if (library == NULL || library_size == 0) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_active_patterns: library_size is zero");
         return NULL;
     }
 
@@ -1043,6 +1065,7 @@ temporal_pattern_t* brain_get_active_patterns(brain_t brain, uint32_t* num_patte
     if (active == NULL) {
         pattern_array_free(library, library_size);
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_active_patterns: validation failed");
         return NULL;
     }
 
@@ -1082,6 +1105,7 @@ bool brain_on_pattern_detected(brain_t brain,
 {
     /* Guard clause: validate brain */
     if (!bbb_check_pointer(brain, "brain_on_pattern_detected")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_on_pattern_detected: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1093,11 +1117,13 @@ bool brain_on_pattern_detected(brain_t brain,
     introspection_context_t intro = brain_get_introspection(brain);
     if (intro == NULL) {
         LOG_WARN("Brain does not have introspection enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_on_pattern_detected: validation failed");
         return false;
     }
 
     pattern_detection_context_t* ctx = get_pattern_context(intro);
     if (ctx == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_on_pattern_detected: validation failed");
         return false;
     }
 
@@ -1500,7 +1526,10 @@ void temporal_patterns_set_instance_health_agent(void* ctx, nimcp_health_agent_t
 }
 
 int temporal_patterns_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_patterns_training_begin: ctx is NULL");
+        return -1;
+    }
     temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
         "temp_pat_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("[TEMPORAL_PATTERNS] Training begin: module state reset");
@@ -1508,7 +1537,10 @@ int temporal_patterns_training_begin(void* ctx) {
 }
 
 int temporal_patterns_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_patterns_training_step: ctx is NULL");
+        return -1;
+    }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
@@ -1517,7 +1549,10 @@ int temporal_patterns_training_step(void* ctx, float progress) {
 }
 
 int temporal_patterns_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_patterns_training_end: ctx is NULL");
+        return -1;
+    }
     temporal_patterns_heartbeat_instance(g_temporal_patterns_instance_health_agent,
         "temp_pat_training_end", 1.0f);
     NIMCP_LOGGING_INFO("[TEMPORAL_PATTERNS] Training end: metrics finalized");

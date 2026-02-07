@@ -79,6 +79,7 @@ static int TrainingConfig_init(TrainingConfigObject* self, PyObject* args, PyObj
                                      &scheduler_step_size, &scheduler_gamma, &warmup_steps,
                                      &enable_gradient_clipping, &gradient_clip_value,
                                      &enable_biological_modulation, &biological_blend)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_init: operation failed");
         return -1;
     }
 
@@ -129,10 +130,12 @@ static int TrainingConfig_set_loss_type(TrainingConfigObject* self, PyObject* va
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete loss_type attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_loss_type: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "loss_type must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_loss_type: PyLong_Check is NULL");
         return -1;
     }
     self->config.loss_type = (nimcp_api_loss_t)PyLong_AsLong(value);
@@ -148,10 +151,12 @@ static int TrainingConfig_set_optimizer_type(TrainingConfigObject* self, PyObjec
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete optimizer_type attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_optimizer_type: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "optimizer_type must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_optimizer_type: PyLong_Check is NULL");
         return -1;
     }
     self->config.optimizer_type = (nimcp_api_optimizer_t)PyLong_AsLong(value);
@@ -167,10 +172,12 @@ static int TrainingConfig_set_scheduler_type(TrainingConfigObject* self, PyObjec
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete scheduler_type attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_type: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "scheduler_type must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_type: PyLong_Check is NULL");
         return -1;
     }
     self->config.scheduler_type = (nimcp_api_scheduler_t)PyLong_AsLong(value);
@@ -186,10 +193,12 @@ static int TrainingConfig_set_learning_rate(TrainingConfigObject* self, PyObject
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete learning_rate attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_learning_rate: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "learning_rate must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_learning_rate: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.learning_rate = (float)PyFloat_AsDouble(value);
@@ -205,10 +214,12 @@ static int TrainingConfig_set_weight_decay(TrainingConfigObject* self, PyObject*
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete weight_decay attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_weight_decay: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "weight_decay must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_weight_decay: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.weight_decay = (float)PyFloat_AsDouble(value);
@@ -224,10 +235,12 @@ static int TrainingConfig_set_momentum(TrainingConfigObject* self, PyObject* val
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete momentum attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_momentum: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "momentum must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_momentum: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.momentum = (float)PyFloat_AsDouble(value);
@@ -243,10 +256,12 @@ static int TrainingConfig_set_beta1(TrainingConfigObject* self, PyObject* value,
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete beta1 attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_beta1: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "beta1 must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_beta1: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.beta1 = (float)PyFloat_AsDouble(value);
@@ -262,10 +277,12 @@ static int TrainingConfig_set_beta2(TrainingConfigObject* self, PyObject* value,
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete beta2 attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_beta2: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "beta2 must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_beta2: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.beta2 = (float)PyFloat_AsDouble(value);
@@ -281,10 +298,12 @@ static int TrainingConfig_set_epsilon(TrainingConfigObject* self, PyObject* valu
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete epsilon attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_epsilon: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "epsilon must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_epsilon: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.epsilon = (float)PyFloat_AsDouble(value);
@@ -300,10 +319,12 @@ static int TrainingConfig_set_scheduler_step_size(TrainingConfigObject* self, Py
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete scheduler_step_size attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_step_size: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "scheduler_step_size must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_step_size: PyLong_Check is NULL");
         return -1;
     }
     self->config.scheduler_step_size = (uint32_t)PyLong_AsUnsignedLong(value);
@@ -319,10 +340,12 @@ static int TrainingConfig_set_scheduler_gamma(TrainingConfigObject* self, PyObje
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete scheduler_gamma attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_gamma: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "scheduler_gamma must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_scheduler_gamma: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.scheduler_gamma = (float)PyFloat_AsDouble(value);
@@ -338,10 +361,12 @@ static int TrainingConfig_set_warmup_steps(TrainingConfigObject* self, PyObject*
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete warmup_steps attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_warmup_steps: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "warmup_steps must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_warmup_steps: PyLong_Check is NULL");
         return -1;
     }
     self->config.warmup_steps = (uint32_t)PyLong_AsUnsignedLong(value);
@@ -357,6 +382,7 @@ static int TrainingConfig_set_enable_gradient_clipping(TrainingConfigObject* sel
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete enable_gradient_clipping attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_enable_gradient_clipping: validation failed");
         return -1;
     }
     self->config.enable_gradient_clipping = PyObject_IsTrue(value);
@@ -372,10 +398,12 @@ static int TrainingConfig_set_gradient_clip_value(TrainingConfigObject* self, Py
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete gradient_clip_value attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_gradient_clip_value: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "gradient_clip_value must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_gradient_clip_value: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.gradient_clip_value = (float)PyFloat_AsDouble(value);
@@ -391,6 +419,7 @@ static int TrainingConfig_set_enable_biological_modulation(TrainingConfigObject*
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete enable_biological_modulation attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_enable_biological_modulation: validation failed");
         return -1;
     }
     self->config.enable_biological_modulation = PyObject_IsTrue(value);
@@ -406,10 +435,12 @@ static int TrainingConfig_set_biological_blend(TrainingConfigObject* self, PyObj
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete biological_blend attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_biological_blend: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "biological_blend must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TrainingConfig_set_biological_blend: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.biological_blend = (float)PyFloat_AsDouble(value);
@@ -641,69 +672,115 @@ int init_training_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.training", "Initializing training module");
 
     /* Initialize types */
-    if (PyType_Ready(&TrainingConfigType) < 0)
+    if (PyType_Ready(&TrainingConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyType_Ready(&TrainingResultType) < 0)
+    }
+    if (PyType_Ready(&TrainingResultType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
+    }
 
     /* Add types to module */
     Py_INCREF(&TrainingConfigType);
     if (PyModule_AddObject(module, "TrainingConfig", (PyObject*)&TrainingConfigType) < 0) {
         Py_DECREF(&TrainingConfigType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&TrainingResultType);
     if (PyModule_AddObject(module, "TrainingResult", (PyObject*)&TrainingResultType) < 0) {
         Py_DECREF(&TrainingResultType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
     }
 
     /* Add loss type constants */
-    if (PyModule_AddIntConstant(module, "LOSS_MSE", NIMCP_API_LOSS_MSE) < 0)
+    if (PyModule_AddIntConstant(module, "LOSS_MSE", NIMCP_API_LOSS_MSE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_CROSS_ENTROPY", NIMCP_API_LOSS_CROSS_ENTROPY) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_CROSS_ENTROPY", NIMCP_API_LOSS_CROSS_ENTROPY) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_BINARY_CE", NIMCP_API_LOSS_BINARY_CE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_BINARY_CE", NIMCP_API_LOSS_BINARY_CE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_HUBER", NIMCP_API_LOSS_HUBER) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_HUBER", NIMCP_API_LOSS_HUBER) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_MAE", NIMCP_API_LOSS_MAE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_MAE", NIMCP_API_LOSS_MAE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_FOCAL", NIMCP_API_LOSS_FOCAL) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_FOCAL", NIMCP_API_LOSS_FOCAL) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "LOSS_KL_DIV", NIMCP_API_LOSS_KL_DIV) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "LOSS_KL_DIV", NIMCP_API_LOSS_KL_DIV) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
+    }
 
     /* Add optimizer type constants */
-    if (PyModule_AddIntConstant(module, "OPT_SGD", NIMCP_API_OPT_SGD) < 0)
+    if (PyModule_AddIntConstant(module, "OPT_SGD", NIMCP_API_OPT_SGD) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "OPT_MOMENTUM", NIMCP_API_OPT_MOMENTUM) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "OPT_MOMENTUM", NIMCP_API_OPT_MOMENTUM) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "OPT_ADAM", NIMCP_API_OPT_ADAM) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "OPT_ADAM", NIMCP_API_OPT_ADAM) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "OPT_ADAMW", NIMCP_API_OPT_ADAMW) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "OPT_ADAMW", NIMCP_API_OPT_ADAMW) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "OPT_RMSPROP", NIMCP_API_OPT_RMSPROP) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "OPT_RMSPROP", NIMCP_API_OPT_RMSPROP) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "OPT_ADAGRAD", NIMCP_API_OPT_ADAGRAD) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "OPT_ADAGRAD", NIMCP_API_OPT_ADAGRAD) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
+    }
 
     /* Add scheduler type constants */
-    if (PyModule_AddIntConstant(module, "SCHED_CONSTANT", NIMCP_API_SCHED_CONSTANT) < 0)
+    if (PyModule_AddIntConstant(module, "SCHED_CONSTANT", NIMCP_API_SCHED_CONSTANT) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_STEP", NIMCP_API_SCHED_STEP) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_STEP", NIMCP_API_SCHED_STEP) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_EXPONENTIAL", NIMCP_API_SCHED_EXPONENTIAL) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_EXPONENTIAL", NIMCP_API_SCHED_EXPONENTIAL) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_COSINE", NIMCP_API_SCHED_COSINE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_COSINE", NIMCP_API_SCHED_COSINE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_WARMUP_COSINE", NIMCP_API_SCHED_WARMUP_COSINE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_WARMUP_COSINE", NIMCP_API_SCHED_WARMUP_COSINE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_REDUCE_ON_PLATEAU", NIMCP_API_SCHED_REDUCE_ON_PLATEAU) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_REDUCE_ON_PLATEAU", NIMCP_API_SCHED_REDUCE_ON_PLATEAU) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "SCHED_CYCLIC", NIMCP_API_SCHED_CYCLIC) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "SCHED_CYCLIC", NIMCP_API_SCHED_CYCLIC) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_module: validation failed");
         return -1;
+    }
 
     LOG_MODULE_INFO("bindings.python.training", "Training module initialized successfully");
     return 0;

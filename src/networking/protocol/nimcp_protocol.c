@@ -173,8 +173,10 @@ static bool validate_serialize_inputs(const uint8_t* buffer, uint32_t buffer_siz
 
     // Guard clause: Check buffer size
     uint32_t required_size = sizeof(msg_header_t) + payload_len;
-    if (buffer_size < required_size)
+    if (buffer_size < required_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_serialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -229,6 +231,7 @@ int protocol_serialize_message(msg_type_t type, const void* payload, uint32_t pa
 {
     // Step 1: Validate inputs
     if (!validate_serialize_inputs(buffer, buffer_size, payload_len)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_serialize_message: validate_serialize_inputs is NULL");
         return -1;
     }
 
@@ -277,6 +280,7 @@ static bool bbb_validate_network_buffer(const uint8_t* buffer, uint32_t buffer_s
     bbb_validation_result_t result;
     if (!bbb_validate_input(bbb, buffer, buffer_size, &result)) {
         // BBB rejected the input - log and fail
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_network_buffer: bbb_validate_input is NULL");
         return false;
     }
 
@@ -320,8 +324,10 @@ static bool validate_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_s
         }
 
     // Guard clause: Check minimum buffer size
-    if (buffer_size < sizeof(msg_header_t))
+    if (buffer_size < sizeof(msg_header_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_deserialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -338,8 +344,10 @@ static bool validate_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_s
 static bool extract_and_validate_header(const uint8_t* buffer, msg_header_t* header)
 {
     // Guard clause: Validate inputs
-    if (!buffer || !header)
+    if (!buffer || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_and_validate_header: required parameter is NULL (buffer, header)");
         return false;
+    }
 
     // Copy header from buffer
     memcpy(header, buffer, sizeof(msg_header_t));
@@ -526,9 +534,11 @@ static bool is_version_valid(uint8_t version)
     // SECURITY: Check version is within valid range
     // This prevents both future version attacks and downgrade attacks
     if (version < PROTOCOL_VERSION_MIN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_valid: validation failed");
         return false;  // Reject ancient/unsupported versions
     }
     if (version > PROTOCOL_VERSION_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_valid: validation failed");
         return false;  // Reject unknown future versions
     }
 
@@ -596,47 +606,61 @@ bool protocol_validate_header(const msg_header_t* header)
 
     // Guard clause: Validate magic field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->magic, sizeof(uint32_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Check magic number
-    if (!is_magic_valid(header->magic))
+    if (!is_magic_valid(header->magic)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: is_magic_valid is NULL");
         return false;
+    }
 
     // Guard clause: Validate version field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->version, sizeof(uint8_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Check version
-    if (!is_version_valid(header->version))
+    if (!is_version_valid(header->version)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: is_version_valid is NULL");
         return false;
+    }
 
     // Guard clause: Validate message type field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->type, sizeof(msg_type_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Check message type
-    if (!is_type_valid(header->type))
+    if (!is_type_valid(header->type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: is_type_valid is NULL");
         return false;
+    }
 
     // Guard clause: Validate length field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->length, sizeof(uint32_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Check payload length
-    if (!is_payload_length_valid(header->length))
+    if (!is_payload_length_valid(header->length)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: is_payload_length_valid is NULL");
         return false;
+    }
 
     // Guard clause: Validate sequence field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->sequence, sizeof(uint32_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Validate checksum field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->checksum, sizeof(uint32_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_validate_header: nimcp_validate_integer_field is NULL");
         return false;
     }
 
@@ -815,8 +839,10 @@ static bool validate_event_serialize_inputs(const event_packet_t* packet, const 
 
     // Guard clause: Check buffer size
     uint32_t required = sizeof(event_packet_t) + packet->payload_length;
-    if (buffer_size < required)
+    if (buffer_size < required) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_event_serialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -867,6 +893,7 @@ int event_packet_serialize(const event_packet_t* packet, const void* payload, ui
 {
     // Step 1: Validate inputs
     if (!validate_event_serialize_inputs(packet, buffer, buffer_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_serialize: validate_event_serialize_inputs is NULL");
         return -1;
     }
 
@@ -919,8 +946,10 @@ static bool validate_event_deserialize_inputs(const uint8_t* buffer, uint32_t bu
         }
 
     // Guard clause: Check buffer size
-    if (buffer_size < sizeof(event_packet_t))
+    if (buffer_size < sizeof(event_packet_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_event_deserialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -954,8 +983,10 @@ static bool extract_event_payload(const uint8_t* buffer, void* payload, uint32_t
         }
 
     // Guard clause: Check payload size
-    if (payload_size < payload_length)
+    if (payload_size < payload_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_event_payload: validation failed");
         return false;
+    }
 
     memcpy(payload, buffer + sizeof(event_packet_t), payload_length);
     return true;
@@ -1111,22 +1142,30 @@ bool event_packet_validate(const event_packet_t* packet)
         }
 
     // Guard clause: Check version
-    if (!is_event_version_valid(packet))
+    if (!is_event_version_valid(packet)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_validate: is_event_version_valid is NULL");
         return false;
+    }
 
     uint8_t flags = EVENT_GET_FLAGS(packet);
 
     // Guard clause: Check required flags present
-    if (!has_required_event_flags(flags))
+    if (!has_required_event_flags(flags)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_validate: has_required_event_flags is NULL");
         return false;
+    }
 
     // Guard clause: Check flags mutually exclusive
-    if (!are_event_flags_exclusive(flags))
+    if (!are_event_flags_exclusive(flags)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_validate: are_event_flags_exclusive is NULL");
         return false;
+    }
 
     // Guard clause: Check payload length
-    if (packet->payload_length > MAX_PAYLOAD_SIZE)
+    if (packet->payload_length > MAX_PAYLOAD_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_packet_validate: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -1186,8 +1225,10 @@ static bool validate_control_serialize_inputs(const control_message_t* msg, cons
         }
 
     // Guard clause: Check buffer size
-    if (buffer_size < required_size)
+    if (buffer_size < required_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_control_serialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -1243,6 +1284,7 @@ int control_message_serialize(const control_message_t* msg, const void* params, 
 
     // Step 2: Validate inputs
     if (!validate_control_serialize_inputs(msg, buffer, buffer_size, required_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "control_message_serialize: validate_control_serialize_inputs is NULL");
         return -1;
     }
 
@@ -1295,8 +1337,10 @@ static bool validate_control_deserialize_inputs(const uint8_t* buffer, uint32_t 
         }
 
     // Guard clause: Check buffer size
-    if (buffer_size < sizeof(control_message_t))
+    if (buffer_size < sizeof(control_message_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_control_deserialize_inputs: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -1330,8 +1374,10 @@ static bool extract_control_params(const uint8_t* buffer, void* params, uint32_t
         }
 
     // Guard clause: Check param size
-    if (param_size < actual_param_size)
+    if (param_size < actual_param_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_control_params: validation failed");
         return false;
+    }
 
     memcpy(params, buffer + sizeof(control_message_t), actual_param_size);
     return true;
@@ -1424,10 +1470,14 @@ static bool is_control_type_valid(uint8_t msg_type)
  */
 static bool is_control_length_valid(uint32_t length)
 {
-    if (length < sizeof(control_message_t))
+    if (length < sizeof(control_message_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_control_length_valid: validation failed");
         return false;
-    if (length > MAX_PAYLOAD_SIZE)
+    }
+    if (length > MAX_PAYLOAD_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_control_length_valid: validation failed");
         return false;
+    }
     return true;
 }
 
@@ -1464,16 +1514,22 @@ bool control_message_validate(const control_message_t* msg)
         }
 
     // Guard clause: Check version
-    if (msg->version != PROTOCOL_VERSION)
+    if (msg->version != PROTOCOL_VERSION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "control_message_validate: validation failed");
         return false;
+    }
 
     // Guard clause: Check message type
-    if (!is_control_type_valid(msg->msg_type))
+    if (!is_control_type_valid(msg->msg_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "control_message_validate: is_control_type_valid is NULL");
         return false;
+    }
 
     // Guard clause: Check message length
-    if (!is_control_length_valid(msg->message_length))
+    if (!is_control_length_valid(msg->message_length)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "control_message_validate: is_control_length_valid is NULL");
         return false;
+    }
 
     return true;
 }
@@ -1540,12 +1596,14 @@ bool subscription_matches(const subscription_filter_t* filter, const event_packe
     // Check feature code with mask
     feature_code_t packet_code = EVENT_GET_FEATURE_CODE(packet);
     if (!feature_code_matches(packet_code, filter->feature_code, filter->feature_mask)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscription_matches: feature_code_matches is NULL");
         return false;
     }
 
     // Check confidence threshold
     float confidence = EVENT_CONFIDENCE_TO_FLOAT(packet->confidence);
     if (confidence < filter->confidence_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscription_matches: validation failed");
         return false;
     }
 

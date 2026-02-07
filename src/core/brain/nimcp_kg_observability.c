@@ -163,6 +163,7 @@ static uint64_t get_timestamp_ms_internal(void) {
  */
 static kg_metric_t* find_metric(kg_observability_t* obs, const char* name) {
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_metric: required parameter is NULL (obs, name)");
         return NULL;
     }
 
@@ -172,6 +173,7 @@ static kg_metric_t* find_metric(kg_observability_t* obs, const char* name) {
             return &obs->metrics[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_metric: operation failed");
     return NULL;
 }
 
@@ -180,6 +182,7 @@ static kg_metric_t* find_metric(kg_observability_t* obs, const char* name) {
  */
 static kg_health_check_t* find_health_check(kg_observability_t* obs, const char* component) {
     if (!obs || !component) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_health_check: required parameter is NULL (obs, component)");
         return NULL;
     }
 
@@ -189,6 +192,7 @@ static kg_health_check_t* find_health_check(kg_observability_t* obs, const char*
             return &obs->health_checks[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_health_check: operation failed");
     return NULL;
 }
 
@@ -260,6 +264,7 @@ kg_observability_t* kg_observability_create(const kg_observability_config_t* con
     obs->metrics = nimcp_calloc(obs->max_metrics, sizeof(kg_metric_t));
     if (!obs->metrics) {
         nimcp_free(obs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_observability_create: obs->metrics is NULL");
         return NULL;
     }
 
@@ -269,6 +274,7 @@ kg_observability_t* kg_observability_create(const kg_observability_config_t* con
     if (!obs->health_checks) {
         nimcp_free(obs->metrics);
         nimcp_free(obs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_observability_create: obs->health_checks is NULL");
         return NULL;
     }
 
@@ -280,6 +286,7 @@ kg_observability_t* kg_observability_create(const kg_observability_config_t* con
         nimcp_free(obs->health_checks);
         nimcp_free(obs->metrics);
         nimcp_free(obs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_observability_create: obs->mutex is NULL");
         return NULL;
     }
 
@@ -391,6 +398,7 @@ int kg_observability_stop(kg_observability_t* obs) {
 
 int kg_obs_register_metric(kg_observability_t* obs, const kg_metric_def_t* def) {
     if (!obs || !def || def->name[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_register_metric: required parameter is NULL (obs, def)");
         return -1;
     }
 
@@ -413,6 +421,7 @@ int kg_obs_register_metric(kg_observability_t* obs, const kg_metric_def_t* def) 
 
     if (slot < 0) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_register_metric: validation failed");
         return -1; /* No space */
     }
 
@@ -430,6 +439,7 @@ int kg_obs_register_metric(kg_observability_t* obs, const kg_metric_def_t* def) 
         metric->def.label_names = nimcp_calloc(def->label_count + 1, sizeof(char*));
         if (!metric->def.label_names) {
             nimcp_mutex_unlock(obs->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_obs_register_metric: metric->def is NULL");
             return -1;
         }
 
@@ -476,6 +486,7 @@ int kg_obs_counter_inc(
     (void)labels; /* TODO: implement per-label values */
 
     if (!obs || !name || value < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_counter_inc: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -484,6 +495,7 @@ int kg_obs_counter_inc(
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric || metric->def.type != KG_METRIC_COUNTER) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_counter_inc: metric is NULL");
         return -1;
     }
 
@@ -503,6 +515,7 @@ int kg_obs_gauge_set(
     (void)labels;
 
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_gauge_set: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -511,6 +524,7 @@ int kg_obs_gauge_set(
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric || metric->def.type != KG_METRIC_GAUGE) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_gauge_set: metric is NULL");
         return -1;
     }
 
@@ -530,6 +544,7 @@ int kg_obs_gauge_inc(
     (void)labels;
 
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_gauge_inc: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -538,6 +553,7 @@ int kg_obs_gauge_inc(
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric || metric->def.type != KG_METRIC_GAUGE) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_gauge_inc: metric is NULL");
         return -1;
     }
 
@@ -557,6 +573,7 @@ int kg_obs_histogram_observe(
     (void)labels;
 
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_histogram_observe: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -565,6 +582,7 @@ int kg_obs_histogram_observe(
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric || metric->def.type != KG_METRIC_HISTOGRAM) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_histogram_observe: metric is NULL");
         return -1;
     }
 
@@ -595,6 +613,7 @@ int kg_obs_summary_observe(
     (void)labels;
 
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_summary_observe: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -603,6 +622,7 @@ int kg_obs_summary_observe(
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric || metric->def.type != KG_METRIC_SUMMARY) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_summary_observe: metric is NULL");
         return -1;
     }
 
@@ -629,6 +649,7 @@ int kg_obs_get_metric(
     (void)labels;
 
     if (!obs || !name || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_get_metric: required parameter is NULL (obs, name, value)");
         return -1;
     }
 
@@ -637,6 +658,7 @@ int kg_obs_get_metric(
     kg_metric_t* metric = find_metric((kg_observability_t*)obs, name);
     if (!metric) {
         nimcp_mutex_unlock(((kg_observability_t*)obs)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_get_metric: metric is NULL");
         return -1;
     }
 
@@ -649,6 +671,7 @@ int kg_obs_get_metric(
 
 int kg_obs_unregister_metric(kg_observability_t* obs, const char* name) {
     if (!obs || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_unregister_metric: required parameter is NULL (obs, name)");
         return -1;
     }
 
@@ -657,6 +680,7 @@ int kg_obs_unregister_metric(kg_observability_t* obs, const char* name) {
     kg_metric_t* metric = find_metric(obs, name);
     if (!metric) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_unregister_metric: metric is NULL");
         return -1;
     }
 
@@ -697,6 +721,7 @@ int kg_obs_register_health_check(
     void* user_data
 ) {
     if (!obs || !component || !check_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_register_health_check: required parameter is NULL (obs, component, check_fn)");
         return -1;
     }
 
@@ -705,6 +730,7 @@ int kg_obs_register_health_check(
     /* Check for duplicate */
     if (find_health_check(obs, component)) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_register_health_check: validation failed");
         return -1;
     }
 
@@ -719,6 +745,7 @@ int kg_obs_register_health_check(
 
     if (slot < 0) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_obs_register_health_check: validation failed");
         return -1;
     }
 
@@ -740,6 +767,7 @@ int kg_obs_unregister_health_check(
     const char* component
 ) {
     if (!obs || !component) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_unregister_health_check: required parameter is NULL (obs, component)");
         return -1;
     }
 
@@ -748,6 +776,7 @@ int kg_obs_unregister_health_check(
     kg_health_check_t* check = find_health_check(obs, component);
     if (!check) {
         nimcp_mutex_unlock(obs->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_unregister_health_check: check is NULL");
         return -1;
     }
 
@@ -765,6 +794,7 @@ int kg_obs_get_health(
     uint32_t* count
 ) {
     if (!obs || !results || !count || *count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_get_health: required parameter is NULL (obs, results, count)");
         return -1;
     }
 
@@ -810,6 +840,7 @@ int kg_obs_get_component_health(
     kg_health_result_t* result
 ) {
     if (!obs || !component || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_get_component_health: required parameter is NULL (obs, component, result)");
         return -1;
     }
 
@@ -818,6 +849,7 @@ int kg_obs_get_component_health(
     kg_health_check_t* check = find_health_check((kg_observability_t*)obs, component);
     if (!check) {
         nimcp_mutex_unlock(((kg_observability_t*)obs)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_get_component_health: check is NULL");
         return -1;
     }
 
@@ -842,6 +874,7 @@ int kg_obs_get_component_health(
 
 bool kg_obs_is_live(const kg_observability_t* obs) {
     if (!obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_is_live: obs is NULL");
         return false;
     }
 
@@ -851,6 +884,7 @@ bool kg_obs_is_live(const kg_observability_t* obs) {
 
 bool kg_obs_is_ready(const kg_observability_t* obs) {
     if (!obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_is_ready: obs is NULL");
         return false;
     }
 
@@ -887,6 +921,7 @@ kg_trace_span_t* kg_obs_start_span(
     const kg_trace_span_t* parent
 ) {
     if (!obs || !operation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_start_span: required parameter is NULL (obs, operation)");
         return NULL;
     }
 
@@ -894,6 +929,7 @@ kg_trace_span_t* kg_obs_start_span(
     if (obs->config.trace_sample_rate < 1.0f) {
         float sample = (float)rand() / (float)RAND_MAX;
         if (sample > obs->config.trace_sample_rate) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_start_span: validation failed");
             return NULL; /* Not sampled */
         }
     }
@@ -924,6 +960,7 @@ kg_trace_span_t* kg_obs_start_span(
 
 int kg_obs_end_span(kg_observability_t* obs, kg_trace_span_t* span) {
     if (!obs || !span) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_end_span: required parameter is NULL (obs, span)");
         return -1;
     }
 
@@ -936,6 +973,7 @@ int kg_obs_end_span(kg_observability_t* obs, kg_trace_span_t* span) {
 
 int kg_obs_add_span_tag(kg_trace_span_t* span, const char* key, const char* value) {
     if (!span || !key || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_add_span_tag: required parameter is NULL (span, key, value)");
         return -1;
     }
 
@@ -965,6 +1003,7 @@ int kg_obs_add_span_event(
     (void)obs;
 
     if (!span || !event_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_add_span_event: required parameter is NULL (span, event_name)");
         return -1;
     }
 
@@ -1024,6 +1063,7 @@ int kg_obs_extract_trace_context(
     char* span_id
 ) {
     if (!span || !trace_id || !span_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_extract_trace_context: required parameter is NULL (span, trace_id, span_id)");
         return -1;
     }
 
@@ -1043,6 +1083,7 @@ kg_trace_span_t* kg_obs_create_span_from_context(
     const char* parent_span_id
 ) {
     if (!obs || !operation || !trace_id || !parent_span_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_create_span_from_context: required parameter is NULL (obs, operation, trace_id, parent_span_id)");
         return NULL;
     }
 
@@ -1092,10 +1133,12 @@ int kg_obs_send_alert_with_labels(
     (void)label_count;
 
     if (!obs || !alert_name || !severity || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_send_alert_with_labels: required parameter is NULL (obs, alert_name, severity, message)");
         return -1;
     }
 
     if (!obs->config.enable_alerting || obs->config.alertmanager_url[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_send_alert_with_labels: obs->config is NULL");
         return -1;
     }
 
@@ -1108,10 +1151,12 @@ int kg_obs_send_alert_with_labels(
 
 int kg_obs_resolve_alert(kg_observability_t* obs, const char* alert_name) {
     if (!obs || !alert_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_resolve_alert: required parameter is NULL (obs, alert_name)");
         return -1;
     }
 
     if (!obs->config.enable_alerting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_obs_resolve_alert: obs->config is NULL");
         return -1;
     }
 
@@ -1152,6 +1197,7 @@ int kg_metric_type_from_string(const char* str) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_metric_type_from_string: validation failed");
     return -1;
 }
 

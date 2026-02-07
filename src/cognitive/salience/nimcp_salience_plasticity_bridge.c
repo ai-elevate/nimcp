@@ -141,6 +141,7 @@ static salience_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -159,6 +160,7 @@ static salience_feature_learning_t* find_feature(
             return &bridge->features[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "find_feature: validation failed");
     return NULL;
 }
 
@@ -252,6 +254,7 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(salience_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -260,6 +263,7 @@ salience_plasticity_bridge_t* salience_plasticity_create(
     if (!bridge->features) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_plasticity_create: bridge->features is NULL");
         return NULL;
     }
 
@@ -284,7 +288,10 @@ void salience_plasticity_destroy(salience_plasticity_bridge_t* bridge) {
 }
 
 int salience_plasticity_reset(salience_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -316,10 +323,19 @@ int salience_plasticity_register_synapse(
     uint32_t feature_index,
     float initial_weight
 ) {
-    if (!bridge) return -1;
-    if (bridge->num_synapses >= bridge->max_synapses) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
+    if (bridge->num_synapses >= bridge->max_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_plasticity_register_synapse: capacity exceeded");
+        return -1;
+    }
 
-    if (find_synapse(bridge, synapse_id)) return -1;
+    if (find_synapse(bridge, synapse_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_plasticity_register_synapse: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -345,7 +361,10 @@ int salience_plasticity_unregister_synapse(
     salience_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -367,6 +386,7 @@ int salience_plasticity_unregister_synapse(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
@@ -375,14 +395,20 @@ int salience_plasticity_get_synapse(
     uint32_t synapse_id,
     salience_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
 
 
     salience_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_synapse: found is NULL");
+        return -1;
+    }
 
     *synapse = *found;
     return 0;
@@ -398,7 +424,10 @@ int salience_plasticity_attention_event(
     float attention_strength,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_attention_event: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -465,7 +494,10 @@ int salience_plasticity_attention_feedback(
     bool was_correct,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_attention_feedback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -538,7 +570,10 @@ int salience_plasticity_feature_exposure(
     float intensity,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_feature_exposure: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -618,7 +653,10 @@ int salience_plasticity_novelty_response(
     bool rewarded,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_novelty_response: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_novelty_seeking) return 0;
 
@@ -668,7 +706,10 @@ int salience_plasticity_reward(
     float reward,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_eligibility) return 0;
 
@@ -736,7 +777,10 @@ int salience_plasticity_update(
     salience_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     // Decay eligibility traces
     /* Phase 8: Heartbeat at operation start */
@@ -836,7 +880,10 @@ int salience_plasticity_update(
 }
 
 int salience_plasticity_consolidate(salience_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -926,14 +973,20 @@ int salience_plasticity_get_feature_learning(
     uint32_t feature_index,
     salience_feature_learning_t* learning
 ) {
-    if (!bridge || !learning) return -1;
+    if (!bridge || !learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_feature_learning: required parameter is NULL (bridge, learning)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
 
 
     salience_feature_learning_t* feature = find_feature(bridge, feature_index);
-    if (!feature) return -1;
+    if (!feature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_feature_learning: feature is NULL");
+        return -1;
+    }
 
     *learning = *feature;
     return 0;
@@ -947,7 +1000,10 @@ int salience_plasticity_get_state(
     const salience_plasticity_bridge_t* bridge,
     salience_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -967,7 +1023,10 @@ int salience_plasticity_get_stats(
     const salience_plasticity_bridge_t* bridge,
     salience_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -995,7 +1054,10 @@ int salience_plasticity_set_weight_callback(
     salience_weight_change_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -1011,7 +1073,10 @@ int salience_plasticity_set_habituation_callback(
     salience_habituation_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_set_habituation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -1027,8 +1092,14 @@ int salience_plasticity_set_habituation_callback(
 //=============================================================================
 
 int salience_plasticity_connect_bio_async(salience_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_connect_bio_async: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -1039,7 +1110,10 @@ int salience_plasticity_connect_bio_async(salience_plasticity_bridge_t* bridge) 
 }
 
 int salience_plasticity_disconnect_bio_async(salience_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
@@ -1050,7 +1124,10 @@ int salience_plasticity_disconnect_bio_async(salience_plasticity_bridge_t* bridg
 }
 
 bool salience_plasticity_is_bio_async_connected(const salience_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     salience_plasticity_bridge_heartbeat("salience_pla_salience_plasticity_", 0.0f);
 

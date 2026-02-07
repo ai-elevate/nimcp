@@ -313,7 +313,10 @@ spatial_config_t spatial_default_config(void) {
 }
 
 bool spatial_validate_config(const spatial_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_validate_con", 0.0f);
@@ -321,16 +324,19 @@ bool spatial_validate_config(const spatial_config_t* config) {
 
     if (config->rotation_rate_deg_ms <= 0.0f) {
         set_spatial_error("Rotation rate must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_validate_config: validation failed");
         return false;
     }
 
     if (config->matching_threshold < 0.0f || config->matching_threshold > 1.0f) {
         set_spatial_error("Matching threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_validate_config: validation failed");
         return false;
     }
 
     if (config->max_objects == 0 || config->max_objects > 1000000) {
         set_spatial_error("Max objects must be in [1, 1000000]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_validate_config: config->max_objects is zero");
         return false;
     }
 
@@ -374,6 +380,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
     if (!sr->objects) {
         set_spatial_error("Failed to allocate object array");
         nimcp_free(sr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_reasoning_create_custom: sr->objects is NULL");
         return NULL;
     }
 
@@ -384,6 +391,7 @@ spatial_reasoning_t* spatial_reasoning_create_custom(const spatial_config_t* con
         set_spatial_error("Failed to create mutex");
         nimcp_free(sr->objects);
         nimcp_free(sr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_reasoning_create_custom: sr->lock is NULL");
         return NULL;
     }
 
@@ -848,7 +856,10 @@ uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* obj
 }
 
 int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
-    if (!sr || object_id == 0) return -1;
+    if (!sr || object_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_remove_object: sr is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_remove_objec", 0.0f);
@@ -903,7 +914,10 @@ int spatial_remove_object(spatial_reasoning_t* sr, uint32_t object_id) {
 }
 
 int spatial_update_position(spatial_reasoning_t* sr, uint32_t object_id, vec3_t new_position) {
-    if (!sr || object_id == 0) return -1;
+    if (!sr || object_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_update_position: sr is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_update_posit", 0.0f);
@@ -928,6 +942,7 @@ int spatial_update_position(spatial_reasoning_t* sr, uint32_t object_id, vec3_t 
 
     if (!obj) {
         nimcp_mutex_unlock(sr->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_update_position: obj is NULL");
         return -1;
     }
 
@@ -1175,7 +1190,10 @@ void spatial_attention_destroy(spatial_attention_t* attention) {
 }
 
 int spatial_attention_set_focus(spatial_attention_t* attention, vec3_t focus, float spread) {
-    if (!attention || spread <= 0.0f) return -1;
+    if (!attention || spread <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_attention_set_focus: attention is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_attention_se", 0.0f);
@@ -1240,7 +1258,10 @@ float spatial_attention_at(const spatial_attention_t* attention, vec3_t pos) {
 }
 
 int spatial_attention_update(spatial_attention_t* attention, float decay_rate) {
-    if (!attention) return -1;
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_attention_update: attention is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_attention_up", 0.0f);
@@ -1260,7 +1281,10 @@ int spatial_attention_update(spatial_attention_t* attention, float decay_rate) {
  * ============================================================================ */
 
 int spatial_set_inflammation(spatial_reasoning_t* sr, float level) {
-    if (!sr) return -1;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_set_inflammation: sr is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_set_inflamma", 0.0f);
@@ -1275,7 +1299,10 @@ int spatial_set_inflammation(spatial_reasoning_t* sr, float level) {
 }
 
 int spatial_set_fatigue(spatial_reasoning_t* sr, float level) {
-    if (!sr) return -1;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_set_fatigue: sr is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     spatial_reasoning_heartbeat("spatial_reas_spatial_set_fatigue", 0.0f);

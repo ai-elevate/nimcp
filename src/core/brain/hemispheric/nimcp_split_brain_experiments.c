@@ -132,21 +132,36 @@ split_brain_session_config_t split_brain_session_default_config(void) {
 }
 
 bool split_brain_validate_config(const split_brain_session_config_t* config) {
-    if (!config) return false;
-
-    if (config->num_trials == 0 || config->num_trials > SPLIT_BRAIN_MAX_TRIALS) {
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_validate_config: config is NULL");
         return false;
     }
 
-    if (config->stimulus_duration_ms < 0.0f) return false;
-    if (config->response_timeout_ms < 0.0f) return false;
-    if (config->inter_trial_interval_ms < 0.0f) return false;
+    if (config->num_trials == 0 || config->num_trials > SPLIT_BRAIN_MAX_TRIALS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: config->num_trials is zero");
+        return false;
+    }
+
+    if (config->stimulus_duration_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
+        return false;
+    }
+    if (config->response_timeout_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
+        return false;
+    }
+    if (config->inter_trial_interval_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
+        return false;
+    }
 
     if (config->callosal_strength < 0.0f || config->callosal_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
 
     if (config->cross_cue_threshold < 0.0f || config->cross_cue_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_validate_config: validation failed");
         return false;
     }
 
@@ -293,7 +308,10 @@ void split_brain_session_destroy(split_brain_session_t* session) {
 }
 
 int split_brain_session_start(split_brain_session_t* session) {
-    if (!session) return -1;
+    if (!session) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_start: session is NULL");
+        return -1;
+    }
 
     if (session->is_running) {
         NIMCP_LOGGING_WARN("Session already running");
@@ -335,7 +353,10 @@ int split_brain_session_start(split_brain_session_t* session) {
 }
 
 int split_brain_session_pause(split_brain_session_t* session) {
-    if (!session || !session->is_running) return -1;
+    if (!session || !session->is_running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_pause: required parameter is NULL (session, session->is_running)");
+        return -1;
+    }
 
     session->is_paused = true;
     session->pause_time = get_time_ms();
@@ -345,7 +366,10 @@ int split_brain_session_pause(split_brain_session_t* session) {
 }
 
 int split_brain_session_resume(split_brain_session_t* session) {
-    if (!session || !session->is_running || !session->is_paused) return -1;
+    if (!session || !session->is_running || !session->is_paused) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_resume: required parameter is NULL (session, session->is_running, session->is_paused)");
+        return -1;
+    }
 
     session->is_paused = false;
 
@@ -354,7 +378,10 @@ int split_brain_session_resume(split_brain_session_t* session) {
 }
 
 int split_brain_session_end(split_brain_session_t* session) {
-    if (!session) return -1;
+    if (!session) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_end: session is NULL");
+        return -1;
+    }
 
     // Restore original callosum state
     split_brain_restore_callosum(session);
@@ -462,7 +489,10 @@ int split_brain_trial_set_stimulus(
     const split_brain_stimulus_t* stimulus,
     hemisphere_id_t hemisphere
 ) {
-    if (!trial || !stimulus) return -1;
+    if (!trial || !stimulus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_trial_set_stimulus: required parameter is NULL (trial, stimulus)");
+        return -1;
+    }
 
     split_brain_stimulus_t* target = (hemisphere == HEMISPHERE_LEFT) ?
                                       &trial->left_stimulus : &trial->right_stimulus;
@@ -472,7 +502,10 @@ int split_brain_trial_set_stimulus(
     // Copy data if provided
     if (stimulus->data && stimulus->data_size > 0) {
         target->data = nimcp_malloc(stimulus->data_size * sizeof(float));
-        if (!target->data) return -1;
+        if (!target->data) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "split_brain_trial_set_stimulus: target->data is NULL");
+            return -1;
+        }
         memcpy(target->data, stimulus->data, stimulus->data_size * sizeof(float));
     }
 
@@ -484,7 +517,10 @@ int split_brain_trial_set_chimeric(
     const split_brain_stimulus_t* left_vf_stimulus,
     const split_brain_stimulus_t* right_vf_stimulus
 ) {
-    if (!trial) return -1;
+    if (!trial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_trial_set_chimeric: trial is NULL");
+        return -1;
+    }
 
     trial->use_chimeric = true;
 
@@ -506,13 +542,19 @@ int split_brain_trial_set_expected(
     size_t size,
     hemisphere_id_t hemisphere
 ) {
-    if (!trial || !expected || size == 0) return -1;
+    if (!trial || !expected || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_trial_set_expected: required parameter is NULL (trial, expected)");
+        return -1;
+    }
 
     float** target = (hemisphere == HEMISPHERE_LEFT) ?
                      &trial->expected_left_response : &trial->expected_right_response;
 
     *target = nimcp_malloc(size * sizeof(float));
-    if (!*target) return -1;
+    if (!*target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_trial_set_expected: validation failed");
+        return -1;
+    }
 
     memcpy(*target, expected, size * sizeof(float));
     trial->expected_size = size;
@@ -524,7 +566,10 @@ int split_brain_trial_run(
     split_brain_session_t* session,
     split_brain_trial_t* trial
 ) {
-    if (!session || !trial || !session->brain) return -1;
+    if (!session || !trial || !session->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_trial_run: required parameter is NULL (session, trial, session->brain)");
+        return -1;
+    }
 
     trial->start_time = get_time_ms();
 
@@ -534,6 +579,7 @@ int split_brain_trial_run(
 
     if (!left_hemi || !right_hemi) {
         NIMCP_LOGGING_ERROR("Cannot access hemispheres");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_trial_run: required parameter is NULL (left_hemi, right_hemi)");
         return -1;
     }
 
@@ -659,7 +705,10 @@ int split_brain_trial_run(
 }
 
 int split_brain_session_run_all_trials(split_brain_session_t* session) {
-    if (!session || !session->is_running) return -1;
+    if (!session || !session->is_running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_run_all_trials: required parameter is NULL (session, session->is_running)");
+        return -1;
+    }
 
     int completed = 0;
 
@@ -684,7 +733,10 @@ const split_brain_trial_t* split_brain_session_get_trial(
     const split_brain_session_t* session,
     uint32_t trial_number
 ) {
-    if (!session || trial_number >= session->current_trial) return NULL;
+    if (!session || trial_number >= session->current_trial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_get_trial: session is NULL");
+        return NULL;
+    }
     return &session->trials[trial_number];
 }
 
@@ -696,7 +748,10 @@ bool split_brain_detect_cross_cueing(
     split_brain_session_t* session,
     split_brain_trial_t* trial
 ) {
-    if (!session || !trial) return false;
+    if (!session || !trial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_detect_cross_cueing: required parameter is NULL (session, trial)");
+        return false;
+    }
 
     // In true split-brain, hemispheres should not share information
     // Cross-cueing occurs when information leaks via:
@@ -709,6 +764,7 @@ bool split_brain_detect_cross_cueing(
     // callosal condition, cross-cueing may have occurred
 
     if (trial->callosal_state != CALLOSAL_STATE_SEVERED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_detect_cross_cueing: validation failed");
         return false;  // Cross-cueing only relevant in split-brain
     }
 
@@ -724,6 +780,7 @@ bool split_brain_detect_cross_cueing(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "split_brain_detect_cross_cueing: validation failed");
     return false;
 }
 
@@ -741,7 +798,10 @@ bool split_brain_analyze_confabulation(
     split_brain_trial_t* trial,
     float* confabulation_score
 ) {
-    if (!session || !trial) return false;
+    if (!session || !trial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_analyze_confabulation: required parameter is NULL (session, trial)");
+        return false;
+    }
 
     // Confabulation occurs when left hemisphere (verbal) provides
     // a plausible but incorrect explanation for right hemisphere actions
@@ -797,7 +857,10 @@ bool split_brain_detect_conflict(
     const split_brain_trial_t* trial,
     float threshold
 ) {
-    if (!trial) return false;
+    if (!trial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_detect_conflict: trial is NULL");
+        return false;
+    }
 
     float agreement = split_brain_compute_agreement(trial);
     return agreement < threshold;
@@ -811,7 +874,10 @@ int split_brain_apply_callosal_condition(
     split_brain_session_t* session,
     callosal_condition_t condition
 ) {
-    if (!session || !session->brain) return -1;
+    if (!session || !session->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_apply_callosal_condition: required parameter is NULL (session, session->brain)");
+        return -1;
+    }
 
     corpus_callosum_t* callosum = hemispheric_brain_get_callosum(session->brain);
 
@@ -866,10 +932,16 @@ int split_brain_set_callosal_strength(
     split_brain_session_t* session,
     float strength
 ) {
-    if (!session || !session->brain) return -1;
+    if (!session || !session->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_set_callosal_strength: required parameter is NULL (session, session->brain)");
+        return -1;
+    }
 
     corpus_callosum_t* callosum = hemispheric_brain_get_callosum(session->brain);
-    if (!callosum) return -1;
+    if (!callosum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_set_callosal_strength: callosum is NULL");
+        return -1;
+    }
 
     return callosum_set_connection_strength(callosum, strength);
 }
@@ -879,16 +951,25 @@ int split_brain_block_channel(
     callosum_channel_type_t channel,
     bool block
 ) {
-    if (!session || !session->brain) return -1;
+    if (!session || !session->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_block_channel: required parameter is NULL (session, session->brain)");
+        return -1;
+    }
 
     corpus_callosum_t* callosum = hemispheric_brain_get_callosum(session->brain);
-    if (!callosum) return -1;
+    if (!callosum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_block_channel: callosum is NULL");
+        return -1;
+    }
 
     return callosum_set_channel_enabled(callosum, channel, !block);
 }
 
 int split_brain_restore_callosum(split_brain_session_t* session) {
-    if (!session || !session->brain) return -1;
+    if (!session || !session->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_restore_callosum: required parameter is NULL (session, session->brain)");
+        return -1;
+    }
 
     // Restore connection state
     if (session->original_callosum_connected) {
@@ -923,7 +1004,10 @@ int split_brain_session_get_stats(
     const split_brain_session_t* session,
     split_brain_session_stats_t* stats
 ) {
-    if (!session || !stats) return -1;
+    if (!session || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_session_get_stats: required parameter is NULL (session, stats)");
+        return -1;
+    }
 
     *stats = session->stats;
     return 0;
@@ -971,7 +1055,10 @@ int split_brain_analyze_reaction_times(
     float* right_rt,
     float* rt_difference
 ) {
-    if (!session) return -1;
+    if (!session) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_analyze_reaction_times: session is NULL");
+        return -1;
+    }
 
     float l_sum = 0.0f, r_sum = 0.0f;
     uint32_t l_count = 0, r_count = 0;
@@ -1004,7 +1091,10 @@ int split_brain_generate_report(
     char* buffer,
     size_t buffer_size
 ) {
-    if (!session || !buffer || buffer_size == 0) return -1;
+    if (!session || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_brain_generate_report: required parameter is NULL (session, buffer)");
+        return -1;
+    }
 
     int len = snprintf(buffer, buffer_size,
         "Split-Brain Experiment Report\n"

@@ -135,7 +135,10 @@ bool elig_uq_bridge_validate_config(const elig_uq_bridge_config_t* config) {
 
     /* Validate ratio bounds */
     if (config->ltp_ltd_ratio_min < 0.0f) return false;
-    if (config->ltp_ltd_ratio_max <= config->ltp_ltd_ratio_min) return false;
+    if (config->ltp_ltd_ratio_max <= config->ltp_ltd_ratio_min) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_uq_bridge_validate_config: validation failed");
+        return false;
+    }
 
     /* Validate thresholds */
     if (config->pool_exhaustion_threshold < 0.0f ||
@@ -168,6 +171,7 @@ elig_uq_bridge_t elig_uq_bridge_create(const elig_uq_bridge_config_t* config) {
 
     if (!elig_uq_bridge_validate_config(&bridge->config)) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_create: elig_uq_bridge_validate_config is NULL");
         return NULL;
     }
 
@@ -823,6 +827,7 @@ int elig_uq_feedback_loop_tick(elig_uq_bridge_t bridge,
 
     /* 1. Evaluate current metrics */
     if (elig_uq_evaluate_metrics(bridge, &fwd) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -1087,17 +1092,20 @@ bool elig_uq_bridge_verify(const elig_uq_bridge_t bridge) {
     /* Check coherence bounds */
     if (bridge->state.utils_quantum_coherence < 0.0f ||
         bridge->state.utils_quantum_coherence > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_verify: bridge->initialized is NULL");
         return false;
     }
 
     /* Check stability bounds */
     if (bridge->state.stability_metric < 0.0f ||
         bridge->state.stability_metric > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_uq_bridge_verify: operation failed");
         return false;
     }
 
     /* Check dt is positive */
     if (bridge->state.current_optimized_dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_uq_bridge_verify: validation failed");
         return false;
     }
 

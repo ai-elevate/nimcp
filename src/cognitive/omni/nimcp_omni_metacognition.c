@@ -281,6 +281,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     ctx->self_model = (omni_self_model_t*)nimcp_malloc(sizeof(omni_self_model_t));
     if (!ctx->self_model) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_metacog_create: ctx->self_model is NULL");
         return NULL;
     }
 
@@ -288,6 +289,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     if (omni_metacog_init_self_model(ctx) != NIMCP_SUCCESS) {
         nimcp_free(ctx->self_model);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "omni_metacog_create: validation failed");
         return NULL;
     }
 
@@ -296,6 +298,7 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     if (!ctx->mutex) {
         nimcp_free(ctx->self_model);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_metacog_create: ctx->mutex is NULL");
         return NULL;
     }
 

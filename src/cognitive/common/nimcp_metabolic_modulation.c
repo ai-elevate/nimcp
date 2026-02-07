@@ -383,7 +383,10 @@ void metabolic_multipliers_tensor_destroy(metabolic_multipliers_tensor_t* mult) 
  * ============================================================================ */
 
 int metabolic_multipliers_tensor_init_default(metabolic_multipliers_tensor_t* mult) {
-    if (!mult || !mult->multipliers) return -1;
+    if (!mult || !mult->multipliers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_multipliers_tensor_init_default: required parameter is NULL (mult, mult->multipliers)");
+        return -1;
+    }
 
     /* Default multipliers: [1.0, 1.1, 1.0, 0.9] */
     /* Phase 8: Heartbeat at operation start */
@@ -408,6 +411,7 @@ int metabolic_multipliers_tensor_init_default(metabolic_multipliers_tensor_t* mu
 
             size_t flat_idx = (mult->batch_size == 1) ? j : (i * 4 + j);
             if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, defaults[j]) != 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_multipliers_tensor_init_default: validation failed");
                 return -1;
             }
         }
@@ -423,8 +427,14 @@ int metabolic_multipliers_tensor_set_region(
     float fatigue_primary,
     float fatigue_secondary
 ) {
-    if (!mult || !mult->multipliers) return -1;
-    if (region_idx >= mult->batch_size) return -1;
+    if (!mult || !mult->multipliers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_multipliers_tensor_set_region: required parameter is NULL (mult, mult->multipliers)");
+        return -1;
+    }
+    if (region_idx >= mult->batch_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_multipliers_tensor_set_region: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_multiplier", 0.0f);
@@ -441,6 +451,7 @@ int metabolic_multipliers_tensor_set_region(
 
         size_t flat_idx = (mult->batch_size == 1) ? j : (region_idx * 4 + j);
         if (nimcp_tensor_set_flat(mult->multipliers, flat_idx, values[j]) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_multipliers_tensor_set_region: validation failed");
             return -1;
         }
     }
@@ -448,7 +459,10 @@ int metabolic_multipliers_tensor_set_region(
 }
 
 int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects) {
-    if (!effects || !effects->effects) return -1;
+    if (!effects || !effects->effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_effects_tensor_init_full: required parameter is NULL (effects, effects->effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
@@ -463,6 +477,7 @@ int metabolic_effects_tensor_init_full(metabolic_effects_tensor_t* effects) {
         }
 
         if (nimcp_tensor_set_flat(effects->effects, i, 1.0) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_effects_tensor_init_full: validation failed");
             return -1;
         }
     }
@@ -561,7 +576,10 @@ int metabolic_compute_effects_tensor(
 }
 
 int metabolic_compute_overall_capacity_tensor(metabolic_effects_tensor_t* effects) {
-    if (!effects || !effects->effects) return -1;
+    if (!effects || !effects->effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_compute_overall_capacity_tensor: required parameter is NULL (effects, effects->effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_compute_ov", 0.0f);
@@ -601,8 +619,14 @@ int metabolic_effects_tensor_to_scalar(
     uint32_t region_idx,
     metabolic_effects_t* scalar_effects
 ) {
-    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
-    if (region_idx >= tensor_effects->batch_size) return -1;
+    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_effects_tensor_to_scalar: required parameter is NULL (tensor_effects, tensor_effects->effects, scalar_effects)");
+        return -1;
+    }
+    if (region_idx >= tensor_effects->batch_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_effects_tensor_to_scalar: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
@@ -629,8 +653,14 @@ int metabolic_effects_scalar_to_tensor(
     uint32_t region_idx,
     const metabolic_effects_t* scalar_effects
 ) {
-    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) return -1;
-    if (region_idx >= tensor_effects->batch_size) return -1;
+    if (!tensor_effects || !tensor_effects->effects || !scalar_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_effects_scalar_to_tensor: required parameter is NULL (tensor_effects, tensor_effects->effects, scalar_effects)");
+        return -1;
+    }
+    if (region_idx >= tensor_effects->batch_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_effects_scalar_to_tensor: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_sc", 0.0f);
@@ -675,9 +705,18 @@ int metabolic_effects_tensor_set(
     metabolic_effect_index_t effect_idx,
     float value
 ) {
-    if (!effects || !effects->effects) return -1;
-    if (region_idx >= effects->batch_size) return -1;
-    if (effect_idx >= METABOLIC_EFFECT_COUNT) return -1;
+    if (!effects || !effects->effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_effects_tensor_set: required parameter is NULL (effects, effects->effects)");
+        return -1;
+    }
+    if (region_idx >= effects->batch_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_effects_tensor_set: capacity exceeded");
+        return -1;
+    }
+    if (effect_idx >= METABOLIC_EFFECT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "metabolic_effects_tensor_set: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_effects_te", 0.0f);
@@ -696,7 +735,10 @@ metabolic_input_tensor_t* metabolic_input_tensor_from_scalar(
 
 
     metabolic_input_tensor_t* input = metabolic_input_tensor_create(1);
-    if (!input) return NULL;
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_input_tensor_from_scalar: input is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_set_flat(input->atp_levels, 0, atp_level);
     nimcp_tensor_set_flat(input->metabolic_capacities, 0, metabolic_capacity);
@@ -710,8 +752,14 @@ int metabolic_input_tensor_set_region(
     float atp_level,
     float metabolic_capacity
 ) {
-    if (!input || !input->atp_levels || !input->metabolic_capacities) return -1;
-    if (region_idx >= input->batch_size) return -1;
+    if (!input || !input->atp_levels || !input->metabolic_capacities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_input_tensor_set_region: required parameter is NULL (input, input->atp_levels, input->metabolic_capacities)");
+        return -1;
+    }
+    if (region_idx >= input->batch_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_input_tensor_set_region: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metabolic_modulation_heartbeat("metabolic_mo_metabolic_input_tens", 0.0f);

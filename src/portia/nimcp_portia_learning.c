@@ -54,6 +54,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_learning)
 static habituation_entry_t* find_habituation_entry(portia_learning_state_t* state,
                                                     uint32_t stimulus_id) {
     if (!state || !state->habituation_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (state, state->habituation_table)");
         return NULL;
     }
 
@@ -63,6 +64,7 @@ static habituation_entry_t* find_habituation_entry(portia_learning_state_t* stat
             return &state->habituation_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
     return NULL;
 }
 
@@ -73,6 +75,7 @@ static association_entry_t* find_association_entry(portia_learning_state_t* stat
                                                     uint32_t stimulus_id,
                                                     uint32_t response_id) {
     if (!state || !state->association_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (state, state->association_table)");
         return NULL;
     }
 
@@ -83,6 +86,7 @@ static association_entry_t* find_association_entry(portia_learning_state_t* stat
             return &state->association_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
     return NULL;
 }
 
@@ -91,6 +95,7 @@ static association_entry_t* find_association_entry(portia_learning_state_t* stat
  */
 static habituation_entry_t* find_lru_habituation_entry(portia_learning_state_t* state) {
     if (!state || !state->habituation_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_lru_habituation_entry: required parameter is NULL (state, state->habituation_table)");
         return NULL;
     }
 
@@ -112,6 +117,7 @@ static habituation_entry_t* find_lru_habituation_entry(portia_learning_state_t* 
  */
 static association_entry_t* find_lru_association_entry(portia_learning_state_t* state) {
     if (!state || !state->association_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_lru_association_entry: required parameter is NULL (state, state->association_table)");
         return NULL;
     }
 
@@ -133,6 +139,7 @@ static association_entry_t* find_lru_association_entry(portia_learning_state_t* 
  */
 static habituation_entry_t* find_empty_habituation_slot(portia_learning_state_t* state) {
     if (!state || !state->habituation_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_habituation_slot: required parameter is NULL (state, state->habituation_table)");
         return NULL;
     }
 
@@ -141,6 +148,7 @@ static habituation_entry_t* find_empty_habituation_slot(portia_learning_state_t*
             return &state->habituation_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_habituation_slot: state->habituation_table is NULL");
     return NULL;
 }
 
@@ -149,6 +157,7 @@ static habituation_entry_t* find_empty_habituation_slot(portia_learning_state_t*
  */
 static association_entry_t* find_empty_association_slot(portia_learning_state_t* state) {
     if (!state || !state->association_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_association_slot: required parameter is NULL (state, state->association_table)");
         return NULL;
     }
 
@@ -157,6 +166,7 @@ static association_entry_t* find_empty_association_slot(portia_learning_state_t*
             return &state->association_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_association_slot: state->association_table is NULL");
     return NULL;
 }
 
@@ -169,6 +179,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
     // Validate config pointer
     if (config && !bbb_validate_pointer(NULL, config, sizeof(portia_learning_config_t), &result)) {
         LOG_ERROR("Invalid learning configuration pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_init: bbb_validate_pointer is NULL");
         return NULL;
     }
 
@@ -206,6 +217,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
     if (!state->habituation_table) {
         LOG_ERROR("Failed to allocate habituation table");
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_learning_init: state->habituation_table is NULL");
         return NULL;
     }
     state->habituation_capacity = hab_capacity;
@@ -217,6 +229,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
         LOG_ERROR("Failed to allocate association table");
         nimcp_free(state->habituation_table);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_learning_init: state->association_table is NULL");
         return NULL;
     }
     state->association_capacity = assoc_capacity;
@@ -240,6 +253,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
         nimcp_free(state->association_table);
         nimcp_free(state->habituation_table);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_learning_init: state->mutex is NULL");
         return NULL;
     }
     if (nimcp_platform_mutex_init(state->mutex, false) != 0) {
@@ -247,6 +261,7 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
         nimcp_free(state->association_table);
         nimcp_free(state->habituation_table);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_learning_init: validation failed");
         return NULL;
     }
 
@@ -330,11 +345,13 @@ int portia_learning_set_mode(portia_learning_state_t* state, portia_learning_mod
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_set_mode: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
         return -1;
     }
 
@@ -362,11 +379,13 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_set_mode: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
         return -1;
     }
 
@@ -411,6 +430,7 @@ int portia_learning_habituate(portia_learning_state_t* state, uint32_t stimulus_
             if (!entry) {
                 nimcp_platform_mutex_unlock(state->mutex);
                 LOG_ERROR("No habituation entry available for eviction");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: entry is NULL");
                 return -1;
             }
             LOG_DEBUG("Evicting habituation entry: stimulus=%u", entry->stimulus_id);
@@ -449,11 +469,13 @@ int portia_learning_sensitize(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_set_mode: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
         return -1;
     }
 
@@ -516,11 +538,13 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_set_mode: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_set_mode: state->is_initialized is NULL");
         return -1;
     }
 
@@ -557,6 +581,7 @@ int portia_learning_associate(portia_learning_state_t* state, uint32_t stimulus_
             if (!entry) {
                 nimcp_platform_mutex_unlock(state->mutex);
                 LOG_ERROR("No association entry available for eviction");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: entry is NULL");
                 return -1;
             }
             LOG_DEBUG("Evicting association entry: stimulus=%u, response=%u",
@@ -592,11 +617,13 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: state->is_initialized is NULL");
         return -1;
     }
 
@@ -630,6 +657,7 @@ int portia_learning_reinforce(portia_learning_state_t* state, uint32_t stimulus_
         } else {
             nimcp_platform_mutex_unlock(state->mutex);
             LOG_ERROR("No association entry available");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
             return -1;
         }
     }
@@ -723,11 +751,13 @@ int portia_learning_forget(portia_learning_state_t* state, uint64_t timestamp_ms
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_forget: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_forget: state->is_initialized is NULL");
         return -1;
     }
 
@@ -793,11 +823,13 @@ int portia_learning_consolidate(portia_learning_state_t* state, uint64_t timesta
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_consolidate: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_consolidate: state->is_initialized is NULL");
         return -1;
     }
 
@@ -930,11 +962,13 @@ int portia_learning_reset(portia_learning_state_t* state) {
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_reset: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_reset: state->is_initialized is NULL");
         return -1;
     }
 
@@ -967,22 +1001,26 @@ int portia_learning_export(portia_learning_state_t* state, const char* filepath)
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_export: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!bbb_validate_pointer(NULL, filepath, 1, &result)) {
         LOG_ERROR("Invalid filepath pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_export: bbb_validate_pointer is NULL");
         return -1;
     }
 
     if (!state->is_initialized) {
         LOG_ERROR("Learning system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_export: state->is_initialized is NULL");
         return -1;
     }
 
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
         LOG_ERROR("Failed to open export file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_export: fp is NULL");
         return -1;
     }
 
@@ -1032,6 +1070,7 @@ int portia_learning_process_inbox(portia_learning_state_t* state) {
 
     if (!bbb_validate_pointer(NULL, state, sizeof(portia_learning_state_t), &result)) {
         LOG_ERROR("Invalid learning state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_learning_process_inbox: bbb_validate_pointer is NULL");
         return -1;
     }
 

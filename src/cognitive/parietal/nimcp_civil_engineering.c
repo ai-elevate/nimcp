@@ -622,7 +622,10 @@ int civil_eng_set_fatigue(civil_eng_t* ce, float level) {
  * ============================================================================ */
 
 int civil_eng_get_stats(const civil_eng_t* ce, ce_stats_t* stats) {
-    if (!ce || !stats) return -1;
+    if (!ce || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "civil_eng_get_stats: required parameter is NULL (ce, stats)");
+        return -1;
+    }
     *stats = ce->stats;
     /* Phase 8: Heartbeat at operation start */
     civil_engineering_heartbeat("civil_engine_civil_eng_get_stats", 0.0f);

@@ -256,6 +256,7 @@ mtl_ctx_t* mtl_create(const mtl_config_t* config) {
 
         if (!ctx->uncertainty.log_vars) {
             mtl_destroy(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_create: ctx->uncertainty is NULL");
             return NULL;
         }
     }
@@ -264,6 +265,7 @@ mtl_ctx_t* mtl_create(const mtl_config_t* config) {
     ctx->mutex = nimcp_mutex_create(NULL);
     if (!ctx->mutex) {
         mtl_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -314,6 +316,7 @@ void mtl_destroy(mtl_ctx_t* ctx) {
 
 int mtl_register_task(mtl_ctx_t* ctx, const mtl_task_def_t* task) {
     if (!ctx || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_register_task: required parameter is NULL (ctx, task)");
         return -1;
     }
 
@@ -321,6 +324,7 @@ int mtl_register_task(mtl_ctx_t* ctx, const mtl_task_def_t* task) {
 
     if (ctx->num_tasks >= MTL_MAX_TASKS) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_register_task: capacity exceeded");
         return -1;
     }
 
@@ -366,6 +370,7 @@ int mtl_set_task_active(mtl_ctx_t* ctx, uint32_t task_id, bool active) {
 
     if (task_idx < 0) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_set_task_active: validation failed");
         return -1;
     }
 
@@ -397,6 +402,7 @@ float mtl_get_task_weight(const mtl_ctx_t* ctx, uint32_t task_id) {
 
 int mtl_set_task_weight(mtl_ctx_t* ctx, uint32_t task_id, float weight) {
     if (!ctx || weight < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_set_task_weight: ctx is NULL");
         return -1;
     }
 
@@ -411,6 +417,7 @@ int mtl_set_task_weight(mtl_ctx_t* ctx, uint32_t task_id, float weight) {
     }
 
     nimcp_mutex_unlock(ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_set_task_weight: validation failed");
     return -1;
 }
 
@@ -426,6 +433,7 @@ int mtl_compute_loss(
     float* task_losses
 ) {
     if (!ctx || !batch || !predictions || !total_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_compute_loss: required parameter is NULL (ctx, batch, predictions, total_loss)");
         return -1;
     }
 
@@ -514,6 +522,7 @@ int mtl_process_gradients(
     float* combined_gradient
 ) {
     if (!ctx || !gradients || !combined_gradient || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_process_gradients: required parameter is NULL (ctx, gradients, combined_gradient)");
         return -1;
     }
 
@@ -660,6 +669,7 @@ int mtl_update_weights(
     const float* task_grad_norms
 ) {
     if (!ctx || !task_losses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_update_weights: required parameter is NULL (ctx, task_losses)");
         return -1;
     }
 
@@ -695,6 +705,7 @@ int mtl_update_weights(
         case MTL_WEIGHT_GRADNORM: {
             if (!task_grad_norms) {
                 nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_update_weights: task_grad_norms is NULL");
                 return -1;
             }
 
@@ -819,6 +830,7 @@ int mtl_update_weights(
              */
             if (!task_grad_norms) {
                 nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_update_weights: task_grad_norms is NULL");
                 return -1;
             }
 
@@ -849,6 +861,7 @@ int mtl_update_weights(
                 float* alphas = nimcp_calloc(n, sizeof(float));
                 if (!alphas) {
                     nimcp_mutex_unlock(ctx->mutex);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mtl_update_weights: alphas is NULL");
                     return -1;
                 }
 
@@ -866,6 +879,7 @@ int mtl_update_weights(
                     if (!grad_obj) {
                         nimcp_free(alphas);
                         nimcp_mutex_unlock(ctx->mutex);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: grad_obj is NULL");
                         return -1;
                     }
 
@@ -1075,6 +1089,7 @@ int mtl_pcgrad_project(
     size_t num_params
 ) {
     if (!ctx || !main_grad || !other_grads || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_pcgrad_project: required parameter is NULL (ctx, main_grad, other_grads)");
         return -1;
     }
 
@@ -1119,6 +1134,7 @@ int mtl_cagrad_combine(
     float* combined
 ) {
     if (!ctx || !gradients || !combined || num_tasks == 0 || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_cagrad_combine: required parameter is NULL (ctx, gradients, combined)");
         return -1;
     }
 
@@ -1224,6 +1240,7 @@ int mtl_connect_thalamic_router(mtl_ctx_t* ctx, void* router) {
 
 int mtl_get_stats(const mtl_ctx_t* ctx, mtl_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mtl_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -1290,26 +1307,32 @@ int mtl_validate_config(const mtl_config_t* config) {
     }
 
     if (config->architecture >= MTL_ARCH_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->weighting >= MTL_WEIGHT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->gradient_method >= MTL_GRAD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->sampling >= MTL_SAMPLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mtl_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->gradnorm.alpha < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_validate_config: validation failed");
         return -1;
     }
 
     if (config->temperature <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mtl_validate_config: validation failed");
         return -1;
     }
 

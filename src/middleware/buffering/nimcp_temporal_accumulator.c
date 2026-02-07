@@ -173,6 +173,7 @@ bool temporal_accumulator_update(
 ) {
     // Guard: validate inputs
     if (!accumulator || channel >= accumulator->num_channels || dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_accumulator_update: accumulator is NULL");
         return false;
     }
 
@@ -198,6 +199,7 @@ bool temporal_accumulator_update(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_accumulator_update: operation failed");
             return false;
     }
 
@@ -271,6 +273,7 @@ bool temporal_accumulator_get_state(
 ) {
     // Guard: validate inputs
     if (!accumulator || channel >= accumulator->num_channels || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_accumulator_get_state: required parameter is NULL (accumulator, state)");
         return false;
     }
 
@@ -326,7 +329,10 @@ bool temporal_accumulator_set_alpha(
     float alpha
 ) {
     // Guard: validate inputs
-    if (!accumulator || alpha < 0.0F || alpha > 1.0F) return false;
+    if (!accumulator || alpha < 0.0F || alpha > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_accumulator_set_alpha: accumulator is NULL");
+        return false;
+    }
 
     accumulator->alpha = alpha;
     return true;
@@ -346,7 +352,10 @@ bool temporal_accumulator_set_mode(
     integration_mode_t mode
 ) {
     // Guard: validate input
-    if (!accumulator) return false;
+    if (!accumulator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_accumulator_set_mode: accumulator is NULL");
+        return false;
+    }
 
     accumulator->mode = mode;
     return true;
@@ -370,7 +379,10 @@ bool temporal_accumulator_reset_channel(
     size_t channel
 ) {
     // Guard: validate inputs
-    if (!accumulator || channel >= accumulator->num_channels) return false;
+    if (!accumulator || channel >= accumulator->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_accumulator_reset_channel: accumulator is NULL");
+        return false;
+    }
 
     channel_state_t* ch = &accumulator->channels[channel];
 

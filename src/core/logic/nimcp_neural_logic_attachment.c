@@ -52,18 +52,21 @@ bool brain_attach_neural_logic(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_attach_neural_logic: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_neural_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL network
     if (!nimcp_validate_pointer(network, "network")) {
         LOG_ERROR("brain_attach_neural_logic: NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_neural_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: network already attached
     if (brain->logic != NULL) {
         LOG_WARNING("brain_attach_neural_logic: brain already has logic network attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_neural_logic: validation failed");
         return false;
     }
 
@@ -96,6 +99,7 @@ neural_logic_network_t brain_detach_neural_logic(brain_t brain) {
 
     // Guard: no network attached
     if (brain->logic == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detach_neural_logic: validation failed");
         return NULL;
     }
 

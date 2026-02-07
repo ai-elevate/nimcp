@@ -183,6 +183,7 @@ fep_consciousness_bridge_t* fep_consciousness_create(
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
         fep_consciousness_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_consciousness_create: bridge->base is NULL");
         return NULL;
     }
 

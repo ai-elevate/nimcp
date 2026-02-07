@@ -132,6 +132,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
         if (stn->gpe_input) nimcp_free(stn->gpe_input);
         nimcp_free(stn->neurons);
         nimcp_free(stn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_create: validation failed");
         return NULL;
     }
 
@@ -168,6 +169,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
         nimcp_free(stn->gpe_input);
         nimcp_free(stn->neurons);
         nimcp_free(stn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_create: validation failed");
         return NULL;
     }
     nimcp_mutex_init(stn->mutex, NULL);

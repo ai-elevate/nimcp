@@ -116,10 +116,14 @@ static uint64_t get_timestamp_ms(void);
 
 nimcp_fractal_security_t* nimcp_fractal_security_create(void) {
     nimcp_fractal_security_t* fsc = nimcp_calloc(1, sizeof(nimcp_fractal_security_t));
-    if (!fsc) return NULL;
+    if (!fsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_fractal_security_create: fsc is NULL");
+        return NULL;
+    }
 
     if (nimcp_mutex_init(&fsc->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(fsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_fractal_security_create: validation failed");
         return NULL;
     }
 
@@ -630,10 +634,14 @@ bool nimcp_fractal_security_check_dimension_anomaly(
     nimcp_fractal_security_t* fsc,
     float* deviation
 ) {
-    if (!fsc || !fsc->initialized) return false;
+    if (!fsc || !fsc->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fractal_security_check_dimension_anomaly: required parameter is NULL (fsc, fsc->initialized)");
+        return false;
+    }
 
     float current_dimension;
     if (nimcp_fractal_security_compute_dimension(fsc, &current_dimension) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fractal_security_check_dimension_anomaly: validation failed");
         return false;
     }
 
@@ -985,7 +993,10 @@ bool nimcp_fractal_security_repair_node(
     nimcp_fractal_security_t* fsc,
     nimcp_fsc_node_t* node
 ) {
-    if (!fsc || !node) return false;
+    if (!fsc || !node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fractal_security_repair_node: required parameter is NULL (fsc, node)");
+        return false;
+    }
 
     nimcp_mutex_lock(&fsc->lock);
 
@@ -1012,6 +1023,7 @@ bool nimcp_fractal_security_repair_node(
     }
 
     nimcp_mutex_unlock(&fsc->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fractal_security_repair_node: operation failed");
     return false;
 }
 
@@ -1253,7 +1265,10 @@ static void propagate_hash_up(nimcp_fractal_security_t* fsc, nimcp_fsc_node_t* n
 
 static nimcp_fsc_node_t* create_node(nimcp_fsc_node_type_t type, uint32_t level) {
     nimcp_fsc_node_t* node = nimcp_calloc(1, sizeof(nimcp_fsc_node_t));
-    if (!node) return NULL;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_node: node is NULL");
+        return NULL;
+    }
 
     node->type = type;
     node->level = level;
@@ -1283,6 +1298,7 @@ static nimcp_fsc_node_t* find_node_for_data(nimcp_fractal_security_t* fsc, void*
             return fsc->node_lookup[i];
         }
     }
+    /* Data not found in node lookup - normal for unregistered data */
     return NULL;
 }
 
@@ -1336,7 +1352,10 @@ static float compute_local_dimension(nimcp_fsc_node_t* node) {
 }
 
 static bool verify_hash(nimcp_fsc_node_t* node) {
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "verify_hash: node is NULL");
+        return false;
+    }
 
     uint8_t computed[NIMCP_FSC_HASH_SIZE];
 

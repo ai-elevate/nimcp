@@ -231,6 +231,7 @@ int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge) {
         bridge->base.bio_async_enabled = true;
         return NIMCP_SUCCESS;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

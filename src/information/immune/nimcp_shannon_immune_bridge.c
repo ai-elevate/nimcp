@@ -502,6 +502,7 @@ int shannon_immune_get_inflammation_state(
 
 bool shannon_immune_has_capacity_deficit(const shannon_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shannon_immune_has_capacity_deficit: bridge is NULL");
         return false;
     }
 
@@ -610,6 +611,7 @@ bool shannon_immune_is_bio_async_connected(const shannon_immune_bridge_t* bridge
      * HOW:  Return internal flag
      */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shannon_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

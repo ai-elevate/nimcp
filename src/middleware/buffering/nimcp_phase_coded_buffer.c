@@ -69,7 +69,10 @@ static int compare_by_phase(const void* a, const void* b) {
     const phase_coded_item_t* item_a = (const phase_coded_item_t*)a;
     const phase_coded_item_t* item_b = (const phase_coded_item_t*)b;
 
-    if (item_a->phase < item_b->phase) return -1;
+    if (item_a->phase < item_b->phase) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_phase: validation failed");
+        return -1;
+    }
     if (item_a->phase > item_b->phase) return 1;
     return 0;
 }
@@ -131,10 +134,14 @@ bool phase_buffer_store(phase_coded_buffer_t* buffer,
                         float data,
                         float amplitude,
                         double timestamp_ms) {
-    if (!buffer) return false;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: buffer is NULL");
+        return false;
+    }
 
     // Check capacity
     if (buffer->count >= buffer->config.capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phase_buffer_destroy: capacity exceeded");
         return false;  // Buffer full
     }
 
@@ -158,10 +165,14 @@ bool phase_buffer_store_with_phase(phase_coded_buffer_t* buffer,
                                     float phase,
                                     float amplitude,
                                     double timestamp_ms) {
-    if (!buffer) return false;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: buffer is NULL");
+        return false;
+    }
 
     // Check capacity
     if (buffer->count >= buffer->config.capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phase_buffer_destroy: capacity exceeded");
         return false;
     }
 
@@ -184,7 +195,10 @@ bool phase_buffer_retrieve_ordered(const phase_coded_buffer_t* buffer,
                                     phase_coded_item_t* items,
                                     uint32_t max_items,
                                     uint32_t* num_retrieved) {
-    if (!buffer || !items || !num_retrieved) return false;
+    if (!buffer || !items || !num_retrieved) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (buffer, items, num_retrieved)");
+        return false;
+    }
 
     *num_retrieved = 0;
 
@@ -207,6 +221,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
                                  float min_coherence,
                                  phase_pattern_match_t* result) {
     if (!buffer || !pattern_phases || !result || pattern_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (buffer, pattern_phases, result)");
         return false;
     }
 
@@ -220,7 +235,10 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
     // Convert pattern to phasors
     neural_phasor_t* pattern_phasors = (neural_phasor_t*)nimcp_malloc(
         pattern_count * sizeof(neural_phasor_t));
-    if (!pattern_phasors) return false;
+    if (!pattern_phasors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_destroy: pattern_phasors is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < pattern_count; i++) {
         pattern_phasors[i] = phasor_from_polar(1.0F, pattern_phases[i]);
@@ -237,6 +255,7 @@ bool phase_buffer_pattern_match(const phase_coded_buffer_t* buffer,
         nimcp_free(pattern_phasors);
         nimcp_free(temp_indices);
         nimcp_free(temp_coherences);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_destroy: required parameter is NULL (temp_indices, temp_coherences)");
         return false;
     }
 
@@ -341,7 +360,10 @@ bool phase_buffer_get_stats(const phase_coded_buffer_t* buffer,
                              uint32_t* count,
                              uint32_t* capacity,
                              float* mean_coherence) {
-    if (!buffer) return false;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phase_buffer_clear: buffer is NULL");
+        return false;
+    }
 
     if (count) *count = buffer->count;
     if (capacity) *capacity = buffer->config.capacity;

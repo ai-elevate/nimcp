@@ -749,6 +749,7 @@ static void* walk_apply_action(const void* state, uint32_t action, void* user_da
 
     if (!new_state->amplitudes) {
         nimcp_free(new_state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "walk_apply_action: new_state->amplitudes is NULL");
         return NULL;
     }
 
@@ -815,6 +816,7 @@ static bool walk_is_terminal(const void* state, void* user_data) {
 
     if (s->target_probability > 0.5f) return true;
     if (s->current_step >= ud->max_steps) return true;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "walk_is_terminal: capacity exceeded");
     return false;
 }
 
@@ -850,6 +852,7 @@ static void* walk_clone_state(const void* state, void* user_data) {
     clone->amplitudes = nimcp_malloc(s->num_nodes * sizeof(float));
     if (!clone->amplitudes) {
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "walk_clone_state: clone->amplitudes is NULL");
         return NULL;
     }
     memcpy(clone->amplitudes, s->amplitudes, s->num_nodes * sizeof(float));
@@ -1116,11 +1119,17 @@ static bool clause_falsified(const qmc_clause_t* clause, const uint8_t* assignme
     for (uint32_t i = 0; i < clause->num_literals; i++) {
         int32_t lit = clause->literals[i];
         uint32_t var = abs(lit) - 1;
-        if (assignment[var] == 0) return false;  /* Still has unassigned */
+        if (assignment[var] == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clause_falsified: validation failed");
+            return false;
+        }
 
         bool val = (assignment[var] == 2);
         bool positive = (lit > 0);
-        if (val == positive) return false;  /* This literal is true */
+        if (val == positive) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clause_falsified: validation failed");
+            return false;
+        }
     }
     return true;  /* All literals are false */
 }
@@ -1168,6 +1177,7 @@ static void* sat_apply_action(const void* state, uint32_t action, void* user_dat
     new_state->assignment = nimcp_malloc(s->num_variables);
     if (!new_state->assignment) {
         nimcp_free(new_state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sat_apply_action: new_state->assignment is NULL");
         return NULL;
     }
     memcpy(new_state->assignment, s->assignment, s->num_variables);
@@ -1213,6 +1223,7 @@ static bool sat_is_terminal(const void* state, void* user_data) {
     if (s->num_unsatisfied > 0) return true;
     if (s->num_assigned == s->num_variables) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sat_is_terminal: validation failed");
     return false;
 }
 
@@ -1248,6 +1259,7 @@ static void* sat_clone_state(const void* state, void* user_data) {
     clone->assignment = nimcp_malloc(s->num_variables);
     if (!clone->assignment) {
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sat_clone_state: clone->assignment is NULL");
         return NULL;
     }
     memcpy(clone->assignment, s->assignment, s->num_variables);

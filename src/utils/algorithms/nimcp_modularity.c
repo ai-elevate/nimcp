@@ -173,12 +173,14 @@ bool nimcp_validate_partition(const uint32_t* assignments, uint32_t num_vertices
         }
 
     if (num_vertices == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_partition: num_vertices is zero");
         return false;
     }
 
     // Check all vertices are assigned
     for (uint32_t i = 0; i < num_vertices; i++) {
         if (assignments[i] >= num_communities) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_validate_partition: capacity exceeded");
             return false;
         }
     }

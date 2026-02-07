@@ -214,16 +214,19 @@ bool nimcp_min_heap_insert(nimcp_min_heap_t* heap, const nimcp_heap_element_t* e
     LOG_DEBUG("Entering nimcp_min_heap_insert");
     if (!heap || !element) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_insert: required parameter is NULL (heap, element)");
         return false;
     }
 
     if (heap->size >= heap->capacity) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_insert: capacity exceeded");
         return false;  // Heap full
     }
 
     if (element->vertex_id >= heap->max_vertex_id) {
         LOG_ERROR("nimcp_min_heap_insert failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_insert: capacity exceeded");
         return false;  // Vertex ID out of range for position map
     }
 
@@ -244,6 +247,7 @@ bool nimcp_min_heap_extract_min(nimcp_min_heap_t* heap, nimcp_heap_element_t* el
     LOG_DEBUG("Entering nimcp_min_heap_extract_min");
     if (!heap || !element || heap->size == 0) {
         LOG_ERROR("nimcp_min_heap_extract_min failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_extract_min: required parameter is NULL (heap, element)");
         return false;
     }
 
@@ -269,6 +273,7 @@ bool nimcp_min_heap_peek_min(const nimcp_min_heap_t* heap, nimcp_heap_element_t*
     LOG_DEBUG("Entering nimcp_min_heap_peek_min");
     if (!heap || !element || heap->size == 0) {
         LOG_ERROR("nimcp_min_heap_peek_min failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_peek_min: required parameter is NULL (heap, element)");
         return false;
     }
 
@@ -281,23 +286,27 @@ bool nimcp_min_heap_decrease_key(nimcp_min_heap_t* heap, uint32_t vertex_id, flo
     LOG_DEBUG("Entering nimcp_min_heap_decrease_key");
     if (!heap) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_min_heap_decrease_key: heap is NULL");
         return false;
     }
 
     if (vertex_id >= heap->max_vertex_id) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_min_heap_decrease_key: capacity exceeded");
         return false;
     }
 
     uint32_t index = heap->position_map[vertex_id];
     if (index == NOT_IN_HEAP || index >= heap->size) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_min_heap_decrease_key: capacity exceeded");
         return false;  // Vertex not in heap
     }
 
     // Verify new priority is actually lower (decrease-key only)
     if (new_priority >= heap->elements[index].priority) {
         LOG_ERROR("nimcp_min_heap_decrease_key failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_min_heap_decrease_key: capacity exceeded");
         return false;
     }
 

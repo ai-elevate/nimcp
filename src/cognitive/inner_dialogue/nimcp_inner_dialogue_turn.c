@@ -236,6 +236,7 @@ int inner_dialogue_turn_history_record(inner_dialogue_turn_history_t* history,
 const inner_dialogue_turn_t* inner_dialogue_turn_history_get_latest(
     const inner_dialogue_turn_history_t* history) {
     if (!history || !history->turns || history->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inner_dialogue_turn_history_reset: required parameter is NULL (history, history->turns)");
         return NULL;
     }
     uint32_t idx = (history->head - 1) & (history->capacity - 1);
@@ -245,6 +246,7 @@ const inner_dialogue_turn_t* inner_dialogue_turn_history_get_latest(
 const inner_dialogue_turn_t* inner_dialogue_turn_history_get_at(
     const inner_dialogue_turn_history_t* history, uint32_t index) {
     if (!history || !history->turns || index >= history->count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inner_dialogue_turn_history_reset: required parameter is NULL (history, history->turns)");
         return NULL;
     }
     /* index 0 = most recent, index 1 = second most recent, etc. */
@@ -255,6 +257,7 @@ const inner_dialogue_turn_t* inner_dialogue_turn_history_get_at(
 const inner_dialogue_turn_t* inner_dialogue_turn_history_get_by_id(
     const inner_dialogue_turn_history_t* history, uint32_t turn_id) {
     if (!history || !history->turns || history->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inner_dialogue_turn_history_reset: required parameter is NULL (history, history->turns)");
         return NULL;
     }
     /* Linear scan — history is small (max 128) so acceptable */
@@ -264,6 +267,7 @@ const inner_dialogue_turn_t* inner_dialogue_turn_history_get_by_id(
             return &history->turns[idx];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inner_dialogue_turn_history_reset: validation failed");
     return NULL;
 }
 

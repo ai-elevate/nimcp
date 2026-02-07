@@ -117,12 +117,14 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
         set_error("Network has no neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_adjacency_list: num_neurons is zero");
         return NULL;
     }
 
     adjacency_list_t* graph = nimcp_calloc(1, sizeof(adjacency_list_t));
     if (!graph) {
         set_error("Failed to allocate adjacency list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_list: graph is NULL");
         return NULL;
     }
 
@@ -131,6 +133,7 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
     if (!graph->nodes) {
         nimcp_free(graph);
         set_error("Failed to allocate adjacency nodes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_list: graph->nodes is NULL");
         return NULL;
     }
 
@@ -155,6 +158,7 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
             }
             nimcp_free(graph->nodes);
             nimcp_free(graph);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_adjacency_list: required parameter is NULL (node->neighbors, node->weights)");
             return NULL;
         }
 
@@ -178,6 +182,7 @@ static adjacency_list_t* build_adjacency_list(neural_network_t network) {
                 node->weights = nimcp_realloc(node->weights, node->capacity * sizeof(float));
                 if (!node->neighbors || !node->weights) {
                     set_error("Failed to reallocate neighbor arrays");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_list: required parameter is NULL (node->neighbors, node->weights)");
                     return NULL;
                 }
             }
@@ -385,6 +390,7 @@ community_structure_t* community_detect(
 {
     if (!network) {
         set_error("NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect: network is NULL");
         return NULL;
     }
 
@@ -414,6 +420,7 @@ community_structure_t* community_detect(
     if (!structure) {
         free_adjacency_list(graph);
         set_error("Failed to allocate community structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect: structure is NULL");
         return NULL;
     }
 
@@ -426,6 +433,7 @@ community_structure_t* community_detect(
         topology_community_structure_free(structure);
         free_adjacency_list(graph);
         set_error("Failed to allocate arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect: required parameter is NULL (structure->community_ids, total_degree)");
         return NULL;
     }
 
@@ -452,6 +460,7 @@ community_structure_t* community_detect(
         topology_community_structure_free(structure);
         free_adjacency_list(graph);
         set_error("Failed to allocate community stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect: required parameter is NULL (structure->community_sizes, structure->internal_density, structure->external_density)");
         return NULL;
     }
 
@@ -540,11 +549,13 @@ bool community_get_neurons_in_community(
 {
     if (!structure || !neuron_ids || !count) {
         set_error("NULL arguments to get_neurons_in_community");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_get_neurons_in_community: required parameter is NULL (structure, neuron_ids, count)");
         return false;
     }
 
     if (community_id >= structure->num_communities) {
         set_error("Invalid community ID");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "community_get_neurons_in_community: capacity exceeded");
         return false;
     }
 
@@ -552,6 +563,7 @@ bool community_get_neurons_in_community(
     *neuron_ids = nimcp_malloc(size * sizeof(uint32_t));
     if (!*neuron_ids) {
         set_error("Failed to allocate neuron IDs array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "community_get_neurons_in_community: validation failed");
         return false;
     }
 
@@ -576,12 +588,14 @@ hub_structure_t* community_detect_hubs(
 {
     if (!network) {
         set_error("NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: network is NULL");
         return NULL;
     }
 
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
         set_error("Network has no neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "community_detect_hubs: num_neurons is zero");
         return NULL;
     }
 
@@ -589,6 +603,7 @@ hub_structure_t* community_detect_hubs(
     float* degree = nimcp_calloc(num_neurons, sizeof(float));
     if (!degree) {
         set_error("Failed to allocate degree array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect_hubs: degree is NULL");
         return NULL;
     }
 
@@ -621,6 +636,7 @@ hub_structure_t* community_detect_hubs(
     if (!hubs) {
         nimcp_free(degree);
         set_error("Failed to allocate hub structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect_hubs: hubs is NULL");
         return NULL;
     }
 
@@ -635,6 +651,7 @@ hub_structure_t* community_detect_hubs(
         nimcp_free(degree);
         hub_structure_free(hubs);
         set_error("Failed to allocate hub arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: operation failed");
         return NULL;
     }
 
@@ -686,6 +703,7 @@ hub_structure_t* community_detect_hubs(
     if (!betweenness) {
         hub_structure_free(hubs);
         set_error("Failed to allocate betweenness array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_detect_hubs: betweenness is NULL");
         return NULL;
     }
 
@@ -694,6 +712,7 @@ hub_structure_t* community_detect_hubs(
     if (!graph) {
         nimcp_free(betweenness);
         hub_structure_free(hubs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: graph is NULL");
         return NULL;
     }
 
@@ -719,6 +738,7 @@ hub_structure_t* community_detect_hubs(
         free_adjacency_list(graph);
         hub_structure_free(hubs);
         set_error("Failed to allocate Brandes working arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: operation failed");
         return NULL;
     }
 
@@ -741,6 +761,7 @@ hub_structure_t* community_detect_hubs(
             free_adjacency_list(graph);
             hub_structure_free(hubs);
             set_error("Failed to allocate predecessor lists");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_detect_hubs: operation failed");
             return NULL;
         }
     }
@@ -813,6 +834,7 @@ hub_structure_t* community_detect_hubs(
                             free_adjacency_list(graph);
                             hub_structure_free(hubs);
                             set_error("Failed to reallocate predecessor list");
+                            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
                             return NULL;
                         }
                     }

@@ -62,7 +62,10 @@ struct amp_ctx_s {
  * @brief Check if array contains NaN or Inf
  */
 static bool contains_nan_inf(const float* data, size_t count) {
-    if (!data) return false;
+    if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_nan_inf: data is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < count; i++) {
         if (isnan(data[i]) || isinf(data[i])) {
@@ -225,17 +228,35 @@ int amp_validate_config(const amp_config_t* config) {
 
     /* Validate scaling config */
     if (config->scaling.mode != AMP_SCALING_NONE) {
-        if (config->scaling.init_scale <= 0) return -1;
-        if (config->scaling.min_scale <= 0) return -1;
-        if (config->scaling.max_scale <= config->scaling.min_scale) return -1;
-        if (config->scaling.growth_factor <= 1.0f) return -1;
+        if (config->scaling.init_scale <= 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "amp_validate_config: validation failed");
+            return -1;
+        }
+        if (config->scaling.min_scale <= 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
+            return -1;
+        }
+        if (config->scaling.max_scale <= config->scaling.min_scale) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
+            return -1;
+        }
+        if (config->scaling.growth_factor <= 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_validate_config: validation failed");
+            return -1;
+        }
         if (config->scaling.backoff_factor <= 0 ||
             config->scaling.backoff_factor >= 1.0f) return -1;
     }
 
     /* Validate dtype */
-    if (config->autocast.compute_dtype >= AMP_DTYPE_COUNT) return -1;
-    if (config->autocast.storage_dtype >= AMP_DTYPE_COUNT) return -1;
+    if (config->autocast.compute_dtype >= AMP_DTYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "amp_validate_config: capacity exceeded");
+        return -1;
+    }
+    if (config->autocast.storage_dtype >= AMP_DTYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "amp_validate_config: capacity exceeded");
+        return -1;
+    }
 
     return 0;
 }
@@ -316,7 +337,10 @@ void amp_destroy(amp_ctx_t* ctx) {
 
 int amp_connect_gradient_manager(amp_ctx_t* ctx,
                                   nimcp_gradient_manager_ctx_t* grad_manager) {
-    if (!ctx || !grad_manager) return -1;
+    if (!ctx || !grad_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_destroy: required parameter is NULL (ctx, grad_manager)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->grad_manager = grad_manager;
@@ -369,7 +393,10 @@ int amp_autocast_exit(amp_ctx_t* ctx) {
 }
 
 bool amp_is_autocasting(const amp_ctx_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_is_autocasting: ctx is NULL");
+        return false;
+    }
     return ctx->autocast_enabled && ctx->config.autocast.enabled;
 }
 
@@ -431,6 +458,7 @@ bool amp_unscale_gradients(amp_ctx_t* ctx, float* gradients, size_t count) {
         ctx->stats.overflow_count++;
         ctx->last_step_overflowed = true;
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_unscale_gradients: validation failed");
         return false;
     }
 
@@ -447,6 +475,7 @@ bool amp_unscale_gradients(amp_ctx_t* ctx, float* gradients, size_t count) {
         ctx->stats.underflow_count++;
         ctx->last_step_overflowed = true;
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_unscale_gradients: validation failed");
         return false;
     }
 
@@ -528,6 +557,7 @@ int amp_set_scale(amp_ctx_t* ctx, float scale) {
 
     if (scale < ctx->config.scaling.min_scale ||
         scale > ctx->config.scaling.max_scale) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_set_scale: operation failed");
         return -1;
     }
 
@@ -594,6 +624,7 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
 
         default:
             nimcp_free(master);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_set_scale: operation failed");
             return NULL;
     }
 
@@ -606,7 +637,10 @@ int amp_update_master_weights(amp_ctx_t* ctx,
                                const float* gradients,
                                size_t count,
                                float learning_rate) {
-    if (!ctx || !master_weights || !compute_weights || !gradients) return -1;
+    if (!ctx || !master_weights || !compute_weights || !gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_set_scale: required parameter is NULL (ctx, master_weights, compute_weights, gradients)");
+        return -1;
+    }
 
     /* Update master weights (FP32) */
     for (size_t i = 0; i < count; i++) {
@@ -635,6 +669,7 @@ int amp_update_master_weights(amp_ctx_t* ctx,
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_set_scale: operation failed");
             return -1;
     }
 
@@ -646,7 +681,10 @@ int amp_sync_compute_weights(amp_ctx_t* ctx,
                               void* compute_weights,
                               size_t count,
                               amp_dtype_t compute_dtype) {
-    if (!ctx || !master_weights || !compute_weights) return -1;
+    if (!ctx || !master_weights || !compute_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_set_scale: required parameter is NULL (ctx, master_weights, compute_weights)");
+        return -1;
+    }
 
     switch (compute_dtype) {
         case AMP_DTYPE_FP32:
@@ -667,6 +705,7 @@ int amp_sync_compute_weights(amp_ctx_t* ctx,
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_set_scale: operation failed");
             return -1;
     }
 
@@ -684,7 +723,10 @@ int amp_step(amp_ctx_t* ctx,
              size_t count,
              float learning_rate,
              bool* step_performed) {
-    if (!ctx || !gradients || !params || !step_performed) return -1;
+    if (!ctx || !gradients || !params || !step_performed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_set_scale: required parameter is NULL (ctx, gradients, params, step_performed)");
+        return -1;
+    }
 
     *step_performed = false;
 
@@ -725,7 +767,10 @@ int amp_step(amp_ctx_t* ctx,
 //=============================================================================
 
 int amp_get_stats(const amp_ctx_t* ctx, amp_stats_t* stats) {
-    if (!ctx || !stats) return -1;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_get_stats: required parameter is NULL (ctx, stats)");
+        return -1;
+    }
 
     memcpy(stats, &ctx->stats, sizeof(amp_stats_t));
     return 0;
@@ -778,6 +823,7 @@ bool amp_dtype_supported(amp_dtype_t dtype) {
         case AMP_DTYPE_BF16:
             return true;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_dtype_supported: operation failed");
             return false;
     }
 }
@@ -789,6 +835,7 @@ bool amp_bf16_available(void) {
     return true;
 #else
     /* Could also check GPU capabilities at runtime */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_bf16_available: operation failed");
     return false;
 #endif
 }
@@ -798,7 +845,10 @@ int amp_cast(const void* src,
              void* dst,
              amp_dtype_t dst_dtype,
              size_t count) {
-    if (!src || !dst || count == 0) return -1;
+    if (!src || !dst || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amp_bf16_available: required parameter is NULL (src, dst)");
+        return -1;
+    }
 
     /* Same dtype, just copy */
     if (src_dtype == dst_dtype) {
@@ -828,5 +878,6 @@ int amp_cast(const void* src,
     }
 
     /* Other conversions not implemented */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amp_bf16_available: operation failed");
     return -1;
 }

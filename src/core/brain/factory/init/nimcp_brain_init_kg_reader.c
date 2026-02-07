@@ -207,6 +207,7 @@ bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain) {
         fprintf(stderr, "[KG_READER] ERROR: Failed to create KG reader\n");
         brain->kg_reader = NULL;
         brain->kg_reader_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_kg_reader_subsystem: kg_reader is NULL");
         return false;
     }
 

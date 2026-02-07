@@ -886,6 +886,7 @@ int surface_quantum_hybrid_optimize(
 
     if (surface_quantum_mcts_optimize(bridge, terminals, num_terminals,
                                       min_circumference, &mcts_result) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_quantum_hybrid_optimize: operation failed");
         return -1;
     }
 
@@ -909,6 +910,7 @@ int surface_quantum_hybrid_optimize(
         nimcp_free(result->branch_points);
         result->branch_points = NULL;
         result->num_branch_points = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_quantum_hybrid_optimize: validation failed");
         return -1;
     }
 
@@ -929,6 +931,7 @@ int surface_quantum_hybrid_optimize(
         nimcp_free(result->branch_points);
         result->branch_points = NULL;
         result->num_branch_points = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_quantum_hybrid_optimize: validation failed");
         return -1;
     }
 
@@ -1034,9 +1037,13 @@ bool surface_quantum_method_available(
     const surface_quantum_bridge_t* bridge,
     surface_quantum_method_t method
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_quantum_method_available: bridge is NULL");
+        return false;
+    }
 
     if (!bridge->quantum_available && method != SURFACE_QUANTUM_NONE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_quantum_method_available: bridge->quantum_available is NULL");
         return false;
     }
 

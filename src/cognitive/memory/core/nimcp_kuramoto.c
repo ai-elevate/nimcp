@@ -173,7 +173,10 @@ static float wrap_phase_internal(float phase) {
  */
 static int32_t find_oscillator_index(const kuramoto_system_t* system,
                                       uint32_t module_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wrap_phase_internal: system is NULL");
+        return -1;
+    }
 
     /* Check mapping table first */
     if (system->module_to_index && module_id < system->module_map_size) {
@@ -199,6 +202,7 @@ static int32_t find_oscillator_index(const kuramoto_system_t* system,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wrap_phase_internal: operation failed");
     return -1;
 }
 
@@ -360,10 +364,12 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
     if (cfg.max_oscillators == 0 || cfg.max_oscillators > KURAMOTO_MAX_OSCILLATORS) {
         set_error("Invalid max_oscillators: %u (range 1-%d)",
                   cfg.max_oscillators, KURAMOTO_MAX_OSCILLATORS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_create: cfg.max_oscillators is zero");
         return NULL;
     }
     if (cfg.dt <= 0.0f) {
         set_error("Invalid dt: %f (must be > 0)", cfg.dt);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_create: validation failed");
         return NULL;
     }
 
@@ -371,6 +377,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
     kuramoto_system_t* system = nimcp_calloc(1, sizeof(kuramoto_system_t));
     if (!system) {
         set_error("Failed to allocate system structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kuramoto_create: system is NULL");
         return NULL;
     }
 
@@ -470,6 +477,7 @@ NIMCP_EXPORT kuramoto_system_t* kuramoto_create(const kuramoto_config_t* config)
 
 error:
     kuramoto_destroy(system);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_create: operation failed");
     return NULL;
 }
 
@@ -499,6 +507,7 @@ NIMCP_EXPORT void kuramoto_destroy(kuramoto_system_t* system) {
 NIMCP_EXPORT bool kuramoto_reset(kuramoto_system_t* system) {
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset: system is NULL");
         return false;
     }
 
@@ -526,6 +535,7 @@ NIMCP_EXPORT bool kuramoto_reset(kuramoto_system_t* system) {
 NIMCP_EXPORT bool kuramoto_reset_seeded(kuramoto_system_t* system, uint32_t seed) {
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: system is NULL");
         return false;
     }
 
@@ -544,6 +554,7 @@ NIMCP_EXPORT int32_t kuramoto_add_oscillator(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: system is NULL");
         return -1;
     }
 
@@ -551,6 +562,7 @@ NIMCP_EXPORT int32_t kuramoto_add_oscillator(kuramoto_system_t* system,
     int32_t existing = find_oscillator_index(system, module_id);
     if (existing >= 0) {
         set_error("Module %u already registered at index %d", module_id, existing);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_reset_seeded: capacity exceeded");
         return -1;
     }
 
@@ -571,6 +583,7 @@ NIMCP_EXPORT int32_t kuramoto_add_oscillator(kuramoto_system_t* system,
 
     if (idx == UINT32_MAX) {
         set_error("No free oscillator slots (max %u)", system->max_oscillators);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_reset_seeded: validation failed");
         return -1;
     }
 
@@ -601,12 +614,14 @@ NIMCP_EXPORT bool kuramoto_remove_oscillator(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: system is NULL");
         return false;
     }
 
     int32_t idx = find_oscillator_index(system, module_id);
     if (idx < 0) {
         set_error("Module %u not found", module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_reset_seeded: validation failed");
         return false;
     }
 
@@ -644,12 +659,14 @@ NIMCP_EXPORT bool kuramoto_set_frequency(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: system is NULL");
         return false;
     }
 
     int32_t idx = find_oscillator_index(system, module_id);
     if (idx < 0) {
         set_error("Module %u not found", module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_reset_seeded: validation failed");
         return false;
     }
 
@@ -678,12 +695,14 @@ NIMCP_EXPORT bool kuramoto_set_phase(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: system is NULL");
         return false;
     }
 
     int32_t idx = find_oscillator_index(system, module_id);
     if (idx < 0) {
         set_error("Module %u not found", module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_reset_seeded: validation failed");
         return false;
     }
 
@@ -710,6 +729,7 @@ NIMCP_EXPORT const kuramoto_oscillator_t* kuramoto_get_oscillator(
 
     int32_t idx = find_oscillator_index(system, module_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_reset_seeded: validation failed");
         return NULL;
     }
 
@@ -735,6 +755,7 @@ NIMCP_EXPORT bool kuramoto_set_coupling(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 
@@ -743,10 +764,12 @@ NIMCP_EXPORT bool kuramoto_set_coupling(kuramoto_system_t* system,
 
     if (from_idx < 0) {
         set_error("Source module %u not found", from_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
     if (to_idx < 0) {
         set_error("Target module %u not found", to_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -780,11 +803,13 @@ NIMCP_EXPORT bool kuramoto_set_global_coupling(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 
     if (system->use_sparse_coupling) {
         set_error("Cannot set global coupling in sparse mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -817,11 +842,13 @@ NIMCP_EXPORT bool kuramoto_set_coupling_matrix(kuramoto_system_t* system,
 
     if (!system || !matrix) {
         set_error("NULL argument");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, matrix)");
         return false;
     }
 
     if (system->use_sparse_coupling) {
         set_error("Cannot set matrix in sparse mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -868,6 +895,7 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 
@@ -879,6 +907,7 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
                 max_couplings * sizeof(kuramoto_coupling_t));
             if (!new_couplings) {
                 set_error("Failed to resize sparse couplings");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: new_couplings is NULL");
                 return false;
             }
             system->sparse_couplings = new_couplings;
@@ -891,6 +920,7 @@ NIMCP_EXPORT bool kuramoto_enable_sparse_coupling(kuramoto_system_t* system,
     system->sparse_couplings = nimcp_calloc(max_couplings, sizeof(kuramoto_coupling_t));
     if (!system->sparse_couplings) {
         set_error("Failed to allocate sparse couplings");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: system->sparse_couplings is NULL");
         return false;
     }
     system->max_couplings = max_couplings;
@@ -935,11 +965,13 @@ NIMCP_EXPORT bool kuramoto_add_sparse_coupling(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
         return false;
     }
 
     if (!system->use_sparse_coupling) {
         set_error("System not in sparse mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system->use_sparse_coupling is NULL");
         return false;
     }
 
@@ -948,10 +980,12 @@ NIMCP_EXPORT bool kuramoto_add_sparse_coupling(kuramoto_system_t* system,
 
     if (from_idx < 0) {
         set_error("Source module %u not found", from_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
     if (to_idx < 0) {
         set_error("Target module %u not found", to_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -973,6 +1007,7 @@ NIMCP_EXPORT bool kuramoto_add_sparse_coupling(kuramoto_system_t* system,
     /* Add new coupling */
     if (system->num_couplings >= system->max_couplings) {
         set_error("Sparse coupling array full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return false;
     }
 
@@ -993,6 +1028,7 @@ NIMCP_EXPORT bool kuramoto_step(kuramoto_system_t* system, float dt) {
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_step: system is NULL");
         return false;
     }
 
@@ -1094,6 +1130,7 @@ NIMCP_EXPORT bool kuramoto_step_n(kuramoto_system_t* system,
                                    uint32_t n_steps) {
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_step: system is NULL");
         return false;
     }
 
@@ -1105,6 +1142,7 @@ NIMCP_EXPORT bool kuramoto_step_n(kuramoto_system_t* system,
         }
 
         if (!kuramoto_step(system, dt)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_step: kuramoto_step is NULL");
             return false;
         }
     }
@@ -1115,6 +1153,7 @@ NIMCP_EXPORT bool kuramoto_step_n(kuramoto_system_t* system,
 NIMCP_EXPORT bool kuramoto_evolve(kuramoto_system_t* system, float duration) {
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_evolve: system is NULL");
         return false;
     }
 
@@ -1137,6 +1176,7 @@ NIMCP_EXPORT bool kuramoto_compute_order_parameter(kuramoto_system_t* system) {
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_compute_order_parameter: system is NULL");
         return false;
     }
 
@@ -1226,7 +1266,10 @@ NIMCP_EXPORT float kuramoto_coherence(const kuramoto_system_t* system,
 
 NIMCP_EXPORT bool kuramoto_is_synchronized(kuramoto_system_t* system,
                                             float threshold) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_get_mean_phase: system is NULL");
+        return false;
+    }
 
     float r = kuramoto_get_order_parameter(system);
     return (r >= 0.0f && r > threshold);
@@ -1238,6 +1281,7 @@ NIMCP_EXPORT bool kuramoto_get_coherence_matrix(const kuramoto_system_t* system,
 
     if (!system || !out) {
         set_error("NULL argument");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_get_mean_phase: required parameter is NULL (system, out)");
         return false;
     }
 
@@ -1279,6 +1323,7 @@ NIMCP_EXPORT bool kuramoto_get_coherence_matrix(const kuramoto_system_t* system,
 NIMCP_EXPORT bool kuramoto_update_noise(kuramoto_system_t* system) {
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_update_noise: system is NULL");
         return false;
     }
 
@@ -1315,6 +1360,7 @@ NIMCP_EXPORT bool kuramoto_set_noise_intensity(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_update_noise: system is NULL");
         return false;
     }
 
@@ -1328,6 +1374,7 @@ NIMCP_EXPORT bool kuramoto_set_noise_enabled(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_update_noise: system is NULL");
         return false;
     }
 
@@ -1377,6 +1424,7 @@ NIMCP_EXPORT bool kuramoto_sync_modules(kuramoto_system_t* system,
 
     if (!system) {
         set_error("NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_update_noise: system is NULL");
         return false;
     }
 
@@ -1385,10 +1433,12 @@ NIMCP_EXPORT bool kuramoto_sync_modules(kuramoto_system_t* system,
 
     if (idx1 < 0) {
         set_error("Module %u not found", module_id1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_update_noise: validation failed");
         return false;
     }
     if (idx2 < 0) {
         set_error("Module %u not found", module_id2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kuramoto_update_noise: validation failed");
         return false;
     }
 
@@ -1429,6 +1479,7 @@ NIMCP_EXPORT bool kuramoto_get_stats(const kuramoto_system_t* system,
 
     if (!system || !stats) {
         set_error("NULL argument");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_update_noise: required parameter is NULL (system, stats)");
         return false;
     }
 
@@ -1599,6 +1650,7 @@ NIMCP_EXPORT bool kuramoto_set_all_phases(kuramoto_system_t* system,
 
     if (!system || !phases) {
         set_error("NULL argument");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kuramoto_print_state: required parameter is NULL (system, phases)");
         return false;
     }
 

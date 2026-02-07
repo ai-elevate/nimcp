@@ -202,6 +202,7 @@ static bool is_emotion_congruent(emotion_primary_t current, emotion_primary_t st
     /* WHY:  Prevent undefined behavior from invalid enum values */
     if ((int)current < 0 || (int)current > 7 ||
         (int)stimulus < 0 || (int)stimulus > 7) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_emotion_congruent: validation failed");
         return false;
     }
 
@@ -217,6 +218,7 @@ static bool is_emotion_congruent(emotion_primary_t current, emotion_primary_t st
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_emotion_congruent: validation failed");
     return false;
 }
 
@@ -330,6 +332,7 @@ emotion_attention_system_t* emotion_attention_create(
     if (!emotion_tensor || !attention) {
         EA_LOG_ERROR("Invalid arguments: emotion_tensor=%p attention=%p",
                      emotion_tensor, attention);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_create: required parameter is NULL (emotion_tensor, attention)");
         return NULL;
     }
 
@@ -372,6 +375,7 @@ emotion_attention_system_t* emotion_attention_create(
     if (pthread_rwlock_init(&system->lock, NULL) != 0) {
         EA_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_attention_create: validation failed");
         return NULL;
     }
 
@@ -417,6 +421,7 @@ emotion_attention_system_t* emotion_attention_create(
  */
 bool emotion_attention_connect_brain(emotion_attention_system_t* system, void* brain) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_connect_brain: system is NULL");
         return false;
     }
 
@@ -468,6 +473,7 @@ void emotion_attention_destroy(emotion_attention_system_t* system) {
 
 bool emotion_attention_modulate(emotion_attention_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_modulate: system is NULL");
         return false;
     }
 
@@ -587,6 +593,7 @@ float emotion_attention_get_width(const emotion_attention_system_t* system) {
 bool emotion_attention_set_sleep_state(emotion_attention_system_t* system, sleep_state_t state) {
     if (!system) {
         EA_LOG_ERROR("NULL system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_set_sleep_state: system is NULL");
         return false;
     }
 
@@ -637,6 +644,7 @@ bool emotion_attention_get_stats(
     emotion_attention_stats_t* stats
 ) {
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 
@@ -675,6 +683,7 @@ void emotion_attention_reset_stats(emotion_attention_system_t* system) {
 
 bool emotion_attention_register_bio_async(emotion_attention_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_register_bio_async: system is NULL");
         return false;
     }
 
@@ -838,6 +847,7 @@ bool emotion_attention_set_pe_config(
     /* Guard: Validate inputs */
     if (!system) {
         EA_LOG_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_set_pe_config: system is NULL");
         return false;
     }
 
@@ -848,12 +858,14 @@ bool emotion_attention_set_pe_config(
     if (max_sequence == 0 || max_sequence > NIMCP_POS_MAX_SEQ_LENGTH) {
         EA_LOG_ERROR("Invalid max_sequence: %u (must be 1-%u)",
                      max_sequence, NIMCP_POS_MAX_SEQ_LENGTH);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_set_pe_config: max_sequence is zero");
         return false;
     }
 
     if (embedding_dim == 0 || embedding_dim > NIMCP_POS_MAX_DIM) {
         EA_LOG_ERROR("Invalid embedding_dim: %u (must be 1-%u)",
                      embedding_dim, NIMCP_POS_MAX_DIM);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_set_pe_config: embedding_dim is zero");
         return false;
     }
 
@@ -878,6 +890,7 @@ bool emotion_attention_set_pe_config(
         if (!system->temporal_encoder) {
             EA_LOG_ERROR("Failed to create temporal encoder");
             pthread_rwlock_unlock(&system->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_set_pe_config: system->temporal_encoder is NULL");
             return false;
         }
     }
@@ -895,6 +908,7 @@ bool emotion_attention_set_pe_config(
                 system->temporal_encoder = NULL;
             }
             pthread_rwlock_unlock(&system->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_set_pe_config: validation failed");
             return false;
         }
     }
@@ -921,12 +935,14 @@ bool emotion_attention_encode_temporal(
     /* Guard: Validate inputs */
     if (!system) {
         EA_LOG_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_encode_temporal: system is NULL");
         return false;
     }
 
     if (!emotion_sequence || !output) {
         EA_LOG_ERROR("Null buffer pointers: emotion_sequence=%p output=%p",
                      emotion_sequence, output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_encode_temporal: required parameter is NULL (emotion_sequence, output)");
         return false;
     }
 
@@ -936,6 +952,7 @@ bool emotion_attention_encode_temporal(
 
     if (seq_length == 0) {
         EA_LOG_ERROR("Invalid seq_length: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_encode_temporal: seq_length is zero");
         return false;
     }
 
@@ -945,6 +962,7 @@ bool emotion_attention_encode_temporal(
     if (!system->temporal_encoder) {
         EA_LOG_ERROR("Temporal encoder not initialized");
         pthread_rwlock_unlock(&system->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_encode_temporal: system->temporal_encoder is NULL");
         return false;
     }
 
@@ -953,6 +971,7 @@ bool emotion_attention_encode_temporal(
         EA_LOG_ERROR("Sequence length %u exceeds max %u",
                      seq_length, system->config.max_temporal_sequence);
         pthread_rwlock_unlock(&system->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_encode_temporal: validation failed");
         return false;
     }
 
@@ -972,6 +991,7 @@ bool emotion_attention_encode_temporal(
 
     if (result != NIMCP_POS_SUCCESS) {
         EA_LOG_ERROR("Failed to apply temporal encoding: error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_encode_temporal: validation failed");
         return false;
     }
 
@@ -987,11 +1007,13 @@ bool emotion_attention_get_priority_embedding(
     /* Guard: Validate inputs */
     if (!system) {
         EA_LOG_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_get_priority_embedding: system is NULL");
         return false;
     }
 
     if (!output) {
         EA_LOG_ERROR("Null output buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_get_priority_embedding: output is NULL");
         return false;
     }
 
@@ -1005,6 +1027,7 @@ bool emotion_attention_get_priority_embedding(
     if (!system->priority_encoder) {
         EA_LOG_ERROR("Priority encoder not initialized");
         pthread_rwlock_unlock(&system->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_attention_get_priority_embedding: system->priority_encoder is NULL");
         return false;
     }
 
@@ -1013,6 +1036,7 @@ bool emotion_attention_get_priority_embedding(
         EA_LOG_ERROR("Priority rank %u exceeds max %u",
                      priority_rank, system->config.max_temporal_sequence);
         pthread_rwlock_unlock(&system->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_attention_get_priority_embedding: capacity exceeded");
         return false;
     }
 
@@ -1030,6 +1054,7 @@ bool emotion_attention_get_priority_embedding(
 
     if (result != NIMCP_POS_SUCCESS) {
         EA_LOG_ERROR("Failed to get priority embedding: error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_attention_get_priority_embedding: validation failed");
         return false;
     }
 

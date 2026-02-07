@@ -35,6 +35,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_create(
     if (n_source == 0 || n_target == 0) {
         NIMCP_LOGGING_ERROR("Invalid dimensions: n_source=%u, n_target=%u",
                            n_source, n_target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_connectivity_create: n_source is zero");
         return NULL;
     }
 
@@ -42,6 +43,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_create(
     cc_ternary_connectivity_t* conn = nimcp_malloc(sizeof(cc_ternary_connectivity_t));
     if (!conn) {
         NIMCP_LOGGING_ERROR("Failed to allocate connectivity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cc_ternary_connectivity_create: conn is NULL");
         return NULL;
     }
     memset(conn, 0, sizeof(cc_ternary_connectivity_t));
@@ -56,6 +58,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_create(
     conn->weights = trit_matrix_create(n_source, n_target, pack_mode);
     if (!conn->weights) {
         nimcp_free(conn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cc_ternary_connectivity_create: conn->weights is NULL");
         return NULL;
     }
 
@@ -173,7 +176,10 @@ void cc_ternary_connectivity_destroy(cc_ternary_connectivity_t* conn) {
 cc_ternary_connectivity_t* cc_ternary_connectivity_clone(
     const cc_ternary_connectivity_t* src
 ) {
-    if (!src || src->magic != CC_TERNARY_MAGIC) return NULL;
+    if (!src || src->magic != CC_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_connectivity_clone: src is NULL");
+        return NULL;
+    }
 
     cc_ternary_connectivity_t* dst = nimcp_malloc(sizeof(cc_ternary_connectivity_t));
     if (!dst) {
@@ -189,6 +195,7 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_clone(
     dst->weights = trit_matrix_clone(src->weights);
     if (!dst->weights) {
         nimcp_free(dst);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_connectivity_clone: dst->weights is NULL");
         return NULL;
     }
 
@@ -216,7 +223,10 @@ int cc_ternary_connectivity_set(
     uint32_t target,
     trit_t weight
 ) {
-    if (!conn || conn->magic != CC_TERNARY_MAGIC) return -1;
+    if (!conn || conn->magic != CC_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_connectivity_set: conn is NULL");
+        return -1;
+    }
     if (source >= conn->n_source || target >= conn->n_target) return -2;
     if (!TRIT_IS_VALID(weight)) return -3;
 
@@ -245,7 +255,10 @@ int cc_ternary_connectivity_apply(
     const float* input,
     float* output
 ) {
-    if (!conn || conn->magic != CC_TERNARY_MAGIC) return -1;
+    if (!conn || conn->magic != CC_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_connectivity_apply: conn is NULL");
+        return -1;
+    }
     if (!input || !output) return -2;
 
     for (uint32_t t = 0; t < conn->n_target; t++) {
@@ -275,6 +288,7 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
 ) {
     if (!base) {
         NIMCP_LOGGING_ERROR("NULL base hypercolumn");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_hypercolumn_create: base is NULL");
         return NULL;
     }
 
@@ -285,6 +299,7 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
 
     if (num_mini == 0) {
         NIMCP_LOGGING_ERROR("Base hypercolumn has 0 minicolumns");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_hypercolumn_create: num_mini is zero");
         return NULL;
     }
 
@@ -314,6 +329,7 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
     thcol->states = nimcp_malloc(num_mini * sizeof(cc_ternary_state_t));
     if (!thcol->states) {
         nimcp_free(thcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cc_ternary_hypercolumn_create: thcol->states is NULL");
         return NULL;
     }
     memset(thcol->states, 0, num_mini * sizeof(cc_ternary_state_t));
@@ -333,6 +349,7 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
     if (!thcol->lateral) {
         nimcp_free(thcol->states);
         nimcp_free(thcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_hypercolumn_create: thcol->lateral is NULL");
         return NULL;
     }
 
@@ -481,7 +498,10 @@ uint32_t cc_ternary_hypercolumn_wta(cc_ternary_hypercolumn_t* thcol) {
 }
 
 int cc_ternary_hypercolumn_update_states(cc_ternary_hypercolumn_t* thcol) {
-    if (!thcol || thcol->magic != CC_TERNARY_MAGIC) return -1;
+    if (!thcol || thcol->magic != CC_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_hypercolumn_update_states: thcol is NULL");
+        return -1;
+    }
 
     /* Get activations from base hypercolumn */
     float* activations = nimcp_malloc(thcol->num_minicolumns * sizeof(float));
@@ -517,7 +537,10 @@ int cc_ternary_hypercolumn_get_all_states(
     const cc_ternary_hypercolumn_t* thcol,
     trit_t* out_states
 ) {
-    if (!thcol || thcol->magic != CC_TERNARY_MAGIC) return -1;
+    if (!thcol || thcol->magic != CC_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cc_ternary_hypercolumn_get_all_states: thcol is NULL");
+        return -1;
+    }
     if (!out_states) return -2;
 
     for (uint32_t i = 0; i < thcol->num_minicolumns; i++) {
@@ -567,7 +590,10 @@ void cc_ternary_wta_config_default(cc_ternary_wta_config_t* config) {
 }
 
 int cc_ternary_wta_config_validate(const cc_ternary_wta_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc_ternary_wta_config_validate: config is NULL");
+        return -1;
+    }
 
     if (config->active_threshold <= config->suppress_threshold) {
         NIMCP_LOGGING_ERROR("active_threshold (%.3f) must be > suppress_threshold (%.3f)",

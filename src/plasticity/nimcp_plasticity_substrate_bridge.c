@@ -267,6 +267,7 @@ int plasticity_substrate_connect_bio_async(plasticity_substrate_bridge_t* bridge
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -306,9 +307,11 @@ int plasticity_substrate_update_stdp(plasticity_substrate_bridge_t* bridge)
     substrate_physical_state_t physical;
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_stdp: validation failed");
         return -1;
     }
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_stdp: validation failed");
         return -1;
     }
 
@@ -402,6 +405,7 @@ int plasticity_substrate_update_bcm(plasticity_substrate_bridge_t* bridge)
     substrate_metabolic_state_t metabolic;
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_bcm: validation failed");
         return -1;
     }
 
@@ -533,9 +537,11 @@ int plasticity_substrate_update_eligibility(plasticity_substrate_bridge_t* bridg
     substrate_physical_state_t physical;
 
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_eligibility: validation failed");
         return -1;
     }
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_eligibility: validation failed");
         return -1;
     }
 
@@ -613,6 +619,7 @@ int plasticity_substrate_update_dendritic(plasticity_substrate_bridge_t* bridge)
     substrate_physical_state_t physical;
 
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_update_dendritic: validation failed");
         return -1;
     }
 
@@ -839,6 +846,7 @@ int plasticity_substrate_get_effects(
 bool plasticity_substrate_is_limited(const plasticity_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_substrate_is_limited: bridge is NULL");
         return false;
     }
 
@@ -853,6 +861,7 @@ bool plasticity_substrate_is_limited(const plasticity_substrate_bridge_t* bridge
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_substrate_is_limited: validation failed");
     return false;
 }
 

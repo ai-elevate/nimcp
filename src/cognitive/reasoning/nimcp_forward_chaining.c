@@ -137,18 +137,21 @@ bool brain_forward_chain(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_forward_chain: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!brain_has_symbolic_logic(brain)) {
         set_error("Symbolic logic engine not attached");
         NIMCP_LOGGING_ERROR("brain_forward_chain: no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain: brain_has_symbolic_logic is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(result, "result")) {
         set_error("Result pointer is NULL");
         NIMCP_LOGGING_ERROR("brain_forward_chain: result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -184,6 +187,7 @@ bool brain_forward_chain(
     if (!success) {
         set_error("Forward chaining execution failed");
         NIMCP_LOGGING_ERROR("brain_forward_chain: symbolic_logic_forward_chain failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_forward_chain: success is NULL");
         return false;
     }
 
@@ -226,24 +230,28 @@ bool brain_forward_chain_step(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_forward_chain_step: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain_step: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!brain_has_symbolic_logic(brain)) {
         set_error("Symbolic logic engine not attached");
         NIMCP_LOGGING_ERROR("brain_forward_chain_step: no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain_step: brain_has_symbolic_logic is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(new_facts, "new_facts")) {
         set_error("New facts pointer is NULL");
         NIMCP_LOGGING_ERROR("brain_forward_chain_step: new_facts is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain_step: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(num_new_facts, "num_new_facts")) {
         set_error("Num new facts pointer is NULL");
         NIMCP_LOGGING_ERROR("brain_forward_chain_step: num_new_facts is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_forward_chain_step: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -266,6 +274,7 @@ bool brain_forward_chain_step(
     if (!success) {
         set_error("Forward chain step execution failed");
         NIMCP_LOGGING_ERROR("brain_forward_chain_step: execution failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_forward_chain_step: success is NULL");
         return false;
     }
 
@@ -312,6 +321,7 @@ bool brain_get_forward_chain_stats(
 {
     if (!brain || !brain_has_symbolic_logic(brain)) {
         set_error("Brain is NULL or no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_forward_chain_stats: required parameter is NULL (brain, brain_has_symbolic_logic)");
         return false;
     }
 
@@ -325,6 +335,7 @@ bool brain_get_forward_chain_stats(
 
     if (!symbolic_logic_get_stats(engine, &stats)) {
         set_error("Failed to get logic engine statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_forward_chain_stats: symbolic_logic_get_stats is NULL");
         return false;
     }
 

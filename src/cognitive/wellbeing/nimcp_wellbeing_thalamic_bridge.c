@@ -108,6 +108,7 @@ wellbeing_thalamic_bridge_t* wellbeing_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "wellbeing_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->wellbeing = wellbeing;
@@ -132,7 +133,10 @@ void wellbeing_thalamic_bridge_destroy(wellbeing_thalamic_bridge_t* bridge) {
 }
 
 int wellbeing_thalamic_bridge_reset(wellbeing_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_reset", 0.0f);
 
@@ -148,7 +152,10 @@ int wellbeing_thalamic_route_signal(
     wellbeing_thalamic_bridge_t* bridge,
     const wellbeing_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_wellbeing_thalamic_r", 0.0f);
@@ -188,6 +195,7 @@ int wellbeing_thalamic_route_signal(
             break;
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -209,7 +217,10 @@ int wellbeing_thalamic_route_status(
     float level,
     float stability
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_route_status: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_wellbeing_thalamic_r", 0.0f);
@@ -234,7 +245,10 @@ int wellbeing_thalamic_route_threat(
     float severity,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_route_threat: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_wellbeing_thalamic_r", 0.0f);
@@ -255,7 +269,10 @@ int wellbeing_thalamic_route_threat(
 }
 
 int wellbeing_thalamic_set_attention(wellbeing_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_wellbeing_thalamic_s", 0.0f);
 
@@ -267,7 +284,10 @@ int wellbeing_thalamic_set_attention(wellbeing_thalamic_bridge_t* bridge, float 
 }
 
 int wellbeing_thalamic_get_attention(const wellbeing_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_wellbeing_thalamic_g", 0.0f);
@@ -280,7 +300,10 @@ int wellbeing_thalamic_bridge_get_stats(
     const wellbeing_thalamic_bridge_t* bridge,
     wellbeing_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     wellbeing_thalamic_bridge_heartbeat("wellbeing_th_get_stats", 0.0f);

@@ -121,6 +121,7 @@ vae_loss_ctx_t* vae_loss_ctx_create(const vae_loss_config_t* config)
     if (!ctx->mutex) {
         NIMCP_LOG_ERROR("VAE Loss: Failed to create mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_loss_ctx_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -149,6 +150,7 @@ int vae_loss_ctx_reset(vae_loss_ctx_t* ctx)
 {
     if (!ctx || !ctx->is_initialized) {
         NIMCP_LOG_ERROR("VAE Loss: Invalid context for reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_loss_ctx_reset: required parameter is NULL (ctx, ctx->is_initialized)");
         return -1;
     }
 
@@ -480,6 +482,7 @@ int vae_loss_kl_per_dimension(const nimcp_tensor_t* mu,
                               float* kl_per_dim)
 {
     if (!mu || !log_var || !kl_per_dim || !mu->data || !log_var->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_loss_kl_per_dimension: required parameter is NULL (mu, log_var, kl_per_dim, mu->data, log_var->data)");
         return -1;
     }
 
@@ -824,6 +827,7 @@ float vae_loss_get_kl_weight(const vae_loss_ctx_t* ctx)
 int vae_loss_set_step(vae_loss_ctx_t* ctx, uint32_t step)
 {
     if (!ctx || !ctx->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_loss_set_step: required parameter is NULL (ctx, ctx->is_initialized)");
         return -1;
     }
 
@@ -892,6 +896,7 @@ int vae_loss_recon_gradient(const nimcp_tensor_t* x,
 
     uint32_t total = nimcp_tensor_numel(x);
     if (total == 0 || total != nimcp_tensor_numel(x_recon) || total != nimcp_tensor_numel(d_recon)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_loss_recon_gradient: total is zero");
         return -1;
     }
 
@@ -955,7 +960,10 @@ int vae_loss_kl_gradient(const nimcp_tensor_t* mu,
     }
 
     uint32_t total = nimcp_tensor_numel(mu);
-    if (total == 0) return -1;
+    if (total == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_loss_kl_gradient: total is zero");
+        return -1;
+    }
 
     const float* mu_data = (const float*)mu->data;
     const float* log_var_data = (const float*)log_var->data;
@@ -1000,6 +1008,7 @@ vae_loss_breakdown_t* vae_loss_breakdown_create(uint32_t latent_dim)
         breakdown->kl_per_dim = nimcp_calloc(latent_dim, sizeof(float));
         if (!breakdown->kl_per_dim) {
             nimcp_free(breakdown);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_loss_breakdown_create: breakdown->kl_per_dim is NULL");
             return NULL;
         }
         breakdown->latent_dim = latent_dim;

@@ -204,6 +204,7 @@ static agent_entry_t* find_agent_entry(
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_entry: validation failed");
     return NULL;
 }
 
@@ -214,7 +215,10 @@ static domain_entry_t* find_domain_entry(
     transactive_memory_t tm,
     const prime_signature_t* sig
 ) {
-    if (!tm || !sig) return NULL;
+    if (!tm || !sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_domain_entry: required parameter is NULL (tm, sig)");
+        return NULL;
+    }
 
     size_t index = hash_signature(sig, tm->domain_table_size);
     domain_entry_t* entry = tm->domain_table[index];
@@ -225,6 +229,7 @@ static domain_entry_t* find_domain_entry(
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_domain_entry: validation failed");
     return NULL;
 }
 
@@ -235,7 +240,10 @@ static expertise_entry_t* find_expertise_entry(
     transactive_agent_t* agent,
     const prime_signature_t* domain_sig
 ) {
-    if (!agent || !domain_sig) return NULL;
+    if (!agent || !domain_sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_expertise_entry: required parameter is NULL (agent, domain_sig)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < agent->num_expertise; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -248,6 +256,7 @@ static expertise_entry_t* find_expertise_entry(
             return &agent->expertise[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_expertise_entry: validation failed");
     return NULL;
 }
 
@@ -331,6 +340,7 @@ static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
 
     // Need to expand
     if (tm->delegation_capacity >= TRANSACTIVE_MAX_DELEGATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_free_delegation: capacity exceeded");
         return NULL;
     }
 
@@ -388,6 +398,7 @@ static delegation_state_t* find_delegation(
             return &tm->delegations[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_delegation: operation failed");
     return NULL;
 }
 
@@ -432,6 +443,7 @@ NIMCP_EXPORT transactive_config_t transactive_config_default(void) {
 NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config) {
     if (!config) {
         set_error("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "transactive_config_validate: config is NULL");
         return false;
     }
 
@@ -439,6 +451,7 @@ NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config
     if (config->initial_agent_capacity == 0 ||
         config->initial_domain_capacity == 0) {
         set_error("Invalid capacity (must be > 0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "transactive_config_validate: config is NULL");
         return false;
     }
 
@@ -448,6 +461,7 @@ NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config
         config->min_confidence_threshold < 0.0f ||
         config->min_confidence_threshold > 1.0f) {
         set_error("Thresholds must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_config_validate: operation failed");
         return false;
     }
 
@@ -457,6 +471,7 @@ NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config
         config->accessibility_weight < 0.0f ||
         config->familiarity_weight < 0.0f) {
         set_error("Weights must be >= 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_config_validate: operation failed");
         return false;
     }
 
@@ -467,6 +482,7 @@ NIMCP_EXPORT bool transactive_config_validate(const transactive_config_t* config
 
     if (weight_sum < TRANSACTIVE_EPSILON) {
         set_error("At least one weight must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_config_validate: validation failed");
         return false;
     }
 
@@ -489,12 +505,14 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
     transactive_config_t cfg = config ? *config : transactive_config_default();
 
     if (!transactive_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "transactive_create_with_pr: transactive_config_validate is NULL");
         return NULL;
     }
 
     transactive_memory_t tm = (transactive_memory_t)nimcp_calloc(1, sizeof(*tm));
     if (!tm) {
         set_error("Failed to allocate transactive memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm is NULL");
         return NULL;
     }
 
@@ -509,6 +527,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
     if (!tm->agent_table) {
         set_error("Failed to allocate agent table");
         nimcp_free(tm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->agent_table is NULL");
         return NULL;
     }
 
@@ -522,6 +541,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
         set_error("Failed to allocate domain table");
         nimcp_free(tm->agent_table);
         nimcp_free(tm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->domain_table is NULL");
         return NULL;
     }
 
@@ -536,6 +556,7 @@ NIMCP_EXPORT transactive_memory_t transactive_create_with_pr(
         nimcp_free(tm->domain_table);
         nimcp_free(tm->agent_table);
         nimcp_free(tm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "transactive_create_with_pr: tm->delegations is NULL");
         return NULL;
     }
 
@@ -2048,7 +2069,10 @@ NIMCP_EXPORT void transactive_print_agent(
 }
 
 NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
-    if (!tm) return false;
+    if (!tm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "transactive_validate: tm is NULL");
+        return false;
+    }
 
     // Verify agent count
     size_t agent_count = 0;
@@ -2068,6 +2092,7 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (agent_count != tm->num_agents) {
         set_error("Agent count mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 
@@ -2089,6 +2114,7 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (domain_count != tm->num_domains) {
         set_error("Domain count mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 
@@ -2108,6 +2134,7 @@ NIMCP_EXPORT bool transactive_validate(transactive_memory_t tm) {
 
     if (active_delegations != tm->num_delegations) {
         set_error("Delegation count mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "transactive_validate: validation failed");
         return false;
     }
 

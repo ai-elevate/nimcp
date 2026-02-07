@@ -103,6 +103,7 @@ static bool detect_agent_from_features(
 ) {
     if (!features || num_features == 0) {
         if (confidence) *confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_agent_from_features: validation failed");
         return false;
     }
 
@@ -377,6 +378,7 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_VISUAL_BRIDGE, "mirror_visual_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_visual_bridge_create: validation failed");
         return NULL;
     }
 
@@ -393,6 +395,7 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate visual features buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_visual_bridge_create: bridge->visual_features_buffer is NULL");
         return NULL;
     }
     bridge->visual_features_size = VISUAL_FEATURES_BUFFER_SIZE;

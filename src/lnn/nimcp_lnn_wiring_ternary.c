@@ -343,6 +343,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
     );
     if (!wiring->adjacency) {
         nimcp_free(wiring);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_create: wiring->adjacency is NULL");
         return NULL;
     }
 
@@ -355,6 +356,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
         if (!wiring->neuron_type) {
             trit_matrix_destroy(wiring->adjacency);
             nimcp_free(wiring);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_create: wiring->neuron_type is NULL");
             return NULL;
         }
         /* Assign excitatory/inhibitory randomly based on ratio */
@@ -370,6 +372,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
             if (wiring->neuron_type) nimcp_free(wiring->neuron_type);
             trit_matrix_destroy(wiring->adjacency);
             nimcp_free(wiring);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_create: validation failed");
             return NULL;
         }
     }
@@ -413,6 +416,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_create(
 
     if (result != LNN_SUCCESS) {
         lnn_ternary_wiring_destroy(wiring);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_create: validation failed");
         return NULL;
     }
 
@@ -427,7 +431,10 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_from_binary(
     float excitatory_ratio,
     uint64_t seed
 ) {
-    if (!wiring) return NULL;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_from_binary: wiring is NULL");
+        return NULL;
+    }
 
     seed_rng(seed);
 
@@ -439,7 +446,10 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_from_binary(
     config.excitatory_ratio = excitatory_ratio;
 
     lnn_ternary_wiring_t* ternary = nimcp_malloc(sizeof(lnn_ternary_wiring_t));
-    if (!ternary) return NULL;
+    if (!ternary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_from_binary: ternary is NULL");
+        return NULL;
+    }
     memset(ternary, 0, sizeof(lnn_ternary_wiring_t));
 
     ternary->magic = LNN_TERNARY_WIRING_MAGIC;
@@ -451,6 +461,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_from_binary(
     );
     if (!ternary->adjacency) {
         nimcp_free(ternary);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_from_binary: ternary->adjacency is NULL");
         return NULL;
     }
 
@@ -492,10 +503,16 @@ void lnn_ternary_wiring_destroy(lnn_ternary_wiring_t* wiring) {
 }
 
 lnn_ternary_wiring_t* lnn_ternary_wiring_clone(const lnn_ternary_wiring_t* src) {
-    if (!src || src->magic != LNN_TERNARY_WIRING_MAGIC) return NULL;
+    if (!src || src->magic != LNN_TERNARY_WIRING_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_clone: src is NULL");
+        return NULL;
+    }
 
     lnn_ternary_wiring_t* dst = nimcp_malloc(sizeof(lnn_ternary_wiring_t));
-    if (!dst) return NULL;
+    if (!dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_clone: dst is NULL");
+        return NULL;
+    }
 
     memcpy(dst, src, sizeof(lnn_ternary_wiring_t));
 
@@ -503,6 +520,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_clone(const lnn_ternary_wiring_t* src) 
     dst->adjacency = trit_matrix_clone(src->adjacency);
     if (!dst->adjacency) {
         nimcp_free(dst);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_clone: dst->adjacency is NULL");
         return NULL;
     }
 
@@ -512,6 +530,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_clone(const lnn_ternary_wiring_t* src) 
         if (!dst->neuron_type) {
             trit_matrix_destroy(dst->adjacency);
             nimcp_free(dst);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_clone: dst->neuron_type is NULL");
             return NULL;
         }
         memcpy(dst->neuron_type, src->neuron_type, src->n_neurons * sizeof(bool));
@@ -524,6 +543,7 @@ lnn_ternary_wiring_t* lnn_ternary_wiring_clone(const lnn_ternary_wiring_t* src) 
             if (dst->neuron_type) nimcp_free(dst->neuron_type);
             trit_matrix_destroy(dst->adjacency);
             nimcp_free(dst);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_clone: validation failed");
             return NULL;
         }
         memcpy(dst->roles, src->roles, src->n_neurons * sizeof(lnn_neuron_role_t));
@@ -770,13 +790,19 @@ lnn_ternary_matrix_t* lnn_ternary_wiring_to_matrix(
     const lnn_ternary_wiring_t* wiring,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!wiring || wiring->magic != LNN_TERNARY_WIRING_MAGIC) return NULL;
+    if (!wiring || wiring->magic != LNN_TERNARY_WIRING_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_ternary_wiring_to_matrix: wiring is NULL");
+        return NULL;
+    }
 
     /* Create ternary matrix */
     lnn_ternary_matrix_t* mat = lnn_ternary_matrix_create(
         wiring->n_neurons, wiring->n_neurons, pack_mode, false
     );
-    if (!mat) return NULL;
+    if (!mat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_ternary_wiring_to_matrix: mat is NULL");
+        return NULL;
+    }
 
     /* Copy adjacency to dense matrix */
     for (uint32_t i = 0; i < wiring->n_neurons; i++) {

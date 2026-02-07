@@ -163,7 +163,10 @@ static int handle_spike_event(
     void* user_data
 ) {
     mirror_snn_bridge_t* bridge = (mirror_snn_bridge_t*)user_data;
-    if (!bridge || !msg || type != SNN_BIO_MSG_SPIKE_EVENT) return -1;
+    if (!bridge || !msg || type != SNN_BIO_MSG_SPIKE_EVENT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_spike_event: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     const snn_bio_spike_msg_t* spike = (const snn_bio_spike_msg_t*)msg;
 
@@ -191,7 +194,10 @@ static int handle_training_event(
     void* user_data
 ) {
     mirror_snn_bridge_t* bridge = (mirror_snn_bridge_t*)user_data;
-    if (!bridge || !msg || type != SNN_BIO_MSG_STDP_EVENT) return -1;
+    if (!bridge || !msg || type != SNN_BIO_MSG_STDP_EVENT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_training_event: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     const snn_bio_stdp_msg_t* stdp = (const snn_bio_stdp_msg_t*)msg;
 
@@ -221,7 +227,10 @@ static int handle_population_activity(
     void* user_data
 ) {
     mirror_snn_bridge_t* bridge = (mirror_snn_bridge_t*)user_data;
-    if (!bridge || !msg || type != SNN_BIO_MSG_POPULATION_ACTIVITY) return -1;
+    if (!bridge || !msg || type != SNN_BIO_MSG_POPULATION_ACTIVITY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_population_activity: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     const snn_bio_population_msg_t* pop = (const snn_bio_population_msg_t*)msg;
 
@@ -318,6 +327,7 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
     if (!bridge->snn) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_snn_create: bridge->snn is NULL");
         return NULL;
     }
     bridge->owns_snn = true;
@@ -351,6 +361,7 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to initialize bridge base");
         snn_network_destroy(bridge->snn);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_snn_create: validation failed");
         return NULL;
     }
 
@@ -407,6 +418,7 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "mirror_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_snn_create_with_network: validation failed");
         return NULL;
     }
 
@@ -643,6 +655,7 @@ int mirror_snn_encode_observation(
     if (ret != SNN_SUCCESS) {
         bridge->state = MIRROR_SNN_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_encode_observation: validation failed");
         return -1;
     }
 
@@ -798,6 +811,7 @@ int mirror_snn_get_recognized_action(
     best_conf *= bridge->config.confidence_gain;
     if (best_conf < bridge->config.decoding_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_recognized_action: validation failed");
         return -1;  /* No confident recognition */
     }
 

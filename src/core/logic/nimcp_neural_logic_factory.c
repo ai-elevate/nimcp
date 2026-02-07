@@ -70,18 +70,21 @@ static uint32_t get_logic_size_for_brain(uint32_t brain_size) {
 static bool validate_config(const neural_logic_config_t* config) {
     if (!config) {
         LOG_ERROR("validate_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_config: config is NULL");
         return false;
     }
 
     // Validate max_logic_neurons
     if (config->max_logic_neurons == 0) {
         LOG_ERROR("validate_config: max_logic_neurons is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: config->max_logic_neurons is zero");
         return false;
     }
 
     // Validate max_variables
     if (config->max_variables == 0) {
         LOG_ERROR("validate_config: max_variables is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: config->max_variables is zero");
         return false;
     }
     if (config->max_variables > 26) {
@@ -92,6 +95,7 @@ static bool validate_config(const neural_logic_config_t* config) {
     // Validate variable_pattern_dim
     if (config->variable_pattern_dim == 0) {
         LOG_ERROR("validate_config: variable_pattern_dim is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: config->variable_pattern_dim is zero");
         return false;
     }
     if (config->variable_pattern_dim > 1024) {
@@ -201,12 +205,14 @@ neural_logic_network_t create_neural_logic_with_config(
     // Guard: NULL config
     if (!nimcp_validate_pointer(config, "config")) {
         LOG_ERROR("create_neural_logic_with_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_neural_logic_with_config: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     // Validate configuration
     if (!validate_config(config)) {
         LOG_ERROR("create_neural_logic_with_config: invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_neural_logic_with_config: validate_config is NULL");
         return NULL;
     }
 
@@ -241,6 +247,7 @@ bool create_and_attach_neural_logic(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("create_and_attach_neural_logic: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_and_attach_neural_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -248,6 +255,7 @@ bool create_and_attach_neural_logic(
     if (brain_has_neural_logic(brain)) {
         LOG_WARNING("create_and_attach_neural_logic: brain '%s' already has logic network",
                     "brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_and_attach_neural_logic: validation failed");
         return false;
     }
 
@@ -259,6 +267,7 @@ bool create_and_attach_neural_logic(
 
     if (!network) {
         LOG_ERROR("create_and_attach_neural_logic: failed to create network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_and_attach_neural_logic: network is NULL");
         return false;
     }
 
@@ -275,6 +284,7 @@ bool create_and_attach_neural_logic(
         // Clean up network on failure
         neural_logic_destroy(network);
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_and_attach_neural_logic: success is NULL");
         return false;
     }
 

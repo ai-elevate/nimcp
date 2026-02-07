@@ -322,7 +322,10 @@ static float* synthesize_tracks(const music_track_t* tracks, uint32_t num_tracks
                                  float duration_seconds, uint64_t* num_samples) {
     *num_samples = (uint64_t)(duration_seconds * sample_rate);
     float* buffer = nimcp_calloc(*num_samples, sizeof(float));
-    if (!buffer) return NULL;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "midi_to_freq: buffer is NULL");
+        return NULL;
+    }
 
     for (uint32_t t = 0; t < num_tracks; t++) {
         for (uint32_t n = 0; n < tracks[t].num_notes; n++) {
@@ -353,6 +356,7 @@ music_generator_t* music_generator_create(const music_generator_config_t* config
     music_generator_t* gen = nimcp_calloc(1, sizeof(music_generator_t));
     if (!gen) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate music generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_generator_create: gen is NULL");
         return NULL;
     }
 
@@ -387,7 +391,10 @@ void music_generator_destroy(music_generator_t* gen) {
 int music_generate(music_generator_t* gen,
                    const music_generation_request_t* request,
                    music_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_generator_destroy: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(music_generation_result_t));
 
@@ -416,7 +423,10 @@ int music_generate(music_generator_t* gen,
     /* Allocate tracks */
     result->num_tracks = 3;  /* Melody, harmony, bass */
     result->tracks = nimcp_calloc(result->num_tracks, sizeof(music_track_t));
-    if (!result->tracks) return -1;
+    if (!result->tracks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_generator_destroy: result->tracks is NULL");
+        return -1;
+    }
 
     /* Generate melody */
     generate_melody_notes(&key, tempo, duration_beats, &seed,
@@ -455,7 +465,10 @@ int music_generate(music_generator_t* gen,
 int music_generate_extended(music_generator_t* gen,
                             const music_generation_request_ext_t* request,
                             music_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_generator_destroy: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     /* Convert extended request to simple request */
     music_generation_request_t simple_request;
@@ -489,7 +502,10 @@ int music_generate_melody(music_generator_t* gen,
                           const chord_progression_t* progression,
                           const style_embedding_t* style,
                           music_generation_result_t* result) {
-    if (!gen || !progression || !result) return -1;
+    if (!gen || !progression || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_generator_destroy: required parameter is NULL (gen, progression, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(music_generation_result_t));
@@ -506,7 +522,10 @@ int music_generate_melody(music_generator_t* gen,
     /* Allocate single track */
     result->num_tracks = 1;
     result->tracks = nimcp_calloc(1, sizeof(music_track_t));
-    if (!result->tracks) return -1;
+    if (!result->tracks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_generator_destroy: result->tracks is NULL");
+        return -1;
+    }
 
     /* Generate melody over progression */
     generate_melody_notes(&progression->key, DEFAULT_TEMPO, duration_beats, &seed,
@@ -528,7 +547,10 @@ int music_generate_accompaniment(music_generator_t* gen,
                                  const music_track_t* melody,
                                  const style_embedding_t* style,
                                  music_generation_result_t* result) {
-    if (!gen || !melody || !result) return -1;
+    if (!gen || !melody || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_generator_destroy: required parameter is NULL (gen, melody, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(music_generation_result_t));
@@ -555,6 +577,7 @@ int music_generate_accompaniment(music_generator_t* gen,
     result->tracks = nimcp_calloc(result->num_tracks, sizeof(music_track_t));
     if (!result->tracks) {
         chord_progression_free(&progression);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_generator_destroy: result->tracks is NULL");
         return -1;
     }
 
@@ -595,7 +618,10 @@ int music_generate_progression(music_generator_t* gen,
                                uint32_t num_measures,
                                const style_embedding_t* style,
                                chord_progression_t* progression) {
-    if (!gen || !key || !progression) return -1;
+    if (!gen || !key || !progression) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, key, progression)");
+        return -1;
+    }
     (void)style;
 
     memset(progression, 0, sizeof(chord_progression_t));
@@ -615,7 +641,10 @@ int music_generate_progression(music_generator_t* gen,
     /* Allocate chords */
     progression->num_chords = num_measures;
     progression->chords = nimcp_calloc(num_measures, sizeof(music_chord_t));
-    if (!progression->chords) return -1;
+    if (!progression->chords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: progression->chords is NULL");
+        return -1;
+    }
 
     progression->key = *key;
 
@@ -643,7 +672,10 @@ int music_generate_film_score(music_generator_t* gen,
                               const char* mood,
                               const style_embedding_t* style,
                               music_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
 
     music_generation_request_t request;
     memset(&request, 0, sizeof(request));
@@ -676,7 +708,10 @@ int music_generate_leitmotif(music_generator_t* gen,
                              const char* character_description,
                              const style_embedding_t* style,
                              music_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
 
     music_generation_request_t request;
     memset(&request, 0, sizeof(request));
@@ -698,7 +733,10 @@ int music_generate_variation(music_generator_t* gen,
                              const music_generation_result_t* original,
                              float variation_strength,
                              music_generation_result_t* result) {
-    if (!gen || !original || !result) return -1;
+    if (!gen || !original || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, original, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(music_generation_result_t));
 
@@ -707,7 +745,10 @@ int music_generate_variation(music_generator_t* gen,
     /* Copy and modify tracks */
     result->num_tracks = original->num_tracks;
     result->tracks = nimcp_calloc(result->num_tracks, sizeof(music_track_t));
-    if (!result->tracks) return -1;
+    if (!result->tracks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->tracks is NULL");
+        return -1;
+    }
 
     for (uint32_t t = 0; t < original->num_tracks; t++) {
         const music_track_t* src = &original->tracks[t];
@@ -751,7 +792,10 @@ int music_extend(music_generator_t* gen,
                  const music_generation_result_t* existing,
                  float additional_seconds,
                  music_generation_result_t* result) {
-    if (!gen || !existing || !result) return -1;
+    if (!gen || !existing || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, existing, result)");
+        return -1;
+    }
 
     /* Generate extension */
     music_generation_request_t request;
@@ -761,6 +805,7 @@ int music_extend(music_generator_t* gen,
 
     music_generation_result_t extension;
     if (music_generate(gen, &request, &extension) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -770,6 +815,7 @@ int music_extend(music_generator_t* gen,
     result->tracks = nimcp_calloc(result->num_tracks, sizeof(music_track_t));
     if (!result->tracks) {
         creative_music_result_free(&extension);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->tracks is NULL");
         return -1;
     }
 
@@ -816,11 +862,15 @@ int music_extend(music_generator_t* gen,
 //=============================================================================
 
 int music_export_midi(const music_generation_result_t* result, const char* path) {
-    if (!result || !path) return -1;
+    if (!result || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_export_midi: required parameter is NULL (result, path)");
+        return -1;
+    }
 
     FILE* f = fopen(path, "wb");
     if (!f) {
         LOG_ERROR(LOG_MODULE, "Failed to open %s for writing", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_export_midi: f is NULL");
         return -1;
     }
 
@@ -857,12 +907,16 @@ int music_export_midi(const music_generation_result_t* result, const char* path)
 
 int music_export_audio(const music_generation_result_t* result,
                        const char* path, const char* format) {
-    if (!result || !path || !result->audio_data) return -1;
+    if (!result || !path || !result->audio_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_export_midi: required parameter is NULL (result, path, result->audio_data)");
+        return -1;
+    }
     (void)format;
 
     FILE* f = fopen(path, "wb");
     if (!f) {
         LOG_ERROR(LOG_MODULE, "Failed to open %s for writing", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_export_midi: f is NULL");
         return -1;
     }
 
@@ -909,7 +963,10 @@ int music_export_audio(const music_generation_result_t* result,
 int music_render_audio(music_generator_t* gen,
                        music_generation_result_t* result,
                        uint32_t sample_rate) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_export_midi: required parameter is NULL (gen, result)");
+        return -1;
+    }
 
     if (result->audio_data) {
         nimcp_free(result->audio_data);
@@ -955,7 +1012,10 @@ void music_generator_clear_style(music_generator_t* gen) {
 int music_generator_archetype_style(music_generator_t* gen,
                                     musical_style_archetype_t archetype_id,
                                     style_embedding_t* out) {
-    if (!gen || !out) return -1;
+    if (!gen || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_generator_clear_style: required parameter is NULL (gen, out)");
+        return -1;
+    }
 
     style_embedding_create(out, 256);
 
@@ -984,7 +1044,10 @@ void music_generator_set_audio_cortex(music_generator_t* gen, void* audio_cortex
 //=============================================================================
 
 int music_parse_key(const char* key_string, music_key_t* out) {
-    if (!key_string || !out) return -1;
+    if (!key_string || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_parse_key: required parameter is NULL (key_string, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(music_key_t));
 

@@ -163,7 +163,10 @@ int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {
 
 
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_bridge_update: validation failed");
+        return -1;
+    }
 
     float atp = metabolic.atp_level;
     float metabolic_cap = metabolic.metabolic_capacity;
@@ -358,13 +361,19 @@ void mirror_substrate_bridge_set_instance_health_agent(
  * ============================================================================ */
 
 int mirror_substrate_bridge_pre_training_hook(mirror_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_substrate_bridge_pre_training_hook: bridge is NULL");
+        return -1;
+    }
     mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_pre_train", 0.0f);
     return 0;
 }
 
 int mirror_substrate_bridge_post_training_hook(mirror_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_substrate_bridge_post_training_hook: bridge is NULL");
+        return -1;
+    }
     mirror_substrate_bridge_heartbeat_instance(bridge->health_agent, "mirror_subst_post_train", 1.0f);
     return 0;
 }

@@ -265,7 +265,10 @@ void mesh_receptive_fields_cleanup(void) {
 }
 
 const mesh_receptive_field_t* mesh_receptive_field_get_by_name(const char* name) {
-    if (!name) return NULL;
+    if (!name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_receptive_field_get_by_name: name is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; g_field_table[i].name != NULL; i++) {
         if (strcmp(g_field_table[i].name, name) == 0) {
@@ -273,6 +276,7 @@ const mesh_receptive_field_t* mesh_receptive_field_get_by_name(const char* name)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_receptive_field_get_by_name: validation failed");
     return NULL;
 }
 

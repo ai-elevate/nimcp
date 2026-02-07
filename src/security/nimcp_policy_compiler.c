@@ -134,6 +134,7 @@ static bytecode_t* bytecode_create(void) {
     bc->instructions = nimcp_calloc(bc->capacity, sizeof(instruction_t));
     if (!bc->instructions) {
         nimcp_free(bc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bytecode_create: bc->instructions is NULL");
         return NULL;
     }
 
@@ -202,11 +203,13 @@ static bool compile_node(bytecode_t* bc, const nimcp_ast_node_t* node);
 static bool compile_binary(bytecode_t* bc, const nimcp_ast_node_t* node) {
     // Compile left operand
     if (!compile_node(bc, node->binary.left)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_binary: compile_node is NULL");
         return false;
     }
 
     // Compile right operand
     if (!compile_node(bc, node->binary.right)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_binary: compile_node is NULL");
         return false;
     }
 
@@ -228,6 +231,7 @@ static bool compile_binary(bytecode_t* bc, const nimcp_ast_node_t* node) {
         case NIMCP_OP_OR: instr.opcode = OP_OR; break;
         default:
             LOG_ERROR("Unknown binary operator: %d", node->binary.op);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_binary: operation failed");
             return false;
     }
     emit(bc, instr);
@@ -237,6 +241,7 @@ static bool compile_binary(bytecode_t* bc, const nimcp_ast_node_t* node) {
 
 static bool compile_unary(bytecode_t* bc, const nimcp_ast_node_t* node) {
     if (!compile_node(bc, node->unary.operand)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_unary: compile_node is NULL");
         return false;
     }
 
@@ -246,6 +251,7 @@ static bool compile_unary(bytecode_t* bc, const nimcp_ast_node_t* node) {
         case NIMCP_OP_NEG: instr.opcode = OP_NEG; break;
         default:
             LOG_ERROR("Unknown unary operator: %d", node->unary.op);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_unary: operation failed");
             return false;
     }
     emit(bc, instr);
@@ -257,6 +263,7 @@ static bool compile_call(bytecode_t* bc, const nimcp_ast_node_t* node) {
     // Compile arguments in order
     for (size_t i = 0; i < node->call.num_args; i++) {
         if (!compile_node(bc, node->call.args[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_call: compile_node is NULL");
             return false;
         }
     }
@@ -273,6 +280,7 @@ static bool compile_call(bytecode_t* bc, const nimcp_ast_node_t* node) {
 static bool compile_member(bytecode_t* bc, const nimcp_ast_node_t* node) {
     // Compile object
     if (!compile_node(bc, node->member.object)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_member: compile_node is NULL");
         return false;
     }
 
@@ -286,7 +294,10 @@ static bool compile_member(bytecode_t* bc, const nimcp_ast_node_t* node) {
 }
 
 static bool compile_node(bytecode_t* bc, const nimcp_ast_node_t* node) {
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compile_node: node is NULL");
+        return false;
+    }
 
     instruction_t instr = {0};
 
@@ -342,6 +353,7 @@ static bool compile_node(bytecode_t* bc, const nimcp_ast_node_t* node) {
 
         default:
             LOG_WARN("Compilation not implemented for node type %d", node->type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compile_node: operation failed");
             return false;
     }
 
@@ -354,12 +366,14 @@ bytecode_t* nimcp_policy_compile(const nimcp_ast_node_t* ast) {
     bytecode_t* bc = bytecode_create();
     if (!bc) {
         LOG_ERROR("Failed to create bytecode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_policy_compile: bc is NULL");
         return NULL;
     }
 
     if (!compile_node(bc, ast)) {
         LOG_ERROR("Compilation failed");
         bytecode_destroy(bc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_policy_compile: compile_node is NULL");
         return NULL;
     }
 

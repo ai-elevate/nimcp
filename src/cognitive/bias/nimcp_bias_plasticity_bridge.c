@@ -141,6 +141,7 @@ static bias_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -159,6 +160,7 @@ static bias_type_learning_t* find_type_learning(
             return &bridge->type_learning[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_type_learning: validation failed");
     return NULL;
 }
 
@@ -252,6 +254,7 @@ bias_plasticity_bridge_t* bias_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(bias_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -260,6 +263,7 @@ bias_plasticity_bridge_t* bias_plasticity_create(
     if (!bridge->type_learning) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_plasticity_create: bridge->type_learning is NULL");
         return NULL;
     }
 
@@ -284,7 +288,10 @@ void bias_plasticity_destroy(bias_plasticity_bridge_t* bridge) {
 }
 
 int bias_plasticity_reset(bias_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_rese", 0.0f);
@@ -316,11 +323,20 @@ int bias_plasticity_register_synapse(
     uint32_t bias_type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
-    if (bridge->num_synapses >= bridge->max_synapses) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
+    if (bridge->num_synapses >= bridge->max_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bias_plasticity_register_synapse: capacity exceeded");
+        return -1;
+    }
 
     // Check for duplicate
-    if (find_synapse(bridge, synapse_id)) return -1;
+    if (find_synapse(bridge, synapse_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_plasticity_register_synapse: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_regi", 0.0f);
@@ -350,7 +366,10 @@ int bias_plasticity_unregister_synapse(
     bias_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_unre", 0.0f);
@@ -372,6 +391,7 @@ int bias_plasticity_unregister_synapse(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
@@ -380,14 +400,20 @@ int bias_plasticity_get_synapse(
     uint32_t synapse_id,
     bias_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
 
 
     bias_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_synapse: found is NULL");
+        return -1;
+    }
 
     *synapse = *found;
     return 0;
@@ -403,7 +429,10 @@ int bias_plasticity_bias_detected(
     float confidence,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_bias_detected: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_bias", 0.0f);
@@ -460,7 +489,10 @@ int bias_plasticity_detection_feedback(
     bool was_correct,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_detection_feedback: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_detection_learning) return 0;
 
@@ -539,7 +571,10 @@ int bias_plasticity_conflict_resolved(
     bool resolution_correct,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_conflict_resolved: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_conflict_learning) return 0;
 
@@ -593,7 +628,10 @@ int bias_plasticity_metacognitive_insight(
     float insight_magnitude,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_metacognitive_insight: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_metacognitive_learning) return 0;
 
@@ -680,7 +718,10 @@ int bias_plasticity_reward(
     float reward,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_eligibility) return 0;
 
@@ -737,7 +778,10 @@ int bias_plasticity_update(
     bias_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     // Decay eligibility traces
     /* Phase 8: Heartbeat at operation start */
@@ -805,7 +849,10 @@ int bias_plasticity_update(
 }
 
 int bias_plasticity_consolidate(bias_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_cons", 0.0f);
@@ -898,14 +945,20 @@ int bias_plasticity_get_type_learning(
     uint32_t bias_type,
     bias_type_learning_t* learning
 ) {
-    if (!bridge || !learning) return -1;
+    if (!bridge || !learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_type_learning: required parameter is NULL (bridge, learning)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
 
 
     bias_type_learning_t* type_learn = find_type_learning(bridge, bias_type);
-    if (!type_learn) return -1;
+    if (!type_learn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_type_learning: type_learn is NULL");
+        return -1;
+    }
 
     *learning = *type_learn;
     return 0;
@@ -919,7 +972,10 @@ int bias_plasticity_get_state(
     const bias_plasticity_bridge_t* bridge,
     bias_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_get_", 0.0f);
@@ -939,7 +995,10 @@ int bias_plasticity_get_stats(
     const bias_plasticity_bridge_t* bridge,
     bias_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -967,7 +1026,10 @@ int bias_plasticity_set_weight_callback(
     bias_weight_change_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_set_", 0.0f);
@@ -983,7 +1045,10 @@ int bias_plasticity_set_metacognitive_callback(
     bias_metacognitive_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_set_metacognitive_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_set_", 0.0f);
@@ -999,8 +1064,14 @@ int bias_plasticity_set_metacognitive_callback(
 //=============================================================================
 
 int bias_plasticity_connect_bio_async(bias_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_connect_bio_async: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_conn", 0.0f);
@@ -1011,7 +1082,10 @@ int bias_plasticity_connect_bio_async(bias_plasticity_bridge_t* bridge) {
 }
 
 int bias_plasticity_disconnect_bio_async(bias_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_disc", 0.0f);
@@ -1022,7 +1096,10 @@ int bias_plasticity_disconnect_bio_async(bias_plasticity_bridge_t* bridge) {
 }
 
 bool bias_plasticity_is_bio_async_connected(const bias_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_plasticity_bridge_heartbeat("bias_plastic_bias_plasticity_is_b", 0.0f);
 

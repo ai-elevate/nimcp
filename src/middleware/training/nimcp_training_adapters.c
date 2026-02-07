@@ -120,8 +120,14 @@ static void free_signal_features(float* features) {
  * HOW:  Validates size and copies data
  */
 static bool extract_float_from_event(const brain_event_t* event, size_t offset, float* out) {
-    if (!event || !out) return false;
-    if (offset + sizeof(float) > event->data.size) return false;
+    if (!event || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_float_from_event: required parameter is NULL (event, out)");
+        return false;
+    }
+    if (offset + sizeof(float) > event->data.size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_float_from_event: validation failed");
+        return false;
+    }
     memcpy(out, event->data.data + offset, sizeof(float));
     return true;
 }
@@ -130,8 +136,14 @@ static bool extract_float_from_event(const brain_event_t* event, size_t offset, 
  * @brief Extract uint32 from event data
  */
 static bool extract_uint32_from_event(const brain_event_t* event, size_t offset, uint32_t* out) {
-    if (!event || !out) return false;
-    if (offset + sizeof(uint32_t) > event->data.size) return false;
+    if (!event || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_uint32_from_event: required parameter is NULL (event, out)");
+        return false;
+    }
+    if (offset + sizeof(uint32_t) > event->data.size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_uint32_from_event: validation failed");
+        return false;
+    }
     memcpy(out, event->data.data + offset, sizeof(uint32_t));
     return true;
 }
@@ -180,7 +192,10 @@ struct learning_signal_adapter_struct {
  * HOW:  Allocate arrays for mean, variance, min, max
  */
 static normalization_stats_t* create_norm_stats(uint32_t num_features) {
-    if (num_features == 0) return NULL;
+    if (num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_norm_stats: num_features is zero");
+        return NULL;
+    }
 
     normalization_stats_t* stats = nimcp_calloc(1, sizeof(normalization_stats_t));
     if (!stats) {
@@ -203,6 +218,7 @@ static normalization_stats_t* create_norm_stats(uint32_t num_features) {
         nimcp_free(stats->min_values);
         nimcp_free(stats->max_values);
         nimcp_free(stats);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_norm_stats: operation failed");
         return NULL;
     }
 
@@ -238,6 +254,7 @@ learning_signal_adapter_t learning_signal_adapter_create(
         sizeof(struct learning_signal_adapter_struct));
     if (!adapter) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate learning signal adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_norm_stats: adapter is NULL");
         return NULL;
     }
 
@@ -252,6 +269,7 @@ learning_signal_adapter_t learning_signal_adapter_create(
     if (nimcp_mutex_init(&adapter->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to initialize adapter mutex");
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "destroy_norm_stats: validation failed");
         return NULL;
     }
 
@@ -278,13 +296,22 @@ void learning_signal_adapter_destroy(learning_signal_adapter_t adapter) {
  */
 static bool extract_error_signal(const brain_event_t* event,
                                   learning_signal_t* signal) {
-    if (!event || !signal) return false;
-    if (event->type != EVENT_ERROR_DETECTED) return false;
+    if (!event || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_destroy: required parameter is NULL (event, signal)");
+        return false;
+    }
+    if (event->type != EVENT_ERROR_DETECTED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_signal_adapter_destroy: validation failed");
+        return false;
+    }
 
     // Allocate feature vector from pool (Phase MP)
     signal->num_features = 3;
     signal->features = alloc_signal_features(signal->num_features);
-    if (!signal->features) return false;
+    if (!signal->features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "learning_signal_adapter_destroy: signal->features is NULL");
+        return false;
+    }
 
     // Extract features from event data payload
     float expected_value = 0.0F, actual_value = 0.0F, error_magnitude = 0.0F;
@@ -311,17 +338,24 @@ static bool extract_error_signal(const brain_event_t* event,
  */
 static bool extract_cognitive_signal(const brain_event_t* event,
                                       learning_signal_t* signal) {
-    if (!event || !signal) return false;
+    if (!event || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_destroy: required parameter is NULL (event, signal)");
+        return false;
+    }
 
     // Support various cognitive event types
     if (event->type != EVENT_EXPECTATION_MISMATCH &&
         event->type != EVENT_ATTENTION_SHIFT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_destroy: required parameter is NULL (event, signal)");
         return false;
     }
 
     signal->num_features = 2;
     signal->features = alloc_signal_features(signal->num_features);
-    if (!signal->features) return false;
+    if (!signal->features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "learning_signal_adapter_destroy: signal->features is NULL");
+        return false;
+    }
 
     // Extract features from event data
     float feature1 = 0.0F, feature2 = 0.0F;
@@ -340,7 +374,10 @@ static bool extract_cognitive_signal(const brain_event_t* event,
 bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
                                       const brain_event_t* event,
                                       learning_signal_t* signal) {
-    if (!adapter || !event || !signal) return false;
+    if (!adapter || !event || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_destroy: required parameter is NULL (adapter, event, signal)");
+        return false;
+    }
 
     // Phase IS-1: BBB validation for event data
     if (event->data.data && event->data.size > 0) {
@@ -348,6 +385,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
         if (bbb) {
             bbb_validation_result_t result;
             if (!bbb_validate_input(bbb, event->data.data, event->data.size, &result)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_signal_adapter_destroy: bbb_validate_input is NULL");
                 return false;  // BBB rejected the training data
             }
         }
@@ -413,6 +451,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
     if (!extracted) {
         adapter->signals_dropped++;
         nimcp_mutex_unlock(&adapter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_destroy: extracted is NULL");
         return false;
     }
 
@@ -421,6 +460,7 @@ bool learning_signal_adapter_extract(learning_signal_adapter_t adapter,
         learning_signal_free(signal);
         adapter->signals_dropped++;
         nimcp_mutex_unlock(&adapter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_signal_adapter_destroy: validation failed");
         return false;
     }
 
@@ -481,7 +521,10 @@ static void update_norm_stats(normalization_stats_t* stats,
 bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
                                         float* features,
                                         uint32_t num_features) {
-    if (!adapter || !features || num_features == 0) return false;
+    if (!adapter || !features || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, features)");
+        return false;
+    }
 
     nimcp_mutex_lock(&adapter->mutex);
 
@@ -490,6 +533,7 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
         adapter->norm_stats = create_norm_stats(num_features);
         if (!adapter->norm_stats) {
             nimcp_mutex_unlock(&adapter->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->norm_stats is NULL");
             return false;
         }
     }
@@ -562,7 +606,10 @@ bool learning_signal_adapter_normalize(learning_signal_adapter_t adapter,
 bool learning_signal_adapter_apply_attention(learning_signal_adapter_t adapter,
                                               learning_signal_t* signal,
                                               float attention_weight) {
-    if (!adapter || !signal) return false;
+    if (!adapter || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, signal)");
+        return false;
+    }
     if (!adapter->config.enable_attention_weighting) return true;
 
     // Guard clauses
@@ -593,7 +640,10 @@ void learning_signal_free(learning_signal_t* signal) {
 
 bool learning_signal_adapter_get_stats(learning_signal_adapter_t adapter,
                                         learning_signal_adapter_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_free: required parameter is NULL (adapter, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&adapter->mutex);
 
@@ -648,6 +698,7 @@ weight_update_router_t weight_update_router_create(
         sizeof(struct weight_update_router_struct));
     if (!router) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate weight update router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "learning_signal_adapter_default_config: router is NULL");
         return NULL;
     }
 
@@ -670,6 +721,7 @@ weight_update_router_t weight_update_router_create(
         if (!router->event_bus) {
             nimcp_log(LOG_LEVEL_ERROR, "Failed to create event bus");
             nimcp_free(router);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "learning_signal_adapter_default_config: router->event_bus is NULL");
             return NULL;
         }
     }
@@ -687,6 +739,7 @@ weight_update_router_t weight_update_router_create(
             event_bus_destroy(router->event_bus);
         }
         nimcp_free(router);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "learning_signal_adapter_default_config: validation failed");
         return NULL;
     }
 
@@ -698,6 +751,7 @@ weight_update_router_t weight_update_router_create(
             event_bus_destroy(router->event_bus);
         }
         nimcp_free(router);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_signal_adapter_default_config: validation failed");
         return NULL;
     }
 
@@ -741,7 +795,10 @@ static brain_event_t weight_update_to_event(const weight_update_t* update) {
 
 bool weight_update_router_route(weight_update_router_t router,
                                  const weight_update_t* update) {
-    if (!router || !update) return false;
+    if (!router || !update) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_to_event: required parameter is NULL (router, update)");
+        return false;
+    }
 
     nimcp_mutex_lock(&router->mutex);
 
@@ -756,6 +813,7 @@ bool weight_update_router_route(weight_update_router_t router,
         router->updates_dropped++;
         nimcp_mutex_unlock(&router->mutex);
         routing_table_free_query(&query);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "weight_update_to_event: has_route is NULL");
         return false;
     }
 
@@ -814,7 +872,10 @@ bool weight_update_router_add_route(weight_update_router_t router,
                                      learning_signal_type_t source_type,
                                      weight_target_type_t target_type,
                                      uint32_t priority) {
-    if (!router) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_to_event: router is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&router->mutex);
 
@@ -837,7 +898,10 @@ bool weight_update_router_add_route(weight_update_router_t router,
 bool weight_update_router_remove_route(weight_update_router_t router,
                                         learning_signal_type_t source_type,
                                         weight_target_type_t target_type) {
-    if (!router) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_to_event: router is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&router->mutex);
 
@@ -852,7 +916,10 @@ bool weight_update_router_remove_route(weight_update_router_t router,
 bool weight_update_router_strengthen_route(weight_update_router_t router,
                                             learning_signal_type_t source_type,
                                             weight_target_type_t target_type) {
-    if (!router) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_to_event: router is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&router->mutex);
 
@@ -866,7 +933,10 @@ bool weight_update_router_strengthen_route(weight_update_router_t router,
 
 bool weight_update_router_get_stats(weight_update_router_t router,
                                      weight_update_router_stats_t* stats) {
-    if (!router || !stats) return false;
+    if (!router || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_to_event: required parameter is NULL (router, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&router->mutex);
 
@@ -937,6 +1007,7 @@ training_event_manager_t training_event_manager_create(
         sizeof(struct training_event_manager_struct));
     if (!manager) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate training event manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "weight_update_router_default_config: manager is NULL");
         return NULL;
     }
 
@@ -961,6 +1032,7 @@ training_event_manager_t training_event_manager_create(
         if (!manager->event_bus) {
             nimcp_log(LOG_LEVEL_ERROR, "Failed to create event bus");
             nimcp_free(manager);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "weight_update_router_default_config: manager->event_bus is NULL");
             return NULL;
         }
     }
@@ -976,6 +1048,7 @@ training_event_manager_t training_event_manager_create(
             event_bus_destroy(manager->event_bus);
         }
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weight_update_router_default_config: validation failed");
         return NULL;
     }
 
@@ -1040,7 +1113,10 @@ static brain_event_type_t training_type_to_brain_type(training_event_type_t type
 
 bool training_event_manager_publish(training_event_manager_t manager,
                                      const training_event_data_t* event) {
-    if (!manager || !event) return false;
+    if (!manager || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_type_to_brain_type: required parameter is NULL (manager, event)");
+        return false;
+    }
 
     nimcp_mutex_lock(&manager->mutex);
 
@@ -1176,7 +1252,10 @@ event_subscription_handle_t training_event_manager_subscribe(
 
 bool training_event_manager_unsubscribe(training_event_manager_t manager,
                                          event_subscription_handle_t handle) {
-    if (!manager || handle == INVALID_SUBSCRIPTION_HANDLE) return false;
+    if (!manager || handle == INVALID_SUBSCRIPTION_HANDLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_event_callback_wrapper: manager is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&manager->mutex);
 
@@ -1207,6 +1286,7 @@ bool training_event_manager_unsubscribe(training_event_manager_t manager,
     }
 
     nimcp_mutex_unlock(&manager->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_event_callback_wrapper: operation failed");
     return false;
 }
 
@@ -1227,7 +1307,10 @@ uint32_t training_event_manager_process_events(training_event_manager_t manager,
 
 bool training_event_manager_get_stats(training_event_manager_t manager,
                                        training_event_manager_stats_t* stats) {
-    if (!manager || !stats) return false;
+    if (!manager || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_event_callback_wrapper: required parameter is NULL (manager, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&manager->mutex);
 

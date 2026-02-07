@@ -423,6 +423,7 @@ static pruning_consensus_t* get_or_create_consensus(
 static bool add_consensus_vote(pruning_consensus_t* session, const pruning_vote_t* vote)
 {
     if (!session || !vote) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_consensus_vote: required parameter is NULL (session, vote)");
         return false;
     }
 
@@ -691,6 +692,7 @@ static size_t aggregate_region_stats(
 bool distrib_cognition_init_advanced(distrib_cognition_t dc)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_init_advanced: dc is NULL");
         return false;
     }
 
@@ -742,6 +744,7 @@ bool distrib_cognition_init_advanced(distrib_cognition_t dc)
         if (impl->peer_regions) nimcp_free(impl->peer_regions);
         if (impl->active_consensus) nimcp_free(impl->active_consensus);
         nimcp_free(impl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_init_advanced: validation failed");
         return false;
     }
 

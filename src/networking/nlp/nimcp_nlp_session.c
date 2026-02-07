@@ -327,6 +327,7 @@ static int nlp_generate_nonce(uint8_t* nonce, size_t len) {
     // CRITICAL: No insecure fallback - fail if we can't get crypto-quality random
     NIMCP_LOG_ERROR("nlp_generate_nonce: Failed to get cryptographic randomness");
     memset(nonce, 0, len);  // Zero out partial data
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_generate_nonce: validation failed");
     return -1;
 
 #elif defined(NIMCP_PLATFORM_MACOS)
@@ -342,6 +343,7 @@ static int nlp_generate_nonce(uint8_t* nonce, size_t len) {
     // CRITICAL: No insecure fallback
     NIMCP_LOG_ERROR("nlp_generate_nonce: Failed to get cryptographic randomness");
     memset(nonce, 0, len);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_generate_nonce: validation failed");
     return -1;
 
 #elif defined(NIMCP_PLATFORM_WINDOWS)
@@ -353,11 +355,13 @@ static int nlp_generate_nonce(uint8_t* nonce, size_t len) {
     // CRITICAL: No insecure fallback
     NIMCP_LOG_ERROR("nlp_generate_nonce: BCryptGenRandom failed");
     memset(nonce, 0, len);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_generate_nonce: validation failed");
     return -1;
 #else
     // Unsupported platform - fail rather than use insecure randomness
     NIMCP_LOG_ERROR("nlp_generate_nonce: No secure random source available on this platform");
     memset(nonce, 0, len);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_generate_nonce: operation failed");
     return -1;
 #endif
 }
@@ -450,6 +454,7 @@ static bool nlp_session_validate_transition(nlp_session_state_t old_state,
             // Unknown state - reject
             NIMCP_LOG_ERROR("nlp_session_validate_transition: Unknown state %d",
                            (int)old_state);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_calculate_crc16: operation failed");
             return false;
     }
 }
@@ -1031,6 +1036,7 @@ int nlp_session_key_rotation(nlp_node_t node, nlp_peer_t* peer) {
 nlp_peer_t* nlp_peer_add(nlp_node_t node, uint32_t peer_id,
                         const char* address, uint16_t port) {
     if (!nlp_validate_node(node) || !address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_session_key_rotation: required parameter is NULL (nlp_validate_node, address)");
         return NULL;
     }
 
@@ -1049,6 +1055,7 @@ nlp_peer_t* nlp_peer_add(nlp_node_t node, uint32_t peer_id,
     if (node->peer_count >= NLP_MAX_PEERS) {
         NIMCP_LOG_ERROR("nlp_peer_add: Peer table full (%u peers)", node->peer_count);
         nimcp_mutex_unlock(&node->peer_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nlp_session_key_rotation: capacity exceeded");
         return NULL;
     }
 
@@ -1140,6 +1147,7 @@ int nlp_peer_remove(nlp_node_t node, uint32_t peer_id) {
 __attribute__((deprecated("use nlp_peer_find_copy() for thread-safe access")))
 nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
     if (!nlp_validate_node(node)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find: nlp_validate_node is NULL");
         return NULL;
     }
 
@@ -1154,6 +1162,7 @@ nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find: validation failed");
     return NULL;
 }
 
@@ -1169,6 +1178,7 @@ nlp_peer_t* nlp_peer_find(nlp_node_t node, uint32_t peer_id) {
  */
 bool nlp_peer_find_copy(nlp_node_t node, uint32_t peer_id, nlp_peer_t* peer_out) {
     if (!nlp_validate_node(node) || !peer_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find_copy: required parameter is NULL (nlp_validate_node, peer_out)");
         return false;
     }
 
@@ -1184,6 +1194,7 @@ bool nlp_peer_find_copy(nlp_node_t node, uint32_t peer_id, nlp_peer_t* peer_out)
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_peer_find_copy: validation failed");
     return false;
 }
 
@@ -1204,6 +1215,7 @@ bool nlp_peer_find_copy(nlp_node_t node, uint32_t peer_id, nlp_peer_t* peer_out)
  */
 nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint16_t port) {
     if (!nlp_validate_node(node) || !address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find_by_address: required parameter is NULL (nlp_validate_node, address)");
         return NULL;
     }
 
@@ -1219,6 +1231,7 @@ nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint1
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find_by_address: validation failed");
     return NULL;
 }
 
@@ -1236,6 +1249,7 @@ nlp_peer_t* nlp_peer_find_by_address(nlp_node_t node, const char* address, uint1
 bool nlp_peer_find_by_address_copy(nlp_node_t node, const char* address, uint16_t port,
                                     nlp_peer_t* peer_out) {
     if (!nlp_validate_node(node) || !address || !peer_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_peer_find_by_address: required parameter is NULL (nlp_validate_node, address, peer_out)");
         return false;
     }
 
@@ -1252,6 +1266,7 @@ bool nlp_peer_find_by_address_copy(nlp_node_t node, const char* address, uint16_
     }
 
     nimcp_mutex_unlock(&node->peer_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_peer_find_by_address: operation failed");
     return false;
 }
 

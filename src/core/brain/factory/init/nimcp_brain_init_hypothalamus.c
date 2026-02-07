@@ -160,6 +160,7 @@ bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t brain) {
     brain->hypothalamus = hypothalamus_create(&hypo_cfg);
     if (!brain->hypothalamus) {
         set_error("Failed to create hypothalamus adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_hypothalamus_subsystem: brain->hypothalamus is NULL");
         return false;
     }
 
@@ -342,6 +343,7 @@ bool nimcp_brain_factory_init_hypothalamus_quantum_bridge(brain_t brain) {
 
     if (!brain->hypothalamus_quantum_bridge) {
         LOG_WARNING(LOG_MODULE, "Failed to create hypothalamus quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_hypothalamus_quantum_bridge: brain->hypothalamus_quantum_bridge is NULL");
         return false;
     }
 

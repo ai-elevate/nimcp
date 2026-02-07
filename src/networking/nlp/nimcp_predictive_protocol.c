@@ -177,6 +177,7 @@ static pattern_node_t* find_pattern(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: operation failed");
     return NULL;
 }
 
@@ -278,6 +279,7 @@ predictive_protocol_t* predictive_protocol_create(
     /* Guard: validate config */
     if (config && config->history_buffer_size == 0) {
         LOG_ERROR("Invalid history buffer size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_protocol_create: config->history_buffer_size is zero");
         return NULL;
     }
 
@@ -285,6 +287,7 @@ predictive_protocol_t* predictive_protocol_create(
     predictive_protocol_t* protocol = nimcp_malloc(sizeof(predictive_protocol_t));
     if (!protocol) {
         LOG_ERROR("Failed to allocate protocol");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol is NULL");
         return NULL;
     }
     memset(protocol, 0, sizeof(predictive_protocol_t));
@@ -309,6 +312,7 @@ predictive_protocol_t* predictive_protocol_create(
     if (!protocol->pattern_table) {
         LOG_ERROR("Failed to allocate pattern table");
         nimcp_free(protocol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->pattern_table is NULL");
         return NULL;
     }
 
@@ -320,6 +324,7 @@ predictive_protocol_t* predictive_protocol_create(
         LOG_ERROR("Failed to allocate history buffer");
         nimcp_free(protocol->pattern_table);
         nimcp_free(protocol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->history is NULL");
         return NULL;
     }
 
@@ -334,6 +339,7 @@ predictive_protocol_t* predictive_protocol_create(
             nimcp_free(protocol->history);
             nimcp_free(protocol->pattern_table);
             nimcp_free(protocol);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_create: protocol->prefetch_cache is NULL");
             return NULL;
         }
     }
@@ -462,6 +468,7 @@ int predictive_protocol_observe_message(
             node = nimcp_malloc(sizeof(pattern_node_t));
             if (!node) {
                 LOG_ERROR("Failed to allocate pattern node");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_observe_message: node is NULL");
                 return -1;
             }
 
@@ -485,6 +492,7 @@ int predictive_protocol_learn_sequence(
 {
     /* Guard: validate input */
     if (!protocol || !message_sequence || seq_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_learn_sequence: required parameter is NULL (protocol, message_sequence)");
         return -1;
     }
 
@@ -527,6 +535,7 @@ int predictive_protocol_predict_next(
 {
     /* Guard: validate input */
     if (!protocol || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_predict_next: required parameter is NULL (protocol, prediction)");
         return -1;
     }
 
@@ -537,6 +546,7 @@ int predictive_protocol_predict_next(
     pattern_node_t* chain = protocol->pattern_table[hash];
 
     if (!chain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_predict_next: chain is NULL");
         return -1; /* No patterns */
     }
 
@@ -568,6 +578,7 @@ int predictive_protocol_predict_next(
 
     /* Check threshold */
     if (!best || best_confidence < protocol->config.confidence_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_protocol_predict_next: best is NULL");
         return -1; /* Below threshold */
     }
 
@@ -602,6 +613,7 @@ int predictive_protocol_get_predictions(
 {
     /* Guard: validate input */
     if (!protocol || !predictions || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_get_predictions: required parameter is NULL (protocol, predictions, count)");
         return -1;
     }
 
@@ -613,6 +625,7 @@ int predictive_protocol_get_predictions(
         PRED_PROTO_MAX_PREDICTIONS * sizeof(predicted_message_t));
     if (!preds) {
         LOG_ERROR("Failed to allocate predictions array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_get_predictions: preds is NULL");
         return -1;
     }
 
@@ -674,10 +687,12 @@ int predictive_protocol_prefetch_data(
 {
     /* Guard: validate input */
     if (!protocol || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_prefetch_data: required parameter is NULL (protocol, prediction)");
         return -1;
     }
 
     if (!protocol->config.enable_prefetch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_prefetch_data: protocol->config is NULL");
         return -1;
     }
 
@@ -699,6 +714,7 @@ int predictive_protocol_prefetch_data(
     prefetch_entry_t* entry = nimcp_malloc(sizeof(prefetch_entry_t));
     if (!entry) {
         LOG_ERROR("Failed to allocate prefetch entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_prefetch_data: entry is NULL");
         return -1;
     }
 
@@ -725,10 +741,12 @@ int predictive_protocol_check_prefetch(
 {
     /* Guard: validate input */
     if (!protocol || !data || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_check_prefetch: required parameter is NULL (protocol, data, size)");
         return -1;
     }
 
     if (!protocol->config.enable_prefetch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_check_prefetch: protocol->config is NULL");
         return -1;
     }
 
@@ -757,6 +775,7 @@ int predictive_protocol_check_prefetch(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_protocol_check_prefetch: operation failed");
     return -1; /* Not cached */
 }
 
@@ -789,6 +808,7 @@ int predictive_protocol_process_inbox(predictive_protocol_t* protocol)
 {
     /* Guard: validate input */
     if (!protocol || !protocol->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_process_inbox: required parameter is NULL (protocol, protocol->bio_router)");
         return -1;
     }
 

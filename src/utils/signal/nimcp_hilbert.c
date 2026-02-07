@@ -73,9 +73,11 @@ hilbert_config_t hilbert_default_config(void) {
 
 bool hilbert_validate_config(const hilbert_config_t* config) {
     if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_validate_config: validation failed");
         return false;
     }
     if (config->max_signal_length == 0 || config->max_signal_length > 1000000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_validate_config: config->max_signal_length is zero");
         return false;
     }
     return true;
@@ -91,6 +93,7 @@ hilbert_transform_t* hilbert_create(const hilbert_config_t* config) {
     const hilbert_config_t* cfg = config ? config : &default_config;
 
     if (!hilbert_validate_config(cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hilbert_create: hilbert_validate_config is NULL");
         return NULL;
     }
 
@@ -112,6 +115,7 @@ hilbert_transform_t* hilbert_create(const hilbert_config_t* config) {
     ht->work_buffer = (neural_phasor_t*)nimcp_calloc(buffer_size, sizeof(neural_phasor_t));
     if (ht->work_buffer == NULL) {
         nimcp_free(ht);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hilbert_create: validation failed");
         return NULL;
     }
     ht->work_buffer_size = buffer_size;
@@ -140,6 +144,7 @@ bool hilbert_apply(hilbert_transform_t* ht,
                    neural_phasor_t* analytic,
                    uint32_t n) {
     if (ht == NULL || signal == NULL || analytic == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: n is zero");
         return false;
     }
 
@@ -152,11 +157,13 @@ bool hilbert_apply(hilbert_transform_t* ht,
             fft_size = next_power_of_2(n);
             needs_padding = true;
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: validation failed");
             return false;  // Require power of 2 if auto-padding disabled
         }
     }
 
     if (fft_size > ht->work_buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: validation failed");
         return false;  // Signal too large for pre-allocated buffer
     }
 
@@ -178,6 +185,7 @@ bool hilbert_apply(hilbert_transform_t* ht,
 
     // Compute Hilbert transform on padded signal
     if (!phasor_hilbert_transform((float*)ht->work_buffer, ht->work_buffer, fft_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: phasor_hilbert_transform is NULL");
         return false;
     }
 
@@ -192,18 +200,21 @@ bool hilbert_extract_amplitude(hilbert_transform_t* ht,
                                 float* amplitude,
                                 uint32_t n) {
     if (ht == NULL || signal == NULL || amplitude == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: n is zero");
         return false;
     }
 
     // Allocate temporary buffer for analytic signal
     neural_phasor_t* analytic = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (analytic == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: validation failed");
         return false;
     }
 
     // Compute analytic signal
     if (!hilbert_apply(ht, signal, analytic, n)) {
         nimcp_free(analytic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: hilbert_apply is NULL");
         return false;
     }
 
@@ -255,18 +266,21 @@ bool hilbert_extract_phase(hilbert_transform_t* ht,
                             float* phase,
                             uint32_t n) {
     if (ht == NULL || signal == NULL || phase == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: n is zero");
         return false;
     }
 
     // Allocate temporary buffer for analytic signal
     neural_phasor_t* analytic = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (analytic == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: validation failed");
         return false;
     }
 
     // Compute analytic signal
     if (!hilbert_apply(ht, signal, analytic, n)) {
         nimcp_free(analytic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: hilbert_apply is NULL");
         return false;
     }
 
@@ -285,18 +299,21 @@ bool hilbert_extract_amplitude_phase(hilbert_transform_t* ht,
                                       float* phase,
                                       uint32_t n) {
     if (ht == NULL || signal == NULL || amplitude == NULL || phase == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: n is zero");
         return false;
     }
 
     // Allocate temporary buffer for analytic signal
     neural_phasor_t* analytic = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (analytic == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: validation failed");
         return false;
     }
 
     // Compute analytic signal once
     if (!hilbert_apply(ht, signal, analytic, n)) {
         nimcp_free(analytic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_destroy: hilbert_apply is NULL");
         return false;
     }
 
@@ -423,6 +440,7 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
                           uint32_t n,
                           uint32_t num_channels) {
     if (ht == NULL || signals == NULL || analytic == NULL || n == 0 || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: n is zero");
         return false;
     }
 
@@ -430,6 +448,7 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
     if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_apply(ht, signals[ch], analytic[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_apply is NULL");
                 return false;
             }
         }
@@ -442,6 +461,7 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
         // Fall back to sequential processing
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_apply(ht, signals[ch], analytic[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_apply is NULL");
                 return false;
             }
         }
@@ -453,6 +473,7 @@ bool hilbert_apply_batch(hilbert_transform_t* ht,
         num_channels, sizeof(hilbert_apply_task_t));
     if (tasks == NULL) {
         nimcp_pool_destroy(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: validation failed");
         return false;
     }
 
@@ -491,6 +512,7 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
                                       uint32_t n,
                                       uint32_t num_channels) {
     if (ht == NULL || signals == NULL || amplitudes == NULL || n == 0 || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: n is zero");
         return false;
     }
 
@@ -498,6 +520,7 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
     if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_extract_amplitude(ht, signals[ch], amplitudes[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_extract_amplitude is NULL");
                 return false;
             }
         }
@@ -510,6 +533,7 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
         // Fall back to sequential
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_extract_amplitude(ht, signals[ch], amplitudes[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_extract_amplitude is NULL");
                 return false;
             }
         }
@@ -520,6 +544,7 @@ bool hilbert_extract_amplitude_batch(hilbert_transform_t* ht,
         num_channels, sizeof(hilbert_amplitude_task_t));
     if (tasks == NULL) {
         nimcp_pool_destroy(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: validation failed");
         return false;
     }
 
@@ -555,6 +580,7 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
                                   uint32_t n,
                                   uint32_t num_channels) {
     if (ht == NULL || signals == NULL || phases == NULL || n == 0 || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: n is zero");
         return false;
     }
 
@@ -562,6 +588,7 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
     if (num_channels < HILBERT_PARALLEL_THRESHOLD) {
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_extract_phase(ht, signals[ch], phases[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_extract_phase is NULL");
                 return false;
             }
         }
@@ -574,6 +601,7 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
         // Fall back to sequential
         for (uint32_t ch = 0; ch < num_channels; ch++) {
             if (!hilbert_extract_phase(ht, signals[ch], phases[ch], n)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: hilbert_extract_phase is NULL");
                 return false;
             }
         }
@@ -584,6 +612,7 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
         num_channels, sizeof(hilbert_phase_task_t));
     if (tasks == NULL) {
         nimcp_pool_destroy(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_phase_task_fn: validation failed");
         return false;
     }
 
@@ -619,6 +648,7 @@ bool hilbert_extract_phase_batch(hilbert_transform_t* ht,
 
 hilbert_result_t* hilbert_result_create(uint32_t n) {
     if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hilbert_result_create: n is zero");
         return NULL;
     }
 
@@ -637,6 +667,7 @@ hilbert_result_t* hilbert_result_create(uint32_t n) {
 
     if (result->analytic == NULL || result->amplitude == NULL || result->phase == NULL) {
         hilbert_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hilbert_result_create: validation failed");
         return NULL;
     }
 
@@ -667,6 +698,7 @@ hilbert_result_t* hilbert_compute_full(hilbert_transform_t* ht,
                                         const float* signal,
                                         uint32_t n) {
     if (ht == NULL || signal == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_result_destroy: n is zero");
         return NULL;
     }
 
@@ -680,12 +712,14 @@ hilbert_result_t* hilbert_compute_full(hilbert_transform_t* ht,
     // Compute analytic signal
     if (!hilbert_apply(ht, signal, result->analytic, n)) {
         hilbert_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hilbert_result_destroy: hilbert_apply is NULL");
         return NULL;
     }
 
     // Extract amplitude and phase
     if (!hilbert_extract_amplitude_phase(ht, signal, result->amplitude, result->phase, n)) {
         hilbert_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hilbert_result_destroy: hilbert_extract_amplitude_phase is NULL");
         return NULL;
     }
 
@@ -701,12 +735,14 @@ bool hilbert_instantaneous_frequency(const float* phase,
                                       uint32_t n,
                                       float sample_rate) {
     if (phase == NULL || frequency == NULL || n < 3 || sample_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_result_destroy: validation failed");
         return false;
     }
 
     // Unwrap phase to handle 2π discontinuities
     float* unwrapped = (float*)nimcp_malloc(n * sizeof(float));
     if (unwrapped == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hilbert_result_destroy: validation failed");
         return false;
     }
 

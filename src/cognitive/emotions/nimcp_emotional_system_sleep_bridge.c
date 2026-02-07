@@ -140,7 +140,10 @@ static void emotional_on_sleep_state_change(sleep_state_t new_state, void* user_
 }
 
 int emotional_sleep_default_config(emotional_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_defa", 0.0f);
 
@@ -236,7 +239,10 @@ void emotional_sleep_bridge_destroy(emotional_sleep_bridge_t bridge) {
 }
 
 int emotional_sleep_update(emotional_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_upda", 0.0f);
@@ -292,7 +298,10 @@ int emotional_sleep_update(emotional_sleep_bridge_t bridge) {
 }
 
 int emotional_sleep_get_effects(const emotional_sleep_bridge_t bridge, emotional_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_get_", 0.0f);
 
@@ -316,7 +325,10 @@ float emotional_sleep_get_regulation_capacity(const emotional_sleep_bridge_t bri
 }
 
 bool emotional_sleep_is_processing_active(const emotional_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_sleep_is_processing_active: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotional_system_sleep_bridge_heartbeat("emotional_sy_emotional_sleep_is_p", 0.0f);
 

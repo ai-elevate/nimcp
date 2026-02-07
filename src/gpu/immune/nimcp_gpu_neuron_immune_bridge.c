@@ -96,6 +96,7 @@ gpu_neuron_immune_bridge_t* gpu_neuron_immune_create(
     /* Guard: require immune system */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("gpu_neuron_immune_create: immune_system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_neuron_immune_create: immune_system is NULL");
         return NULL;
     }
 
@@ -103,6 +104,7 @@ gpu_neuron_immune_bridge_t* gpu_neuron_immune_create(
     gpu_neuron_immune_bridge_t* bridge = nimcp_malloc(sizeof(gpu_neuron_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("gpu_neuron_immune_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_neuron_immune_create: bridge is NULL");
         return NULL;
     }
 
@@ -452,6 +454,7 @@ int gpu_neuron_immune_get_error_state(
 
 bool gpu_neuron_immune_is_throttled(const gpu_neuron_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neuron_immune_is_throttled: bridge is NULL");
         return false;
     }
 

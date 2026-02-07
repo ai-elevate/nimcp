@@ -143,6 +143,7 @@ int portia_learning_immune_default_config(portia_learning_immune_config_t* confi
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_default_config: config is NULL");
         return -1;
     }
 
@@ -215,6 +216,7 @@ portia_learning_immune_bridge_t* portia_learning_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_learning_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -260,6 +262,7 @@ int portia_learning_immune_apply_cytokine_effects(portia_learning_immune_bridge_
     /* Guard clause */
     if (!bridge || !bridge->learning_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or learning system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->learning_system)");
         return -1;
     }
 
@@ -295,6 +298,7 @@ int portia_learning_immune_apply_inflammation_effects(
     /* Guard clause */
     if (!bridge || !bridge->learning_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or learning system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->learning_system)");
         return -1;
     }
 
@@ -469,6 +473,7 @@ int portia_learning_immune_trigger_failure_response(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_trigger_failure_response: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -486,6 +491,7 @@ int portia_learning_immune_release_il10_from_success(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_release_il10_from_success: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -503,6 +509,7 @@ int portia_learning_immune_trigger_repeated_failure_inflammation(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_trigger_repeated_failure_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -525,6 +532,7 @@ int portia_learning_immune_update(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_update: bridge is NULL");
         return -1;
     }
 
@@ -574,6 +582,7 @@ int portia_learning_immune_get_cytokine_effects(
     /* Guard clause */
     if (!bridge || !effects) {
         NIMCP_LOGGING_ERROR("Null bridge or effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -588,6 +597,7 @@ int portia_learning_immune_get_inflammation_state(
     /* Guard clause */
     if (!bridge || !state) {
         NIMCP_LOGGING_ERROR("Null bridge or state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -600,6 +610,7 @@ bool portia_learning_immune_has_learning_deficit(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_has_learning_deficit: bridge is NULL");
         return false;
     }
 
@@ -625,6 +636,7 @@ int portia_learning_immune_connect_bio_async(portia_learning_immune_bridge_t* br
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -641,6 +653,7 @@ int portia_learning_immune_disconnect_bio_async(portia_learning_immune_bridge_t*
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -662,6 +675,7 @@ bool portia_learning_immune_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_learning_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

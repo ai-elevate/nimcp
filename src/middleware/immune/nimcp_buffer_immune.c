@@ -97,6 +97,7 @@ static buffer_immune_handle_t* find_buffer(
             return &system->buffers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_buffer: validation failed");
     return NULL;
 }
 
@@ -142,7 +143,10 @@ static int release_buffer_cytokine(
     buffer_anomaly_t anomaly,
     uint32_t buffer_id
 ) {
-    if (!system || !system->brain_immune) return -1;
+    if (!system || !system->brain_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "release_buffer_cytokine: required parameter is NULL (system, system->brain_immune)");
+        return -1;
+    }
 
     brain_cytokine_type_t cytokine_type;
     float concentration = 0.5F;
@@ -184,7 +188,10 @@ static int release_buffer_cytokine(
 //=============================================================================
 
 int buffer_immune_default_config(buffer_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_capacity_modulation = true;
     config->enable_anomaly_detection = true;
@@ -203,12 +210,14 @@ buffer_immune_system_t* buffer_immune_create(
 ) {
     if (!brain_immune) {
         LOG_ERROR("Brain immune system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_create: brain_immune is NULL");
         return NULL;
     }
 
     buffer_immune_system_t* system = nimcp_malloc(sizeof(buffer_immune_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate buffer immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "buffer_immune_create: system is NULL");
         return NULL;
     }
 
@@ -248,9 +257,13 @@ int buffer_immune_register_circular(
     const char* name,
     uint32_t* buffer_id
 ) {
-    if (!system || !buffer || !buffer_id) return -1;
+    if (!system || !buffer || !buffer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_register_circular: required parameter is NULL (system, buffer, buffer_id)");
+        return -1;
+    }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_circular: capacity exceeded");
         return -1;
     }
 
@@ -288,9 +301,13 @@ int buffer_immune_register_integration(
     const char* name,
     uint32_t* buffer_id
 ) {
-    if (!system || !buffer || !buffer_id) return -1;
+    if (!system || !buffer || !buffer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_register_integration: required parameter is NULL (system, buffer, buffer_id)");
+        return -1;
+    }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_integration: capacity exceeded");
         return -1;
     }
 
@@ -328,9 +345,13 @@ int buffer_immune_register_phase_coded(
     const char* name,
     uint32_t* buffer_id
 ) {
-    if (!system || !buffer || !buffer_id) return -1;
+    if (!system || !buffer || !buffer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_register_phase_coded: required parameter is NULL (system, buffer, buffer_id)");
+        return -1;
+    }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_phase_coded: capacity exceeded");
         return -1;
     }
 
@@ -369,9 +390,13 @@ int buffer_immune_register_sliding_window(
     const char* name,
     uint32_t* buffer_id
 ) {
-    if (!system || !window || !buffer_id) return -1;
+    if (!system || !window || !buffer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_register_sliding_window: required parameter is NULL (system, window, buffer_id)");
+        return -1;
+    }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_sliding_window: capacity exceeded");
         return -1;
     }
 
@@ -408,9 +433,13 @@ int buffer_immune_register_temporal_accumulator(
     const char* name,
     uint32_t* buffer_id
 ) {
-    if (!system || !accumulator || !buffer_id) return -1;
+    if (!system || !accumulator || !buffer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_register_temporal_accumulator: required parameter is NULL (system, accumulator, buffer_id)");
+        return -1;
+    }
     if (system->buffer_count >= BUFFER_IMMUNE_MAX_BUFFERS) {
         LOG_ERROR("Maximum buffer count reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_immune_register_temporal_accumulator: capacity exceeded");
         return -1;
     }
 
@@ -445,7 +474,10 @@ int buffer_immune_unregister(
     buffer_immune_system_t* system,
     uint32_t buffer_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_unregister: system is NULL");
+        return -1;
+    }
 
     /* Find and remove buffer */
     for (uint32_t i = 0; i < system->buffer_count; i++) {
@@ -466,6 +498,7 @@ int buffer_immune_unregister(
     }
 
     LOG_WARN("Buffer id=%u not found for unregistration", buffer_id);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_immune_unregister: operation failed");
     return -1;
 }
 
@@ -478,10 +511,16 @@ int buffer_immune_modulate_capacity(
     uint32_t buffer_id,
     brain_inflammation_level_t inflammation_level
 ) {
-    if (!system || !system->config.enable_capacity_modulation) return -1;
+    if (!system || !system->config.enable_capacity_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_modulate_capacity: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_modulate_capacity: handle is NULL");
+        return -1;
+    }
 
     float multiplier = get_capacity_multiplier(inflammation_level);
     handle->capacity_multiplier = multiplier;
@@ -514,7 +553,10 @@ int buffer_immune_modulate_all(
     buffer_immune_system_t* system,
     brain_inflammation_level_t inflammation_level
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_modulate_all: system is NULL");
+        return -1;
+    }
 
     int modulated_count = 0;
     for (uint32_t i = 0; i < system->buffer_count; i++) {
@@ -533,10 +575,16 @@ int buffer_immune_restore_capacity(
     buffer_immune_system_t* system,
     uint32_t buffer_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_restore_capacity: system is NULL");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_restore_capacity: handle is NULL");
+        return -1;
+    }
 
     handle->capacity_multiplier = 1.0F;
     handle->integration_window_multiplier = 1.0F;
@@ -551,7 +599,10 @@ int buffer_immune_restore_capacity(
 }
 
 int buffer_immune_restore_all(buffer_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_restore_all: system is NULL");
+        return -1;
+    }
 
     int restored_count = 0;
     for (uint32_t i = 0; i < system->buffer_count; i++) {
@@ -573,10 +624,16 @@ int buffer_immune_report_overflow(
     uint32_t buffer_id,
     float utilization
 ) {
-    if (!system || !system->config.enable_anomaly_detection) return -1;
+    if (!system || !system->config.enable_anomaly_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_overflow: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_overflow: handle is NULL");
+        return -1;
+    }
 
     handle->consecutive_overflows++;
     handle->anomaly_count++;
@@ -631,11 +688,20 @@ int buffer_immune_report_corruption(
     const uint8_t* corruption_signature,
     size_t signature_len
 ) {
-    if (!system || !system->config.enable_anomaly_detection) return -1;
-    if (!corruption_signature || signature_len == 0) return -1;
+    if (!system || !system->config.enable_anomaly_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_corruption: required parameter is NULL (system, system->config)");
+        return -1;
+    }
+    if (!corruption_signature || signature_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_immune_report_corruption: corruption_signature is NULL");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_corruption: handle is NULL");
+        return -1;
+    }
 
     handle->anomaly_count++;
     handle->last_anomaly = BUFFER_ANOMALY_CORRUPTION;
@@ -687,10 +753,16 @@ int buffer_immune_report_coherence_loss(
     uint32_t buffer_id,
     float coherence
 ) {
-    if (!system || !system->config.enable_anomaly_detection) return -1;
+    if (!system || !system->config.enable_anomaly_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_coherence_loss: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_report_coherence_loss: handle is NULL");
+        return -1;
+    }
 
     /* Only alert if below threshold */
     if (coherence < system->config.coherence_min_threshold) {
@@ -742,10 +814,16 @@ int buffer_immune_check_health(
     uint32_t buffer_id,
     buffer_health_t* health
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_check_health: system is NULL");
+        return -1;
+    }
 
     buffer_immune_handle_t* handle = find_buffer(system, buffer_id);
-    if (!handle) return -1;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_check_health: handle is NULL");
+        return -1;
+    }
 
     /* Update health score */
     handle->health_score = calculate_health_score(handle);
@@ -796,7 +874,10 @@ int buffer_immune_check_all_health(
     buffer_immune_system_t* system,
     buffer_health_t* worst_health
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_check_all_health: system is NULL");
+        return -1;
+    }
 
     buffer_health_t worst = BUFFER_HEALTH_OPTIMAL;
     int unhealthy_count = 0;
@@ -850,7 +931,10 @@ int buffer_immune_get_stats(
     buffer_immune_system_t* system,
     buffer_immune_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     /* Update average health score */
     float total_health = 0.0F;
@@ -877,7 +961,10 @@ int buffer_immune_set_anomaly_callback(
     buffer_immune_anomaly_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_set_anomaly_callback: system is NULL");
+        return -1;
+    }
 
     system->on_anomaly = callback;
     system->callback_user_data = user_data;
@@ -892,7 +979,10 @@ int buffer_immune_update(
     buffer_immune_system_t* system,
     uint64_t delta_ms
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_immune_update: system is NULL");
+        return -1;
+    }
 
     /* Periodic health check for all buffers */
     buffer_health_t worst_health;

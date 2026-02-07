@@ -177,6 +177,7 @@ int claustrum_security_register(
     if (!bbb_register_subject(bbb, &subject)) {
         NIMCP_LOG_ERROR(CLAUSTRUM_SECURITY_MODULE_NAME,
             "Failed to register claustrum subject");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_security_register: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -227,12 +228,16 @@ int claustrum_security_register_memory(
     size_t size,
     claustrum_security_state_t* state
 ) {
-    if (!bbb || !address || size == 0) return -1;
+    if (!bbb || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_security_register_memory: required parameter is NULL (bbb, address)");
+        return -1;
+    }
 
     uint32_t region_id = bbb_register_memory_region(bbb, address, size, true);
     if (region_id == 0) {
         NIMCP_LOG_ERROR(CLAUSTRUM_SECURITY_MODULE_NAME,
             "Failed to register memory region");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_security_register_memory: region_id is zero");
         return -1;
     }
 
@@ -263,7 +268,10 @@ bool claustrum_security_check_access(
     bbb_system_t bbb,
     claustrum_security_op_t op
 ) {
-    if (!bbb) return false;
+    if (!bbb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_security_check_access: bbb is NULL");
+        return false;
+    }
 
     /* Create subject from claustrum module */
     bbb_subject_t subject = {
@@ -298,10 +306,14 @@ bool claustrum_security_validate_kg_token(
     const claustrum_security_state_t* state,
     uint64_t token
 ) {
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_security_validate_kg_token: state is NULL");
+        return false;
+    }
 
     /* Token 0 is invalid unless explicitly allowed */
     if (token == 0 && state->config.admin_token != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_security_validate_kg_token: token is zero");
         return false;
     }
 
@@ -333,12 +345,16 @@ int claustrum_security_connect_immune(
     void* immune,
     claustrum_security_state_t* state
 ) {
-    if (!bbb || !immune) return -1;
+    if (!bbb || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_security_connect_immune: required parameter is NULL (bbb, immune)");
+        return -1;
+    }
 
     /* Connect BBB to immune system */
     if (!bbb_connect_immune(bbb, (brain_immune_system_t*)immune)) {
         NIMCP_LOG_WARN(CLAUSTRUM_SECURITY_MODULE_NAME,
             "Failed to connect BBB to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_security_connect_immune: bbb_connect_immune is NULL");
         return -1;
     }
 

@@ -157,6 +157,7 @@ feature_immune_bridge_t* feature_immune_bridge_create(
     if (!immune_system || !feature_extractor) {
         LOG_MODULE_ERROR("feature_immune_bridge",
                   "Cannot create bridge without immune and feature extractor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_immune_bridge_create: required parameter is NULL (immune_system, feature_extractor)");
         return NULL;
     }
 
@@ -239,7 +240,10 @@ int feature_immune_apply_cytokine_effects(feature_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_feature_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -296,7 +300,10 @@ int feature_immune_apply_inflammation_effects(feature_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_precision_reduction) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -369,9 +376,15 @@ int feature_immune_trigger_from_anomalies(
     const middleware_features_t* features
 ) {
     /* Guard clauses */
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_trigger_from_anomalies: required parameter is NULL (bridge, features)");
+        return -1;
+    }
     if (!bridge->enable_feature_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_trigger_from_anomalies: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -485,7 +498,10 @@ int feature_immune_escalate_from_degradation(
     const middleware_features_t* features
 ) {
     /* Guard clauses */
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_escalate_from_degradation: required parameter is NULL (bridge, features)");
+        return -1;
+    }
     if (!bridge->enable_quality_monitoring) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -540,7 +556,10 @@ int feature_immune_detect_dead_neurons(
     const middleware_features_t* features
 ) {
     /* Guard clauses */
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_detect_dead_neurons: required parameter is NULL (bridge, features)");
+        return -1;
+    }
     if (!bridge->enable_feature_immune_trigger) return 0;
 
     /* Check for zero entropy (dead neurons) */
@@ -572,7 +591,10 @@ int feature_immune_detect_binding_failure(
     const middleware_features_t* features
 ) {
     /* Guard clauses */
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_detect_binding_failure: required parameter is NULL (bridge, features)");
+        return -1;
+    }
     if (!bridge->enable_feature_immune_trigger) return 0;
 
     /* Check for gamma collapse (binding failure) */
@@ -642,7 +664,10 @@ int feature_immune_get_cytokine_effects(
     const feature_immune_bridge_t* bridge,
     cytokine_feature_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->cytokine_effects;
     return 0;
@@ -652,7 +677,10 @@ int feature_immune_get_inflammation_state(
     const feature_immune_bridge_t* bridge,
     inflammation_feature_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     *state = bridge->inflammation_state;
     return 0;
@@ -665,7 +693,10 @@ float feature_immune_get_precision_factor(const feature_immune_bridge_t* bridge)
 }
 
 bool feature_immune_is_threat_detected(const feature_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_immune_is_threat_detected: bridge is NULL");
+        return false;
+    }
 
     return bridge->immune_trigger.immune_severity > 0;
 }
@@ -745,6 +776,9 @@ int feature_extractor_immune_disconnect_bio_async(feature_immune_bridge_t* bridg
  * @brief Check if bio-async is connected
  */
 bool feature_extractor_immune_is_bio_async_connected(const feature_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

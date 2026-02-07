@@ -394,7 +394,10 @@ static void destroy_physics_engine(omni_wm_parietal_bridge_t* bridge) {
  * @return Index or -1 if not found
  */
 static int find_tracked_object(const omni_wm_parietal_bridge_t* bridge, uint32_t object_id) {
-    if (!bridge || !bridge->tracked_objects) return -1;
+    if (!bridge || !bridge->tracked_objects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tracked_object: required parameter is NULL (bridge, bridge->tracked_objects)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -407,6 +410,7 @@ static int find_tracked_object(const omni_wm_parietal_bridge_t* bridge, uint32_t
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tracked_object: validation failed");
     return -1;
 }
 
@@ -783,6 +787,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
     omni_wm_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_parietal_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM parietal bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_parietal_to_wm_effects: bridge is NULL");
         return NULL;
     }
 
@@ -791,6 +796,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
                          "wm_parietal_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -807,6 +813,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate tracked objects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -817,6 +824,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate constraints");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -828,6 +836,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate attention map");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -840,6 +849,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate trajectory cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -853,6 +863,7 @@ omni_wm_parietal_bridge_t* omni_wm_parietal_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to create physics engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: validation failed");
         return NULL;
     }
 
@@ -1086,7 +1097,10 @@ nimcp_error_t omni_wm_parietal_bridge_connect_spatial_reasoning(
 }
 
 bool omni_wm_parietal_bridge_is_connected(const omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_parietal_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_parietal_bridge_heartbeat("omni_wm_pari_is_connected", 0.0f);
 
@@ -1107,6 +1121,21 @@ nimcp_error_t omni_wm_parietal_bridge_update(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Validate dt - negative timesteps are invalid */
+    if (dt < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "omni_wm_parietal_bridge_update: negative dt (%.4f)", dt);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Must be connected (world_model set) to perform updates */
+    if (!bridge->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED,
+            "omni_wm_parietal_bridge_update: bridge not connected (world_model is NULL)");
+        return NIMCP_ERROR_NOT_INITIALIZED;
+    }
+
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -1572,7 +1601,11 @@ nimcp_error_t omni_wm_parietal_bridge_check_collision(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-    NIMCP_CHECK_THROW(will_collide, NIMCP_ERROR_NULL_POINTER, "will_collide is NULL");
+
+    /* Null outputs are handled gracefully - return success with no writes */
+    if (!will_collide) {
+        return NIMCP_SUCCESS;
+    }
 
     *will_collide = false;
     if (time_to_collision) *time_to_collision = -1.0f;
@@ -1641,6 +1674,13 @@ nimcp_error_t omni_wm_parietal_bridge_physics_step(
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
+    /* Validate dt - negative timesteps are invalid for physics */
+    if (dt < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "omni_wm_parietal_bridge_physics_step: negative dt (%.4f)", dt);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
     nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
@@ -1673,6 +1713,7 @@ nimcp_error_t omni_wm_parietal_bridge_update_attention(
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(attention_map, NIMCP_ERROR_NULL_POINTER, "attention_map is NULL");
+    NIMCP_CHECK_THROW(map_dim > 0, NIMCP_ERROR_INVALID_PARAM, "update_attention: map_dim is zero");
     if (!bridge->config.enable_attention_gating) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -2410,7 +2451,10 @@ wm_parietal_spatial_state_t omni_wm_parietal_create_state(
 }
 
 wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length) {
-    if (max_length == 0) return NULL;
+    if (max_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_parietal_trajectory_create: max_length is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_wm_parietal_bridge_heartbeat("omni_wm_pari_omni_wm_parietal_tra", 0.0f);
@@ -2428,6 +2472,7 @@ wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length
     traj->states = nimcp_calloc(max_length, sizeof(wm_parietal_spatial_state_t));
     if (!traj->states) {
         nimcp_free(traj);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_parietal_trajectory_create: traj->states is NULL");
         return NULL;
     }
 
@@ -2486,7 +2531,9 @@ nimcp_error_t omni_wm_parietal_normalize(
         result->x = 0.0f;
         result->y = 0.0f;
         result->z = 0.0f;
-        return NIMCP_SUCCESS;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "omni_wm_parietal_normalize: zero-length vector cannot be normalized");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     result->x = v->x / len;

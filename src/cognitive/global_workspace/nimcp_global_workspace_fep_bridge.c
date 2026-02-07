@@ -241,6 +241,7 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for global workspace FEP bridge");
         global_workspace_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -315,7 +316,10 @@ int global_workspace_fep_bridge_connect_workspace(
     global_workspace_fep_bridge_t* bridge,
     global_workspace_t* workspace
 ) {
-    if (!bridge || !workspace) return -1;
+    if (!bridge || !workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_bridge_connect_workspace: required parameter is NULL (bridge, workspace)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_fep_bridge_heartbeat("global_works_connect_workspace", 0.0f);
@@ -353,7 +357,10 @@ int global_workspace_fep_bridge_connect_workspace(
  * 6. If win → beliefs become conscious (globally broadcast)
  */
 int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_compete_with_beliefs: required parameter is NULL (bridge, bridge->fep_system, bridge->workspace)");
+        return -1;
+    }
     if (!bridge->config.enable_evidence_competition) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -456,7 +463,10 @@ int global_workspace_fep_compete_with_beliefs(global_workspace_fep_bridge_t* bri
  *         This is the FEP interpretation of "conscious access"
  */
 int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_broadcast_winning_belief: required parameter is NULL (bridge, bridge->fep_system, bridge->workspace)");
+        return -1;
+    }
     if (!bridge->config.enable_belief_broadcasting) return 0;
 
     /* Compete with beliefs (includes broadcast if win) */
@@ -511,7 +521,10 @@ int global_workspace_fep_broadcast_winning_belief(global_workspace_fep_bridge_t*
 int global_workspace_fep_update_priors_from_broadcast(
     global_workspace_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->workspace) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_update_priors_from_broadcast: required parameter is NULL (bridge, bridge->fep_system, bridge->workspace)");
+        return -1;
+    }
     if (!bridge->config.enable_prior_updates) return 0;
 
     /* Check if workspace has broadcast */
@@ -660,7 +673,10 @@ int global_workspace_fep_bridge_get_state(
     const global_workspace_fep_bridge_t* bridge,
     global_workspace_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_fep_bridge_heartbeat("global_works_get_state", 0.0f);
@@ -682,7 +698,10 @@ int global_workspace_fep_bridge_get_stats(
     const global_workspace_fep_bridge_t* bridge,
     global_workspace_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_fep_bridge_heartbeat("global_works_get_stats", 0.0f);

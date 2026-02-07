@@ -115,7 +115,10 @@ struct oscillation_detector {
 
 static bool init_signal_buffer(signal_buffer_t* buffer, uint32_t capacity) {
     buffer->buffer = (float*)nimcp_calloc(capacity, sizeof(float));
-    if (!buffer->buffer) return false;
+    if (!buffer->buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_signal_buffer: buffer->buffer is NULL");
+        return false;
+    }
 
     buffer->capacity = capacity;
     buffer->count = 0;
@@ -300,7 +303,10 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
                                                float* band_power,
                                                float* peak_frequency,
                                                float* coherence) {
-    if (!detector || !detector->hilbert || !detector->phasor_work_pool) return false;
+    if (!detector || !detector->hilbert || !detector->phasor_work_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_hann_window: required parameter is NULL (detector, detector->hilbert, detector->phasor_work_pool)");
+        return false;
+    }
 
     // Acquire buffers from memory pool (Phase 1.5 - O(1) allocation)
     float* filtered_signal = (float*)memory_pool_acquire(detector->phasor_work_pool);
@@ -311,6 +317,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         if (filtered_signal) memory_pool_release(detector->phasor_work_pool, filtered_signal);
         if (analytic_signal) memory_pool_release(detector->phasor_work_pool, analytic_signal);
         if (amplitude) memory_pool_release(detector->phasor_work_pool, amplitude);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_hann_window: validation failed");
         return false;
     }
 
@@ -338,6 +345,7 @@ static bool detect_oscillation_phasor_hilbert(oscillation_detector_t* detector,
         memory_pool_release(detector->phasor_work_pool, filtered_signal);
         memory_pool_release(detector->phasor_work_pool, analytic_signal);
         memory_pool_release(detector->phasor_work_pool, amplitude);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_hann_window: hilbert_apply is NULL");
         return false;
     }
 
@@ -425,6 +433,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     // Initialize signal buffer
     if (!init_signal_buffer(&detector->buffer, MAX_SIGNAL_BUFFER)) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "oscillation_detector_create: init_signal_buffer is NULL");
         return NULL;
     }
 
@@ -437,6 +446,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     if (!detector->fft_real || !detector->fft_imag ||
         !detector->window || !detector->power_spectrum) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_create: operation failed");
         return NULL;
     }
 
@@ -452,6 +462,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
 
     if (!detector->hilbert) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_create: detector->hilbert is NULL");
         return NULL;
     }
 
@@ -467,6 +478,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     detector->signal_window_pool = memory_pool_create(&sig_pool_config);
     if (!detector->signal_window_pool) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_create: detector->signal_window_pool is NULL");
         return NULL;
     }
 
@@ -483,6 +495,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     detector->phasor_work_pool = memory_pool_create(&phasor_pool_config);
     if (!detector->phasor_work_pool) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_create: detector->phasor_work_pool is NULL");
         return NULL;
     }
 
@@ -497,6 +510,7 @@ oscillation_detector_t* oscillation_detector_create(const oscillation_detector_c
     detector->pac_work_pool = memory_pool_create(&pac_pool_config);
     if (!detector->pac_work_pool) {
         oscillation_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_create: detector->pac_work_pool is NULL");
         return NULL;
     }
 
@@ -536,7 +550,10 @@ void oscillation_detector_destroy(oscillation_detector_t* detector) {
 bool oscillation_detector_add_sample(oscillation_detector_t* detector,
                                       float signal,
                                       double timestamp_ms) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_destroy: detector is NULL");
+        return false;
+    }
 
     buffer_add_sample(&detector->buffer, signal, timestamp_ms);
     detector->total_samples++;
@@ -546,10 +563,14 @@ bool oscillation_detector_add_sample(oscillation_detector_t* detector,
 
 bool oscillation_detector_detect(oscillation_detector_t* detector,
                                   oscillation_result_t* result) {
-    if (!detector || !result) return false;
+    if (!detector || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_destroy: required parameter is NULL (detector, result)");
+        return false;
+    }
 
     // Need full window for analysis
     if (detector->buffer.count < detector->config.window_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillation_detector_destroy: validation failed");
         return false;
     }
 
@@ -557,7 +578,10 @@ bool oscillation_detector_detect(oscillation_detector_t* detector,
 
     // Extract signal window (most recent samples) - Phase 1.5 O(1) pool allocation
     float* signal_window = (float*)memory_pool_acquire(detector->signal_window_pool);
-    if (!signal_window) return false;
+    if (!signal_window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_destroy: signal_window is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < detector->config.window_size; i++) {
         uint32_t idx = (detector->buffer.head + detector->buffer.capacity -
@@ -681,6 +705,7 @@ bool oscillation_detector_compute_plv(oscillation_detector_t* detector,
                                        uint32_t length,
                                        phase_locking_t* result) {
     if (!detector || !signal1 || !signal2 || !result || length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_destroy: required parameter is NULL (detector, signal1, signal2, result)");
         return false;
     }
 
@@ -713,18 +738,25 @@ bool oscillation_detector_detect_pac(oscillation_detector_t* detector,
                                       cross_freq_coupling_t* couplings,
                                       uint32_t max_couplings,
                                       uint32_t* num_found) {
-    if (!detector || !couplings || !num_found) return false;
+    if (!detector || !couplings || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector, couplings, num_found)");
+        return false;
+    }
 
     *num_found = 0;
 
     // Need full window for PAC analysis
     if (detector->buffer.count < detector->config.window_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
     // Extract signal window - Phase 1.5 O(1) pool allocation
     float* signal_window = (float*)memory_pool_acquire(detector->signal_window_pool);
-    if (!signal_window) return false;
+    if (!signal_window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: signal_window is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < detector->config.window_size; i++) {
         uint32_t idx = (detector->buffer.head + detector->buffer.capacity -
@@ -854,6 +886,7 @@ bool oscillation_detector_get_band_power(const oscillation_detector_t* detector,
                                           oscillation_band_t band,
                                           band_power_t* power) {
     if (!detector || !power || band >= OSC_NUM_BANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector, power)");
         return false;
     }
 
@@ -880,7 +913,10 @@ bool oscillation_detector_get_stats(const oscillation_detector_t* detector,
                                      uint64_t* total_samples,
                                      uint64_t* total_bursts,
                                      float* avg_power) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_detector_reset: detector is NULL");
+        return false;
+    }
 
     if (total_samples) *total_samples = detector->total_samples;
     if (total_bursts) *total_bursts = detector->total_bursts;

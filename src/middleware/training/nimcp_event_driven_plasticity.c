@@ -154,7 +154,10 @@ const char* edp_mode_name(edp_processing_mode_t mode) {
 static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity)
 {
     buf->spikes = (edp_spike_record_t*)nimcp_calloc(capacity, sizeof(edp_spike_record_t));
-    if (!buf->spikes) return false;
+    if (!buf->spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_buffer_init: buf->spikes is NULL");
+        return false;
+    }
 
     buf->capacity = capacity;
     buf->head = 0;
@@ -163,6 +166,7 @@ static bool spike_buffer_init(spike_buffer_t* buf, uint32_t capacity)
 
     if (nimcp_platform_mutex_init(&buf->mutex, false) != 0) {
         nimcp_free(buf->spikes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "spike_buffer_init: validation failed");
         return false;
     }
 
@@ -231,13 +235,17 @@ static uint32_t eligibility_hash(uint32_t pre, uint32_t post, uint32_t capacity)
 static bool eligibility_table_init(eligibility_table_t* table, uint32_t capacity)
 {
     table->entries = (edp_eligibility_entry_t*)nimcp_calloc(capacity, sizeof(edp_eligibility_entry_t));
-    if (!table->entries) return false;
+    if (!table->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eligibility_table_init: table->entries is NULL");
+        return false;
+    }
 
     table->capacity = capacity;
     table->count = 0;
 
     if (nimcp_platform_rwlock_init(&table->rwlock) != 0) {
         nimcp_free(table->entries);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "eligibility_table_init: validation failed");
         return false;
     }
 
@@ -290,6 +298,7 @@ static edp_eligibility_entry_t* eligibility_find_or_create(
         probe++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_find_or_create: validation failed");
     return NULL;  /* Table full */
 }
 
@@ -575,6 +584,7 @@ edp_context_t* edp_create(const edp_config_t* config)
     if (!spike_buffer_init(&ctx->spike_buffer, EDP_SPIKE_BUFFER_SIZE)) {
         LOG_ERROR("Failed to initialize spike buffer");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "edp_create: spike_buffer_init is NULL");
         return NULL;
     }
 
@@ -583,6 +593,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         LOG_ERROR("Failed to initialize eligibility table");
         spike_buffer_destroy(&ctx->spike_buffer);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "edp_create: eligibility_table_init is NULL");
         return NULL;
     }
 
@@ -594,6 +605,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         eligibility_table_destroy(&ctx->eligibility);
         spike_buffer_destroy(&ctx->spike_buffer);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "edp_create: validation failed");
         return NULL;
     }
 
@@ -605,6 +617,7 @@ edp_context_t* edp_create(const edp_config_t* config)
         eligibility_table_destroy(&ctx->eligibility);
         spike_buffer_destroy(&ctx->spike_buffer);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "edp_create: validation failed");
         return NULL;
     }
 
@@ -1235,7 +1248,10 @@ void edp_print_status(const edp_context_t* ctx)
 
 bool edp_is_active(const edp_context_t* ctx)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "edp_is_active: ctx is NULL");
+        return false;
+    }
     return ctx->active && ctx->running;
 }
 

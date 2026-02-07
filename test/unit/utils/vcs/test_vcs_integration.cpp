@@ -28,6 +28,8 @@
 #include "utils/vcs/nimcp_vcs_integration.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_handlers.h"
 
 //=============================================================================
 // Test Fixture
@@ -42,13 +44,28 @@ protected:
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
 
-        // Record baseline memory (from previous tests or global state)
+        // Warm up exception handler system (one-time mutex allocation)
+        {
+            nimcp_exception_t* warmup = nimcp_exception_create(
+                NIMCP_ERROR_NULL_POINTER, EXCEPTION_SEVERITY_DEBUG,
+                __FILE__, __LINE__, __func__, "warmup");
+            if (warmup) {
+                nimcp_exception_dispatch(warmup);
+                nimcp_exception_unref(warmup);
+            }
+            nimcp_exception_clear_current();
+        }
+
+        // Record baseline memory after handler system initialized
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
         baseline_allocated = stats.current_allocated;
     }
 
     void TearDown() override {
+        // Release any exception held as "current" by the dispatch system
+        nimcp_exception_clear_current();
+
         // Check for memory leaks relative to baseline
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);

@@ -564,8 +564,14 @@ int omni_sensory_compute_binding(omni_sensory_bridge_t* bridge,
 bool omni_sensory_are_bound(const omni_sensory_bridge_t* bridge,
                              omni_modality_t m1,
                              omni_modality_t m2) {
-    if (!bridge) return false;
-    if (m1 >= OMNI_MODALITY_COUNT || m2 >= OMNI_MODALITY_COUNT) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_sensory_apply_to_omni: bridge is NULL");
+        return false;
+    }
+    if (m1 >= OMNI_MODALITY_COUNT || m2 >= OMNI_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "omni_sensory_apply_to_omni: capacity exceeded");
+        return false;
+    }
     if (m1 == m2) return true;
 
     /* Sort modalities for consistent lookup */
@@ -781,7 +787,10 @@ int omni_sensory_disconnect_bio_async(omni_sensory_bridge_t* bridge) {
 }
 
 bool omni_sensory_is_bio_async_connected(const omni_sensory_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_sensory_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }
 

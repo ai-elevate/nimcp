@@ -218,7 +218,10 @@ void somato_logic_bridge_destroy(somato_logic_bridge_t* bridge) {
 }
 
 int somato_logic_bridge_reset(somato_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);
@@ -238,8 +241,14 @@ int somato_logic_ground_observation(
     somato_logic_bridge_t* bridge,
     const somato_logic_observation_t* obs
 ) {
-    if (!bridge || !obs) return -1;
-    if (obs->body_region >= BODY_REGION_COUNT) return -1;
+    if (!bridge || !obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_ground_observation: required parameter is NULL (bridge, obs)");
+        return -1;
+    }
+    if (obs->body_region >= BODY_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_ground_observation: capacity exceeded");
+        return -1;
+    }
 
     /* Filter by intensity and confidence */
     /* Phase 8: Heartbeat at operation start */
@@ -319,6 +328,7 @@ int somato_logic_ground_observation(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "somato_logic_ground_observation: operation failed");
             return -1;
     }
 
@@ -329,8 +339,14 @@ int somato_logic_report_body_state(
     somato_logic_bridge_t* bridge,
     const body_state_predicate_t* predicate
 ) {
-    if (!bridge || !predicate) return -1;
-    if (predicate->region >= BODY_REGION_COUNT) return -1;
+    if (!bridge || !predicate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_report_body_state: required parameter is NULL (bridge, predicate)");
+        return -1;
+    }
+    if (predicate->region >= BODY_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_report_body_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_report_", 0.0f);
@@ -357,7 +373,10 @@ int somato_logic_process_batch(
     const somato_logic_observation_t* observations,
     uint32_t count
 ) {
-    if (!bridge || !observations) return -1;
+    if (!bridge || !observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_process_batch: required parameter is NULL (bridge, observations)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_process", 0.0f);
@@ -388,7 +407,10 @@ int somato_logic_request_attention(
     body_region_t region,
     float priority
 ) {
-    if (!bridge || region >= BODY_REGION_COUNT) return -1;
+    if (!bridge || region >= BODY_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_request_attention: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_top_down_attention) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -396,6 +418,7 @@ int somato_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_request_attention: capacity exceeded");
         return -1;
     }
 
@@ -415,13 +438,17 @@ int somato_logic_expect_contact(
     body_region_t region,
     const char* object_name
 ) {
-    if (!bridge || region >= BODY_REGION_COUNT) return -1;
+    if (!bridge || region >= BODY_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_expect_contact: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_expect_", 0.0f);
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_expect_contact: capacity exceeded");
         return -1;
     }
 
@@ -446,7 +473,10 @@ int somato_logic_verify_position(
     bool* verified,
     float* confidence
 ) {
-    if (!bridge || region >= BODY_REGION_COUNT || !verified || !confidence) return -1;
+    if (!bridge || region >= BODY_REGION_COUNT || !verified || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_verify_position: required parameter is NULL (bridge, verified, confidence)");
+        return -1;
+    }
     if (!bridge->config.enable_verification) {
         *verified = false;
         *confidence = 0.0f;
@@ -490,13 +520,17 @@ int somato_logic_send_command(
     somato_logic_bridge_t* bridge,
     const logic_somato_command_t* command
 ) {
-    if (!bridge || !command) return -1;
+    if (!bridge || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_send_command: required parameter is NULL (bridge, command)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_send_co", 0.0f);
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "somato_logic_send_command: capacity exceeded");
         return -1;
     }
 
@@ -526,7 +560,10 @@ int somato_logic_has_contact(
     body_region_t region,
     bool* has_contact
 ) {
-    if (!bridge || region >= BODY_REGION_COUNT || !has_contact) return -1;
+    if (!bridge || region >= BODY_REGION_COUNT || !has_contact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_has_contact: required parameter is NULL (bridge, has_contact)");
+        return -1;
+    }
 
     *has_contact = bridge->regions[region].has_contact;
     /* Phase 8: Heartbeat at operation start */
@@ -542,7 +579,10 @@ int somato_logic_get_position(
     float position[3],
     float* confidence
 ) {
-    if (!bridge || region >= BODY_REGION_COUNT || !position || !confidence) return -1;
+    if (!bridge || region >= BODY_REGION_COUNT || !position || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_get_position: required parameter is NULL (bridge, position, confidence)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_get_pos", 0.0f);
@@ -565,7 +605,10 @@ int somato_logic_bridge_get_stats(
     const somato_logic_bridge_t* bridge,
     somato_logic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "somato_logic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     somatosensory_logic_bridge_heartbeat("somatosensor_somato_logic_bridge_", 0.0f);

@@ -209,6 +209,7 @@ bool nimcp_metrics_aggregator_add_sample(
     time_t timestamp
 ) {
     if (!agg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_aggregator_add_sample: agg is NULL");
         return false;
     }
 
@@ -248,6 +249,7 @@ bool nimcp_metrics_aggregator_add_sample(
 
 bool nimcp_metrics_aggregator_aggregate(nimcp_metrics_aggregator_t* agg) {
     if (!agg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_aggregator_aggregate: agg is NULL");
         return false;
     }
 
@@ -336,6 +338,7 @@ const nimcp_aggregated_metric_t* nimcp_metrics_aggregator_get_stats(
     nimcp_time_window_t window
 ) {
     if (!agg || window >= NIMCP_WINDOW_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_metrics_aggregator_get_stats: agg is NULL");
         return NULL;
     }
     return &agg->cached_stats[window];
@@ -402,6 +405,7 @@ bool nimcp_metrics_aggregator_set_auto_aggregate(
     uint32_t interval_seconds
 ) {
     if (!agg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_aggregator_set_auto_aggregate: agg is NULL");
         return false;
     }
 
@@ -464,6 +468,7 @@ bool nimcp_metrics_aggregator_get_statistics(
     uint64_t* aggregations
 ) {
     if (!agg || !total_samples || !aggregations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_aggregator_get_statistics: required parameter is NULL (agg, total_samples, aggregations)");
         return false;
     }
 

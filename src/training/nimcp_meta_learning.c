@@ -360,6 +360,7 @@ meta_task_t* meta_create_task(
     if (!task->support_x || !task->support_y ||
         !task->query_x || !task->query_y) {
         meta_destroy_task(task);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_create_task: operation failed");
         return NULL;
     }
 
@@ -539,6 +540,7 @@ int meta_query_loss(
     float* query_accuracy
 ) {
     if (!ctx || !task || !adapted_params || !forward_fn || !model || !query_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_query_loss: required parameter is NULL (ctx, task, adapted_params, forward_fn, model, query_loss)");
         return -1;
     }
 
@@ -551,6 +553,7 @@ int meta_query_loss(
     nimcp_tensor_t* logits = forward_fn(model, task->query_x);
     if (!logits) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_query_loss: logits is NULL");
         return -1;
     }
 
@@ -588,6 +591,7 @@ int meta_step(
     float* avg_query_loss
 ) {
     if (!ctx || !task_batch || !forward_fn || !model || !avg_query_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_step: required parameter is NULL (ctx, task_batch, forward_fn, model, avg_query_loss)");
         return -1;
     }
 
@@ -749,6 +753,7 @@ int meta_prototypical_predict(
     nimcp_tensor_t* predictions
 ) {
     if (!ctx || !task || !embed_fn || !model || !predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_prototypical_predict: required parameter is NULL (ctx, task, embed_fn, model, predictions)");
         return -1;
     }
 
@@ -758,6 +763,7 @@ int meta_prototypical_predict(
     nimcp_tensor_t* support_embeddings = embed_fn(model, task->support_x);
     if (!support_embeddings) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_prototypical_predict: support_embeddings is NULL");
         return -1;
     }
 
@@ -770,6 +776,7 @@ int meta_prototypical_predict(
     if (!prototypes) {
         nimcp_tensor_destroy(support_embeddings);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_prototypical_predict: prototypes is NULL");
         return -1;
     }
 
@@ -796,6 +803,7 @@ int meta_prototypical_predict(
         nimcp_free(prototypes);
         nimcp_tensor_destroy(support_embeddings);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_prototypical_predict: query_embeddings is NULL");
         return -1;
     }
 
@@ -845,6 +853,7 @@ int meta_prototypical_loss(
     float* accuracy
 ) {
     if (!ctx || !task || !embed_fn || !model || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_prototypical_loss: required parameter is NULL (ctx, task, embed_fn, model, loss)");
         return -1;
     }
 
@@ -859,6 +868,7 @@ int meta_prototypical_loss(
         if (support_embeddings) nimcp_tensor_destroy(support_embeddings);
         if (query_embeddings) nimcp_tensor_destroy(query_embeddings);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_prototypical_loss: validation failed");
         return -1;
     }
 
@@ -874,6 +884,7 @@ int meta_prototypical_loss(
         nimcp_tensor_destroy(support_embeddings);
         nimcp_tensor_destroy(query_embeddings);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_prototypical_loss: prototypes is NULL");
         return -1;
     }
 
@@ -968,6 +979,7 @@ int meta_evaluate_task(
     float* accuracy
 ) {
     if (!ctx || !task || !forward_fn || !model || !accuracy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_evaluate_task: required parameter is NULL (ctx, task, forward_fn, model, accuracy)");
         return -1;
     }
 
@@ -1001,6 +1013,7 @@ int meta_connect_gradient_manager(
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
     if (!ctx || !grad_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_connect_gradient_manager: required parameter is NULL (ctx, grad_manager)");
         return -1;
     }
 
@@ -1013,6 +1026,7 @@ int meta_connect_gradient_manager(
 
 int meta_connect_brain_factory(meta_ctx_t* ctx, void* brain_factory) {
     if (!ctx || !brain_factory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_connect_brain_factory: required parameter is NULL (ctx, brain_factory)");
         return -1;
     }
 
@@ -1029,6 +1043,7 @@ int meta_connect_brain_factory(meta_ctx_t* ctx, void* brain_factory) {
 
 int metalearn_get_stats(const meta_ctx_t* ctx, meta_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metalearn_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -1074,25 +1089,30 @@ int meta_validate_config(const meta_config_t* config) {
 
     /* Validate algorithm */
     if (config->algorithm >= META_ALG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate task config */
     if (config->task.n_way == 0 || config->task.k_shot == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_validate_config: config->task.n_way is zero");
         return -1;
     }
 
     /* Validate learning rates */
     if (config->maml.inner_lr <= 0.0f || config->maml.outer_lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_validate_config: validation failed");
         return -1;
     }
 
     if (config->maml.inner_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_validate_config: config->maml.inner_steps is zero");
         return -1;
     }
 
     /* Validate tasks per batch */
     if (config->tasks_per_batch == 0 || config->tasks_per_batch > META_MAX_TASKS_PER_BATCH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_validate_config: config->tasks_per_batch is zero");
         return -1;
     }
 
@@ -1115,6 +1135,7 @@ static int clone_params(nimcp_tensor_t** src, nimcp_tensor_t** dst, uint32_t cou
                 nimcp_tensor_destroy(dst[j]);
                 dst[j] = NULL;
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clone_params: dst is NULL");
             return -1;
         }
 
@@ -1249,6 +1270,7 @@ static int compute_hessian_vector_product(
     float eps
 ) {
     if (!grad_at_adapted || !vector || !hvp_out || param_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_hessian_vector_product: required parameter is NULL (grad_at_adapted, vector, hvp_out)");
         return -1;
     }
 
@@ -1323,6 +1345,7 @@ int meta_compute_second_order_gradient(
     float inner_lr
 ) {
     if (!ctx || !query_grad || !support_grad || !meta_grad || param_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_compute_second_order_gradient: required parameter is NULL (ctx, query_grad, support_grad, meta_grad)");
         return -1;
     }
 
@@ -1345,6 +1368,7 @@ int meta_compute_second_order_gradient(
     float eps = 1e-4f;  /* Finite difference epsilon */
     if (compute_hessian_vector_product(support_grad, query_grad, hvp, param_count, eps) != 0) {
         nimcp_free(hvp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_compute_second_order_gradient: validation failed");
         return -1;
     }
 

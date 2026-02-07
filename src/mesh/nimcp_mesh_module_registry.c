@@ -82,6 +82,7 @@ mesh_module_registry_t* mesh_module_registry_create(
     mesh_module_registry_t* registry = nimcp_calloc(1, sizeof(*registry));
     if (!registry) {
         LOG_ERROR("Failed to allocate module registry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_module_registry_create: registry is NULL");
         return NULL;
     }
 
@@ -97,6 +98,7 @@ mesh_module_registry_t* mesh_module_registry_create(
     if (!registry->modules) {
         LOG_ERROR("Failed to allocate modules array");
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_module_registry_create: registry->modules is NULL");
         return NULL;
     }
 
@@ -107,6 +109,7 @@ mesh_module_registry_t* mesh_module_registry_create(
         LOG_ERROR("Failed to create registry mutex");
         nimcp_free(registry->modules);
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_module_registry_create: registry->mutex is NULL");
         return NULL;
     }
 
@@ -190,7 +193,10 @@ static int find_module_by_name(
     const mesh_module_registry_t* registry,
     const char* name
 ) {
-    if (!name) return -1;
+    if (!name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_by_name: name is NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < registry->module_count; i++) {
         if (registry->modules[i].descriptor.module_name &&
@@ -198,6 +204,7 @@ static int find_module_by_name(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_by_name: name is NULL");
     return -1;
 }
 
@@ -210,6 +217,7 @@ static int find_module_by_id(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_by_id: validation failed");
     return -1;
 }
 
@@ -377,6 +385,7 @@ bool mesh_module_registry_contains(
     const char* module_name
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_module_registry_contains: required parameter is NULL (registry, module_name)");
         return false;
     }
 
@@ -396,6 +405,7 @@ const mesh_registered_module_t* mesh_module_registry_get(
     const char* module_name
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_module_registry_get: required parameter is NULL (registry, module_name)");
         return NULL;
     }
 
@@ -413,6 +423,7 @@ const mesh_registered_module_t* mesh_module_registry_get_by_id(
     mesh_participant_id_t participant_id
 ) {
     if (!registry || registry->magic != MODULE_REGISTRY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_module_registry_get_by_id: registry is NULL");
         return NULL;
     }
 

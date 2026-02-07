@@ -57,6 +57,7 @@ static compartment_plasticity_state_t* find_or_create_compartment(
 
     /* Create new compartment if capacity allows */
     if (bridge->num_compartments >= bridge->compartment_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_compartment: capacity exceeded");
         return NULL;
     }
 
@@ -333,7 +334,10 @@ int dendrite_plasticity_disconnect_bio_async(dendrite_plasticity_bridge_t* bridg
 
 bool dendrite_plasticity_is_bio_async_connected(const dendrite_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 

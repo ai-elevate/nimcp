@@ -195,6 +195,7 @@ static bool detect_mpi_environment(network_capabilities_t* caps)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_mpi_environment: validation failed");
     return false;
 }
 
@@ -576,6 +577,7 @@ bool network_detect_capabilities(network_capabilities_t* caps)
 {
     if (!caps) {
         LOG_ERROR("NULL capabilities pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_detect_capabilities: caps is NULL");
         return false;
     }
 
@@ -669,6 +671,7 @@ bool network_mpi_init(void)
     return true;  // Already initialized
 #else
     LOG_WARN("MPI support not compiled in");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "network_mpi_init: operation failed");
     return false;
 #endif
 }

@@ -199,6 +199,7 @@ ling_plasticity_bridge_t* ling_plasticity_create(const ling_plasticity_config_t*
     ling_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(ling_plasticity_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate plasticity bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_plasticity_create: bridge is NULL");
         return NULL;
     }
 
@@ -343,6 +344,7 @@ static word_synapse_entry_t* find_word_synapse(
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_word_synapse: operation failed");
     return NULL;
 }
 
@@ -380,7 +382,10 @@ static int plasticity_mesh_process(
     linguistics_belief_t* belief
 ) {
     ling_plasticity_bridge_t* bridge = (ling_plasticity_bridge_t*)ctx;
-    if (!bridge || !request || !belief) return -1;
+    if (!bridge || !request || !belief) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_mesh_process: required parameter is NULL (bridge, request, belief)");
+        return -1;
+    }
 
     /* Generate belief based on plasticity state */
     belief->certainty = bridge->homeostatic_scaling_factor;
@@ -404,7 +409,10 @@ static int plasticity_mesh_update(
     linguistics_belief_t* updated
 ) {
     ling_plasticity_bridge_t* bridge = (ling_plasticity_bridge_t*)ctx;
-    if (!bridge || !updated) return -1;
+    if (!bridge || !updated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_mesh_update: required parameter is NULL (bridge, updated)");
+        return -1;
+    }
 
     /* FEP-style precision-weighted belief update */
     float lr = 0.1f;  /* FEP_DEFAULT_BELIEF_LR */
@@ -722,6 +730,7 @@ static sequence_synapse_entry_t* find_sequence_synapse(
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_sequence_synapse: operation failed");
     return NULL;
 }
 
@@ -879,6 +888,7 @@ static bcm_synapse_entry_t* find_bcm_synapse(
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bcm_synapse: validation failed");
     return NULL;
 }
 

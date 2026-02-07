@@ -113,7 +113,10 @@ static void rate_limiter_on_sleep_state_change(sleep_state_t new_state, void* us
 
 int rate_limiter_sleep_default_config(rate_limiter_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_rate_modulation = true;
     config->enable_burst_modulation = true;
@@ -190,7 +193,10 @@ void rate_limiter_sleep_bridge_destroy(rate_limiter_sleep_bridge_t bridge)
 
 int rate_limiter_sleep_update(rate_limiter_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.sleep_pressure = sleep_get_pressure(bridge->sleep_system);
@@ -202,7 +208,10 @@ int rate_limiter_sleep_update(rate_limiter_sleep_bridge_t bridge)
 int rate_limiter_sleep_get_effects(const rate_limiter_sleep_bridge_t bridge,
                                     rate_limiter_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(rate_limiter_sleep_effects_t));
@@ -239,7 +248,10 @@ float rate_limiter_sleep_get_burst_capacity(const rate_limiter_sleep_bridge_t br
 
 bool rate_limiter_sleep_is_relaxed(const rate_limiter_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_sleep_is_relaxed: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool relaxed = bridge->effects.limits_relaxed;

@@ -293,6 +293,7 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     if (pthread_rwlock_init(&system->lock, NULL) != 0) {
         EC_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_consolidation_create: validation failed");
         return NULL;
     }
 
@@ -332,6 +333,7 @@ bool emotion_consolidation_tag_memory(
     memory_emotion_tag_t* tag
 ) {
     if (!system || !tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_tag_memory: required parameter is NULL (system, tag)");
         return false;
     }
 
@@ -423,11 +425,13 @@ bool emotion_consolidation_should_prioritize(
     const memory_emotion_tag_t* emotion_tag
 ) {
     if (!system || !emotion_tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_should_prioritize: required parameter is NULL (system, emotion_tag)");
         return false;
     }
 
     /* Guard: Prioritization disabled */
     if (!system->config.prioritize_emotional) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_should_prioritize: system->config is NULL");
         return false;
     }
 
@@ -510,6 +514,7 @@ bool emotion_consolidation_get_stats(
     emotion_consolidation_stats_t* stats
 ) {
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 
@@ -548,6 +553,7 @@ void emotion_consolidation_reset_stats(emotion_consolidation_system_t* system) {
 
 bool emotion_consolidation_register_bio_async(emotion_consolidation_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_consolidation_register_bio_async: system is NULL");
         return false;
     }
 

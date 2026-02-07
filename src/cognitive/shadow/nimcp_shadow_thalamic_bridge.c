@@ -118,6 +118,7 @@ shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_r
     if (bridge_base_init(&bridge->base, 0, "shadow_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->shadow = shadow;
@@ -139,7 +140,10 @@ void shadow_thalamic_bridge_destroy(shadow_thalamic_bridge_t* bridge) {
 }
 
 int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -155,7 +159,10 @@ int shadow_thalamic_bridge_reset(shadow_thalamic_bridge_t* bridge) {
  * HOW: Create routed_signal_t, apply gradual emergence if enabled, call router
  */
 int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shadow_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_route_emergence: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, signal, sizeof(shadow_thalamic_signal_t));
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -223,6 +230,7 @@ int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shad
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_route_emergence: routed_ok is NULL");
             return -1;  /* Routing failed */
         }
     }
@@ -248,7 +256,10 @@ int shadow_thalamic_route_emergence(shadow_thalamic_bridge_t* bridge, const shad
  * HOW: Package readiness data, route with appropriate priority
  */
 int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const void* content, float readiness) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_route_integration: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -284,6 +295,7 @@ int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const vo
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_route_integration: routed_ok is NULL");
             return -1;
         }
     }
@@ -298,7 +310,10 @@ int shadow_thalamic_route_integration(shadow_thalamic_bridge_t* bridge, const vo
 }
 
 int shadow_thalamic_set_attention(shadow_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -306,7 +321,10 @@ int shadow_thalamic_set_attention(shadow_thalamic_bridge_t* bridge, float attent
 }
 
 int shadow_thalamic_get_attention(const shadow_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -314,7 +332,10 @@ int shadow_thalamic_get_attention(const shadow_thalamic_bridge_t* bridge, float*
 }
 
 int shadow_thalamic_bridge_get_stats(const shadow_thalamic_bridge_t* bridge, shadow_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);

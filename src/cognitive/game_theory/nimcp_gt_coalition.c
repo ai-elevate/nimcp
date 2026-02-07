@@ -198,7 +198,10 @@ static int compare_coalitions(
         }
         // Lower rank = more preferred
         if (rank1 < 0 && rank2 < 0) return 0;
-        if (rank1 < 0) return -1;
+        if (rank1 < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_coalitions: validation failed");
+            return -1;
+        }
         if (rank2 < 0) return 1;
         return rank2 - rank1;  // Higher rank2 means coal1 is preferred
     }
@@ -218,7 +221,10 @@ static int compare_coalitions(
     float per_cap2 = (size2 > 0) ? val2 / (float)size2 : 0.0f;
 
     if (per_cap1 > per_cap2) return 1;
-    if (per_cap1 < per_cap2) return -1;
+    if (per_cap1 < per_cap2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_coalitions: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -259,6 +265,7 @@ static int32_t find_player_coalition_internal(
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_player_coalition_internal: validation failed");
     return -1;
 }
 
@@ -293,6 +300,7 @@ static bool is_individually_rational_unlocked(
     const nimcp_coalition_structure_t* structure
 ) {
     if (!game || !structure || !game->value_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_individually_rational_unlocked: required parameter is NULL (game, structure, game->value_fn)");
         return false;
     }
 
@@ -310,6 +318,7 @@ static bool is_individually_rational_unlocked(
         // Find player's current coalition
         int32_t coal_idx = find_player_coalition_internal(structure, p);
         if (coal_idx < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_individually_rational_unlocked: validation failed");
             return false;
         }
 
@@ -321,6 +330,7 @@ static bool is_individually_rational_unlocked(
 
         // Individual rationality: current payoff >= singleton value
         if (current_payoff < singleton_value - game->config.convergence_epsilon) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_individually_rational_unlocked: validation failed");
             return false;
         }
     }
@@ -337,6 +347,7 @@ static bool is_in_core_unlocked(
     const nimcp_coalition_structure_t* structure
 ) {
     if (!game || !structure || !game->value_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_in_core_unlocked: required parameter is NULL (game, structure, game->value_fn)");
         return false;
     }
 
@@ -387,6 +398,7 @@ static bool is_in_core_unlocked(
 
         float v_S = get_coalition_value_cached(game, S);
         if (payoff_sum < v_S - game->config.convergence_epsilon) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_in_core_unlocked: validation failed");
             return false;
         }
     }
@@ -429,12 +441,14 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
     }
 
     if (config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_create: config->num_players is zero");
         return NULL;
     }
 
     // Validate player count doesn't exceed bitmask capacity (32-bit coalitions)
     // This is a hard limit due to uint32_t coalition bitmask representation
     if (config->num_players > 32) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_create: validation failed");
         return NULL;  // Coalition bitmask overflow: uint32_t can only represent 32 players
     }
 
@@ -456,6 +470,7 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
             nimcp_free(game->value_cache);
             nimcp_free(game->cache_valid);
             nimcp_free(game);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_coalition_create: required parameter is NULL (game->value_cache, game->cache_valid)");
             return NULL;
         }
     }
@@ -476,6 +491,7 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
         nimcp_free(game->value_cache);
         nimcp_free(game->cache_valid);
         nimcp_free(game);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_coalition_create: validation failed");
         return NULL;
     }
 
@@ -948,6 +964,7 @@ bool nimcp_coalition_is_stable(
     nimcp_stability_type_t stability_type
 ) {
     if (!game || !structure) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_is_stable: required parameter is NULL (game, structure)");
         return false;
     }
 
@@ -979,11 +996,13 @@ bool nimcp_coalition_is_stable(
                     }
 
                     if (nimcp_coalition_player_would_deviate(game, structure, p, (int32_t)c)) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_is_stable: validation failed");
                         return false;
                     }
                 }
                 // Check deviation to singleton
                 if (nimcp_coalition_player_would_deviate(game, structure, p, -1)) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_is_stable: validation failed");
                     return false;
                 }
             }
@@ -1002,6 +1021,7 @@ bool nimcp_coalition_is_stable(
         }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_is_stable: operation failed");
             return false;
     }
 }
@@ -1011,6 +1031,7 @@ bool nimcp_coalition_is_in_core(
     const nimcp_coalition_structure_t* structure
 ) {
     if (!game || !structure || !game->value_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_is_in_core: required parameter is NULL (game, structure, game->value_fn)");
         return false;
     }
 
@@ -1081,6 +1102,7 @@ bool nimcp_coalition_is_individually_rational(
     const nimcp_coalition_structure_t* structure
 ) {
     if (!game || !structure || !game->value_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_is_individually_rational: required parameter is NULL (game, structure, game->value_fn)");
         return false;
     }
 
@@ -1354,6 +1376,7 @@ bool nimcp_coalition_player_would_deviate(
     int32_t target_coal_idx
 ) {
     if (!game || !structure) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_player_would_deviate: required parameter is NULL (game, structure)");
         return false;
     }
 
@@ -1362,6 +1385,7 @@ bool nimcp_coalition_player_would_deviate(
 
 
     if (player >= game->config.num_players) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_player_would_deviate: capacity exceeded");
         return false;
     }
 
@@ -1373,12 +1397,14 @@ bool nimcp_coalition_player_would_deviate(
     int32_t current_idx = find_player_coalition_internal(structure, player);
     if (current_idx < 0) {
         nimcp_platform_mutex_unlock(&game->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_player_would_deviate: validation failed");
         return false;
     }
 
     // Same coalition - no deviation
     if (current_idx == target_coal_idx) {
         nimcp_platform_mutex_unlock(&game->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_player_would_deviate: validation failed");
         return false;
     }
 
@@ -1391,6 +1417,7 @@ bool nimcp_coalition_player_would_deviate(
         if (current_coal == player_bit) {
             // Player is already alone, no deviation possible
             nimcp_platform_mutex_unlock(&game->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_player_would_deviate: validation failed");
             return false;
         }
         // Compute payoff as singleton (value / 1 = value)
@@ -1401,6 +1428,7 @@ bool nimcp_coalition_player_would_deviate(
         new_payoff = compute_player_payoff(game, target_coal, player);
     } else {
         nimcp_platform_mutex_unlock(&game->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_player_would_deviate: operation failed");
         return false;
     }
 
@@ -1582,8 +1610,14 @@ bool nimcp_coalition_structure_is_valid(
     const nimcp_coalition_structure_t* structure,
     uint32_t num_players
 ) {
-    if (!structure) return false;
-    if (num_players > NIMCP_GT_MAX_PLAYERS) return false;
+    if (!structure) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coalition_structure_is_valid: structure is NULL");
+        return false;
+    }
+    if (num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_structure_is_valid: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gt_coalition_heartbeat("gt_coalition_coalition_structure_", 0.0f);
@@ -1603,11 +1637,13 @@ bool nimcp_coalition_structure_is_valid(
 
         // Check coalition is non-empty and within player set
         if (coal == 0 || (coal & ~all_players) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_structure_is_valid: coal is zero");
             return false;
         }
 
         // Check no overlap with previously seen coalitions
         if ((covered & coal) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coalition_structure_is_valid: validation failed");
             return false;
         }
 

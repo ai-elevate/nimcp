@@ -149,6 +149,7 @@ static attention_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -447,12 +448,14 @@ int attention_plasticity_register_synapse(
     /* Check if already registered */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_register_synapse: validation failed");
         return -1;  /* Already exists */
     }
 
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "attention_plasticity_register_synapse: capacity exceeded");
         return -1;  /* Full */
     }
 
@@ -515,6 +518,7 @@ int attention_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_plasticity_unregister_synapse: operation failed");
     return -1;  /* Not found */
 }
 
@@ -537,6 +541,7 @@ int attention_plasticity_get_synapse(
     attention_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_get_synapse: found is NULL");
         return -1;
     }
 
@@ -1504,7 +1509,10 @@ int attention_plasticity_disconnect_bio_async(attention_plasticity_bridge_t* bri
 }
 
 bool attention_plasticity_is_bio_async_connected(const attention_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     attention_plasticity_bridge_heartbeat("attention_pl_attention_plasticity", 0.0f);
 

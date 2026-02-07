@@ -226,6 +226,7 @@ static int find_grounded_slot(visual_logic_bridge_t* bridge, uint32_t object_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_grounded_slot: validation failed");
     return -1;
 }
 
@@ -241,6 +242,7 @@ static int find_free_slot(visual_logic_bridge_t* bridge) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->grounded is NULL");
     return -1;
 }
 
@@ -276,6 +278,7 @@ int visual_logic_ground_observation(
         slot = find_free_slot(bridge);
         if (slot < 0) {
             /* No free slots - could evict oldest or lowest confidence */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_logic_ground_observation: validation failed");
             return -1;
         }
         bridge->grounded_count++;
@@ -419,6 +422,7 @@ int visual_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_logic_request_attention: capacity exceeded");
         return -1; /* Command queue full */
     }
 
@@ -506,6 +510,7 @@ int visual_logic_send_command(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_logic_send_command: capacity exceeded");
         return -1;
     }
 

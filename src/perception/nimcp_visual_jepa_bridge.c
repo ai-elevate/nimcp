@@ -70,6 +70,7 @@ static visual_jepa_encoder_t* encoder_create(uint32_t input_dim,
         nimcp_free(enc->weights_2);
         nimcp_free(enc->bias_2);
         nimcp_free(enc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gelu: required parameter is NULL (enc->weights_1, enc->bias_1, enc->weights_2, enc->bias_2)");
         return NULL;
     }
 
@@ -242,6 +243,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
     visual_jepa_bridge_t* bridge = nimcp_malloc(sizeof(visual_jepa_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_bridge_default_config: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(visual_jepa_bridge_t));
@@ -250,6 +252,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_VISUAL_JEPA,
                          "visual_jepa") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: operation failed");
         return NULL;
     }
 
@@ -263,6 +266,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
     if (!bridge->encoder) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: bridge->encoder is NULL");
         return NULL;
     }
 
@@ -273,6 +277,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
             encoder_destroy(bridge->encoder);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: bridge->target_encoder is NULL");
             return NULL;
         }
     }
@@ -284,6 +289,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
         encoder_destroy(bridge->encoder);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: bridge->predictor is NULL");
         return NULL;
     }
 
@@ -295,6 +301,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
         encoder_destroy(bridge->encoder);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: bridge->mask_gen is NULL");
         return NULL;
     }
 
@@ -314,6 +321,7 @@ visual_jepa_bridge_t* visual_jepa_bridge_create(
         encoder_destroy(bridge->encoder);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_bridge_default_config: required parameter is NULL (bridge->patch_buffer, bridge->encoding_buffer)");
         return NULL;
     }
 
@@ -836,6 +844,7 @@ visual_jepa_batch_t* visual_jepa_batch_create(
     batch->patches = nimcp_malloc(num_patches * sizeof(visual_jepa_patch_t));
     if (!batch->patches) {
         nimcp_free(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_bridge_reset_stats: batch->patches is NULL");
         return NULL;
     }
 
@@ -844,6 +853,7 @@ visual_jepa_batch_t* visual_jepa_batch_create(
         batch->patches[i].feature_dim = patch_dim;
         if (!batch->patches[i].features) {
             visual_jepa_batch_destroy(batch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_bridge_reset_stats: batch->patches is NULL");
             return NULL;
         }
     }
@@ -854,6 +864,7 @@ visual_jepa_batch_t* visual_jepa_batch_create(
 
     if (!batch->context_latents || !batch->target_latents) {
         visual_jepa_batch_destroy(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_bridge_reset_stats: required parameter is NULL (batch->context_latents, batch->target_latents)");
         return NULL;
     }
 
@@ -862,6 +873,7 @@ visual_jepa_batch_t* visual_jepa_batch_create(
         batch->target_latents[i] = jepa_latent_create_dim(latent_dim);
         if (!batch->context_latents[i] || !batch->target_latents[i]) {
             visual_jepa_batch_destroy(batch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_bridge_reset_stats: required parameter is NULL (batch->context_latents, batch->target_latents)");
             return NULL;
         }
     }

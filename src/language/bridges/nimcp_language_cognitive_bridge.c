@@ -40,7 +40,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_cognitive_bridge)
  * @brief Initialize working memory data
  */
 static int init_wm_data(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_wm_data: bridge is NULL");
+        return -1;
+    }
 
     language_working_memory_data_t* data = &bridge->wm_data;
 
@@ -51,6 +54,7 @@ static int init_wm_data(language_cognitive_bridge_t* bridge) {
         data->phonological_capacity, sizeof(phonological_item_t));
     if (!data->phonological_buffer) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate phonological buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_wm_data: data->phonological_buffer is NULL");
         return -1;
     }
 
@@ -64,6 +68,7 @@ static int init_wm_data(language_cognitive_bridge_t* bridge) {
     if (!data->episodic_binding) {
         nimcp_free(data->phonological_buffer);
         data->phonological_buffer = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_wm_data: data->episodic_binding is NULL");
         return -1;
     }
 
@@ -74,13 +79,17 @@ static int init_wm_data(language_cognitive_bridge_t* bridge) {
  * @brief Initialize attention data
  */
 static int init_attention_data(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_data: bridge is NULL");
+        return -1;
+    }
 
     language_attention_data_t* data = &bridge->attention_data;
 
     data->num_features = 64;
     data->feature_weights = (float*)nimcp_calloc(data->num_features, sizeof(float));
     if (!data->feature_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_attention_data: data->feature_weights is NULL");
         return -1;
     }
 
@@ -94,6 +103,7 @@ static int init_attention_data(language_cognitive_bridge_t* bridge) {
     if (!data->word_attention) {
         nimcp_free(data->feature_weights);
         data->feature_weights = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_attention_data: data->word_attention is NULL");
         return -1;
     }
 
@@ -110,7 +120,10 @@ static int init_attention_data(language_cognitive_bridge_t* bridge) {
  * @brief Initialize semantic memory data
  */
 static int init_semantic_data(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_semantic_data: bridge is NULL");
+        return -1;
+    }
 
     language_semantic_memory_data_t* data = &bridge->semantic_data;
 
@@ -118,6 +131,7 @@ static int init_semantic_data(language_cognitive_bridge_t* bridge) {
     data->active_concepts = (active_concept_t*)nimcp_calloc(
         data->max_concepts, sizeof(active_concept_t));
     if (!data->active_concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_semantic_data: data->active_concepts is NULL");
         return -1;
     }
 
@@ -132,6 +146,7 @@ static int init_semantic_data(language_cognitive_bridge_t* bridge) {
     if (!data->context_vector) {
         nimcp_free(data->active_concepts);
         data->active_concepts = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_semantic_data: data->context_vector is NULL");
         return -1;
     }
     data->context_coherence = 0.0f;
@@ -143,7 +158,10 @@ static int init_semantic_data(language_cognitive_bridge_t* bridge) {
  * @brief Initialize reasoning data
  */
 static int init_reasoning_data(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_reasoning_data: bridge is NULL");
+        return -1;
+    }
 
     language_reasoning_data_t* data = &bridge->reasoning_data;
 
@@ -151,6 +169,7 @@ static int init_reasoning_data(language_cognitive_bridge_t* bridge) {
     data->inferences = (language_inference_t*)nimcp_calloc(
         data->max_inferences, sizeof(language_inference_t));
     if (!data->inferences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_reasoning_data: data->inferences is NULL");
         return -1;
     }
     data->num_inferences = 0;
@@ -162,6 +181,7 @@ static int init_reasoning_data(language_cognitive_bridge_t* bridge) {
         nimcp_free(data->inferences);
         nimcp_free(data->reference_candidates);
         nimcp_free(data->reference_scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_reasoning_data: required parameter is NULL (data->reference_candidates, data->reference_scores)");
         return -1;
     }
 
@@ -348,6 +368,7 @@ language_cognitive_bridge_t* language_cognitive_bridge_create(
         init_reasoning_data(bridge) != 0) {
         cleanup_all_data(bridge);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_cognitive_bridge_create: validation failed");
         return NULL;
     }
 
@@ -373,7 +394,10 @@ void language_cognitive_bridge_destroy(language_cognitive_bridge_t* bridge) {
 }
 
 int language_cognitive_bridge_init(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_init: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(language_cognitive_stats_t));
     bridge->initialized = true;
@@ -383,7 +407,10 @@ int language_cognitive_bridge_init(language_cognitive_bridge_t* bridge) {
 }
 
 int language_cognitive_bridge_start(language_cognitive_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->active = true;
     LOG_INFO(LOG_MODULE, "Cognitive bridge started");
@@ -391,7 +418,10 @@ int language_cognitive_bridge_start(language_cognitive_bridge_t* bridge) {
 }
 
 int language_cognitive_bridge_stop(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_stop: bridge is NULL");
+        return -1;
+    }
 
     bridge->active = false;
     LOG_INFO(LOG_MODULE, "Cognitive bridge stopped");
@@ -406,7 +436,10 @@ int language_cognitive_bridge_connect_orchestrator(
     language_cognitive_bridge_t* bridge,
     language_orchestrator_t* orchestrator)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
     bridge->orchestrator = orchestrator;
     return 0;
 }
@@ -415,7 +448,10 @@ int language_cognitive_bridge_connect_working_memory(
     language_cognitive_bridge_t* bridge,
     working_memory_system_t* working_memory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_working_memory: bridge is NULL");
+        return -1;
+    }
     bridge->working_memory = working_memory;
     return 0;
 }
@@ -424,7 +460,10 @@ int language_cognitive_bridge_connect_attention(
     language_cognitive_bridge_t* bridge,
     attention_system_t* attention)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_attention: bridge is NULL");
+        return -1;
+    }
     bridge->attention = attention;
     return 0;
 }
@@ -433,7 +472,10 @@ int language_cognitive_bridge_connect_semantic_memory(
     language_cognitive_bridge_t* bridge,
     semantic_memory_system_t* semantic_memory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_semantic_memory: bridge is NULL");
+        return -1;
+    }
     bridge->semantic_memory = semantic_memory;
     return 0;
 }
@@ -442,7 +484,10 @@ int language_cognitive_bridge_connect_reasoning(
     language_cognitive_bridge_t* bridge,
     reasoning_engine_t* reasoning)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_reasoning: bridge is NULL");
+        return -1;
+    }
     bridge->reasoning = reasoning;
     return 0;
 }
@@ -451,7 +496,10 @@ int language_cognitive_bridge_connect_executive(
     language_cognitive_bridge_t* bridge,
     executive_controller_t* executive)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_connect_executive: bridge is NULL");
+        return -1;
+    }
     bridge->executive = executive;
     return 0;
 }
@@ -464,13 +512,20 @@ int language_cognitive_bridge_wm_add_word(
     language_cognitive_bridge_t* bridge,
     const language_word_t* word)
 {
-    if (!bridge || !word) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_wm_add_word: required parameter is NULL (bridge, word)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_wm_add_word: bridge->active is NULL");
+        return -1;
+    }
 
     language_working_memory_data_t* wm = &bridge->wm_data;
 
     if (wm->phonological_count >= wm->phonological_capacity) {
         LOG_WARN(LOG_MODULE, "Phonological buffer full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cognitive_bridge_wm_add_word: capacity exceeded");
         return -1;
     }
 
@@ -490,8 +545,14 @@ int language_cognitive_bridge_wm_add_word(
 }
 
 int language_cognitive_bridge_wm_rehearse(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_wm_rehearse: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_wm_rehearse: bridge->active is NULL");
+        return -1;
+    }
 
     perform_rehearsal(bridge, bridge->stats.last_update_time_ms);
     return 0;
@@ -502,7 +563,10 @@ int language_cognitive_bridge_wm_get_items(
     phonological_item_t* items,
     uint32_t max_items)
 {
-    if (!bridge || !items) return -1;
+    if (!bridge || !items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_wm_get_items: required parameter is NULL (bridge, items)");
+        return -1;
+    }
 
     const language_working_memory_data_t* wm = &bridge->wm_data;
     uint32_t count = wm->phonological_count < max_items ? wm->phonological_count : max_items;
@@ -580,8 +644,14 @@ int language_cognitive_bridge_spread_activation(
     language_cognitive_bridge_t* bridge,
     uint32_t source_concept_id)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_spread_activation: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_spread_activation: bridge->active is NULL");
+        return -1;
+    }
 
     language_semantic_memory_data_t* sem = &bridge->semantic_data;
 
@@ -594,7 +664,10 @@ int language_cognitive_bridge_spread_activation(
         }
     }
 
-    if (!source) return -1;
+    if (!source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_spread_activation: source is NULL");
+        return -1;
+    }
 
     /* Mark spreading in progress */
     sem->spreading_in_progress = true;
@@ -621,7 +694,10 @@ int language_cognitive_bridge_get_active_concepts(
     active_concept_t* concepts,
     uint32_t max_concepts)
 {
-    if (!bridge || !concepts) return -1;
+    if (!bridge || !concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_get_active_concepts: required parameter is NULL (bridge, concepts)");
+        return -1;
+    }
 
     const language_semantic_memory_data_t* sem = &bridge->semantic_data;
     uint32_t count = sem->num_active < max_concepts ? sem->num_active : max_concepts;
@@ -635,7 +711,10 @@ int language_cognitive_bridge_get_concept_for_word(
     uint32_t word_id,
     active_concept_t* concept)
 {
-    if (!bridge || !concept) return -1;
+    if (!bridge || !concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_get_concept_for_word: required parameter is NULL (bridge, concept)");
+        return -1;
+    }
 
     const language_semantic_memory_data_t* sem = &bridge->semantic_data;
 
@@ -646,6 +725,7 @@ int language_cognitive_bridge_get_concept_for_word(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cognitive_bridge_get_concept_for_word: validation failed");
     return -1;  /* Not found */
 }
 
@@ -658,12 +738,21 @@ int language_cognitive_bridge_set_word_attention(
     uint32_t word_idx,
     float attention)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_set_word_attention: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_set_word_attention: bridge->active is NULL");
+        return -1;
+    }
 
     language_attention_data_t* attn = &bridge->attention_data;
 
-    if (word_idx >= attn->num_words) return -1;
+    if (word_idx >= attn->num_words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cognitive_bridge_set_word_attention: capacity exceeded");
+        return -1;
+    }
 
     attn->word_attention[word_idx] = attention;
     if (attention > attn->word_attention[attn->focus_word_idx]) {
@@ -678,7 +767,10 @@ int language_cognitive_bridge_get_attention(
     float* attention,
     uint32_t max_words)
 {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
 
     const language_attention_data_t* attn = &bridge->attention_data;
     uint32_t count = attn->num_words < max_words ? attn->num_words : max_words;
@@ -691,8 +783,14 @@ int language_cognitive_bridge_set_attention_target(
     language_cognitive_bridge_t* bridge,
     attention_target_t target)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_set_attention_target: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_set_attention_target: bridge->active is NULL");
+        return -1;
+    }
 
     bridge->attention_data.current_target = target;
     return 0;
@@ -706,15 +804,25 @@ int language_cognitive_bridge_request_inference(
     language_cognitive_bridge_t* bridge,
     inference_type_t type)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_request_inference: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_request_inference: bridge->active is NULL");
+        return -1;
+    }
 
     language_reasoning_data_t* reason = &bridge->reasoning_data;
 
-    if (!reason->inference_enabled) return -1;
+    if (!reason->inference_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_request_inference: reason->inference_enabled is NULL");
+        return -1;
+    }
 
     if (reason->num_inferences >= reason->max_inferences) {
         LOG_WARN(LOG_MODULE, "Inference buffer full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cognitive_bridge_request_inference: capacity exceeded");
         return -1;
     }
 
@@ -738,7 +846,10 @@ int language_cognitive_bridge_get_inferences(
     language_inference_t* inferences,
     uint32_t max_inferences)
 {
-    if (!bridge || !inferences) return -1;
+    if (!bridge || !inferences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_get_inferences: required parameter is NULL (bridge, inferences)");
+        return -1;
+    }
 
     const language_reasoning_data_t* reason = &bridge->reasoning_data;
     uint32_t count = reason->num_inferences < max_inferences ?
@@ -753,8 +864,14 @@ int language_cognitive_bridge_resolve_reference(
     uint32_t referring_word_idx,
     uint32_t* referent_id)
 {
-    if (!bridge || !referent_id) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !referent_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_resolve_reference: required parameter is NULL (bridge, referent_id)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_resolve_reference: bridge->active is NULL");
+        return -1;
+    }
 
     language_reasoning_data_t* reason = &bridge->reasoning_data;
 
@@ -766,6 +883,7 @@ int language_cognitive_bridge_resolve_reference(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cognitive_bridge_resolve_reference: validation failed");
     return -1;  /* Unresolved */
 }
 
@@ -778,8 +896,14 @@ int language_cognitive_bridge_report_conflict(
     uint32_t word_idx,
     float conflict_level)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_report_conflict: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_report_conflict: bridge->active is NULL");
+        return -1;
+    }
 
     bridge->executive_data.conflict_level = conflict_level;
     bridge->executive_data.ambiguity_detected = (conflict_level > 0.3f);
@@ -801,7 +925,10 @@ int language_cognitive_bridge_update(
     language_cognitive_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->active) return 0;
 
     bridge->stats.last_update_time_ms = current_time_ms;
@@ -838,7 +965,10 @@ int language_cognitive_bridge_get_stats(
     const language_cognitive_bridge_t* bridge,
     language_cognitive_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memcpy(stats, &bridge->stats, sizeof(language_cognitive_stats_t));
     return 0;
@@ -852,7 +982,10 @@ int language_cognitive_bridge_bio_async_register(
     language_cognitive_bridge_t* bridge,
     bio_router_t* router)
 {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_bio_async_register: required parameter is NULL (bridge, router)");
+        return -1;
+    }
 
     bridge->bio_router = router;
     bridge->bio_async_registered = true;
@@ -862,7 +995,10 @@ int language_cognitive_bridge_bio_async_register(
 }
 
 int language_cognitive_bridge_bio_async_unregister(language_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_bio_async_unregister: bridge is NULL");
+        return -1;
+    }
 
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;

@@ -219,6 +219,7 @@ autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "autobiographical_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobiographical_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -329,7 +330,12 @@ int autobiographical_fep_bridge_connect_autobiographical(
  * HOW:  Check FEP surprise level, create memory entry if above threshold, store in autobio system
  */
 int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_fep_encode_surprising_episode: bridge is NULL");
+        return -1;
+    }
+    /* No-op if subsystems not connected or feature disabled */
+    if (!bridge->fep_system || !bridge->autobio_system) return 0;
     if (!bridge->config.enable_surprise_encoding) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -423,7 +429,12 @@ int autobiographical_fep_encode_surprising_episode(autobiographical_fep_bridge_t
  * HOW:  Retrieve recent high-importance memories, use them to adjust FEP priors
  */
 int autobiographical_fep_replay_memories(autobiographical_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_fep_replay_memories: bridge is NULL");
+        return -1;
+    }
+    /* No-op if subsystems not connected or feature disabled */
+    if (!bridge->fep_system || !bridge->autobio_system) return 0;
     if (!bridge->config.enable_memory_replay) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -466,7 +477,12 @@ int autobiographical_fep_replay_memories(autobiographical_fep_bridge_t* bridge) 
  * HOY:  Extract patterns from core memories, adjust FEP prior distributions
  */
 int autobiographical_fep_update_priors_from_memory(autobiographical_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->autobio_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_fep_update_priors_from_memory: bridge is NULL");
+        return -1;
+    }
+    /* No-op if subsystems not connected or feature disabled */
+    if (!bridge->fep_system || !bridge->autobio_system) return 0;
     if (!bridge->config.enable_prior_updates) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -590,7 +606,10 @@ int autobiographical_fep_bridge_get_state(
     const autobiographical_fep_bridge_t* bridge,
     autobiographical_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_fep_bridge_heartbeat("autobiograph_get_state", 0.0f);
@@ -612,7 +631,10 @@ int autobiographical_fep_bridge_get_stats(
     const autobiographical_fep_bridge_t* bridge,
     autobiographical_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_fep_bridge_heartbeat("autobiograph_get_stats", 0.0f);

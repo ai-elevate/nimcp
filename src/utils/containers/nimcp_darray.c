@@ -56,6 +56,7 @@ static bool darray_ensure_capacity(nimcp_darray_t* arr) {
 
     void* new_data = nimcp_realloc(arr->data, new_capacity * arr->element_size);
     if (!new_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "darray_ensure_capacity: new_data is NULL");
         return false;
     }
 
@@ -141,6 +142,7 @@ void nimcp_darray_destroy(nimcp_darray_t* arr) {
 
 void* nimcp_darray_at(nimcp_darray_t* arr, size_t index) {
     if (!arr || index >= arr->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_at: arr is NULL");
         return NULL;
     }
     return darray_get_ptr(arr, index);
@@ -148,6 +150,7 @@ void* nimcp_darray_at(nimcp_darray_t* arr, size_t index) {
 
 const void* nimcp_darray_at_const(const nimcp_darray_t* arr, size_t index) {
     if (!arr || index >= arr->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_at_const: arr is NULL");
         return NULL;
     }
     return darray_get_ptr_const(arr, index);
@@ -155,6 +158,7 @@ const void* nimcp_darray_at_const(const nimcp_darray_t* arr, size_t index) {
 
 void* nimcp_darray_front(nimcp_darray_t* arr) {
     if (!arr || arr->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_front: arr is NULL");
         return NULL;
     }
     return arr->data;
@@ -162,6 +166,7 @@ void* nimcp_darray_front(nimcp_darray_t* arr) {
 
 void* nimcp_darray_back(nimcp_darray_t* arr) {
     if (!arr || arr->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_back: arr is NULL");
         return NULL;
     }
     return darray_get_ptr(arr, arr->size - 1);
@@ -169,6 +174,7 @@ void* nimcp_darray_back(nimcp_darray_t* arr) {
 
 void* nimcp_darray_data(nimcp_darray_t* arr) {
     if (!arr || arr->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_data: arr is NULL");
         return NULL;
     }
     return arr->data;
@@ -180,10 +186,12 @@ void* nimcp_darray_data(nimcp_darray_t* arr) {
 
 bool nimcp_darray_push_back(nimcp_darray_t* arr, const void* element) {
     if (!arr || !element) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_push_back: required parameter is NULL (arr, element)");
         return false;
     }
 
     if (!darray_ensure_capacity(arr)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_push_back: darray_ensure_capacity is NULL");
         return false;
     }
 
@@ -194,6 +202,7 @@ bool nimcp_darray_push_back(nimcp_darray_t* arr, const void* element) {
 
 bool nimcp_darray_pop_back(nimcp_darray_t* arr, void* out_element) {
     if (!arr || arr->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_pop_back: arr is NULL");
         return false;
     }
 
@@ -213,6 +222,7 @@ bool nimcp_darray_pop_back(nimcp_darray_t* arr, void* out_element) {
 
 bool nimcp_darray_set(nimcp_darray_t* arr, size_t index, const void* element) {
     if (!arr || !element || index >= arr->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_set: required parameter is NULL (arr, element)");
         return false;
     }
 
@@ -225,10 +235,12 @@ bool nimcp_darray_set(nimcp_darray_t* arr, size_t index, const void* element) {
 
 bool nimcp_darray_insert(nimcp_darray_t* arr, size_t index, const void* element) {
     if (!arr || !element || index > arr->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_insert: required parameter is NULL (arr, element)");
         return false;
     }
 
     if (!darray_ensure_capacity(arr)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_insert: darray_ensure_capacity is NULL");
         return false;
     }
 
@@ -248,6 +260,7 @@ bool nimcp_darray_insert(nimcp_darray_t* arr, size_t index, const void* element)
 
 bool nimcp_darray_remove_at(nimcp_darray_t* arr, size_t index, void* out_element) {
     if (!arr || index >= arr->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_remove_at: arr is NULL");
         return false;
     }
 
@@ -305,6 +318,7 @@ void nimcp_darray_clear(nimcp_darray_t* arr) {
 
 bool nimcp_darray_reserve(nimcp_darray_t* arr, size_t capacity) {
     if (!arr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_reserve: arr is NULL");
         return false;
     }
 
@@ -314,6 +328,7 @@ bool nimcp_darray_reserve(nimcp_darray_t* arr, size_t capacity) {
 
     void* new_data = nimcp_realloc(arr->data, capacity * arr->element_size);
     if (!new_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_darray_reserve: new_data is NULL");
         return false;
     }
 
@@ -324,6 +339,7 @@ bool nimcp_darray_reserve(nimcp_darray_t* arr, size_t capacity) {
 
 bool nimcp_darray_shrink_to_fit(nimcp_darray_t* arr) {
     if (!arr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_shrink_to_fit: arr is NULL");
         return false;
     }
 
@@ -343,6 +359,7 @@ bool nimcp_darray_shrink_to_fit(nimcp_darray_t* arr) {
 
     void* new_data = nimcp_realloc(arr->data, arr->size * arr->element_size);
     if (!new_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_darray_shrink_to_fit: new_data is NULL");
         return false;
     }
 
@@ -353,6 +370,7 @@ bool nimcp_darray_shrink_to_fit(nimcp_darray_t* arr) {
 
 bool nimcp_darray_resize(nimcp_darray_t* arr, size_t new_size) {
     if (!arr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_resize: arr is NULL");
         return false;
     }
 
@@ -374,6 +392,7 @@ bool nimcp_darray_resize(nimcp_darray_t* arr, size_t new_size) {
     /* Growing - ensure capacity */
     if (new_size > arr->capacity) {
         if (!nimcp_darray_reserve(arr, new_size)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_resize: nimcp_darray_reserve is NULL");
             return false;
         }
     }
@@ -388,10 +407,12 @@ bool nimcp_darray_resize(nimcp_darray_t* arr, size_t new_size) {
 
 bool nimcp_darray_swap(nimcp_darray_t* arr1, nimcp_darray_t* arr2) {
     if (!arr1 || !arr2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_darray_swap: required parameter is NULL (arr1, arr2)");
         return false;
     }
 
     if (arr1->element_size != arr2->element_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_darray_swap: validation failed");
         return false;  /* Cannot swap arrays with different element sizes */
     }
 

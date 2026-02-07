@@ -202,10 +202,12 @@ mirror_immune_integration_t* mirror_immune_create(
     integration->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!integration->mutex) {
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_immune_create: integration->mutex is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(integration->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_immune_create: validation failed");
         return NULL;
     }
 
@@ -868,7 +870,10 @@ void mirror_immune_notify_imitation_failure(
  * ============================================================================ */
 
 bool mirror_immune_register_bio_async(mirror_immune_integration_t* integration) {
-    if (!integration || integration->bio_async_registered) return false;
+    if (!integration || integration->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_register_bio_async: integration is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_register_bio_async", 0.0f);

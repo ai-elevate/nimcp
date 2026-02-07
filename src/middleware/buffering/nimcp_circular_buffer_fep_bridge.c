@@ -80,6 +80,7 @@ circular_buffer_fep_bridge_t* circular_buffer_fep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circular_buffer_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -129,7 +130,10 @@ int circular_buffer_fep_bridge_connect_buffer(
     circular_buffer_fep_bridge_t* bridge,
     circular_buffer_t* buffer
 ) {
-    if (!bridge || !buffer) return -1;
+    if (!bridge || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_bridge_connect_buffer: required parameter is NULL (bridge, buffer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->buffer = buffer;
@@ -148,7 +152,10 @@ int circular_buffer_fep_bridge_connect_fep(
     circular_buffer_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -195,7 +202,10 @@ int circular_buffer_fep_adjust_horizon(
     circular_buffer_fep_bridge_t* bridge,
     uint32_t horizon
 ) {
-    if (!bridge || !bridge->config.enable_horizon_adjustment) return -1;
+    if (!bridge || !bridge->config.enable_horizon_adjustment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_adjust_horizon: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -224,7 +234,10 @@ int circular_buffer_fep_set_precision_window(
     circular_buffer_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge || !bridge->config.enable_precision_windowing) return -1;
+    if (!bridge || !bridge->config.enable_precision_windowing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_set_precision_window: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -278,8 +291,14 @@ int circular_buffer_fep_report_utilization(
     circular_buffer_fep_bridge_t* bridge,
     float utilization
 ) {
-    if (!bridge || !bridge->config.enable_utilization_feedback) return -1;
-    if (!bridge->buffer) return -1;
+    if (!bridge || !bridge->config.enable_utilization_feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_report_utilization: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
+    if (!bridge->buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_report_utilization: bridge->buffer is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -308,7 +327,10 @@ int circular_buffer_fep_report_overflow(
     circular_buffer_fep_bridge_t* bridge,
     uint32_t overflow_count
 ) {
-    if (!bridge || !bridge->config.enable_overflow_surprise) return -1;
+    if (!bridge || !bridge->config.enable_overflow_surprise) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_report_overflow: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -336,7 +358,10 @@ int circular_buffer_fep_report_overflow(
 int circular_buffer_fep_report_patterns(
     circular_buffer_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->buffer) return -1;
+    if (!bridge || !bridge->buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_report_patterns: required parameter is NULL (bridge, bridge->buffer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -391,7 +416,10 @@ int circular_buffer_fep_bridge_get_state(
     const circular_buffer_fep_bridge_t* bridge,
     circular_buffer_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -409,7 +437,10 @@ int circular_buffer_fep_bridge_get_stats(
     const circular_buffer_fep_bridge_t* bridge,
     circular_buffer_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -454,6 +485,7 @@ int circular_buffer_fep_bridge_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -465,7 +497,10 @@ int circular_buffer_fep_bridge_connect_bio_async(
 int circular_buffer_fep_bridge_disconnect_bio_async(
     circular_buffer_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_fep_bridge_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;

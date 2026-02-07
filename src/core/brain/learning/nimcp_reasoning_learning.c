@@ -92,12 +92,14 @@ static bool extract_pattern_from_examples(
     float* confidence_out)
 {
     if (!examples || !target_label || !pattern || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_pattern_from_examples: required parameter is NULL (examples, target_label, pattern)");
         return false;
     }
 
     // Count feature occurrences across examples with target label
     float* feature_counts = (float*)nimcp_calloc(num_features, sizeof(float));
     if (!feature_counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "extract_pattern_from_examples: feature_counts is NULL");
         return false;
     }
 
@@ -114,6 +116,7 @@ static bool extract_pattern_from_examples(
 
     if (matching_examples == 0) {
         nimcp_free(feature_counts);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_pattern_from_examples: matching_examples is zero");
         return false;
     }
 
@@ -155,6 +158,7 @@ static logic_clause_t* pattern_to_clause(
     const char* clause_name)
 {
     if (!pattern || !clause_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_to_clause: required parameter is NULL (pattern, clause_name)");
         return NULL;
     }
 
@@ -167,6 +171,7 @@ static logic_clause_t* pattern_to_clause(
     }
 
     if (num_active == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_to_clause: num_active is zero");
         return NULL;
     }
 
@@ -181,6 +186,7 @@ static logic_clause_t* pattern_to_clause(
     clause->literals = (atomic_formula_t**)nimcp_calloc(num_active, sizeof(atomic_formula_t*));
     if (!clause->literals) {
         nimcp_free(clause);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_to_clause: clause->literals is NULL");
         return NULL;
     }
 
@@ -202,6 +208,7 @@ static logic_clause_t* pattern_to_clause(
                 }
                 nimcp_free(clause->literals);
                 nimcp_free(clause);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_to_clause: var_x is NULL");
                 return NULL;
             }
 
@@ -217,6 +224,7 @@ static logic_clause_t* pattern_to_clause(
                 }
                 nimcp_free(clause->literals);
                 nimcp_free(clause);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_to_clause: clause->literals is NULL");
                 return NULL;
             }
 
@@ -244,16 +252,19 @@ bool brain_learn_logical_rule(
         !nimcp_validate_pointer(examples, "examples") ||
         !nimcp_validate_pointer(learned_rules, "learned_rules") ||
         !nimcp_validate_pointer(num_learned_rules, "num_learned_rules")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_learn_logical_rule: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (num_examples == 0) {
         NIMCP_LOGGING_ERROR("No examples provided for rule learning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_learn_logical_rule: num_examples is zero");
         return false;
     }
 
     if (!brain->logic_system) {
         NIMCP_LOGGING_ERROR("Brain does not have symbolic logic system enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_logical_rule: brain->logic_system is NULL");
         return false;
     }
 
@@ -281,6 +292,7 @@ bool brain_learn_logical_rule(
     *num_learned_rules = num_labels;
     *learned_rules = (learned_rule_t**)nimcp_calloc(num_labels, sizeof(learned_rule_t*));
     if (!*learned_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_learn_logical_rule: validation failed");
         return false;
     }
 
@@ -294,6 +306,7 @@ bool brain_learn_logical_rule(
                 learned_rule_destroy((*learned_rules)[j]);
             }
             nimcp_free(*learned_rules);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_logical_rule: rule is NULL");
             return false;
         }
 
@@ -305,6 +318,7 @@ bool brain_learn_logical_rule(
                 learned_rule_destroy((*learned_rules)[j]);
             }
             nimcp_free(*learned_rules);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_logical_rule: pattern is NULL");
             return false;
         }
 
@@ -398,22 +412,26 @@ bool brain_learn_symbolic_association(
     if (!nimcp_validate_pointer(brain, "brain") ||
         !nimcp_validate_pointer(antecedent, "antecedent") ||
         !nimcp_validate_pointer(consequent, "consequent")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_learn_symbolic_association: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (confidence < 0.0f || confidence > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid confidence: %.2f (must be in [0,1])", confidence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_learn_symbolic_association: validation failed");
         return false;
     }
 
     if (!brain->logic_system) {
         NIMCP_LOGGING_ERROR("Brain does not have symbolic logic system enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_symbolic_association: brain->logic_system is NULL");
         return false;
     }
 
     // Create implication rule: antecedent → consequent
     inference_rule_t* rule = (inference_rule_t*)nimcp_calloc(1, sizeof(inference_rule_t));
     if (!rule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_learn_symbolic_association: rule is NULL");
         return false;
     }
 
@@ -425,6 +443,7 @@ bool brain_learn_symbolic_association(
     rule->premises = (logic_clause_t**)nimcp_calloc(1, sizeof(logic_clause_t*));
     if (!rule->premises) {
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_learn_symbolic_association: rule->premises is NULL");
         return false;
     }
 
@@ -432,6 +451,7 @@ bool brain_learn_symbolic_association(
     if (!rule->premises[0]) {
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_learn_symbolic_association: rule->premises is NULL");
         return false;
     }
 
@@ -440,6 +460,7 @@ bool brain_learn_symbolic_association(
         nimcp_free(rule->premises[0]);
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_learn_symbolic_association: rule->premises is NULL");
         return false;
     }
 
@@ -452,6 +473,7 @@ bool brain_learn_symbolic_association(
         nimcp_free(rule->premises[0]);
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_symbolic_association: rule->premises is NULL");
         return false;
     }
     rule->premises[0]->num_literals = 1;
@@ -465,6 +487,7 @@ bool brain_learn_symbolic_association(
         nimcp_free(rule->premises[0]);
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_symbolic_association: rule->conclusion is NULL");
         return false;
     }
 
@@ -476,6 +499,7 @@ bool brain_learn_symbolic_association(
         nimcp_free(rule->premises[0]);
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_symbolic_association: rule->conclusion->literals is NULL");
         return false;
     }
 
@@ -490,6 +514,7 @@ bool brain_learn_symbolic_association(
         nimcp_free(rule->premises[0]);
         nimcp_free(rule->premises);
         nimcp_free(rule);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_learn_symbolic_association: rule->conclusion->literals is NULL");
         return false;
     }
     rule->conclusion->num_literals = 1;
@@ -524,16 +549,19 @@ bool brain_refine_rule_confidence(
     // Guard: Validate parameters
     if (!nimcp_validate_pointer(brain, "brain") ||
         !nimcp_validate_pointer(rule_name, "rule_name")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_refine_rule_confidence: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (learning_rate < 0.0f || learning_rate > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid learning rate: %.2f (must be in [0,1])", learning_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_refine_rule_confidence: validation failed");
         return false;
     }
 
     if (!brain->logic_system) {
         NIMCP_LOGGING_ERROR("Brain does not have symbolic logic system enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_refine_rule_confidence: brain->logic_system is NULL");
         return false;
     }
 
@@ -561,12 +589,14 @@ bool brain_compile_rule_to_neural(
     if (!nimcp_validate_pointer(brain, "brain") ||
         !nimcp_validate_pointer(rule, "rule") ||
         !nimcp_validate_pointer(result, "result")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compile_rule_to_neural: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Allocate result structure
     *result = (neural_compilation_result_t*)nimcp_calloc(1, sizeof(neural_compilation_result_t));
     if (!*result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compile_rule_to_neural: validation failed");
         return false;
     }
 
@@ -581,6 +611,7 @@ bool brain_compile_rule_to_neural(
     if (!(*result)->neuron_ids) {
         nimcp_free(*result);
         *result = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compile_rule_to_neural: validation failed");
         return false;
     }
 
@@ -598,6 +629,7 @@ bool brain_compile_rule_to_neural(
         nimcp_free((*result)->neuron_ids);
         nimcp_free(*result);
         *result = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compile_rule_to_neural: validation failed");
         return false;
     }
 
@@ -628,11 +660,13 @@ bool brain_execute_neural_rule(
         !nimcp_validate_pointer(result, "result") ||
         !nimcp_validate_pointer(input, "input") ||
         !nimcp_validate_pointer(output, "output")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_execute_neural_rule: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!result->compiled_successfully) {
         NIMCP_LOGGING_ERROR("Cannot execute rule that failed compilation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_execute_neural_rule: result->compiled_successfully is NULL");
         return false;
     }
 
@@ -708,6 +742,7 @@ bool brain_get_learned_rules(
     if (!nimcp_validate_pointer(brain, "brain") ||
         !nimcp_validate_pointer(rules, "rules") ||
         !nimcp_validate_pointer(num_rules, "num_rules")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_learned_rules: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -733,6 +768,7 @@ bool brain_get_symbolic_associations(
     if (!nimcp_validate_pointer(brain, "brain") ||
         !nimcp_validate_pointer(associations, "associations") ||
         !nimcp_validate_pointer(num_associations, "num_associations")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_symbolic_associations: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -751,6 +787,7 @@ bool learned_rule_to_string(
     if (!nimcp_validate_pointer(rule, "rule") ||
         !nimcp_validate_pointer(buffer, "buffer") ||
         buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learned_rule_to_string: nimcp_validate_pointer is NULL");
         return false;
     }
 

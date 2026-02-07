@@ -144,6 +144,7 @@ nimcp_ofc_t* ofc_create(const ofc_config_t* config) {
     nimcp_ofc_t* ofc = (nimcp_ofc_t*)nimcp_calloc(1, sizeof(nimcp_ofc_t));
     if (!ofc) {
         NIMCP_LOG_ERROR(OFC_LOG_TAG, "Failed to allocate OFC");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_create: ofc is NULL");
         return NULL;
     }
 
@@ -157,6 +158,7 @@ nimcp_ofc_t* ofc_create(const ofc_config_t* config) {
     if (!ofc->options) {
         NIMCP_LOG_ERROR(OFC_LOG_TAG, "Failed to allocate options");
         nimcp_free(ofc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_create: ofc->options is NULL");
         return NULL;
     }
 
@@ -166,6 +168,7 @@ nimcp_ofc_t* ofc_create(const ofc_config_t* config) {
         NIMCP_LOG_ERROR(OFC_LOG_TAG, "Failed to create mutex");
         nimcp_free(ofc->options);
         nimcp_free(ofc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_create: ofc->mutex is NULL");
         return NULL;
     }
 
@@ -273,6 +276,7 @@ int ofc_present_option(nimcp_ofc_t* ofc, uint32_t stimulus_id,
         if (ofc->num_options >= ofc->max_options) {
             nimcp_mutex_unlock(ofc->mutex);
             NIMCP_LOG_WARN(OFC_LOG_TAG, "Max options reached");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ofc_reset: capacity exceeded");
             return -1;
         }
         slot = (int32_t)ofc->num_options++;
@@ -341,6 +345,7 @@ int ofc_compute_value(nimcp_ofc_t* ofc, uint32_t stimulus_id,
 
     if (!opt) {
         nimcp_mutex_unlock(ofc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_reset: opt is NULL");
         return -1;
     }
 
@@ -371,6 +376,7 @@ int ofc_update_prediction_error(nimcp_ofc_t* ofc, uint32_t stimulus_id,
 
     if (!opt) {
         nimcp_mutex_unlock(ofc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_reset: opt is NULL");
         return -1;
     }
 
@@ -445,6 +451,7 @@ int ofc_make_decision(nimcp_ofc_t* ofc, ofc_decision_t* decision) {
     float* values = (float*)nimcp_malloc(ofc->num_options * sizeof(float));
     if (!values) {
         nimcp_mutex_unlock(ofc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_make_decision: values is NULL");
         return -1;
     }
 
@@ -518,7 +525,10 @@ int ofc_make_decision(nimcp_ofc_t* ofc, ofc_decision_t* decision) {
 }
 
 int ofc_check_reversal(nimcp_ofc_t* ofc, bool* reversal_detected) {
-    if (!ofc || !reversal_detected) return -1;
+    if (!ofc || !reversal_detected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_check_reversal: required parameter is NULL (ofc, reversal_detected)");
+        return -1;
+    }
 
     /* Reversal detection based on prediction errors */
     /* If RPE consistently negative, contingencies may have reversed */
@@ -541,7 +551,10 @@ int ofc_check_reversal(nimcp_ofc_t* ofc, bool* reversal_detected) {
 }
 
 int ofc_assess_risk(nimcp_ofc_t* ofc, uint32_t stimulus_id, float* risk_value) {
-    if (!ofc || !risk_value) return -1;
+    if (!ofc || !risk_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_assess_risk: required parameter is NULL (ofc, risk_value)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -559,7 +572,10 @@ int ofc_assess_risk(nimcp_ofc_t* ofc, uint32_t stimulus_id, float* risk_value) {
 
 int ofc_process_social_reward(nimcp_ofc_t* ofc, float social_value,
                               uint32_t social_context) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_assess_risk: ofc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -592,7 +608,10 @@ int ofc_process_social_reward(nimcp_ofc_t* ofc, float social_value,
  *===========================================================================*/
 
 int ofc_set_emotion(nimcp_ofc_t* ofc, float valence, float arousal) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_set_emotion: ofc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -622,7 +641,10 @@ float ofc_get_emotion_modulated_value(nimcp_ofc_t* ofc, uint32_t stimulus_id) {
 
 int ofc_kg_register(nimcp_ofc_t* ofc, struct nimcp_brain_kg* kg,
                     uint64_t admin_token) {
-    if (!ofc || !kg) return -1;
+    if (!ofc || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_get_emotion_modulated_value: required parameter is NULL (ofc, kg)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -655,7 +677,10 @@ int ofc_kg_register(nimcp_ofc_t* ofc, struct nimcp_brain_kg* kg,
 }
 
 int ofc_kg_unregister(nimcp_ofc_t* ofc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_unregister: ofc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -673,8 +698,14 @@ int ofc_kg_unregister(nimcp_ofc_t* ofc) {
 
 int ofc_kg_query(nimcp_ofc_t* ofc, const char* query,
                  void* result, size_t result_size) {
-    if (!ofc || !query || !result) return -1;
-    if (!ofc->kg_state.registered) return -1;
+    if (!ofc || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_unregister: required parameter is NULL (ofc, query, result)");
+        return -1;
+    }
+    if (!ofc->kg_state.registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_unregister: ofc->kg_state is NULL");
+        return -1;
+    }
 
     /* Query KG - actual implementation would use KG API */
     (void)result_size;
@@ -690,7 +721,10 @@ int ofc_kg_query(nimcp_ofc_t* ofc, const char* query,
 
 int ofc_bio_async_broadcast(nimcp_ofc_t* ofc, ofc_bio_msg_type_t msg_type,
                             const void* payload, size_t payload_size) {
-    if (!ofc || !ofc->bio_router) return -1;
+    if (!ofc || !ofc->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_unregister: required parameter is NULL (ofc, ofc->bio_router)");
+        return -1;
+    }
 
     ofc->stats.bio_msgs_sent++;
 
@@ -703,7 +737,10 @@ int ofc_bio_async_broadcast(nimcp_ofc_t* ofc, ofc_bio_msg_type_t msg_type,
 }
 
 int ofc_bio_async_subscribe(nimcp_ofc_t* ofc, uint32_t subscription_mask) {
-    if (!ofc || !ofc->bio_router) return -1;
+    if (!ofc || !ofc->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_subscribe: required parameter is NULL (ofc, ofc->bio_router)");
+        return -1;
+    }
 
     /* Subscribe to messages */
     (void)subscription_mask;
@@ -716,14 +753,20 @@ int ofc_bio_async_subscribe(nimcp_ofc_t* ofc, uint32_t subscription_mask) {
  *===========================================================================*/
 
 int ofc_immune_connect(nimcp_ofc_t* ofc, struct nimcp_immune_system* immune) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_immune_connect: ofc is NULL");
+        return -1;
+    }
     ofc->immune = immune;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to immune system");
     return 0;
 }
 
 int ofc_security_connect(nimcp_ofc_t* ofc, struct nimcp_security_context* security) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_connect: ofc is NULL");
+        return -1;
+    }
     ofc->security = security;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to security context");
     return 0;
@@ -731,7 +774,10 @@ int ofc_security_connect(nimcp_ofc_t* ofc, struct nimcp_security_context* securi
 
 int ofc_snn_connect(nimcp_ofc_t* ofc, struct nimcp_snn_network* snn,
                     struct nimcp_plasticity_engine* plasticity) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_connect: ofc is NULL");
+        return -1;
+    }
     ofc->snn = snn;
     ofc->plasticity = plasticity;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to SNN/plasticity");
@@ -739,77 +785,110 @@ int ofc_snn_connect(nimcp_ofc_t* ofc, struct nimcp_snn_network* snn,
 }
 
 int ofc_hypothalamus_connect(nimcp_ofc_t* ofc, struct nimcp_hypothalamus* hypo) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_hypothalamus_connect: ofc is NULL");
+        return -1;
+    }
     ofc->hypothalamus = hypo;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to hypothalamus");
     return 0;
 }
 
 int ofc_thalamus_connect(nimcp_ofc_t* ofc, struct nimcp_thalamus* thalamus) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_thalamus_connect: ofc is NULL");
+        return -1;
+    }
     ofc->thalamus = thalamus;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to thalamus");
     return 0;
 }
 
 int ofc_cognitive_connect(nimcp_ofc_t* ofc, struct nimcp_cognitive_hub* hub) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_cognitive_connect: ofc is NULL");
+        return -1;
+    }
     ofc->cognitive_hub = hub;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to cognitive hub");
     return 0;
 }
 
 int ofc_training_connect(nimcp_ofc_t* ofc, struct nimcp_training_context* training) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_training_connect: ofc is NULL");
+        return -1;
+    }
     ofc->training = training;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to training system");
     return 0;
 }
 
 int ofc_perception_connect(nimcp_ofc_t* ofc, struct nimcp_perception_system* perception) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_perception_connect: ofc is NULL");
+        return -1;
+    }
     ofc->perception = perception;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to perception system");
     return 0;
 }
 
 int ofc_symbolic_connect(nimcp_ofc_t* ofc, struct nimcp_symbolic_engine* symbolic) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_symbolic_connect: ofc is NULL");
+        return -1;
+    }
     ofc->symbolic = symbolic;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to symbolic engine");
     return 0;
 }
 
 int ofc_swarm_connect(nimcp_ofc_t* ofc, struct nimcp_swarm_context* swarm) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_swarm_connect: ofc is NULL");
+        return -1;
+    }
     ofc->swarm = swarm;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to swarm system");
     return 0;
 }
 
 int ofc_dragonfly_connect(nimcp_ofc_t* ofc, struct nimcp_dragonfly_context* dragonfly) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_dragonfly_connect: ofc is NULL");
+        return -1;
+    }
     ofc->dragonfly = dragonfly;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to dragonfly system");
     return 0;
 }
 
 int ofc_portia_connect(nimcp_ofc_t* ofc, struct nimcp_portia_context* portia) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_portia_connect: ofc is NULL");
+        return -1;
+    }
     ofc->portia = portia;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to portia system");
     return 0;
 }
 
 int ofc_qmc_connect(nimcp_ofc_t* ofc, struct nimcp_qmc_context* qmc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_qmc_connect: ofc is NULL");
+        return -1;
+    }
     ofc->qmc = qmc;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to QMC system");
     return 0;
 }
 
 int ofc_omni_connect(nimcp_ofc_t* ofc, struct nimcp_omni_predictor* omni) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_omni_connect: ofc is NULL");
+        return -1;
+    }
     ofc->omni = omni;
     NIMCP_LOG_DEBUG(OFC_LOG_TAG, "Connected to omnidirectional predictor");
     return 0;
@@ -820,7 +899,10 @@ int ofc_omni_connect(nimcp_ofc_t* ofc, struct nimcp_omni_predictor* omni) {
  *===========================================================================*/
 
 int ofc_update(nimcp_ofc_t* ofc, float dt) {
-    if (!ofc || !ofc->initialized) return -1;
+    if (!ofc || !ofc->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_update: required parameter is NULL (ofc, ofc->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -837,7 +919,10 @@ int ofc_update(nimcp_ofc_t* ofc, float dt) {
 }
 
 int ofc_get_stats(const nimcp_ofc_t* ofc, ofc_stats_t* stats) {
-    if (!ofc || !stats) return -1;
+    if (!ofc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_get_stats: required parameter is NULL (ofc, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_ofc_t*)ofc)->mutex);
     memcpy(stats, &ofc->stats, sizeof(ofc_stats_t));
@@ -853,7 +938,10 @@ float ofc_get_subdivision_activity(const nimcp_ofc_t* ofc,
 }
 
 int ofc_clear_options(nimcp_ofc_t* ofc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_clear_options: ofc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -870,7 +958,10 @@ int ofc_clear_options(nimcp_ofc_t* ofc) {
  *===========================================================================*/
 
 int ofc_qmc_optimize_values(nimcp_ofc_t* ofc) {
-    if (!ofc || !ofc->qmc) return -1;
+    if (!ofc || !ofc->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_qmc_optimize_values: required parameter is NULL (ofc, ofc->qmc)");
+        return -1;
+    }
 
     /* Use QMC for value optimization */
     /* Actual implementation would use QMC API */
@@ -881,7 +972,10 @@ int ofc_qmc_optimize_values(nimcp_ofc_t* ofc) {
 
 int ofc_qmcts_decision_search(nimcp_ofc_t* ofc, uint32_t num_iterations,
                               ofc_decision_t* best_decision) {
-    if (!ofc || !best_decision || !ofc->qmc) return -1;
+    if (!ofc || !best_decision || !ofc->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_qmc_optimize_values: required parameter is NULL (ofc, best_decision, ofc->qmc)");
+        return -1;
+    }
 
     /* Use QMCTS for decision tree search */
     /* Actual implementation would use QMCTS API */

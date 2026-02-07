@@ -97,7 +97,10 @@ void brain_region_predictive_mesh_unregister(void) {
  * WHY:  Guard against NULL pointer access
  */
 static inline bool has_predictive_extension(brain_region_t* region) {
-    if (!region) return false;
+    if (!region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "has_predictive_extension: region is NULL");
+        return false;
+    }
     // Assuming brain_region_t has a predictive_extension field
     // This will need to be added to nimcp_brain_regions.h
     return region->predictive_extension != NULL;

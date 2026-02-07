@@ -297,7 +297,10 @@ int physics_immune_apply_modulation(
     physics_immune_bridge_t* bridge,
     const physics_immune_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_apply_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     bridge->current_modulation = *modulation;
     bridge->stats.immune_to_physics_count++;
@@ -448,7 +451,10 @@ int physics_immune_get_state(
     const physics_immune_bridge_t* bridge,
     physics_immune_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->current_state;
     return 0;
 }
@@ -457,7 +463,10 @@ int physics_immune_get_modulation(
     const physics_immune_bridge_t* bridge,
     physics_immune_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     *modulation = bridge->current_modulation;
     return 0;
 }
@@ -466,13 +475,19 @@ int physics_immune_get_stats(
     const physics_immune_bridge_t* bridge,
     physics_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 bool physics_immune_is_connected(const physics_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_immune_is_connected: bridge is NULL");
+        return false;
+    }
     /* At least one physics module and immune must be connected */
     bool has_physics = bridge->thermo || bridge->hh_pop || bridge->ephaptic;
     return has_physics && bridge->immune;

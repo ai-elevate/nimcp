@@ -227,7 +227,10 @@ static inline uint32_t lsh_bucket_index(uint64_t hash, uint32_t num_buckets)
  */
 static bool lsh_bucket_add(lsh_bucket_t* bucket, uint32_t episode_idx)
 {
-    if (!bucket) return false;
+    if (!bucket) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lsh_bucket_add: bucket is NULL");
+        return false;
+    }
 
     // Grow if at capacity
     if (bucket->count >= bucket->capacity) {
@@ -240,6 +243,7 @@ static bool lsh_bucket_add(lsh_bucket_t* bucket, uint32_t episode_idx)
 
         if (!new_indices) {
             LOG_ERROR("Failed to grow LSH bucket");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lsh_bucket_add: new_indices is NULL");
             return false;
         }
 
@@ -317,6 +321,7 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
     table->buckets = nimcp_calloc(buckets_pow2, sizeof(lsh_bucket_t));
     if (!table->buckets) {
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lsh_table_create: table->buckets is NULL");
         return NULL;
     }
 
@@ -367,7 +372,10 @@ static bool lsh_table_add(
     const error_signature_t* sig,
     uint32_t episode_idx)
 {
-    if (!table || !sig) return false;
+    if (!table || !sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lsh_table_add: required parameter is NULL (table, sig)");
+        return false;
+    }
 
     uint64_t hash = lsh_hash_signature(sig, table->hash_seed);
     uint32_t bucket_idx = lsh_bucket_index(hash, table->num_buckets);
@@ -478,6 +486,7 @@ episodic_memory_t* episodic_memory_create_custom(
     // GUARD: NULL config
     if (!config) {
         LOG_ERROR("NULL config in episodic_memory_create_custom");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: config is NULL");
         return NULL;
     }
 
@@ -488,6 +497,7 @@ episodic_memory_t* episodic_memory_create_custom(
 
     if (config->max_episodes == 0) {
         LOG_ERROR("max_episodes cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "episodic_memory_create_custom: config->max_episodes is zero");
         return NULL;
     }
 
@@ -495,6 +505,7 @@ episodic_memory_t* episodic_memory_create_custom(
     episodic_memory_t* memory = nimcp_calloc(1, sizeof(episodic_memory_t));
     if (!memory) {
         LOG_ERROR("Failed to allocate episodic_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: memory is NULL");
         return NULL;
     }
 
@@ -509,6 +520,7 @@ episodic_memory_t* episodic_memory_create_custom(
     if (!memory->episodes) {
         LOG_ERROR("Failed to allocate episode buffer");
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: memory->episodes is NULL");
         return NULL;
     }
 
@@ -521,6 +533,7 @@ episodic_memory_t* episodic_memory_create_custom(
         LOG_ERROR("Failed to allocate LSH table array");
         nimcp_free(memory->episodes);
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_create_custom: memory->lsh_tables is NULL");
         return NULL;
     }
 
@@ -552,6 +565,7 @@ episodic_memory_t* episodic_memory_create_custom(
             nimcp_free(memory->lsh_tables);
             nimcp_free(memory->episodes);
             nimcp_free(memory);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_create_custom: operation failed");
             return NULL;
         }
     }
@@ -740,11 +754,13 @@ bool episodic_memory_store(
     // GUARD: NULL checks
     if (!memory) {
         LOG_ERROR("NULL memory in episodic_memory_store");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_store: memory is NULL");
         return false;
     }
 
     if (!episode) {
         LOG_ERROR("NULL episode in episodic_memory_store");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_store: episode is NULL");
         return false;
     }
 
@@ -874,7 +890,10 @@ static int compare_scores(const void* a, const void* b)
     const episode_score_t* sb = (const episode_score_t*)b;
 
     // Sort descending (highest similarity first)
-    if (sa->similarity > sb->similarity) return -1;
+    if (sa->similarity > sb->similarity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores: validation failed");
+        return -1;
+    }
     if (sa->similarity < sb->similarity) return 1;
     return 0;
 }
@@ -888,6 +907,7 @@ recovery_episode_t** episodic_memory_recall_similar(
     // GUARD: NULL checks
     if (!memory || !query || !count) {
         LOG_ERROR("NULL parameter in episodic_memory_recall_similar");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: required parameter is NULL (memory, query, count)");
         return NULL;
     }
 
@@ -895,6 +915,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     // GUARD: Empty memory
     if (memory->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: memory->count is zero");
         return NULL;
     }
 
@@ -906,6 +927,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     if (!candidates) {
         LOG_ERROR("Failed to allocate candidate array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: candidates is NULL");
         return NULL;
     }
 
@@ -927,6 +949,7 @@ recovery_episode_t** episodic_memory_recall_similar(
     bool* seen = nimcp_calloc(memory->count, sizeof(bool));
     if (!seen) {
         nimcp_free(candidates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: seen is NULL");
         return NULL;
     }
 
@@ -949,6 +972,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     if (unique_count == 0) {
         nimcp_free(candidates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "episodic_memory_recall_similar: unique_count is zero");
         return NULL;
     }
 
@@ -958,6 +982,7 @@ recovery_episode_t** episodic_memory_recall_similar(
 
     if (!scores) {
         nimcp_free(candidates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_recall_similar: scores is NULL");
         return NULL;
     }
 
@@ -987,6 +1012,7 @@ recovery_episode_t** episodic_memory_recall_similar(
     if (!results) {
         nimcp_free(scores);
         nimcp_free(candidates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "episodic_memory_recall_similar: results is NULL");
         return NULL;
     }
 
@@ -1200,12 +1226,14 @@ recovery_episode_t** episodic_memory_get_all(
 {
     if (!memory || !count) {
         LOG_ERROR("NULL parameter in episodic_memory_get_all");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_get_all: required parameter is NULL (memory, count)");
         return NULL;
     }
 
     *count = memory->count;
 
     if (memory->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_get_all: memory->count is zero");
         return NULL;
     }
 
@@ -1216,6 +1244,7 @@ recovery_episode_t** episodic_memory_get_all(
     if (!results) {
         LOG_ERROR("Failed to allocate results array");
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "episodic_memory_get_all: results is NULL");
         return NULL;
     }
 

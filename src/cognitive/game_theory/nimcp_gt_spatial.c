@@ -1233,6 +1233,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     ctx->payoff_matrix = nimcp_malloc(matrix_size);
     if (!ctx->payoff_matrix) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_spatial_create: ctx->payoff_matrix is NULL");
         return NULL;
     }
     memcpy(ctx->payoff_matrix, payoff_matrix, matrix_size);
@@ -1247,6 +1248,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     if (!ctx->node_strategy || !ctx->node_strategy_next || !ctx->node_fitness ||
         !ctx->frequencies || !ctx->fitness_per_strategy) {
         nimcp_spatial_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: operation failed");
         return NULL;
     }
 
@@ -1254,6 +1256,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     nimcp_error_t err = build_network(ctx);
     if (err != NIMCP_SUCCESS) {
         nimcp_spatial_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: validation failed");
         return NULL;
     }
 
@@ -1266,6 +1269,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
         );
         if (!ctx->frequency_history) {
             nimcp_spatial_destroy(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_spatial_create: ctx->frequency_history is NULL");
             return NULL;
         }
     }
@@ -1273,6 +1277,7 @@ nimcp_spatial_game_t nimcp_spatial_create(
     // Initialize mutex
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_spatial_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_spatial_create: validation failed");
         return NULL;
     }
 
@@ -2132,7 +2137,10 @@ int32_t nimcp_spatial_get_node_strategy(
     const nimcp_spatial_game_t ctx,
     uint32_t node_id
 ) {
-    if (!ctx || node_id >= ctx->num_nodes) return -1;
+    if (!ctx || node_id >= ctx->num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_spatial_get_node_strategy: ctx is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gt_spatial_heartbeat("gt_spatial_spatial_get_node_str", 0.0f);
@@ -2250,10 +2258,12 @@ static bool is_ess_unlocked(
         float Ajj = A[j * n + j];
 
         if (Aji > Aii) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_ess_unlocked: validation failed");
             return false;  // Not Nash
         }
 
         if (fabsf(Aji - Aii) < 1e-10f && Ajj >= Aij) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_ess_unlocked: capacity exceeded");
             return false;  // Stability condition fails
         }
     }
@@ -2265,7 +2275,10 @@ bool nimcp_spatial_is_ess(
     const nimcp_spatial_game_t ctx,
     uint32_t strategy
 ) {
-    if (!ctx || strategy >= ctx->config.num_strategies) return false;
+    if (!ctx || strategy >= ctx->config.num_strategies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_spatial_is_ess: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gt_spatial_heartbeat("gt_spatial_spatial_is_ess", 0.0f);

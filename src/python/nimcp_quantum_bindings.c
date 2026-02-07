@@ -46,11 +46,13 @@ static PyObject* Brain_enable_quantum_walks(BrainObject* self, PyObject* args, P
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|Ifif", kwlist,
                                      &steps, &mixing, &coin_type, &decoherence)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_quantum_walks: operation failed");
         return NULL;
     }
 
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_quantum_walks: self->brain is NULL");
         return NULL;
     }
 
@@ -75,6 +77,7 @@ static PyObject* Brain_enable_quantum_walks(BrainObject* self, PyObject* args, P
 static PyObject* Brain_disable_quantum_walks(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_disable_quantum_walks: self->brain is NULL");
         return NULL;
     }
 
@@ -94,6 +97,7 @@ static PyObject* Brain_disable_quantum_walks(BrainObject* self, PyObject* Py_UNU
 static PyObject* Brain_get_quantum_walk_config(BrainObject* self, PyObject* Py_UNUSED(ignored)) {
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_quantum_walk_config: self->brain is NULL");
         return NULL;
     }
 
@@ -113,11 +117,13 @@ static PyObject* Brain_get_quantum_walk_config(BrainObject* self, PyObject* Py_U
         PyObject* _val = (value_expr); \
         if (!_val) { \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_quantum_walk_config: _val is NULL"); \
             return NULL; \
         } \
         if (PyDict_SetItemString(dict, (key), _val) < 0) { \
             Py_DECREF(_val); \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_quantum_walk_config: validation failed"); \
             return NULL; \
         } \
         Py_DECREF(_val); \

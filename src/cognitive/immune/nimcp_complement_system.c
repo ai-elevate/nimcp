@@ -176,6 +176,7 @@ static complement_c3b_t* find_c3b_by_id(complement_system_t* system, uint32_t id
             return &system->c3b_pool[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_c3b_by_id: validation failed");
     return NULL;
 }
 
@@ -201,6 +202,7 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
             return &system->mac_pool[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_mac_by_id: validation failed");
     return NULL;
 }
 
@@ -213,8 +215,14 @@ static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id
  */
 static int generate_c3b(complement_system_t* system, uint32_t target_id,
                         complement_pathway_t pathway) {
-    if (!system) return -1;
-    if (system->c3b_count >= system->c3b_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_mac_by_id: system is NULL");
+        return -1;
+    }
+    if (system->c3b_count >= system->c3b_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_mac_by_id: capacity exceeded");
+        return -1;
+    }
 
     complement_c3b_t* c3b = &system->c3b_pool[system->c3b_count++];
     c3b->id = system->next_c3b_id++;
@@ -241,8 +249,14 @@ static int generate_c3b(complement_system_t* system, uint32_t target_id,
  */
 static int generate_c5b(complement_system_t* system, uint32_t target_id,
                         uint32_t parent_c3b_id) {
-    if (!system) return -1;
-    if (system->c5b_count >= system->c5b_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_mac_by_id: system is NULL");
+        return -1;
+    }
+    if (system->c5b_count >= system->c5b_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_mac_by_id: capacity exceeded");
+        return -1;
+    }
 
     complement_c5b_t* c5b = &system->c5b_pool[system->c5b_count++];
     c5b->id = system->next_c5b_id++;
@@ -355,7 +369,10 @@ static float compute_opsonization_level(complement_system_t* system, uint32_t ta
  * @brief Get default configuration
  */
 int complement_default_config(complement_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_default_c", 0.0f);
@@ -485,6 +502,7 @@ error:
     if (system->mac_pool) nimcp_free(system->mac_pool);
     if (system->anaphylatoxin_pool) nimcp_free(system->anaphylatoxin_pool);
     nimcp_free(system);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_default_config: validation failed");
     return NULL;
 }
 
@@ -522,8 +540,14 @@ void complement_destroy(complement_system_t* system) {
  */
 int complement_activate(complement_system_t* system, complement_pathway_t pathway,
                         uint32_t target_id) {
-    if (!system) return -1;
-    if (!system->running) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_destroy: system is NULL");
+        return -1;
+    }
+    if (!system->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_destroy: system->running is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_activate", 0.0f);
@@ -537,6 +561,7 @@ int complement_activate(complement_system_t* system, complement_pathway_t pathwa
         case COMPLEMENT_PATHWAY_LECTIN:
             return complement_activate_lectin(system, target_id, NULL, 0);
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "complement_destroy: operation failed");
             return -1;
     }
 }
@@ -546,7 +571,10 @@ int complement_activate(complement_system_t* system, complement_pathway_t pathwa
  */
 int complement_activate_classical(complement_system_t* system, uint32_t antibody_id,
                                   uint32_t target_id) {
-    if (!system || !system->config.enable_classical_pathway) return -1;
+    if (!system || !system->config.enable_classical_pathway) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_destroy: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
@@ -557,6 +585,7 @@ int complement_activate_classical(complement_system_t* system, uint32_t antibody
     /* Generate initial C3b via C4b2a (C3 convertase) */
     if (generate_c3b(system, target_id, COMPLEMENT_PATHWAY_CLASSICAL) != 0) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "complement_destroy: validation failed");
         return -1;
     }
 
@@ -575,7 +604,10 @@ int complement_activate_classical(complement_system_t* system, uint32_t antibody
  * @brief Activate alternative pathway
  */
 int complement_activate_alternative(complement_system_t* system, uint32_t target_id) {
-    if (!system || !system->config.enable_alternative_pathway) return -1;
+    if (!system || !system->config.enable_alternative_pathway) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_activate_alternative: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
@@ -586,6 +618,7 @@ int complement_activate_alternative(complement_system_t* system, uint32_t target
     /* Spontaneous C3 hydrolysis, forms C3bBb convertase */
     if (generate_c3b(system, target_id, COMPLEMENT_PATHWAY_ALTERNATIVE) != 0) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "complement_activate_alternative: validation failed");
         return -1;
     }
 
@@ -605,7 +638,10 @@ int complement_activate_alternative(complement_system_t* system, uint32_t target
  */
 int complement_activate_lectin(complement_system_t* system, uint32_t target_id,
                                const uint8_t* pattern, size_t pattern_len) {
-    if (!system || !system->config.enable_lectin_pathway) return -1;
+    if (!system || !system->config.enable_lectin_pathway) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_activate_alternative: required parameter is NULL (system, system->config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_activate_", 0.0f);
@@ -616,6 +652,7 @@ int complement_activate_lectin(complement_system_t* system, uint32_t target_id,
     /* MBL binds mannose pattern, activates MASP, forms C4b2a convertase */
     if (generate_c3b(system, target_id, COMPLEMENT_PATHWAY_LECTIN) != 0) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "complement_activate_alternative: validation failed");
         return -1;
     }
 
@@ -638,7 +675,10 @@ int complement_activate_lectin(complement_system_t* system, uint32_t target_id,
  * @brief Opsonize target with C3b
  */
 int complement_opsonize(complement_system_t* system, uint32_t target_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_opsonize: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_opsonize", 0.0f);
@@ -760,7 +800,10 @@ uint32_t complement_form_mac(complement_system_t* system, uint32_t target_id) {
  * @brief Check if MAC is complete
  */
 bool complement_is_mac_complete(complement_system_t* system, uint32_t mac_id) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_is_mac_complete: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_is_mac_co", 0.0f);
@@ -782,7 +825,10 @@ bool complement_is_mac_complete(complement_system_t* system, uint32_t mac_id) {
  * @brief Trigger amplification cascade
  */
 int complement_cascade_amplify(complement_system_t* system, float factor) {
-    if (!system || !system->config.enable_amplification_loop) return -1;
+    if (!system || !system->config.enable_amplification_loop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_cascade_amplify: required parameter is NULL (system, system->config)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_cascade_a", 0.0f);
 
@@ -915,7 +961,10 @@ uint32_t complement_release_anaphylatoxin(complement_system_t* system,
  * @brief Update complement system
  */
 int complement_update(complement_system_t* system, uint64_t delta_ms) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_update: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_update", 0.0f);
@@ -985,7 +1034,10 @@ int complement_update(complement_system_t* system, uint64_t delta_ms) {
  * @brief Get complement statistics
  */
 int complement_get_stats(complement_system_t* system, complement_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_get_stats", 0.0f);
@@ -1002,7 +1054,10 @@ int complement_get_stats(complement_system_t* system, complement_stats_t* stats)
  * @brief Check if target is opsonized
  */
 bool complement_is_opsonized(complement_system_t* system, uint32_t target_id) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "complement_is_opsonized: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     complement_system_heartbeat("complement_s_complement_is_opsoni", 0.0f);

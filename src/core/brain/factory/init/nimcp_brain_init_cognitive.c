@@ -191,6 +191,7 @@ bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain)
     brain->logic = neural_logic_create(&logic_config);
     if (!brain->logic) {
         set_error("Failed to create neural logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_symbolic_logic_subsystem: brain->logic is NULL");
         return false;
     }
 
@@ -244,6 +245,7 @@ bool nimcp_brain_factory_init_symbolic_reasoning_subsystem(brain_t brain)
     brain->symbolic_logic = symbolic_logic_create(&logic_config);
     if (!brain->symbolic_logic) {
         set_error("Failed to create symbolic logic engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_symbolic_reasoning_subsystem: brain->symbolic_logic is NULL");
         return false;
     }
 
@@ -291,6 +293,7 @@ bool nimcp_brain_factory_init_epistemic_subsystem(brain_t brain)
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
         set_error("Failed to create epistemic filter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_epistemic_subsystem: brain->epistemic is NULL");
         return false;
     }
 
@@ -342,6 +345,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->working_memory = working_memory_create_custom(&wm_config);
     if (!brain->working_memory) {
         set_error("Failed to create working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_working_memory_subsystem: brain->working_memory is NULL");
         return false;
     }
 
@@ -356,6 +360,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->emotional_system = emotion_system_create(NULL);  // NULL = use defaults
     if (!brain->emotional_system) {
         set_error("Failed to create emotional system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->emotional_system is NULL");
         return false;
     }
 
@@ -371,6 +376,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->sleep_system = sleep_system_create(NULL);  // NULL = use defaults
     if (!brain->sleep_system) {
         set_error("Failed to create sleep system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->sleep_system is NULL");
         return false;
     }
 
@@ -389,6 +395,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->engram_system = engram_system_create();
     if (!brain->engram_system) {
         set_error("Failed to create engram system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->engram_system is NULL");
         return false;
     }
 
@@ -404,6 +411,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->systems_consolidation = systems_consolidation_create();
     if (!brain->systems_consolidation) {
         set_error("Failed to create systems consolidation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->systems_consolidation is NULL");
         return false;
     }
 
@@ -425,6 +433,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->wm_transfer_system = wm_transfer_create();
     if (!brain->wm_transfer_system) {
         set_error("Failed to create working memory transfer system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_working_memory_subsystem: brain->wm_transfer_system is NULL");
         return false;
     }
 
@@ -449,6 +458,7 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
     brain->semantic_memory = semantic_memory_create();
     if (!brain->semantic_memory) {
         set_error("Failed to create semantic memory network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_working_memory_subsystem: brain->semantic_memory is NULL");
         return false;
     }
 
@@ -490,6 +500,7 @@ bool nimcp_brain_factory_init_executive_subsystem(brain_t brain)
     brain->executive = executive_create();
     if (!brain->executive) {
         set_error("Failed to create executive controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_executive_subsystem: brain->executive is NULL");
         return false;
     }
 
@@ -534,6 +545,7 @@ bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t brain)
     brain->theory_of_mind = tom_create(brain);
     if (!brain->theory_of_mind) {
         set_error("Failed to create Theory of Mind module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_theory_of_mind_subsystem: brain->theory_of_mind is NULL");
         return false;
     }
 
@@ -588,6 +600,7 @@ bool nimcp_brain_factory_init_natural_explanations_subsystem(brain_t brain)
     brain->explanation_gen = explanation_generator_create(&exp_config);
     if (!brain->explanation_gen) {
         set_error("Failed to create Natural Explanations module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_natural_explanations_subsystem: brain->explanation_gen is NULL");
         return false;
     }
 
@@ -641,6 +654,7 @@ bool nimcp_brain_factory_init_meta_learning_subsystem(brain_t brain)
     brain->meta_learner = meta_learner_create(&meta_config, num_regions);
     if (!brain->meta_learner) {
         set_error("Failed to create Meta-Learning module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_meta_learning_subsystem: brain->meta_learner is NULL");
         return false;
     }
 
@@ -685,6 +699,7 @@ bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain)
     brain->mental_health_monitor = mental_health_create_default();
     if (!brain->mental_health_monitor) {
         set_error("Failed to create Mental Health monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_subsystem: brain->mental_health_monitor is NULL");
         return false;
     }
 
@@ -729,6 +744,7 @@ bool nimcp_brain_factory_init_predictive_subsystem(brain_t brain)
     brain->predictive_network = predictive_create(NULL);  // NULL = use defaults
     if (!brain->predictive_network) {
         set_error("Failed to create Predictive Processing network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_predictive_subsystem: brain->predictive_network is NULL");
         return false;
     }
 
@@ -794,6 +810,7 @@ bool nimcp_brain_factory_init_mirror_neurons(brain_t brain)
     brain->mirror_neurons = mirror_neurons_create(&mirror_config);
     if (!brain->mirror_neurons) {
         set_error("Failed to create mirror neuron system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mirror_neurons: brain->mirror_neurons is NULL");
         return false;
     }
 

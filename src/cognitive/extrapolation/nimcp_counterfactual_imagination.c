@@ -147,6 +147,7 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     cf->causal_model = causal_model_create(cf->config.max_variables);
     if (!cf->causal_model) {
         nimcp_free(cf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cf_create: cf->causal_model is NULL");
         return NULL;
     }
 
@@ -156,6 +157,7 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     if (!cf->scenarios) {
         causal_model_destroy(cf->causal_model);
         nimcp_free(cf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cf_create: cf->scenarios is NULL");
         return NULL;
     }
     cf->num_scenarios = 0;
@@ -167,6 +169,7 @@ nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
         nimcp_free(cf->scenarios);
         causal_model_destroy(cf->causal_model);
         nimcp_free(cf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cf_create: cf->history is NULL");
         return NULL;
     }
     cf->history_count = 0;
@@ -1173,6 +1176,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
     model->variables = nimcp_calloc(capacity, sizeof(cf_variable_t));
     if (!model->variables) {
         nimcp_free(model);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "causal_model_create: model->variables is NULL");
         return NULL;
     }
 
@@ -1184,6 +1188,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
         nimcp_free(model->adjacency);
         nimcp_free(model->has_edge);
         nimcp_free(model);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "causal_model_create: required parameter is NULL (model->adjacency, model->has_edge)");
         return NULL;
     }
 
@@ -1194,6 +1199,7 @@ static cf_causal_model_t* causal_model_create(uint32_t capacity) {
         nimcp_free(model->adjacency);
         nimcp_free(model->has_edge);
         nimcp_free(model);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "causal_model_create: model->topological_order is NULL");
         return NULL;
     }
 
@@ -1258,7 +1264,10 @@ static cf_error_t causal_model_add_variable(
 }
 
 static cf_variable_t* causal_model_get_variable(cf_causal_model_t* model, uint32_t id) {
-    if (!model || id >= model->num_variables) return NULL;
+    if (!model || id >= model->num_variables) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "causal_model_get_variable: model is NULL");
+        return NULL;
+    }
     return &model->variables[id];
 }
 

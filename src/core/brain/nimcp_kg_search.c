@@ -190,19 +190,26 @@ static uint64_t get_time_us(void) {
  * @brief Case-insensitive substring search
  */
 static const char* strcasestr_local(const char* haystack, const char* needle) {
-    if (!haystack || !needle) return NULL;
+    if (!haystack || !needle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: required parameter is NULL (haystack, needle)");
+        return NULL;
+    }
     if (*needle == '\0') return haystack;
 
     size_t needle_len = strlen(needle);
     size_t haystack_len = strlen(haystack);
 
-    if (needle_len > haystack_len) return NULL;
+    if (needle_len > haystack_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "strcasestr_local: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i <= haystack_len - needle_len; i++) {
         if (strncasecmp(&haystack[i], needle, needle_len) == 0) {
             return &haystack[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "strcasestr_local: validation failed");
     return NULL;
 }
 
@@ -210,7 +217,10 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
  * @brief Check if string starts with prefix (case-insensitive)
  */
 static bool starts_with(const char* str, const char* prefix) {
-    if (!str || !prefix) return false;
+    if (!str || !prefix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "starts_with: required parameter is NULL (str, prefix)");
+        return false;
+    }
     return strncasecmp(str, prefix, strlen(prefix)) == 0;
 }
 
@@ -218,10 +228,16 @@ static bool starts_with(const char* str, const char* prefix) {
  * @brief Check if string ends with suffix (case-insensitive)
  */
 static bool ends_with(const char* str, const char* suffix) {
-    if (!str || !suffix) return false;
+    if (!str || !suffix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ends_with: required parameter is NULL (str, suffix)");
+        return false;
+    }
     size_t str_len = strlen(str);
     size_t suffix_len = strlen(suffix);
-    if (suffix_len > str_len) return false;
+    if (suffix_len > str_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ends_with: validation failed");
+        return false;
+    }
     return strncasecmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
 }
 
@@ -229,10 +245,16 @@ static bool ends_with(const char* str, const char* suffix) {
  * @brief Check if value is in comma-separated list
  */
 static bool value_in_list(const char* value, const char* list) {
-    if (!value || !list) return false;
+    if (!value || !list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "value_in_list: required parameter is NULL (value, list)");
+        return false;
+    }
 
     char* list_copy = nimcp_strdup(list);
-    if (!list_copy) return false;
+    if (!list_copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "value_in_list: list_copy is NULL");
+        return false;
+    }
 
     bool found = false;
     char* token = strtok(list_copy, ",");
@@ -257,7 +279,10 @@ static bool value_in_list(const char* value, const char* list) {
  * @brief Get string value from base metadata for a field
  */
 static const char* get_base_meta_field_string(const kg_metadata_t* meta, const char* field) {
-    if (!meta || !field) return NULL;
+    if (!meta || !field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_base_meta_field_string: required parameter is NULL (meta, field)");
+        return NULL;
+    }
 
     if (strcmp(field, "name") == 0) return meta->name;
     if (strcmp(field, "description") == 0) return meta->description;
@@ -274,7 +299,10 @@ static const char* get_base_meta_field_string(const kg_metadata_t* meta, const c
  * @brief Get string value from module metadata for a field
  */
 static const char* get_module_field_string(const kg_meta_module_t* meta, const char* field) {
-    if (!meta || !field) return NULL;
+    if (!meta || !field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_module_field_string: required parameter is NULL (meta, field)");
+        return NULL;
+    }
 
     /* Check module-specific fields first */
     if (strcmp(field, "module_type") == 0) return meta->module_type;
@@ -320,7 +348,10 @@ static int64_t get_module_field_int(const kg_meta_module_t* meta, const char* fi
 static bool evaluate_condition_module(const kg_meta_module_t* meta,
                                        const kg_search_condition_t* cond,
                                        float* relevance_contribution) {
-    if (!meta || !cond) return false;
+    if (!meta || !cond) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_module_field_int: required parameter is NULL (meta, cond)");
+        return false;
+    }
 
     *relevance_contribution = 0.0f;
 
@@ -458,6 +489,7 @@ static bool evaluate_condition_module(const kg_meta_module_t* meta,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_module_field_int: validation failed");
     return false;
 }
 
@@ -469,11 +501,17 @@ static int compare_results_by_relevance(const void* a, const void* b) {
     const internal_result_t* rb = (const internal_result_t*)b;
 
     /* Higher relevance first */
-    if (ra->relevance_score > rb->relevance_score) return -1;
+    if (ra->relevance_score > rb->relevance_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_results_by_relevance: validation failed");
+        return -1;
+    }
     if (ra->relevance_score < rb->relevance_score) return 1;
 
     /* Then by match count */
-    if (ra->match_count > rb->match_count) return -1;
+    if (ra->match_count > rb->match_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_results_by_relevance: validation failed");
+        return -1;
+    }
     if (ra->match_count < rb->match_count) return 1;
 
     return 0;
@@ -487,6 +525,7 @@ kg_search_index_t* kg_search_index_create(void) {
     kg_search_index_t* idx = nimcp_calloc(1, sizeof(kg_search_index_t));
     if (!idx) {
         SEARCH_LOG_ERROR("Failed to allocate search index");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_create: idx is NULL");
         return NULL;
     }
 
@@ -495,6 +534,7 @@ kg_search_index_t* kg_search_index_create(void) {
     idx->modules = nimcp_calloc(idx->module_capacity, sizeof(indexed_module_t));
     if (!idx->modules) {
         nimcp_free(idx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_create: idx->modules is NULL");
         return NULL;
     }
 
@@ -504,6 +544,7 @@ kg_search_index_t* kg_search_index_create(void) {
     if (!idx->terms) {
         nimcp_free(idx->modules);
         nimcp_free(idx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_create: idx->terms is NULL");
         return NULL;
     }
 
@@ -513,6 +554,7 @@ kg_search_index_t* kg_search_index_create(void) {
         nimcp_free(idx->terms);
         nimcp_free(idx->modules);
         nimcp_free(idx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_create: idx->mutex is NULL");
         return NULL;
     }
 
@@ -573,7 +615,10 @@ void kg_search_index_destroy(kg_search_index_t* idx) {
 
 int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
                                 const kg_meta_module_t* meta) {
-    if (!idx || !meta) return -1;
+    if (!idx || !meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: required parameter is NULL (idx, meta)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(idx->mutex);
 
@@ -583,6 +628,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
         if (idx->module_capacity > UINT32_MAX / 2) {
             SEARCH_LOG_ERROR("Module capacity overflow");
             nimcp_platform_mutex_unlock(idx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_search_index_destroy: validation failed");
             return -1;
         }
         uint32_t new_capacity = idx->module_capacity * 2;
@@ -590,6 +636,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
         if (new_capacity > SIZE_MAX / sizeof(indexed_module_t)) {
             SEARCH_LOG_ERROR("Module array size overflow");
             nimcp_platform_mutex_unlock(idx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_search_index_destroy: validation failed");
             return -1;
         }
         indexed_module_t* new_modules = nimcp_realloc(
@@ -597,6 +644,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
         );
         if (!new_modules) {
             nimcp_platform_mutex_unlock(idx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_destroy: new_modules is NULL");
             return -1;
         }
         memset(&new_modules[idx->module_capacity], 0,
@@ -609,6 +657,7 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
     kg_meta_module_t* clone = kg_module_metadata_create();
     if (!clone) {
         nimcp_platform_mutex_unlock(idx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: clone is NULL");
         return -1;
     }
 
@@ -635,7 +684,10 @@ int kg_search_index_add_module(kg_search_index_t* idx, brain_kg_node_id_t id,
 
 int kg_search_index_add_layer(kg_search_index_t* idx, uint8_t layer,
                                const kg_layer_metadata_t* meta) {
-    if (!idx || !meta || layer >= MAX_INDEXED_LAYERS) return -1;
+    if (!idx || !meta || layer >= MAX_INDEXED_LAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: required parameter is NULL (idx, meta)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(idx->mutex);
 
@@ -648,6 +700,7 @@ int kg_search_index_add_layer(kg_search_index_t* idx, uint8_t layer,
     kg_layer_metadata_t* clone = kg_layer_metadata_create();
     if (!clone) {
         nimcp_platform_mutex_unlock(idx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: clone is NULL");
         return -1;
     }
 
@@ -672,7 +725,10 @@ int kg_search_index_add_layer(kg_search_index_t* idx, uint8_t layer,
 
 int kg_search_index_add_hemisphere(kg_search_index_t* idx, uint8_t hemi,
                                     const kg_hemisphere_metadata_t* meta) {
-    if (!idx || !meta || hemi >= MAX_INDEXED_HEMISPHERES) return -1;
+    if (!idx || !meta || hemi >= MAX_INDEXED_HEMISPHERES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: required parameter is NULL (idx, meta)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(idx->mutex);
 
@@ -685,6 +741,7 @@ int kg_search_index_add_hemisphere(kg_search_index_t* idx, uint8_t hemi,
     kg_hemisphere_metadata_t* clone = kg_hemisphere_metadata_create();
     if (!clone) {
         nimcp_platform_mutex_unlock(idx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_destroy: clone is NULL");
         return -1;
     }
 
@@ -708,7 +765,10 @@ int kg_search_index_add_hemisphere(kg_search_index_t* idx, uint8_t hemi,
 }
 
 int kg_search_index_add_system(kg_search_index_t* idx, const kg_system_metadata_t* meta) {
-    if (!idx || !meta) return -1;
+    if (!idx || !meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_add_system: required parameter is NULL (idx, meta)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(idx->mutex);
 
@@ -721,6 +781,7 @@ int kg_search_index_add_system(kg_search_index_t* idx, const kg_system_metadata_
     kg_system_metadata_t* clone = kg_system_metadata_create();
     if (!clone) {
         nimcp_platform_mutex_unlock(idx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_add_system: clone is NULL");
         return -1;
     }
 
@@ -741,7 +802,10 @@ int kg_search_index_add_system(kg_search_index_t* idx, const kg_system_metadata_
 }
 
 int kg_search_index_rebuild(kg_search_index_t* idx) {
-    if (!idx) return -1;
+    if (!idx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_rebuild: idx is NULL");
+        return -1;
+    }
 
     /* This is a no-op in the current implementation since we don't
      * maintain separate inverted indices. Future enhancement could
@@ -752,7 +816,10 @@ int kg_search_index_rebuild(kg_search_index_t* idx) {
 }
 
 int kg_search_index_remove_module(kg_search_index_t* idx, brain_kg_node_id_t id) {
-    if (!idx) return -1;
+    if (!idx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_remove_module: idx is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(idx->mutex);
 
@@ -768,12 +835,16 @@ int kg_search_index_remove_module(kg_search_index_t* idx, brain_kg_node_id_t id)
     }
 
     nimcp_platform_mutex_unlock(idx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_search_index_remove_module: operation failed");
     return -1;
 }
 
 int kg_search_index_update_module(kg_search_index_t* idx, brain_kg_node_id_t id,
                                    const kg_meta_module_t* meta) {
-    if (!idx || !meta) return -1;
+    if (!idx || !meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_remove_module: required parameter is NULL (idx, meta)");
+        return -1;
+    }
 
     kg_search_index_remove_module(idx, id);
     return kg_search_index_add_module(idx, id, meta);
@@ -784,7 +855,10 @@ int kg_search_index_get_stats(const kg_search_index_t* idx,
                                uint32_t* layer_count,
                                uint32_t* hemisphere_count,
                                uint32_t* term_count) {
-    if (!idx) return -1;
+    if (!idx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_remove_module: idx is NULL");
+        return -1;
+    }
 
     if (module_count) {
         *module_count = 0;
@@ -820,7 +894,10 @@ int kg_search_index_get_stats(const kg_search_index_t* idx,
 
 kg_search_results_t* kg_search_execute(const kg_search_index_t* idx,
                                         const kg_search_query_t* query) {
-    if (!idx || !query) return NULL;
+    if (!idx || !query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_index_remove_module: required parameter is NULL (idx, query)");
+        return NULL;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -840,6 +917,7 @@ kg_search_results_t* kg_search_execute(const kg_search_index_t* idx,
     internal_result_t* temp_results = nimcp_calloc(max_results, sizeof(internal_result_t));
     if (!temp_results) {
         nimcp_free(results);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_remove_module: temp_results is NULL");
         return NULL;
     }
 
@@ -909,6 +987,7 @@ kg_search_results_t* kg_search_execute(const kg_search_index_t* idx,
         if (!results->results) {
             nimcp_free(temp_results);
             nimcp_free(results);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_index_remove_module: results->results is NULL");
             return NULL;
         }
 
@@ -978,14 +1057,23 @@ void kg_search_query_destroy(kg_search_query_t* query) {
 
 int kg_search_query_add_condition(kg_search_query_t* query, const char* field,
                                    kg_search_op_t op, const char* value) {
-    if (!query || !field || !value) return -1;
-    if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) return -1;
+    if (!query || !field || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_destroy: required parameter is NULL (query, field, value)");
+        return -1;
+    }
+    if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_query_destroy: capacity exceeded");
+        return -1;
+    }
 
     /* Allocate conditions array if needed */
     if (!query->conditions) {
         query->conditions = nimcp_calloc(KG_SEARCH_MAX_CONDITIONS,
                                          sizeof(kg_search_condition_t));
-        if (!query->conditions) return -1;
+        if (!query->conditions) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_query_destroy: query->conditions is NULL");
+            return -1;
+        }
     }
 
     kg_search_condition_t* cond = &query->conditions[query->condition_count];
@@ -1002,13 +1090,22 @@ int kg_search_query_add_condition(kg_search_query_t* query, const char* field,
 
 int kg_search_query_add_between(kg_search_query_t* query, const char* field,
                                  const char* value1, const char* value2) {
-    if (!query || !field || !value1 || !value2) return -1;
-    if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) return -1;
+    if (!query || !field || !value1 || !value2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_destroy: required parameter is NULL (query, field, value1, value2)");
+        return -1;
+    }
+    if (query->condition_count >= KG_SEARCH_MAX_CONDITIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_search_query_destroy: capacity exceeded");
+        return -1;
+    }
 
     if (!query->conditions) {
         query->conditions = nimcp_calloc(KG_SEARCH_MAX_CONDITIONS,
                                          sizeof(kg_search_condition_t));
-        if (!query->conditions) return -1;
+        if (!query->conditions) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_query_destroy: query->conditions is NULL");
+            return -1;
+        }
     }
 
     kg_search_condition_t* cond = &query->conditions[query->condition_count];
@@ -1023,7 +1120,10 @@ int kg_search_query_add_between(kg_search_query_t* query, const char* field,
 
 int kg_search_query_set_scope(kg_search_query_t* query, bool modules, bool layers,
                                bool hemispheres, bool system) {
-    if (!query) return -1;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_destroy: query is NULL");
+        return -1;
+    }
 
     query->search_modules = modules;
     query->search_layers = layers;
@@ -1034,7 +1134,10 @@ int kg_search_query_set_scope(kg_search_query_t* query, bool modules, bool layer
 
 int kg_search_query_set_pagination(kg_search_query_t* query,
                                     uint32_t offset, uint32_t limit) {
-    if (!query) return -1;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_destroy: query is NULL");
+        return -1;
+    }
 
     query->offset = offset;
     query->limit = limit > KG_SEARCH_MAX_LIMIT ? KG_SEARCH_MAX_LIMIT : limit;
@@ -1042,7 +1145,10 @@ int kg_search_query_set_pagination(kg_search_query_t* query,
 }
 
 int kg_search_query_set_sort(kg_search_query_t* query, const char* field, bool ascending) {
-    if (!query) return -1;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_set_sort: query is NULL");
+        return -1;
+    }
 
     if (field) {
         strncpy(query->sort_field, field, KG_SEARCH_MAX_FIELD_LEN - 1);
@@ -1055,13 +1161,19 @@ int kg_search_query_set_sort(kg_search_query_t* query, const char* field, bool a
 }
 
 int kg_search_query_set_logic(kg_search_query_t* query, bool match_all) {
-    if (!query) return -1;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_set_logic: query is NULL");
+        return -1;
+    }
     query->match_all = match_all;
     return 0;
 }
 
 int kg_search_query_clear_conditions(kg_search_query_t* query) {
-    if (!query) return -1;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_query_clear_conditions: query is NULL");
+        return -1;
+    }
     query->condition_count = 0;
     return 0;
 }
@@ -1092,6 +1204,7 @@ kg_search_query_t* kg_search_query_clone(const kg_search_query_t* query) {
                                          sizeof(kg_search_condition_t));
         if (!clone->conditions) {
             nimcp_free(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_search_query_clone: clone->conditions is NULL");
             return NULL;
         }
         memcpy(clone->conditions, query->conditions,
@@ -1106,7 +1219,10 @@ kg_search_query_t* kg_search_query_clone(const kg_search_query_t* query) {
  * ============================================================================ */
 
 kg_search_results_t* kg_search_by_tag(const kg_search_index_t* idx, const char* tag) {
-    if (!idx || !tag) return NULL;
+    if (!idx || !tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_by_tag: required parameter is NULL (idx, tag)");
+        return NULL;
+    }
 
     kg_search_query_t* query = kg_search_query_create();
     if (!query) {
@@ -1127,7 +1243,10 @@ kg_search_results_t* kg_search_by_tag(const kg_search_index_t* idx, const char* 
 
 kg_search_results_t* kg_search_by_type(const kg_search_index_t* idx,
                                         const char* module_type) {
-    if (!idx || !module_type) return NULL;
+    if (!idx || !module_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_by_tag: required parameter is NULL (idx, module_type)");
+        return NULL;
+    }
 
     kg_search_query_t* query = kg_search_query_create();
     if (!query) {
@@ -1148,7 +1267,10 @@ kg_search_results_t* kg_search_by_type(const kg_search_index_t* idx,
 
 kg_search_results_t* kg_search_by_subsystem(const kg_search_index_t* idx,
                                              const char* subsystem) {
-    if (!idx || !subsystem) return NULL;
+    if (!idx || !subsystem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_by_tag: required parameter is NULL (idx, subsystem)");
+        return NULL;
+    }
 
     kg_search_query_t* query = kg_search_query_create();
     if (!query) {
@@ -1169,7 +1291,10 @@ kg_search_results_t* kg_search_by_subsystem(const kg_search_index_t* idx,
 
 kg_search_results_t* kg_search_full_text(const kg_search_index_t* idx,
                                           const char* query_text) {
-    if (!idx || !query_text) return NULL;
+    if (!idx || !query_text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_by_tag: required parameter is NULL (idx, query_text)");
+        return NULL;
+    }
 
     kg_search_query_t* query = kg_search_query_create();
     if (!query) {
@@ -1278,7 +1403,10 @@ kg_search_results_t* kg_search_by_layer(const kg_search_index_t* idx, uint8_t la
 }
 
 kg_search_results_t* kg_search_by_status(const kg_search_index_t* idx, const char* status) {
-    if (!idx || !status) return NULL;
+    if (!idx || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_search_by_status: required parameter is NULL (idx, status)");
+        return NULL;
+    }
 
     kg_search_query_t* query = kg_search_query_create();
     if (!query) {

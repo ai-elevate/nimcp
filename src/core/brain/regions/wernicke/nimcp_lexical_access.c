@@ -168,7 +168,10 @@ static bool trie_insert(trie_node_t* root, const uint8_t* phonemes,
 
         if (!current->children[p]) {
             current->children[p] = trie_create_node();
-            if (!current->children[p]) return false;
+            if (!current->children[p]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trie_insert: current->children is NULL");
+                return false;
+            }
         }
         current = current->children[p];
     }
@@ -177,7 +180,10 @@ static bool trie_insert(trie_node_t* root, const uint8_t* phonemes,
     if (current->num_words >= current->words_capacity) {
         uint32_t new_cap = current->words_capacity == 0 ? 4 : current->words_capacity * 2;
         uint32_t* new_ids = (uint32_t*)nimcp_realloc(current->word_ids, new_cap * sizeof(uint32_t));
-        if (!new_ids) return false;
+        if (!new_ids) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trie_insert: new_ids is NULL");
+            return false;
+        }
         current->word_ids = new_ids;
         current->words_capacity = new_cap;
     }
@@ -211,9 +217,15 @@ static trie_node_t* trie_traverse(trie_node_t* root, const uint8_t* phonemes,
 
     for (uint32_t i = 0; i < num_phonemes; i++) {
         uint8_t p = phonemes[i];
-        if (p >= PHONEME_COUNT) return NULL;
+        if (p >= PHONEME_COUNT) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "trie_traverse: capacity exceeded");
+            return NULL;
+        }
 
-        if (!current->children[p]) return NULL;
+        if (!current->children[p]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trie_traverse: current->children is NULL");
+            return NULL;
+        }
         current = current->children[p];
     }
 
@@ -272,6 +284,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
     lex->hash_table = (lexicon_node_t**)nimcp_calloc(cfg.hash_buckets, sizeof(lexicon_node_t*));
     if (!lex->hash_table) {
         nimcp_free(lex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: lex->hash_table is NULL");
         return NULL;
     }
 
@@ -281,6 +294,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
     if (!lex->entries) {
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: lex->entries is NULL");
         return NULL;
     }
 
@@ -290,6 +304,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         nimcp_free(lex->entries);
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_create: lex->trie_root is NULL");
         return NULL;
     }
 
@@ -301,6 +316,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         nimcp_free(lex->entries);
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_create: lex->cohort is NULL");
         return NULL;
     }
 
@@ -313,6 +329,7 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
         nimcp_free(lex->entries);
         nimcp_free(lex->hash_table);
         nimcp_free(lex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_create: lex->current_phonemes is NULL");
         return NULL;
     }
 
@@ -406,12 +423,16 @@ bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
 
     if (lex->num_words >= lex->config.lexicon_size) {
         NIMCP_LOG_WARN("lexical", "Lexicon full (%u words)", lex->num_words);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_add_entry: capacity exceeded");
         return false;
     }
 
     /* Allocate new node */
     lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_add_entry: node is NULL");
+        return false;
+    }
 
     /* Copy entry */
     node->entry = *entry;
@@ -539,6 +560,7 @@ bool lexical_get_entry(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_get_entry: validation failed");
     return false;
 }
 
@@ -571,6 +593,7 @@ bool lexical_lookup_word(
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_lookup_word: validation failed");
     return false;
 }
 
@@ -586,15 +609,22 @@ bool lexical_set_embedding(
     uint32_t dim)
 {
     if (!lex || !embedding || word_id == 0 || word_id >= lex->entries_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_set_embedding: required parameter is NULL (lex, embedding)");
         return false;
     }
 
     lexical_entry_t* entry = lex->entries[word_id];
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_set_embedding: entry is NULL");
+        return false;
+    }
 
     if (!entry->embedding) {
         entry->embedding = (float*)nimcp_malloc(dim * sizeof(float));
-        if (!entry->embedding) return false;
+        if (!entry->embedding) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lexical_set_embedding: entry->embedding is NULL");
+            return false;
+        }
     }
 
     memcpy(entry->embedding, embedding, dim * sizeof(float));
@@ -1002,6 +1032,7 @@ bool lexical_boost_word(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_boost_word: operation failed");
     return false;
 }
 
@@ -1043,6 +1074,7 @@ bool lexical_prime_concept(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_prime_concept: validation failed");
     return false;
 }
 
@@ -1140,7 +1172,10 @@ bool lexical_get_neighbors(
     *num_neighbors = 0;
 
     lexical_entry_t target;
-    if (!lexical_get_entry(lex, word_id, &target)) return false;
+    if (!lexical_get_entry(lex, word_id, &target)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lexical_get_neighbors: lexical_get_entry is NULL");
+        return false;
+    }
 
     /* If neighbors are cached, use them */
     if (target.neighbors && target.num_neighbors > 0) {
@@ -1220,10 +1255,16 @@ bool lexical_update_frequency(
     uint32_t word_id,
     float delta)
 {
-    if (!lex || word_id == 0 || word_id >= lex->entries_capacity) return false;
+    if (!lex || word_id == 0 || word_id >= lex->entries_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "lexical_update_frequency: lex is NULL");
+        return false;
+    }
 
     lexical_entry_t* entry = lex->entries[word_id];
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_update_frequency: entry is NULL");
+        return false;
+    }
 
     entry->frequency += delta;
     if (entry->frequency < 1.0f) entry->frequency = 1.0f;
@@ -1285,6 +1326,7 @@ bool lexical_save_lexicon(
 
     /* Phase 3 will implement file saving */
     NIMCP_LOG_WARN("lexical", "lexical_save_lexicon not yet implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lexical_save_lexicon: filepath is NULL");
     return false;
 }
 

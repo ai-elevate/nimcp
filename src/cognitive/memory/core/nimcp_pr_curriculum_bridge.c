@@ -233,7 +233,10 @@ static inline float random_float(uint32_t* state) {
 static int compare_scores_asc(const void* a, const void* b) {
     const sample_score_t* sa = (const sample_score_t*)a;
     const sample_score_t* sb = (const sample_score_t*)b;
-    if (sa->score < sb->score) return -1;
+    if (sa->score < sb->score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores_asc: validation failed");
+        return -1;
+    }
     if (sa->score > sb->score) return 1;
     return 0;
 }
@@ -244,7 +247,10 @@ static int compare_scores_asc(const void* a, const void* b) {
 static int compare_scores_desc(const void* a, const void* b) {
     const sample_score_t* sa = (const sample_score_t*)a;
     const sample_score_t* sb = (const sample_score_t*)b;
-    if (sa->score > sb->score) return -1;
+    if (sa->score > sb->score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scores_desc: validation failed");
+        return -1;
+    }
     if (sa->score < sb->score) return 1;
     return 0;
 }
@@ -256,18 +262,25 @@ static difficulty_cache_entry_t* find_cache_entry(
     pr_curriculum_bridge_t bridge,
     uint64_t sample_id)
 {
-    if (!bridge->difficulty_cache) return NULL;
+    if (!bridge->difficulty_cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: bridge->difficulty_cache is NULL");
+        return NULL;
+    }
 
     uint32_t idx = hash_sample_id(sample_id, bridge->cache_capacity);
     uint32_t start_idx = idx;
 
     do {
         difficulty_cache_entry_t* entry = &bridge->difficulty_cache[idx];
-        if (!entry->valid) return NULL;
+        if (!entry->valid) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: entry->valid is NULL");
+            return NULL;
+        }
         if (entry->sample_id == sample_id) return entry;
         idx = (idx + 1) % bridge->cache_capacity;
     } while (idx != start_idx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: validation failed");
     return NULL;
 }
 
@@ -528,27 +541,66 @@ pr_curriculum_config_t pr_curriculum_config_adaptive(void) {
 }
 
 bool pr_curriculum_config_validate(const pr_curriculum_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_config_validate: config is NULL");
+        return false;
+    }
 
     /* Weight validation */
-    if (config->difficulty_scale < 0.0f) return false;
-    if (config->novelty_weight < 0.0f || config->novelty_weight > 1.0f) return false;
-    if (config->resonance_weight < 0.0f) return false;
-    if (config->entanglement_weight < 0.0f) return false;
-    if (config->quaternion_weight < 0.0f) return false;
+    if (config->difficulty_scale < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->novelty_weight < 0.0f || config->novelty_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->resonance_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->entanglement_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->quaternion_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
 
     /* Pacing validation */
-    if (config->consolidation_threshold < 0.0f || config->consolidation_threshold > 1.0f) return false;
-    if (config->fast_pace_multiplier <= 0.0f) return false;
-    if (config->slow_pace_multiplier <= 0.0f) return false;
+    if (config->consolidation_threshold < 0.0f || config->consolidation_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->fast_pace_multiplier <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
+    if (config->slow_pace_multiplier <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
 
     /* Batch validation */
-    if (config->default_batch_size == 0) return false;
-    if (config->exploration_epsilon < 0.0f || config->exploration_epsilon > 1.0f) return false;
+    if (config->default_batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: config->default_batch_size is zero");
+        return false;
+    }
+    if (config->exploration_epsilon < 0.0f || config->exploration_epsilon > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
 
     /* Type validation */
-    if (config->type >= PR_CURRICULUM_TYPE_COUNT) return false;
-    if (config->difficulty_method > PR_DIFFICULTY_EXTERNAL) return false;
+    if (config->type >= PR_CURRICULUM_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_curriculum_config_validate: capacity exceeded");
+        return false;
+    }
+    if (config->difficulty_method > PR_DIFFICULTY_EXTERNAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_config_validate: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_config", 0.0f);
@@ -581,6 +633,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     if (config) {
         if (!pr_curriculum_config_validate(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: pr_curriculum_config_validate is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -591,6 +644,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_curriculum") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_curriculum_bridge_create: validation failed");
         return NULL;
     }
 
@@ -602,6 +656,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (!bridge->difficulty_cache) {
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_bridge_create: bridge->difficulty_cache is NULL");
             return NULL;
         }
         bridge->cache_count = 0;
@@ -615,6 +670,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: validation failed");
         return NULL;
     }
     bridge->history_count = 0;
@@ -630,6 +686,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
             if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_create: validation failed");
             return NULL;
         }
         bridge->event_count = 0;
@@ -670,7 +727,10 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
 }
 
 int pr_curriculum_bridge_reset(pr_curriculum_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_reset", 0.0f);
@@ -723,7 +783,10 @@ int pr_curriculum_compute_difficulty(
     const pr_curriculum_sample_t* sample,
     pr_difficulty_result_t* result)
 {
-    if (!bridge || !sample || !result) return -1;
+    if (!bridge || !sample || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_compute_difficulty: required parameter is NULL (bridge, sample, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_comput", 0.0f);
@@ -848,7 +911,10 @@ int pr_curriculum_compute_difficulty_batch(
     pr_difficulty_result_t* results,
     uint32_t count)
 {
-    if (!bridge || !samples || !results || count == 0) return -1;
+    if (!bridge || !samples || !results || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_compute_difficulty_batch: required parameter is NULL (bridge, samples, results)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_comput", 0.0f);
@@ -875,8 +941,14 @@ bool pr_curriculum_get_cached_difficulty(
     uint64_t sample_id,
     pr_difficulty_result_t* result)
 {
-    if (!bridge || !result) return false;
-    if (!bridge->config.enable_difficulty_cache) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_get_cached_difficulty: required parameter is NULL (bridge, result)");
+        return false;
+    }
+    if (!bridge->config.enable_difficulty_cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_get_cached_difficulty: bridge->config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ca", 0.0f);
@@ -895,6 +967,7 @@ bool pr_curriculum_get_cached_difficulty(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_get_cached_difficulty: validation failed");
     return false;
 }
 
@@ -902,7 +975,10 @@ int pr_curriculum_invalidate_difficulty(
     pr_curriculum_bridge_t bridge,
     uint64_t sample_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_invalidate_difficulty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_invali", 0.0f);
@@ -930,7 +1006,10 @@ int pr_curriculum_order_by_resonance(
     pr_curriculum_sample_t* samples,
     uint32_t count)
 {
-    if (!bridge || !samples || count == 0) return -1;
+    if (!bridge || !samples || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_order_by_resonance: required parameter is NULL (bridge, samples)");
+        return -1;
+    }
 
     /* Allocate score array */
     /* Phase 8: Heartbeat at operation start */
@@ -938,7 +1017,10 @@ int pr_curriculum_order_by_resonance(
 
 
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
-    if (!scores) return -1;
+    if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_resonance: scores is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -974,6 +1056,7 @@ int pr_curriculum_order_by_resonance(
     pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_resonance: temp is NULL");
         return -1;
     }
 
@@ -1000,7 +1083,10 @@ int pr_curriculum_order_by_difficulty(
     pr_curriculum_sample_t* samples,
     uint32_t count)
 {
-    if (!bridge || !samples || count == 0) return -1;
+    if (!bridge || !samples || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_order_by_difficulty: required parameter is NULL (bridge, samples)");
+        return -1;
+    }
 
     /* Allocate score array */
     /* Phase 8: Heartbeat at operation start */
@@ -1008,7 +1094,10 @@ int pr_curriculum_order_by_difficulty(
 
 
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
-    if (!scores) return -1;
+    if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_difficulty: scores is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1049,6 +1138,7 @@ int pr_curriculum_order_by_difficulty(
     pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_difficulty: temp is NULL");
         return -1;
     }
 
@@ -1075,7 +1165,10 @@ int pr_curriculum_order_by_curiosity(
     pr_curriculum_sample_t* samples,
     uint32_t count)
 {
-    if (!bridge || !samples || count == 0) return -1;
+    if (!bridge || !samples || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_order_by_curiosity: required parameter is NULL (bridge, samples)");
+        return -1;
+    }
 
     /* Allocate score array */
     /* Phase 8: Heartbeat at operation start */
@@ -1083,7 +1176,10 @@ int pr_curriculum_order_by_curiosity(
 
 
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
-    if (!scores) return -1;
+    if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_curiosity: scores is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1119,6 +1215,7 @@ int pr_curriculum_order_by_curiosity(
     pr_curriculum_sample_t* temp = nimcp_malloc(count * sizeof(pr_curriculum_sample_t));
     if (!temp) {
         nimcp_free(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_order_by_curiosity: temp is NULL");
         return -1;
     }
 
@@ -1152,6 +1249,7 @@ int pr_curriculum_select_next_batch(
     pr_batch_result_t* result)
 {
     if (!bridge || !samples || sample_count == 0 || !result || !result->sample_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_select_next_batch: required parameter is NULL (bridge, samples, result, result->sample_ids)");
         return -1;
     }
 
@@ -1169,6 +1267,7 @@ int pr_curriculum_select_next_batch(
     sample_score_t* scores = nimcp_malloc(sample_count * sizeof(sample_score_t));
     if (!scores) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_select_next_batch: scores is NULL");
         return -1;
     }
 
@@ -1312,6 +1411,7 @@ int pr_curriculum_select_balanced_batch(
     pr_batch_result_t* result)
 {
     if (!bridge || !samples || sample_count == 0 || !result || !result->sample_ids || !tier_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_select_balanced_batch: required parameter is NULL (bridge, samples, result, result->sample_ids, tier_weights)");
         return -1;
     }
 
@@ -1365,6 +1465,7 @@ int pr_curriculum_select_balanced_batch(
         if (!tier_indices[t]) {
             for (int j = 0; j < t; j++) nimcp_free(tier_indices[j]);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_select_balanced_batch: tier_indices is NULL");
             return -1;
         }
     }
@@ -1473,6 +1574,7 @@ int pr_curriculum_select_most_curious(
     uint32_t* selected_count)
 {
     if (!bridge || !samples || sample_count == 0 || !selected_ids || !selected_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_select_most_curious: required parameter is NULL (bridge, samples, selected_ids, selected_count)");
         return -1;
         BRIDGE_BBB_VALIDATE(bridge, selected_ids, sizeof(*selected_ids));
     }
@@ -1485,7 +1587,10 @@ int pr_curriculum_select_most_curious(
 
     /* Compute curiosity scores and sort */
     sample_score_t* scores = nimcp_malloc(sample_count * sizeof(sample_score_t));
-    if (!scores) return -1;
+    if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_curriculum_select_most_curious: scores is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < sample_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -1530,7 +1635,10 @@ int pr_curriculum_consolidation_pace(
     z_ladder_t ladder,
     pr_curriculum_pacing_t* pacing)
 {
-    if (!bridge || !pacing) return -1;
+    if (!bridge || !pacing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_consolidation_pace: required parameter is NULL (bridge, pacing)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_consol", 0.0f);
@@ -1659,7 +1767,10 @@ int pr_curriculum_record_consolidation(
     pr_memory_tier_t from_tier,
     pr_memory_tier_t to_tier)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_record_consolidation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_record", 0.0f);
@@ -1690,7 +1801,10 @@ int pr_curriculum_tier_distribution(
     z_ladder_t ladder,
     pr_tier_distribution_t* distribution)
 {
-    if (!bridge || !distribution) return -1;
+    if (!bridge || !distribution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_tier_distribution: required parameter is NULL (bridge, distribution)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_tier_d", 0.0f);
@@ -1838,7 +1952,10 @@ int pr_curriculum_update_after_step(
     const pr_step_result_t* results,
     uint32_t count)
 {
-    if (!bridge || !results || count == 0) return -1;
+    if (!bridge || !results || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_update_after_step: required parameter is NULL (bridge, results)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_update", 0.0f);
@@ -1947,7 +2064,10 @@ int pr_curriculum_get_stats(
     pr_curriculum_bridge_t bridge,
     pr_curriculum_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_st", 0.0f);
@@ -1961,7 +2081,10 @@ int pr_curriculum_get_stats(
 }
 
 int pr_curriculum_reset_stats(pr_curriculum_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_reset_", 0.0f);
@@ -1980,7 +2103,10 @@ int pr_curriculum_get_events(
     uint32_t max_events,
     uint32_t* event_count)
 {
-    if (!bridge || !events || !event_count) return -1;
+    if (!bridge || !events || !event_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_get_events: required parameter is NULL (bridge, events, event_count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_get_ev", 0.0f);
@@ -2026,8 +2152,14 @@ int pr_curriculum_set_strategy(
     pr_curriculum_bridge_t bridge,
     pr_curriculum_type_t type)
 {
-    if (!bridge) return -1;
-    if (type >= PR_CURRICULUM_TYPE_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_set_strategy: bridge is NULL");
+        return -1;
+    }
+    if (type >= PR_CURRICULUM_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_curriculum_set_strategy: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_st", 0.0f);
@@ -2069,8 +2201,14 @@ int pr_curriculum_set_exploration(
     pr_curriculum_bridge_t bridge,
     float epsilon)
 {
-    if (!bridge) return -1;
-    if (epsilon < 0.0f || epsilon > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_set_exploration: bridge is NULL");
+        return -1;
+    }
+    if (epsilon < 0.0f || epsilon > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_curriculum_set_exploration: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_ex", 0.0f);
@@ -2087,7 +2225,10 @@ int pr_curriculum_set_ascending_difficulty(
     pr_curriculum_bridge_t bridge,
     bool ascending)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_curriculum_set_ascending_difficulty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_curriculum_bridge_heartbeat("pr_curriculu_pr_curriculum_set_as", 0.0f);

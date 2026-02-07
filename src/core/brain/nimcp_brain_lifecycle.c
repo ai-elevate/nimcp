@@ -468,6 +468,7 @@ adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_output
         build_network_config(num_inputs, num_outputs, num_neurons, sparsity_target, integration_method);
 
     if (!net_config.base_config.layer_sizes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_brain_network: net_config is NULL");
         return NULL;
     }
 
@@ -546,6 +547,7 @@ bool init_attention_subsystem(brain_t brain)
 bool init_brain_regions_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_brain_regions_subsystem: brain is NULL");
         return false;
     }
 
@@ -562,6 +564,7 @@ bool init_brain_regions_subsystem(brain_t brain)
     brain->brain_regions = brain_module_create(&region_config);
     if (!brain->brain_regions) {
         set_error("Failed to create brain regions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_brain_regions_subsystem: brain->brain_regions is NULL");
         return false;
     }
 
@@ -575,6 +578,7 @@ bool init_brain_regions_subsystem(brain_t brain)
 bool init_symbolic_logic_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_logic_subsystem: brain is NULL");
         return false;
     }
 
@@ -593,6 +597,7 @@ bool init_symbolic_logic_subsystem(brain_t brain)
     brain->symbolic_logic = symbolic_logic_create(&logic_config);
     if (!brain->symbolic_logic) {
         set_error("Failed to create symbolic logic engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_logic_subsystem: brain->symbolic_logic is NULL");
         return false;
     }
 
@@ -606,6 +611,7 @@ bool init_symbolic_logic_subsystem(brain_t brain)
 bool init_symbolic_reasoning_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_reasoning_subsystem: brain is NULL");
         return false;
     }
 
@@ -624,6 +630,7 @@ bool init_symbolic_reasoning_subsystem(brain_t brain)
     brain->symbolic_logic = symbolic_logic_create(&logic_config);
     if (!brain->symbolic_logic) {
         set_error("Failed to create symbolic logic engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_reasoning_subsystem: brain->symbolic_logic is NULL");
         return false;
     }
 
@@ -637,6 +644,7 @@ bool init_symbolic_reasoning_subsystem(brain_t brain)
 bool init_epistemic_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_epistemic_subsystem: brain is NULL");
         return false;
     }
 
@@ -648,6 +656,7 @@ bool init_epistemic_subsystem(brain_t brain)
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
         set_error("Failed to create epistemic filter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_epistemic_subsystem: brain->epistemic is NULL");
         return false;
     }
 
@@ -660,10 +669,16 @@ bool init_epistemic_subsystem(brain_t brain)
  */
 static personality_profile_t* create_personality(const brain_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_personality: config is NULL");
+        return NULL;
+    }
 
     personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
-    if (!profile) return NULL;
+    if (!profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_personality: profile is NULL");
+        return NULL;
+    }
 
     if (config->use_random_personality) {
         personality_generation_config_t gen_config;

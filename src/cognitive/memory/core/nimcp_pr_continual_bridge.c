@@ -176,7 +176,10 @@ static int ensure_fisher_capacity(pr_continual_bridge_t bridge, size_t num_param
     /* Reallocate Fisher diagonal */
     float* new_fisher = nimcp_realloc(bridge->fisher_diag,
                                        num_params * sizeof(float));
-    if (!new_fisher) return -1;
+    if (!new_fisher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_fisher is NULL");
+        return -1;
+    }
     bridge->fisher_diag = new_fisher;
 
     /* Initialize new entries to zero */
@@ -187,7 +190,10 @@ static int ensure_fisher_capacity(pr_continual_bridge_t bridge, size_t num_param
     /* Reallocate old params */
     float* new_params = nimcp_realloc(bridge->old_params,
                                        num_params * sizeof(float));
-    if (!new_params) return -1;
+    if (!new_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_params is NULL");
+        return -1;
+    }
     bridge->old_params = new_params;
 
     /* Initialize new entries */
@@ -199,7 +205,10 @@ static int ensure_fisher_capacity(pr_continual_bridge_t bridge, size_t num_param
     if (bridge->config.enable_online_fisher) {
         float* new_accum = nimcp_realloc(bridge->fisher_accum,
                                           num_params * sizeof(float));
-        if (!new_accum) return -1;
+        if (!new_accum) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_accum is NULL");
+            return -1;
+        }
         bridge->fisher_accum = new_accum;
 
         for (size_t i = bridge->fisher_capacity; i < num_params; i++) {
@@ -233,7 +242,10 @@ static int add_task_to_history(pr_continual_bridge_t bridge,
             pr_continual_task_info_t* new_hist = nimcp_realloc(
                 bridge->task_history,
                 new_cap * sizeof(pr_continual_task_info_t));
-            if (!new_hist) return -1;
+            if (!new_hist) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_fisher_capacity: new_hist is NULL");
+                return -1;
+            }
             bridge->task_history = new_hist;
             bridge->task_history_capacity = new_cap;
         }
@@ -352,12 +364,27 @@ pr_continual_config_t pr_continual_config_max_protection(void) {
 }
 
 bool pr_continual_config_validate(const pr_continual_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->ewc_lambda < 0.0f) return false;
-    if (config->consolidation_weight < 0.0f) return false;
-    if (config->replay_ratio < 0.0f || config->replay_ratio > 1.0f) return false;
-    if (config->replay_batch_size == 0) return false;
+    if (config->ewc_lambda < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: validation failed");
+        return false;
+    }
+    if (config->consolidation_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: validation failed");
+        return false;
+    }
+    if (config->replay_ratio < 0.0f || config->replay_ratio > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: validation failed");
+        return false;
+    }
+    if (config->replay_batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: config->replay_batch_size is zero");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_config_", 0.0f);
@@ -372,12 +399,14 @@ bool pr_continual_config_validate(const pr_continual_config_t* config) {
 
         if (config->protection_threshold[i] < 0.0f ||
             config->protection_threshold[i] > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: validation failed");
             return false;
         }
     }
 
     if (config->enable_importance_decay &&
         (config->importance_decay_rate < 0.0f || config->importance_decay_rate > 1.0f)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_config_validate: operation failed");
         return false;
     }
 
@@ -408,6 +437,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     if (config) {
         if (!pr_continual_config_validate(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: pr_continual_config_validate is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -418,6 +448,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_continual") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
 
@@ -429,6 +460,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     if (!bridge->fisher_diag) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_continual_bridge_create: bridge->fisher_diag is NULL");
         return NULL;
     }
 
@@ -437,6 +469,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_continual_bridge_create: bridge->old_params is NULL");
         return NULL;
     }
     bridge->params_stored = false;
@@ -449,6 +482,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
             nimcp_free(bridge->fisher_diag);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: bridge->fisher_accum is NULL");
             return NULL;
         }
         bridge->fisher_accum_count = 0;
@@ -464,6 +498,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
     bridge->task_history_count = 0;
@@ -480,6 +515,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         nimcp_free(bridge->fisher_diag);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_create: validation failed");
         return NULL;
     }
     bridge->importance_cache_count = 0;
@@ -535,7 +571,10 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
 }
 
 int pr_continual_bridge_reset(pr_continual_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_reset", 0.0f);
@@ -589,6 +628,7 @@ int pr_continual_compute_fisher(
     size_t num_params)
 {
     if (!bridge || !gradients || num_samples == 0 || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_compute_fisher: required parameter is NULL (bridge, gradients)");
         return -1;
     }
 
@@ -601,6 +641,7 @@ int pr_continual_compute_fisher(
     /* Ensure capacity */
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_compute_fisher: validation failed");
         return -1;
     }
 
@@ -692,6 +733,7 @@ int pr_continual_compute_fisher_weighted(
 {
     if (!bridge || !gradients || !quaternions ||
         num_samples == 0 || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_compute_fisher_weighted: operation failed");
         return -1;
     }
 
@@ -703,6 +745,7 @@ int pr_continual_compute_fisher_weighted(
     /* Ensure capacity */
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_compute_fisher_weighted: validation failed");
         return -1;
     }
 
@@ -781,7 +824,10 @@ int pr_continual_set_fisher(
     size_t param_idx,
     float value)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_set_fisher: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_set_fis", 0.0f);
@@ -792,6 +838,7 @@ int pr_continual_set_fisher(
     if (param_idx >= bridge->fisher_capacity) {
         if (ensure_fisher_capacity(bridge, param_idx + 1) != 0) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_set_fisher: validation failed");
             return -1;
         }
     }
@@ -813,7 +860,10 @@ int pr_continual_accumulate_fisher(
     size_t num_params,
     bool decay)
 {
-    if (!bridge || !new_fisher || num_params == 0) return -1;
+    if (!bridge || !new_fisher || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_accumulate_fisher: required parameter is NULL (bridge, new_fisher)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_accumul", 0.0f);
@@ -824,6 +874,7 @@ int pr_continual_accumulate_fisher(
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_accumulate_fisher: validation failed");
         return -1;
     }
 
@@ -964,6 +1015,7 @@ int pr_continual_ewc_gradient(
     float* ewc_gradients)
 {
     if (!bridge || !current_params || !ewc_gradients || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_ewc_gradient: required parameter is NULL (bridge, current_params, ewc_gradients)");
         return -1;
         BRIDGE_BBB_VALIDATE(bridge, current_params, sizeof(*current_params));
     }
@@ -1116,7 +1168,10 @@ int pr_continual_replay_sample(
     pr_continual_replay_sample_t* samples,
     size_t* samples_returned)
 {
-    if (!bridge || !ladder || !samples || !samples_returned) return -1;
+    if (!bridge || !ladder || !samples || !samples_returned) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_replay_sample: required parameter is NULL (bridge, ladder, samples, samples_returned)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_replay_", 0.0f);
@@ -1222,7 +1277,10 @@ int pr_continual_replay_sample_resonant(
     pr_continual_replay_sample_t* samples,
     size_t* samples_returned)
 {
-    if (!bridge || !ladder || !query || !samples || !samples_returned) return -1;
+    if (!bridge || !ladder || !query || !samples || !samples_returned) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_replay_sample_resonant: required parameter is NULL (bridge, ladder, query, samples, samples_returned)");
+        return -1;
+    }
 
     /* For now, delegate to basic sampling */
     /* Full implementation would compute resonance and filter */
@@ -1242,7 +1300,10 @@ int pr_continual_replay_tier_distribution(
     size_t total_batch,
     size_t tier_counts[PR_CONTINUAL_NUM_TIERS])
 {
-    if (!bridge || !tier_counts) return -1;
+    if (!bridge || !tier_counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_replay_tier_distribution: required parameter is NULL (bridge, tier_counts)");
+        return -1;
+    }
 
     /* Default distribution: Z0=40%, Z1=30%, Z2=20%, Z3=10% */
     /* Phase 8: Heartbeat at operation start */
@@ -1279,7 +1340,10 @@ int pr_continual_apply_protection(
     size_t num_params,
     pr_continual_grad_result_t* result)
 {
-    if (!bridge || !gradients || num_params == 0) return -1;
+    if (!bridge || !gradients || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_apply_protection: required parameter is NULL (bridge, gradients)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
@@ -1363,7 +1427,10 @@ int pr_continual_apply_protection_nodes(
     size_t num_params,
     pr_continual_grad_result_t* result)
 {
-    if (!bridge || !gradients || !nodes || num_params == 0) return -1;
+    if (!bridge || !gradients || !nodes || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_apply_protection_nodes: required parameter is NULL (bridge, gradients, nodes)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_apply_p", 0.0f);
@@ -1434,6 +1501,7 @@ int pr_continual_preview_protection(
     float* protection_factors)
 {
     if (!bridge || !gradients || !protection_factors || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_preview_protection: required parameter is NULL (bridge, gradients, protection_factors)");
         return -1;
         BRIDGE_BBB_VALIDATE(bridge, gradients, sizeof(*gradients));
     }
@@ -1476,7 +1544,10 @@ int pr_continual_task_boundary(
     pr_continual_bridge_t bridge,
     uint32_t task_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_task_boundary: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_task_bo", 0.0f);
@@ -1518,7 +1589,10 @@ int pr_continual_store_params(
     const float* params,
     size_t num_params)
 {
-    if (!bridge || !params || num_params == 0) return -1;
+    if (!bridge || !params || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_store_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_store_p", 0.0f);
@@ -1529,6 +1603,7 @@ int pr_continual_store_params(
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_store_params: validation failed");
         return -1;
     }
 
@@ -1561,7 +1636,10 @@ int pr_continual_consolidate_task(
     entangle_graph_t graph,
     uint32_t task_id)
 {
-    if (!bridge || !ladder || !graph) return -1;
+    if (!bridge || !ladder || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_consolidate_task: required parameter is NULL (bridge, ladder, graph)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_consoli", 0.0f);
@@ -1642,7 +1720,10 @@ int pr_continual_get_stats(
     pr_continual_bridge_t bridge,
     pr_continual_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_sta", 0.0f);
@@ -1660,7 +1741,10 @@ int pr_continual_get_task_info(
     uint32_t task_id,
     pr_continual_task_info_t* info)
 {
-    if (!bridge || !info) return -1;
+    if (!bridge || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_get_task_info: required parameter is NULL (bridge, info)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_continual_bridge_heartbeat("pr_continual_pr_continual_get_tas", 0.0f);
@@ -1820,10 +1904,16 @@ void pr_continual_print_task_info(const pr_continual_task_info_t* info) {
 }
 
 bool pr_continual_validate(pr_continual_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_continual_validate: bridge is NULL");
+        return false;
+    }
 
     /* Check Fisher array consistency */
-    if (bridge->fisher_size > bridge->fisher_capacity) return false;
+    if (bridge->fisher_size > bridge->fisher_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_validate: validation failed");
+        return false;
+    }
 
     /* Check Fisher values are valid */
     /* Phase 8: Heartbeat at operation start */
@@ -1838,9 +1928,11 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
         }
 
         if (isnan(bridge->fisher_diag[i]) || isinf(bridge->fisher_diag[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_validate: validation failed");
             return false;
         }
         if (bridge->fisher_diag[i] < 0.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_validate: validation failed");
             return false;
         }
     }
@@ -1855,6 +1947,7 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
             }
 
             if (isnan(bridge->old_params[i]) || isinf(bridge->old_params[i])) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_validate: validation failed");
                 return false;
             }
         }
@@ -1862,6 +1955,7 @@ bool pr_continual_validate(pr_continual_bridge_t bridge) {
 
     /* Check task history */
     if (bridge->task_history_count > bridge->task_history_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_continual_validate: validation failed");
         return false;
     }
 

@@ -247,7 +247,10 @@ static void wm_present_antigen(financial_wm_bridge_t* bridge,
  * @brief Find the index of the item with minimum salience
  */
 static int32_t find_min_salience_index(financial_wm_bridge_t* bridge) {
-    if (!bridge || bridge->item_count == 0) return -1;
+    if (!bridge || bridge->item_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_min_salience_index: bridge is NULL");
+        return -1;
+    }
 
     uint32_t min_idx = 0;
     float min_sal = bridge->items[0].salience;

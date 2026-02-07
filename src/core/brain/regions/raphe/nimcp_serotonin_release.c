@@ -171,7 +171,10 @@ int nimcp_ht_release_reset(nimcp_ht_release_system_t* system) {
 
 int nimcp_ht_release_update(nimcp_ht_release_system_t* system,
                             float firing_rate, float dt) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_release_reset: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     float dt_sec = dt / 1000.0f;
 
@@ -308,7 +311,10 @@ int nimcp_ht_release_update(nimcp_ht_release_system_t* system,
 int nimcp_ht_get_concentration(nimcp_ht_release_system_t* system,
                                nimcp_ht_compartment_t compartment,
                                float* concentration) {
-    if (!system || !system->initialized || !concentration) return -1;
+    if (!system || !system->initialized || !concentration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_release_reset: required parameter is NULL (system, system->initialized, concentration)");
+        return -1;
+    }
 
     switch (compartment) {
         case HT_COMPARTMENT_VESICULAR:
@@ -324,6 +330,7 @@ int nimcp_ht_get_concentration(nimcp_ht_release_system_t* system,
             *concentration = system->concentrations.extrasynaptic;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ht_release_reset: operation failed");
             return -1;
     }
     return 0;
@@ -332,8 +339,14 @@ int nimcp_ht_get_concentration(nimcp_ht_release_system_t* system,
 int nimcp_ht_set_concentration(nimcp_ht_release_system_t* system,
                                nimcp_ht_compartment_t compartment,
                                float concentration) {
-    if (!system || !system->initialized) return -1;
-    if (concentration < 0.0f) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_release_reset: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
+    if (concentration < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ht_release_reset: validation failed");
+        return -1;
+    }
 
     switch (compartment) {
         case HT_COMPARTMENT_VESICULAR:
@@ -349,6 +362,7 @@ int nimcp_ht_set_concentration(nimcp_ht_release_system_t* system,
             system->concentrations.extrasynaptic = concentration;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ht_release_reset: operation failed");
             return -1;
     }
     return 0;
@@ -356,7 +370,10 @@ int nimcp_ht_set_concentration(nimcp_ht_release_system_t* system,
 
 int nimcp_ht_get_total_extracellular(nimcp_ht_release_system_t* system,
                                      float* total) {
-    if (!system || !system->initialized || !total) return -1;
+    if (!system || !system->initialized || !total) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->initialized, total)");
+        return -1;
+    }
 
     *total = system->concentrations.synaptic +
              system->concentrations.extrasynaptic;
@@ -370,8 +387,14 @@ int nimcp_ht_get_total_extracellular(nimcp_ht_release_system_t* system,
 int nimcp_ht_get_receptor_activation(nimcp_ht_release_system_t* system,
                                      nimcp_ht_receptor_type_t receptor,
                                      float* activation) {
-    if (!system || !system->initialized || !activation) return -1;
-    if (receptor >= HT_RECEPTOR_TYPE_COUNT) return -1;
+    if (!system || !system->initialized || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->initialized, activation)");
+        return -1;
+    }
+    if (receptor >= HT_RECEPTOR_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        return -1;
+    }
 
     *activation = system->receptor_activation[receptor];
     return 0;
@@ -379,7 +402,10 @@ int nimcp_ht_get_receptor_activation(nimcp_ht_release_system_t* system,
 
 int nimcp_ht_get_1a_2a_balance(nimcp_ht_release_system_t* system,
                                float* balance) {
-    if (!system || !system->initialized || !balance) return -1;
+    if (!system || !system->initialized || !balance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->initialized, balance)");
+        return -1;
+    }
 
     /* Balance between inhibitory 5-HT1A and excitatory 5-HT2A */
     /* Negative = 1A dominant (calming), Positive = 2A dominant (activating) */
@@ -394,14 +420,20 @@ int nimcp_ht_get_1a_2a_balance(nimcp_ht_release_system_t* system,
 
 int nimcp_ht_set_sert_inhibition(nimcp_ht_release_system_t* system,
                                  float inhibition) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     system->transporter.inhibition = clamp_f(inhibition, 0.0f, 1.0f);
     return 0;
 }
 
 int nimcp_ht_get_uptake_rate(nimcp_ht_release_system_t* system, float* rate) {
-    if (!system || !system->initialized || !rate) return -1;
+    if (!system || !system->initialized || !rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_get_uptake_rate: required parameter is NULL (system, system->initialized, rate)");
+        return -1;
+    }
 
     float effective_vmax = system->transporter.vmax *
                           (1.0f - system->transporter.inhibition);
@@ -416,7 +448,10 @@ int nimcp_ht_get_uptake_rate(nimcp_ht_release_system_t* system, float* rate) {
 
 int nimcp_ht_get_autoreceptor_feedback(nimcp_ht_release_system_t* system,
                                        float* feedback) {
-    if (!system || !system->initialized || !feedback) return -1;
+    if (!system || !system->initialized || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_get_uptake_rate: required parameter is NULL (system, system->initialized, feedback)");
+        return -1;
+    }
 
     *feedback = system->autoreceptor.feedback_strength;
     return 0;
@@ -428,7 +463,10 @@ int nimcp_ht_get_autoreceptor_feedback(nimcp_ht_release_system_t* system,
 
 int nimcp_ht_get_vesicle_pool(nimcp_ht_release_system_t* system,
                               nimcp_ht_vesicle_pool_t* pool) {
-    if (!system || !system->initialized || !pool) return -1;
+    if (!system || !system->initialized || !pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_get_uptake_rate: required parameter is NULL (system, system->initialized, pool)");
+        return -1;
+    }
 
     *pool = system->vesicles;
     return 0;
@@ -436,7 +474,10 @@ int nimcp_ht_get_vesicle_pool(nimcp_ht_release_system_t* system,
 
 int nimcp_ht_get_release_efficacy(nimcp_ht_release_system_t* system,
                                   float* efficacy) {
-    if (!system || !system->initialized || !efficacy) return -1;
+    if (!system || !system->initialized || !efficacy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ht_get_uptake_rate: required parameter is NULL (system, system->initialized, efficacy)");
+        return -1;
+    }
 
     *efficacy = system->release_efficacy;
     return 0;

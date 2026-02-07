@@ -142,24 +142,66 @@ gaze_config_t gaze_default_config(void) {
 }
 
 bool gaze_validate_config(const gaze_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gaze_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->max_yaw_rad < 0.0f) return false;
-    if (config->max_pitch_up_rad < 0.0f) return false;
-    if (config->max_pitch_down_rad < 0.0f) return false;
-    if (config->max_roll_rad < 0.0f) return false;
+    if (config->max_yaw_rad < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_pitch_up_rad < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_pitch_down_rad < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_roll_rad < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->max_yaw_rate <= 0.0f) return false;
-    if (config->max_pitch_rate <= 0.0f) return false;
-    if (config->max_roll_rate <= 0.0f) return false;
+    if (config->max_yaw_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_pitch_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_roll_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->pursuit_gain < 0.0f || config->pursuit_gain > 1.0f) return false;
-    if (config->vor_gain < 0.0f || config->vor_gain > 1.0f) return false;
-    if (config->stabilization_gain < 0.0f || config->stabilization_gain > 1.0f) return false;
+    if (config->pursuit_gain < 0.0f || config->pursuit_gain > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->vor_gain < 0.0f || config->vor_gain > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->stabilization_gain < 0.0f || config->stabilization_gain > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->saccade_threshold_rad < 0.0f) return false;
-    if (config->saccade_latency_ms < 0.0f) return false;
-    if (config->saccade_duration_ms <= 0.0f) return false;
+    if (config->saccade_threshold_rad < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->saccade_latency_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
+    if (config->saccade_duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gaze_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -294,7 +336,10 @@ void dragonfly_gaze_destroy(dragonfly_gaze_t gaze) {
 }
 
 int dragonfly_gaze_reset(dragonfly_gaze_t gaze) {
-    if (!gaze) return -1;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_reset: gaze is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -321,7 +366,10 @@ int dragonfly_gaze_set_target(
     dragonfly_gaze_t gaze,
     const gaze_target_t* target
 ) {
-    if (!gaze || !target) return -1;
+    if (!gaze || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_set_target: required parameter is NULL (gaze, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -355,7 +403,10 @@ int dragonfly_gaze_update_target(
     const float position[3],
     const float velocity[3]
 ) {
-    if (!gaze || !position) return -1;
+    if (!gaze || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_update_target: required parameter is NULL (gaze, position)");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -374,7 +425,10 @@ int dragonfly_gaze_update_target(
 }
 
 int dragonfly_gaze_clear_target(dragonfly_gaze_t gaze) {
-    if (!gaze) return -1;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_clear_target: gaze is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -388,7 +442,10 @@ int dragonfly_gaze_clear_target(dragonfly_gaze_t gaze) {
 }
 
 int dragonfly_gaze_lock(dragonfly_gaze_t gaze) {
-    if (!gaze || !gaze->has_target) return -1;
+    if (!gaze || !gaze->has_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_lock: required parameter is NULL (gaze, gaze->has_target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -402,7 +459,10 @@ int dragonfly_gaze_lock(dragonfly_gaze_t gaze) {
 }
 
 int dragonfly_gaze_unlock(dragonfly_gaze_t gaze) {
-    if (!gaze) return -1;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_unlock: gaze is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -425,7 +485,10 @@ int dragonfly_gaze_update(
     float dt_s,
     gaze_command_t* command
 ) {
-    if (!gaze || dt_s <= 0.0f || !command) return -1;
+    if (!gaze || dt_s <= 0.0f || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_update: required parameter is NULL (gaze, command)");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -534,7 +597,10 @@ int dragonfly_gaze_saccade_to(
     float target_az_rad,
     float target_el_rad
 ) {
-    if (!gaze) return -1;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_saccade_to: gaze is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
 
@@ -551,7 +617,10 @@ int dragonfly_gaze_saccade_to(
 }
 
 int dragonfly_gaze_set_mode(dragonfly_gaze_t gaze, gaze_mode_t mode) {
-    if (!gaze) return -1;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_set_mode: gaze is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(gaze->mutex);
     gaze->mode = mode;
@@ -568,7 +637,10 @@ int dragonfly_gaze_get_head_state(
     const dragonfly_gaze_t gaze,
     head_state_t* state
 ) {
-    if (!gaze || !state) return -1;
+    if (!gaze || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_get_head_state: required parameter is NULL (gaze, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)gaze->mutex);
     *state = gaze->head;
@@ -581,7 +653,10 @@ int dragonfly_gaze_get_direction(
     const dragonfly_gaze_t gaze,
     float direction[3]
 ) {
-    if (!gaze || !direction) return -1;
+    if (!gaze || !direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_get_direction: required parameter is NULL (gaze, direction)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)gaze->mutex);
     memcpy(direction, gaze->gaze_direction, sizeof(gaze->gaze_direction));
@@ -596,7 +671,10 @@ gaze_mode_t dragonfly_gaze_get_mode(const dragonfly_gaze_t gaze) {
 }
 
 bool dragonfly_gaze_is_locked(const dragonfly_gaze_t gaze) {
-    if (!gaze) return false;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_is_locked: gaze is NULL");
+        return false;
+    }
     return gaze->locked;
 }
 
@@ -609,7 +687,10 @@ int dragonfly_gaze_get_stats(
     const dragonfly_gaze_t gaze,
     gaze_stats_t* stats
 ) {
-    if (!gaze || !stats) return -1;
+    if (!gaze || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_gaze_get_stats: required parameter is NULL (gaze, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)gaze->mutex);
     *stats = gaze->stats;

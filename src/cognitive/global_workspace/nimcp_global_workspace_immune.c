@@ -195,7 +195,10 @@ static bool check_content_corruption(
     float extreme_threshold)
 {
     // Guard: NULL check
-    if (!content || dim == 0) return false;
+    if (!content || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_content_corruption: content is NULL");
+        return false;
+    }
 
     uint32_t nan_count = 0;
     uint32_t extreme_count = 0;
@@ -285,6 +288,7 @@ gw_immune_context_t* global_workspace_connect_immune(
     // Guard: NULL checks
     if (!workspace || !immune) {
         NIMCP_LOGGING_ERROR("NULL workspace or immune in global_workspace_connect_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_connect_immune: required parameter is NULL (workspace, immune)");
         return NULL;
     }
 
@@ -296,6 +300,7 @@ gw_immune_context_t* global_workspace_connect_immune(
     gw_immune_context_t* ctx = (gw_immune_context_t*)nimcp_calloc(1, sizeof(gw_immune_context_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate gw_immune_context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_connect_immune: ctx is NULL");
         return NULL;
     }
 
@@ -391,6 +396,7 @@ int gw_immune_update_inflammation_modulation(gw_immune_context_t* context) {
     // Guard: NULL check
     if (!context || !context->connected) {
         NIMCP_LOGGING_ERROR("NULL or disconnected context in gw_immune_update_inflammation_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_immune_update_inflammation_modulation: required parameter is NULL (context, context->connected)");
         return -1;
     }
 
@@ -427,6 +433,7 @@ int gw_immune_get_modulation(
 {
     // Guard: NULL checks
     if (!context || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_immune_get_modulation: required parameter is NULL (context, modulation)");
         return -1;
     }
 
@@ -482,6 +489,7 @@ int gw_immune_detect_anomalies(
 {
     // Guard: NULL checks
     if (!context || !anomalies || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_immune_detect_anomalies: required parameter is NULL (context, anomalies, actual_count)");
         return -1;
     }
 
@@ -584,6 +592,7 @@ int gw_immune_trigger_response(
 {
     // Guard: NULL checks
     if (!context || !anomaly || !context->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_immune_trigger_response: required parameter is NULL (context, anomaly, context->connected)");
         return -1;
     }
 
@@ -630,6 +639,7 @@ int gw_immune_trigger_response(
 
     if (result != 0) {
         NIMCP_LOGGING_ERROR("Failed to present anomaly antigen to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_immune_trigger_response: validation failed");
         return -1;
     }
 
@@ -746,6 +756,7 @@ int gw_immune_get_anomaly_history(
 {
     // Guard: NULL checks
     if (!context || !history || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_immune_get_anomaly_history: required parameter is NULL (context, history, actual_count)");
         return -1;
     }
 

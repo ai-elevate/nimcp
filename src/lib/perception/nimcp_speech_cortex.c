@@ -88,12 +88,14 @@ struct speech_cortex {
 speech_cortex_t* speech_cortex_create(const speech_cortex_config_t* config) {
     if (!config) {
         LOG_ERROR("speech_cortex_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_cortex_create: config is NULL");
         return NULL;
     }
 
     speech_cortex_t* cortex = nimcp_calloc(1, sizeof(speech_cortex_t));
     if (!cortex) {
         LOG_ERROR("speech_cortex_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_cortex_create: cortex is NULL");
         return NULL;
     }
 
@@ -117,13 +119,17 @@ bool speech_cortex_process(
     uint32_t num_samples,
     float* features
 ) {
-    if (!cortex || !audio_data || !features) return false;
+    if (!cortex || !audio_data || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_process: required parameter is NULL (cortex, audio_data, features)");
+        return false;
+    }
 
     // BBB: Validate external audio input (SECURITY CRITICAL)
     // This is external sensory data that could be adversarial/corrupted
     if (!bbb_check_pointer(audio_data, "speech_cortex_process")) {
         bbb_audit_log(BBB_AUDIT_WARNING, SPEECH_LOG_MODULE, "invalid_audio_ptr",
                       "NULL audio pointer rejected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_process: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -132,6 +138,7 @@ bool speech_cortex_process(
     if (!bbb_validate_range_u(num_samples, 1, MAX_SAMPLES, "speech_cortex_process")) {
         bbb_audit_log(BBB_AUDIT_WARNING, SPEECH_LOG_MODULE, "invalid_samples",
                       "samples=%u rejected", num_samples);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortex_process: bbb_validate_range_u is NULL");
         return false;
     }
 
@@ -140,6 +147,7 @@ bool speech_cortex_process(
         if (!isfinite(audio_data[i])) {
             bbb_audit_log(BBB_AUDIT_WARNING, SPEECH_LOG_MODULE, "invalid_audio_data",
                           "NaN/Inf detected at sample %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "speech_cortex_process: isfinite is NULL");
             return false;
         }
     }
@@ -154,7 +162,10 @@ bool speech_cortex_get_stats(
     const speech_cortex_t* cortex,
     speech_cortex_stats_t* stats
 ) {
-    if (!cortex || !stats) return false;
+    if (!cortex || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_stats: required parameter is NULL (cortex, stats)");
+        return false;
+    }
     *stats = cortex->stats;
     return true;
 }
@@ -171,7 +182,10 @@ bool speech_cortex_detect_phonemes(
     uint32_t max_phonemes,
     uint32_t* num_detected
 ) {
-    if (!cortex || !audio_data || !phonemes || !num_detected) return false;
+    if (!cortex || !audio_data || !phonemes || !num_detected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_detect_phonemes: required parameter is NULL (cortex, audio_data, phonemes, num_detected)");
+        return false;
+    }
     (void)num_samples;
     (void)max_phonemes;
     *num_detected = 0;
@@ -185,7 +199,10 @@ bool speech_cortex_extract_formants(
     float* formants,
     uint32_t num_formants
 ) {
-    if (!cortex || !audio_data || !formants) return false;
+    if (!cortex || !audio_data || !formants) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_extract_formants: required parameter is NULL (cortex, audio_data, formants)");
+        return false;
+    }
     (void)num_samples;
     memset(formants, 0, num_formants * sizeof(float));
     return true;
@@ -221,7 +238,10 @@ bool speech_cortex_extract_prosody(
     float* pitch_hz,
     float* stress_level
 ) {
-    if (!cortex || !audio_data) return false;
+    if (!cortex || !audio_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_extract_prosody: required parameter is NULL (cortex, audio_data)");
+        return false;
+    }
     (void)num_samples;
     if (pitch_hz) *pitch_hz = 0.0f;
     if (stress_level) *stress_level = 0.0f;
@@ -240,11 +260,15 @@ bool speech_cortex_recognize_word(
     uint32_t buffer_size,
     float* confidence
 ) {
-    if (!cortex || !phonemes || !word_buffer) return false;
+    if (!cortex || !phonemes || !word_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_recognize_word: required parameter is NULL (cortex, phonemes, word_buffer)");
+        return false;
+    }
     (void)num_phonemes;
     word_buffer[0] = '\0';
     if (confidence) *confidence = 0.0f;
     if (buffer_size > 0) word_buffer[0] = '\0';
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_recognize_word: validation failed");
     return false;  /* No word recognized in stub */
 }
 
@@ -254,7 +278,10 @@ bool speech_cortex_add_word_to_lexicon(
     const phoneme_t* phonemes,
     uint32_t num_phonemes
 ) {
-    if (!cortex || !word || !phonemes) return false;
+    if (!cortex || !word || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_add_word_to_lexicon: required parameter is NULL (cortex, word, phonemes)");
+        return false;
+    }
     (void)num_phonemes;
     return true;
 }
@@ -268,7 +295,10 @@ bool speech_cortex_store_phonological_buffer(
     const phoneme_t* phonemes,
     uint32_t num_phonemes
 ) {
-    if (!cortex || !phonemes) return false;
+    if (!cortex || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_store_phonological_buffer: required parameter is NULL (cortex, phonemes)");
+        return false;
+    }
 
     uint32_t to_store = num_phonemes;
     if (to_store > SPEECH_MAX_PHONOLOGICAL_BUFFER) {
@@ -286,7 +316,10 @@ bool speech_cortex_retrieve_phonological_buffer(
     uint32_t max_phonemes,
     uint32_t* num_retrieved
 ) {
-    if (!cortex || !phonemes || !num_retrieved) return false;
+    if (!cortex || !phonemes || !num_retrieved) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_retrieve_phonological_buffer: required parameter is NULL (cortex, phonemes, num_retrieved)");
+        return false;
+    }
 
     uint32_t to_retrieve = cortex->buffer_count;
     if (to_retrieve > max_phonemes) to_retrieve = max_phonemes;
@@ -318,7 +351,10 @@ bool speech_cortex_train_phoneme(
     phoneme_t target_phoneme,
     float reward
 ) {
-    if (!cortex || !audio_data) return false;
+    if (!cortex || !audio_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_train_phoneme: required parameter is NULL (cortex, audio_data)");
+        return false;
+    }
     (void)num_samples;
     (void)target_phoneme;
     (void)reward;
@@ -333,7 +369,10 @@ bool speech_cortex_get_plasticity_stats(
     uint64_t* burst_events,
     float* avg_learning_rate
 ) {
-    if (!cortex) return false;
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_plasticity_stats: cortex is NULL");
+        return false;
+    }
     if (stdp_updates) *stdp_updates = cortex->stdp_updates;
     if (mirror_activations) *mirror_activations = cortex->mirror_activation_count;
     if (burst_events) *burst_events = cortex->burst_events;
@@ -369,9 +408,13 @@ float speech_cortex_get_phoneme_confidence(speech_cortex_t* cortex) {
 bool speech_cortex_request_frequency_boost(speech_cortex_t* cortex,
                                             float* target_freq_hz,
                                             float* bandwidth_hz) {
-    if (!cortex) return false;
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_phoneme_confidence: cortex is NULL");
+        return false;
+    }
     if (target_freq_hz) *target_freq_hz = 0.0f;
     if (bandwidth_hz) *bandwidth_hz = 0.0f;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_cortex_get_phoneme_confidence: validation failed");
     return false;  /* No boost needed in stub */
 }
 
@@ -468,7 +511,10 @@ bool speech_cortex_trigger_receptor(
     float occupancy,
     uint64_t timestamp_ms
 ) {
-    if (!cortex) return false;
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_trigger_receptor: cortex is NULL");
+        return false;
+    }
     (void)neuron_id; (void)receptor_type; (void)occupancy; (void)timestamp_ms;
     return true;
 }
@@ -478,8 +524,12 @@ bool speech_cortex_get_second_messenger_state(
     uint32_t neuron_id,
     void* state
 ) {
-    if (!cortex || !state) return false;
+    if (!cortex || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_second_messenger_state: required parameter is NULL (cortex, state)");
+        return false;
+    }
     (void)neuron_id;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_second_messenger_state: required parameter is NULL (cortex, state)");
     return false;
 }
 
@@ -494,7 +544,10 @@ bool speech_cortex_set_pe_config(
     uint32_t phoneme_seq_type,
     uint32_t buffer_type
 ) {
-    if (!cortex) return false;
+    if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_set_pe_config: cortex is NULL");
+        return false;
+    }
     cortex->pe_enabled = enable;
     cortex->pe_embedding_dim = embedding_dim > 0 ? embedding_dim : 64;
     (void)phoneme_seq_type;
@@ -508,7 +561,10 @@ bool speech_cortex_encode_phoneme_positions(
     uint32_t num_phonemes,
     bool additive
 ) {
-    if (!cortex || !phonemes) return false;
+    if (!cortex || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_encode_phoneme_positions: required parameter is NULL (cortex, phonemes)");
+        return false;
+    }
     (void)additive;
     for (uint32_t i = 0; i < num_phonemes; i++) {
         phonemes[i].sequence_position = i;
@@ -521,8 +577,14 @@ bool speech_cortex_get_phonological_position_embedding(
     uint32_t buffer_position,
     float* output
 ) {
-    if (!cortex || !output) return false;
-    if (buffer_position >= SPEECH_MAX_PHONOLOGICAL_BUFFER) return false;
+    if (!cortex || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortex_get_phonological_position_embedding: required parameter is NULL (cortex, output)");
+        return false;
+    }
+    if (buffer_position >= SPEECH_MAX_PHONOLOGICAL_BUFFER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "speech_cortex_get_phonological_position_embedding: capacity exceeded");
+        return false;
+    }
     /* Stub: return zeros */
     if (cortex->pe_embedding_dim > 0) {
         memset(output, 0, cortex->pe_embedding_dim * sizeof(float));

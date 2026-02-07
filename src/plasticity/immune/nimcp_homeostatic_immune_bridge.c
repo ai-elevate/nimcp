@@ -161,6 +161,7 @@ homeostatic_immune_bridge_t* homeostatic_immune_bridge_create(
     if (!immune_system || !homeostatic_controller) {
         LOG_MODULE_ERROR("homeostatic_immune_bridge",
                   "Cannot create bridge without immune and homeostatic systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_immune_bridge_create: required parameter is NULL (immune_system, homeostatic_controller)");
         return NULL;
     }
 
@@ -245,7 +246,10 @@ int homeostatic_immune_apply_cytokine_effects(
 
     }
     if (!bridge->enable_cytokine_homeostasis_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -336,7 +340,10 @@ int homeostatic_immune_apply_inflammation_effects(
 
     }
     if (!bridge->enable_inflammation_disruption) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -470,7 +477,10 @@ int homeostatic_immune_trigger_from_instability(
 
     }
     if (!bridge->enable_instability_immune_trigger) return 0;
-    if (!bridge->immune_system || !firing_rates) return -1;
+    if (!bridge->immune_system || !firing_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_trigger_from_instability: required parameter is NULL (bridge->immune_system, firing_rates)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -584,7 +594,10 @@ int homeostatic_immune_boost_from_recovery(
 
     }
     if (!bridge->enable_recovery_immune_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_boost_from_recovery: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -680,7 +693,10 @@ int homeostatic_immune_get_cytokine_effects(
     const homeostatic_immune_bridge_t* bridge,
     cytokine_homeostatic_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -693,7 +709,10 @@ int homeostatic_immune_get_inflammation_state(
     const homeostatic_immune_bridge_t* bridge,
     inflammation_homeostatic_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -706,7 +725,10 @@ int homeostatic_immune_get_inflammation_state(
 bool homeostatic_immune_is_homeostatic_failure(
     const homeostatic_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_is_homeostatic_failure: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool failure = bridge->inflammation_state.homeostatic_failure;
@@ -827,6 +849,9 @@ int homeostatic_immune_disconnect_bio_async(homeostatic_immune_bridge_t* bridge)
  * @brief Check if bio-async is connected
  */
 bool homeostatic_immune_is_bio_async_connected(const homeostatic_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

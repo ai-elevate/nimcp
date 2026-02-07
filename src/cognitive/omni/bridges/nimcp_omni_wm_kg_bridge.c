@@ -751,6 +751,7 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
     omni_wm_kg_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_kg_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM KG bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge is NULL");
         return NULL;
     }
 
@@ -759,6 +760,7 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
                          "wm_kg_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -775,6 +777,7 @@ omni_wm_kg_bridge_t* omni_wm_kg_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate effects arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -959,7 +962,10 @@ nimcp_error_t omni_wm_kg_bridge_connect_registry(
 }
 
 bool omni_wm_kg_bridge_is_connected(const omni_wm_kg_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_kg_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_kg_bridge_heartbeat("omni_wm_kg_b_is_connected", 0.0f);
 

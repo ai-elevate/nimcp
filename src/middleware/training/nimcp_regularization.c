@@ -586,11 +586,13 @@ float nimcp_gradient_norm(const float* gradients, size_t num_gradients) {
 nimcp_dropout_ctx_t* nimcp_dropout_create(const nimcp_dropout_config_t* config) {
     if (!config) {
         LOG_MODULE_ERROR(LOG_MODULE, "Null dropout config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_dropout_create: config is NULL");
         return NULL;
     }
 
     if (config->rate < NIMCP_DROPOUT_MIN || config->rate >= NIMCP_DROPOUT_MAX) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid dropout rate: %f", config->rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_dropout_create: capacity exceeded");
         return NULL;
     }
 
@@ -599,6 +601,7 @@ nimcp_dropout_ctx_t* nimcp_dropout_create(const nimcp_dropout_config_t* config) 
     nimcp_dropout_ctx_t* ctx = (nimcp_dropout_ctx_t*)nimcp_calloc(1, sizeof(nimcp_dropout_ctx_t));
     if (!ctx) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate dropout context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_dropout_create: ctx is NULL");
         return NULL;
     }
 
@@ -773,11 +776,13 @@ nimcp_early_stop_ctx_t* nimcp_early_stop_create(
 ) {
     if (!config) {
         LOG_MODULE_ERROR(LOG_MODULE, "Null early stop config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_early_stop_create: config is NULL");
         return NULL;
     }
 
     if (config->patience == 0 || config->patience > NIMCP_REG_MAX_PATIENCE) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid patience: %u", config->patience);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_early_stop_create: config->patience is zero");
         return NULL;
     }
 
@@ -788,6 +793,7 @@ nimcp_early_stop_ctx_t* nimcp_early_stop_create(
     );
     if (!ctx) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate early stop context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_early_stop_create: ctx is NULL");
         return NULL;
     }
 
@@ -816,6 +822,7 @@ void nimcp_early_stop_destroy(nimcp_early_stop_ctx_t* ctx) {
 
 bool nimcp_early_stop_check(nimcp_early_stop_ctx_t* ctx, float metric) {
     if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_early_stop_check: required parameter is NULL (ctx, ctx->initialized)");
         return false;
     }
 

@@ -85,6 +85,7 @@ hypo_reasoning_fep_bridge_t* hypo_reasoning_fep_create(
 
     if (!fep_system) {
         NIMCP_LOGGING_ERROR("Hypo-Reasoning FEP bridge: NULL FEP system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_reasoning_fep_default_config: fep_system is NULL");
         return NULL;
     }
 
@@ -110,6 +111,7 @@ hypo_reasoning_fep_bridge_t* hypo_reasoning_fep_create(
     if (bridge_base_init(&bridge->base, 0, "hypo_reasoning_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_reasoning_fep_default_config: bridge->base is NULL");
         return NULL;
     }
 

@@ -64,15 +64,18 @@ static int g_tests_failed = 0;
 #define BBB_ROLE_OPERATOR     (1U << 2)
 #define BBB_ROLE_ADMIN        (1U << 3)
 
-/* External reset function */
-extern void bbb_access_control_reset_internal(void);
-
 /**
  * @brief Setup function called before each test
+ *
+ * WHAT: Reset ALL BBB subsystem state before each test
+ * WHY:  Prevent state leakage (registrations, counters, etc.) between tests
+ * HOW:  Uses the unified bbb_reset_test_state() from the public header
+ *       which resets access control, memory boundary, input gate, and
+ *       code signing subsystems
  */
 static void setup(void)
 {
-    bbb_access_control_reset_internal();
+    bbb_reset_test_state();
 }
 
 //=============================================================================

@@ -125,6 +125,7 @@ static uint64_t get_timestamp_us(void)
 static int find_subject_index(const security_mem_bridge_t* bridge, uint32_t subject_id)
 {
     if (!bridge || !bridge->access_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subject_index: required parameter is NULL (bridge, bridge->access_table)");
         return -1;
     }
 
@@ -133,6 +134,7 @@ static int find_subject_index(const security_mem_bridge_t* bridge, uint32_t subj
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_subject_index: validation failed");
     return -1;
 }
 
@@ -149,6 +151,7 @@ static bool check_operation_permission(
 )
 {
     if (!rights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_operation_permission: rights is NULL");
         return false;
     }
 
@@ -168,6 +171,7 @@ static bool check_operation_permission(
         case SEC_MEM_OP_ENCODE:
             return rights->can_encode;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_operation_permission: operation failed");
             return false;
     }
 }
@@ -185,6 +189,7 @@ static bool check_memory_system_access(
 )
 {
     if (!rights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_memory_system_access: rights is NULL");
         return false;
     }
 
@@ -271,6 +276,7 @@ static bool is_subject_locked_out(
 )
 {
     if (!bridge || !internal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_subject_locked_out: required parameter is NULL (bridge, internal)");
         return false;
     }
 
@@ -342,6 +348,7 @@ static bool stub_decrypt(
     }
 
     if (memcmp(computed_tag, tag, SEC_MEM_GCM_TAG_SIZE) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stub_decrypt: validation failed");
         return false;  /* Authentication failed */
     }
 
@@ -461,6 +468,7 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
     /* Initialize base */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_MEMORY, "security_memory_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_memory_bridge_create: validation failed");
         return NULL;
     }
 
@@ -477,6 +485,7 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
         NIMCP_LOGGING_ERROR("Failed to allocate access table");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_memory_bridge_create: bridge->access_table is NULL");
         return NULL;
     }
     memset(bridge->access_table, 0, SEC_MEM_MAX_SUBJECTS * sizeof(security_mem_access_rights_t));
@@ -489,6 +498,7 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
             nimcp_free(bridge->access_table);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_memory_bridge_create: bridge->audit_log is NULL");
             return NULL;
         }
         memset(bridge->audit_log, 0, SEC_MEM_MAX_AUDIT_ENTRIES * sizeof(security_mem_audit_entry_t));
@@ -504,6 +514,7 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
         nimcp_free(bridge->access_table);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_bridge_create: validation failed");
         return NULL;
     }
     memset(internal, 0, sizeof(security_mem_internal_t));
@@ -722,6 +733,7 @@ int security_memory_disconnect_all(security_mem_bridge_t* bridge)
 bool security_memory_is_fully_connected(const security_mem_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_is_fully_connected: bridge is NULL");
         return false;
     }
     return bridge->working_connected &&
@@ -743,6 +755,7 @@ bool security_memory_check_access(
 )
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_check_access: bridge is NULL");
         return false;
     }
 
@@ -1402,6 +1415,7 @@ bool security_memory_detect_leakage(
 )
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_detect_leakage: bridge is NULL");
         return false;
     }
 
@@ -1897,6 +1911,7 @@ int security_memory_disconnect_bio_async(security_mem_bridge_t* bridge)
 bool security_memory_is_bio_async_connected(const security_mem_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_memory_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

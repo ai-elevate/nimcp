@@ -162,6 +162,7 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
     if (!ctx->activations) {
         nimcp_free(ctx);
         LOG_ERROR("Failed to allocate activations array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_create: ctx->activations is NULL");
         return NULL;
     }
     memset(ctx->activations, 0, num_layers * sizeof(layer_activation_t));
@@ -185,6 +186,7 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
         if (!ctx->activations[l].pre_activation || !ctx->activations[l].post_activation) {
             backprop_destroy(ctx);
             LOG_ERROR("Failed to allocate layer %u activation buffers", l);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_create: required parameter is NULL (ctx->activations, ctx->activations)");
             return NULL;
         }
         memset(ctx->activations[l].pre_activation, 0, layer_size * sizeof(float));
@@ -215,6 +217,7 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
         if (!ctx->weight_gradients) {
             backprop_destroy(ctx);
             LOG_ERROR("Failed to allocate weight gradients");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_create: ctx->weight_gradients is NULL");
             return NULL;
         }
         memset(ctx->weight_gradients, 0, ctx->total_weights * sizeof(float));
@@ -225,6 +228,7 @@ backprop_ctx_t* backprop_create(neural_network_t network) {
         if (!ctx->bias_gradients) {
             backprop_destroy(ctx);
             LOG_ERROR("Failed to allocate bias gradients");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_create: ctx->bias_gradients is NULL");
             return NULL;
         }
         memset(ctx->bias_gradients, 0, ctx->total_neurons * sizeof(float));
@@ -271,6 +275,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
                       const float* inputs, uint32_t input_size,
                       float* outputs, uint32_t output_size) {
     if (!ctx || !inputs || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_destroy: required parameter is NULL (ctx, inputs, outputs)");
         return false;
     }
 
@@ -371,6 +376,7 @@ bool backprop_forward(backprop_ctx_t* ctx,
 bool backprop_backward(backprop_ctx_t* ctx,
                        const float* output_gradients, uint32_t output_size) {
     if (!ctx || !output_gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backprop_destroy: required parameter is NULL (ctx, output_gradients)");
         return false;
     }
 
@@ -381,6 +387,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
     float** layer_deltas = nimcp_malloc(num_layers * sizeof(float*));
     if (!layer_deltas) {
         LOG_ERROR("Failed to allocate layer delta array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_destroy: layer_deltas is NULL");
         return false;
     }
 
@@ -393,6 +400,7 @@ bool backprop_backward(backprop_ctx_t* ctx,
             }
             nimcp_free(layer_deltas);
             LOG_ERROR("Failed to allocate delta buffer for layer %u", l);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "backprop_destroy: layer_deltas is NULL");
             return false;
         }
         memset(layer_deltas[l], 0, layer_size * sizeof(float));

@@ -664,6 +664,7 @@ bool nimcp_network_validate_serialized(NimcpSerializer* serializer)
     uint32_t magic = nimcp_read_uint32(serializer);
     if (magic != NIMCP_SERIALIZATION_MAGIC) {
         nimcp_serializer_set_position(serializer, original_position);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_network_validate_serialized: validation failed");
         return false;
     }
 
@@ -671,6 +672,7 @@ bool nimcp_network_validate_serialized(NimcpSerializer* serializer)
     uint8_t version = nimcp_read_uint8(serializer);
     if (version != NIMCP_SERIALIZATION_VERSION) {
         nimcp_serializer_set_position(serializer, original_position);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_network_validate_serialized: validation failed");
         return false;
     }
 
@@ -685,48 +687,135 @@ bool nimcp_network_validate_serialized(NimcpSerializer* serializer)
 
 static bool write_network_header(NimcpSerializer* serializer, bool compress)
 {
-    if (!nimcp_write_uint32(serializer, NIMCP_SERIALIZATION_MAGIC)) return false;
-    if (!nimcp_write_uint8(serializer, NIMCP_SERIALIZATION_VERSION)) return false;
+    if (!nimcp_write_uint32(serializer, NIMCP_SERIALIZATION_MAGIC)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_header: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint8(serializer, NIMCP_SERIALIZATION_VERSION)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_header: nimcp_write_uint8 is NULL");
+        return false;
+    }
 
     uint8_t flags = compress ? NIMCP_FLAG_COMPRESSED : 0;
-    if (!nimcp_write_uint8(serializer, flags)) return false;
+    if (!nimcp_write_uint8(serializer, flags)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_header: nimcp_write_uint8 is NULL");
+        return false;
+    }
 
     return true;
 }
 
 static bool write_network_metadata(NimcpSerializer* serializer, neural_network_t network)
 {
-    if (!nimcp_write_uint64(serializer, network->current_time)) return false;
-    if (!nimcp_write_uint64(serializer, network->network_time)) return false;
-    if (!nimcp_write_float(serializer, network->global_activity)) return false;
-    if (!nimcp_write_float(serializer, network->network_stability)) return false;
-    if (!nimcp_write_float(serializer, network->learning_momentum)) return false;
-    if (!nimcp_write_float(serializer, network->last_avg_weight)) return false;
-    if (!nimcp_write_uint64(serializer, network->last_maintenance)) return false;
+    if (!nimcp_write_uint64(serializer, network->current_time)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_uint64 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, network->network_time)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_uint64 is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, network->global_activity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, network->network_stability)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, network->learning_momentum)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, network->last_avg_weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, network->last_maintenance)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_metadata: nimcp_write_uint64 is NULL");
+        return false;
+    }
     return true;
 }
 
 static bool write_network_config(NimcpSerializer* serializer, const network_config_t* config)
 {
-    if (!nimcp_write_uint32(serializer, config->num_neurons)) return false;
-    if (!nimcp_write_float(serializer, config->ei_ratio)) return false;
-    if (!nimcp_write_float(serializer, config->learning_rate)) return false;
-    if (!nimcp_write_float(serializer, config->hebbian_rate)) return false;
-    if (!nimcp_write_float(serializer, config->stdp_window)) return false;
-    if (!nimcp_write_float(serializer, config->homeostatic_rate)) return false;
-    if (!nimcp_write_float(serializer, config->target_activity)) return false;
-    if (!nimcp_write_float(serializer, config->adaptation_rate)) return false;
-    if (!nimcp_write_float(serializer, config->refractory_period)) return false;
-    if (!nimcp_write_float(serializer, config->min_weight)) return false;
-    if (!nimcp_write_float(serializer, config->max_weight)) return false;
-    if (!nimcp_write_uint32(serializer, config->update_interval)) return false;
-    if (!nimcp_write_uint32(serializer, config->input_size)) return false;
-    if (!nimcp_write_uint32(serializer, config->output_size)) return false;
-    if (!nimcp_write_uint32(serializer, config->num_layers)) return false;
-    if (!nimcp_write_bool(serializer, config->enable_stdp)) return false;
-    if (!nimcp_write_bool(serializer, config->enable_hebbian)) return false;
-    if (!nimcp_write_bool(serializer, config->enable_oja)) return false;
-    if (!nimcp_write_bool(serializer, config->enable_homeostasis)) return false;
+    if (!nimcp_write_uint32(serializer, config->num_neurons)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->ei_ratio)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->learning_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->hebbian_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->stdp_window)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->homeostatic_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->target_activity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->adaptation_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->refractory_period)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->min_weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, config->max_weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint32(serializer, config->update_interval)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint32(serializer, config->input_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint32(serializer, config->output_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint32(serializer, config->num_layers)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_bool(serializer, config->enable_stdp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        return false;
+    }
+    if (!nimcp_write_bool(serializer, config->enable_hebbian)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        return false;
+    }
+    if (!nimcp_write_bool(serializer, config->enable_oja)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        return false;
+    }
+    if (!nimcp_write_bool(serializer, config->enable_homeostasis)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_network_config: nimcp_write_bool is NULL");
+        return false;
+    }
     // Note: layer_sizes array and neuron_model/model_params are not serialized in v1
     return true;
 }
@@ -734,29 +823,83 @@ static bool write_network_config(NimcpSerializer* serializer, const network_conf
 static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
 {
     // Write neuron basic properties
-    if (!nimcp_write_uint32(serializer, neuron->id)) return false;
-    if (!nimcp_write_uint8(serializer, (uint8_t)neuron->type)) return false;
-    if (!nimcp_write_float(serializer, neuron->state)) return false;
-    if (!nimcp_write_float(serializer, neuron->rest_potential)) return false;
-    if (!nimcp_write_float(serializer, neuron->threshold)) return false;
-    if (!nimcp_write_float(serializer, neuron->adaptation)) return false;
-    if (!nimcp_write_float(serializer, neuron->refractory_period)) return false;
-    if (!nimcp_write_float(serializer, neuron->bias)) return false;
+    if (!nimcp_write_uint32(serializer, neuron->id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint8(serializer, (uint8_t)neuron->type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint8 is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->rest_potential)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->threshold)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->adaptation)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->refractory_period)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->bias)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
 
     // Write learning parameters (simplified - just key values)
-    if (!nimcp_write_float(serializer, neuron->plasticity_rate)) return false;
-    if (!nimcp_write_float(serializer, neuron->homeostatic_factor)) return false;
-    if (!nimcp_write_float(serializer, neuron->calcium_concentration)) return false;
-    if (!nimcp_write_float(serializer, neuron->weight_norm)) return false;
-    if (!nimcp_write_float(serializer, neuron->avg_activity)) return false;
-    if (!nimcp_write_uint64(serializer, neuron->last_spike)) return false;
-    if (!nimcp_write_uint64(serializer, neuron->last_update)) return false;
-    if (!nimcp_write_uint64(serializer, neuron->creation_time)) return false;
+    if (!nimcp_write_float(serializer, neuron->plasticity_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->homeostatic_factor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->calcium_concentration)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->weight_norm)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, neuron->avg_activity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, neuron->last_spike)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, neuron->last_update)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, neuron->creation_time)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint64 is NULL");
+        return false;
+    }
 
     // Write synapses
-    if (!nimcp_write_uint32(serializer, neuron->num_synapses)) return false;
+    if (!nimcp_write_uint32(serializer, neuron->num_synapses)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: nimcp_write_uint32 is NULL");
+        return false;
+    }
     for (uint32_t i = 0; i < neuron->num_synapses; i++) {
-        if (!write_synapse(serializer, &neuron->synapses[i])) return false;
+        if (!write_synapse(serializer, &neuron->synapses[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_neuron: write_synapse is NULL");
+            return false;
+        }
     }
 
     // Note: spike_history, activity_history, and neuron model not serialized in v1
@@ -765,14 +908,38 @@ static bool write_neuron(NimcpSerializer* serializer, const neuron_t* neuron)
 
 static bool write_synapse(NimcpSerializer* serializer, const synapse_t* synapse)
 {
-    if (!nimcp_write_uint32(serializer, synapse->target_id)) return false;
-    if (!nimcp_write_float(serializer, synapse->weight)) return false;
-    if (!nimcp_write_float(serializer, synapse->plasticity)) return false;
-    if (!nimcp_write_float(serializer, synapse->last_change)) return false;
-    if (!nimcp_write_uint64(serializer, synapse->last_active)) return false;
-    if (!nimcp_write_float(serializer, synapse->strength)) return false;
-    if (!nimcp_write_float(serializer, synapse->meta_plasticity)) return false;
-    if (!nimcp_write_float(serializer, synapse->trace)) return false;
+    if (!nimcp_write_uint32(serializer, synapse->target_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_uint32 is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->plasticity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->last_change)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_uint64(serializer, synapse->last_active)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_uint64 is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->strength)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->meta_plasticity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
+    if (!nimcp_write_float(serializer, synapse->trace)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_synapse: nimcp_write_float is NULL");
+        return false;
+    }
     // Note: STP state not serialized in v1
     return true;
 }
@@ -797,6 +964,7 @@ static bool read_network_header(NimcpSerializer* serializer, uint8_t* version, u
     */
     uint32_t magic = nimcp_read_uint32(serializer);
     if (magic != NIMCP_SERIALIZATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_network_header: validation failed");
         return false;
     }
 
@@ -842,6 +1010,7 @@ static bool read_network_config(NimcpSerializer* serializer, network_config_t* c
 
     // Validate counts are reasonable (detect corrupted data early)
     if (config->num_neurons > MAX_NEURONS || config->num_layers > 10000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_network_config: validation failed");
         return false;  // Corrupted data
     }
 
@@ -889,13 +1058,17 @@ static bool read_neuron(NimcpSerializer* serializer, neuron_t* neuron)
 
     // Validate synapse count is reasonable (detect corrupted data early)
     if (num_synapses > MAX_SYNAPSES_PER_NEURON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_neuron: validation failed");
         return false;  // Corrupted data
     }
 
     neuron->num_synapses = num_synapses;
 
     for (uint32_t i = 0; i < num_synapses; i++) {
-        if (!read_synapse(serializer, &neuron->synapses[i])) return false;
+        if (!read_synapse(serializer, &neuron->synapses[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_neuron: read_synapse is NULL");
+            return false;
+        }
     }
 
     // Initialize non-serialized fields to defaults

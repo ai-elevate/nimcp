@@ -169,6 +169,7 @@ bool nimcp_brain_factory_init_glial_subsystem(brain_t brain)
     neural_network_t base = adaptive_network_get_base_network(brain->network);
     if (!base) {
         set_error("Failed to get base network for glial integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_glial_subsystem: base is NULL");
         return false;
     }
 
@@ -177,6 +178,7 @@ bool nimcp_brain_factory_init_glial_subsystem(brain_t brain)
 
     if (!brain->glial) {
         set_error("Failed to create glial integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_glial_subsystem: brain->glial is NULL");
         return false;
     }
 
@@ -226,6 +228,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
             brain->integrated_feature_buffer = nimcp_calloc(brain->config.num_inputs, sizeof(float));
             if (!brain->integrated_feature_buffer) {
                 set_error("Failed to allocate integrated feature buffer for direct predictions");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_multimodal_subsystems: brain->integrated_feature_buffer is NULL");
                 return false;
             }
         }
@@ -267,6 +270,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
         brain->visual_cortex = visual_cortex_create(&visual_config);
         if (!brain->visual_cortex) {
             set_error("Failed to create visual cortex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_multimodal_subsystems: brain->visual_cortex is NULL");
             return false;
         }
 
@@ -276,6 +280,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
             set_error("Failed to allocate visual feature buffer");
             visual_cortex_destroy(brain->visual_cortex);
             brain->visual_cortex = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_multimodal_subsystems: brain->visual_feature_buffer is NULL");
             return false;
         }
     }
@@ -303,6 +308,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
         brain->audio_cortex = audio_cortex_create(&audio_config);
         if (!brain->audio_cortex) {
             set_error("Failed to create audio cortex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_multimodal_subsystems: brain->audio_cortex is NULL");
             return false;
         }
 
@@ -312,6 +318,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
             set_error("Failed to allocate audio feature buffer");
             audio_cortex_destroy(brain->audio_cortex);
             brain->audio_cortex = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_multimodal_subsystems: brain->audio_feature_buffer is NULL");
             return false;
         }
     }
@@ -338,6 +345,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
         brain->speech_cortex = speech_cortex_create(&speech_config);
         if (!brain->speech_cortex) {
             set_error("Failed to create speech cortex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_multimodal_subsystems: brain->speech_cortex is NULL");
             return false;
         }
 
@@ -347,6 +355,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
             set_error("Failed to allocate speech feature buffer");
             speech_cortex_destroy(brain->speech_cortex);
             brain->speech_cortex = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_multimodal_subsystems: brain->speech_feature_buffer is NULL");
             return false;
         }
     }
@@ -371,6 +380,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
         brain->multimodal = multimodal_integration_create(&mm_config);
         if (!brain->multimodal) {
             set_error("Failed to create multimodal integration layer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_multimodal_subsystems: brain->multimodal is NULL");
             return false;
         }
 
@@ -380,6 +390,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
             set_error("Failed to allocate integrated feature buffer");
             multimodal_integration_destroy(brain->multimodal);
             brain->multimodal = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_multimodal_subsystems: brain->integrated_feature_buffer is NULL");
             return false;
         }
     }
@@ -435,6 +446,7 @@ bool nimcp_brain_factory_init_multimodal_subsystems(brain_t brain)
         brain->nlp_network = nlp_network_create(&nlp_config);
         if (!brain->nlp_network) {
             set_error("Failed to create NLP network");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: brain->nlp_network is NULL");
             return false;
         }
     }
@@ -503,6 +515,7 @@ bool nimcp_brain_factory_init_pink_noise_subsystem(brain_t brain)
     brain->pink_noise = neuromod_pink_create(&pink_config);
     if (!brain->pink_noise) {
         set_error("Failed to create pink noise neuromodulator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_pink_noise_subsystem: brain->pink_noise is NULL");
         return false;
     }
 

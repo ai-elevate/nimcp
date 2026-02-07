@@ -101,7 +101,10 @@ void visual_generator_config_defaults(visual_generator_config_t* config)
 visual_generator_t* visual_generator_create(const visual_generator_config_t* config)
 {
     visual_generator_t* gen = nimcp_calloc(1, sizeof(visual_generator_t));
-    if (!gen) return NULL;
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_generator_create: gen is NULL");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -285,7 +288,10 @@ int visual_generate(visual_generator_t* gen,
                     const visual_generation_request_t* request,
                     visual_generation_result_t* result)
 {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -302,6 +308,7 @@ int visual_generate(visual_generator_t* gen,
         result->success = false;
         strncpy(result->error_message, "Failed to allocate image buffer",
                 sizeof(result->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_generate: result->image is NULL");
         return -1;
     }
 
@@ -326,6 +333,7 @@ int visual_generate(visual_generator_t* gen,
         nimcp_free(result->image.pixels);
         result->image.pixels = NULL;
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate: required parameter is NULL (latent, noise)");
         return -1;
     }
 
@@ -345,6 +353,7 @@ int visual_generate(visual_generator_t* gen,
         nimcp_free(result->image.pixels);
         result->image.pixels = NULL;
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate: required parameter is NULL (alphas, sigmas)");
         return -1;
     }
 
@@ -417,7 +426,10 @@ int visual_generate_extended(visual_generator_t* gen,
                              const visual_generation_request_ext_t* request,
                              visual_generation_result_t* result)
 {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate_extended: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     /* Convert to basic request and call visual_generate */
     visual_generation_request_t basic_req;
@@ -467,13 +479,19 @@ int visual_generate_batch(visual_generator_t* gen,
                           const visual_generation_request_ext_t* request,
                           visual_batch_result_t* result)
 {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_generate_batch: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     uint32_t batch_size = request->batch_size > 0 ? request->batch_size : 1;
     if (batch_size > 16) batch_size = 16;
 
     result->results = nimcp_calloc(batch_size, sizeof(visual_generation_result_t));
-    if (!result->results) return -1;
+    if (!result->results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_generate_batch: result->results is NULL");
+        return -1;
+    }
 
     result->num_results = batch_size;
     result->total_time_ms = 0.0f;
@@ -509,7 +527,10 @@ int visual_img2img(visual_generator_t* gen,
                    float strength,
                    visual_generation_result_t* result)
 {
-    if (!gen || !input || !result) return -1;
+    if (!gen || !input || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_img2img: required parameter is NULL (gen, input, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -522,6 +543,7 @@ int visual_img2img(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_img2img: result->image is NULL");
         return -1;
     }
 
@@ -563,8 +585,14 @@ int visual_inpaint(visual_generator_t* gen,
                    const char* prompt,
                    visual_generation_result_t* result)
 {
-    if (!gen || !image || !mask || !result) return -1;
-    if (image->width != mask->width || image->height != mask->height) return -1;
+    if (!gen || !image || !mask || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_inpaint: required parameter is NULL (gen, image, mask, result)");
+        return -1;
+    }
+    if (image->width != mask->width || image->height != mask->height) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_inpaint: validation failed");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -577,6 +605,7 @@ int visual_inpaint(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_inpaint: result->image is NULL");
         return -1;
     }
 
@@ -660,7 +689,10 @@ int visual_outpaint(visual_generator_t* gen,
                     const char* prompt,
                     visual_generation_result_t* result)
 {
-    if (!gen || !image || !direction || !result) return -1;
+    if (!gen || !image || !direction || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_outpaint: required parameter is NULL (gen, image, direction, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -694,6 +726,7 @@ int visual_outpaint(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_outpaint: result->image is NULL");
         return -1;
     }
 
@@ -772,7 +805,10 @@ int visual_style_transfer(visual_generator_t* gen,
                           float strength,
                           visual_generation_result_t* result)
 {
-    if (!gen || !content || !style_source || !result) return -1;
+    if (!gen || !content || !style_source || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_style_transfer: required parameter is NULL (gen, content, style_source, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -785,6 +821,7 @@ int visual_style_transfer(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_style_transfer: result->image is NULL");
         return -1;
     }
 
@@ -875,8 +912,14 @@ int visual_apply_archetype(visual_generator_t* gen,
                            float strength,
                            visual_generation_result_t* result)
 {
-    if (!gen || !content || !result) return -1;
-    if ((int)archetype < 0 || archetype >= STYLE_VIS_COUNT) return -1;
+    if (!gen || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_apply_archetype: required parameter is NULL (gen, content, result)");
+        return -1;
+    }
+    if ((int)archetype < 0 || archetype >= STYLE_VIS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "visual_apply_archetype: capacity exceeded");
+        return -1;
+    }
 
     memset(result, 0, sizeof(visual_generation_result_t));
 
@@ -889,6 +932,7 @@ int visual_apply_archetype(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_apply_archetype: result->image is NULL");
         return -1;
     }
 
@@ -1013,7 +1057,10 @@ int visual_upscale(visual_generator_t* gen,
                    uint32_t factor,
                    visual_generation_result_t* result)
 {
-    if (!gen || !image || !result) return -1;
+    if (!gen || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_upscale: required parameter is NULL (gen, image, result)");
+        return -1;
+    }
     if (factor < 2 || factor > 4) factor = 2;
 
     memset(result, 0, sizeof(visual_generation_result_t));
@@ -1029,6 +1076,7 @@ int visual_upscale(visual_generator_t* gen,
     result->image.pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
     if (!result->image.pixels) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_upscale: result->image is NULL");
         return -1;
     }
 
@@ -1088,12 +1136,21 @@ int visual_export_image(const visual_image_t* image,
                         const char* path,
                         const char* format)
 {
-    if (!image || !path || !format) return -1;
-    if (!image->pixels) return -1;
+    if (!image || !path || !format) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_export_image: required parameter is NULL (image, path, format)");
+        return -1;
+    }
+    if (!image->pixels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_export_image: image->pixels is NULL");
+        return -1;
+    }
 
     /* Placeholder: would use stb_image_write or similar in production */
     FILE* fp = fopen(path, "wb");
-    if (!fp) return -1;
+    if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_export_image: fp is NULL");
+        return -1;
+    }
 
     /* Write simple PPM format for now */
     if (strcmp(format, "ppm") == 0 || strcmp(format, "png") == 0) {
@@ -1125,7 +1182,10 @@ int visual_export_with_metadata(const visual_generation_result_t* result,
                                 const char* format,
                                 bool include_metadata)
 {
-    if (!result || !path || !format) return -1;
+    if (!result || !path || !format) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_export_with_metadata: required parameter is NULL (result, path, format)");
+        return -1;
+    }
 
     int rc = visual_export_image(&result->image, path, format);
     if (rc != 0) return rc;

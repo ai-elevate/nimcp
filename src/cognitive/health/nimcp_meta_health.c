@@ -207,6 +207,7 @@ meta_health_reflector_t* meta_health_create(
     reflector->applied_adjustments = nimcp_calloc(reflector->max_applied, sizeof(applied_adjustment_t));
     if (!reflector->applied_adjustments) {
         nimcp_free(reflector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->applied_adjustments is NULL");
         return NULL;
     }
     reflector->num_applied = 0;
@@ -217,6 +218,7 @@ meta_health_reflector_t* meta_health_create(
     if (!reflector->pending) {
         nimcp_free(reflector->applied_adjustments);
         nimcp_free(reflector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->pending is NULL");
         return NULL;
     }
     reflector->num_pending = 0;
@@ -229,6 +231,7 @@ meta_health_reflector_t* meta_health_create(
         nimcp_free(reflector->pending);
         nimcp_free(reflector->applied_adjustments);
         nimcp_free(reflector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_health_create: reflector->patterns is NULL");
         return NULL;
     }
     reflector->num_patterns = 0;
@@ -300,6 +303,7 @@ int meta_health_record_decision(
     const meta_health_decision_t* decision
 ) {
     if (!reflector || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_record_decision: required parameter is NULL (reflector, decision)");
         return -1;
     }
 
@@ -360,6 +364,7 @@ int meta_health_record_outcome(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_health_record_outcome: validation failed");
     return -1;  /* Decision not found */
 }
 
@@ -368,6 +373,7 @@ int meta_health_get_decision_log(
     meta_health_decision_log_t* log
 ) {
     if (!reflector || !log) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_get_decision_log: required parameter is NULL (reflector, log)");
         return -1;
     }
 
@@ -624,6 +630,7 @@ int meta_health_reflect(
     meta_health_reflection_result_t* result
 ) {
     if (!reflector || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_reflect: required parameter is NULL (reflector, result)");
         return -1;
     }
 
@@ -764,6 +771,7 @@ int meta_health_reflect_async(
     uint64_t* request_id
 ) {
     if (!reflector || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_reflect_async: required parameter is NULL (reflector, request_id)");
         return -1;
     }
 
@@ -772,6 +780,7 @@ int meta_health_reflect_async(
 
 
     if (reflector->num_pending >= reflector->max_pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_reflect_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -792,6 +801,7 @@ int meta_health_get_reflection_result(
     meta_health_reflection_result_t* result
 ) {
     if (!reflector || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_get_reflection_result: required parameter is NULL (reflector, result)");
         return -1;
     }
 
@@ -829,6 +839,7 @@ int meta_health_get_reflection_result(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_health_get_reflection_result: operation failed");
     return -1;  /* Not found */
 }
 
@@ -837,6 +848,7 @@ int meta_health_get_assessment(
     meta_health_assessment_t* assessment
 ) {
     if (!reflector || !assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_get_assessment: required parameter is NULL (reflector, assessment)");
         return -1;
     }
 
@@ -853,6 +865,7 @@ int meta_health_get_weaknesses(
     meta_health_weakness_t* weaknesses
 ) {
     if (!reflector || !weaknesses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_get_weaknesses: required parameter is NULL (reflector, weaknesses)");
         return -1;
     }
 
@@ -873,6 +886,7 @@ int meta_health_apply_learnings(
     const meta_health_reflection_result_t* result
 ) {
     if (!reflector || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_apply_learnings: required parameter is NULL (reflector, result)");
         return -1;
     }
 
@@ -920,6 +934,7 @@ int meta_health_apply_adjustment(
     const meta_health_adjustment_t* adjustment
 ) {
     if (!reflector || !adjustment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_apply_adjustment: required parameter is NULL (reflector, adjustment)");
         return -1;
     }
 
@@ -928,6 +943,7 @@ int meta_health_apply_adjustment(
 
 
     if (reflector->num_applied >= reflector->max_applied) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_apply_adjustment: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -950,6 +966,7 @@ int meta_health_register_pattern(
     const meta_health_pattern_t* pattern
 ) {
     if (!reflector || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_register_pattern: required parameter is NULL (reflector, pattern)");
         return -1;
     }
 
@@ -975,6 +992,7 @@ int meta_health_register_pattern(
     }
 
     if (reflector->num_patterns >= reflector->max_patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_health_register_pattern: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -1012,6 +1030,7 @@ int meta_health_get_stats(
     meta_health_stats_t* stats
 ) {
     if (!reflector || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_health_get_stats: required parameter is NULL (reflector, stats)");
         return -1;
     }
 

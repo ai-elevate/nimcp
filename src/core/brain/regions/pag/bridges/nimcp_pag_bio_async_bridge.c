@@ -107,6 +107,7 @@ static pag_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: operation failed");
     return NULL;
 }
 
@@ -131,7 +132,10 @@ static void init_header(
  * ============================================================================ */
 
 int pag_bio_async_default_config(pag_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(pag_bio_async_config_t));
 
@@ -179,6 +183,7 @@ pag_bio_async_bridge_t* pag_bio_async_bridge_create(
                                          sizeof(pag_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pag_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -207,8 +212,14 @@ int pag_bio_async_connect(
     void* pag,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
-    if (!pag) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_connect: pag is NULL");
+        return -1;
+    }
 
     bridge->pag = pag;
     bridge->router = router;
@@ -219,7 +230,10 @@ int pag_bio_async_connect(
 }
 
 int pag_bio_async_disconnect(pag_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->pag = NULL;
     bridge->router = NULL;
@@ -240,7 +254,10 @@ int pag_bio_async_process_inbox(
     pag_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -250,7 +267,10 @@ int pag_bio_async_process_inbox(
 }
 
 int pag_bio_async_update(pag_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -273,7 +293,10 @@ int pag_bio_async_broadcast_defense(
     float intensity,
     pag_bio_threat_level_t threat_level
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_defense: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_defense_broadcast) return 0;
 
     pag_bio_defense_msg_t msg = {0};
@@ -313,7 +336,10 @@ int pag_bio_async_broadcast_pain_mod(
     float descending_inhibition,
     float pain_intensity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_pain_mod: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_pain_broadcast) return 0;
 
     pag_bio_pain_mod_msg_t msg = {0};
@@ -345,7 +371,10 @@ int pag_bio_async_broadcast_emotion(
     float intensity,
     float valence
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_emotion: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_emotion_broadcast) return 0;
 
     pag_bio_emotion_msg_t msg = {0};
@@ -387,7 +416,10 @@ int pag_bio_async_broadcast_vocalization(
     float intensity,
     float urgency
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_vocalization: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_vocal_broadcast) return 0;
 
     pag_bio_vocal_msg_t msg = {0};
@@ -425,7 +457,10 @@ int pag_bio_async_broadcast_autonomic(
     float respiratory_mod,
     float muscle_tone
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_autonomic: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_autonomic_broadcast) return 0;
 
     pag_bio_autonomic_msg_t msg = {0};
@@ -462,7 +497,10 @@ int pag_bio_async_broadcast_threat(
     float intensity,
     pag_bio_defense_type_t recommended
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_broadcast_threat: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_threat_broadcast) return 0;
 
     pag_bio_threat_msg_t msg = {0};
@@ -499,7 +537,10 @@ int pag_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     pag_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
@@ -508,6 +549,7 @@ int pag_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -531,10 +573,16 @@ int pag_bio_async_unsubscribe_module(
     pag_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     pag_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     bridge->stats.active_subscriptions--;
@@ -547,10 +595,16 @@ int pag_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     pag_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -583,14 +637,20 @@ int pag_bio_async_get_stats(
     const pag_bio_async_bridge_t* bridge,
     pag_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int pag_bio_async_reset_stats(pag_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;

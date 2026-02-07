@@ -143,11 +143,13 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
     /* Guard: Validate required components */
     if (!executive) {
         NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL executive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: executive is NULL");
         return NULL;
     }
 
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create executive substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: substrate is NULL");
         return NULL;
     }
 
@@ -160,6 +162,7 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
         (executive_substrate_bridge_t*)nimcp_malloc(sizeof(executive_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate executive substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -182,12 +185,14 @@ executive_substrate_bridge_t* executive_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -283,12 +288,14 @@ int executive_substrate_connect_bio_async(executive_substrate_bridge_t* bridge)
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_substrate_connect_bio_async: validation failed");
     return -1;
 }
 
 int executive_substrate_disconnect_bio_async(executive_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_substrate_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
@@ -321,6 +328,7 @@ bool executive_substrate_is_bio_async_connected(const executive_substrate_bridge
 int executive_substrate_update(executive_substrate_bridge_t* bridge)
 {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_substrate_update: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -340,6 +348,7 @@ int executive_substrate_update(executive_substrate_bridge_t* bridge)
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_substrate_update: validation failed");
         return -1;
     }
 
@@ -601,6 +610,7 @@ executive_substrate_effects_t executive_substrate_get_effects(
 bool executive_substrate_is_impaired(const executive_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_substrate_is_impaired: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

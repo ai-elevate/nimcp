@@ -657,6 +657,7 @@ int dist_broadcast(
     dist_group_t* group
 ) {
     if (!ctx || !params || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_broadcast: required parameter is NULL (ctx, params)");
         return -1;
     }
 
@@ -726,6 +727,7 @@ int dist_all_gather(
     dist_group_t* group
 ) {
     if (!ctx || !send_tensor || !recv_tensors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_all_gather: required parameter is NULL (ctx, send_tensor, recv_tensors)");
         return -1;
     }
 
@@ -759,6 +761,7 @@ int dist_reduce_scatter(
     dist_group_t* group
 ) {
     if (!ctx || !tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_reduce_scatter: required parameter is NULL (ctx, tensor)");
         return -1;
     }
 
@@ -798,6 +801,7 @@ int dist_federated_start_round(dist_ctx_t* ctx, uint32_t round_num) {
     }
 
     if (ctx->config.strategy != DIST_STRATEGY_FEDERATED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_federated_start_round: validation failed");
         return -1;
     }
 
@@ -832,10 +836,12 @@ int dist_federated_submit_update(
     uint32_t num_samples
 ) {
     if (!ctx || !local_weights || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_federated_submit_update: required parameter is NULL (ctx, local_weights)");
         return -1;
     }
 
     if (ctx->config.strategy != DIST_STRATEGY_FEDERATED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_federated_submit_update: validation failed");
         return -1;
     }
 
@@ -852,6 +858,7 @@ int dist_federated_submit_update(
         update->weights = nimcp_calloc(count, sizeof(float));
         if (!update->weights) {
             nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dist_federated_submit_update: update->weights is NULL");
             return -1;
         }
         update->count = count;
@@ -899,14 +906,17 @@ int dist_federated_aggregate(
     size_t count
 ) {
     if (!ctx || !global_weights || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_federated_aggregate: required parameter is NULL (ctx, global_weights)");
         return -1;
     }
 
     if (ctx->config.strategy != DIST_STRATEGY_FEDERATED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_federated_aggregate: validation failed");
         return -1;
     }
 
     if (!dist_is_coordinator(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_federated_aggregate: dist_is_coordinator is NULL");
         return -1;  /* Only coordinator aggregates */
     }
 
@@ -928,6 +938,7 @@ int dist_federated_aggregate(
 
     if (num_clients == 0 || total_samples == 0) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_federated_aggregate: num_clients is zero");
         return -1;
     }
 
@@ -1005,6 +1016,7 @@ int dist_federated_receive_global(
     size_t count
 ) {
     if (!ctx || !global_weights || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_federated_receive_global: required parameter is NULL (ctx, global_weights)");
         return -1;
     }
 
@@ -1018,6 +1030,7 @@ int dist_federated_receive_global(
 
 int dist_connect_bio_async(dist_ctx_t* ctx, bio_router_t* router) {
     if (!ctx || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_connect_bio_async: required parameter is NULL (ctx, router)");
         return -1;
     }
 
@@ -1041,6 +1054,7 @@ int dist_connect_gradient_manager(
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
     if (!ctx || !grad_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_connect_gradient_manager: required parameter is NULL (ctx, grad_manager)");
         return -1;
     }
 
@@ -1053,6 +1067,7 @@ int dist_connect_gradient_manager(
 
 int dist_connect_brain_training(dist_ctx_t* ctx, void* brain_training) {
     if (!ctx || !brain_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_connect_brain_training: required parameter is NULL (ctx, brain_training)");
         return -1;
     }
 
@@ -1069,6 +1084,7 @@ int dist_connect_brain_training(dist_ctx_t* ctx, void* brain_training) {
 
 int dist_get_stats(const dist_ctx_t* ctx, dist_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -1137,6 +1153,7 @@ uint32_t dist_get_world_size(const dist_ctx_t* ctx) {
 
 bool dist_is_coordinator(const dist_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_is_coordinator: ctx is NULL");
         return false;
     }
     return ctx->config.worker.role == DIST_ROLE_COORDINATOR;
@@ -1151,22 +1168,26 @@ int dist_validate_config(const dist_config_t* config) {
 
     /* Validate strategy */
     if (config->strategy >= DIST_STRATEGY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate backend */
     if (config->backend >= DIST_BACKEND_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate worker config */
     if (config->worker.world_size == 0 ||
         config->worker.rank >= config->worker.world_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate compression */
     if (config->compression.method >= DIST_COMPRESS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dist_validate_config: capacity exceeded");
         return -1;
     }
 
@@ -1174,17 +1195,20 @@ int dist_validate_config(const dist_config_t* config) {
     if (config->strategy == DIST_STRATEGY_FEDERATED) {
         if (config->federated.local_epochs == 0 ||
             config->federated.num_rounds == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
             return -1;
         }
 
         if (config->federated.client_fraction <= 0.0f ||
             config->federated.client_fraction > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
             return -1;
         }
 
         if (config->federated.differential_privacy) {
             if (config->federated.dp_epsilon <= 0.0f ||
                 config->federated.max_grad_norm <= 0.0f) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_validate_config: validation failed");
                 return -1;
             }
         }
@@ -1279,6 +1303,7 @@ int dist_set_dynamic_bucket_size(
     size_t total_params
 ) {
     if (!ctx || total_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_set_dynamic_bucket_size: ctx is NULL");
         return -1;
     }
 
@@ -1311,6 +1336,7 @@ int dist_set_dynamic_bucket_size(
  */
 static int ring_all_reduce(dist_ctx_t* ctx, float* buffer, size_t count) {
     if (!ctx || !buffer || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_all_reduce: required parameter is NULL (ctx, buffer)");
         return -1;
     }
 
@@ -1333,13 +1359,17 @@ static int ring_all_reduce(dist_ctx_t* ctx, float* buffer, size_t count) {
     size_t cksz = count / world_size;
     size_t rem = count % world_size;
     float* rbuf = nimcp_calloc(cksz + 1, sizeof(float));
-    if (!rbuf) return -1;
+    if (!rbuf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ring_all_reduce: rbuf is NULL");
+        return -1;
+    }
     size_t* offs = nimcp_calloc(world_size, sizeof(size_t));
     size_t* szs = nimcp_calloc(world_size, sizeof(size_t));
     if (!offs || !szs) {
         nimcp_free(rbuf);
         if (offs) nimcp_free(offs);
         if (szs) nimcp_free(szs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_all_reduce: validation failed");
         return -1;
     }
     size_t o = 0;
@@ -1372,6 +1402,7 @@ static int ring_all_reduce(dist_ctx_t* ctx, float* buffer, size_t count) {
  */
 static int tree_broadcast(dist_ctx_t* ctx, float* buffer, size_t count, uint32_t root) {
     if (!ctx || !buffer || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tree_broadcast: required parameter is NULL (ctx, buffer)");
         return -1;
     }
 
@@ -1399,6 +1430,7 @@ static int apply_compression(
     size_t* compressed_count
 ) {
     if (!ctx || !buffer || count == 0 || !compressed || !compressed_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_compression: required parameter is NULL (ctx, buffer, compressed, compressed_count)");
         return -1;
     }
 
@@ -1406,7 +1438,10 @@ static int apply_compression(
         case DIST_COMPRESS_FP16:
             /* Quantize to FP16 */
             *compressed = nimcp_calloc(count, sizeof(float));
-            if (!*compressed) return -1;
+            if (!*compressed) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_compression: validation failed");
+                return -1;
+            }
             memcpy(*compressed, buffer, count * sizeof(float));
             *compressed_count = count;
             break;
@@ -1432,6 +1467,7 @@ static int apply_compression(
             if (!indices || !magnitudes) {
                 if (indices) nimcp_free(indices);
                 if (magnitudes) nimcp_free(magnitudes);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_compression: validation failed");
                 return -1;
             }
 
@@ -1463,6 +1499,7 @@ static int apply_compression(
             if (!*compressed) {
                 nimcp_free(indices);
                 nimcp_free(magnitudes);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_compression: validation failed");
                 return -1;
             }
 
@@ -1472,6 +1509,7 @@ static int apply_compression(
                 nimcp_free(*compressed);
                 nimcp_free(indices);
                 nimcp_free(magnitudes);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "apply_compression: selected is NULL");
                 return -1;
             }
 
@@ -1520,7 +1558,10 @@ static int apply_compression(
             }
 
             *compressed = nimcp_calloc(above * 2, sizeof(float));
-            if (!*compressed) return -1;
+            if (!*compressed) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_compression: validation failed");
+                return -1;
+            }
 
             size_t idx = 0;
             for (size_t i = 0; i < count; i++) {
@@ -1565,6 +1606,7 @@ static int apply_decompression(
     size_t count
 ) {
     if (!ctx || !buffer || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_decompression: required parameter is NULL (ctx, buffer)");
         return -1;
     }
 

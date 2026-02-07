@@ -190,6 +190,7 @@ striatal_interneurons_t* sint_create(const sint_config_t* config) {
 
 cleanup:
     sint_destroy(sint);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_create: operation failed");
     return NULL;
 }
 
@@ -209,7 +210,10 @@ void sint_destroy(striatal_interneurons_t* sint) {
 }
 
 int sint_reset(striatal_interneurons_t* sint) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_reset: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -267,7 +271,10 @@ int sint_reset(striatal_interneurons_t* sint) {
 int sint_set_cortical_input(striatal_interneurons_t* sint,
                              const float* cortical,
                              uint32_t size) {
-    if (!sint || !cortical) return -1;
+    if (!sint || !cortical) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_reset: required parameter is NULL (sint, cortical)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -292,7 +299,10 @@ int sint_set_cortical_input(striatal_interneurons_t* sint,
 }
 
 int sint_set_dopamine(striatal_interneurons_t* sint, float dopamine) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_set_dopamine: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
     sint->dopamine_level = clamp_f(dopamine, 0.0f, 1.0f);
@@ -301,7 +311,10 @@ int sint_set_dopamine(striatal_interneurons_t* sint, float dopamine) {
 }
 
 int sint_signal_salience(striatal_interneurons_t* sint, float salience) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_signal_salience: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -324,7 +337,10 @@ int sint_signal_salience(striatal_interneurons_t* sint, float salience) {
 }
 
 int sint_set_thalamic_input(striatal_interneurons_t* sint, float input) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_set_thalamic_input: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
     sint->thalamic_input = clamp_f(input, 0.0f, 1.0f);
@@ -337,7 +353,10 @@ int sint_set_thalamic_input(striatal_interneurons_t* sint, float input) {
  * ============================================================================ */
 
 int sint_step(striatal_interneurons_t* sint, float dt_ms) {
-    if (!sint || dt_ms <= 0) return -1;
+    if (!sint || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sint_step: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -494,7 +513,10 @@ int sint_step(striatal_interneurons_t* sint, float dt_ms) {
 }
 
 int sint_get_output(const striatal_interneurons_t* sint, sint_output_t* output) {
-    if (!sint || !output) return -1;
+    if (!sint || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_get_output: required parameter is NULL (sint, output)");
+        return -1;
+    }
 
     output->msn_inhibition = sint->msn_inhibition;
     output->ach_level = sint->ach_level;
@@ -525,7 +547,10 @@ float sint_get_ach_level(const striatal_interneurons_t* sint) {
 }
 
 bool sint_is_tan_pausing(const striatal_interneurons_t* sint) {
-    if (!sint) return false;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_is_tan_pausing: sint is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < sint->num_tan; i++) {
         if (sint->tan_units[i].state == SINT_TAN_STATE_PAUSING) {
@@ -542,7 +567,10 @@ bool sint_is_tan_pausing(const striatal_interneurons_t* sint) {
 int sint_get_fsi_activity(const striatal_interneurons_t* sint,
                            float* activity,
                            uint32_t* count) {
-    if (!sint || !activity || !count) return -1;
+    if (!sint || !activity || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_is_tan_pausing: required parameter is NULL (sint, activity, count)");
+        return -1;
+    }
 
     *count = sint->num_fsi;
     for (uint32_t i = 0; i < sint->num_fsi; i++) {
@@ -552,7 +580,10 @@ int sint_get_fsi_activity(const striatal_interneurons_t* sint,
 }
 
 int sint_apply_fsi_lateral_inhibition(striatal_interneurons_t* sint) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_apply_fsi_lateral_inhibition: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -577,7 +608,10 @@ int sint_apply_fsi_lateral_inhibition(striatal_interneurons_t* sint) {
 int sint_get_wta_winner(const striatal_interneurons_t* sint,
                          uint32_t* winner_idx,
                          float* winner_strength) {
-    if (!sint || !winner_idx || !winner_strength) return -1;
+    if (!sint || !winner_idx || !winner_strength) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_apply_fsi_lateral_inhibition: required parameter is NULL (sint, winner_idx, winner_strength)");
+        return -1;
+    }
 
     *winner_idx = sint->wta_winner;
     *winner_strength = sint->wta_strength;
@@ -596,7 +630,10 @@ sint_tan_state_t sint_get_tan_state(const striatal_interneurons_t* sint) {
 }
 
 int sint_force_tan_pause(striatal_interneurons_t* sint, float duration_ms) {
-    if (!sint) return -1;
+    if (!sint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_force_tan_pause: sint is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sint->mutex);
 
@@ -628,7 +665,10 @@ float sint_get_tan_pause_depth(const striatal_interneurons_t* sint) {
  * ============================================================================ */
 
 int sint_get_stats(const striatal_interneurons_t* sint, sint_stats_t* stats) {
-    if (!sint || !stats) return -1;
+    if (!sint || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint_get_stats: required parameter is NULL (sint, stats)");
+        return -1;
+    }
     *stats = sint->stats;
     return 0;
 }

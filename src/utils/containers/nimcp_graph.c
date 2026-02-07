@@ -53,6 +53,7 @@ static NimcpEdgeNode* create_edge_node(uint32_t dest, nimcp_weight_t weight)
     // Validate edge weight
     // WHY: Ensure weight is valid float (no NaN/Inf, within range)
     if (!nimcp_validate_float_field(&weight, sizeof(nimcp_weight_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_edge_node: nimcp_validate_float_field is NULL");
         return NULL;
     }
 
@@ -257,6 +258,7 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
     LOG_DEBUG("Entering nimcp_graph_remove_vertex");
     if (!graph) {
         LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_remove_vertex: graph is NULL");
         return false;
     }
 
@@ -266,6 +268,7 @@ bool nimcp_graph_remove_vertex(NimcpGraph* graph, uint32_t vertex_idx)
     if (vertex_idx >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_remove_vertex failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_remove_vertex: capacity exceeded");
         return false;
     }
 
@@ -329,6 +332,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
     LOG_DEBUG("Entering nimcp_graph_add_edge");
     if (!graph) {
         LOG_ERROR("nimcp_graph_add_edge failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_add_edge: graph is NULL");
         return false;
     }
 
@@ -339,6 +343,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
         graph->edge_count >= NIMCP_MAX_EDGES) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_add_edge failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_add_edge: operation failed");
         return false;
     }
 
@@ -358,6 +363,7 @@ bool nimcp_graph_add_edge(NimcpGraph* graph, uint32_t from, uint32_t to, nimcp_w
     if (!new_edge) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_add_edge failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_add_edge: new_edge is NULL");
         return false;
     }
 
@@ -381,6 +387,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
     LOG_DEBUG("Entering nimcp_graph_remove_edge");
     if (!graph) {
         LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_remove_edge: graph is NULL");
         return false;
     }
 
@@ -390,6 +397,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
         LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_remove_edge: capacity exceeded");
         return false;
     }
 
@@ -410,6 +418,7 @@ bool nimcp_graph_remove_edge(NimcpGraph* graph, uint32_t from, uint32_t to)
 
     nimcp_mutex_unlock(&graph->lock);
     LOG_ERROR("nimcp_graph_remove_edge failed: returning error");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_remove_edge: operation failed");
     return false;
 }
 
@@ -424,6 +433,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     LOG_DEBUG("Entering nimcp_graph_shortest_path");
     if (!graph) {
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_shortest_path: graph is NULL");
         return NULL;
     }
 
@@ -435,6 +445,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&g->lock);
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_shortest_path: capacity exceeded");
         return NULL;
     }
 
@@ -449,6 +460,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
         nimcp_free(previous);
         nimcp_free(visited);
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_shortest_path: required parameter is NULL (distances, previous, visited)");
         return NULL;
     }
 
@@ -469,6 +481,7 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
         nimcp_free(visited);
         nimcp_mutex_unlock(&g->lock);
         LOG_ERROR("nimcp_graph_shortest_path failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_shortest_path: heap is NULL");
         return NULL;
     }
 
@@ -578,14 +591,17 @@ NimcpPath* nimcp_graph_shortest_path(const NimcpGraph* graph, uint32_t from, uin
 bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, float x, float y,
                                     float z)
 {
-    if (!graph)
+    if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_update_coordinates: graph is NULL");
         return false;
+    }
 
     // Validate coordinates before locking
     // WHY: Ensure coordinates are valid floats (no NaN/Inf, within range)
     if (!nimcp_validate_float_field(&x, sizeof(float)) ||
         !nimcp_validate_float_field(&y, sizeof(float)) ||
         !nimcp_validate_float_field(&z, sizeof(float))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_update_coordinates: nimcp_validate_float_field is NULL");
         return false;
     }
 
@@ -594,6 +610,7 @@ bool nimcp_graph_update_coordinates(NimcpGraph* graph, uint32_t vertex_idx, floa
     // Guard clause: validate vertex index
     if (vertex_idx >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_update_coordinates: capacity exceeded");
         return false;
     }
 
@@ -709,8 +726,10 @@ uint32_t nimcp_graph_get_neighbors(const NimcpGraph* graph, uint32_t vertex_idx,
 bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_t to,
                                  nimcp_weight_t* weight)
 {
-    if (!graph || !weight)
+    if (!graph || !weight) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_get_edge_weight: required parameter is NULL (graph, weight)");
         return false;
+    }
 
     // Cast away const to lock (read-only operation)
     NimcpGraph* g = (NimcpGraph*) graph;
@@ -719,6 +738,7 @@ bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_
     // Guard clauses: validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&g->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_get_edge_weight: capacity exceeded");
         return false;
     }
 
@@ -733,6 +753,7 @@ bool nimcp_graph_get_edge_weight(const NimcpGraph* graph, uint32_t from, uint32_
     }
 
     nimcp_mutex_unlock(&g->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_get_edge_weight: validation failed");
     return false;
 }
 
@@ -816,7 +837,10 @@ static uint32_t nimcp_graph_quantum_search(NimcpGraph* graph, uint32_t start, ui
 NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t to)
 {
     // Guard clauses
-    if (!graph) return NULL;
+    if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_quantum_path: graph is NULL");
+        return NULL;
+    }
     if (!graph->enable_quantum_walk || !graph->quantum_bridge) {
         // Fall back to classical Dijkstra
         return nimcp_graph_shortest_path(graph, from, to);
@@ -827,6 +851,7 @@ NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t t
     // Validate indices
     if (from >= graph->vertex_count || to >= graph->vertex_count) {
         nimcp_mutex_unlock(&graph->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_graph_quantum_path: capacity exceeded");
         return NULL;
     }
 
@@ -842,6 +867,7 @@ NimcpPath* nimcp_graph_quantum_path(NimcpGraph* graph, uint32_t from, uint32_t t
     }
 
     NIMCP_LOGGING_DEBUG("Quantum search found no path");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_quantum_path: validation failed");
     return NULL;
 }
 

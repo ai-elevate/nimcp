@@ -141,6 +141,7 @@ static int init_qubo_matrix(homeostatic_qubo_t* qubo, uint32_t size) {
     qubo->qubo_matrix = (float*)nimcp_calloc(matrix_elements, sizeof(float));
     if (!qubo->qubo_matrix) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate QUBO matrix");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_qubo_matrix: qubo->qubo_matrix is NULL");
         return -1;
     }
 
@@ -150,6 +151,7 @@ static int init_qubo_matrix(homeostatic_qubo_t* qubo, uint32_t size) {
         nimcp_free(qubo->qubo_matrix);
         qubo->qubo_matrix = NULL;
         LOG_ERROR(LOG_MODULE, "Failed to allocate linear terms");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_qubo_matrix: qubo->linear_terms is NULL");
         return -1;
     }
 
@@ -194,7 +196,10 @@ static size_t qubo_index(uint32_t i, uint32_t j, uint32_t size) {
 static int formulate_qubo(hypothalamus_quantum_bridge_t* bridge,
                            const homeostatic_objective_t* objective,
                            const regulatory_constraint_t* constraints) {
-    if (!bridge || !objective) return -1;
+    if (!bridge || !objective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qubo_index: required parameter is NULL (bridge, objective)");
+        return -1;
+    }
 
     homeostatic_qubo_t* qubo = &bridge->qubo;
     uint32_t n = qubo->qubo_size;
@@ -304,7 +309,10 @@ static int solve_qubo_simulated_annealing(
     hypothalamus_quantum_bridge_t* bridge,
     optimization_result_t* result) {
 
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qubo_index: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     homeostatic_qubo_t* qubo = &bridge->qubo;
     uint32_t n = qubo->qubo_size;
@@ -315,6 +323,7 @@ static int solve_qubo_simulated_annealing(
     if (!solution || !best_solution) {
         if (solution) nimcp_free(solution);
         if (best_solution) nimcp_free(best_solution);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qubo_index: validation failed");
         return -1;
     }
 
@@ -501,6 +510,7 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
     /* Initialize QUBO matrix */
     if (init_qubo_matrix(&bridge->qubo, bridge->config.num_qubits) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypothalamus_quantum_default_config: validation failed");
         return NULL;
     }
 
@@ -579,6 +589,7 @@ int hypothalamus_quantum_optimize_homeostasis(
 
     if (bridge->config.mode == HYPOTHALAMUS_QUANTUM_MODE_DISABLED) {
         LOG_DEBUG(LOG_MODULE, "Quantum mode disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_bridge_reset: validation failed");
         return -1;
     }
 
@@ -599,6 +610,7 @@ int hypothalamus_quantum_optimize_homeostasis(
     /* Formulate QUBO */
     if (formulate_qubo(bridge, objective, constraints) != 0) {
         LOG_ERROR(LOG_MODULE, "Failed to formulate QUBO");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_bridge_reset: validation failed");
         return -1;
     }
 
@@ -610,6 +622,7 @@ int hypothalamus_quantum_optimize_homeostasis(
     if (ret != 0) {
         LOG_ERROR(LOG_MODULE, "QUBO solving failed");
         bridge->stats.classical_fallbacks++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_bridge_reset: validation failed");
         return -1;
     }
 
@@ -708,6 +721,7 @@ int hypothalamus_quantum_evaluate_autonomic(
 
     if (input->num_candidates == 0) {
         LOG_WARNING(LOG_MODULE, "No candidates to evaluate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_bridge_reset: input->num_candidates is zero");
         return -1;
     }
 
@@ -722,6 +736,7 @@ int hypothalamus_quantum_evaluate_autonomic(
         input->num_candidates, sizeof(float));
     if (!result->candidate_scores) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate score array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypothalamus_quantum_bridge_reset: result->candidate_scores is NULL");
         return -1;
     }
 
@@ -1020,6 +1035,7 @@ int hypothalamus_quantum_update(hypothalamus_quantum_bridge_t* bridge,
     /* Rate limiting */
     hypothalamus_state_t state;
     if (!hypothalamus_get_state(bridge->hypothalamus, &state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: hypothalamus_get_state is NULL");
         return -1;
     }
 
@@ -1086,7 +1102,10 @@ int hypothalamus_quantum_get_stats(
 bool hypothalamus_quantum_is_available(
     const hypothalamus_quantum_bridge_t* bridge) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return false;
+    }
     return bridge->config.mode != HYPOTHALAMUS_QUANTUM_MODE_DISABLED;
 }
 

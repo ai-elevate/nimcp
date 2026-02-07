@@ -526,6 +526,7 @@ bool portia_swarm_is_bio_async_connected(const portia_swarm_bridge_t* bridge) {
      * HOW:  Return bio_async_enabled flag
      */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_swarm_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -925,6 +926,7 @@ bool portia_swarm_consensus_supports_tier(
      * HOW:  Query consensus module or check cached recommendation
      */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_swarm_consensus_supports_tier: bridge is NULL");
         return false;
     }
 

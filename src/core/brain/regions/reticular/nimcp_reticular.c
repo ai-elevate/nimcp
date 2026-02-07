@@ -309,6 +309,7 @@ nimcp_reticular_t* reticular_create(const reticular_config_t* config) {
     if (!reticular->mutex) {
         NIMCP_LOG_ERROR(RETICULAR_LOG_TAG, "Failed to create mutex");
         nimcp_free(reticular);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_create: reticular->mutex is NULL");
         return NULL;
     }
 
@@ -482,7 +483,10 @@ int reticular_reset(nimcp_reticular_t* reticular) {
  *===========================================================================*/
 
 int reticular_update_arousal(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular || !reticular->initialized) return -1;
+    if (!reticular || !reticular->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_update_arousal: required parameter is NULL (reticular, reticular->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -699,7 +703,10 @@ float reticular_get_modulator(const nimcp_reticular_t* reticular,
 int reticular_set_modulator_release(nimcp_reticular_t* reticular,
                                     reticular_modulator_t modulator,
                                     float rate) {
-    if (!reticular || modulator >= RETICULAR_MODULATOR_COUNT) return -1;
+    if (!reticular || modulator >= RETICULAR_MODULATOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_wake: reticular is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->modulators[modulator].release_rate = rate;
@@ -710,7 +717,10 @@ int reticular_set_modulator_release(nimcp_reticular_t* reticular,
 
 int reticular_get_all_modulators(const nimcp_reticular_t* reticular,
                                  reticular_modulator_state_t* states) {
-    if (!reticular || !states) return -1;
+    if (!reticular || !states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_wake: required parameter is NULL (reticular, states)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_reticular_t*)reticular)->mutex);
     memcpy(states, reticular->modulators,
@@ -722,7 +732,10 @@ int reticular_get_all_modulators(const nimcp_reticular_t* reticular,
 
 int reticular_compute_modulator_effects(nimcp_reticular_t* reticular,
                                         float* arousal_delta) {
-    if (!reticular || !arousal_delta) return -1;
+    if (!reticular || !arousal_delta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_wake: required parameter is NULL (reticular, arousal_delta)");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -772,7 +785,10 @@ int reticular_stimulate_nucleus(nimcp_reticular_t* reticular,
                                 reticular_nucleus_t nucleus,
                                 float excitation,
                                 float inhibition) {
-    if (!reticular || nucleus >= RETICULAR_NUCLEUS_COUNT) return -1;
+    if (!reticular || nucleus >= RETICULAR_NUCLEUS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_wake: reticular is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -786,7 +802,10 @@ int reticular_stimulate_nucleus(nimcp_reticular_t* reticular,
 int reticular_get_nucleus_state(const nimcp_reticular_t* reticular,
                                 reticular_nucleus_t nucleus,
                                 reticular_nucleus_state_t* state) {
-    if (!reticular || !state || nucleus >= RETICULAR_NUCLEUS_COUNT) return -1;
+    if (!reticular || !state || nucleus >= RETICULAR_NUCLEUS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_wake: required parameter is NULL (reticular, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_reticular_t*)reticular)->mutex);
     memcpy(state, &reticular->nuclei[nucleus], sizeof(reticular_nucleus_state_t));
@@ -852,7 +871,10 @@ float reticular_get_autonomic_balance(const nimcp_reticular_t* reticular,
 int reticular_set_autonomic_setpoint(nimcp_reticular_t* reticular,
                                      reticular_autonomic_t function,
                                      float setpoint) {
-    if (!reticular || function >= RETICULAR_AUTONOMIC_COUNT) return -1;
+    if (!reticular || function >= RETICULAR_AUTONOMIC_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_update_autonomic: reticular is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->autonomic[function].setpoint = clamp_f(setpoint, 0.0f, 1.0f);
@@ -920,7 +942,10 @@ int reticular_apply_parasympathetic_drive(nimcp_reticular_t* reticular, float in
 int reticular_trigger_reflex(nimcp_reticular_t* reticular,
                              reticular_reflex_t reflex,
                              float stimulus) {
-    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) return -1;
+    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -951,14 +976,20 @@ int reticular_trigger_reflex(nimcp_reticular_t* reticular,
 
 bool reticular_is_reflex_active(const nimcp_reticular_t* reticular,
                                 reticular_reflex_t reflex) {
-    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) return false;
+    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
+        return false;
+    }
     return reticular->reflexes[reflex].active;
 }
 
 int reticular_set_reflex_threshold(nimcp_reticular_t* reticular,
                                    reticular_reflex_t reflex,
                                    float threshold) {
-    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) return -1;
+    if (!reticular || reflex >= RETICULAR_REFLEX_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_apply_parasympathetic_drive: reticular is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->reflexes[reflex].threshold = clamp_f(threshold, 0.1f, 1.0f);
@@ -970,7 +1001,10 @@ int reticular_set_reflex_threshold(nimcp_reticular_t* reticular,
 int reticular_get_reflex_state(const nimcp_reticular_t* reticular,
                                reticular_reflex_t reflex,
                                reticular_reflex_state_t* state) {
-    if (!reticular || !state || reflex >= RETICULAR_REFLEX_COUNT) return -1;
+    if (!reticular || !state || reflex >= RETICULAR_REFLEX_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_apply_parasympathetic_drive: required parameter is NULL (reticular, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_reticular_t*)reticular)->mutex);
     memcpy(state, &reticular->reflexes[reflex], sizeof(reticular_reflex_state_t));
@@ -1355,7 +1389,10 @@ float reticular_get_sleep_propensity(const nimcp_reticular_t* reticular) {
 int reticular_kg_register(nimcp_reticular_t* reticular,
                           struct nimcp_brain_kg* kg,
                           uint64_t admin_token) {
-    if (!reticular || !kg) return -1;
+    if (!reticular || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_get_sleep_propensity: required parameter is NULL (reticular, kg)");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1415,8 +1452,14 @@ int reticular_kg_unregister(nimcp_reticular_t* reticular) {
 
 int reticular_kg_query(nimcp_reticular_t* reticular, const char* query,
                        void* result, size_t result_size) {
-    if (!reticular || !query || !result) return -1;
-    if (!reticular->kg_state.registered) return -1;
+    if (!reticular || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_unregister: required parameter is NULL (reticular, query, result)");
+        return -1;
+    }
+    if (!reticular->kg_state.registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_unregister: reticular->kg_state is NULL");
+        return -1;
+    }
 
     /* Query KG - actual implementation would use KG API */
     (void)result_size;
@@ -1430,7 +1473,10 @@ int reticular_kg_query(nimcp_reticular_t* reticular, const char* query,
 
 int reticular_bio_async_connect(nimcp_reticular_t* reticular,
                                 struct nimcp_bio_router* router) {
-    if (!reticular || !router) return -1;
+    if (!reticular || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_kg_unregister: required parameter is NULL (reticular, router)");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1469,7 +1515,10 @@ int reticular_bio_async_broadcast(nimcp_reticular_t* reticular,
                                   reticular_bio_msg_type_t msg_type,
                                   const void* payload,
                                   size_t payload_size) {
-    if (!reticular || !reticular->bio_router) return -1;
+    if (!reticular || !reticular->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bio_async_disconnect: required parameter is NULL (reticular, reticular->bio_router)");
+        return -1;
+    }
 
     reticular->stats.bio_msgs_sent++;
 
@@ -1483,7 +1532,10 @@ int reticular_bio_async_broadcast(nimcp_reticular_t* reticular,
 
 int reticular_bio_async_subscribe(nimcp_reticular_t* reticular,
                                   uint32_t subscription_mask) {
-    if (!reticular || !reticular->bio_router) return -1;
+    if (!reticular || !reticular->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bio_async_disconnect: required parameter is NULL (reticular, reticular->bio_router)");
+        return -1;
+    }
 
     /* Subscribe to messages */
     (void)subscription_mask;
@@ -1726,7 +1778,10 @@ int reticular_substrate_connect(nimcp_reticular_t* reticular,
  *===========================================================================*/
 
 int reticular_update(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular || !reticular->initialized) return -1;
+    if (!reticular || !reticular->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_update: required parameter is NULL (reticular, reticular->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1793,7 +1848,10 @@ int reticular_update(nimcp_reticular_t* reticular, float dt) {
 
 int reticular_get_stats(const nimcp_reticular_t* reticular,
                         reticular_stats_t* stats) {
-    if (!reticular || !stats) return -1;
+    if (!reticular || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_update: required parameter is NULL (reticular, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_reticular_t*)reticular)->mutex);
     memcpy(stats, &reticular->stats, sizeof(reticular_stats_t));
@@ -1823,7 +1881,10 @@ int reticular_reset_stats(nimcp_reticular_t* reticular) {
  *===========================================================================*/
 
 int reticular_qmc_optimize_arousal(nimcp_reticular_t* reticular) {
-    if (!reticular || !reticular->qmc) return -1;
+    if (!reticular || !reticular->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_qmc_optimize_arousal: required parameter is NULL (reticular, reticular->qmc)");
+        return -1;
+    }
 
     /* Use QMC for arousal optimization - actual implementation would use QMC API */
 
@@ -1834,7 +1895,10 @@ int reticular_qmc_optimize_arousal(nimcp_reticular_t* reticular) {
 int reticular_qmcts_predict_state(nimcp_reticular_t* reticular,
                                   uint32_t num_iterations,
                                   reticular_arousal_state_t* predicted_state) {
-    if (!reticular || !predicted_state || !reticular->qmc) return -1;
+    if (!reticular || !predicted_state || !reticular->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_qmc_optimize_arousal: required parameter is NULL (reticular, predicted_state, reticular->qmc)");
+        return -1;
+    }
 
     /* Use QMCTS for state prediction - actual implementation would use QMCTS API */
 

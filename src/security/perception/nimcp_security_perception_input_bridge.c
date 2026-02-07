@@ -212,7 +212,10 @@ static bool detect_ultrasonic_content(
 ) {
     /* Simplified ultrasonic detection: check for high-frequency oscillations */
     /* Human hearing range is 20Hz-20kHz; ultrasonic is > 20kHz */
-    if (num_samples < 4 || sample_rate < 40000) return false;
+    if (num_samples < 4 || sample_rate < 40000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_ultrasonic_content: validation failed");
+        return false;
+    }
 
     /* Count zero crossings - high count suggests high frequency content */
     uint32_t zero_crossings = 0;
@@ -241,7 +244,10 @@ static bool detect_adversarial_visual_pattern(
     uint32_t height,
     uint32_t channels
 ) {
-    if (!pixels || width < 8 || height < 8) return false;
+    if (!pixels || width < 8 || height < 8) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_adversarial_visual_pattern: pixels is NULL");
+        return false;
+    }
 
     /* Check for repeating patterns (potential adversarial patches) */
     /* Look for grid-like patterns with specific stride */

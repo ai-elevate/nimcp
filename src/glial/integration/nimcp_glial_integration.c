@@ -66,6 +66,7 @@ static id_list_t* id_list_create(void) {
     list->ids = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * list->capacity);
     if (!list->ids) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "id_list_create: list->ids is NULL");
         return NULL;
     }
 
@@ -89,7 +90,10 @@ static void id_list_value_destructor(void* value, size_t value_size) {
 
 
 static bool id_list_add(id_list_t* list, uint32_t id) {
-    if (!list) return false;
+    if (!list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "id_list_add: list is NULL");
+        return false;
+    }
 
     // Check if already exists
     for (uint32_t i = 0; i < list->count; i++) {
@@ -102,7 +106,10 @@ static bool id_list_add(id_list_t* list, uint32_t id) {
     if (list->count >= list->capacity) {
         uint32_t new_capacity = list->capacity * 2;
         uint32_t* new_ids = (uint32_t*)nimcp_realloc(list->ids, sizeof(uint32_t) * new_capacity);
-        if (!new_ids) return false;
+        if (!new_ids) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "id_list_add: new_ids is NULL");
+            return false;
+        }
 
         list->ids = new_ids;
         list->capacity = new_capacity;
@@ -127,6 +134,7 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
     // Validate parameters - max_mappings must be non-zero
     // Network can be NULL (glial cells can exist independently)
     if (max_mappings == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "glial_integration_create: max_mappings is zero");
         return NULL;
     }
 
@@ -175,6 +183,7 @@ glial_integration_t* glial_integration_create(neural_network_t network, uint32_t
         !gi->synapse_to_microglia || !gi->astrocyte_to_synapses ||
         !gi->oligodendrocyte_to_neurons || !gi->microglia_to_synapses) {
         glial_integration_destroy(gi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_create: operation failed");
         return NULL;
     }
 
@@ -692,6 +701,7 @@ float glial_integration_get_myelination_factor(glial_integration_t* gi, uint32_t
 bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pre_neuron_id,
                                             uint32_t post_neuron_id) {
     if (!gi || !gi->enable_microglia_pruning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_get_myelination_factor: required parameter is NULL (gi, gi->enable_microglia_pruning)");
         return false;
     }
 
@@ -720,6 +730,7 @@ bool glial_integration_should_prune_synapse(glial_integration_t* gi, uint32_t pr
     }
 
     nimcp_mutex_unlock(&gi->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_integration_get_myelination_factor: operation failed");
     return false;
 }
 
@@ -949,6 +960,7 @@ myelin_sheath_t* glial_integration_create_myelin_sheath(
     float axon_length,
     float axon_diameter) {
     if (!gi || !gi->myelin_sheath_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_integration_get_myelin_delay: required parameter is NULL (gi, gi->myelin_sheath_network)");
         return NULL;
     }
 

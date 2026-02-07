@@ -246,6 +246,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     /* Guard clause: Validate sleep system */
     if (!sleep) {
         NIMCP_LOGGING_ERROR("NULL sleep system in reasoning_sleep_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_sleep_bridge_create: sleep is NULL");
         return NULL;
     }
 
@@ -259,6 +260,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
             sizeof(struct reasoning_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate reasoning-sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_sleep_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -288,6 +290,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for reasoning-sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -383,6 +386,7 @@ int reasoning_sleep_get_effects(const reasoning_sleep_bridge_t bridge,
 {
     /* Guard clause: Validate parameters */
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -437,6 +441,7 @@ bool reasoning_sleep_is_offline(const reasoning_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false on error */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_offline: bridge is NULL");
         return false;
     }
 
@@ -455,6 +460,7 @@ bool reasoning_sleep_is_rem_creative(const reasoning_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false on error */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_rem_creative: bridge is NULL");
         return false;
     }
 
@@ -632,6 +638,7 @@ bool reasoning_sleep_is_bio_async_connected(const reasoning_sleep_bridge_t bridg
 {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_sleep_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

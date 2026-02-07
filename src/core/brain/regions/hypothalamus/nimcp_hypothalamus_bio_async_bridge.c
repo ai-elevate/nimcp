@@ -148,7 +148,10 @@ static hypo_bio_subscription_t* find_subscription(
     hypo_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge || !bridge->subscriptions) return NULL;
+    if (!bridge || !bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id &&
@@ -156,6 +159,7 @@ static hypo_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
     return NULL;
 }
 
@@ -243,6 +247,7 @@ hypo_bio_async_bridge_t* hypo_bio_async_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_HYPOTHALAMUS,
                          "hypothalamus_bio_async") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_bridge_create: operation failed");
         return NULL;
     }
 
@@ -261,6 +266,7 @@ hypo_bio_async_bridge_t* hypo_bio_async_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to allocate subscription registry");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
     memset(bridge->subscriptions, 0,
@@ -308,13 +314,17 @@ int hypo_bio_async_connect(
     hypo_orchestrator_t orch,
     bio_router_t router
 ) {
-    if (!bridge || !orch) return -1;
+    if (!bridge || !orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_connect: required parameter is NULL (bridge, orch)");
+        return -1;
+    }
 
     /* Use global router if none specified */
     if (!router) {
         router = bio_router_get_global();
         if (!router) {
             NIMCP_LOGGING_ERROR("No bio-router available");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_connect: router is NULL");
             return -1;
         }
     }
@@ -334,6 +344,7 @@ int hypo_bio_async_connect(
     bridge->module_ctx = bio_router_register_module(&info);
     if (!bridge->module_ctx) {
         NIMCP_LOGGING_ERROR("Failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_connect: bridge->module_ctx is NULL");
         return -1;
     }
 
@@ -375,7 +386,10 @@ int hypo_bio_async_disconnect(hypo_bio_async_bridge_t* bridge) {
 }
 
 bool hypo_bio_async_is_connected(const hypo_bio_async_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected_to_router && bridge->connected_to_orch;
 }
 
@@ -387,7 +401,10 @@ int hypo_bio_async_process_inbox(
     hypo_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->module_ctx) return -1;
+    if (!bridge || !bridge->module_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_process_inbox: required parameter is NULL (bridge, bridge->module_ctx)");
+        return -1;
+    }
 
     uint32_t limit = max_messages;
     if (limit == 0) {
@@ -441,6 +458,7 @@ int hypo_bio_async_update(
 
 int hypo_bio_async_broadcast_drive_state(hypo_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->connected_to_router || !bridge->orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_drive_state: required parameter is NULL (bridge, bridge->connected_to_router, bridge->orchestrator)");
         return -1;
     }
 
@@ -448,6 +466,7 @@ int hypo_bio_async_broadcast_drive_state(hypo_bio_async_bridge_t* bridge) {
     hypo_unified_drive_state_t drive_state;
     if (hypo_orch_get_drive_state(bridge->orchestrator, &drive_state) != 0) {
         bridge->stats.handler_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_drive_state: validation failed");
         return -1;
     }
 
@@ -478,6 +497,7 @@ int hypo_bio_async_broadcast_drive_state(hypo_bio_async_bridge_t* bridge) {
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_drive_state: validation failed");
         return -1;
     }
 
@@ -492,7 +512,10 @@ int hypo_bio_async_broadcast_circadian(
     hypo_bio_async_bridge_t* bridge,
     float phase
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_circadian: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
     if (!bridge->config.enable_circadian_routing) return 0;
 
     hypo_bio_circadian_msg_t msg;
@@ -517,6 +540,7 @@ int hypo_bio_async_broadcast_circadian(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_circadian: validation failed");
         return -1;
     }
 
@@ -531,7 +555,10 @@ int hypo_bio_async_broadcast_stress(
     hypo_bio_async_bridge_t* bridge,
     float cortisol
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_stress: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
     if (!bridge->config.enable_stress_routing) return 0;
 
     hypo_bio_stress_msg_t msg;
@@ -554,6 +581,7 @@ int hypo_bio_async_broadcast_stress(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_stress: validation failed");
         return -1;
     }
 
@@ -568,7 +596,10 @@ int hypo_bio_async_broadcast_arousal(
     hypo_bio_async_bridge_t* bridge,
     float arousal
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_arousal: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
 
     hypo_bio_arousal_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -589,6 +620,7 @@ int hypo_bio_async_broadcast_arousal(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_arousal: validation failed");
         return -1;
     }
 
@@ -603,7 +635,10 @@ int hypo_bio_async_broadcast_autonomic(
     float sympathetic,
     float parasympathetic
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_autonomic: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
     if (!bridge->config.enable_autonomic_routing) return 0;
 
     hypo_bio_autonomic_msg_t msg;
@@ -624,6 +659,7 @@ int hypo_bio_async_broadcast_autonomic(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_autonomic: validation failed");
         return -1;
     }
 
@@ -640,7 +676,10 @@ int hypo_bio_async_broadcast_homeostatic_alert(
     float setpoint,
     bool is_critical
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_homeostatic_alert: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
 
     hypo_bio_homeostatic_alert_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -668,6 +707,7 @@ int hypo_bio_async_broadcast_homeostatic_alert(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_homeostatic_alert: validation failed");
         return -1;
     }
 
@@ -683,7 +723,10 @@ int hypo_bio_async_send_urgent_drive(
     float drive_level,
     float urgency
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_send_urgent_drive: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
 
     hypo_bio_drive_urgent_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -702,6 +745,7 @@ int hypo_bio_async_send_urgent_drive(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_send_urgent_drive: validation failed");
         return -1;
     }
 
@@ -717,7 +761,10 @@ int hypo_bio_async_send_reward(
     float reward,
     uint32_t target_module
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_send_reward: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
     if (!bridge->config.enable_reward_routing) return 0;
 
     hypo_bio_reward_msg_t msg;
@@ -748,6 +795,7 @@ int hypo_bio_async_send_reward(
 
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_send_reward: validation failed");
         return -1;
     }
 
@@ -762,7 +810,10 @@ int hypo_bio_async_broadcast_temperature(
     float core_temp,
     float setpoint_temp
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_temperature: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
 
     hypo_bio_temperature_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -783,6 +834,7 @@ int hypo_bio_async_broadcast_temperature(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_temperature: validation failed");
         return -1;
     }
 
@@ -797,7 +849,10 @@ int hypo_bio_async_broadcast_fatigue(
     float fatigue,
     float sleep_pressure
 ) {
-    if (!bridge || !bridge->connected_to_router) return -1;
+    if (!bridge || !bridge->connected_to_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_broadcast_fatigue: required parameter is NULL (bridge, bridge->connected_to_router)");
+        return -1;
+    }
 
     hypo_bio_fatigue_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -817,6 +872,7 @@ int hypo_bio_async_broadcast_fatigue(
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_bio_async_broadcast_fatigue: validation failed");
         return -1;
     }
 
@@ -856,6 +912,7 @@ int hypo_bio_async_subscribe_module(
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -895,6 +952,7 @@ int hypo_bio_async_unsubscribe_module(
     hypo_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_unsubscribe_module: sub is NULL");
         return -1;
     }
 
@@ -923,6 +981,7 @@ int hypo_bio_async_update_subscription(
     hypo_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_update_subscription: sub is NULL");
         return -1;
     }
 
@@ -947,7 +1006,10 @@ int hypo_bio_async_get_stats(
     const hypo_bio_async_bridge_t* bridge,
     hypo_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memcpy(stats, &bridge->stats, sizeof(hypo_bio_async_stats_t));
     return 0;

@@ -158,7 +158,10 @@ const char* event_queue_get_last_error(void) {
 static bool event_copy_pooled(event_t* dest, const event_t* src,
                                 memory_pool_t pool, uint32_t max_pool_size,
                                 bool* used_pool) {
-    if (!dest || !src || !used_pool) return false;
+    if (!dest || !src || !used_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_get_last_error: required parameter is NULL (dest, src, used_pool)");
+        return false;
+    }
 
     // Copy basic structure
     *dest = *src;
@@ -232,6 +235,7 @@ static bool event_copy_pooled(event_t* dest, const event_t* src,
     if (!allocated) {
         allocated = nimcp_malloc(payload_size);
         if (!allocated) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_get_last_error: allocated is NULL");
             return false;
         }
         *used_pool = false;
@@ -382,6 +386,7 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
     // Validate configuration
     if (cfg.capacity == 0 || cfg.capacity > 1000000) {
         set_error("Invalid capacity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_create: cfg.capacity is zero");
         return NULL;
     }
 
@@ -399,6 +404,7 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
     if (!queue->heap) {
         nimcp_free(queue);
         set_error("Failed to allocate heap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_create: queue->heap is NULL");
         return NULL;
     }
 
@@ -425,6 +431,7 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
             nimcp_free(queue->heap);
             nimcp_free(queue);
             set_error("Failed to create payload pool");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_create: queue->payload_pool is NULL");
             return NULL;
         }
     } else {
@@ -437,6 +444,7 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
         nimcp_free(queue->heap);
         nimcp_free(queue);
         set_error("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_create: validation failed");
         return NULL;
     }
 
@@ -473,6 +481,7 @@ void event_queue_destroy(event_queue_t queue) {
 bool event_queue_enqueue(event_queue_t queue, const event_t* event) {
     if (!queue || !event) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_enqueue: required parameter is NULL (queue, event)");
         return false;
     }
 
@@ -615,6 +624,7 @@ static bool event_copy_payload_from_pool(event_t* event, memory_pool_t pool) {
     // Allocate new memory with nimcp_malloc
     void* new_ptr = nimcp_malloc(size);
     if (!new_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_copy_payload_from_pool: new_ptr is NULL");
         return false;  // Allocation failed
     }
 
@@ -633,6 +643,7 @@ static bool event_copy_payload_from_pool(event_t* event, memory_pool_t pool) {
 bool event_queue_dequeue(event_queue_t queue, event_t* event) {
     if (!queue || !event) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_dequeue: required parameter is NULL (queue, event)");
         return false;
     }
 
@@ -640,6 +651,7 @@ bool event_queue_dequeue(event_queue_t queue, event_t* event) {
 
     if (queue->size == 0) {
         nimcp_platform_mutex_unlock(&queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: queue->size is zero");
         return false;
     }
 
@@ -679,7 +691,10 @@ bool event_queue_dequeue(event_queue_t queue, event_t* event) {
 }
 
 bool event_queue_peek(event_queue_t queue, event_t* event) {
-    if (!queue || !event) return false;
+    if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_peek: required parameter is NULL (queue, event)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&queue->mutex);
 
@@ -744,7 +759,10 @@ bool event_queue_is_empty(event_queue_t queue) {
 }
 
 bool event_queue_is_full(event_queue_t queue) {
-    if (!queue) return false;  // NULL queue is not "full" - it doesn't exist
+    if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_is_full: queue is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&queue->mutex);
     bool full = (queue->size >= queue->capacity);
@@ -822,7 +840,10 @@ uint32_t event_queue_count_if(event_queue_t queue, event_filter_fn filter, void*
 //=============================================================================
 
 bool event_queue_get_stats(event_queue_t queue, event_queue_stats_t* stats) {
-    if (!queue || !stats) return false;
+    if (!queue || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_get_stats: required parameter is NULL (queue, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&queue->mutex);
 

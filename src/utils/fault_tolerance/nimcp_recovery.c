@@ -723,6 +723,7 @@ recovery_result_t recovery_rollback_state(brain_t brain, const char* checkpoint)
 bool recovery_auto_heal(brain_t brain, diagnostic_summary_t* diagnosis)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_auto_heal: brain is NULL");
         return false;
     }
 
@@ -759,6 +760,7 @@ bool recovery_auto_heal(brain_t brain, diagnostic_summary_t* diagnosis)
 bool recovery_adjust_parameters(brain_t brain, adjustment_type_t type)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_adjust_parameters: brain is NULL");
         return false;
     }
 
@@ -792,6 +794,7 @@ bool recovery_adjust_parameters(brain_t brain, adjustment_type_t type)
 
         default:
             LOG_WARN("Recovery: Unknown adjustment type: %d", type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_adjust_parameters: operation failed");
             return false;
     }
 }
@@ -863,6 +866,7 @@ bool circuit_breaker_allow_operation(circuit_breaker_t* cb)
             }
             // Still in timeout - block
             LOG_WARN("Circuit breaker: Operation blocked (OPEN state)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circuit_breaker_allow_operation: capacity exceeded");
             return false;
 
         case CIRCUIT_HALF_OPEN:
@@ -870,6 +874,7 @@ bool circuit_breaker_allow_operation(circuit_breaker_t* cb)
             return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circuit_breaker_allow_operation: operation failed");
     return false;
 }
 

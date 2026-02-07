@@ -136,6 +136,7 @@ static ce_experiment_t* ce_find_experiment(ce_context_t* ctx, uint32_t experimen
             return &ctx->experiments[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_find_experiment: validation failed");
     return NULL;
 }
 
@@ -162,7 +163,10 @@ static void ce_audit_log(const char* action, uint32_t experiment_id, const char*
  * @brief Check safety guardrails
  */
 static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
-    if (!ctx || !exp) return false;
+    if (!ctx || !exp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_check_guardrails: required parameter is NULL (ctx, exp)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < exp->guardrail_count; i++) {
         ce_guardrail_config_t* guard = &exp->guardrails[i];
@@ -172,7 +176,10 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
                 if (exp->target.node_count > (uint32_t)guard->threshold) {
                     LOG_WARNING("CE", "Blast radius guardrail violated: %u > %.0f",
                                       exp->target.node_count, guard->threshold);
-                    if (guard->abort_on_violation) return false;
+                    if (guard->abort_on_violation) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
+                        return false;
+                    }
                 }
                 break;
 
@@ -190,6 +197,7 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
         if (exp->target.node_count > ctx->config.max_blast_radius) {
             LOG_WARNING("CE", "Global blast radius exceeded: %u > %u",
                               exp->target.node_count, ctx->config.max_blast_radius);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
             return false;
         }
 
@@ -197,6 +205,7 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
             LOG_WARNING("CE", "Global duration exceeded: %lu > %lu",
                               (unsigned long)exp->max_duration_ms,
                               (unsigned long)ctx->config.max_experiment_duration_ms);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_check_guardrails: validation failed");
             return false;
         }
     }
@@ -208,7 +217,10 @@ static bool ce_check_guardrails(ce_context_t* ctx, ce_experiment_t* exp) {
  * @brief Execute fault injection
  */
 static bool ce_execute_inject(ce_context_t* ctx, const ce_fault_spec_t* fault, const ce_target_spec_t* target) {
-    if (!ctx || !fault || !target) return false;
+    if (!ctx || !fault || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_execute_inject: required parameter is NULL (ctx, fault, target)");
+        return false;
+    }
 
     /* Find callback */
     for (uint32_t i = 0; i < ctx->callback_count; i++) {
@@ -241,7 +253,10 @@ static bool ce_execute_inject(ce_context_t* ctx, const ce_fault_spec_t* fault, c
  * @brief Execute fault rollback
  */
 static bool ce_execute_rollback(ce_context_t* ctx, const ce_fault_spec_t* fault, const ce_target_spec_t* target) {
-    if (!ctx || !fault || !target) return false;
+    if (!ctx || !fault || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_execute_rollback: required parameter is NULL (ctx, fault, target)");
+        return false;
+    }
 
     /* Find callback */
     for (uint32_t i = 0; i < ctx->callback_count; i++) {
@@ -336,6 +351,7 @@ ce_context_t* ce_create(const ce_config_t* config) {
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("CE", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ce_create: validation failed");
         return NULL;
     }
 
@@ -420,13 +436,17 @@ uint32_t ce_create_experiment(ce_context_t* ctx, const char* name, const char* d
 }
 
 bool ce_set_fault(ce_context_t* ctx, uint32_t experiment_id, const ce_fault_spec_t* fault) {
-    if (!ctx || !fault || experiment_id == 0) return false;
+    if (!ctx || !fault || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_set_fault: required parameter is NULL (ctx, fault)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_set_fault: exp is NULL");
         return false;
     }
 
@@ -438,13 +458,17 @@ bool ce_set_fault(ce_context_t* ctx, uint32_t experiment_id, const ce_fault_spec
 }
 
 bool ce_set_target(ce_context_t* ctx, uint32_t experiment_id, const ce_target_spec_t* target) {
-    if (!ctx || !target || experiment_id == 0) return false;
+    if (!ctx || !target || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_set_target: required parameter is NULL (ctx, target)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_set_target: exp is NULL");
         return false;
     }
 
@@ -456,13 +480,17 @@ bool ce_set_target(ce_context_t* ctx, uint32_t experiment_id, const ce_target_sp
 }
 
 bool ce_add_hypothesis(ce_context_t* ctx, uint32_t experiment_id, const ce_hypothesis_t* hypothesis) {
-    if (!ctx || !hypothesis || experiment_id == 0) return false;
+    if (!ctx || !hypothesis || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_add_hypothesis: required parameter is NULL (ctx, hypothesis)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->hypothesis_count >= CE_MAX_HYPOTHESIS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_hypothesis: exp is NULL");
         return false;
     }
 
@@ -474,13 +502,17 @@ bool ce_add_hypothesis(ce_context_t* ctx, uint32_t experiment_id, const ce_hypot
 }
 
 bool ce_add_guardrail(ce_context_t* ctx, uint32_t experiment_id, const ce_guardrail_config_t* guardrail) {
-    if (!ctx || !guardrail || experiment_id == 0) return false;
+    if (!ctx || !guardrail || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_add_guardrail: required parameter is NULL (ctx, guardrail)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->guardrail_count >= 8) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_guardrail: exp is NULL");
         return false;
     }
 
@@ -492,13 +524,17 @@ bool ce_add_guardrail(ce_context_t* ctx, uint32_t experiment_id, const ce_guardr
 }
 
 bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric_name) {
-    if (!ctx || !metric_name || experiment_id == 0) return false;
+    if (!ctx || !metric_name || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_add_metric: required parameter is NULL (ctx, metric_name)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->metric_count >= CE_MAX_METRICS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_add_metric: exp is NULL");
         return false;
     }
 
@@ -516,19 +552,24 @@ bool ce_add_metric(ce_context_t* ctx, uint32_t experiment_id, const char* metric
 //=============================================================================
 
 bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
-    if (!ctx || experiment_id == 0) return false;
+    if (!ctx || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_experiment: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_start_experiment: exp is NULL");
         return false;
     }
 
     if (exp->state != CE_STATE_CREATED && exp->state != CE_STATE_READY) {
         LOG_WARNING("CE", "Experiment %u not in startable state", experiment_id);
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_experiment: validation failed");
         return false;
     }
 
@@ -537,6 +578,7 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
         exp->state = CE_STATE_FAILED;
         nimcp_mutex_unlock(&ctx->mutex);
         ce_audit_log("GUARDRAIL_BLOCKED", experiment_id, "Safety guardrails violated");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_experiment: ce_check_guardrails is NULL");
         return false;
     }
 
@@ -580,13 +622,17 @@ bool ce_start_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 }
 
 bool ce_pause_experiment(ce_context_t* ctx, uint32_t experiment_id) {
-    if (!ctx || experiment_id == 0) return false;
+    if (!ctx || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_pause_experiment: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->state != CE_STATE_RUNNING) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_pause_experiment: exp is NULL");
         return false;
     }
 
@@ -604,13 +650,17 @@ bool ce_pause_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 }
 
 bool ce_resume_experiment(ce_context_t* ctx, uint32_t experiment_id) {
-    if (!ctx || experiment_id == 0) return false;
+    if (!ctx || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_resume_experiment: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp || exp->state != CE_STATE_PAUSED) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_resume_experiment: exp is NULL");
         return false;
     }
 
@@ -628,18 +678,23 @@ bool ce_resume_experiment(ce_context_t* ctx, uint32_t experiment_id) {
 }
 
 bool ce_abort_experiment(ce_context_t* ctx, uint32_t experiment_id, const char* reason) {
-    if (!ctx || experiment_id == 0) return false;
+    if (!ctx || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_abort_experiment: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_abort_experiment: exp is NULL");
         return false;
     }
 
     if (exp->state != CE_STATE_RUNNING && exp->state != CE_STATE_PAUSED) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_abort_experiment: validation failed");
         return false;
     }
 
@@ -684,13 +739,17 @@ ce_state_t ce_get_experiment_state(ce_context_t* ctx, uint32_t experiment_id) {
 }
 
 bool ce_get_experiment(ce_context_t* ctx, uint32_t experiment_id, ce_experiment_t* experiment) {
-    if (!ctx || !experiment || experiment_id == 0) return false;
+    if (!ctx || !experiment || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_get_experiment: required parameter is NULL (ctx, experiment)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_get_experiment: exp is NULL");
         return false;
     }
 
@@ -702,18 +761,23 @@ bool ce_get_experiment(ce_context_t* ctx, uint32_t experiment_id, ce_experiment_
 }
 
 bool ce_get_result(ce_context_t* ctx, uint32_t experiment_id, ce_result_t* result) {
-    if (!ctx || !result || experiment_id == 0) return false;
+    if (!ctx || !result || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_get_result: required parameter is NULL (ctx, result)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_get_result: exp is NULL");
         return false;
     }
 
     if (exp->state != CE_STATE_COMPLETED && exp->state != CE_STATE_ABORTED) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_get_result: validation failed");
         return false;
     }
 
@@ -750,7 +814,10 @@ bool ce_get_result(ce_context_t* ctx, uint32_t experiment_id, ce_result_t* resul
 //=============================================================================
 
 bool ce_inject_fault(ce_context_t* ctx, const ce_fault_spec_t* fault, const ce_target_spec_t* target) {
-    if (!ctx || !fault || !target) return false;
+    if (!ctx || !fault || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_inject_fault: required parameter is NULL (ctx, fault, target)");
+        return false;
+    }
 
     ce_audit_log("DIRECT_INJECT", 0, ce_fault_type_to_string(fault->type));
 
@@ -758,7 +825,10 @@ bool ce_inject_fault(ce_context_t* ctx, const ce_fault_spec_t* fault, const ce_t
 }
 
 bool ce_rollback_fault(ce_context_t* ctx, const ce_fault_spec_t* fault, const ce_target_spec_t* target) {
-    if (!ctx || !fault || !target) return false;
+    if (!ctx || !fault || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_rollback_fault: required parameter is NULL (ctx, fault, target)");
+        return false;
+    }
 
     ce_audit_log("DIRECT_ROLLBACK", 0, ce_fault_type_to_string(fault->type));
 
@@ -858,7 +928,10 @@ bool ce_kill_process(ce_context_t* ctx, uint32_t target_id) {
 
 bool ce_create_partition(ce_context_t* ctx, const uint32_t* group1, uint32_t count1,
                           const uint32_t* group2, uint32_t count2, uint64_t duration_ms) {
-    if (!ctx || !group1 || !group2 || count1 == 0 || count2 == 0) return false;
+    if (!ctx || !group1 || !group2 || count1 == 0 || count2 == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_kill_process: required parameter is NULL (ctx, group1, group2)");
+        return false;
+    }
 
     ce_fault_spec_t fault = {
         .type = CE_FAULT_NETWORK_PARTITION,
@@ -895,12 +968,16 @@ bool ce_create_partition(ce_context_t* ctx, const uint32_t* group1, uint32_t cou
 
 bool ce_register_inject_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
                                    ce_inject_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_kill_process: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->callback_count >= 32) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_kill_process: capacity exceeded");
         return false;
     }
 
@@ -918,7 +995,10 @@ bool ce_register_inject_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
 
 bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type,
                                      ce_rollback_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_kill_process: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -934,6 +1014,7 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
     /* Create new entry */
     if (ctx->callback_count >= 32) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_kill_process: capacity exceeded");
         return false;
     }
 
@@ -950,12 +1031,16 @@ bool ce_register_rollback_callback(ce_context_t* ctx, ce_fault_type_t fault_type
 }
 
 bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_register_event_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->event_callback_count >= 8) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ce_register_event_callback: capacity exceeded");
         return false;
     }
 
@@ -973,13 +1058,17 @@ bool ce_register_event_callback(ce_context_t* ctx, ce_event_callback_t callback,
 //=============================================================================
 
 bool ce_is_safe_to_run(ce_context_t* ctx, uint32_t experiment_id) {
-    if (!ctx || experiment_id == 0) return false;
+    if (!ctx || experiment_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_is_safe_to_run: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     ce_experiment_t* exp = ce_find_experiment(ctx, experiment_id);
     if (!exp) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_is_safe_to_run: exp is NULL");
         return false;
     }
 
@@ -1048,7 +1137,10 @@ void ce_set_dry_run(ce_context_t* ctx, bool enabled) {
 }
 
 bool ce_is_dry_run(ce_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_is_dry_run: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     bool dry = ctx->dry_run;
@@ -1092,7 +1184,10 @@ uint32_t ce_schedule_game_day(ce_context_t* ctx, const uint32_t* experiment_ids,
 }
 
 bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
-    if (!ctx || game_day_id == 0) return false;
+    if (!ctx || game_day_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_game_day: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1106,6 +1201,7 @@ bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
 
     if (!gd || gd->running) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_start_game_day: gd is NULL");
         return false;
     }
 
@@ -1126,7 +1222,10 @@ bool ce_start_game_day(ce_context_t* ctx, uint32_t game_day_id) {
 }
 
 bool ce_abort_game_day(ce_context_t* ctx, uint32_t game_day_id) {
-    if (!ctx || game_day_id == 0) return false;
+    if (!ctx || game_day_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ce_abort_game_day: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1140,6 +1239,7 @@ bool ce_abort_game_day(ce_context_t* ctx, uint32_t game_day_id) {
 
     if (!gd || !gd->running) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce_abort_game_day: required parameter is NULL (gd, gd->running)");
         return false;
     }
 

@@ -194,6 +194,7 @@ NIMCP_EXPORT bool neural_logic_gpu_available(void)
     cudaError_t err = cudaGetDeviceCount(&device_count);
     return (err == cudaSuccess && device_count > 0);
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_gpu_available: operation failed");
     return false;
 #endif
 }
@@ -237,17 +238,20 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     const neural_logic_config_t* config)
 {
     if (!nimcp_validate_pointer(config, "config")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
     
     if (config->max_logic_neurons == 0) {
         LOG_ERROR(LOG_MODULE,"max_logic_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_create: config->max_logic_neurons is zero");
         return NULL;
     }
     
     // Allocate network structure
     neural_logic_network_t network = nimcp_calloc(1, sizeof(struct neural_logic_network_struct));
     if (!nimcp_validate_pointer(network, "network")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
     
@@ -266,6 +270,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     network->neurons_host = nimcp_aligned_alloc(64, network->neurons_capacity * sizeof(logic_neuron_state_t));
     if (!nimcp_validate_pointer(network->neurons_host, "neurons_host")) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
     memset(network->neurons_host, 0, network->neurons_capacity * sizeof(logic_neuron_state_t));
@@ -275,6 +280,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
     if (!nimcp_validate_pointer(network->variables_host, "variables_host")) {
         nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
     memset(network->variables_host, 0, network->variables_capacity * sizeof(variable_binding_state_t));
@@ -285,6 +291,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         nimcp_aligned_free(network->variables_host);
         nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -294,6 +301,7 @@ NIMCP_EXPORT neural_logic_network_t neural_logic_create(
         nimcp_aligned_free(network->variables_host);
         nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_create: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -1027,6 +1035,7 @@ cpu_path:
 NIMCP_EXPORT bool neural_logic_synchronize(neural_logic_network_t network)
 {
     if (!nimcp_validate_pointer(network, "network")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_synchronize: nimcp_validate_pointer is NULL");
         return false;
     }
     
@@ -1058,11 +1067,13 @@ NIMCP_EXPORT bool neural_logic_evaluate(
         !nimcp_validate_pointer(output, "output")) {
         LOG_ERROR(LOG_MODULE, "NULL pointer(s) in evaluate: network=%p, inputs=%p, output=%p",
                   (void*)network, (const void*)inputs, (void*)output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_evaluate: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (gate_id >= network->neurons_count) {
         LOG_ERROR(LOG_MODULE, "Invalid gate_id: %u >= %u", gate_id, network->neurons_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_evaluate: capacity exceeded");
         return false;
     }
 
@@ -1131,10 +1142,12 @@ NIMCP_EXPORT bool neural_logic_get_state(
 {
     if (!nimcp_validate_pointer(network, "network") ||
         !nimcp_validate_pointer(state, "state")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_get_state: nimcp_validate_pointer is NULL");
         return false;
     }
     
     if (neuron_id >= network->neurons_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_get_state: capacity exceeded");
         return false;
     }
     
@@ -1153,6 +1166,7 @@ NIMCP_EXPORT bool neural_logic_get_stats(
     uint64_t* gpu_memory_used)
 {
     if (!nimcp_validate_pointer(network, "network")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_get_stats: nimcp_validate_pointer is NULL");
         return false;
     }
     
@@ -1229,10 +1243,12 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
 {
     if (!nimcp_validate_pointer(network, "network") ||
         !nimcp_validate_pointer(pattern, "pattern")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_bind_variable: nimcp_validate_pointer is NULL");
         return false;
     }
     
     if (variable_id >= network->variables_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_bind_variable: capacity exceeded");
         return false;
     }
 
@@ -1252,6 +1268,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
         var->bound_pattern = (float*)nimcp_malloc(dim * sizeof(float));
         if (!var->bound_pattern) {
             LOG_ERROR(LOG_MODULE,"Failed to allocate pattern memory for variable %u", variable_id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_bind_variable: var->bound_pattern is NULL");
             return false;
         }
         var->pattern_dim = dim;
@@ -1261,6 +1278,7 @@ NIMCP_EXPORT bool neural_logic_bind_variable(
     if (var->pattern_dim != dim) {
         LOG_ERROR(LOG_MODULE,"Pattern dimension mismatch: expected %u, got %u",
                            var->pattern_dim, dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_bind_variable: validation failed");
         return false;
     }
 
@@ -1281,10 +1299,12 @@ NIMCP_EXPORT bool neural_logic_query_variable(
 {
     if (!nimcp_validate_pointer(network, "network") ||
         !nimcp_validate_pointer(pattern, "pattern")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_query_variable: nimcp_validate_pointer is NULL");
         return false;
     }
     
     if (variable_id >= network->variables_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_query_variable: capacity exceeded");
         return false;
     }
 
@@ -1301,6 +1321,7 @@ NIMCP_EXPORT bool neural_logic_query_variable(
     // Check if variable is bound
     if (!var->is_bound || var->bound_pattern == NULL) {
         LOG_WARN(LOG_MODULE,"Variable %u is not bound", variable_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_query_variable: var->is_bound is NULL");
         return false;
     }
 
@@ -1308,6 +1329,7 @@ NIMCP_EXPORT bool neural_logic_query_variable(
     if (var->pattern_dim != pattern_dim) {
         LOG_ERROR(LOG_MODULE,"Pattern dimension mismatch: variable has %u, requested %u",
                            var->pattern_dim, pattern_dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_query_variable: validation failed");
         return false;
     }
 
@@ -1324,6 +1346,7 @@ NIMCP_EXPORT bool neural_logic_connect(
     float weight)
 {
     if (!nimcp_validate_pointer(network, "network")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_logic_connect: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1342,12 +1365,14 @@ NIMCP_EXPORT bool neural_logic_connect(
     if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
         LOG_ERROR(LOG_MODULE,"Invalid neuron IDs: source=%u, target=%u (max=%u)",
                            source_id, target_id, network->neurons_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_logic_connect: capacity exceeded");
         return false;
     }
 
     // Validate weight
     if (!isfinite(weight)) {
         LOG_ERROR(LOG_MODULE,"Invalid weight: %f", weight);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "neural_logic_connect: isfinite is NULL");
         return false;
     }
 
@@ -1362,6 +1387,7 @@ NIMCP_EXPORT bool neural_logic_connect(
     }
     if (!nimcp_validate_pointer(synapse, "synapse")) {
         LOG_ERROR(LOG_MODULE,"Failed to allocate synapse: %u -> %u", source_id, target_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_connect: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1501,10 +1527,12 @@ NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t networ
 {
     if (!network) {
         LOG_ERROR(LOG_MODULE, "NULL network in get_quantum_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_get_quantum_bridge: network is NULL");
         return NULL;
     }
 
     if (!network->quantum_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_get_quantum_bridge: network->quantum_enabled is NULL");
         return NULL;
     }
 
@@ -1520,6 +1548,7 @@ NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t networ
         if (!network->quantum_bridge) {
             LOG_ERROR(LOG_MODULE, "Failed to create quantum bridge");
             network->quantum_enabled = false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_logic_get_quantum_bridge: network->quantum_bridge is NULL");
             return NULL;
         }
 
@@ -1529,6 +1558,7 @@ NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t networ
             neural_logic_quantum_bridge_destroy(network->quantum_bridge);
             network->quantum_bridge = NULL;
             network->quantum_enabled = false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_get_quantum_bridge: validation failed");
             return NULL;
         }
 
@@ -1541,6 +1571,7 @@ NIMCP_EXPORT void* neural_logic_get_quantum_bridge(neural_logic_network_t networ
 NIMCP_EXPORT bool neural_logic_is_quantum_enabled(neural_logic_network_t network)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_logic_is_quantum_enabled: network is NULL");
         return false;
     }
     return network->quantum_enabled;

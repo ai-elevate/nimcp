@@ -140,9 +140,10 @@ hypo_bio_async_fep_bridge_t* hypo_bio_async_fep_create(
     hypo_drive_system_handle_t* drive_system,
     fep_system_t* fep_system
 ) {
-    /* Validate required parameters */
-    if (!drive_system || !fep_system) {
-        NIMCP_LOGGING_ERROR("Hypo Bio-Async FEP bridge: NULL system pointers");
+    /* Validate required parameters - fep_system required, drive_system optional */
+    if (!fep_system) {
+        NIMCP_LOGGING_ERROR("Hypo Bio-Async FEP bridge: fep_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_create: fep_system is NULL");
         return NULL;
     }
 
@@ -152,6 +153,7 @@ hypo_bio_async_fep_bridge_t* hypo_bio_async_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Hypo Bio-Async FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_bio_async_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -174,6 +176,7 @@ hypo_bio_async_fep_bridge_t* hypo_bio_async_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo Bio-Async FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -373,8 +376,8 @@ int hypo_bio_async_fep_compute_fe(
     hypo_bio_async_fep_bridge_t* bridge,
     const hypo_drive_system_t* drives
 ) {
-    if (!bridge || !drives) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_compute_fe: bridge or drives is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_compute_fe: bridge is NULL");
         return -1;
     }
 
@@ -383,12 +386,14 @@ int hypo_bio_async_fep_compute_fe(
     /* Compute FE from drive deviations */
     float total_fe = 0.0f;
 
-    for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
-        float deviation = fabsf(drives->drives[i].deviation);
-        float urgency = drives->drives[i].urgency;
+    if (drives) {
+        for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
+            float deviation = fabsf(drives->drives[i].deviation);
+            float urgency = drives->drives[i].urgency;
 
-        /* Higher deviation from setpoint = higher free energy */
-        total_fe += deviation * urgency * bridge->config.drive_fe_weight;
+            /* Higher deviation from setpoint = higher free energy */
+            total_fe += deviation * urgency * bridge->config.drive_fe_weight;
+        }
     }
 
     /* Add timing-based free energy */
@@ -414,7 +419,9 @@ int hypo_bio_async_fep_compute_fe(
     bridge->fep_effects.free_energy = total_fe;
 
     /* Update drive urgency tracking */
-    bridge->async_effects.current_drive_urgency = drives->drives[drives->highest_priority].urgency;
+    if (drives) {
+        bridge->async_effects.current_drive_urgency = drives->drives[drives->highest_priority].urgency;
+    }
     bridge->async_effects.homeostatic_stress = (total_fe > HYPO_BIO_ASYNC_FEP_SIGNIFICANT_THRESHOLD);
 
     /* Track detection */
@@ -524,9 +531,7 @@ int hypo_bio_async_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return -1;
+        return 0;  /* Graceful no-op for NULL bridge */
     }
 
     /* Suppress unused parameter warning - router used via global */

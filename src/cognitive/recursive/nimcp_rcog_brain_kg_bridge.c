@@ -248,6 +248,7 @@ rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_brain_kg") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_brain_kg_bridge_create: validation failed");
         return NULL;
     }
 
@@ -744,6 +745,7 @@ bool rcog_brain_kg_bridge_has_capability(
     const char* capability_name
 ) {
     if (!bridge || !capability_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_brain_kg_bridge_has_capability: required parameter is NULL (bridge, capability_name)");
         return false;
     }
 
@@ -770,6 +772,7 @@ bool rcog_brain_kg_bridge_has_capability(
     }
 
     nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_brain_kg_bridge_has_capability: operation failed");
     return false;
 }
 

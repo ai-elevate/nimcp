@@ -197,6 +197,7 @@ static bool precompute_rope_cache(
     if (!encoder->data.rope.cos_cache || !encoder->data.rope.sin_cache) {
         nimcp_free(encoder->data.rope.cos_cache);
         nimcp_free(encoder->data.rope.sin_cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "precompute_rope_cache: required parameter is NULL (encoder->data, encoder->data)");
         return false;
     }
 
@@ -309,6 +310,7 @@ static bool init_learned_embeddings(
     if (!encoder->data.learned.embeddings || !encoder->data.learned.gradients) {
         nimcp_free(encoder->data.learned.embeddings);
         nimcp_free(encoder->data.learned.gradients);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_learned_embeddings: required parameter is NULL (encoder->data, encoder->data)");
         return false;
     }
 
@@ -369,12 +371,18 @@ static bool cache_precompute(
     uint32_t length
 )
 {
-    if (!encoder->cache) return false;
+    if (!encoder->cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_precompute: encoder->cache is NULL");
+        return false;
+    }
 
     /* Allocate cache data */
     size_t size = length * encoder->embedding_dim * sizeof(float);
     float* new_data = nimcp_realloc(encoder->cache->data, size);
-    if (!new_data) return false;
+    if (!new_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cache_precompute: new_data is NULL");
+        return false;
+    }
 
     encoder->cache->data = new_data;
 
@@ -502,6 +510,7 @@ nimcp_pos_encoder_t* nimcp_pos_encoder_create(const nimcp_pos_config_t* config)
     /* Validate input */
     if (!config) {
         LOG_ERROR(LOG_MODULE, "NULL config provided to encoder create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pos_encoder_create: config is NULL");
         return NULL;
     }
 
@@ -509,6 +518,7 @@ nimcp_pos_encoder_t* nimcp_pos_encoder_create(const nimcp_pos_config_t* config)
     int validation = nimcp_pos_validate_config(config);
     if (validation != NIMCP_POS_SUCCESS) {
         LOG_ERROR(LOG_MODULE, "Invalid configuration: error %d", validation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_pos_encoder_create: validation failed");
         return NULL;
     }
 
@@ -516,6 +526,7 @@ nimcp_pos_encoder_t* nimcp_pos_encoder_create(const nimcp_pos_config_t* config)
     nimcp_pos_encoder_t* encoder = nimcp_calloc(1, sizeof(nimcp_pos_encoder_t));
     if (!encoder) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate encoder");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pos_encoder_create: encoder is NULL");
         return NULL;
     }
 
@@ -542,6 +553,7 @@ nimcp_pos_encoder_t* nimcp_pos_encoder_create(const nimcp_pos_config_t* config)
         default:
             LOG_ERROR(LOG_MODULE, "Invalid encoding type: %d", config->type);
             nimcp_free(encoder);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_pos_encoder_create: operation failed");
             return NULL;
     }
 
@@ -610,6 +622,7 @@ nimcp_pos_encoder_t* nimcp_pos_encoder_create(const nimcp_pos_config_t* config)
     if (!init_ok) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize type-specific data");
         nimcp_pos_encoder_destroy(encoder);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_pos_encoder_create: init_ok is NULL");
         return NULL;
     }
 

@@ -791,6 +791,7 @@ bool multimodal_check_coherence(const multimodal_action_features_t* features,
                                 float* out_coherence) {
     if (!features) {
         if (out_coherence) *out_coherence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 

@@ -37,7 +37,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_perception_bridge)
  * @brief Initialize speech cortex data
  */
 static int init_speech_data(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_speech_data: bridge is NULL");
+        return -1;
+    }
 
     language_speech_cortex_data_t* data = &bridge->speech_data;
 
@@ -48,6 +51,7 @@ static int init_speech_data(language_perception_bridge_t* bridge) {
         data->phoneme_buffer_size, sizeof(language_phoneme_t));
     if (!data->phoneme_buffer) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate phoneme buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_speech_data: data->phoneme_buffer is NULL");
         return -1;
     }
 
@@ -67,7 +71,10 @@ static int init_speech_data(language_perception_bridge_t* bridge) {
  * @brief Initialize audio cortex data
  */
 static int init_audio_data(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_audio_data: bridge is NULL");
+        return -1;
+    }
 
     language_audio_cortex_data_t* data = &bridge->audio_data;
 
@@ -75,6 +82,7 @@ static int init_audio_data(language_perception_bridge_t* bridge) {
     data->spectral_features = (float*)nimcp_calloc(data->spectral_dim, sizeof(float));
     if (!data->spectral_features) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate spectral features");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_audio_data: data->spectral_features is NULL");
         return -1;
     }
 
@@ -90,7 +98,10 @@ static int init_audio_data(language_perception_bridge_t* bridge) {
  * @brief Initialize visual cortex data
  */
 static int init_visual_data(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_visual_data: bridge is NULL");
+        return -1;
+    }
 
     language_visual_cortex_data_t* data = &bridge->visual_data;
 
@@ -98,6 +109,7 @@ static int init_visual_data(language_perception_bridge_t* bridge) {
     data->recognized_text = (char*)nimcp_calloc(data->text_buffer_size, sizeof(char));
     if (!data->recognized_text) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate text buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_visual_data: data->recognized_text is NULL");
         return -1;
     }
 
@@ -107,6 +119,7 @@ static int init_visual_data(language_perception_bridge_t* bridge) {
         nimcp_free(data->recognized_text);
         data->recognized_text = NULL;
         LOG_ERROR(LOG_MODULE, "Failed to allocate viseme features");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_visual_data: data->viseme_features is NULL");
         return -1;
     }
 
@@ -125,7 +138,10 @@ static int init_visual_data(language_perception_bridge_t* bridge) {
  * @brief Initialize multimodal data
  */
 static int init_multimodal_data(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_multimodal_data: bridge is NULL");
+        return -1;
+    }
 
     language_multimodal_data_t* data = &bridge->multimodal_data;
 
@@ -133,6 +149,7 @@ static int init_multimodal_data(language_perception_bridge_t* bridge) {
     data->fused_features = (float*)nimcp_calloc(data->fused_dim, sizeof(float));
     if (!data->fused_features) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate fused features");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_multimodal_data: data->fused_features is NULL");
         return -1;
     }
 
@@ -149,7 +166,10 @@ static int init_multimodal_data(language_perception_bridge_t* bridge) {
  * @brief Initialize attention data
  */
 static int init_attention_data(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_data: bridge is NULL");
+        return -1;
+    }
 
     language_perception_attention_t* data = &bridge->attention;
 
@@ -157,6 +177,7 @@ static int init_attention_data(language_perception_bridge_t* bridge) {
     data->feature_weights = (float*)nimcp_calloc(data->num_features, sizeof(float));
     if (!data->feature_weights) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate feature weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_attention_data: data->feature_weights is NULL");
         return -1;
     }
 
@@ -175,6 +196,7 @@ static int init_attention_data(language_perception_bridge_t* bridge) {
         data->feature_weights = NULL;
         data->predicted_phonemes = NULL;
         data->prediction_confidence = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_data: required parameter is NULL (data->predicted_phonemes, data->prediction_confidence)");
         return -1;
     }
 
@@ -316,6 +338,7 @@ language_perception_bridge_t* language_perception_bridge_create(
         init_multimodal_data(bridge) != 0 ||
         init_attention_data(bridge) != 0) {
         language_perception_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_perception_bridge_create: validation failed");
         return NULL;
     }
 
@@ -347,7 +370,10 @@ void language_perception_bridge_destroy(language_perception_bridge_t* bridge) {
 }
 
 int language_perception_bridge_init(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_init: bridge is NULL");
+        return -1;
+    }
 
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(language_perception_stats_t));
@@ -358,7 +384,10 @@ int language_perception_bridge_init(language_perception_bridge_t* bridge) {
 }
 
 int language_perception_bridge_start(language_perception_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->active = true;
     LOG_INFO(LOG_MODULE, "Perception bridge started");
@@ -366,7 +395,10 @@ int language_perception_bridge_start(language_perception_bridge_t* bridge) {
 }
 
 int language_perception_bridge_stop(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_stop: bridge is NULL");
+        return -1;
+    }
 
     bridge->active = false;
     LOG_INFO(LOG_MODULE, "Perception bridge stopped");
@@ -381,7 +413,10 @@ int language_perception_bridge_connect_orchestrator(
     language_perception_bridge_t* bridge,
     language_orchestrator_t* orchestrator)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
 
     bridge->orchestrator = orchestrator;
     LOG_DEBUG(LOG_MODULE, "Connected to orchestrator");
@@ -392,7 +427,10 @@ int language_perception_bridge_connect_speech_cortex(
     language_perception_bridge_t* bridge,
     speech_cortex_t* speech_cortex)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_connect_speech_cortex: bridge is NULL");
+        return -1;
+    }
 
     bridge->speech_cortex = speech_cortex;
     LOG_DEBUG(LOG_MODULE, "Connected to speech cortex");
@@ -403,7 +441,10 @@ int language_perception_bridge_connect_audio_cortex(
     language_perception_bridge_t* bridge,
     audio_cortex_t* audio_cortex)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_connect_audio_cortex: bridge is NULL");
+        return -1;
+    }
 
     bridge->audio_cortex = audio_cortex;
     LOG_DEBUG(LOG_MODULE, "Connected to audio cortex");
@@ -414,7 +455,10 @@ int language_perception_bridge_connect_visual_cortex(
     language_perception_bridge_t* bridge,
     visual_cortex_t* visual_cortex)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_connect_visual_cortex: bridge is NULL");
+        return -1;
+    }
 
     bridge->visual_cortex = visual_cortex;
     LOG_DEBUG(LOG_MODULE, "Connected to visual cortex");
@@ -425,7 +469,10 @@ int language_perception_bridge_connect_omni_sensory(
     language_perception_bridge_t* bridge,
     omni_sensory_bridge_t* omni_sensory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_connect_omni_sensory: bridge is NULL");
+        return -1;
+    }
 
     bridge->omni_sensory = omni_sensory;
     LOG_DEBUG(LOG_MODULE, "Connected to omni sensory bridge");
@@ -441,8 +488,14 @@ int language_perception_bridge_receive_phonemes(
     const language_phoneme_t* phonemes,
     uint32_t count)
 {
-    if (!bridge || !phonemes || count == 0) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !phonemes || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_phonemes: required parameter is NULL (bridge, phonemes)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_phonemes: bridge->active is NULL");
+        return -1;
+    }
 
     language_speech_cortex_data_t* data = &bridge->speech_data;
     uint32_t accepted = 0;
@@ -471,8 +524,14 @@ int language_perception_bridge_receive_prosody(
     language_perception_bridge_t* bridge,
     const language_prosody_t* prosody)
 {
-    if (!bridge || !prosody) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !prosody) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_prosody: required parameter is NULL (bridge, prosody)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_prosody: bridge->active is NULL");
+        return -1;
+    }
 
     memcpy(&bridge->speech_data.current_prosody, prosody, sizeof(language_prosody_t));
     bridge->speech_data.prosody_valid = true;
@@ -485,8 +544,14 @@ int language_perception_bridge_receive_text(
     const char* text,
     float confidence)
 {
-    if (!bridge || !text) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_text: required parameter is NULL (bridge, text)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_text: bridge->active is NULL");
+        return -1;
+    }
 
     language_visual_cortex_data_t* data = &bridge->visual_data;
 
@@ -510,8 +575,14 @@ int language_perception_bridge_receive_visemes(
     const float* visemes,
     uint32_t dim)
 {
-    if (!bridge || !visemes) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !visemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_visemes: required parameter is NULL (bridge, visemes)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_visemes: bridge->active is NULL");
+        return -1;
+    }
 
     language_visual_cortex_data_t* data = &bridge->visual_data;
 
@@ -534,8 +605,14 @@ int language_perception_bridge_receive_speech_detection(
     speech_detection_state_t state,
     float probability)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_speech_detection: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_receive_speech_detection: bridge->active is NULL");
+        return -1;
+    }
 
     language_speech_cortex_data_t* data = &bridge->speech_data;
 
@@ -575,8 +652,14 @@ int language_perception_bridge_send_attention(
     const float* weights,
     uint32_t count)
 {
-    if (!bridge || !weights) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_attention: required parameter is NULL (bridge, weights)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_attention: bridge->active is NULL");
+        return -1;
+    }
 
     language_perception_attention_t* attn = &bridge->attention;
 
@@ -592,8 +675,14 @@ int language_perception_bridge_send_predictions(
     const float* confidences,
     uint32_t count)
 {
-    if (!bridge || !predicted_phonemes || !confidences) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !predicted_phonemes || !confidences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_predictions: required parameter is NULL (bridge, predicted_phonemes, confidences)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_predictions: bridge->active is NULL");
+        return -1;
+    }
 
     language_perception_attention_t* attn = &bridge->attention;
 
@@ -610,8 +699,14 @@ int language_perception_bridge_send_spatial_attention(
     float y,
     float spread)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_spatial_attention: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_send_spatial_attention: bridge->active is NULL");
+        return -1;
+    }
 
     bridge->attention.attention_focus_x = x;
     bridge->attention.attention_focus_y = y;
@@ -625,8 +720,14 @@ int language_perception_bridge_send_spatial_attention(
 //=============================================================================
 
 int language_perception_bridge_process_av_binding(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_process_av_binding: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_process_av_binding: bridge->active is NULL");
+        return -1;
+    }
 
     /* Compute audiovisual coherence */
     language_multimodal_data_t* mm = &bridge->multimodal_data;
@@ -660,7 +761,10 @@ av_binding_state_t language_perception_bridge_get_av_state(
 bool language_perception_bridge_is_mcgurk_active(
     const language_perception_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_is_mcgurk_active: bridge is NULL");
+        return false;
+    }
     return bridge->multimodal_data.mcgurk_active;
 }
 
@@ -672,7 +776,10 @@ int language_perception_bridge_update(
     language_perception_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->active) return 0;
 
     /* Update timestamp */
@@ -712,7 +819,10 @@ int language_perception_bridge_get_phonemes(
     language_phoneme_t* phonemes,
     uint32_t max_count)
 {
-    if (!bridge || !phonemes) return -1;
+    if (!bridge || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_get_phonemes: required parameter is NULL (bridge, phonemes)");
+        return -1;
+    }
 
     language_speech_cortex_data_t* data = &bridge->speech_data;
     uint32_t retrieved = 0;
@@ -741,7 +851,10 @@ int language_perception_bridge_get_stats(
     const language_perception_bridge_t* bridge,
     language_perception_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memcpy(stats, &bridge->stats, sizeof(language_perception_stats_t));
     return 0;
@@ -755,7 +868,10 @@ int language_perception_bridge_bio_async_register(
     language_perception_bridge_t* bridge,
     bio_router_t* router)
 {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_bio_async_register: required parameter is NULL (bridge, router)");
+        return -1;
+    }
 
     bridge->bio_router = router;
     bridge->bio_async_registered = true;
@@ -765,7 +881,10 @@ int language_perception_bridge_bio_async_register(
 }
 
 int language_perception_bridge_bio_async_unregister(language_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_bio_async_unregister: bridge is NULL");
+        return -1;
+    }
 
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;

@@ -258,6 +258,7 @@ style_perception_t* style_perception_create(
     style_perception_t* perc = nimcp_calloc(1, sizeof(style_perception_t));
     if (!perc) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate style perception");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_text_features: perc is NULL");
         return NULL;
     }
 
@@ -361,7 +362,10 @@ int style_perception_analyze(style_perception_t* perc,
                               const void* content,
                               art_modality_t modality,
                               style_analysis_result_t* result) {
-    if (!perc || !content || !result) return -1;
+    if (!perc || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_destroy: required parameter is NULL (perc, content, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(style_analysis_result_t));
 
@@ -385,6 +389,7 @@ int style_perception_analyze(style_perception_t* perc,
 
     if (!archetypes || num_archetypes == 0) {
         LOG_WARN(LOG_MODULE, "No archetypes for modality %d", modality);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_perception_destroy: archetypes is NULL");
         return -1;
     }
 
@@ -410,7 +415,10 @@ int style_perception_analyze(style_perception_t* perc,
 
     /* Compare to archetypes */
     result->matches = nimcp_calloc(num_archetypes, sizeof(style_match_t));
-    if (!result->matches) return -1;
+    if (!result->matches) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_perception_destroy: result->matches is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_archetypes; i++) {
         float sim = style_embedding_similarity(&result->extracted_style, &archetypes[i]);
@@ -462,7 +470,10 @@ int style_perception_analyze(style_perception_t* perc,
 int style_perception_analyze_text(style_perception_t* perc,
                                    const char* text, size_t len,
                                    style_analysis_result_t* result) {
-    if (!perc || !text || !result) return -1;
+    if (!perc || !text || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_destroy: required parameter is NULL (perc, text, result)");
+        return -1;
+    }
     (void)len;
 
     return style_perception_analyze(perc, text, ART_MODALITY_TEXT_POETRY, result);
@@ -471,7 +482,10 @@ int style_perception_analyze_text(style_perception_t* perc,
 int style_perception_analyze_music(style_perception_t* perc,
                                     const music_track_t* tracks, uint32_t num_tracks,
                                     style_analysis_result_t* result) {
-    if (!perc || !tracks || !result) return -1;
+    if (!perc || !tracks || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_destroy: required parameter is NULL (perc, tracks, result)");
+        return -1;
+    }
     (void)num_tracks;
 
     return style_perception_analyze(perc, tracks, ART_MODALITY_MUSIC_CLASSICAL, result);
@@ -480,7 +494,10 @@ int style_perception_analyze_music(style_perception_t* perc,
 int style_perception_analyze_visual(style_perception_t* perc,
                                      const visual_image_t* image,
                                      style_analysis_result_t* result) {
-    if (!perc || !image || !result) return -1;
+    if (!perc || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_destroy: required parameter is NULL (perc, image, result)");
+        return -1;
+    }
 
     return style_perception_analyze(perc, image, ART_MODALITY_VISUAL_PAINTING, result);
 }
@@ -499,7 +516,10 @@ float style_perception_compare(const style_perception_t* perc,
 int style_perception_closest_archetype(const style_perception_t* perc,
                                         const style_embedding_t* style,
                                         style_match_t* out) {
-    if (!perc || !style || !out) return -1;
+    if (!perc || !style || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_destroy: required parameter is NULL (perc, style, out)");
+        return -1;
+    }
 
     float best_sim = -1.0f;
     int32_t best_id = -1;
@@ -560,7 +580,10 @@ int style_perception_closest_archetype(const style_perception_t* perc,
 
     (void)best_archetypes;
 
-    if (best_id < 0) return -1;
+    if (best_id < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return -1;
+    }
 
     out->archetype_id = best_id;
     out->modality = best_modality;
@@ -610,7 +633,10 @@ uint32_t style_perception_decompose(const style_perception_t* perc,
 //=============================================================================
 
 int style_perception_start_evolution_tracking(style_perception_t* perc) {
-    if (!perc) return -1;
+    if (!perc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_start_evolution_tracking: perc is NULL");
+        return -1;
+    }
 
     if (perc->current_evolution) {
         style_evolution_free(perc->current_evolution);
@@ -618,7 +644,10 @@ int style_perception_start_evolution_tracking(style_perception_t* perc) {
     }
 
     perc->current_evolution = nimcp_calloc(1, sizeof(style_evolution_t));
-    if (!perc->current_evolution) return -1;
+    if (!perc->current_evolution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_perception_start_evolution_tracking: perc->current_evolution is NULL");
+        return -1;
+    }
 
     perc->current_evolution->timeline = nimcp_calloc(MAX_EVOLUTION_POINTS,
                                                       sizeof(style_embedding_t));
@@ -628,6 +657,7 @@ int style_perception_start_evolution_tracking(style_perception_t* perc) {
         style_evolution_free(perc->current_evolution);
         nimcp_free(perc->current_evolution);
         perc->current_evolution = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_start_evolution_tracking: required parameter is NULL (perc->current_evolution->timeline, perc->current_evolution->timestamps)");
         return -1;
     }
 
@@ -637,10 +667,14 @@ int style_perception_start_evolution_tracking(style_perception_t* perc) {
 int style_perception_add_evolution_point(style_perception_t* perc,
                                           const style_embedding_t* style,
                                           float timestamp) {
-    if (!perc || !style || !perc->current_evolution) return -1;
+    if (!perc || !style || !perc->current_evolution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_start_evolution_tracking: required parameter is NULL (perc, style, perc->current_evolution)");
+        return -1;
+    }
 
     if (perc->current_evolution->num_points >= MAX_EVOLUTION_POINTS) {
         LOG_WARN(LOG_MODULE, "Evolution tracking full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "style_perception_start_evolution_tracking: capacity exceeded");
         return -1;
     }
 
@@ -675,7 +709,10 @@ int style_perception_add_evolution_point(style_perception_t* perc,
 
 int style_perception_get_evolution(const style_perception_t* perc,
                                     style_evolution_t* out) {
-    if (!perc || !out || !perc->current_evolution) return -1;
+    if (!perc || !out || !perc->current_evolution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_start_evolution_tracking: required parameter is NULL (perc, out, perc->current_evolution)");
+        return -1;
+    }
 
     *out = *perc->current_evolution;
     /* Note: This is a shallow copy. Caller should not free timeline/timestamps */
@@ -749,7 +786,10 @@ int style_perception_get_archetype(const style_perception_t* perc,
                                     art_modality_t modality,
                                     int32_t archetype_id,
                                     style_embedding_t* out) {
-    if (!perc || !out || archetype_id < 0) return -1;
+    if (!perc || !out || archetype_id < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_perception_stop_evolution_tracking: required parameter is NULL (perc, out)");
+        return -1;
+    }
 
     style_embedding_t* archetypes = NULL;
     uint32_t max_id = 0;
@@ -768,7 +808,10 @@ int style_perception_get_archetype(const style_perception_t* perc,
         max_id = STYLE_CINEMA_COUNT;
     }
 
-    if (!archetypes || (uint32_t)archetype_id >= max_id) return -1;
+    if (!archetypes || (uint32_t)archetype_id >= max_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "style_perception_stop_evolution_tracking: archetypes is NULL");
+        return -1;
+    }
 
     return style_embedding_clone(&archetypes[archetype_id], out);
 }

@@ -286,6 +286,7 @@ flow_tracker_t* flow_tracker_create_custom(
                 nimcp_mutex_destroy(&tracker->paths[j].mutex);
             }
             nimcp_free(tracker);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "flow_tracker_create_custom: validation failed");
             return NULL;
         }
     }
@@ -572,7 +573,10 @@ integration_path_t flow_tracker_find_bottleneck(
 bool flow_tracker_has_bottleneck(
     const flow_tracker_t* tracker
 ) {
-    if (!tracker) return false;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flow_tracker_has_bottleneck: tracker is NULL");
+        return false;
+    }
 
     for (int i = 0; i < FLOW_TRACKER_NUM_PATHS; i++) {
         if (tracker->paths[i].capacity_utilization > tracker->config.bottleneck_threshold) {
@@ -580,6 +584,7 @@ bool flow_tracker_has_bottleneck(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flow_tracker_has_bottleneck: validation failed");
     return false;
 }
 

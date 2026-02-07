@@ -191,12 +191,14 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     if (bridge->config.max_slots == 0 ||
         bridge->config.max_slots > WM_SNN_MAX_SLOTS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "wm_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wm_snn_create: validation failed");
         return NULL;
     }
 
@@ -218,6 +220,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_snn_create: bridge->snn is NULL");
         return NULL;
     }
     bridge->owns_snn = true;
@@ -226,6 +229,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     bridge->slot_pops = nimcp_calloc(bridge->config.max_slots, sizeof(uint32_t));
     if (!bridge->slot_pops) {
         wm_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_snn_create: bridge->slot_pops is NULL");
         return NULL;
     }
 
@@ -329,6 +333,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
                                         sizeof(wm_slot_state_t));
     if (!bridge->slot_states) {
         wm_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_snn_create: bridge->slot_states is NULL");
         return NULL;
     }
 
@@ -337,6 +342,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     bridge->output_buffer = nimcp_calloc(bridge->config.max_slots, sizeof(float));
     if (!bridge->slot_buffer || !bridge->output_buffer) {
         wm_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_snn_create: required parameter is NULL (bridge->slot_buffer, bridge->output_buffer)");
         return NULL;
     }
 
@@ -421,7 +427,10 @@ int wm_snn_encode_item(
     uint32_t feature_count,
     float salience)
 {
-    if (!bridge || !features || slot >= bridge->config.max_slots) return -1;
+    if (!bridge || !features || slot >= bridge->config.max_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_encode_item: required parameter is NULL (bridge, features)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_encode_item", 0.0f);
@@ -500,8 +509,14 @@ int wm_snn_update_item(
     const float* features,
     uint32_t feature_count)
 {
-    if (!bridge || slot >= bridge->config.max_slots) return -1;
-    if (!bridge->slot_states[slot].occupied) return -1;
+    if (!bridge || slot >= bridge->config.max_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_snn_update_item: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->slot_states[slot].occupied) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_update_item: bridge->slot_states is NULL");
+        return -1;
+    }
 
     /* Re-encode with existing salience */
     /* Phase 8: Heartbeat at operation start */
@@ -514,7 +529,10 @@ int wm_snn_update_item(
 }
 
 int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
-    if (!bridge || slot >= bridge->config.max_slots) return -1;
+    if (!bridge || slot >= bridge->config.max_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_snn_clear_slot: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_clear_slot", 0.0f);
@@ -606,7 +624,10 @@ int wm_snn_forward(
     const float* inputs,
     uint32_t input_count)
 {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_forward", 0.0f);
@@ -648,8 +669,14 @@ int wm_snn_retrieve_item(
     float* output,
     uint32_t output_size)
 {
-    if (!bridge || !output || slot >= bridge->config.max_slots) return -1;
-    if (!bridge->slot_states[slot].occupied) return -1;
+    if (!bridge || !output || slot >= bridge->config.max_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_retrieve_item: required parameter is NULL (bridge, output)");
+        return -1;
+    }
+    if (!bridge->slot_states[slot].occupied) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_retrieve_item: bridge->slot_states is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_retrieve_item", 0.0f);
@@ -694,7 +721,10 @@ int wm_snn_get_slot_activities(
     float* activities,
     uint32_t slot_count)
 {
-    if (!bridge || !activities) return -1;
+    if (!bridge || !activities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_get_slot_activities: required parameter is NULL (bridge, activities)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_acti", 0.0f);
@@ -773,7 +803,10 @@ int wm_snn_get_slot_state(
     uint32_t slot,
     wm_slot_state_t* state)
 {
-    if (!bridge || !state || slot >= bridge->config.max_slots) return -1;
+    if (!bridge || !state || slot >= bridge->config.max_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_get_slot_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_slot_stat", 0.0f);
@@ -791,7 +824,10 @@ int wm_snn_get_state(
     wm_snn_bridge_t* bridge,
     wm_snn_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_state", 0.0f);
@@ -831,7 +867,10 @@ int wm_snn_get_state(
 }
 
 int wm_snn_get_stats(wm_snn_bridge_t* bridge, wm_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_get_stats", 0.0f);
@@ -1052,7 +1091,10 @@ int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
 }
 
 bool wm_snn_is_bio_async_connected(wm_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_snn_bridge_heartbeat("working_memo_wm_snn_is_bio_async_", 0.0f);

@@ -101,6 +101,7 @@ wernicke_gpu_context_t* wernicke_gpu_create(
 
     if (!ctx->wm_phonemes || !ctx->wm_activations || !ctx->cohort || !ctx->current_phoneme_seq) {
         wernicke_gpu_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_create: required parameter is NULL (ctx->wm_phonemes, ctx->wm_activations, ctx->cohort, ctx->current_phoneme_seq)");
         return NULL;
     }
 
@@ -130,11 +131,17 @@ bool wernicke_gpu_upload_phoneme_embeddings(
     uint32_t num_phonemes,
     uint32_t embed_dim)
 {
-    if (!ctx || !embeddings) return false;
+    if (!ctx || !embeddings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_upload_phoneme_embeddings: required parameter is NULL (ctx, embeddings)");
+        return false;
+    }
 
     nimcp_free(ctx->phoneme_embeddings);
     ctx->phoneme_embeddings = nimcp_malloc(num_phonemes * embed_dim * sizeof(float));
-    if (!ctx->phoneme_embeddings) return false;
+    if (!ctx->phoneme_embeddings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_upload_phoneme_embeddings: ctx->phoneme_embeddings is NULL");
+        return false;
+    }
 
     memcpy(ctx->phoneme_embeddings, embeddings, num_phonemes * embed_dim * sizeof(float));
     ctx->num_phonemes = num_phonemes;
@@ -150,7 +157,10 @@ bool wernicke_gpu_recognize_phonemes(
     uint32_t num_frames,
     wernicke_gpu_phoneme_result_t* results)
 {
-    if (!ctx || !frames || !results) return false;
+    if (!ctx || !frames || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_recognize_phonemes: required parameter is NULL (ctx, frames, results)");
+        return false;
+    }
 
     /* Simple heuristic: use MFCC coefficients to estimate phoneme */
     for (uint32_t i = 0; i < num_frames; i++) {
@@ -189,7 +199,10 @@ bool wernicke_gpu_compute_posteriors(
     uint32_t num_frames,
     float* posteriors)
 {
-    if (!ctx || !frames || !posteriors) return false;
+    if (!ctx || !frames || !posteriors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_compute_posteriors: required parameter is NULL (ctx, frames, posteriors)");
+        return false;
+    }
 
     uint32_t num_phonemes = ctx->config.num_phoneme_categories;
 
@@ -214,11 +227,17 @@ bool wernicke_gpu_upload_lexicon(
     const wernicke_gpu_lexical_entry_t* entries,
     uint32_t count)
 {
-    if (!ctx || !entries || count == 0) return false;
+    if (!ctx || !entries || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_upload_lexicon: required parameter is NULL (ctx, entries)");
+        return false;
+    }
 
     nimcp_free(ctx->lexicon);
     ctx->lexicon = nimcp_malloc(count * sizeof(wernicke_gpu_lexical_entry_t));
-    if (!ctx->lexicon) return false;
+    if (!ctx->lexicon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_upload_lexicon: ctx->lexicon is NULL");
+        return false;
+    }
 
     memcpy(ctx->lexicon, entries, count * sizeof(wernicke_gpu_lexical_entry_t));
     ctx->lexicon_size = count;
@@ -227,7 +246,10 @@ bool wernicke_gpu_upload_lexicon(
 }
 
 bool wernicke_gpu_clear_lexicon(wernicke_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_clear_lexicon: ctx is NULL");
+        return false;
+    }
     nimcp_free(ctx->lexicon);
     ctx->lexicon = NULL;
     ctx->lexicon_size = 0;
@@ -247,7 +269,10 @@ bool wernicke_gpu_recognize_words(
     uint32_t max_candidates,
     uint32_t* num_candidates)
 {
-    if (!ctx || !phonemes || !candidates || !num_candidates) return false;
+    if (!ctx || !phonemes || !candidates || !num_candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_recognize_words: required parameter is NULL (ctx, phonemes, candidates, num_candidates)");
+        return false;
+    }
     if (!ctx->lexicon || ctx->lexicon_size == 0) {
         *num_candidates = 0;
         return true;
@@ -288,7 +313,10 @@ bool wernicke_gpu_update_cohort(
     uint8_t new_phoneme,
     float phoneme_confidence)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_update_cohort: ctx is NULL");
+        return false;
+    }
 
     if (ctx->phoneme_seq_len < ctx->config.max_phonemes_per_word) {
         ctx->current_phoneme_seq[ctx->phoneme_seq_len++] = new_phoneme;
@@ -326,7 +354,10 @@ bool wernicke_gpu_get_cohort(
     uint32_t max_candidates,
     uint32_t* num_candidates)
 {
-    if (!ctx || !candidates || !num_candidates) return false;
+    if (!ctx || !candidates || !num_candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_get_cohort: required parameter is NULL (ctx, candidates, num_candidates)");
+        return false;
+    }
 
     uint32_t copy_count = ctx->cohort_size < max_candidates ? ctx->cohort_size : max_candidates;
     memcpy(candidates, ctx->cohort, copy_count * sizeof(wernicke_gpu_word_candidate_t));
@@ -336,7 +367,10 @@ bool wernicke_gpu_get_cohort(
 }
 
 bool wernicke_gpu_reset_cohort(wernicke_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_reset_cohort: ctx is NULL");
+        return false;
+    }
     ctx->cohort_size = 0;
     ctx->phoneme_seq_len = 0;
     return true;
@@ -367,7 +401,10 @@ bool wernicke_gpu_spread_activation(
     uint32_t max_results,
     uint32_t* num_results)
 {
-    if (!ctx || !results || !num_results) return false;
+    if (!ctx || !results || !num_results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_spread_activation: required parameter is NULL (ctx, results, num_results)");
+        return false;
+    }
 
     /* Simple pass-through: return seed concepts as activated */
     uint32_t count = num_seeds < max_results ? num_seeds : max_results;
@@ -409,7 +446,10 @@ bool wernicke_gpu_wm_push(
     const uint8_t* phonemes,
     uint32_t count)
 {
-    if (!ctx || !phonemes) return false;
+    if (!ctx || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_wm_push: required parameter is NULL (ctx, phonemes)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < count && ctx->wm_count < ctx->config.working_memory_slots; i++) {
         ctx->wm_phonemes[ctx->wm_count] = phonemes[i];
@@ -428,7 +468,10 @@ bool wernicke_gpu_wm_get_contents(
     uint32_t max_count,
     uint32_t* actual_count)
 {
-    if (!ctx || !actual_count) return false;
+    if (!ctx || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_wm_get_contents: required parameter is NULL (ctx, actual_count)");
+        return false;
+    }
 
     uint32_t count = ctx->wm_count < max_count ? ctx->wm_count : max_count;
     if (phonemes) memcpy(phonemes, ctx->wm_phonemes, count);
@@ -439,7 +482,10 @@ bool wernicke_gpu_wm_get_contents(
 }
 
 bool wernicke_gpu_wm_rehearse(wernicke_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_wm_rehearse: ctx is NULL");
+        return false;
+    }
 
     /* Boost all activations */
     for (uint32_t i = 0; i < ctx->wm_count; i++) {
@@ -455,7 +501,10 @@ bool wernicke_gpu_wm_apply_decay(
     float decay_factor,
     float threshold)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_wm_apply_decay: ctx is NULL");
+        return false;
+    }
 
     uint32_t write_idx = 0;
     for (uint32_t i = 0; i < ctx->wm_count; i++) {
@@ -472,7 +521,10 @@ bool wernicke_gpu_wm_apply_decay(
 }
 
 bool wernicke_gpu_wm_clear(wernicke_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_wm_clear: ctx is NULL");
+        return false;
+    }
     ctx->wm_count = 0;
     return true;
 }
@@ -488,11 +540,17 @@ bool wernicke_gpu_comprehend(
     uint32_t max_semantic_activations,
     uint32_t* num_semantic_activations)
 {
-    if (!ctx || !frames) return false;
+    if (!ctx || !frames) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_comprehend: required parameter is NULL (ctx, frames)");
+        return false;
+    }
 
     /* Step 1: Recognize phonemes */
     wernicke_gpu_phoneme_result_t* phonemes = nimcp_calloc(num_frames, sizeof(wernicke_gpu_phoneme_result_t));
-    if (!phonemes) return false;
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_comprehend: phonemes is NULL");
+        return false;
+    }
 
     wernicke_gpu_recognize_phonemes(ctx, frames, num_frames, phonemes);
 
@@ -500,6 +558,7 @@ bool wernicke_gpu_comprehend(
     uint8_t* phoneme_seq = nimcp_calloc(num_frames, sizeof(uint8_t));
     if (!phoneme_seq) {
         nimcp_free(phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_gpu_comprehend: phoneme_seq is NULL");
         return false;
     }
 
@@ -543,7 +602,10 @@ bool wernicke_gpu_get_stats(
     const wernicke_gpu_context_t* ctx,
     wernicke_gpu_stats_t* stats)
 {
-    if (!stats) return false;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_get_stats: stats is NULL");
+        return false;
+    }
 
     if (ctx) {
         *stats = ctx->stats;
@@ -569,7 +631,10 @@ bool wernicke_cpu_recognize_phonemes(
     uint32_t embed_dim,
     wernicke_gpu_phoneme_result_t* results)
 {
-    if (!frames || !results) return false;
+    if (!frames || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_cpu_recognize_phonemes: required parameter is NULL (frames, results)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_frames; i++) {
         /* Use MFCC as feature vector */
@@ -620,7 +685,10 @@ bool wernicke_cpu_recognize_words(
     uint32_t max_candidates,
     uint32_t* num_candidates)
 {
-    if (!lexicon || !phonemes || !candidates || !num_candidates) return false;
+    if (!lexicon || !phonemes || !candidates || !num_candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_cpu_recognize_words: required parameter is NULL (lexicon, phonemes, candidates, num_candidates)");
+        return false;
+    }
 
     uint32_t found = 0;
 
@@ -659,7 +727,10 @@ bool wernicke_cpu_spread_activation(
     float decay,
     float* output_activations)
 {
-    if (!output_activations) return false;
+    if (!output_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_cpu_spread_activation: output_activations is NULL");
+        return false;
+    }
 
     /* Initialize activations */
     memset(output_activations, 0, num_concepts * sizeof(float));
@@ -674,7 +745,10 @@ bool wernicke_cpu_spread_activation(
 
     /* Simple spreading activation */
     float* temp = nimcp_calloc(num_concepts, sizeof(float));
-    if (!temp) return false;
+    if (!temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_cpu_spread_activation: temp is NULL");
+        return false;
+    }
 
     for (uint32_t iter = 0; iter < iterations; iter++) {
         memset(temp, 0, num_concepts * sizeof(float));
@@ -715,7 +789,10 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
 {
     (void)ctx;
 
-    if (!dims || ndim == 0) return NULL;
+    if (!dims || ndim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_tensor_create: dims is NULL");
+        return NULL;
+    }
 
     nimcp_gpu_tensor_t* tensor = nimcp_calloc(1, sizeof(nimcp_gpu_tensor_t));
     if (!tensor) {
@@ -736,6 +813,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     tensor->strides = nimcp_malloc(ndim * sizeof(size_t));
     if (!tensor->dims || !tensor->strides) {
         nimcp_gpu_tensor_destroy(tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_tensor_create: required parameter is NULL (tensor->dims, tensor->strides)");
         return NULL;
     }
 
@@ -775,6 +853,7 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     tensor->data = nimcp_calloc(tensor->numel, tensor->elem_size);
     if (!tensor->data) {
         nimcp_gpu_tensor_destroy(tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_tensor_create: tensor->data is NULL");
         return NULL;
     }
 
@@ -799,7 +878,10 @@ bool nimcp_gpu_tensor_to_host(
     const nimcp_gpu_tensor_t* tensor,
     void* host_data)
 {
-    if (!tensor || !host_data || !tensor->data) return false;
+    if (!tensor || !host_data || !tensor->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_tensor_to_host: required parameter is NULL (tensor, host_data, tensor->data)");
+        return false;
+    }
     memcpy(host_data, tensor->data, tensor->numel * tensor->elem_size);
     return true;
 }
@@ -847,7 +929,10 @@ bool nimcp_gpu_fill(
     float value)
 {
     (void)ctx;
-    if (!tensor || !tensor->data) return false;
+    if (!tensor || !tensor->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_fill: required parameter is NULL (tensor, tensor->data)");
+        return false;
+    }
 
     if (tensor->precision == NIMCP_GPU_PRECISION_FP32) {
         float* data = (float*)tensor->data;
@@ -867,7 +952,10 @@ bool nimcp_gpu_zeros(
     nimcp_gpu_tensor_t* tensor)
 {
     (void)ctx;
-    if (!tensor || !tensor->data) return false;
+    if (!tensor || !tensor->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_zeros: required parameter is NULL (tensor, tensor->data)");
+        return false;
+    }
     memset(tensor->data, 0, tensor->numel * tensor->elem_size);
     return true;
 }
@@ -884,8 +972,14 @@ bool nimcp_gpu_gemm(
     bool trans_b)
 {
     (void)ctx;
-    if (!A || !B || !C) return false;
-    if (!A->data || !B->data || !C->data) return false;
+    if (!A || !B || !C) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemm: required parameter is NULL (A, B, C)");
+        return false;
+    }
+    if (!A->data || !B->data || !C->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemm: required parameter is NULL (A->data, B->data, C->data)");
+        return false;
+    }
 
     /* Get dimensions */
     size_t M = trans_a ? A->dims[1] : A->dims[0];
@@ -893,7 +987,10 @@ bool nimcp_gpu_gemm(
     size_t K_b = trans_b ? B->dims[1] : B->dims[0];
     size_t N = trans_b ? B->dims[0] : B->dims[1];
 
-    if (K_a != K_b) return false;  /* Dimension mismatch */
+    if (K_a != K_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_gemm: validation failed");
+        return false;
+    }
 
     float* a = (float*)A->data;
     float* b = (float*)B->data;
@@ -926,9 +1023,18 @@ bool nimcp_gpu_gemm_batched(
     bool trans_b)
 {
     (void)ctx;
-    if (!A || !B || !C) return false;
-    if (!A->data || !B->data || !C->data) return false;
-    if (A->ndim < 3 || B->ndim < 3 || C->ndim < 3) return false;
+    if (!A || !B || !C) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemm_batched: required parameter is NULL (A, B, C)");
+        return false;
+    }
+    if (!A->data || !B->data || !C->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemm_batched: required parameter is NULL (A->data, B->data, C->data)");
+        return false;
+    }
+    if (A->ndim < 3 || B->ndim < 3 || C->ndim < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_gemm_batched: validation failed");
+        return false;
+    }
 
     size_t batch_size = A->dims[0];
     size_t M = trans_a ? A->dims[2] : A->dims[1];
@@ -974,8 +1080,14 @@ bool nimcp_gpu_gemv(
     bool trans_a)
 {
     (void)ctx;
-    if (!A || !x || !y) return false;
-    if (!A->data || !x->data || !y->data) return false;
+    if (!A || !x || !y) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemv: required parameter is NULL (A, x, y)");
+        return false;
+    }
+    if (!A->data || !x->data || !y->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gemv: required parameter is NULL (A->data, x->data, y->data)");
+        return false;
+    }
 
     size_t M = trans_a ? A->dims[1] : A->dims[0];
     size_t N = trans_a ? A->dims[0] : A->dims[1];
@@ -1002,8 +1114,14 @@ bool nimcp_gpu_add(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !b || !out) return false;
-    if (!a->data || !b->data || !out->data) return false;
+    if (!a || !b || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_add: required parameter is NULL (a, b, out)");
+        return false;
+    }
+    if (!a->data || !b->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_add: required parameter is NULL (a->data, b->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* bv = (float*)b->data;
@@ -1022,8 +1140,14 @@ bool nimcp_gpu_sub(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !b || !out) return false;
-    if (!a->data || !b->data || !out->data) return false;
+    if (!a || !b || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sub: required parameter is NULL (a, b, out)");
+        return false;
+    }
+    if (!a->data || !b->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sub: required parameter is NULL (a->data, b->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* bv = (float*)b->data;
@@ -1042,8 +1166,14 @@ bool nimcp_gpu_mul(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !b || !out) return false;
-    if (!a->data || !b->data || !out->data) return false;
+    if (!a || !b || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_mul: required parameter is NULL (a, b, out)");
+        return false;
+    }
+    if (!a->data || !b->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_mul: required parameter is NULL (a->data, b->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* bv = (float*)b->data;
@@ -1062,8 +1192,14 @@ bool nimcp_gpu_div(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !b || !out) return false;
-    if (!a->data || !b->data || !out->data) return false;
+    if (!a || !b || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_div: required parameter is NULL (a, b, out)");
+        return false;
+    }
+    if (!a->data || !b->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_div: required parameter is NULL (a->data, b->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* bv = (float*)b->data;
@@ -1082,8 +1218,14 @@ bool nimcp_gpu_add_scalar(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !out) return false;
-    if (!a->data || !out->data) return false;
+    if (!a || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_add_scalar: required parameter is NULL (a, out)");
+        return false;
+    }
+    if (!a->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_add_scalar: required parameter is NULL (a->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* ov = (float*)out->data;
@@ -1101,8 +1243,14 @@ bool nimcp_gpu_mul_scalar(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!a || !out) return false;
-    if (!a->data || !out->data) return false;
+    if (!a || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_mul_scalar: required parameter is NULL (a, out)");
+        return false;
+    }
+    if (!a->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_mul_scalar: required parameter is NULL (a->data, out->data)");
+        return false;
+    }
 
     float* av = (float*)a->data;
     float* ov = (float*)out->data;
@@ -1119,8 +1267,14 @@ bool nimcp_gpu_relu(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_relu: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_relu: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1138,8 +1292,14 @@ bool nimcp_gpu_leaky_relu(
     float alpha)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_leaky_relu: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_leaky_relu: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1156,8 +1316,14 @@ bool nimcp_gpu_sigmoid(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sigmoid: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sigmoid: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1174,8 +1340,14 @@ bool nimcp_gpu_tanh(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_tanh: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_tanh: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1192,8 +1364,14 @@ bool nimcp_gpu_gelu(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gelu: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_gelu: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1216,8 +1394,14 @@ bool nimcp_gpu_silu(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_silu: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_silu: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1235,8 +1419,14 @@ bool nimcp_gpu_softmax(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_softmax: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_softmax: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1276,8 +1466,14 @@ bool nimcp_gpu_log_softmax(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_log_softmax: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_log_softmax: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1313,8 +1509,14 @@ bool nimcp_gpu_exp(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_exp: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_exp: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1331,8 +1533,14 @@ bool nimcp_gpu_log(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_log: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_log: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1349,8 +1557,14 @@ bool nimcp_gpu_sqrt(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sqrt: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_sqrt: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1368,8 +1582,14 @@ bool nimcp_gpu_pow(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_pow: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_pow: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1386,8 +1606,14 @@ bool nimcp_gpu_abs(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_abs: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_abs: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1406,8 +1632,14 @@ bool nimcp_gpu_clamp(
     nimcp_gpu_tensor_t* out)
 {
     (void)ctx;
-    if (!x || !out) return false;
-    if (!x->data || !out->data) return false;
+    if (!x || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_clamp: required parameter is NULL (x, out)");
+        return false;
+    }
+    if (!x->data || !out->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_clamp: required parameter is NULL (x->data, out->data)");
+        return false;
+    }
 
     float* xv = (float*)x->data;
     float* ov = (float*)out->data;
@@ -1427,8 +1659,14 @@ bool nimcp_gpu_copy(
     nimcp_gpu_tensor_t* dst)
 {
     (void)ctx;
-    if (!src || !dst) return false;
-    if (!src->data || !dst->data) return false;
+    if (!src || !dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_copy: required parameter is NULL (src, dst)");
+        return false;
+    }
+    if (!src->data || !dst->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_copy: required parameter is NULL (src->data, dst->data)");
+        return false;
+    }
 
     size_t to_copy = src->numel < dst->numel ? src->numel : dst->numel;
     memcpy(dst->data, src->data, to_copy * sizeof(float));
@@ -1469,7 +1707,10 @@ static bool create_cpu_layer(
     uint32_t out_dim,
     nimcp_jepa_gpu_activation_t activation)
 {
-    if (!layer) return false;
+    if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_cpu_layer: layer is NULL");
+        return false;
+    }
 
     layer->in_dim = in_dim;
     layer->out_dim = out_dim;
@@ -1478,7 +1719,10 @@ static bool create_cpu_layer(
     /* Create weight tensor [out_dim x in_dim] */
     size_t weight_dims[2] = { out_dim, in_dim };
     layer->weights = nimcp_gpu_tensor_create(NULL, weight_dims, 2, NIMCP_GPU_PRECISION_FP32);
-    if (!layer->weights) return false;
+    if (!layer->weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_cpu_layer: layer->weights is NULL");
+        return false;
+    }
 
     /* Create bias tensor [out_dim] */
     size_t bias_dims[1] = { out_dim };
@@ -1486,6 +1730,7 @@ static bool create_cpu_layer(
     if (!layer->bias) {
         nimcp_gpu_tensor_destroy(layer->weights);
         layer->weights = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_cpu_layer: layer->bias is NULL");
         return false;
     }
 
@@ -1516,7 +1761,10 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     uint32_t num_layers,
     nimcp_jepa_gpu_activation_t activation)
 {
-    if (num_layers == 0) return NULL;
+    if (num_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_predictor_create: num_layers is zero");
+        return NULL;
+    }
 
     nimcp_jepa_gpu_predictor_t* pred = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
     if (!pred) {
@@ -1537,6 +1785,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     pred->layers = nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!pred->layers) {
         nimcp_free(pred);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_predictor_create: pred->layers is NULL");
         return NULL;
     }
 
@@ -1553,6 +1802,7 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
             }
             nimcp_free(pred->layers);
             nimcp_free(pred);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_predictor_create: create_cpu_layer is NULL");
             return NULL;
         }
     }
@@ -1601,12 +1851,24 @@ bool nimcp_jepa_gpu_predictor_upload_weights(
     const float* weights,
     const float* bias)
 {
-    if (!predictor || layer_idx >= predictor->num_layers) return false;
-    if (!weights || !bias) return false;
+    if (!predictor || layer_idx >= predictor->num_layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_predictor_upload_weights: predictor is NULL");
+        return false;
+    }
+    if (!weights || !bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_upload_weights: required parameter is NULL (weights, bias)");
+        return false;
+    }
 
     nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
-    if (!layer->weights || !layer->bias) return false;
-    if (!layer->weights->data || !layer->bias->data) return false;
+    if (!layer->weights || !layer->bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_upload_weights: required parameter is NULL (layer->weights, layer->bias)");
+        return false;
+    }
+    if (!layer->weights->data || !layer->bias->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_upload_weights: required parameter is NULL (layer->weights->data, layer->bias->data)");
+        return false;
+    }
 
     /* Copy weights: [out_dim x in_dim] */
     size_t weight_size = layer->out_dim * layer->in_dim * sizeof(float);
@@ -1625,12 +1887,24 @@ bool nimcp_jepa_gpu_predictor_download_weights(
     float* weights,
     float* bias)
 {
-    if (!predictor || layer_idx >= predictor->num_layers) return false;
-    if (!weights || !bias) return false;
+    if (!predictor || layer_idx >= predictor->num_layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_predictor_download_weights: predictor is NULL");
+        return false;
+    }
+    if (!weights || !bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_download_weights: required parameter is NULL (weights, bias)");
+        return false;
+    }
 
     const nimcp_jepa_gpu_layer_t* layer = &predictor->layers[layer_idx];
-    if (!layer->weights || !layer->bias) return false;
-    if (!layer->weights->data || !layer->bias->data) return false;
+    if (!layer->weights || !layer->bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_download_weights: required parameter is NULL (layer->weights, layer->bias)");
+        return false;
+    }
+    if (!layer->weights->data || !layer->bias->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_predictor_download_weights: required parameter is NULL (layer->weights->data, layer->bias->data)");
+        return false;
+    }
 
     /* Copy weights: [out_dim x in_dim] */
     size_t weight_size = layer->out_dim * layer->in_dim * sizeof(float);
@@ -1668,9 +1942,18 @@ bool nimcp_jepa_gpu_forward_predict(
     const nimcp_gpu_tensor_t* context,
     nimcp_gpu_tensor_t* prediction)
 {
-    if (!predictor || !context || !prediction) return false;
-    if (!context->data || !prediction->data) return false;
-    if (!predictor->layers) return false;
+    if (!predictor || !context || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_forward_predict: required parameter is NULL (predictor, context, prediction)");
+        return false;
+    }
+    if (!context->data || !prediction->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_forward_predict: required parameter is NULL (context->data, prediction->data)");
+        return false;
+    }
+    if (!predictor->layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_forward_predict: predictor->layers is NULL");
+        return false;
+    }
 
     uint32_t batch_size = (uint32_t)context->dims[0];
     float* input = (float*)context->data;
@@ -1682,6 +1965,7 @@ bool nimcp_jepa_gpu_forward_predict(
     if (!temp1 || !temp2) {
         nimcp_free(temp1);
         nimcp_free(temp2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_forward_predict: required parameter is NULL (temp1, temp2)");
         return false;
     }
 
@@ -1694,6 +1978,7 @@ bool nimcp_jepa_gpu_forward_predict(
         if (!layer->weights || !layer->bias) {
             nimcp_free(temp1);
             nimcp_free(temp2);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_forward_predict: required parameter is NULL (layer->weights, layer->bias)");
             return false;
         }
 
@@ -1737,6 +2022,7 @@ bool nimcp_jepa_gpu_forward_conditioned(
 {
     (void)predictor; (void)state; (void)action; (void)next_state;
     /* CPU fallback: not implemented - return false */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_forward_conditioned: operation failed");
     return false;
 }
 
@@ -1747,7 +2033,10 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     uint32_t hidden_dim,
     uint32_t num_layers)
 {
-    if (num_layers == 0) return NULL;
+    if (num_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_inverse_create: num_layers is zero");
+        return NULL;
+    }
 
     nimcp_jepa_gpu_inverse_t* inv = nimcp_calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
     if (!inv) {
@@ -1767,6 +2056,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     inv->layers = nimcp_calloc(num_layers, sizeof(nimcp_jepa_gpu_layer_t));
     if (!inv->layers) {
         nimcp_free(inv);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_jepa_gpu_inverse_create: inv->layers is NULL");
         return NULL;
     }
 
@@ -1784,6 +2074,7 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
             }
             nimcp_free(inv->layers);
             nimcp_free(inv);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_inverse_create: create_cpu_layer is NULL");
             return NULL;
         }
 
@@ -1815,9 +2106,18 @@ bool nimcp_jepa_gpu_inverse_infer(
     const nimcp_gpu_tensor_t* state_next,
     nimcp_gpu_tensor_t* action)
 {
-    if (!inverse || !state_t || !state_next || !action) return false;
-    if (!state_t->data || !state_next->data || !action->data) return false;
-    if (!inverse->layers) return false;
+    if (!inverse || !state_t || !state_next || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_inverse_infer: required parameter is NULL (inverse, state_t, state_next, action)");
+        return false;
+    }
+    if (!state_t->data || !state_next->data || !action->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_inverse_infer: required parameter is NULL (state_t->data, state_next->data, action->data)");
+        return false;
+    }
+    if (!inverse->layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_inverse_infer: inverse->layers is NULL");
+        return false;
+    }
 
     uint32_t batch_size = (uint32_t)state_t->dims[0];
     float* s_t = (float*)state_t->data;
@@ -1838,6 +2138,7 @@ bool nimcp_jepa_gpu_inverse_infer(
         nimcp_free(concat);
         nimcp_free(temp1);
         nimcp_free(temp2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_inverse_infer: required parameter is NULL (concat, temp1, temp2)");
         return false;
     }
 
@@ -1891,8 +2192,14 @@ bool nimcp_jepa_gpu_apply_mask(
     nimcp_gpu_tensor_t* masked)
 {
     (void)ctx;
-    if (!latent || !mask || !masked) return false;
-    if (!latent->data || !mask->data || !masked->data) return false;
+    if (!latent || !mask || !masked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_apply_mask: required parameter is NULL (latent, mask, masked)");
+        return false;
+    }
+    if (!latent->data || !mask->data || !masked->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_apply_mask: required parameter is NULL (latent->data, mask->data, masked->data)");
+        return false;
+    }
 
     float* lat = (float*)latent->data;
     float* m = (float*)mask->data;
@@ -1911,7 +2218,10 @@ bool nimcp_jepa_gpu_generate_block_mask(
     float mask_ratio)
 {
     (void)ctx;
-    if (!mask || !mask->data) return false;
+    if (!mask || !mask->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_generate_block_mask: required parameter is NULL (mask, mask->data)");
+        return false;
+    }
 
     float* m = (float*)mask->data;
     size_t numel = mask->numel;
@@ -1954,8 +2264,14 @@ bool nimcp_jepa_gpu_compute_loss(
     float* loss)
 {
     (void)ctx;
-    if (!prediction || !target || !loss) return false;
-    if (!prediction->data || !target->data) return false;
+    if (!prediction || !target || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_compute_loss: required parameter is NULL (prediction, target, loss)");
+        return false;
+    }
+    if (!prediction->data || !target->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_compute_loss: required parameter is NULL (prediction->data, target->data)");
+        return false;
+    }
 
     float* pred = (float*)prediction->data;
     float* tgt = (float*)target->data;
@@ -1995,6 +2311,7 @@ bool nimcp_jepa_gpu_backward(
 {
     (void)predictor; (void)grad_output; (void)grad_input;
     /* CPU fallback: not implemented */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_backward: operation failed");
     return false;
 }
 
@@ -2005,6 +2322,7 @@ bool nimcp_jepa_gpu_update_weights(
 {
     (void)predictor; (void)learning_rate; (void)weight_decay;
     /* CPU fallback: not implemented */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_jepa_gpu_update_weights: operation failed");
     return false;
 }
 
@@ -2015,7 +2333,10 @@ int nimcp_jepa_gpu_download_latent(
     size_t max_elements)
 {
     (void)ctx;
-    if (!gpu_latent || !cpu_data) return -1;
+    if (!gpu_latent || !cpu_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_download_latent: required parameter is NULL (gpu_latent, cpu_data)");
+        return -1;
+    }
 
     size_t to_copy = gpu_latent->numel < max_elements ? gpu_latent->numel : max_elements;
     memcpy(cpu_data, gpu_latent->data, to_copy * sizeof(float));
@@ -2029,7 +2350,10 @@ bool nimcp_jepa_gpu_upload_latent(
     nimcp_gpu_tensor_t* gpu_latent)
 {
     (void)ctx;
-    if (!cpu_data || !gpu_latent || !gpu_latent->data) return false;
+    if (!cpu_data || !gpu_latent || !gpu_latent->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_jepa_gpu_upload_latent: required parameter is NULL (cpu_data, gpu_latent, gpu_latent->data)");
+        return false;
+    }
 
     size_t to_copy = gpu_latent->numel < num_elements ? gpu_latent->numel : num_elements;
     memcpy(gpu_latent->data, cpu_data, to_copy * sizeof(float));
@@ -2099,6 +2423,7 @@ broca_gpu_context_t* broca_gpu_create(
     ctx->lexicon = nimcp_calloc(ctx->lexicon_capacity, sizeof(broca_gpu_lexical_entry_t));
     if (!ctx->lexicon) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_gpu_create: ctx->lexicon is NULL");
         return NULL;
     }
 
@@ -2110,6 +2435,7 @@ broca_gpu_context_t* broca_gpu_create(
         nimcp_free(ctx->wm_word_ids);
         nimcp_free(ctx->wm_activations);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_create: required parameter is NULL (ctx->wm_word_ids, ctx->wm_activations)");
         return NULL;
     }
 
@@ -2134,8 +2460,14 @@ bool broca_gpu_upload_lexicon(
     const broca_gpu_lexical_entry_t* entries,
     uint32_t count)
 {
-    if (!ctx || !entries) return false;
-    if (ctx->lexicon_size + count > ctx->lexicon_capacity) return false;
+    if (!ctx || !entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_upload_lexicon: required parameter is NULL (ctx, entries)");
+        return false;
+    }
+    if (ctx->lexicon_size + count > ctx->lexicon_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_gpu_upload_lexicon: validation failed");
+        return false;
+    }
 
     memcpy(ctx->lexicon + ctx->lexicon_size, entries, count * sizeof(broca_gpu_lexical_entry_t));
     ctx->lexicon_size += count;
@@ -2143,7 +2475,10 @@ bool broca_gpu_upload_lexicon(
 }
 
 bool broca_gpu_clear_lexicon(broca_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_clear_lexicon: ctx is NULL");
+        return false;
+    }
     ctx->lexicon_size = 0;
     return true;
 }
@@ -2158,7 +2493,10 @@ bool broca_gpu_batch_lexical_lookup(
     uint32_t count,
     broca_gpu_lookup_result_t* results)
 {
-    if (!ctx || !word_ids || !results) return false;
+    if (!ctx || !word_ids || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_batch_lexical_lookup: required parameter is NULL (ctx, word_ids, results)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         results[i].word_id = word_ids[i];
@@ -2187,7 +2525,10 @@ bool broca_gpu_find_top_activated(
     broca_gpu_lexical_entry_t* results,
     uint32_t* actual_count)
 {
-    if (!ctx || !results || !actual_count) return false;
+    if (!ctx || !results || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_find_top_activated: required parameter is NULL (ctx, results, actual_count)");
+        return false;
+    }
 
     /* Simple bubble-sort top-N for CPU fallback */
     uint32_t found = 0;
@@ -2228,7 +2569,10 @@ bool broca_gpu_update_activations(
     float boost_amount,
     float decay_rate)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_update_activations: ctx is NULL");
+        return false;
+    }
 
     /* Apply decay to all */
     for (uint32_t i = 0; i < ctx->lexicon_size; i++) {
@@ -2261,7 +2605,10 @@ bool broca_gpu_encode_phonemes(
     uint32_t* phoneme_count,
     uint32_t* word_boundaries)
 {
-    if (!ctx || !word_ids || !phoneme_buffer || !phoneme_count) return false;
+    if (!ctx || !word_ids || !phoneme_buffer || !phoneme_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_encode_phonemes: required parameter is NULL (ctx, word_ids, phoneme_buffer, phoneme_count)");
+        return false;
+    }
 
     uint32_t offset = 0;
     for (uint32_t i = 0; i < word_count; i++) {
@@ -2306,7 +2653,10 @@ bool broca_gpu_generate_motor_commands(
     uint32_t* command_count,
     float base_timestamp)
 {
-    if (!ctx || !phonemes || !commands || !command_count) return false;
+    if (!ctx || !phonemes || !commands || !command_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_generate_motor_commands: required parameter is NULL (ctx, phonemes, commands, command_count)");
+        return false;
+    }
 
     uint32_t num_arts = ctx->config.max_articulators;
     uint32_t cmd_idx = 0;
@@ -2338,7 +2688,10 @@ bool broca_gpu_adjust_timing(
     float rate_multiplier)
 {
     (void)ctx;
-    if (!commands) return false;
+    if (!commands) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_adjust_timing: commands is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < command_count; i++) {
         commands[i].timestamp_ms *= rate_multiplier;
@@ -2352,7 +2705,10 @@ bool broca_gpu_wm_push(
     uint32_t count,
     float initial_activation)
 {
-    if (!ctx || !word_ids) return false;
+    if (!ctx || !word_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_wm_push: required parameter is NULL (ctx, word_ids)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         if (ctx->wm_count < ctx->config.working_memory_slots) {
@@ -2380,7 +2736,10 @@ bool broca_gpu_wm_get_contents(
     uint32_t max_count,
     uint32_t* actual_count)
 {
-    if (!ctx || !word_ids || !actual_count) return false;
+    if (!ctx || !word_ids || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_wm_get_contents: required parameter is NULL (ctx, word_ids, actual_count)");
+        return false;
+    }
 
     uint32_t to_copy = ctx->wm_count < max_count ? ctx->wm_count : max_count;
     memcpy(word_ids, ctx->wm_word_ids, to_copy * sizeof(uint32_t));
@@ -2396,7 +2755,10 @@ bool broca_gpu_wm_apply_decay(
     float decay_factor,
     float threshold)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_wm_apply_decay: ctx is NULL");
+        return false;
+    }
 
     uint32_t new_count = 0;
     for (uint32_t i = 0; i < ctx->wm_count; i++) {
@@ -2412,7 +2774,10 @@ bool broca_gpu_wm_apply_decay(
 }
 
 bool broca_gpu_wm_clear(broca_gpu_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_wm_clear: ctx is NULL");
+        return false;
+    }
     ctx->wm_count = 0;
     return true;
 }
@@ -2426,18 +2791,25 @@ bool broca_gpu_produce_utterance(
     uint32_t* command_count,
     float base_timestamp)
 {
-    if (!ctx || !word_ids || !commands || !command_count) return false;
+    if (!ctx || !word_ids || !commands || !command_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_produce_utterance: required parameter is NULL (ctx, word_ids, commands, command_count)");
+        return false;
+    }
 
     /* Allocate phoneme buffer */
     uint32_t max_phonemes = word_count * ctx->config.max_phonemes_per_word;
     uint8_t* phonemes = nimcp_calloc(max_phonemes, sizeof(uint8_t));
-    if (!phonemes) return false;
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_gpu_produce_utterance: phonemes is NULL");
+        return false;
+    }
 
     uint32_t phoneme_count = 0;
     bool result = broca_gpu_encode_phonemes(ctx, word_ids, word_count, phonemes,
                                             max_phonemes, &phoneme_count, NULL);
     if (!result) {
         nimcp_free(phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_produce_utterance: result is NULL");
         return false;
     }
 
@@ -2449,7 +2821,10 @@ bool broca_gpu_produce_utterance(
 }
 
 bool broca_gpu_get_stats(const broca_gpu_context_t* ctx, broca_gpu_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_gpu_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
     *stats = ctx->stats;
     stats->gpu_memory_used = ctx->lexicon_size * sizeof(broca_gpu_lexical_entry_t) +
                              ctx->config.working_memory_slots * (sizeof(uint32_t) + sizeof(float));
@@ -2470,7 +2845,10 @@ bool broca_cpu_batch_lexical_lookup(
     uint32_t count,
     broca_gpu_lookup_result_t* results)
 {
-    if (!lexicon || !word_ids || !results) return false;
+    if (!lexicon || !word_ids || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_cpu_batch_lexical_lookup: required parameter is NULL (lexicon, word_ids, results)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         results[i].word_id = word_ids[i];
@@ -2501,7 +2879,10 @@ bool broca_cpu_encode_phonemes(
     uint32_t* phoneme_count,
     uint32_t* word_boundaries)
 {
-    if (!lexicon || !word_ids || !phoneme_buffer || !phoneme_count) return false;
+    if (!lexicon || !word_ids || !phoneme_buffer || !phoneme_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_cpu_encode_phonemes: required parameter is NULL (lexicon, word_ids, phoneme_buffer, phoneme_count)");
+        return false;
+    }
 
     uint32_t offset = 0;
     for (uint32_t i = 0; i < word_count; i++) {
@@ -2533,7 +2914,10 @@ bool broca_cpu_generate_motor_commands(
     float base_timestamp,
     uint32_t num_articulators)
 {
-    if (!phonemes || !commands || !command_count) return false;
+    if (!phonemes || !commands || !command_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_cpu_generate_motor_commands: required parameter is NULL (phonemes, commands, command_count)");
+        return false;
+    }
 
     uint32_t cmd_idx = 0;
     float timestamp = base_timestamp;

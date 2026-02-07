@@ -150,7 +150,10 @@ int nimcp_impulse_reset(nimcp_impulse_system_t* system) {
  *===========================================================================*/
 
 int nimcp_impulse_update(nimcp_impulse_system_t* system, float ht_level, float dt) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_update: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     float dt_sec = dt / 1000.0f;
     system->current_5ht = ht_level;
@@ -201,7 +204,10 @@ int nimcp_impulse_evaluate(nimcp_impulse_system_t* system,
                            float action_reward,
                            float action_risk,
                            nimcp_impulse_result_t* result) {
-    if (!system || !system->initialized || !result) return -1;
+    if (!system || !system->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_update: required parameter is NULL (system, system->initialized, result)");
+        return -1;
+    }
 
     /* Accumulate urgency */
     system->accumulated_urgency += action_urgency * 0.1f;
@@ -269,7 +275,10 @@ int nimcp_impulse_evaluate(nimcp_impulse_system_t* system,
 int nimcp_impulse_compute_inhibition(nimcp_impulse_system_t* system,
                                      float impulse_strength,
                                      float* inhibition_output) {
-    if (!system || !system->initialized || !inhibition_output) return -1;
+    if (!system || !system->initialized || !inhibition_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_update: required parameter is NULL (system, system->initialized, inhibition_output)");
+        return -1;
+    }
 
     /* Inhibition must overcome impulse strength */
     float net_inhibition = system->inhibition_strength - impulse_strength;
@@ -283,7 +292,10 @@ int nimcp_impulse_compute_inhibition(nimcp_impulse_system_t* system,
 int nimcp_impulse_can_wait(nimcp_impulse_system_t* system,
                            float wait_duration,
                            bool* can_wait) {
-    if (!system || !system->initialized || !can_wait) return -1;
+    if (!system || !system->initialized || !can_wait) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_update: required parameter is NULL (system, system->initialized, can_wait)");
+        return -1;
+    }
 
     /* Patience determines how long we can wait */
     /* wait_duration in ms, patience maps to sustainable wait time */
@@ -302,28 +314,40 @@ int nimcp_impulse_can_wait(nimcp_impulse_system_t* system,
  *===========================================================================*/
 
 int nimcp_impulse_get_inhibition(nimcp_impulse_system_t* system, float* inhibition) {
-    if (!system || !system->initialized || !inhibition) return -1;
+    if (!system || !system->initialized || !inhibition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_get_inhibition: required parameter is NULL (system, system->initialized, inhibition)");
+        return -1;
+    }
 
     *inhibition = system->inhibition_strength;
     return 0;
 }
 
 int nimcp_impulse_get_patience(nimcp_impulse_system_t* system, float* patience) {
-    if (!system || !system->initialized || !patience) return -1;
+    if (!system || !system->initialized || !patience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_get_patience: required parameter is NULL (system, system->initialized, patience)");
+        return -1;
+    }
 
     *patience = system->patience;
     return 0;
 }
 
 int nimcp_impulse_get_impulsivity(nimcp_impulse_system_t* system, float* impulsivity) {
-    if (!system || !system->initialized || !impulsivity) return -1;
+    if (!system || !system->initialized || !impulsivity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_get_impulsivity: required parameter is NULL (system, system->initialized, impulsivity)");
+        return -1;
+    }
 
     *impulsivity = system->impulsivity;
     return 0;
 }
 
 int nimcp_impulse_get_risk_aversion(nimcp_impulse_system_t* system, float* risk_aversion) {
-    if (!system || !system->initialized || !risk_aversion) return -1;
+    if (!system || !system->initialized || !risk_aversion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_get_risk_aversion: required parameter is NULL (system, system->initialized, risk_aversion)");
+        return -1;
+    }
 
     *risk_aversion = system->risk_aversion;
     return 0;
@@ -334,14 +358,20 @@ int nimcp_impulse_get_risk_aversion(nimcp_impulse_system_t* system, float* risk_
  *===========================================================================*/
 
 int nimcp_impulse_reset_urgency(nimcp_impulse_system_t* system) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_reset_urgency: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     system->accumulated_urgency = 0.0f;
     return 0;
 }
 
 int nimcp_impulse_get_urgency(nimcp_impulse_system_t* system, float* urgency) {
-    if (!system || !system->initialized || !urgency) return -1;
+    if (!system || !system->initialized || !urgency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_impulse_get_urgency: required parameter is NULL (system, system->initialized, urgency)");
+        return -1;
+    }
 
     *urgency = system->accumulated_urgency;
     return 0;

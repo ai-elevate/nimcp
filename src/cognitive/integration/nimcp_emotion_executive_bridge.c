@@ -165,6 +165,7 @@ static decision_record_t* find_decision_unlocked(emotion_executive_bridge_t* bri
             return &bridge->decisions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: validation failed");
     return NULL;
 }
 
@@ -221,6 +222,7 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     bridge->decisions = nimcp_malloc(sizeof(decision_record_t) * DEFAULT_DECISION_CAPACITY);
     if (!bridge->decisions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->decisions is NULL");
         return NULL;
     }
     memset(bridge->decisions, 0, sizeof(decision_record_t) * DEFAULT_DECISION_CAPACITY);
@@ -240,6 +242,7 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->decisions);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -286,10 +289,12 @@ int emotion_executive_influence_decision(
     emotion_executive_emotional_bias_t* emotional_bias_out
 ) {
     if (!bridge || !decision_context || !emotional_bias_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_influence_decision: required parameter is NULL (bridge, decision_context, emotional_bias_out)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_influence_decision: bridge->initialized is NULL");
         return -1;
     }
 
@@ -376,10 +381,12 @@ int emotion_executive_on_decision(
     const emotion_executive_decision_outcome_t* outcome
 ) {
     if (!bridge || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_on_decision: required parameter is NULL (bridge, outcome)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_on_decision: bridge->initialized is NULL");
         return -1;
     }
 
@@ -393,6 +400,7 @@ int emotion_executive_on_decision(
     decision_record_t* record = find_decision_unlocked(bridge, decision_id);
     if (!record) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_on_decision: record is NULL");
         return -1;
     }
 
@@ -438,10 +446,12 @@ int emotion_executive_regulate_emotion(
     const emotion_executive_regulation_target_t* regulation_target
 ) {
     if (!bridge || !regulation_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_regulate_emotion: required parameter is NULL (bridge, regulation_target)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_regulate_emotion: bridge->initialized is NULL");
         return -1;
     }
 
@@ -517,10 +527,12 @@ int emotion_executive_get_emotional_state(
     emotion_executive_emotional_state_t* state_out
 ) {
     if (!bridge || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_get_emotional_state: required parameter is NULL (bridge, state_out)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_get_emotional_state: bridge->initialized is NULL");
         return -1;
     }
 
@@ -582,10 +594,12 @@ int emotion_executive_get_stats(
     emotion_executive_stats_t* stats_out
 ) {
     if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_get_stats: required parameter is NULL (bridge, stats_out)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_get_stats: bridge->initialized is NULL");
         return -1;
     }
 

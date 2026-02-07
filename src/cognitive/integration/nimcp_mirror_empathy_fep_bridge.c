@@ -378,6 +378,7 @@ me_fep_bridge_t* me_fep_bridge_create(const me_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "mirror_empathy_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "me_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -429,7 +430,10 @@ void me_fep_bridge_destroy(me_fep_bridge_t* bridge) {
 }
 
 int me_fep_bridge_reset(me_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_reset", 0.0f);
@@ -472,7 +476,10 @@ int me_fep_bridge_register(
     mirror_empathy_bridge_t* me_bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_regist", 0.0f);
@@ -509,6 +516,7 @@ int me_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->me_bridge = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "me_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -525,7 +533,10 @@ int me_fep_bridge_register(
 }
 
 int me_fep_bridge_unregister(me_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_unregi", 0.0f);
@@ -554,7 +565,10 @@ int me_fep_bridge_unregister(me_fep_bridge_t* bridge) {
 }
 
 bool me_fep_bridge_is_registered(const me_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_is_reg", 0.0f);
@@ -591,13 +605,17 @@ int me_fep_update_callback(void* handle) {
 
 
     me_fep_bridge_t* bridge = (me_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_update_callback: bridge->registered is NULL");
         return -1;
     }
 
@@ -684,7 +702,10 @@ void me_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int me_fep_bridge_force_update(me_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_force_", 0.0f);
@@ -718,7 +739,10 @@ int me_fep_bridge_update_mirroring_error(
     me_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_update_mirroring_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_update", 0.0f);
@@ -736,7 +760,10 @@ int me_fep_bridge_update_empathy_error(
     me_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_update_empathy_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_update", 0.0f);
@@ -754,7 +781,10 @@ int me_fep_bridge_update_resonance_deficit(
     me_fep_bridge_t* bridge,
     float deficit
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_update_resonance_deficit: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_update", 0.0f);
@@ -776,7 +806,10 @@ int me_fep_bridge_get_metrics(
     const me_fep_bridge_t* bridge,
     me_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_get_me", 0.0f);
@@ -793,7 +826,10 @@ int me_fep_bridge_get_stats(
     const me_fep_bridge_t* bridge,
     me_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_get_st", 0.0f);
@@ -807,7 +843,10 @@ int me_fep_bridge_get_stats(
 }
 
 int me_fep_bridge_reset_stats(me_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_reset_", 0.0f);
@@ -883,7 +922,10 @@ me_fep_state_t me_fep_bridge_get_state(const me_fep_bridge_t* bridge) {
 }
 
 bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_is_deg", 0.0f);
@@ -897,7 +939,10 @@ bool me_fep_bridge_is_degraded(const me_fep_bridge_t* bridge) {
 }
 
 bool me_fep_bridge_is_high_resonance(const me_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_is_high_resonance: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_is_hig", 0.0f);
@@ -930,7 +975,10 @@ int me_fep_bridge_set_high_fe_callback(
     me_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_set_hi", 0.0f);
@@ -949,7 +997,10 @@ int me_fep_bridge_set_surprise_callback(
     me_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_set_su", 0.0f);
@@ -968,7 +1019,10 @@ int me_fep_bridge_set_metrics_callback(
     me_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_set_me", 0.0f);
@@ -990,7 +1044,10 @@ int me_fep_bridge_set_config(
     me_fep_bridge_t* bridge,
     const me_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_set_co", 0.0f);
@@ -1007,7 +1064,10 @@ int me_fep_bridge_get_config(
     const me_fep_bridge_t* bridge,
     me_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_empathy_fep_bridge_heartbeat("mirror_empat_me_fep_bridge_get_co", 0.0f);

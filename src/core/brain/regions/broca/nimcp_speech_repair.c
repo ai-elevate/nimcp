@@ -94,7 +94,10 @@ static const char* REPAIR_CUE_PHRASES[] = {
  *===========================================================================*/
 
 static bool str_contains_word(const char* text, const char* word) {
-    if (!text || !word) return false;
+    if (!text || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str_contains_word: required parameter is NULL (text, word)");
+        return false;
+    }
 
     const char* p = text;
     size_t word_len = strlen(word);
@@ -256,7 +259,10 @@ uint32_t speech_repair_detect_disfluencies(
 }
 
 bool speech_repair_is_filler(const char* word) {
-    if (!word) return false;
+    if (!word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_repair_is_filler: word is NULL");
+        return false;
+    }
 
     char lower[64];
     str_to_lower(word, lower, sizeof(lower));
@@ -646,7 +652,10 @@ bool speech_repair_insert_hesitation(
     size_t input_len = strlen(input);
     if (position > input_len) position = (uint32_t)input_len;
 
-    if (position + strlen(hesitation) + 2 >= output_size) return false;
+    if (position + strlen(hesitation) + 2 >= output_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
+        return false;
+    }
 
     strncpy(output, input, position);
     output[position] = '\0';

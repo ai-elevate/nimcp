@@ -123,7 +123,10 @@ void bias_thalamic_bridge_destroy(bias_thalamic_bridge_t* bridge) {
 }
 
 int bias_thalamic_bridge_reset(bias_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_reset", 0.0f);
 
@@ -134,7 +137,10 @@ int bias_thalamic_bridge_reset(bias_thalamic_bridge_t* bridge) {
 }
 
 int bias_thalamic_route_detection(bias_thalamic_bridge_t* bridge, const bias_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_route_detection: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_route_", 0.0f);
 
@@ -152,7 +158,10 @@ int bias_thalamic_route_detection(bias_thalamic_bridge_t* bridge, const bias_tha
 }
 
 int bias_thalamic_route_correction(bias_thalamic_bridge_t* bridge, const void* correction, float strength) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_route_correction: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_route_", 0.0f);
 
@@ -164,7 +173,10 @@ int bias_thalamic_route_correction(bias_thalamic_bridge_t* bridge, const void* c
 }
 
 int bias_thalamic_set_attention(bias_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_set_at", 0.0f);
 
@@ -174,7 +186,10 @@ int bias_thalamic_set_attention(bias_thalamic_bridge_t* bridge, float attention)
 }
 
 int bias_thalamic_get_attention(const bias_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_bias_thalamic_get_at", 0.0f);
@@ -184,7 +199,10 @@ int bias_thalamic_get_attention(const bias_thalamic_bridge_t* bridge, float* att
 }
 
 int bias_thalamic_bridge_get_stats(const bias_thalamic_bridge_t* bridge, bias_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     bias_thalamic_bridge_heartbeat("bias_thalami_get_stats", 0.0f);

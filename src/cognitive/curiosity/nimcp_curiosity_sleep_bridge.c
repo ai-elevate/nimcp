@@ -135,7 +135,10 @@ static void curiosity_on_sleep_state_change(sleep_state_t new_state, void* user_
 }
 
 int curiosity_sleep_default_config(curiosity_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_defa", 0.0f);
 
@@ -230,7 +233,10 @@ void curiosity_sleep_bridge_destroy(curiosity_sleep_bridge_t bridge) {
 }
 
 int curiosity_sleep_update(curiosity_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_upda", 0.0f);
@@ -271,7 +277,10 @@ int curiosity_sleep_update(curiosity_sleep_bridge_t bridge) {
 }
 
 int curiosity_sleep_get_effects(const curiosity_sleep_bridge_t bridge, curiosity_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_get_", 0.0f);
 
@@ -295,7 +304,10 @@ float curiosity_sleep_get_drive(const curiosity_sleep_bridge_t bridge) {
 }
 
 bool curiosity_sleep_is_offline(const curiosity_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_sleep_bridge_heartbeat("curiosity_sl_curiosity_sleep_is_o", 0.0f);
 

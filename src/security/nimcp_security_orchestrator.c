@@ -160,6 +160,7 @@ static int find_bridge_index(security_orchestrator_t orch, uint32_t bridge_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_index: validation failed");
     return -1;
 }
 
@@ -173,6 +174,7 @@ static int find_bridge_by_type(security_orchestrator_t orch, security_bridge_typ
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_by_type: validation failed");
     return -1;
 }
 

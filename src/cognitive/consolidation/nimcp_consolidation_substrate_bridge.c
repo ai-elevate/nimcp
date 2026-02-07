@@ -131,12 +131,14 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(void* co
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -165,7 +167,10 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
 }
 
 int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_substrate_bridge_heartbeat("consolidatio_update", 0.0f);
@@ -176,6 +181,7 @@ int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* brid
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_substrate_bridge_update: validation failed");
         return -1;
     }
 
@@ -208,7 +214,10 @@ int consolidation_substrate_bridge_update(consolidation_substrate_bridge_t* brid
 }
 
 int consolidation_substrate_bridge_get_effects(const consolidation_substrate_bridge_t* bridge, consolidation_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     consolidation_substrate_bridge_heartbeat("consolidatio_get_effects", 0.0f);
@@ -218,7 +227,10 @@ int consolidation_substrate_bridge_get_effects(const consolidation_substrate_bri
 }
 
 int consolidation_substrate_bridge_apply_effects(consolidation_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
@@ -287,7 +299,10 @@ int consolidation_substrate_bridge_apply_effects(consolidation_substrate_bridge_
 }
 
 int consolidation_substrate_bridge_register_bio_async(consolidation_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_substrate_bridge_heartbeat("consolidatio_register_bio_async", 0.0f);

@@ -399,11 +399,13 @@ int hemispheric_injury_induce_lesion(
     uint32_t* lesion_id
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_induce_lesion: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (system->num_lesions >= MAX_LESIONS) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_induce_lesion: max lesions reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hemispheric_injury_induce_lesion: capacity exceeded");
         return -1;
     }
 
@@ -487,6 +489,7 @@ int hemispheric_injury_remove_lesion(
     uint32_t lesion_id
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_remove_lesion: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -507,6 +510,7 @@ int hemispheric_injury_remove_lesion(
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_injury_remove_lesion: operation failed");
     return -1;  // Not found
 }
 
@@ -515,6 +519,7 @@ const lesion_t* hemispheric_injury_get_lesion(
     uint32_t lesion_id
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_get_lesion: required parameter is NULL (system, system->initialized)");
         return NULL;
     }
 
@@ -524,6 +529,7 @@ const lesion_t* hemispheric_injury_get_lesion(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_get_lesion: validation failed");
     return NULL;
 }
 
@@ -533,6 +539,7 @@ int hemispheric_injury_expand_lesion(
     float additional_damage
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_expand_lesion: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -549,6 +556,7 @@ int hemispheric_injury_expand_lesion(
 
     if (!lesion) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_expand_lesion: lesion is NULL");
         return -1;
     }
 
@@ -656,6 +664,7 @@ int hemispheric_injury_update(
     float dt
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -745,6 +754,7 @@ int hemispheric_injury_set_recovery_params(
     const recovery_params_t* params
 ) {
     if (!system || !system->initialized || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_set_recovery_params: required parameter is NULL (system, system->initialized, params)");
         return -1;
     }
 
@@ -767,6 +777,7 @@ int hemispheric_injury_boost_plasticity(
     float boost
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_boost_plasticity: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -800,10 +811,12 @@ int hemispheric_injury_start_rehabilitation(
     float frequency
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_start_rehabilitation: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (!system->config.enable_rehabilitation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_start_rehabilitation: system->config is NULL");
         return -1;
     }
 
@@ -832,6 +845,7 @@ int hemispheric_injury_stop_rehabilitation(
     hemisphere_id_t hemisphere
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_stop_rehabilitation: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -853,6 +867,7 @@ int hemispheric_injury_apply_rehabilitation(
     hemisphere_id_t hemisphere
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_apply_rehabilitation: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -985,6 +1000,7 @@ const char* hemispheric_injury_phase_name(recovery_phase_t phase) {
 
 int hemispheric_injury_connect_bio_async(hemispheric_injury_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_connect_bio_async: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -1012,6 +1028,7 @@ int hemispheric_injury_connect_bio_async(hemispheric_injury_system_t* system) {
 
 int hemispheric_injury_disconnect_bio_async(hemispheric_injury_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_injury_disconnect_bio_async: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 

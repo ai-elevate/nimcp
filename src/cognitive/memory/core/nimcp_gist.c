@@ -248,7 +248,10 @@ static bool gist_table_insert(gist_hash_entry_t** table, size_t size,
     size_t idx = hash_uint64(key, size);
 
     gist_hash_entry_t* entry = nimcp_malloc(sizeof(gist_hash_entry_t));
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_table_destroy: entry is NULL");
+        return false;
+    }
 
     entry->key = key;
     entry->gist = gist;
@@ -272,6 +275,7 @@ static gist_node_t* gist_table_lookup(gist_hash_entry_t** table, size_t size,
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_table_destroy: validation failed");
     return NULL;
 }
 
@@ -295,6 +299,7 @@ static gist_node_t* gist_table_remove(gist_hash_entry_t** table, size_t size,
         prev_ptr = &entry->next;
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_table_destroy: validation failed");
     return NULL;
 }
 
@@ -342,7 +347,10 @@ static bool trace_table_insert(trace_hash_entry_t** table, size_t size,
     size_t idx = hash_uint64(key, size);
 
     trace_hash_entry_t* entry = nimcp_malloc(sizeof(trace_hash_entry_t));
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trace_table_destroy: entry is NULL");
+        return false;
+    }
 
     entry->key = key;
     entry->trace = trace;
@@ -366,6 +374,7 @@ static dual_trace_t* trace_table_lookup(trace_hash_entry_t** table, size_t size,
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trace_table_destroy: validation failed");
     return NULL;
 }
 
@@ -442,7 +451,10 @@ static int compare_features_by_score(const void* a, const void* b) {
     const gist_key_feature_t* fa = (const gist_key_feature_t*)a;
     const gist_key_feature_t* fb = (const gist_key_feature_t*)b;
 
-    if (fa->importance > fb->importance) return -1;
+    if (fa->importance > fb->importance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_features_by_score: validation failed");
+        return -1;
+    }
     if (fa->importance < fb->importance) return 1;
     return 0;
 }
@@ -532,6 +544,7 @@ static gist_node_t* alloc_gist_node(gist_system_t system) {
     gist->source_memory_ids = nimcp_calloc(GIST_MAX_SOURCES, sizeof(uint64_t));
     if (!gist->source_memory_ids) {
         nimcp_free(gist);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_gist_node: gist->source_memory_ids is NULL");
         return NULL;
     }
     gist->sources_capacity = GIST_MAX_SOURCES;
@@ -542,6 +555,7 @@ static gist_node_t* alloc_gist_node(gist_system_t system) {
     if (!gist->key_features) {
         nimcp_free(gist->source_memory_ids);
         nimcp_free(gist);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_gist_node: gist->key_features is NULL");
         return NULL;
     }
     gist->features_capacity = system->config.max_key_features;
@@ -633,7 +647,10 @@ gist_config_t gist_config_default(void) {
 }
 
 bool gist_config_validate(const gist_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_config_validate: config is NULL");
+        return false;
+    }
 
     // Compression target
     /* Phase 8: Heartbeat at operation start */
@@ -642,6 +659,7 @@ bool gist_config_validate(const gist_config_t* config) {
 
     if (config->compression_target <= 0.0f || config->compression_target > 1.0f) {
         gist_set_error("compression_target must be in (0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -649,17 +667,20 @@ bool gist_config_validate(const gist_config_t* config) {
     if (config->feature_importance_threshold < 0.0f ||
         config->feature_importance_threshold > 1.0f) {
         gist_set_error("feature_importance_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
     if (config->min_coherence < 0.0f || config->min_coherence > 1.0f) {
         gist_set_error("min_coherence must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
     // Decay rates
     if (config->verbatim_decay_rate < 0.0f || config->gist_decay_rate < 0.0f) {
         gist_set_error("decay rates must be >= 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -667,6 +688,7 @@ bool gist_config_validate(const gist_config_t* config) {
     if (config->max_gists == 0 || config->max_dual_traces == 0 ||
         config->max_key_features == 0) {
         gist_set_error("max values must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_config_validate: validation failed");
         return false;
     }
 
@@ -689,12 +711,14 @@ gist_system_t gist_system_create(
     gist_config_t cfg = config ? *config : gist_config_default();
 
     if (!gist_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_system_create: gist_config_validate is NULL");
         return NULL;
     }
 
     gist_system_t system = nimcp_calloc(1, sizeof(struct gist_system_struct));
     if (!system) {
         gist_set_error("Failed to allocate gist system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_system_create: system is NULL");
         return NULL;
     }
 
@@ -708,6 +732,7 @@ gist_system_t gist_system_create(
     if (!system->gist_table) {
         gist_set_error("Failed to allocate gist hash table");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_system_create: system->gist_table is NULL");
         return NULL;
     }
 
@@ -718,6 +743,7 @@ gist_system_t gist_system_create(
         gist_set_error("Failed to allocate trace hash table");
         gist_table_destroy(system->gist_table, system->gist_table_size);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_system_create: system->trace_table is NULL");
         return NULL;
     }
 
@@ -996,7 +1022,10 @@ int gist_extract_batch(
     size_t count,
     gist_extraction_result_t* results
 ) {
-    if (!system || !memories || !results) return -1;
+    if (!system || !memories || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_extract_batch: required parameter is NULL (system, memories, results)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gist_heartbeat("gist_extract_batch", 0.0f);
@@ -1030,7 +1059,10 @@ dual_trace_t* gist_create_dual_trace(
     const prime_signature_t* gist_signature,
     float abstractness
 ) {
-    if (!system || !memory || !gist_signature) return NULL;
+    if (!system || !memory || !gist_signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gist_create_dual_trace: required parameter is NULL (system, memory, gist_signature)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gist_heartbeat("gist_create_dual_trace", 0.0f);
@@ -1070,6 +1102,7 @@ dual_trace_t* gist_create_dual_trace(
     if (!trace_table_insert(system->trace_table, system->trace_table_size,
                             trace->trace_id, trace)) {
         nimcp_free(trace);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_create_dual_trace: operation failed");
         return NULL;
     }
     system->num_traces++;
@@ -2088,21 +2121,43 @@ void gist_dual_trace_print(const dual_trace_t* trace) {
 }
 
 bool gist_validate(const gist_node_t* gist) {
-    if (!gist) return false;
+    if (!gist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist_validate: gist is NULL");
+        return false;
+    }
 
     // Check basic fields
-    if (gist->gist_id == GIST_INVALID_ID) return false;
-    if (gist->abstractness < 0.0f || gist->abstractness > 1.0f) return false;
-    if (gist->confidence < 0.0f || gist->confidence > 1.0f) return false;
-    if (gist->current_strength < 0.0f || gist->current_strength > 1.0f) return false;
+    if (gist->gist_id == GIST_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
+    if (gist->abstractness < 0.0f || gist->abstractness > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
+    if (gist->confidence < 0.0f || gist->confidence > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
+    if (gist->current_strength < 0.0f || gist->current_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
 
     // Check arrays
-    if (gist->num_sources > gist->sources_capacity) return false;
-    if (gist->num_features > gist->features_capacity) return false;
+    if (gist->num_sources > gist->sources_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
+    if (gist->num_features > gist->features_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: validation failed");
+        return false;
+    }
 
     // Check signature
     if (!prime_sig_is_empty(&gist->gist_signature) &&
         gist->gist_signature.num_factors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gist_validate: prime_sig_is_empty is NULL");
         return false;  // Inconsistent
     }
 

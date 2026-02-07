@@ -138,7 +138,10 @@ mesh_system_coordinator_t mesh_system_coord_create(
 ) {
     mesh_system_coordinator_t coord = (mesh_system_coordinator_t)nimcp_calloc(
         1, sizeof(struct mesh_system_coordinator_internal));
-    if (!coord) return NULL;
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_system_coord_create: coord is NULL");
+        return NULL;
+    }
 
     coord->config = config ? *config : mesh_system_coord_default_config();
     coord->ordering = ordering;
@@ -228,7 +231,10 @@ mesh_cross_router_t mesh_cross_router_create(
 ) {
     mesh_cross_router_t router = (mesh_cross_router_t)nimcp_calloc(
         1, sizeof(struct mesh_cross_router_internal));
-    if (!router) return NULL;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cross_router_create: router is NULL");
+        return NULL;
+    }
 
     router->config = config ? *config : mesh_cross_router_default_config();
     router->system_coord = system_coord;
@@ -283,7 +289,10 @@ mesh_cross_transaction_t* mesh_cross_transaction_create(
 ) {
     mesh_cross_transaction_t* tx = (mesh_cross_transaction_t*)nimcp_calloc(
         1, sizeof(mesh_cross_transaction_t));
-    if (!tx) return NULL;
+    if (!tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cross_transaction_create: tx is NULL");
+        return NULL;
+    }
 
     tx->source_channel = source_channel;
     tx->target_channel = target_channel;
@@ -297,6 +306,7 @@ mesh_cross_transaction_t* mesh_cross_transaction_create(
         tx->payload = nimcp_malloc(payload_size);
         if (!tx->payload) {
             nimcp_free(tx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cross_transaction_create: tx->payload is NULL");
             return NULL;
         }
         memcpy(tx->payload, payload, payload_size);
@@ -567,7 +577,10 @@ bool mesh_cross_transactions_conflict(
     const mesh_cross_transaction_t* tx1,
     const mesh_cross_transaction_t* tx2
 ) {
-    if (!tx1 || !tx2) return false;
+    if (!tx1 || !tx2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_cross_transactions_conflict: required parameter is NULL (tx1, tx2)");
+        return false;
+    }
 
     /* Transactions conflict if they target the same channel with state changes */
     if (tx1->target_channel == tx2->target_channel &&
@@ -579,6 +592,7 @@ bool mesh_cross_transactions_conflict(
     /* Also conflict if they're trying to modify the same world state key */
     /* Would check payload for actual conflict detection */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_cross_transactions_conflict: operation failed");
     return false;
 }
 
@@ -587,10 +601,14 @@ bool mesh_cross_transactions_conflict(
  * ============================================================================ */
 
 bool mesh_system_coord_is_healthy(mesh_system_coordinator_t coord) {
-    if (!coord) return false;
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_system_coord_is_healthy: coord is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (!coord->channels[i].healthy) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_system_coord_is_healthy: coord->channels is NULL");
             return false;
         }
     }
@@ -602,7 +620,10 @@ bool mesh_system_coord_channel_healthy(
     mesh_system_coordinator_t coord,
     mesh_channel_id_t channel_id
 ) {
-    if (!coord) return false;
+    if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_system_coord_channel_healthy: coord is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < coord->channel_count; i++) {
         if (coord->channels[i].id == channel_id) {
@@ -610,6 +631,7 @@ bool mesh_system_coord_channel_healthy(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_system_coord_channel_healthy: validation failed");
     return false;
 }
 

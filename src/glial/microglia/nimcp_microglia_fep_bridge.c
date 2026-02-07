@@ -34,6 +34,7 @@ microglia_fep_bridge_t* microglia_fep_create(
 {
     if (!config || !microglia_network || !fep_system) {
         NIMCP_LOGGING_ERROR("microglia_fep_create: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_fep_create: required parameter is NULL (config, microglia_network, fep_system)");
         return NULL;
     }
 
@@ -50,6 +51,7 @@ microglia_fep_bridge_t* microglia_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("microglia_fep_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -203,6 +205,7 @@ int microglia_fep_connect_bio_async(microglia_fep_bridge_t* bridge) {
         return 0;
     }
     NIMCP_LOGGING_WARN("Bio-async router not available for microglia-FEP bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_fep_connect_bio_async: validation failed");
     return -1;
 }
 

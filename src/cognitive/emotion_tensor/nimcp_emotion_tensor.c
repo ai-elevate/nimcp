@@ -584,6 +584,7 @@ emotion_tensor_system_t* emotion_tensor_create(const emotion_tensor_config_t* co
     if (nimcp_rwlock_init(&system->lock) != NIMCP_SUCCESS) {
         TENSOR_LOG_ERROR("Failed to initialize rwlock");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_tensor_create: validation failed");
         return NULL;
     }
 
@@ -612,6 +613,7 @@ void emotion_tensor_destroy(emotion_tensor_system_t* system) {
 
 bool emotion_tensor_get(const emotion_tensor_system_t* system, emotion_tensor_t* tensor) {
     if (!system || !tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_get: required parameter is NULL (system, tensor)");
         return false;
     }
 
@@ -666,6 +668,7 @@ float emotion_tensor_get_compound(const emotion_tensor_system_t* system, emotion
 
 bool emotion_tensor_is_contradictory(const emotion_tensor_system_t* system, float threshold) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_is_contradictory: system is NULL");
         return false;
     }
 
@@ -735,6 +738,7 @@ bool emotion_tensor_set_channel(
     uint64_t timestamp_ms
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_set_channel: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -742,6 +746,7 @@ bool emotion_tensor_set_channel(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_channel: capacity exceeded");
         return false;
     }
 
@@ -772,6 +777,7 @@ bool emotion_tensor_set_channels(
     uint64_t timestamp_ms
 ) {
     if (!system || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_set_channels: required parameter is NULL (system, activations)");
         return false;
     }
 
@@ -813,6 +819,7 @@ bool emotion_tensor_set_appraisal(
     float value
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_set_appraisal: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -820,9 +827,11 @@ bool emotion_tensor_set_appraisal(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_appraisal: capacity exceeded");
         return false;
     }
     if (dimension < 0 || dimension >= APPRAISAL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_set_appraisal: capacity exceeded");
         return false;
     }
 
@@ -843,6 +852,7 @@ bool emotion_tensor_apply_stimulus(
     uint64_t timestamp_ms
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_apply_stimulus: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -850,6 +860,7 @@ bool emotion_tensor_apply_stimulus(
 
 
     if (emotion < 0 || emotion >= EMOTION_TENSOR_PRIMARY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_tensor_apply_stimulus: capacity exceeded");
         return false;
     }
 
@@ -891,6 +902,7 @@ bool emotion_tensor_update(
     uint64_t timestamp_ms
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_update: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -898,6 +910,7 @@ bool emotion_tensor_update(
 
 
     if (delta_time <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_tensor_update: validation failed");
         return false;
     }
 
@@ -964,6 +977,7 @@ bool emotion_tensor_update(
 
 bool emotion_tensor_compute_compounds(emotion_tensor_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_compute_compounds: system is NULL");
         return false;
     }
 
@@ -980,6 +994,7 @@ bool emotion_tensor_compute_compounds(emotion_tensor_system_t* system) {
 
 bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float delta_time) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_apply_interactions: system is NULL");
         return false;
     }
 
@@ -1027,6 +1042,7 @@ bool emotion_tensor_apply_interactions(emotion_tensor_system_t* system, float de
 
 bool emotion_tensor_reset(emotion_tensor_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_reset: system is NULL");
         return false;
     }
 
@@ -1101,6 +1117,7 @@ bool emotion_tensor_get_dominant(
     float* blend_ratio
 ) {
     if (!system || !primary || !secondary || !blend_ratio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_get_dominant: required parameter is NULL (system, primary, secondary, blend_ratio)");
         return false;
     }
 
@@ -1226,19 +1243,28 @@ void emotion_tensor_set_instance_health_agent(void* ctx, nimcp_health_agent_t* a
  * ============================================================================ */
 
 int emotion_tensor_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_training_begin: ctx is NULL");
+        return -1;
+    }
     emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_begin", 0.0f);
     return 0;
 }
 
 int emotion_tensor_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_training_end: ctx is NULL");
+        return -1;
+    }
     emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_end", 1.0f);
     return 0;
 }
 
 int emotion_tensor_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_training_step: ctx is NULL");
+        return -1;
+    }
     emotion_tensor_heartbeat_instance(g_emotion_tensor_instance_health_agent, "emotion_tensor_training_step", progress);
     return 0;
 }

@@ -30,7 +30,10 @@ void collective_workspace_fep_default_config(collective_workspace_fep_config_t* 
 }
 
 collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collective_workspace_fep_config_t* config, collective_workspace_t* workspace, fep_system_t* fep_system) {
-    if (!workspace || !fep_system) return NULL;
+    if (!workspace || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_fep_create: required parameter is NULL (workspace, fep_system)");
+        return NULL;
+    }
     collective_workspace_fep_bridge_t* bridge = (collective_workspace_fep_bridge_t*)nimcp_malloc(sizeof(collective_workspace_fep_bridge_t));
     if (!bridge) {
 

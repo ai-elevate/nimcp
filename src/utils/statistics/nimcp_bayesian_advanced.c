@@ -129,6 +129,7 @@ bool nimcp_bayes_adv_gpu_available(void) {
 #ifdef NIMCP_ENABLE_CUDA
     return true;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bayes_adv_gpu_available: operation failed");
     return false;
 #endif
 }
@@ -202,11 +203,20 @@ nimcp_mcmc_config_t nimcp_mcmc_default_config(nimcp_mcmc_algorithm_t algorithm) 
 //=============================================================================
 
 nimcp_mcmc_sampler_t* nimcp_mcmc_create(uint32_t n_params, const nimcp_mcmc_config_t* config) {
-    if (n_params == 0 || n_params > NIMCP_MCMC_MAX_PARAMS) return NULL;
-    if (!config) return NULL;
+    if (n_params == 0 || n_params > NIMCP_MCMC_MAX_PARAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_mcmc_create: n_params is zero");
+        return NULL;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_mcmc_create: config is NULL");
+        return NULL;
+    }
 
     nimcp_mcmc_sampler_t* mcmc = (nimcp_mcmc_sampler_t*)nimcp_calloc(1, sizeof(nimcp_mcmc_sampler_t));
-    if (!mcmc) return NULL;
+    if (!mcmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_mcmc_create: mcmc is NULL");
+        return NULL;
+    }
 
     uint32_t n_chains = config->n_chains > 0 ? config->n_chains : 1;
     if (n_chains > NIMCP_MCMC_MAX_CHAINS) n_chains = NIMCP_MCMC_MAX_CHAINS;
@@ -221,6 +231,7 @@ nimcp_mcmc_sampler_t* nimcp_mcmc_create(uint32_t n_params, const nimcp_mcmc_conf
         nimcp_free(mcmc->samples);
         nimcp_free(mcmc->log_posterior);
         nimcp_free(mcmc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mcmc_create: required parameter is NULL (mcmc->samples, mcmc->log_posterior)");
         return NULL;
     }
 
@@ -1099,10 +1110,16 @@ nimcp_vi_config_t nimcp_vi_default_config(nimcp_vi_family_t family) {
 }
 
 nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t* config) {
-    if (n_params == 0 || !config) return NULL;
+    if (n_params == 0 || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_vi_create: config is NULL");
+        return NULL;
+    }
 
     nimcp_vi_optimizer_t* vi = (nimcp_vi_optimizer_t*)nimcp_calloc(1, sizeof(nimcp_vi_optimizer_t));
-    if (!vi) return NULL;
+    if (!vi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_vi_create: vi is NULL");
+        return NULL;
+    }
 
     vi->mean = (double*)nimcp_calloc(n_params, sizeof(double));
     vi->variance = (double*)nimcp_malloc(n_params * sizeof(double));
@@ -1111,6 +1128,7 @@ nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t
         nimcp_free(vi->mean);
         nimcp_free(vi->variance);
         nimcp_free(vi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vi_create: required parameter is NULL (vi->mean, vi->variance)");
         return NULL;
     }
 
@@ -1124,6 +1142,7 @@ nimcp_vi_optimizer_t* nimcp_vi_create(uint32_t n_params, const nimcp_vi_config_t
             nimcp_free(vi->mean);
             nimcp_free(vi->variance);
             nimcp_free(vi);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_vi_create: vi->covariance is NULL");
             return NULL;
         }
         for (uint32_t i = 0; i < n_params; i++) {
@@ -2013,14 +2032,21 @@ void nimcp_bayes_logreg_free(nimcp_bayes_logreg_t* model) {
 //=============================================================================
 
 nimcp_hier_model_t* nimcp_hier_create(uint32_t n_levels) {
-    if (n_levels == 0 || n_levels > NIMCP_HIER_MAX_LEVELS) return NULL;
+    if (n_levels == 0 || n_levels > NIMCP_HIER_MAX_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hier_create: n_levels is zero");
+        return NULL;
+    }
 
     nimcp_hier_model_t* hier = (nimcp_hier_model_t*)nimcp_calloc(1, sizeof(nimcp_hier_model_t));
-    if (!hier) return NULL;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hier_create: hier is NULL");
+        return NULL;
+    }
 
     hier->levels = (nimcp_hier_level_t*)nimcp_calloc(n_levels, sizeof(nimcp_hier_level_t));
     if (!hier->levels) {
         nimcp_free(hier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hier_create: hier->levels is NULL");
         return NULL;
     }
 

@@ -411,6 +411,7 @@ bool vae_latent_check_collapse(const nimcp_tensor_t* mu,
                                uint32_t* num_collapsed) {
     if (!mu || !log_var) {
         if (num_collapsed) *num_collapsed = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_latent_avg_precision: validation failed");
         return false;
     }
 
@@ -460,6 +461,7 @@ bool vae_latent_check_explosion(const nimcp_tensor_t* log_var,
                                 uint32_t* num_exploded) {
     if (!log_var) {
         if (num_exploded) *num_exploded = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_latent_avg_precision: validation failed");
         return false;
     }
 
@@ -671,6 +673,7 @@ int vae_latent_interpolate_path(const nimcp_tensor_t* z1,
 
         if (result != 0) {
             nimcp_tensor_destroy(step_tensor);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return -1;
         }
 
@@ -806,6 +809,7 @@ vae_latent_state_t* vae_latent_state_create(uint32_t latent_dim) {
 
     if (vae_latent_state_init(state, latent_dim) != 0) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "vae_latent_state_create: validation failed");
         return NULL;
     }
 

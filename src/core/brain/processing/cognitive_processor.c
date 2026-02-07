@@ -165,6 +165,7 @@ static bool check_ethical_output(
     for (uint32_t i = 0; i < output_size; i++) {
         if (isnan(output_vector[i]) || isinf(output_vector[i]) ||
             fabsf(output_vector[i]) > 1000.0F) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_ethical_output: validation failed");
             return false;  // Ethical violation
         }
     }
@@ -447,6 +448,7 @@ bool cognitive_process_output(
 
     if (!brain || !net_output || !annotations) {
         fprintf(stderr, "cognitive_processor: Invalid parameters\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_process_output: required parameter is NULL (brain, net_output, annotations)");
         return false;
     }
 

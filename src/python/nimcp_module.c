@@ -52,20 +52,34 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     LOG_MODULE_INFO("bindings.python.module", "Initializing full Python module for NIMCP");
 
     // Initialize types
-    if (PyType_Ready(&BrainType) < 0)
+    if (PyType_Ready(&BrainType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&BrainConfigType) < 0)
+    }
+    if (PyType_Ready(&BrainConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&NeuralNetworkType) < 0)
+    }
+    if (PyType_Ready(&NeuralNetworkType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&P2PNodeType) < 0)
+    }
+    if (PyType_Ready(&P2PNodeType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&NetworkConfigType) < 0)
+    }
+    if (PyType_Ready(&NetworkConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&NodeConfigType) < 0)
+    }
+    if (PyType_Ready(&NodeConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
-    if (PyType_Ready(&GlialIntegrationType) < 0)
+    }
+    if (PyType_Ready(&GlialIntegrationType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
     m = PyModule_Create(&nimcp_module);
     if (m == NULL) {
@@ -78,6 +92,7 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     NIMCPError = PyErr_NewException("nimcp.NIMCPError", NULL, NULL);
     if (NIMCPError == NULL) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -85,6 +100,7 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     if (NetworkError == NULL) {
         Py_DECREF(NIMCPError);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -93,6 +109,7 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         Py_DECREF(NetworkError);
         Py_DECREF(NIMCPError);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -102,6 +119,7 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         Py_DECREF(NetworkError);
         Py_DECREF(NIMCPError);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -177,72 +195,84 @@ PyMODINIT_FUNC PyInit_nimcp(void)
     // Initialize metrics module
     if (init_metrics_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize topology module
     if (init_topology_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize pink noise module
     if (init_pink_noise_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize community detection module
     if (init_community_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize training module (TrainingConfig, TrainingResult, constants)
     if (init_training_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize callbacks module (CallbackConfig, CallbackMetrics, constants)
     if (init_callbacks_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize ethics module (Ethics class)
     if (init_ethics_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize knowledge module (KnowledgeSystem, KnowledgeItem, DomainKnowledge)
     if (init_knowledge_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize bio-async module (BioPromise, BioFuture, PhaseSync, PredictiveModel, GlialWave)
     if (init_bio_async_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize brain immune module (BrainImmuneSystem, BrainAntigen, BrainImmuneStats)
     if (init_brain_immune_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize swarm module (SwarmBrain, SwarmBrainConfig)
     if (init_swarm_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
     // Initialize health agent module (HealthAgent, HealthAgentStats, USE functions)
     if (init_health_agent_module(m) < 0) {
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -254,5 +284,6 @@ error_cleanup:
     Py_XDECREF(NetworkError);
     Py_XDECREF(NIMCPError);
     Py_DECREF(m);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
     return NULL;
 }

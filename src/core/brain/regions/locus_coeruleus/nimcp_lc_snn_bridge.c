@@ -194,6 +194,7 @@ nimcp_lc_snn_bridge_t* nimcp_lc_snn_create(const nimcp_lc_snn_config_t* config) 
 
     if (!bridge->input_spikes || !bridge->output_spikes) {
         nimcp_lc_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_lc_snn_create: required parameter is NULL (bridge->input_spikes, bridge->output_spikes)");
         return NULL;
     }
 
@@ -223,7 +224,10 @@ void nimcp_lc_snn_destroy(nimcp_lc_snn_bridge_t* bridge) {
 }
 
 int nimcp_lc_snn_reset(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset state */
     memset(&bridge->state, 0, sizeof(bridge->state));
@@ -249,7 +253,10 @@ int nimcp_lc_snn_connect_lc(
     nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_adapter_t lc_adapter
 ) {
-    if (!bridge || !lc_adapter) return -1;
+    if (!bridge || !lc_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_connect_lc: required parameter is NULL (bridge, lc_adapter)");
+        return -1;
+    }
     bridge->lc_adapter = lc_adapter;
     return 0;
 }
@@ -258,7 +265,10 @@ int nimcp_lc_snn_connect_snn(
     nimcp_lc_snn_bridge_t* bridge,
     struct nimcp_snn_network* snn
 ) {
-    if (!bridge || !snn) return -1;
+    if (!bridge || !snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_connect_snn: required parameter is NULL (bridge, snn)");
+        return -1;
+    }
     bridge->snn = snn;
     return 0;
 }
@@ -268,7 +278,10 @@ int nimcp_lc_snn_connect_snn(
  *===========================================================================*/
 
 int nimcp_lc_snn_encode_ne_state(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_encode_ne_state: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = LC_SNN_STATE_ENCODING;
     int spikes_generated = 0;
@@ -326,7 +339,10 @@ int nimcp_lc_snn_encode_burst(
     nimcp_lc_snn_bridge_t* bridge,
     float intensity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_encode_burst: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.mode = LC_SNN_MODE_PHASIC;
     bridge->stats.total_bursts++;
@@ -348,7 +364,10 @@ int nimcp_lc_snn_encode_novelty(
     nimcp_lc_snn_bridge_t* bridge,
     float novelty_score
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_encode_novelty: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.novelty_response = novelty_score;
     bridge->stats.novelty_events++;
@@ -366,7 +385,10 @@ int nimcp_lc_snn_encode_arousal(
     float arousal,
     float vigilance
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_encode_arousal: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.arousal = clamp(arousal, 0.0f, 1.0f);
     bridge->state.ne.vigilance = clamp(vigilance, 0.0f, 1.0f);
@@ -383,7 +405,10 @@ int nimcp_lc_snn_encode_arousal(
  *===========================================================================*/
 
 int nimcp_lc_snn_simulate(nimcp_lc_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_simulate: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = LC_SNN_STATE_SIMULATING;
 
@@ -399,7 +424,10 @@ int nimcp_lc_snn_simulate(nimcp_lc_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int nimcp_lc_snn_step(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_step: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.total_updates++;
     bridge->current_time_us = get_timestamp_us();
@@ -439,7 +467,10 @@ int nimcp_lc_snn_get_modulation(
     nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_snn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     *modulation = bridge->current_modulation;
     return 0;
@@ -449,14 +480,20 @@ int nimcp_lc_snn_get_ne_feedback(
     nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_snn_ne_state_t* ne_state
 ) {
-    if (!bridge || !ne_state) return -1;
+    if (!bridge || !ne_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_get_ne_feedback: required parameter is NULL (bridge, ne_state)");
+        return -1;
+    }
 
     *ne_state = bridge->state.ne;
     return 0;
 }
 
 bool nimcp_lc_snn_should_reset_attention(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_should_reset_attention: bridge is NULL");
+        return false;
+    }
     return bridge->current_modulation.trigger_reset;
 }
 
@@ -473,7 +510,10 @@ int nimcp_lc_snn_get_state(
     const nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -482,7 +522,10 @@ int nimcp_lc_snn_get_stats(
     const nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -497,19 +540,28 @@ void nimcp_lc_snn_reset_stats(nimcp_lc_snn_bridge_t* bridge) {
  *===========================================================================*/
 
 int nimcp_lc_snn_connect_bio_async(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = true;
     return 0;
 }
 
 int nimcp_lc_snn_disconnect_bio_async(nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = false;
     return 0;
 }
 
 bool nimcp_lc_snn_is_bio_async_connected(const nimcp_lc_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state.bio_async_connected;
 }
 
@@ -521,7 +573,10 @@ int nimcp_lc_snn_apply_external_gain(
     nimcp_lc_snn_bridge_t* bridge,
     float external_gain
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_apply_external_gain: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.current_gain = clamp(external_gain,
         bridge->config.min_gain, bridge->config.max_gain);
@@ -534,7 +589,10 @@ int nimcp_lc_snn_set_mode(
     nimcp_lc_snn_bridge_t* bridge,
     nimcp_lc_snn_mode_t mode
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_snn_set_mode: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.mode = mode;
 

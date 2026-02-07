@@ -319,6 +319,7 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
     // Validate inputs
     if (!brain || !immune) {
         NIMCP_LOGGING_ERROR("hemispheric_immune_create: NULL brain or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_immune_create: required parameter is NULL (brain, immune)");
         return NULL;
     }
 
@@ -368,6 +369,7 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_immune_create: mutex allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_immune_create: bridge->base is NULL");
         return NULL;
     }
     nimcp_mutex_init(bridge->base.mutex, NULL);
@@ -611,6 +613,7 @@ bool hemispheric_immune_is_compensating(
     hemisphere_id_t* compensating_hemisphere
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_immune_is_compensating: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -623,6 +626,7 @@ bool hemispheric_immune_is_compensating(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_immune_is_compensating: validation failed");
     return false;
 }
 

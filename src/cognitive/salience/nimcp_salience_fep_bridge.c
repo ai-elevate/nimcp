@@ -171,6 +171,7 @@ int salience_fep_bridge_default_config(salience_fep_config_t* config) {
     /* Guard: Validate input */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_default_config: config is NULL");
         return -1;
     }
 
@@ -246,6 +247,7 @@ salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* c
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -301,6 +303,7 @@ int salience_fep_bridge_connect_fep(
     /* Guard: Validate inputs */
     if (!bridge || !fep) {
         NIMCP_LOGGING_ERROR("NULL pointer in connect_fep");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
         return -1;
     }
 
@@ -329,6 +332,7 @@ int salience_fep_bridge_connect_salience(
     /* Guard: Validate inputs */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_salience");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_connect_salience: bridge is NULL");
         return -1;
     }
 
@@ -363,6 +367,7 @@ int salience_fep_modulate_precision_by_salience(salience_fep_bridge_t* bridge) {
     /* Guard: Validate bridge and components */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in modulate_precision");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_modulate_precision_by_salience: bridge is NULL");
         return -1;
     }
 
@@ -430,6 +435,7 @@ int salience_fep_compute_salience_from_pe(salience_fep_bridge_t* bridge) {
     /* Guard: Validate bridge and components */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in compute_salience_from_pe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_compute_salience_from_pe: bridge is NULL");
         return -1;
     }
 
@@ -541,6 +547,7 @@ int salience_fep_gate_by_salience(salience_fep_bridge_t* bridge) {
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in gate_by_salience");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_gate_by_salience: bridge is NULL");
         return -1;
     }
 
@@ -588,6 +595,7 @@ int salience_fep_bridge_update(
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -623,6 +631,7 @@ int salience_fep_bridge_get_state(
     /* Guard: Validate inputs */
     if (!bridge || !state) {
         NIMCP_LOGGING_ERROR("NULL pointer in get_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -649,6 +658,7 @@ int salience_fep_bridge_get_stats(
     /* Guard: Validate inputs */
     if (!bridge || !stats) {
         NIMCP_LOGGING_ERROR("NULL pointer in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -676,6 +686,7 @@ int salience_fep_bridge_connect_bio_async(salience_fep_bridge_t* bridge) {
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -716,6 +727,7 @@ int salience_fep_bridge_disconnect_bio_async(salience_fep_bridge_t* bridge) {
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_fep_bridge_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 

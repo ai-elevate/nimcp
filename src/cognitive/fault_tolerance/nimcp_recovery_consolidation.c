@@ -178,7 +178,10 @@ static bool patterns_match(
     const error_pattern_t* p1,
     const error_pattern_t* p2
 ) {
-    if (!p1 || !p2) return false;
+    if (!p1 || !p2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns_match: required parameter is NULL (p1, p2)");
+        return false;
+    }
     return p1->type == p2->type && p1->layer_id == p2->layer_id;
 }
 
@@ -308,6 +311,7 @@ static void* background_consolidation_thread(void* arg) {
     }
 
     LOG_INFO("Background consolidation thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_consolidation_thread: operation failed");
     return NULL;
 }
 
@@ -361,6 +365,7 @@ recovery_consolidation_t* consolidation_create_custom(
     );
     if (!cons) {
         LOG_ERROR("Failed to allocate consolidation structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons is NULL");
         return NULL;
     }
 
@@ -375,6 +380,7 @@ recovery_consolidation_t* consolidation_create_custom(
     if (!cons->episodes) {
         LOG_ERROR("Failed to allocate episode buffer");
         nimcp_free(cons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->episodes is NULL");
         return NULL;
     }
 
@@ -387,6 +393,7 @@ recovery_consolidation_t* consolidation_create_custom(
         LOG_ERROR("Failed to allocate pattern storage");
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->patterns is NULL");
         return NULL;
     }
 
@@ -400,6 +407,7 @@ recovery_consolidation_t* consolidation_create_custom(
         nimcp_free(cons->patterns);
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_create_custom: cons->rules is NULL");
         return NULL;
     }
 
@@ -410,6 +418,7 @@ recovery_consolidation_t* consolidation_create_custom(
         nimcp_free(cons->patterns);
         nimcp_free(cons->episodes);
         nimcp_free(cons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_create_custom: validation failed");
         return NULL;
     }
 
@@ -488,11 +497,13 @@ bool recovery_consolidation_add_episode(
     // GUARD: NULL checks
     if (!consolidation) {
         LOG_ERROR("NULL consolidation in add_episode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_add_episode: consolidation is NULL");
         return false;
     }
 
     if (!episode) {
         LOG_ERROR("NULL episode in add_episode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_add_episode: episode is NULL");
         return false;
     }
 
@@ -696,6 +707,7 @@ bool consolidation_add_rule(
     // GUARD: NULL checks
     if (!consolidation || !rule) {
         LOG_ERROR("NULL parameter in add_rule");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_add_rule: required parameter is NULL (consolidation, rule)");
         return false;
     }
 
@@ -760,6 +772,7 @@ semantic_rule_t* recovery_consolidation_get_rule(
 ) {
     // GUARD: NULL checks
     if (!consolidation || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_get_rule: required parameter is NULL (consolidation, pattern)");
         return NULL;
     }
 
@@ -781,6 +794,7 @@ semantic_rule_t* recovery_consolidation_get_rule(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_get_rule: validation failed");
     return NULL;  // Not found
 }
 
@@ -920,7 +934,10 @@ void recovery_consolidation_run(recovery_consolidation_t* consolidation) {
 bool consolidation_is_active(
     const recovery_consolidation_t* consolidation
 ) {
-    if (!consolidation) return false;
+    if (!consolidation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_is_active: consolidation is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     recovery_consolidation_heartbeat("recovery_con_consolidation_is_act", 0.0f);
 
@@ -938,6 +955,7 @@ bool consolidation_start_background(
     // GUARD: NULL check
     if (!consolidation) {
         LOG_ERROR("NULL consolidation in start_background");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_start_background: consolidation is NULL");
         return false;
     }
 
@@ -948,12 +966,14 @@ bool consolidation_start_background(
 
     if (consolidation->background_running) {
         LOG_WARNING("Background consolidation already running");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_start_background: validation failed");
         return false;
     }
 
     // GUARD: Check if enabled
     if (!consolidation->config.enable_background_consolidation) {
         LOG_WARNING("Background consolidation not enabled in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_start_background: consolidation->config is NULL");
         return false;
     }
 
@@ -969,6 +989,7 @@ bool consolidation_start_background(
 
     if (result != 0) {
         LOG_ERROR("Failed to create background thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_start_background: validation failed");
         return false;
     }
 
@@ -1006,7 +1027,10 @@ void consolidation_stop_background(
 bool consolidation_is_background_running(
     const recovery_consolidation_t* consolidation
 ) {
-    if (!consolidation) return false;
+    if (!consolidation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_is_background_running: consolidation is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     recovery_consolidation_heartbeat("recovery_con_consolidation_is_bac", 0.0f);
 
@@ -1025,6 +1049,7 @@ bool recovery_consolidation_get_stats(
     // GUARD: NULL checks
     if (!consolidation || !stats) {
         LOG_ERROR("NULL parameter in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_consolidation_get_stats: required parameter is NULL (consolidation, stats)");
         return false;
     }
 

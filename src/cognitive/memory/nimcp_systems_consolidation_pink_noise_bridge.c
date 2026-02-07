@@ -120,6 +120,7 @@ int consolidation_pink_noise_default_config(consolidation_pink_noise_config_t* c
 
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_default_config: config is NULL");
         return -1;
     }
 
@@ -211,11 +212,13 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_pink_noise_create: bridge->base is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_pink_noise_create: validation failed");
         return NULL;
     }
 
@@ -256,6 +259,7 @@ int consolidation_pink_noise_update(consolidation_pink_noise_bridge_t* bridge) {
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_update: bridge is NULL");
         return -1;
     }
 
@@ -374,6 +378,7 @@ int consolidation_pink_noise_apply_modulation(consolidation_pink_noise_bridge_t*
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_apply_modulation: bridge is NULL");
         return -1;
     }
 
@@ -424,6 +429,7 @@ int consolidation_pink_noise_get_effects(
 
     if (!bridge || !effects_out) {
         NIMCP_LOGGING_ERROR("Null pointer in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_get_effects: required parameter is NULL (bridge, effects_out)");
         return -1;
     }
 
@@ -512,6 +518,7 @@ bool consolidation_pink_noise_in_spindle_burst(
     // HOW:  Return spindle state with mutex protection
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_in_spindle_burst: bridge is NULL");
         return false;
     }
 
@@ -542,6 +549,7 @@ int consolidation_pink_noise_get_statistics(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_pink_noise_get_statistics: bridge is NULL");
         return -1;
     }
 

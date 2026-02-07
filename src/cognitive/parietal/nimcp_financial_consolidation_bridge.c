@@ -347,6 +347,7 @@ financial_consolidation_bridge_t* financial_consolidation_bridge_create(
         nimcp_free(bridge->patterns);
         nimcp_free(bridge->trades);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_consolidation_bridge_create: validation failed");
         return NULL;
     }
 

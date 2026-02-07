@@ -208,6 +208,7 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         neuron_substrate_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuron_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -282,7 +283,10 @@ int neuron_substrate_disconnect_bio_async(neuron_substrate_bridge_t* bridge) {
 }
 
 bool neuron_substrate_is_bio_async_connected(const neuron_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_substrate_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -591,7 +595,10 @@ int neuron_substrate_get_energy_tracking(
 }
 
 bool neuron_substrate_is_modulated(const neuron_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_substrate_is_modulated: bridge is NULL");
+        return false;
+    }
 
     /* Check if any modulation factor deviates >5% from baseline (1.0) */
     return fabs(bridge->substrate_effects.firing_rate_mod - 1.0f) > 0.05f ||

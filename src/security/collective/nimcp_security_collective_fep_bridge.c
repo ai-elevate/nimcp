@@ -855,6 +855,7 @@ int security_collective_fep_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Security collective FEP: bio-async connection failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_collective_fep_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -883,6 +884,7 @@ int security_collective_fep_process_messages(
     security_collective_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_collective_fep_process_messages: bridge is NULL");
         return -1;
     }
 

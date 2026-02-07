@@ -277,6 +277,7 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     /* Guard clause: null check */
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: config is NULL");
         return NULL;
     }
 
@@ -284,6 +285,7 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     cnn_trainer_t* trainer = (cnn_trainer_t*)nimcp_malloc(sizeof(cnn_trainer_t));
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to allocate trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: trainer is NULL");
         return NULL;
     }
 
@@ -298,6 +300,7 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
     if (!trainer->optimizer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to create optimizer");
         nimcp_free(trainer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: trainer->optimizer is NULL");
         return NULL;
     }
 
@@ -307,6 +310,7 @@ cnn_trainer_t* cnn_trainer_create(const cnn_trainer_config_t* config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_create: Failed to create gradient manager");
         nimcp_optimizer_destroy(trainer->optimizer);
         nimcp_free(trainer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_create: trainer->grad_manager is NULL");
         return NULL;
     }
 
@@ -489,14 +493,17 @@ cnn_layer_t* cnn_trainer_add_conv_layer(cnn_trainer_t* trainer,
     /* Guard clauses */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: trainer is NULL");
         return NULL;
     }
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: config is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -504,6 +511,7 @@ cnn_layer_t* cnn_trainer_add_conv_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -523,6 +531,7 @@ cnn_layer_t* cnn_trainer_add_conv_layer(cnn_trainer_t* trainer,
     if (!layer->weights) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_conv_layer: Weight allocation failed");
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: layer->weights is NULL");
         return NULL;
     }
 
@@ -537,6 +546,7 @@ cnn_layer_t* cnn_trainer_add_conv_layer(cnn_trainer_t* trainer,
         if (!layer->bias) {
             nimcp_tensor_destroy(layer->weights);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: layer->bias is NULL");
             return NULL;
         }
         nimcp_tensor_fill(layer->bias, 0.0f);
@@ -571,14 +581,17 @@ cnn_layer_t* cnn_trainer_add_pool_layer(cnn_trainer_t* trainer,
     /* Guard clauses */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_pool_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: trainer is NULL");
         return NULL;
     }
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_pool_layer: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: config is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_pool_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -586,6 +599,7 @@ cnn_layer_t* cnn_trainer_add_pool_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_pool_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -615,14 +629,17 @@ cnn_layer_t* cnn_trainer_add_batch_norm_layer(cnn_trainer_t* trainer,
     /* Guard clauses */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_batch_norm_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: trainer is NULL");
         return NULL;
     }
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_batch_norm_layer: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_he_init: config is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_batch_norm_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_he_init: capacity exceeded");
         return NULL;
     }
 
@@ -630,6 +647,7 @@ cnn_layer_t* cnn_trainer_add_batch_norm_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_batch_norm_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -646,6 +664,7 @@ cnn_layer_t* cnn_trainer_add_batch_norm_layer(cnn_trainer_t* trainer,
             nimcp_tensor_destroy(layer->weights);
             nimcp_tensor_destroy(layer->bias);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_he_init: required parameter is NULL (layer->weights, layer->bias)");
             return NULL;
         }
         nimcp_tensor_fill(layer->weights, 1.0f);  /* gamma = 1 */
@@ -668,6 +687,7 @@ cnn_layer_t* cnn_trainer_add_batch_norm_layer(cnn_trainer_t* trainer,
             nimcp_tensor_destroy(layer->running_mean);
             nimcp_tensor_destroy(layer->running_var);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (layer->running_mean, layer->running_var)");
             return NULL;
         }
         nimcp_tensor_fill(layer->running_mean, 0.0f);
@@ -695,19 +715,23 @@ cnn_layer_t* cnn_trainer_add_dropout_layer(cnn_trainer_t* trainer,
     /* Guard clauses */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: trainer is NULL");
         return NULL;
     }
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: config is NULL");
         return NULL;
     }
     if (config->dropout_rate < 0.0f || config->dropout_rate >= 1.0f) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: Invalid rate %.2f",
                            config->dropout_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: capacity exceeded");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return NULL;
     }
 
@@ -715,6 +739,7 @@ cnn_layer_t* cnn_trainer_add_dropout_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dropout_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -743,14 +768,17 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
     /* Guard clauses */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: trainer is NULL");
         return NULL;
     }
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: config is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return NULL;
     }
 
@@ -758,6 +786,7 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -771,6 +800,7 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
     if (!layer->weights) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_dense_layer: Weight allocation failed");
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: layer->weights is NULL");
         return NULL;
     }
 
@@ -784,6 +814,7 @@ cnn_layer_t* cnn_trainer_add_dense_layer(cnn_trainer_t* trainer,
         if (!layer->bias) {
             nimcp_tensor_destroy(layer->weights);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: layer->bias is NULL");
             return NULL;
         }
         nimcp_tensor_fill(layer->bias, 0.0f);
@@ -814,10 +845,12 @@ cnn_layer_t* cnn_trainer_add_flatten_layer(cnn_trainer_t* trainer) {
     /* Guard clause */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_flatten_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_trainer_add_flatten_layer: trainer is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_flatten_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_trainer_add_flatten_layer: capacity exceeded");
         return NULL;
     }
 
@@ -825,6 +858,7 @@ cnn_layer_t* cnn_trainer_add_flatten_layer(cnn_trainer_t* trainer) {
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_flatten_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_add_flatten_layer: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -843,10 +877,12 @@ cnn_layer_t* cnn_trainer_add_activation_layer(cnn_trainer_t* trainer,
     /* Guard clause */
     if (!trainer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: NULL trainer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_trainer_add_flatten_layer: trainer is NULL");
         return NULL;
     }
     if (trainer->num_layers >= CNN_MAX_LAYERS) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: Max layers exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cnn_trainer_add_flatten_layer: capacity exceeded");
         return NULL;
     }
 
@@ -854,6 +890,7 @@ cnn_layer_t* cnn_trainer_add_activation_layer(cnn_trainer_t* trainer,
     cnn_layer_t* layer = (cnn_layer_t*)nimcp_malloc(sizeof(cnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("cnn_trainer_add_activation_layer: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_add_flatten_layer: layer is NULL");
         return NULL;
     }
     memset(layer, 0, sizeof(cnn_layer_t));
@@ -1006,6 +1043,7 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
     if (cfg->stride_h == 0 || cfg->stride_w == 0) {
         NIMCP_LOGGING_ERROR("cnn_forward_conv: Invalid stride (stride_h=%u, stride_w=%u)",
                             cfg->stride_h, cfg->stride_w);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cnn_forward_conv: cfg->stride_h is zero");
         return NULL;
     }
 
@@ -1101,6 +1139,7 @@ static nimcp_tensor_t* cnn_forward_pool(const cnn_layer_t* layer, const nimcp_te
     if (cfg->stride_h == 0 || cfg->stride_w == 0) {
         NIMCP_LOGGING_ERROR("cnn_forward_pool: Invalid stride (stride_h=%u, stride_w=%u)",
                             cfg->stride_h, cfg->stride_w);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cnn_forward_pool: cfg->stride_h is zero");
         return NULL;
     }
 
@@ -2406,6 +2445,7 @@ cnn_dataloader_t* cnn_dataloader_create(const nimcp_tensor_t* data,
     /* Guard clauses */
     if (!data || !labels || !config) {
         NIMCP_LOGGING_ERROR("cnn_dataloader_create: NULL arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_shuffle_indices: required parameter is NULL (data, labels, config)");
         return NULL;
     }
 
@@ -2413,6 +2453,7 @@ cnn_dataloader_t* cnn_dataloader_create(const nimcp_tensor_t* data,
     cnn_dataloader_t* loader = (cnn_dataloader_t*)nimcp_malloc(sizeof(cnn_dataloader_t));
     if (!loader) {
         NIMCP_LOGGING_ERROR("cnn_dataloader_create: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_shuffle_indices: loader is NULL");
         return NULL;
     }
     memset(loader, 0, sizeof(cnn_dataloader_t));
@@ -2437,6 +2478,7 @@ cnn_dataloader_t* cnn_dataloader_create(const nimcp_tensor_t* data,
     if (!loader->indices) {
         NIMCP_LOGGING_ERROR("cnn_dataloader_create: Index allocation failed");
         nimcp_free(loader);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_shuffle_indices: loader->indices is NULL");
         return NULL;
     }
 
@@ -2754,6 +2796,7 @@ cnn_to_snn_converter_t* cnn_to_snn_converter_create(const cnn_to_snn_config_t* c
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("cnn_to_snn_converter_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_to_snn_converter_create: config is NULL");
         return NULL;
     }
 
@@ -2762,6 +2805,7 @@ cnn_to_snn_converter_t* cnn_to_snn_converter_create(const cnn_to_snn_config_t* c
         sizeof(cnn_to_snn_converter_t));
     if (!converter) {
         NIMCP_LOGGING_ERROR("cnn_to_snn_converter_create: Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cnn_to_snn_converter_create: converter is NULL");
         return NULL;
     }
     memset(converter, 0, sizeof(cnn_to_snn_converter_t));

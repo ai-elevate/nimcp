@@ -99,11 +99,15 @@ static raphe_bio_subscription_t* find_subscription(raphe_bio_async_bridge_t* b, 
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
 int raphe_bio_async_default_config(raphe_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_default_config: config is NULL");
+        return -1;
+    }
     config->ht_broadcast_interval_ms = RAPHE_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
     config->max_inbox_process_per_update = 32;
@@ -138,6 +142,7 @@ raphe_bio_async_bridge_t* raphe_bio_async_bridge_create(const raphe_bio_async_co
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(raphe_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "raphe_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -155,7 +160,10 @@ void raphe_bio_async_bridge_destroy(raphe_bio_async_bridge_t* bridge) {
 }
 
 int raphe_bio_async_connect(raphe_bio_async_bridge_t* bridge, nimcp_raphe_adapter_t adapter, bio_router_t router) {
-    if (!bridge || !adapter) return -1;
+    if (!bridge || !adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_connect: required parameter is NULL (bridge, adapter)");
+        return -1;
+    }
     bridge->adapter = adapter;
     bridge->router = router;
     bridge->connected = true;
@@ -163,7 +171,10 @@ int raphe_bio_async_connect(raphe_bio_async_bridge_t* bridge, nimcp_raphe_adapte
 }
 
 int raphe_bio_async_disconnect(raphe_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
     bridge->adapter = NULL;
     bridge->router = NULL;
     bridge->connected = false;
@@ -175,13 +186,19 @@ bool raphe_bio_async_is_connected(const raphe_bio_async_bridge_t* bridge) {
 }
 
 int raphe_bio_async_process_inbox(raphe_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     (void)max_messages;
     return 0;
 }
 
 int raphe_bio_async_update(raphe_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     bridge->time_since_broadcast_ms += delta_ms;
     if (bridge->config.enable_auto_broadcast &&
         bridge->time_since_broadcast_ms >= bridge->config.ht_broadcast_interval_ms) {
@@ -192,7 +209,10 @@ int raphe_bio_async_update(raphe_bio_async_bridge_t* bridge, uint32_t delta_ms) 
 }
 
 int raphe_bio_async_broadcast_5ht_state(raphe_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_5ht_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     raphe_bio_5ht_state_msg_t msg = {0};
     msg.header.type = BIO_MSG_RAPHE_5HT_STATE;
@@ -227,7 +247,10 @@ int raphe_bio_async_update_state(
     float patience,
     float anxiety
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_update_state: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ht_level = ht_level;
     bridge->state.tonic_5ht = ht_level * 0.8f;
@@ -242,7 +265,10 @@ int raphe_bio_async_update_state(
 }
 
 int raphe_bio_async_broadcast_mood_change(raphe_bio_async_bridge_t* bridge, float prev_mood, float cur_mood, uint32_t source) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_mood_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_mood_routing) return 0;
 
     raphe_bio_mood_change_msg_t msg = {0};
@@ -264,7 +290,10 @@ int raphe_bio_async_broadcast_mood_change(raphe_bio_async_bridge_t* bridge, floa
 }
 
 int raphe_bio_async_broadcast_impulse_control(raphe_bio_async_bridge_t* bridge, float inhibition, bool active) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_impulse_control: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     raphe_bio_impulse_control_msg_t msg = {0};
     msg.header.type = BIO_MSG_RAPHE_IMPULSE_CONTROL;
@@ -285,7 +314,10 @@ int raphe_bio_async_broadcast_impulse_control(raphe_bio_async_bridge_t* bridge, 
 }
 
 int raphe_bio_async_broadcast_patience(raphe_bio_async_bridge_t* bridge, float patience, float delay_tolerance) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_patience: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     raphe_bio_patience_msg_t msg = {0};
     msg.header.type = BIO_MSG_RAPHE_PATIENCE_SIGNAL;
@@ -304,7 +336,10 @@ int raphe_bio_async_broadcast_patience(raphe_bio_async_bridge_t* bridge, float p
 }
 
 int raphe_bio_async_broadcast_anxiety(raphe_bio_async_bridge_t* bridge, float anxiety, float social_anxiety) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_anxiety: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     raphe_bio_anxiety_msg_t msg = {0};
     msg.header.type = BIO_MSG_RAPHE_ANXIETY_STATE;
@@ -324,7 +359,10 @@ int raphe_bio_async_broadcast_anxiety(raphe_bio_async_bridge_t* bridge, float an
 }
 
 int raphe_bio_async_broadcast_social(raphe_bio_async_bridge_t* bridge, float confidence, float approach) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_social: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_social_routing) return 0;
 
     raphe_bio_social_msg_t msg = {0};
@@ -345,7 +383,10 @@ int raphe_bio_async_broadcast_social(raphe_bio_async_bridge_t* bridge, float con
 }
 
 int raphe_bio_async_send_plasticity_gate(raphe_bio_async_bridge_t* bridge, float gate_strength, float lr_mult, uint32_t target) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_send_plasticity_gate: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_plasticity_gating) return 0;
 
     raphe_bio_plasticity_gate_msg_t msg = {0};
@@ -370,20 +411,29 @@ int raphe_bio_async_send_plasticity_gate(raphe_bio_async_bridge_t* bridge, float
 }
 
 int raphe_bio_async_broadcast_tonic_shift(raphe_bio_async_bridge_t* bridge, float new_tonic) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_broadcast_tonic_shift: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     (void)new_tonic;
     bridge->stats.broadcasts_sent++;
     return raphe_bio_async_broadcast_5ht_state(bridge);
 }
 
 int raphe_bio_async_subscribe_module(raphe_bio_async_bridge_t* bridge, uint32_t module_id, uint32_t msg_types) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
     raphe_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
         existing->msg_type_mask |= msg_types;
         return 0;
     }
-    if (bridge->subscription_count >= bridge->subscription_capacity) return -1;
+    if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "raphe_bio_async_subscribe_module: capacity exceeded");
+        return -1;
+    }
 
     raphe_bio_subscription_t* sub = &bridge->subscriptions[bridge->subscription_count++];
     sub->module_id = module_id;
@@ -399,7 +449,10 @@ int raphe_bio_async_subscribe_module(raphe_bio_async_bridge_t* bridge, uint32_t 
 }
 
 int raphe_bio_async_unsubscribe_module(raphe_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].active = false;
@@ -407,13 +460,20 @@ int raphe_bio_async_unsubscribe_module(raphe_bio_async_bridge_t* bridge, uint32_
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "raphe_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
 int raphe_bio_async_update_subscription(raphe_bio_async_bridge_t* bridge, uint32_t module_id, uint32_t msg_types) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
     raphe_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
     sub->msg_type_mask = msg_types;
     return 0;
 }
@@ -429,13 +489,19 @@ uint32_t raphe_bio_async_get_subscriber_count(const raphe_bio_async_bridge_t* br
 }
 
 int raphe_bio_async_get_stats(const raphe_bio_async_bridge_t* bridge, raphe_bio_async_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int raphe_bio_async_reset_stats(raphe_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "raphe_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;
     memset(&bridge->stats, 0, sizeof(bridge->stats));

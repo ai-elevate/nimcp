@@ -222,6 +222,7 @@ tom_immune_bridge_t* tom_immune_bridge_create(
     if (!tom_system || !immune_system) {
         LOG_MODULE_ERROR("tom_immune_bridge",
                   "Cannot create bridge without ToM and immune systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_immune_bridge_create: required parameter is NULL (tom_system, immune_system)");
         return NULL;
     }
 
@@ -307,7 +308,10 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_tom_modulation) return 0;
-    if (!bridge->immune_system || !bridge->tom_system) return -1;
+    if (!bridge->immune_system || !bridge->tom_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->tom_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_cyt", 0.0f);
@@ -365,7 +369,10 @@ int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_apply_inf", 0.0f);
@@ -497,8 +504,14 @@ int tom_immune_trigger_from_rejection(
 
     }
     if (!bridge->enable_rejection_inflammation) return 0;
-    if (!bridge->immune_system) return -1;
-    if (rejection_severity < 0.0f || rejection_severity > 1.0f) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_trigger_from_rejection: bridge->immune_system is NULL");
+        return -1;
+    }
+    if (rejection_severity < 0.0f || rejection_severity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_immune_trigger_from_rejection: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
@@ -547,8 +560,14 @@ int tom_immune_trigger_from_prediction_error(
 
     }
     if (!bridge->enable_social_stress_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
-    if (prediction_error < 0.0f || prediction_error > 1.0f) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_trigger_from_prediction_error: bridge->immune_system is NULL");
+        return -1;
+    }
+    if (prediction_error < 0.0f || prediction_error > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_immune_trigger_from_prediction_error: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
@@ -594,8 +613,14 @@ int tom_immune_trigger_from_isolation(
 
     }
     if (!bridge->enable_isolation_chronic_inflammation) return 0;
-    if (!bridge->immune_system) return -1;
-    if (isolation_duration_sec < 0.0f) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_trigger_from_isolation: bridge->immune_system is NULL");
+        return -1;
+    }
+    if (isolation_duration_sec < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_immune_trigger_from_isolation: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_trigger_f", 0.0f);
@@ -662,8 +687,14 @@ int tom_immune_boost_from_social_connection(
 
     }
     if (!bridge->enable_social_connection_boost) return 0;
-    if (!bridge->immune_system) return -1;
-    if (connection_strength < 0.0f || connection_strength > 1.0f) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_boost_from_social_connection: bridge->immune_system is NULL");
+        return -1;
+    }
+    if (connection_strength < 0.0f || connection_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_immune_boost_from_social_connection: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_boost_fro", 0.0f);
@@ -744,7 +775,10 @@ int tom_immune_get_cytokine_effects(
     const tom_immune_bridge_t* bridge,
     cytokine_tom_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_cytok", 0.0f);
@@ -758,7 +792,10 @@ int tom_immune_get_inflammation_state(
     const tom_immune_bridge_t* bridge,
     inflammation_tom_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_get_infla", 0.0f);
@@ -769,7 +806,10 @@ int tom_immune_get_inflammation_state(
 }
 
 bool tom_immune_is_social_withdrawal(const tom_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_is_social_withdrawal: bridge is NULL");
+        return false;
+    }
 
     /* Social withdrawal if high social motivation loss or sickness behavior */
     /* Phase 8: Heartbeat at operation start */
@@ -885,7 +925,10 @@ int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool tom_immune_is_bio_async_connected(const tom_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     tom_immune_bridge_heartbeat("tom_immune_b_tom_immune_is_bio_as", 0.0f);
 

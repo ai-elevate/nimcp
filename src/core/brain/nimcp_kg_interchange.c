@@ -142,6 +142,7 @@ int kg_export_full(
     const kg_export_options_t* options
 ) {
     if (!kg || !output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_export_full: required parameter is NULL (kg, output_path)");
         return -1;
     }
 
@@ -191,6 +192,7 @@ int kg_export_subgraph(
     const kg_export_options_t* options
 ) {
     if (!kg || !output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_export_subgraph: required parameter is NULL (kg, output_path)");
         return -1;
     }
 
@@ -213,6 +215,7 @@ int kg_export_to_buffer(
     size_t* size
 ) {
     if (!kg || !buffer || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_export_to_buffer: required parameter is NULL (kg, buffer, size)");
         return -1;
     }
 
@@ -229,6 +232,7 @@ int kg_export_to_buffer(
 
     *buffer = nimcp_malloc(len);
     if (!*buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_export_to_buffer: validation failed");
         return -1;
     }
 
@@ -249,6 +253,7 @@ int kg_import_from_file(
     kg_import_result_t* result
 ) {
     if (!kg || !input_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_import_from_file: required parameter is NULL (kg, input_path)");
         return -1;
     }
 
@@ -280,6 +285,7 @@ int kg_import_from_file(
             result->errors = 1;
             result->duration_ms = get_current_timestamp_ms() - start_time;
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_import_from_file: validation failed");
         return -1;
     }
 
@@ -302,6 +308,7 @@ int kg_import_from_buffer(
     kg_import_result_t* result
 ) {
     if (!kg || !buffer || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_import_from_buffer: required parameter is NULL (kg, buffer)");
         return -1;
     }
 
@@ -358,6 +365,7 @@ int kg_sync_export_changes(
     const kg_export_options_t* options
 ) {
     if (!kg || !output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_sync_export_changes: required parameter is NULL (kg, output_path)");
         return -1;
     }
 
@@ -378,6 +386,7 @@ int kg_sync_import_changes(
     kg_import_result_t* result
 ) {
     if (!kg || !input_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_sync_import_changes: required parameter is NULL (kg, input_path)");
         return -1;
     }
 
@@ -395,6 +404,7 @@ int kg_ontology_import(
     const char* path_or_url
 ) {
     if (!kg || !path_or_url) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ontology_import: required parameter is NULL (kg, path_or_url)");
         return -1;
     }
 
@@ -417,6 +427,7 @@ int kg_ontology_link(
     const char* external_id
 ) {
     if (!kg || !external_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ontology_link: required parameter is NULL (kg, external_id)");
         return -1;
     }
 
@@ -441,6 +452,7 @@ int kg_ontology_lookup(
     uint32_t* count
 ) {
     if (!kg || !term || !matches || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ontology_lookup: required parameter is NULL (kg, term, matches, count)");
         return -1;
     }
 

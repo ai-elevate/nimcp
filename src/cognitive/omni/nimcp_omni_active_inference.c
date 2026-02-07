@@ -345,6 +345,7 @@ omni_active_inference_t* omni_ai_create(
     ai->policies = nimcp_calloc(ai->policy_capacity, sizeof(omni_ai_policy_t));
     if (!ai->policies) {
         nimcp_free(ai);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->policies is NULL");
         return NULL;
     }
 
@@ -354,6 +355,7 @@ omni_active_inference_t* omni_ai_create(
     if (!ai->goals) {
         nimcp_free(ai->policies);
         nimcp_free(ai);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->goals is NULL");
         return NULL;
     }
 
@@ -365,6 +367,7 @@ omni_active_inference_t* omni_ai_create(
             nimcp_free(ai->goals);
             nimcp_free(ai->policies);
             nimcp_free(ai);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_create: ai->current_obs is NULL");
             return NULL;
         }
     }
@@ -376,6 +379,7 @@ omni_active_inference_t* omni_ai_create(
         nimcp_free(ai->goals);
         nimcp_free(ai->policies);
         nimcp_free(ai);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_create: validation failed");
         return NULL;
     }
 
@@ -490,8 +494,14 @@ int omni_ai_add_policy(omni_active_inference_t* ai,
                         const float* actions,
                         uint32_t horizon,
                         uint32_t action_dim) {
-    if (!ai || !actions) return -1;
-    if (horizon == 0 || action_dim == 0) return -1;
+    if (!ai || !actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_reset: required parameter is NULL (ai, actions)");
+        return -1;
+    }
+    if (horizon == 0 || action_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_ai_reset: horizon is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_active_inference_heartbeat("omni_active__omni_ai_add_policy", 0.0f);
@@ -506,6 +516,7 @@ int omni_ai_add_policy(omni_active_inference_t* ai,
             ai->policies, new_cap * sizeof(omni_ai_policy_t));
         if (!new_policies) {
             nimcp_mutex_unlock(ai->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_reset: new_policies is NULL");
             return -1;
         }
         ai->policies = new_policies;
@@ -524,6 +535,7 @@ int omni_ai_add_policy(omni_active_inference_t* ai,
     policy->actions = nimcp_malloc(action_size);
     if (!policy->actions) {
         nimcp_mutex_unlock(ai->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_reset: policy->actions is NULL");
         return -1;
     }
     memcpy(policy->actions, actions, action_size);
@@ -626,7 +638,10 @@ int omni_ai_set_goal(omni_active_inference_t* ai,
                       const float* preferred,
                       uint32_t obs_dim,
                       float precision) {
-    if (!ai) return -1;
+    if (!ai) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_clear_policies: ai is NULL");
+        return -1;
+    }
 
     /* Clear existing goals first */
     /* Phase 8: Heartbeat at operation start */
@@ -642,7 +657,10 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
                       const float* preferred,
                       uint32_t obs_dim,
                       float precision) {
-    if (!ai || !preferred || obs_dim == 0) return -1;
+    if (!ai || !preferred || obs_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_clear_policies: required parameter is NULL (ai, preferred)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_active_inference_heartbeat("omni_active__omni_ai_add_goal", 0.0f);
@@ -657,6 +675,7 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
             ai->goals, new_cap * sizeof(omni_ai_goal_t));
         if (!new_goals) {
             nimcp_mutex_unlock(ai->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_clear_policies: new_goals is NULL");
             return -1;
         }
         ai->goals = new_goals;
@@ -673,6 +692,7 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
     goal->preferred_obs = nimcp_malloc(obs_dim * sizeof(float));
     if (!goal->preferred_obs) {
         nimcp_mutex_unlock(ai->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_clear_policies: goal->preferred_obs is NULL");
         return -1;
     }
     memcpy(goal->preferred_obs, preferred, obs_dim * sizeof(float));
@@ -1230,7 +1250,10 @@ int omni_ai_disconnect_bio_async(omni_active_inference_t* ai) {
 }
 
 bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
-    if (!ai) return false;
+    if (!ai) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_ai_is_bio_async_connected: ai is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_active_inference_heartbeat("omni_active__omni_ai_is_bio_async", 0.0f);
 
@@ -1274,7 +1297,10 @@ int omni_ai_reset_stats(omni_active_inference_t* ai) {
 }
 
 int omni_ai_get_best_policy(const omni_active_inference_t* ai) {
-    if (!ai || ai->num_policies == 0) return -1;
+    if (!ai || ai->num_policies == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_ai_get_best_policy: ai is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_active_inference_heartbeat("omni_active__omni_ai_get_best_pol", 0.0f);
@@ -1440,6 +1466,7 @@ omni_ai_action_result_t* omni_ai_action_result_create(uint32_t action_dim) {
         result->action = nimcp_calloc(action_dim, sizeof(float));
         if (!result->action) {
             nimcp_free(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_ai_action_result_create: result->action is NULL");
             return NULL;
         }
     }

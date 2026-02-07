@@ -180,6 +180,7 @@ int snn_mental_health_bridge_connect_bio_async(snn_mental_health_bridge_t* bridg
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_mental_health_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

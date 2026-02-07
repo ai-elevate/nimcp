@@ -178,7 +178,10 @@ scientific_config_t scientific_default_config(void) {
 }
 
 bool scientific_validate_config(const scientific_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     scientific_reasoning_heartbeat("scientific_r_scientific_validate_", 0.0f);
@@ -187,21 +190,25 @@ bool scientific_validate_config(const scientific_config_t* config) {
     if (config->hypothesis_prior_default < 0.0f ||
         config->hypothesis_prior_default > 1.0f) {
         set_scientific_error("Prior default must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_validate_config: config is NULL");
         return false;
     }
 
     if (config->evidence_threshold < 0.0f || config->evidence_threshold > 1.0f) {
         set_scientific_error("Evidence threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_validate_config: validation failed");
         return false;
     }
 
     if (config->significance_level <= 0.0f || config->significance_level > 0.5f) {
         set_scientific_error("Significance level must be in (0, 0.5]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_validate_config: validation failed");
         return false;
     }
 
     if (config->max_hypotheses == 0) {
         set_scientific_error("Max hypotheses cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_validate_config: config->max_hypotheses is zero");
         return false;
     }
 
@@ -227,6 +234,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
 
     if (config) {
         if (!scientific_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_reasoning_create_custom: scientific_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -250,6 +258,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
     if (!sr->hypotheses) {
         set_scientific_error("Failed to allocate hypothesis array");
         nimcp_free(sr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_reasoning_create_custom: sr->hypotheses is NULL");
         return NULL;
     }
 
@@ -260,6 +269,7 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
         set_scientific_error("Failed to create mutex");
         nimcp_free(sr->hypotheses);
         nimcp_free(sr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_reasoning_create_custom: sr->lock is NULL");
         return NULL;
     }
 
@@ -420,7 +430,10 @@ const char* scientific_dimension_to_string(
     char* buffer,
     uint32_t buffer_size
 ) {
-    if (!buffer || buffer_size < 64) return NULL;
+    if (!buffer || buffer_size < 64) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_dimension_to_string: buffer is NULL");
+        return NULL;
+    }
 
     char* p = buffer;
     *p = '\0';
@@ -776,7 +789,10 @@ bool scientific_reject_hypothesis(
     scientific_reasoning_t* sr,
     hypothesis_t* hypothesis
 ) {
-    if (!sr || !hypothesis) return false;
+    if (!sr || !hypothesis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_reject_hypothesis: required parameter is NULL (sr, hypothesis)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     scientific_reasoning_heartbeat("scientific_r_scientific_reject_hy", 0.0f);
@@ -809,6 +825,7 @@ causal_graph_t* scientific_create_causal_graph(
 ) {
     if (!sr || !variable_names || num_variables == 0 ||
         num_variables > SCIENTIFIC_MAX_CAUSAL_VARS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_create_causal_graph: operation failed");
         return NULL;
     }
 
@@ -842,6 +859,7 @@ causal_graph_t* scientific_create_causal_graph(
     graph->adjacency = nimcp_malloc(num_variables * sizeof(float*));
     if (!graph->adjacency) {
         scientific_destroy_causal_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_create_causal_graph: graph->adjacency is NULL");
         return NULL;
     }
 
@@ -855,6 +873,7 @@ causal_graph_t* scientific_create_causal_graph(
         graph->adjacency[i] = nimcp_calloc(num_variables, sizeof(float));
         if (!graph->adjacency[i]) {
             scientific_destroy_causal_graph(graph);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "scientific_create_causal_graph: graph->adjacency is NULL");
             return NULL;
         }
     }
@@ -897,6 +916,7 @@ int scientific_learn_causal_structure(
     uint32_t num_samples
 ) {
     if (!sr || !graph || !data || num_samples < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_learn_causal_structure: required parameter is NULL (sr, graph, data)");
         return -1;
     }
 
@@ -1010,6 +1030,7 @@ int scientific_add_causal_relation(
 ) {
     if (!graph || cause_id >= graph->num_variables ||
         effect_id >= graph->num_variables) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_add_causal_relation: operation failed");
         return -1;
     }
 
@@ -1090,6 +1111,7 @@ bool scientific_is_path_blocked(
                 return true;  /* Blocked by conditioning on intermediate */
             }
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "scientific_is_path_blocked: validation failed");
         return false;  /* Direct path, not blocked */
     }
 
@@ -1107,6 +1129,7 @@ int scientific_suggest_experiment(
     experimental_design_t* design
 ) {
     if (!sr || !graph || !design || target_effect_id >= graph->num_variables) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_suggest_experiment: required parameter is NULL (sr, graph, design)");
         return -1;
     }
 

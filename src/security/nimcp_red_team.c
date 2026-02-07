@@ -105,7 +105,10 @@ red_team_config_t red_team_default_config(void) {
 
 red_team_t* red_team_create(const red_team_config_t* config) {
     red_team_t* system = nimcp_calloc(1, sizeof(red_team_t));
-    if (system == NULL) return NULL;
+    if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "red_team_create: validation failed");
+        return NULL;
+    }
 
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) { nimcp_free(system); return NULL; }

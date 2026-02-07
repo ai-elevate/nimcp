@@ -144,20 +144,50 @@ dragonfly_emotion_config_t dragonfly_emotion_default_config(void) {
 }
 
 bool dragonfly_emotion_validate_config(const dragonfly_emotion_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_validate_config: config is NULL");
+        return false;
+    }
 
     /* Check ranges */
-    if (config->hunger_decay_rate < 0.0f) return false;
-    if (config->hunger_satisfaction < 0.0f || config->hunger_satisfaction > 1.0f) return false;
-    if (config->fear_decay_rate < 0.0f) return false;
-    if (config->frustration_buildup_rate < 0.0f) return false;
+    if (config->hunger_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->hunger_satisfaction < 0.0f || config->hunger_satisfaction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->fear_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->frustration_buildup_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->hunt_motivation_threshold < 0.0f || config->hunt_motivation_threshold > 1.0f) return false;
-    if (config->fear_abort_threshold < 0.0f || config->fear_abort_threshold > 1.0f) return false;
-    if (config->frustration_rest_threshold < 0.0f || config->frustration_rest_threshold > 1.0f) return false;
+    if (config->hunt_motivation_threshold < 0.0f || config->hunt_motivation_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->fear_abort_threshold < 0.0f || config->fear_abort_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->frustration_rest_threshold < 0.0f || config->frustration_rest_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->emotional_learning_rate < 0.0f || config->emotional_learning_rate > 1.0f) return false;
-    if (config->homeostasis_rate < 0.0f || config->homeostasis_rate > 1.0f) return false;
+    if (config->emotional_learning_rate < 0.0f || config->emotional_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
+    if (config->homeostasis_rate < 0.0f || config->homeostasis_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -339,7 +369,10 @@ int dragonfly_emotion_bridge_connect(
     dragonfly_system_t* dragonfly,
     emotion_system_t emotion
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
@@ -351,7 +384,10 @@ int dragonfly_emotion_bridge_connect(
 }
 
 int dragonfly_emotion_bridge_disconnect(dragonfly_emotion_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
@@ -370,7 +406,10 @@ int dragonfly_emotion_bridge_update(
     dragonfly_emotion_bridge_t bridge,
     float dt_s
 ) {
-    if (!bridge || dt_s <= 0.0f) return -1;
+    if (!bridge || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_emotion_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -452,7 +491,10 @@ int dragonfly_emotion_process_event(
     dragonfly_emotion_bridge_t bridge,
     const emotional_event_t* event
 ) {
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_process_event: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -513,7 +555,10 @@ int dragonfly_emotion_report_success(
     dragonfly_emotion_bridge_t bridge,
     float satisfaction_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_report_success: bridge is NULL");
+        return -1;
+    }
 
     emotional_event_t event = {0};
     event.is_success = true;
@@ -539,7 +584,10 @@ int dragonfly_emotion_report_failure(
     float frustration_level,
     const char* reason
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_report_failure: bridge is NULL");
+        return -1;
+    }
     (void)reason;  /* For future logging */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -562,7 +610,10 @@ int dragonfly_emotion_report_threat(
     float threat_level,
     const float threat_position[3]
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_report_threat: bridge is NULL");
+        return -1;
+    }
     (void)threat_position;  /* For future spatial awareness */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -589,7 +640,10 @@ int dragonfly_emotion_get_state(
     const dragonfly_emotion_bridge_t bridge,
     emotional_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
@@ -602,7 +656,10 @@ int dragonfly_emotion_get_modulation(
     const dragonfly_emotion_bridge_t bridge,
     emotion_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *modulation = bridge->modulation;
@@ -612,7 +669,10 @@ int dragonfly_emotion_get_modulation(
 }
 
 bool dragonfly_emotion_should_hunt(const dragonfly_emotion_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_should_hunt: bridge is NULL");
+        return false;
+    }
 
     return bridge->state.motivation >= bridge->config.hunt_motivation_threshold &&
            bridge->state.drives[DRIVE_FEAR] < bridge->config.fear_abort_threshold &&
@@ -636,7 +696,10 @@ int dragonfly_emotion_get_stats(
     const dragonfly_emotion_bridge_t bridge,
     dragonfly_emotion_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_emotion_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;

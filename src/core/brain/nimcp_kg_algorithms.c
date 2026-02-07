@@ -191,6 +191,7 @@ static algorithm_graph_t* build_algorithm_graph(const kg_hierarchy_t* hier) {
 
     if (!graph->node_ids || !graph->adjacency) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_algorithm_graph: required parameter is NULL (graph->node_ids, graph->adjacency)");
         return NULL;
     }
 
@@ -239,6 +240,7 @@ static algorithm_graph_t* build_algorithm_graph(const kg_hierarchy_t* hier) {
     graph->community_assignments = nimcp_calloc(node_count, sizeof(uint32_t));
     if (!graph->community_assignments) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_algorithm_graph: graph->community_assignments is NULL");
         return NULL;
     }
 
@@ -284,6 +286,7 @@ static void free_algorithm_graph(algorithm_graph_t* graph) {
 
 static int find_node_index(const algorithm_graph_t* graph, brain_kg_node_id_t node_id) {
     if (!graph || !graph->node_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node_index: required parameter is NULL (graph, graph->node_ids)");
         return -1;
     }
 
@@ -292,6 +295,7 @@ static int find_node_index(const algorithm_graph_t* graph, brain_kg_node_id_t no
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_node_index: validation failed");
     return -1;
 }
 
@@ -301,6 +305,7 @@ static int find_node_index(const algorithm_graph_t* graph, brain_kg_node_id_t no
 
 static float* compute_shortest_paths(const algorithm_graph_t* graph, uint32_t source_idx) {
     if (!graph || source_idx >= graph->node_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "compute_shortest_paths: graph is NULL");
         return NULL;
     }
 
@@ -310,6 +315,7 @@ static float* compute_shortest_paths(const algorithm_graph_t* graph, uint32_t so
     if (!distances || !visited) {
         nimcp_free(distances);
         nimcp_free(visited);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_shortest_paths: required parameter is NULL (distances, visited)");
         return NULL;
     }
 
@@ -382,6 +388,7 @@ int kg_compute_centrality(
     kg_centrality_metrics_t* metrics
 ) {
     if (!hier || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compute_centrality: required parameter is NULL (hier, metrics)");
         return -1;
     }
 
@@ -398,6 +405,7 @@ int kg_compute_centrality(
     int node_idx = find_node_index(graph, node_id);
     if (node_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_centrality: validation failed");
         return -1;
     }
 
@@ -542,6 +550,7 @@ int kg_compute_all_centrality(
     uint32_t* count
 ) {
     if (!hier || !metrics || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compute_all_centrality: required parameter is NULL (hier, metrics, count)");
         return -1;
     }
 
@@ -551,12 +560,14 @@ int kg_compute_all_centrality(
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || graph->node_count == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_all_centrality: graph is NULL");
         return -1;
     }
 
     *metrics = nimcp_calloc(graph->node_count, sizeof(kg_centrality_metrics_t));
     if (!*metrics) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_all_centrality: validation failed");
         return -1;
     }
 
@@ -586,6 +597,7 @@ int kg_detect_hubs(
     uint32_t* hub_count
 ) {
     if (!hier || !hubs || !hub_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_detect_hubs: required parameter is NULL (hier, hubs, hub_count)");
         return -1;
     }
 
@@ -596,6 +608,7 @@ int kg_detect_hubs(
     uint32_t count = 0;
 
     if (kg_compute_all_centrality(hier, &metrics, &count) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_detect_hubs: validation failed");
         return -1;
     }
 
@@ -619,6 +632,7 @@ int kg_detect_hubs(
     *hubs = nimcp_calloc(num_hubs, sizeof(brain_kg_node_id_t));
     if (!*hubs) {
         kg_centrality_metrics_free(metrics, count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_detect_hubs: validation failed");
         return -1;
     }
 
@@ -653,6 +667,7 @@ int kg_detect_communities(
     uint32_t* count
 ) {
     if (!hier || !communities || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_detect_communities: required parameter is NULL (hier, communities, count)");
         return -1;
     }
 
@@ -662,6 +677,7 @@ int kg_detect_communities(
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || graph->node_count == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_detect_communities: graph is NULL");
         return -1;
     }
 
@@ -673,6 +689,7 @@ int kg_detect_communities(
         nimcp_free(community);
         nimcp_free(community_size);
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_detect_communities: required parameter is NULL (community, community_size)");
         return -1;
     }
 
@@ -765,6 +782,7 @@ int kg_detect_communities(
         nimcp_free(community);
         nimcp_free(community_size);
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_detect_communities: validation failed");
         return -1;
     }
 
@@ -841,6 +859,7 @@ int kg_get_node_community(
     uint32_t* community_id
 ) {
     if (!hier || !community_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_node_community: required parameter is NULL (hier, community_id)");
         return -1;
     }
 
@@ -848,6 +867,7 @@ int kg_get_node_community(
     uint32_t count = 0;
 
     if (kg_detect_communities(hier, &communities, &count) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_get_node_community: validation failed");
         return -1;
     }
 
@@ -862,6 +882,7 @@ int kg_get_node_community(
     }
 
     kg_community_free(communities, count);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_get_node_community: validation failed");
     return -1;
 }
 
@@ -906,6 +927,7 @@ int kg_compute_graph_metrics(
     kg_graph_metrics_t* metrics
 ) {
     if (!hier || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compute_graph_metrics: required parameter is NULL (hier, metrics)");
         return -1;
     }
 
@@ -914,6 +936,7 @@ int kg_compute_graph_metrics(
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || graph->node_count == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_graph_metrics: graph is NULL");
         return -1;
     }
 
@@ -1043,6 +1066,7 @@ int kg_compute_graph_metrics(
 bool kg_is_small_world(const kg_hierarchy_t* hier) {
     kg_graph_metrics_t metrics;
     if (kg_compute_graph_metrics(hier, &metrics) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_is_small_world: validation failed");
         return false;
     }
     return metrics.is_small_world;
@@ -1076,12 +1100,14 @@ kg_quantum_walk_result_t* kg_quantum_walk_search(
 
     if (start_idx < 0 || target_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quantum_walk_search: validation failed");
         return NULL;
     }
 
     kg_quantum_walk_result_t* result = nimcp_calloc(1, sizeof(kg_quantum_walk_result_t));
     if (!result) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_quantum_walk_search: result is NULL");
         return NULL;
     }
 
@@ -1098,6 +1124,7 @@ kg_quantum_walk_result_t* kg_quantum_walk_search(
         nimcp_free(amplitudes_new);
         nimcp_free(result);
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_quantum_walk_search: required parameter is NULL (amplitudes, amplitudes_new)");
         return NULL;
     }
 
@@ -1240,6 +1267,7 @@ int kg_quantum_walk_spreading_activation(
     uint32_t steps
 ) {
     if (!hier || !activation_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quantum_walk_spreading_activation: required parameter is NULL (hier, activation_map)");
         return -1;
     }
 
@@ -1253,6 +1281,7 @@ int kg_quantum_walk_spreading_activation(
     int source_idx = find_node_index(graph, source);
     if (source_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_quantum_walk_spreading_activation: validation failed");
         return -1;
     }
 
@@ -1265,6 +1294,7 @@ int kg_quantum_walk_spreading_activation(
     float* activation_new = nimcp_calloc(graph->node_count, sizeof(float));
     if (!activation_new) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_quantum_walk_spreading_activation: activation_new is NULL");
         return -1;
     }
 
@@ -1344,12 +1374,14 @@ kg_qmc_result_t* kg_qmc_estimate_reachability(
 
     if (source_idx < 0 || target_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_qmc_estimate_reachability: validation failed");
         return NULL;
     }
 
     kg_qmc_result_t* result = nimcp_calloc(1, sizeof(kg_qmc_result_t));
     if (!result) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_qmc_estimate_reachability: result is NULL");
         return NULL;
     }
 
@@ -1427,12 +1459,14 @@ int kg_qmc_estimate_entropy(
     float* entropy
 ) {
     if (!hier || !entropy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_qmc_estimate_entropy: required parameter is NULL (hier, entropy)");
         return -1;
     }
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || graph->node_count == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_qmc_estimate_entropy: graph is NULL");
         return -1;
     }
 
@@ -1453,6 +1487,7 @@ int kg_qmc_estimate_entropy(
     uint32_t* degree_hist = nimcp_calloc(max_degree + 1, sizeof(uint32_t));
     if (!degree_hist) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_qmc_estimate_entropy: degree_hist is NULL");
         return -1;
     }
 
@@ -1488,6 +1523,7 @@ kg_similarity_result_t* kg_find_similar(
     uint32_t* out_count
 ) {
     if (!hier || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_similar: required parameter is NULL (hier, out_count)");
         return NULL;
     }
 
@@ -1503,6 +1539,7 @@ kg_similarity_result_t* kg_find_similar(
     int query_idx = find_node_index(graph, query_node);
     if (query_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_similar: validation failed");
         return NULL;
     }
 
@@ -1512,6 +1549,7 @@ kg_similarity_result_t* kg_find_similar(
 
     if (k == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_find_similar: k is zero");
         return NULL;
     }
 
@@ -1519,6 +1557,7 @@ kg_similarity_result_t* kg_find_similar(
     float* similarities = nimcp_calloc(graph->node_count, sizeof(float));
     if (!similarities) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_find_similar: similarities is NULL");
         return NULL;
     }
 
@@ -1552,6 +1591,7 @@ kg_similarity_result_t* kg_find_similar(
     if (!results) {
         nimcp_free(similarities);
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_find_similar: results is NULL");
         return NULL;
     }
 
@@ -1590,6 +1630,7 @@ kg_similarity_result_t* kg_find_in_radius(
     uint32_t* out_count
 ) {
     if (!hier || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_in_radius: required parameter is NULL (hier, out_count)");
         return NULL;
     }
 
@@ -1609,6 +1650,7 @@ kg_similarity_result_t* kg_find_in_radius(
     int query_idx = find_node_index(graph, query_node);
     if (query_idx < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_in_radius: validation failed");
         return NULL;
     }
 
@@ -1641,12 +1683,14 @@ kg_similarity_result_t* kg_find_in_radius(
 
     if (match_count == 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_find_in_radius: match_count is zero");
         return NULL;
     }
 
     kg_similarity_result_t* results = nimcp_calloc(match_count, sizeof(kg_similarity_result_t));
     if (!results) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_find_in_radius: results is NULL");
         return NULL;
     }
 
@@ -1716,6 +1760,7 @@ int kg_compute_coherence(
     kg_coherence_result_t* result
 ) {
     if (!hier || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compute_coherence: required parameter is NULL (hier, result)");
         return -1;
     }
 
@@ -1726,6 +1771,7 @@ int kg_compute_coherence(
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || !graph->phases) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compute_coherence: required parameter is NULL (graph, graph->phases)");
         return -1;
     }
 
@@ -1734,6 +1780,7 @@ int kg_compute_coherence(
 
     if (idx_a < 0 || idx_b < 0) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_coherence: validation failed");
         return -1;
     }
 
@@ -1776,6 +1823,7 @@ int kg_find_synchronized_pairs(
     uint32_t* count
 ) {
     if (!hier || !pairs || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_synchronized_pairs: required parameter is NULL (hier, pairs, count)");
         return -1;
     }
 
@@ -1785,6 +1833,7 @@ int kg_find_synchronized_pairs(
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph || graph->node_count < 2) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_find_synchronized_pairs: graph is NULL");
         return -1;
     }
 
@@ -1810,6 +1859,7 @@ int kg_find_synchronized_pairs(
     *pairs = nimcp_calloc(pair_count, sizeof(kg_coherence_result_t));
     if (!*pairs) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_find_synchronized_pairs: validation failed");
         return -1;
     }
 
@@ -1845,6 +1895,7 @@ int kg_compute_hyperbolic_embedding(
     uint32_t dimensions
 ) {
     if (!hier || dimensions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compute_hyperbolic_embedding: hier is NULL");
         return -1;
     }
 
@@ -1859,6 +1910,7 @@ int kg_compute_hyperbolic_embedding(
     float* embeddings = nimcp_calloc(graph->node_count * dimensions, sizeof(float));
     if (!embeddings) {
         free_algorithm_graph(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_compute_hyperbolic_embedding: embeddings is NULL");
         return -1;
     }
 
@@ -1973,6 +2025,7 @@ int kg_ternary_inference(
     trit_t* result
 ) {
     if (!hier || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ternary_inference: required parameter is NULL (hier, query, result)");
         return -1;
     }
 

@@ -270,6 +270,7 @@ static bool contains_keywords(const char* text, const char* keywords[])
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_keywords: validation failed");
     return false;
 }
 
@@ -290,6 +291,7 @@ bool empathetic_response_detect_crisis(
 
     // Guard: NULL checks
     if (!engine || !text || !crisis_flags || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_detect_crisis: required parameter is NULL (engine, text, crisis_flags, confidence)");
         return false;
     }
 
@@ -317,6 +319,7 @@ bool empathetic_response_detect_crisis(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "empathetic_response_detect_crisis: validation failed");
     return false;
 }
 
@@ -423,6 +426,7 @@ bool empathetic_response_generate(
 {
     // Guard: NULL checks
     if (!engine || !state || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_generate: required parameter is NULL (engine, state, response)");
         return false;
     }
 
@@ -499,6 +503,7 @@ bool empathetic_response_get_grounding_exercise(
 {
     // Guard: NULL checks
     if (!engine || !exercise) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_get_grounding_exercise: required parameter is NULL (engine, exercise)");
         return false;
     }
 
@@ -679,19 +684,28 @@ void empathetic_response_set_instance_health_agent(empathetic_response_engine_t 
 }
 
 int empathetic_response_training_begin(empathetic_response_engine_t engine) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_training_begin: engine is NULL");
+        return -1;
+    }
     empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_begin", 0.0f);
     return 0;
 }
 
 int empathetic_response_training_end(empathetic_response_engine_t engine) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_training_end: engine is NULL");
+        return -1;
+    }
     empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_end", 1.0f);
     return 0;
 }
 
 int empathetic_response_training_step(empathetic_response_engine_t engine, float progress) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_training_step: engine is NULL");
+        return -1;
+    }
     empathetic_response_heartbeat_instance(engine->health_agent, "empathetic_response_training_step", progress);
     return 0;
 }

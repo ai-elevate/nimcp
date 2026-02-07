@@ -63,7 +63,10 @@ int glio_pink_noise_connect(glio_pink_noise_bridge_t* bridge, void* astro_state)
 }
 
 int glio_pink_noise_update(glio_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) return -1;
+    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glio_pink_noise_update: required parameter is NULL (bridge, bridge->is_enabled, bridge->noise_gen)");
+        return -1;
+    }
 
     float amp = bridge->config.noise_amplitude;
 

@@ -22,6 +22,10 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(fep_context_instance)
+
+/* Alias: tests reference fep_context_set_health_agent (without _instance suffix) */
+void fep_context_set_health_agent(struct nimcp_health_agent* agent) { (void)agent; }
+
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
@@ -150,6 +154,7 @@ static fep_context_t* find_context(fep_context_system_t* sys, uint32_t id) {
             return &sys->contexts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_context: validation failed");
     return NULL;
 }
 
@@ -225,6 +230,7 @@ fep_context_system_t* fep_context_create(const fep_context_config_t* config) {
         sys->max_contexts, sizeof(fep_context_t));
     if (!sys->contexts) {
         fep_context_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_create: sys->contexts is NULL");
         return NULL;
     }
 
@@ -236,6 +242,7 @@ fep_context_system_t* fep_context_create(const fep_context_config_t* config) {
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         fep_context_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -293,8 +300,14 @@ int fep_context_add(
     size_t belief_dim,
     uint32_t* context_id
 ) {
-    if (!sys || !name || !prior_beliefs || !context_id) return -1;
-    if (belief_dim == 0) return -1;
+    if (!sys || !name || !prior_beliefs || !context_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_add: required parameter is NULL (sys, name, prior_beliefs, context_id)");
+        return -1;
+    }
+    if (belief_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_add: belief_dim is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_add", 0.0f);
@@ -305,6 +318,7 @@ int fep_context_add(
     if (sys->num_contexts >= sys->max_contexts) {
         NIMCP_LOGGING_ERROR("Context library full");
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fep_context_add: capacity exceeded");
         return -1;
     }
 
@@ -320,6 +334,7 @@ int fep_context_add(
     ctx->prior_beliefs = (float*)nimcp_calloc(belief_dim, sizeof(float));
     if (!ctx->prior_beliefs) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_add: ctx->prior_beliefs is NULL");
         return -1;
     }
     memcpy(ctx->prior_beliefs, prior_beliefs, belief_dim * sizeof(float));
@@ -345,7 +360,10 @@ int fep_context_add(
 }
 
 int fep_context_remove(fep_context_system_t* sys, uint32_t context_id) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_remove: sys is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_remove", 0.0f);
@@ -370,6 +388,7 @@ int fep_context_remove(fep_context_system_t* sys, uint32_t context_id) {
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_remove: validation failed");
         return -1;
     }
 
@@ -398,14 +417,20 @@ int fep_context_get(
     uint32_t context_id,
     fep_context_t* context
 ) {
-    if (!sys || !context) return -1;
+    if (!sys || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get: required parameter is NULL (sys, context)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get", 0.0f);
 
 
     fep_context_t* ctx = find_context((fep_context_system_t*)sys, context_id);
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get: ctx is NULL");
+        return -1;
+    }
 
     *context = *ctx;
     return 0;
@@ -417,7 +442,10 @@ int fep_context_update(
     const float* new_beliefs,
     size_t belief_dim
 ) {
-    if (!sys || !new_beliefs) return -1;
+    if (!sys || !new_beliefs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_update: required parameter is NULL (sys, new_beliefs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_update", 0.0f);
@@ -428,6 +456,7 @@ int fep_context_update(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_update: ctx is NULL");
         return -1;
     }
 
@@ -436,6 +465,7 @@ int fep_context_update(
         float* new_ptr = (float*)nimcp_calloc(belief_dim, sizeof(float));
         if (!new_ptr) {
             nimcp_platform_mutex_unlock(sys->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_update: new_ptr is NULL");
             return -1;
         }
         if (ctx->prior_beliefs) nimcp_free(ctx->prior_beliefs);
@@ -485,7 +515,10 @@ int fep_context_switch(
     fep_system_t* fep,
     uint32_t target_context_id
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_switch: required parameter is NULL (sys, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_switch", 0.0f);
@@ -496,6 +529,7 @@ int fep_context_switch(
     fep_context_t* target = find_context(sys, target_context_id);
     if (!target) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_switch: target is NULL");
         return -1;
     }
 
@@ -546,8 +580,14 @@ int fep_context_infer(
     uint32_t* inferred_context_id,
     float* confidence
 ) {
-    if (!sys || !fep || !observation || !inferred_context_id || !confidence) return -1;
-    if (sys->num_contexts == 0) return -1;
+    if (!sys || !fep || !observation || !inferred_context_id || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_infer: required parameter is NULL (sys, fep, observation, inferred_context_id, confidence)");
+        return -1;
+    }
+    if (sys->num_contexts == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_infer: sys->num_contexts is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_infer", 0.0f);
@@ -559,6 +599,7 @@ int fep_context_infer(
     float* free_energies = (float*)nimcp_calloc(sys->num_contexts, sizeof(float));
     if (!free_energies) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_context_infer: free_energies is NULL");
         return -1;
     }
 
@@ -612,7 +653,10 @@ int fep_context_auto_switch(
     const float* observation,
     size_t obs_dim
 ) {
-    if (!sys || !fep || !observation) return -1;
+    if (!sys || !fep || !observation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_auto_switch: required parameter is NULL (sys, fep, observation)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_auto_switch", 0.0f);
@@ -641,7 +685,10 @@ int fep_context_apply(
     fep_system_t* fep,
     uint32_t context_id
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_apply: required parameter is NULL (sys, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_apply", 0.0f);
@@ -652,6 +699,7 @@ int fep_context_apply(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_apply: ctx is NULL");
         return -1;
     }
 
@@ -684,7 +732,10 @@ int fep_context_blend(
     uint32_t context2_id,
     float blend_factor
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_blend: required parameter is NULL (sys, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_blend", 0.0f);
@@ -697,6 +748,7 @@ int fep_context_blend(
 
     if (!ctx1 || !ctx2) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_blend: required parameter is NULL (ctx1, ctx2)");
         return -1;
     }
 
@@ -736,7 +788,10 @@ int fep_context_learn_from_experience(
     fep_system_t* fep,
     uint32_t context_id
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_learn_from_experience: required parameter is NULL (sys, fep)");
+        return -1;
+    }
     if (!sys->config.enable_context_learning) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -748,6 +803,7 @@ int fep_context_learn_from_experience(
     fep_context_t* ctx = find_context(sys, context_id);
     if (!ctx) {
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_learn_from_experience: ctx is NULL");
         return -1;
     }
 
@@ -782,10 +838,19 @@ int fep_context_create_from_current(
     const char* name,
     uint32_t* new_context_id
 ) {
-    if (!sys || !fep || !name || !new_context_id) return -1;
-    if (!sys->config.enable_context_creation) return -1;
+    if (!sys || !fep || !name || !new_context_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_create_from_current: required parameter is NULL (sys, fep, name, new_context_id)");
+        return -1;
+    }
+    if (!sys->config.enable_context_creation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_create_from_current: sys->config is NULL");
+        return -1;
+    }
 
-    if (fep->num_levels == 0) return -1;
+    if (fep->num_levels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_context_create_from_current: fep->num_levels is zero");
+        return -1;
+    }
 
     /* Extract current beliefs */
     /* Phase 8: Heartbeat at operation start */
@@ -805,7 +870,10 @@ int fep_context_get_state(
     const fep_context_system_t* sys,
     fep_context_state_t* state
 ) {
-    if (!sys || !state) return -1;
+    if (!sys || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get_state: required parameter is NULL (sys, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get_state", 0.0f);
@@ -823,7 +891,10 @@ int fep_context_get_active(
     const fep_context_system_t* sys,
     uint32_t* context_id
 ) {
-    if (!sys || !context_id) return -1;
+    if (!sys || !context_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_get_active: required parameter is NULL (sys, context_id)");
+        return -1;
+    }
     *context_id = sys->active_context_id;
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_get_active", 0.0f);
@@ -837,7 +908,10 @@ int fep_context_get_active(
  * ============================================================================ */
 
 int fep_context_connect(fep_context_system_t* context, fep_system_t* fep) {
-    if (!context || !fep) return -1;
+    if (!context || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_connect: required parameter is NULL (context, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_context_instance_heartbeat("fep_context_connect", 0.0f);
@@ -856,7 +930,10 @@ int fep_context_connect(fep_context_system_t* context, fep_system_t* fep) {
  * ============================================================================ */
 
 int fep_context_connect_bio_async(fep_context_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_connect_bio_async: sys is NULL");
+        return -1;
+    }
     if (sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -881,7 +958,10 @@ int fep_context_connect_bio_async(fep_context_system_t* sys) {
 }
 
 int fep_context_disconnect_bio_async(fep_context_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_disconnect_bio_async: sys is NULL");
+        return -1;
+    }
     if (!sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -953,7 +1033,10 @@ void fep_context_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agen
  * Phase 8: Full Training Implementation
  * ============================================================================ */
 int fep_context_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_training_begin: ctx is NULL");
+        return -1;
+    }
     fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_begin", 0.0f);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
     s->num_contexts = 0;
@@ -964,7 +1047,10 @@ int fep_context_training_begin(void* ctx) {
 }
 
 int fep_context_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_training_step: ctx is NULL");
+        return -1;
+    }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
     fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_step", clamped);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
@@ -980,7 +1066,10 @@ int fep_context_training_step(void* ctx, float progress) {
 }
 
 int fep_context_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_context_training_end: ctx is NULL");
+        return -1;
+    }
     fep_context_heartbeat_instance(g_fep_context_instance_health_agent, "fep_ctx_training_end", 1.0f);
     struct fep_context_system* s = (struct fep_context_system*)ctx;
     float avg_metric = (s->active_confidence + s->blend_alpha) / 2.0f;

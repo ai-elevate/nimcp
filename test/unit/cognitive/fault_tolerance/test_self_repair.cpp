@@ -28,6 +28,8 @@
 #include "cognitive/fault_tolerance/nimcp_self_repair.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Test Fixture
@@ -42,6 +44,15 @@ protected:
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
 
+        // Force-initialize exception system and handler infrastructure
+        // so their singleton allocations are part of the baseline.
+        // A dummy NIMCP_THROW_TO_IMMUNE triggers all lazy init paths:
+        // - nimcp_exception_system_init (exception mutex)
+        // - ensure_initialized (handler mutex)
+        // - nimcp_exception_set_current (thread-local ref)
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "warmup");
+        nimcp_exception_clear_current();
+
         // Record baseline memory (from previous tests or global state)
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
@@ -49,6 +60,10 @@ protected:
     }
 
     void TearDown() override {
+        // Clear thread-local exception state (NIMCP_THROW_TO_IMMUNE stores
+        // a ref in tl_current_exception that appears as a memory leak)
+        nimcp_exception_clear_current();
+
         // Check for memory leaks relative to baseline
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);

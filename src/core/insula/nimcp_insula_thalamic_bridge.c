@@ -100,6 +100,7 @@ int insula_thalamic_bridge_reset(insula_thalamic_bridge_t* bridge) {
 int insula_thalamic_route_signal(insula_thalamic_bridge_t* bridge,
                                   const insula_thalamic_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_thalamic_bridge_reset: required parameter is NULL (bridge, signal)");
         return -1;
     }
 
@@ -170,6 +171,7 @@ int insula_thalamic_set_attention(insula_thalamic_bridge_t* bridge, float attent
     }
 
     if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_thalamic_set_attention: validation failed");
         return -1;
     }
 
@@ -179,6 +181,7 @@ int insula_thalamic_set_attention(insula_thalamic_bridge_t* bridge, float attent
 
 int insula_thalamic_get_attention(const insula_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
 
@@ -189,6 +192,7 @@ int insula_thalamic_get_attention(const insula_thalamic_bridge_t* bridge, float*
 int insula_thalamic_bridge_get_stats(const insula_thalamic_bridge_t* bridge,
                                       insula_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_thalamic_get_attention: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

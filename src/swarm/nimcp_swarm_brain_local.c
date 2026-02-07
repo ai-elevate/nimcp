@@ -115,6 +115,7 @@ static agent_brain_entry_t* find_agent_entry(
     uint32_t agent_id
 ) {
     if (!mgr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_entry: mgr is NULL");
         return NULL;
     }
 
@@ -128,6 +129,7 @@ static agent_brain_entry_t* find_agent_entry(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_entry: validation failed");
     return NULL;
 }
 
@@ -941,6 +943,7 @@ nimcp_brain_t swarm_brain_get(
     uint32_t agent_id
 ) {
     if (!mgr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_get: mgr is NULL");
         return NULL;
     }
 
@@ -1340,6 +1343,7 @@ bool swarm_brain_has_agent(
     uint32_t agent_id
 ) {
     if (!mgr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_has_agent: mgr is NULL");
         return false;
     }
 

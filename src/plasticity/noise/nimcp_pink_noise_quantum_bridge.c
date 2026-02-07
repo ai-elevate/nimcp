@@ -537,7 +537,10 @@ int pink_quantum_set_enabled(
 }
 
 bool pink_quantum_is_enabled(const pink_quantum_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_quantum_is_enabled: bridge is NULL");
+        return false;
+    }
     return !bridge->using_classical;
 }
 
@@ -686,6 +689,9 @@ int pink_quantum_connect_memory_manager(
 }
 
 bool pink_quantum_has_memory_manager(const pink_quantum_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_quantum_has_memory_manager: bridge is NULL");
+        return false;
+    }
     return bridge->mem_manager != NULL;
 }

@@ -203,6 +203,7 @@ broca_immune_bridge_t* broca_immune_bridge_create(
     /* Guard clauses */
     if (!immune_system || !broca_adapter) {
         NIMCP_LOGGING_ERROR("broca_immune_bridge_create: NULL required parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_immune_bridge_create: required parameter is NULL (immune_system, broca_adapter)");
         return NULL;
     }
 
@@ -243,6 +244,7 @@ broca_immune_bridge_t* broca_immune_bridge_create(
     if (!bridge->error_history.errors) {
         NIMCP_LOGGING_ERROR("broca_immune_bridge_create: Failed to allocate error history");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_immune_bridge_create: bridge->error_history is NULL");
         return NULL;
     }
 
@@ -312,13 +314,17 @@ int broca_immune_compute_impairment(
     broca_immune_bridge_t* bridge,
     broca_speech_impairment_t* impairment)
 {
-    if (!bridge || !impairment) return -1;
+    if (!bridge || !impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_compute_impairment: required parameter is NULL (bridge, impairment)");
+        return -1;
+    }
 
     memset(impairment, 0, sizeof(broca_speech_impairment_t));
 
     /* Get immune state */
     brain_immune_stats_t immune_stats;
     if (brain_immune_get_stats(bridge->immune_system, &immune_stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_immune_compute_impairment: validation failed");
         return -1;
     }
 
@@ -399,11 +405,15 @@ int broca_immune_compute_impairment(
 
 int broca_immune_apply_inflammation_effects(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_inflammation_impairment) return -1;
+    if (!bridge || !bridge->config.enable_inflammation_impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     /* Compute current impairment */
     broca_speech_impairment_t new_impairment;
     if (broca_immune_compute_impairment(bridge, &new_impairment) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_immune_apply_inflammation_effects: validation failed");
         return -1;
     }
 
@@ -460,7 +470,10 @@ int broca_immune_apply_inflammation_effects(broca_immune_bridge_t* bridge)
 
 int broca_immune_apply_cytokine_effects(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_cytokine_modulation) return -1;
+    if (!bridge || !bridge->config.enable_cytokine_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     /* Reset cytokine effects */
     memset(&bridge->cytokine_effects, 0, sizeof(broca_cytokine_effects_t));
@@ -468,6 +481,7 @@ int broca_immune_apply_cytokine_effects(broca_immune_bridge_t* bridge)
     /* Get immune stats to estimate cytokine levels */
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_immune_apply_cytokine_effects: validation failed");
         return -1;
     }
 
@@ -518,7 +532,10 @@ int broca_immune_report_speech_error(
     const char* actual,
     float severity)
 {
-    if (!bridge || !intended || !actual) return -1;
+    if (!bridge || !intended || !actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_report_speech_error: required parameter is NULL (bridge, intended, actual)");
+        return -1;
+    }
 
     /* Check if we have capacity */
     if (bridge->error_history.error_count >= bridge->error_history.error_capacity) {
@@ -649,7 +666,10 @@ int broca_immune_analyze_error_patterns(
 
 int broca_immune_trigger_from_errors(broca_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->config.enable_error_immune_trigger) return -1;
+    if (!bridge || !bridge->config.enable_error_immune_trigger) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_trigger_from_errors: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     /* Analyze error patterns */
     float phono_damage, syntax_damage, motor_damage;
@@ -661,6 +681,7 @@ int broca_immune_trigger_from_errors(broca_immune_bridge_t* bridge)
 
     /* Check if exceeds threshold */
     if (max_damage < bridge->config.error_trigger_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_immune_trigger_from_errors: validation failed");
         return -1; /* No trigger needed */
     }
 
@@ -710,7 +731,10 @@ int broca_immune_bridge_update(
     broca_immune_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge || !bridge->running) return -1;
+    if (!bridge || !bridge->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_bridge_update: required parameter is NULL (bridge, bridge->running)");
+        return -1;
+    }
 
     bridge->last_update_time_ms = current_time_ms;
 
@@ -742,7 +766,10 @@ int broca_immune_get_impairment(
     const broca_immune_bridge_t* bridge,
     broca_speech_impairment_t* impairment)
 {
-    if (!bridge || !impairment) return -1;
+    if (!bridge || !impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_get_impairment: required parameter is NULL (bridge, impairment)");
+        return -1;
+    }
 
     *impairment = bridge->impairment;
     return 0;
@@ -752,7 +779,10 @@ int broca_immune_get_stats(
     const broca_immune_bridge_t* bridge,
     broca_immune_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;

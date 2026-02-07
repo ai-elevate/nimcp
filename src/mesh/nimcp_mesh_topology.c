@@ -230,7 +230,10 @@ static size_t hash_participant_id(mesh_participant_id_t id, size_t capacity) {
  * @brief Find node by participant ID
  */
 static topo_node_t* find_node(mesh_topology_ctx_t ctx, mesh_participant_id_t id) {
-    if (!ctx || ctx->node_count == 0) return NULL;
+    if (!ctx || ctx->node_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_node: ctx is NULL");
+        return NULL;
+    }
 
     size_t start = hash_participant_id(id, ctx->node_capacity);
     size_t idx = start;
@@ -242,6 +245,7 @@ static topo_node_t* find_node(mesh_topology_ctx_t ctx, mesh_participant_id_t id)
         idx = (idx + 1) % ctx->node_capacity;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node: validation failed");
     return NULL;
 }
 
@@ -249,7 +253,10 @@ static topo_node_t* find_node(mesh_topology_ctx_t ctx, mesh_participant_id_t id)
  * @brief Find empty slot for new node
  */
 static topo_node_t* find_empty_slot(mesh_topology_ctx_t ctx, mesh_participant_id_t id) {
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_empty_slot: ctx is NULL");
+        return NULL;
+    }
 
     size_t start = hash_participant_id(id, ctx->node_capacity);
     size_t idx = start;
@@ -261,6 +268,7 @@ static topo_node_t* find_empty_slot(mesh_topology_ctx_t ctx, mesh_participant_id
         idx = (idx + 1) % ctx->node_capacity;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: ctx->nodes is NULL");
     return NULL;
 }
 
@@ -351,7 +359,10 @@ mesh_topology_config_t mesh_topology_default_config(void) {
 
 mesh_topology_ctx_t mesh_topology_create(const mesh_topology_config_t* config) {
     mesh_topology_ctx_t ctx = (mesh_topology_ctx_t)nimcp_calloc(1, sizeof(struct mesh_topology_ctx_internal));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_create: ctx is NULL");
+        return NULL;
+    }
 
     ctx->config = config ? *config : mesh_topology_default_config();
 
@@ -360,6 +371,7 @@ mesh_topology_ctx_t mesh_topology_create(const mesh_topology_config_t* config) {
     ctx->nodes = (topo_node_t*)nimcp_calloc(ctx->node_capacity, sizeof(topo_node_t));
     if (!ctx->nodes) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_create: ctx->nodes is NULL");
         return NULL;
     }
 
@@ -369,6 +381,7 @@ mesh_topology_ctx_t mesh_topology_create(const mesh_topology_config_t* config) {
     if (!ctx->hub_ids) {
         nimcp_free(ctx->nodes);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_create: ctx->hub_ids is NULL");
         return NULL;
     }
 
@@ -816,7 +829,10 @@ bool mesh_topology_is_scale_free(
     float* gamma,
     float* r_squared
 ) {
-    if (!ctx || ctx->node_count < 10) return false;
+    if (!ctx || ctx->node_count < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: ctx is NULL");
+        return false;
+    }
 
     /* Compute degree distribution and fit power law P(k) ~ k^gamma */
     /* Using simple linear regression on log-log scale */
@@ -828,11 +844,17 @@ bool mesh_topology_is_scale_free(
         }
     }
 
-    if (max_degree < 3) return false;
+    if (max_degree < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: validation failed");
+        return false;
+    }
 
     /* Count degree frequencies */
     uint32_t* freq = (uint32_t*)nimcp_calloc(max_degree + 1, sizeof(uint32_t));
-    if (!freq) return false;
+    if (!freq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_topology_is_scale_free: freq is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < ctx->node_capacity; i++) {
         if (ctx->nodes[i].valid) {
@@ -860,7 +882,10 @@ bool mesh_topology_is_scale_free(
 
     nimcp_free(freq);
 
-    if (n < 3) return false;
+    if (n < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_scale_free: validation failed");
+        return false;
+    }
 
     /* Slope = gamma */
     double slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
@@ -893,7 +918,10 @@ bool mesh_topology_is_small_world(
     mesh_topology_ctx_t ctx,
     float* sigma
 ) {
-    if (!ctx || ctx->node_count < 10) return false;
+    if (!ctx || ctx->node_count < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: ctx is NULL");
+        return false;
+    }
 
     /* Compute small-world coefficient: sigma = (C/C_rand) / (L/L_rand) */
     /* C = clustering coefficient, L = average path length */
@@ -907,7 +935,10 @@ bool mesh_topology_is_small_world(
     float k = ctx->cached_metrics.avg_degree;
     float N = (float)ctx->node_count;
 
-    if (k < 2 || N < 10) return false;
+    if (k < 2 || N < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: validation failed");
+        return false;
+    }
 
     /* Random graph values */
     float C_rand = k / N;
@@ -916,7 +947,10 @@ bool mesh_topology_is_small_world(
     /* Estimate L (simplified: assume sparse graph) */
     float L = logf(N) / logf(k) * 1.2f; /* Approximate */
 
-    if (C_rand < 0.001f || L_rand < 0.1f) return false;
+    if (C_rand < 0.001f || L_rand < 0.1f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_topology_is_small_world: validation failed");
+        return false;
+    }
 
     float s = (C / C_rand) / (L / L_rand);
 

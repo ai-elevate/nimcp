@@ -145,6 +145,7 @@ static vicarious_agent_state_t* find_or_create_agent(
         return agent;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_or_create_agent: operation failed");
     return NULL;
 }
 
@@ -180,6 +181,7 @@ static action_outcome_assoc_t* find_or_create_association(
         return assoc;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_or_create_association: operation failed");
     return NULL;
 }
 
@@ -333,6 +335,7 @@ vicarious_reward_system_t* vicarious_reward_create(
     vicarious_reward_system_t* system = nimcp_calloc(1, sizeof(vicarious_reward_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Vicarious Reward: Failed to allocate system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vicarious_reward_create: system is NULL");
         return NULL;
     }
 
@@ -357,6 +360,7 @@ vicarious_reward_system_t* vicarious_reward_create(
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Vicarious Reward: Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vicarious_reward_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -421,6 +425,7 @@ bool vicarious_reward_process(
     vicarious_agent_state_t* agent = find_or_create_agent(system, observation->agent_id);
     if (!agent) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_process: agent is NULL");
         return false;
     }
 
@@ -828,6 +833,7 @@ const action_outcome_assoc_t* vicarious_reward_get_association(
             return &system->associations[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_get_association: validation failed");
     return NULL;
 }
 
@@ -964,7 +970,10 @@ bool vicarious_reward_is_schadenfreude(
         }
     }
 
-    if (!agent) return false;
+    if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_is_schadenfreude: agent is NULL");
+        return false;
+    }
 
     return (agent->relation == SOCIAL_RELATION_COMPETITOR ||
             agent->relation == SOCIAL_RELATION_OUTGROUP);
@@ -1001,7 +1010,10 @@ bool vicarious_reward_is_envy(
         }
     }
 
-    if (!agent) return false;
+    if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_is_envy: agent is NULL");
+        return false;
+    }
 
     return (agent->relation == SOCIAL_RELATION_COMPETITOR);
 }
@@ -1065,7 +1077,10 @@ void vicarious_reward_simd_rpe(
 //=============================================================================
 
 bool vicarious_reward_register_bio_async(vicarious_reward_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vicarious_reward_register_bio_async: system is NULL");
+        return false;
+    }
 
     /* Bio-async registration would go here */
     /* Phase 8: Heartbeat at operation start */

@@ -150,6 +150,7 @@ int gs_default_config(gs_config_t* config) {
 
 int gs_snn_config(gs_config_t* config) {
     if (gs_default_config(config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gs_snn_config: validation failed");
         return -1;
     }
 
@@ -433,6 +434,7 @@ int gs_scale_all_layers(
     size_t* counts
 ) {
     if (!ctx || !gradients || !counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_scale_all_layers: required parameter is NULL (ctx, gradients, counts)");
         return -1;
     }
 
@@ -547,6 +549,7 @@ int gs_update_running_stats(
     float grad_norm
 ) {
     if (!ctx || layer_id >= ctx->num_layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gs_update_running_stats: ctx is NULL");
         return -1;
     }
 
@@ -574,6 +577,7 @@ int gs_surrogate_gradient(
     float beta
 ) {
     if (!membrane_potential || !grad_output || !grad_input || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_surrogate_gradient: required parameter is NULL (membrane_potential, grad_output, grad_input)");
         return -1;
     }
 
@@ -754,6 +758,7 @@ int gs_clip_adaptive(
     float clip_factor
 ) {
     if (!ctx || !gradients || !params || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_clip_adaptive: required parameter is NULL (ctx, gradients, params)");
         return -1;
     }
 
@@ -801,6 +806,7 @@ int gs_set_layer_lr_multiplier(
     float multiplier
 ) {
     if (!ctx || layer_id >= ctx->num_layers || multiplier <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gs_set_layer_lr_multiplier: ctx is NULL");
         return -1;
     }
 
@@ -818,6 +824,7 @@ int gs_compute_depth_decay_lr(
     float decay_rate
 ) {
     if (!ctx || base_lr <= 0 || decay_rate <= 0 || decay_rate >= 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gs_compute_depth_decay_lr: ctx is NULL");
         return -1;
     }
 
@@ -889,6 +896,7 @@ int gs_connect_brain_factory(gs_ctx_t* ctx, void* brain_factory) {
 
 int gs_get_stats(const gs_ctx_t* ctx, gs_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -939,6 +947,7 @@ int gs_get_layer_stats(
     gs_layer_stats_t* stats
 ) {
     if (!ctx || !stats || layer_id >= ctx->num_layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_get_layer_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -974,6 +983,7 @@ bool gs_check_health(
     uint32_t num_layers
 ) {
     if (!ctx || !gradients || !counts || num_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gs_check_health: required parameter is NULL (ctx, gradients, counts)");
         return false;
     }
 
@@ -1076,19 +1086,23 @@ int gs_validate_config(const gs_config_t* config) {
     }
 
     if (config->method >= GS_METHOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->global_clip >= GS_CLIP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->adaptive.smoothing_factor <= 0 ||
         config->adaptive.smoothing_factor >= 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->surrogate.default_surrogate >= GS_SURROGATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gs_validate_config: capacity exceeded");
         return -1;
     }
 

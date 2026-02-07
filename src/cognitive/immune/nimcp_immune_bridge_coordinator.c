@@ -125,6 +125,7 @@ static immune_bridge_entry_t* find_bridge(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bridge: validation failed");
     return NULL;
 }
 
@@ -186,6 +187,7 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
         (immune_bridge_coordinator_t*)nimcp_malloc(sizeof(immune_bridge_coordinator_t));
     if (!coordinator) {
         NIMCP_LOGGING_ERROR("Failed to allocate immune bridge coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_bridge_coordinator_create: coordinator is NULL");
         return NULL;
     }
 
@@ -206,6 +208,7 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
     if (!coordinator->bridges) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge registry");
         nimcp_free(coordinator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_bridge_coordinator_create: coordinator->bridges is NULL");
         return NULL;
     }
 
@@ -218,6 +221,7 @@ immune_bridge_coordinator_t* immune_bridge_coordinator_create(
         NIMCP_LOGGING_ERROR("Failed to create coordinator mutex");
         nimcp_free(coordinator->bridges);
         nimcp_free(coordinator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_bridge_coordinator_create: coordinator->mutex is NULL");
         return NULL;
     }
 
@@ -571,6 +575,7 @@ const immune_bridge_entry_t* immune_bridge_coordinator_get_bridge(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_bridge_coordinator_get_bridge: validation failed");
     return NULL;
 }
 

@@ -113,7 +113,10 @@ static concept_cache_entry_t* cache_find(
     language_temporal_bridge_t* bridge,
     uint32_t concept_id
 ) {
-    if (!bridge->concept_cache) return NULL;
+    if (!bridge->concept_cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_find: bridge->concept_cache is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < bridge->cache_size; i++) {
         if (bridge->concept_cache[i].valid &&
@@ -121,6 +124,7 @@ static concept_cache_entry_t* cache_find(
             return &bridge->concept_cache[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_find: bridge->concept_cache is NULL");
     return NULL;
 }
 
@@ -183,6 +187,7 @@ static bool queue_speech_event(
     uint32_t next_tail = (bridge->speech_buffer_tail + 1) % bridge->speech_buffer_size;
     if (next_tail == bridge->speech_buffer_head) {
         /* Buffer full */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_speech_event: validation failed");
         return false;
     }
 
@@ -199,6 +204,7 @@ static bool dequeue_speech_event(
     lt_speech_event_data_t* event
 ) {
     if (bridge->speech_buffer_head == bridge->speech_buffer_tail) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_speech_event: validation failed");
         return false;
     }
 
@@ -257,12 +263,14 @@ language_temporal_bridge_t* language_temporal_bridge_create(
     /* Temporal adapter is required */
     if (!temporal) {
         LOG_ERROR(LOG_MODULE, "Temporal adapter required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_bridge_create: temporal is NULL");
         return NULL;
     }
 
     language_temporal_bridge_t* bridge = nimcp_calloc(1, sizeof(language_temporal_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -283,6 +291,7 @@ language_temporal_bridge_t* language_temporal_bridge_create(
     if (!bridge->concept_cache) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate concept cache");
         language_temporal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_bridge_create: bridge->concept_cache is NULL");
         return NULL;
     }
 
@@ -293,6 +302,7 @@ language_temporal_bridge_t* language_temporal_bridge_create(
     if (!bridge->active_concepts) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate active concepts buffer");
         language_temporal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_bridge_create: bridge->active_concepts is NULL");
         return NULL;
     }
 
@@ -303,6 +313,7 @@ language_temporal_bridge_t* language_temporal_bridge_create(
     if (!bridge->speech_buffer) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate speech buffer");
         language_temporal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_bridge_create: bridge->speech_buffer is NULL");
         return NULL;
     }
 
@@ -352,7 +363,10 @@ void language_temporal_bridge_destroy(language_temporal_bridge_t* bridge) {
 }
 
 int language_temporal_bridge_reset(language_temporal_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Clear cache */
     for (uint32_t i = 0; i < bridge->cache_size; i++) {
@@ -394,7 +408,10 @@ int language_temporal_connect_wernicke(
     language_temporal_bridge_t* bridge,
     wernicke_adapter_t* wernicke
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_connect_wernicke: bridge is NULL");
+        return -1;
+    }
     bridge->wernicke = wernicke;
     LOG_INFO(LOG_MODULE, "Connected to Wernicke adapter");
     return 0;
@@ -404,7 +421,10 @@ int language_temporal_connect_broca(
     language_temporal_bridge_t* bridge,
     broca_adapter_t* broca
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_connect_broca: bridge is NULL");
+        return -1;
+    }
     bridge->broca = broca;
     LOG_INFO(LOG_MODULE, "Connected to Broca adapter");
     return 0;
@@ -414,7 +434,10 @@ int language_temporal_connect_bio_async(
     language_temporal_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->bio_router = router;
     LOG_INFO(LOG_MODULE, "Connected to bio-async router");
     return 0;
@@ -428,7 +451,10 @@ int language_temporal_bridge_update(
     language_temporal_bridge_t* bridge,
     uint64_t timestamp_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     int events_processed = 0;
 
@@ -536,7 +562,10 @@ int language_temporal_process_auditory(
     language_temporal_bridge_t* bridge,
     const temporal_auditory_result_t* auditory_result
 ) {
-    if (!bridge || !auditory_result) return -1;
+    if (!bridge || !auditory_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_process_auditory: required parameter is NULL (bridge, auditory_result)");
+        return -1;
+    }
 
     int events = 0;
 
@@ -584,14 +613,23 @@ int language_temporal_query_word_meaning(
     lt_concept_activation_t* results,
     uint32_t max_results
 ) {
-    if (!bridge || !word || !results || max_results == 0) return -1;
-    if (!bridge->temporal) return -1;
+    if (!bridge || !word || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_query_word_meaning: required parameter is NULL (bridge, word, results)");
+        return -1;
+    }
+    if (!bridge->temporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_query_word_meaning: bridge->temporal is NULL");
+        return -1;
+    }
 
     uint64_t start_time = nimcp_time_now_us() / 1000;
 
     /* Search temporal semantic memory */
     temporal_concept_t* concepts = nimcp_calloc(max_results, sizeof(temporal_concept_t));
-    if (!concepts) return -1;
+    if (!concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_query_word_meaning: concepts is NULL");
+        return -1;
+    }
 
     uint32_t found = temporal_search_concepts(bridge->temporal, word, concepts, max_results);
 
@@ -625,8 +663,14 @@ int language_temporal_query_concept_word(
     char words[][64],
     uint32_t max_words
 ) {
-    if (!bridge || !words || max_words == 0) return -1;
-    if (!bridge->temporal) return -1;
+    if (!bridge || !words || max_words == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_query_concept_word: required parameter is NULL (bridge, words)");
+        return -1;
+    }
+    if (!bridge->temporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_query_concept_word: bridge->temporal is NULL");
+        return -1;
+    }
 
     /* Get concept from temporal */
     temporal_concept_t concept;
@@ -648,13 +692,22 @@ int language_temporal_get_related_concepts(
     uint32_t max_results,
     uint32_t depth
 ) {
-    if (!bridge || !results || max_results == 0) return -1;
-    if (!bridge->temporal) return -1;
+    if (!bridge || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_related_concepts: required parameter is NULL (bridge, results)");
+        return -1;
+    }
+    if (!bridge->temporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_related_concepts: bridge->temporal is NULL");
+        return -1;
+    }
 
     /* Use temporal's spreading activation */
     temporal_semantic_result_t semantic_result;
     semantic_result.concepts = nimcp_calloc(max_results, sizeof(temporal_concept_t));
-    if (!semantic_result.concepts) return -1;
+    if (!semantic_result.concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_temporal_get_related_concepts: semantic_result is NULL");
+        return -1;
+    }
 
     bool success = temporal_get_related(bridge->temporal, concept_id,
                                         &semantic_result, depth);
@@ -681,13 +734,20 @@ int language_temporal_apply_priming(
     uint32_t concept_id,
     float strength
 ) {
-    if (!bridge) return -1;
-    if (!bridge->temporal) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_apply_priming: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->temporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_apply_priming: bridge->temporal is NULL");
+        return -1;
+    }
 
     strength = clamp01(strength);
 
     /* Apply priming in temporal */
     if (!temporal_apply_priming(bridge->temporal, concept_id, strength)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_temporal_apply_priming: temporal_apply_priming is NULL");
         return -1;
     }
 
@@ -722,7 +782,10 @@ int language_temporal_word_activated(
     language_temporal_bridge_t* bridge,
     const lt_word_activation_t* activation
 ) {
-    if (!bridge || !activation) return -1;
+    if (!bridge || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_word_activated: required parameter is NULL (bridge, activation)");
+        return -1;
+    }
 
     bridge->stats.word_activations_received++;
 
@@ -757,7 +820,10 @@ int language_temporal_words_activated_batch(
     const lt_word_activation_t* activations,
     uint32_t count
 ) {
-    if (!bridge || !activations) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_words_activated_batch: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
 
     int processed = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -778,7 +844,10 @@ int language_temporal_get_active_concepts(
     lt_concept_activation_t* concepts,
     uint32_t max_concepts
 ) {
-    if (!bridge || !concepts) return -1;
+    if (!bridge || !concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_active_concepts: required parameter is NULL (bridge, concepts)");
+        return -1;
+    }
 
     uint32_t count = bridge->active_concept_count;
     if (count > max_concepts) count = max_concepts;
@@ -793,7 +862,10 @@ int language_temporal_transfer_concept_embedding(
     language_temporal_bridge_t* bridge,
     uint32_t concept_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_transfer_concept_embedding: bridge is NULL");
+        return -1;
+    }
 
     /* Check cache first */
     concept_cache_entry_t* cached = cache_find(bridge, concept_id);
@@ -810,11 +882,15 @@ int language_temporal_transfer_concept_embedding(
     }
 
     /* Fetch from temporal */
-    if (!bridge->temporal) return -1;
+    if (!bridge->temporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_transfer_concept_embedding: bridge->temporal is NULL");
+        return -1;
+    }
 
     temporal_concept_t concept;
     if (!temporal_get_concept(bridge->temporal, concept_id, &concept)) {
         bridge->stats.failed_queries++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_temporal_transfer_concept_embedding: temporal_get_concept is NULL");
         return -1;
     }
 
@@ -842,7 +918,10 @@ int language_temporal_set_speech_callback(
     lt_speech_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_set_speech_callback: bridge is NULL");
+        return -1;
+    }
     bridge->speech_callback = callback;
     bridge->speech_callback_data = user_data;
     return 0;
@@ -853,7 +932,10 @@ int language_temporal_set_concept_callback(
     lt_concept_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_set_concept_callback: bridge is NULL");
+        return -1;
+    }
     bridge->concept_callback = callback;
     bridge->concept_callback_data = user_data;
     return 0;
@@ -874,7 +956,10 @@ int language_temporal_get_stats(
     const language_temporal_bridge_t* bridge,
     language_temporal_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -888,7 +973,10 @@ int language_temporal_get_config(
     const language_temporal_bridge_t* bridge,
     language_temporal_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -897,7 +985,10 @@ int language_temporal_set_config(
     language_temporal_bridge_t* bridge,
     const language_temporal_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     bridge->config = *config;
     return 0;
 }
@@ -910,7 +1001,10 @@ int language_temporal_process_bio_messages(
     language_temporal_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_process_bio_messages: bridge is NULL");
+        return -1;
+    }
 
     /* TODO: Implement bio-async message processing */
     (void)max_messages;
@@ -929,5 +1023,6 @@ void* language_temporal_get_bio_context(
 
     }
     /* TODO: Return actual bio context when integrated */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_temporal_get_bio_context: bridge is NULL");
     return NULL;
 }

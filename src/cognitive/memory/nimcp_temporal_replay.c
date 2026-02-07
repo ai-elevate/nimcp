@@ -167,9 +167,11 @@ static float get_max_priority(temporal_replay_t* replay) {
 static inline bool should_use_gpu(const temporal_replay_t* replay, uint32_t batch_size) {
 #ifdef NIMCP_ENABLE_CUDA
     if (!replay || !replay->gpu_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_use_gpu: required parameter is NULL (replay, replay->gpu_initialized)");
         return false;
     }
     if (replay->config.gpu_mode == REPLAY_GPU_DISABLED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: validation failed");
         return false;
     }
     if (replay->config.gpu_mode == REPLAY_GPU_REQUIRED ||
@@ -183,6 +185,7 @@ static inline bool should_use_gpu(const temporal_replay_t* replay, uint32_t batc
 #else
     (void)replay;
     (void)batch_size;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: validation failed");
     return false;
 #endif
 }
@@ -258,12 +261,14 @@ temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
 
     if (replay_validate_config(config) != NIMCP_SUCCESS) {
         NIMCP_LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_replay_create: validation failed");
         return NULL;
     }
 
     temporal_replay_t* replay = nimcp_calloc(1, sizeof(temporal_replay_t));
     if (!replay) {
         NIMCP_LOG_ERROR("Failed to allocate replay buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_replay_create: replay is NULL");
         return NULL;
     }
 
@@ -274,6 +279,7 @@ temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
     if (!replay->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(replay);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_replay_create: replay->mutex is NULL");
         return NULL;
     }
 
@@ -362,6 +368,7 @@ temporal_replay_t* temporal_replay_create(const replay_config_t* config) {
 
 error:
     temporal_replay_destroy(replay);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_replay_create: operation failed");
     return NULL;
 }
 
@@ -1140,6 +1147,7 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
 
 
     if (batch_size == 0 || state_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_replay_disconnect_bio_async: batch_size is zero");
         return NULL;
     }
 
@@ -1157,6 +1165,7 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
 
     if (!batch->states || !batch->rewards || !batch->is_weights || !batch->indices) {
         replay_batch_destroy(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_replay_disconnect_bio_async: required parameter is NULL (batch->states, batch->rewards, batch->is_weights, batch->indices)");
         return NULL;
     }
 
@@ -1193,6 +1202,7 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
 
 
     if (max_length == 0 || state_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "replay_batch_destroy: max_length is zero");
         return NULL;
     }
 
@@ -1209,6 +1219,7 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
 
     if (!result->states || !result->timestamps || !result->rewards) {
         replay_sweep_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "replay_batch_destroy: required parameter is NULL (result->states, result->timestamps, result->rewards)");
         return NULL;
     }
 
@@ -1223,6 +1234,7 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
         if (!result->states[i]) {
             result->length = i;
             replay_sweep_result_destroy(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "replay_batch_destroy: result->states is NULL");
             return NULL;
         }
     }

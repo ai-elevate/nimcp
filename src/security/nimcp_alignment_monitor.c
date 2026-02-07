@@ -369,6 +369,7 @@ alignment_monitor_t* alignment_monitor_create(
     alignment_monitor_t* monitor = nimcp_calloc(1, sizeof(alignment_monitor_t));
     if (monitor == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate alignment monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "alignment_monitor_create: validation failed");
         return NULL;
     }
 
@@ -377,6 +378,7 @@ alignment_monitor_t* alignment_monitor_create(
     if (monitor->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alignment_monitor_create: validation failed");
         return NULL;
     }
 
@@ -407,6 +409,7 @@ alignment_monitor_t* alignment_monitor_create(
         nimcp_free(monitor->observations.explanations);
         nimcp_mutex_destroy(monitor->mutex);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "alignment_monitor_create: validation failed");
         return NULL;
     }
     monitor->observations.action_capacity = obs_capacity;

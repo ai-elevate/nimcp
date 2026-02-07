@@ -201,7 +201,10 @@ static bool pattern_matches(
     const action_record_t* action_a,
     const action_record_t* action_b
 ) {
-    if (!pattern->enabled) return false;
+    if (!pattern->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_matches: pattern->enabled is NULL");
+        return false;
+    }
 
     // Direct match
     if (pattern->category_a == action_a->category &&
@@ -216,6 +219,7 @@ static bool pattern_matches(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_matches: operation failed");
     return false;
 }
 
@@ -322,6 +326,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
         sizeof(action_record_t));
     if (!detector->history.records) {
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_detector_create: detector->history is NULL");
         return NULL;
     }
     detector->history.capacity = config->history_capacity;
@@ -335,6 +340,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
     if (!detector->patterns.patterns) {
         nimcp_free(detector->history.records);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_detector_create: detector->patterns is NULL");
         return NULL;
     }
     detector->patterns.capacity = COMBINATORIAL_MAX_PATTERNS;
@@ -349,6 +355,7 @@ NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
         nimcp_free(detector->patterns.patterns);
         nimcp_free(detector->history.records);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "combinatorial_detector_create: validation failed");
         return NULL;
     }
 
@@ -428,7 +435,10 @@ NIMCP_EXPORT void combinatorial_detector_destroy(
 NIMCP_EXPORT bool combinatorial_enable_pink_noise(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_enable_pink_noise: detector is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
@@ -449,6 +459,7 @@ NIMCP_EXPORT bool combinatorial_enable_pink_noise(
     if (!detector->pink_monitor) {
         NIMCP_LOGGING_WARN("Failed to create pink noise monitor, using fallback");
         nimcp_platform_mutex_unlock(&detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_enable_pink_noise: detector->pink_monitor is NULL");
         return false;
     }
 
@@ -474,7 +485,10 @@ NIMCP_EXPORT bool combinatorial_enable_pink_noise(
 NIMCP_EXPORT bool combinatorial_disable_pink_noise(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_disable_pink_noise: detector is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
@@ -499,7 +513,10 @@ NIMCP_EXPORT bool combinatorial_disable_pink_noise(
 NIMCP_EXPORT bool combinatorial_is_pink_noise_enabled(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_is_pink_noise_enabled: detector is NULL");
+        return false;
+    }
     return detector->pink_noise_enabled;
 }
 
@@ -542,7 +559,10 @@ NIMCP_EXPORT bool combinatorial_unregister_pattern(
     combinatorial_harm_detector_t detector,
     uint32_t pattern_id
 ) {
-    if (!detector || pattern_id == 0) return false;
+    if (!detector || pattern_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_unregister_pattern: detector is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
@@ -558,6 +578,7 @@ NIMCP_EXPORT bool combinatorial_unregister_pattern(
             // MEMORY LOCK CHECK: Cannot remove locked patterns
             if (detector->patterns.patterns[i].locked) {
                 nimcp_platform_mutex_unlock(&detector->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "combinatorial_unregister_pattern: validation failed");
                 return false;  // Refuse to remove locked pattern
             }
 
@@ -576,6 +597,7 @@ NIMCP_EXPORT bool combinatorial_unregister_pattern(
     }
 
     nimcp_platform_mutex_unlock(&detector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_unregister_pattern: operation failed");
     return false;
 }
 
@@ -842,7 +864,10 @@ NIMCP_EXPORT bool combinatorial_evaluate(
     const action_record_t* pending_action,
     combinatorial_evaluation_t* result
 ) {
-    if (!detector || !pending_action || !result) return false;
+    if (!detector || !pending_action || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_evaluate: required parameter is NULL (detector, pending_action, result)");
+        return false;
+    }
 
     // Initialize result
     memset(result, 0, sizeof(combinatorial_evaluation_t));
@@ -959,7 +984,10 @@ NIMCP_EXPORT bool combinatorial_evaluate_context(
     const char* description,
     combinatorial_evaluation_t* result
 ) {
-    if (!detector || !action || !result) return false;
+    if (!detector || !action || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_evaluate_context: required parameter is NULL (detector, action, result)");
+        return false;
+    }
 
     // Convert action_context_t to action_record_t
     action_record_t record = {
@@ -989,6 +1017,7 @@ NIMCP_EXPORT int combinatorial_evaluate_batch(
     combinatorial_evaluation_t* worst_result
 ) {
     if (!detector || !pending_actions || num_pending == 0 || !worst_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_evaluate_batch: required parameter is NULL (detector, pending_actions, worst_result)");
         return -1;
     }
 
@@ -1032,7 +1061,10 @@ NIMCP_EXPORT bool combinatorial_get_stats(
     combinatorial_harm_detector_t detector,
     combinatorial_stats_t* stats
 ) {
-    if (!detector || !stats) return false;
+    if (!detector || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_get_stats: required parameter is NULL (detector, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
     memcpy(stats, &detector->stats, sizeof(combinatorial_stats_t));
@@ -1066,13 +1098,17 @@ NIMCP_EXPORT bool combinatorial_attach_to_ethics(
     combinatorial_harm_detector_t detector,
     ethics_engine_t engine
 ) {
-    if (!detector || !engine) return false;
+    if (!detector || !engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_attach_to_ethics: required parameter is NULL (detector, engine)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
     if (detector->attached_engine != NULL) {
         // Already attached
         nimcp_platform_mutex_unlock(&detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_attach_to_ethics: validation failed");
         return false;
     }
 
@@ -1087,7 +1123,10 @@ NIMCP_EXPORT bool combinatorial_attach_to_ethics(
 NIMCP_EXPORT bool combinatorial_detach_from_ethics(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_detach_from_ethics: detector is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&detector->mutex);
 
@@ -1149,7 +1188,10 @@ NIMCP_EXPORT bool combinatorial_compute_shannon_metrics(
     const action_record_t* action_b,
     shannon_harm_metrics_t* metrics
 ) {
-    if (!detector || !action_a || !action_b || !metrics) return false;
+    if (!detector || !action_a || !action_b || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_compute_shannon_metrics: required parameter is NULL (detector, action_a, action_b, metrics)");
+        return false;
+    }
 
     memset(metrics, 0, sizeof(shannon_harm_metrics_t));
 
@@ -1189,7 +1231,10 @@ NIMCP_EXPORT bool combinatorial_fractal_analysis(
     const action_record_t* pending_action,
     fractal_harm_analysis_t* analysis
 ) {
-    if (!detector || !pending_action || !analysis) return false;
+    if (!detector || !pending_action || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_fractal_analysis: required parameter is NULL (detector, pending_action, analysis)");
+        return false;
+    }
 
     memset(analysis, 0, sizeof(fractal_harm_analysis_t));
     analysis->fractal_depth = COMBINATORIAL_FRACTAL_DEPTH;
@@ -1279,7 +1324,10 @@ NIMCP_EXPORT bool combinatorial_hyperbolic_embed(
     const action_record_t* action,
     hyperbolic_harm_embedding_t* embedding
 ) {
-    if (!detector || !action || !embedding) return false;
+    if (!detector || !action || !embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_hyperbolic_embed: required parameter is NULL (detector, action, embedding)");
+        return false;
+    }
 
     memset(embedding, 0, sizeof(hyperbolic_harm_embedding_t));
 
@@ -1338,7 +1386,10 @@ NIMCP_EXPORT bool combinatorial_quantum_search(
     uint32_t max_steps,
     quantum_harm_search_t* search
 ) {
-    if (!detector || !pending_action || !search) return false;
+    if (!detector || !pending_action || !search) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_quantum_search: required parameter is NULL (detector, pending_action, search)");
+        return false;
+    }
 
     memset(search, 0, sizeof(quantum_harm_search_t));
 
@@ -1432,7 +1483,10 @@ NIMCP_EXPORT bool combinatorial_compute_phasor(
     const action_record_t* action_b,
     complex_harm_phasor_t* phasor
 ) {
-    if (!detector || !action_a || !action_b || !phasor) return false;
+    if (!detector || !action_a || !action_b || !phasor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_compute_phasor: required parameter is NULL (detector, action_a, action_b, phasor)");
+        return false;
+    }
 
     memset(phasor, 0, sizeof(complex_harm_phasor_t));
 
@@ -1471,7 +1525,10 @@ NIMCP_EXPORT bool combinatorial_pink_noise_analysis(
     const action_record_t* pending_action,
     pink_noise_harm_analysis_t* analysis
 ) {
-    if (!detector || !pending_action || !analysis) return false;
+    if (!detector || !pending_action || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_pink_noise_analysis: required parameter is NULL (detector, pending_action, analysis)");
+        return false;
+    }
 
     memset(analysis, 0, sizeof(pink_noise_harm_analysis_t));
 
@@ -1625,7 +1682,10 @@ NIMCP_EXPORT bool combinatorial_full_mathematical_analysis(
     const action_record_t* pending_action,
     mathematical_harm_analysis_t* analysis
 ) {
-    if (!detector || !pending_action || !analysis) return false;
+    if (!detector || !pending_action || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_full_mathematical_analysis: required parameter is NULL (detector, pending_action, analysis)");
+        return false;
+    }
 
     memset(analysis, 0, sizeof(mathematical_harm_analysis_t));
 
@@ -1750,10 +1810,14 @@ NIMCP_EXPORT bool combinatorial_evaluate_enhanced(
     combinatorial_evaluation_t* result,
     mathematical_harm_analysis_t* math_analysis
 ) {
-    if (!detector || !pending_action || !result) return false;
+    if (!detector || !pending_action || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_evaluate_enhanced: required parameter is NULL (detector, pending_action, result)");
+        return false;
+    }
 
     // First do standard evaluation
     if (!combinatorial_evaluate(detector, pending_action, result)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "combinatorial_evaluate_enhanced: combinatorial_evaluate is NULL");
         return false;
     }
 
@@ -1811,11 +1875,15 @@ NIMCP_EXPORT bool combinatorial_evaluate_enhanced(
 NIMCP_EXPORT bool combinatorial_lock_patterns_mprotect(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_lock_patterns_mprotect: detector is NULL");
+        return false;
+    }
 
     // Already locked?
     if (detector->patterns_mprotect_locked) {
         fprintf(stderr, "[COMBINATORIAL] WARNING: Patterns already mprotect locked\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "combinatorial_lock_patterns_mprotect: validation failed");
         return false;
     }
 
@@ -1826,6 +1894,7 @@ NIMCP_EXPORT bool combinatorial_lock_patterns_mprotect(
     if (!detector->directive_system) {
         nimcp_platform_mutex_unlock(&detector->mutex);
         fprintf(stderr, "[COMBINATORIAL] ERROR: Failed to create directive system\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_lock_patterns_mprotect: detector->directive_system is NULL");
         return false;
     }
 
@@ -1874,6 +1943,7 @@ NIMCP_EXPORT bool combinatorial_lock_patterns_mprotect(
         nimcp_directive_system_destroy(detector->directive_system);
         detector->directive_system = NULL;
         nimcp_platform_mutex_unlock(&detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "combinatorial_lock_patterns_mprotect: validation failed");
         return false;
     }
 
@@ -1896,7 +1966,10 @@ NIMCP_EXPORT bool combinatorial_lock_patterns_mprotect(
 NIMCP_EXPORT bool combinatorial_verify_pattern_integrity(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_verify_pattern_integrity: detector is NULL");
+        return false;
+    }
 
     if (!detector->patterns_mprotect_locked || !detector->directive_system) {
         // Not locked yet - consider this valid (no integrity to check)
@@ -1913,7 +1986,10 @@ NIMCP_EXPORT bool combinatorial_verify_pattern_integrity(
 NIMCP_EXPORT bool combinatorial_is_mprotect_locked(
     combinatorial_harm_detector_t detector
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_is_mprotect_locked: detector is NULL");
+        return false;
+    }
     return detector->patterns_mprotect_locked;
 }
 
@@ -1924,6 +2000,7 @@ NIMCP_EXPORT const nimcp_directive_system_t* combinatorial_get_directive_system(
     combinatorial_harm_detector_t detector
 ) {
     if (!detector || !detector->patterns_mprotect_locked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_get_directive_system: required parameter is NULL (detector, detector->patterns_mprotect_locked)");
         return NULL;
     }
     return detector->directive_system;

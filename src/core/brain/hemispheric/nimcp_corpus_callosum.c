@@ -108,11 +108,13 @@ static float random_latency(float min_ms, float max_ms) {
  */
 static int queue_init(callosum_message_queue_t* queue, uint32_t capacity) {
     if (!queue || capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_init: queue is NULL");
         return -1;
     }
 
     queue->messages = nimcp_calloc(capacity, sizeof(callosum_message_t));
     if (!queue->messages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "queue_init: queue->messages is NULL");
         return -1;
     }
 
@@ -127,6 +129,7 @@ static int queue_init(callosum_message_queue_t* queue, uint32_t capacity) {
     queue->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!queue->mutex) {
         nimcp_free(queue->messages);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "queue_init: queue->mutex is NULL");
         return -1;
     }
     nimcp_mutex_init(queue->mutex, NULL);
@@ -168,6 +171,7 @@ static int queue_enqueue(callosum_message_queue_t* queue,
                          const callosum_message_t* msg,
                          bool drop_on_overflow) {
     if (!queue || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_destroy: required parameter is NULL (queue, msg)");
         return -1;
     }
 
@@ -180,6 +184,7 @@ static int queue_enqueue(callosum_message_queue_t* queue,
             return 1;  // Dropped
         }
         nimcp_mutex_unlock(queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_destroy: validation failed");
         return -1;  // Would block
     }
 
@@ -339,19 +344,23 @@ callosum_config_t callosum_default_config(void) {
 
 bool callosum_validate_config(const callosum_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "callosum_validate_config: config is NULL");
         return false;
     }
 
     if (config->queue_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "callosum_validate_config: config->queue_capacity is zero");
         return false;
     }
 
     if (config->initial_connection_strength < 0.0f ||
         config->initial_connection_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "callosum_validate_config: config->queue_capacity is zero");
         return false;
     }
 
     if (config->custom_min_latency_ms > config->custom_max_latency_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "callosum_validate_config: validation failed");
         return false;
     }
 
@@ -537,6 +546,7 @@ int callosum_send(
     if (!cc->is_connected) {
         cc->stats.messages_dropped++;
         nimcp_mutex_unlock(cc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "callosum_send: cc->is_connected is NULL");
         return -1;
     }
 
@@ -544,6 +554,7 @@ int callosum_send(
     if (!cc->channels[channel].enabled) {
         cc->stats.messages_dropped++;
         nimcp_mutex_unlock(cc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "callosum_send: cc->channels is NULL");
         return -1;
     }
 
@@ -963,6 +974,7 @@ bool callosum_is_channel_enabled(
     callosum_channel_type_t channel
 ) {
     if (!cc || channel >= CALLOSUM_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "callosum_is_channel_enabled: cc is NULL");
         return false;
     }
     return cc->channels[channel].enabled;
@@ -1035,6 +1047,7 @@ int callosum_connect_bio_async(corpus_callosum_t* cc) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available for corpus callosum");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "callosum_connect_bio_async: validation failed");
     return -1;
 }
 

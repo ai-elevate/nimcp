@@ -82,7 +82,10 @@ static wm_item_t* create_wm_item(
     uint32_t n_neurons
 ) {
     wm_item_t* item = nimcp_malloc(sizeof(wm_item_t));
-    if (!item) return NULL;
+    if (!item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_wm_item: item is NULL");
+        return NULL;
+    }
 
     item->item_id = item_id;
     item->feature_dim = feature_dim;
@@ -98,6 +101,7 @@ static wm_item_t* create_wm_item(
         if (item->feature_vector) nimcp_free(item->feature_vector);
         if (item->population_rates) nimcp_free(item->population_rates);
         nimcp_free(item);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_wm_item: validation failed");
         return NULL;
     }
 
@@ -122,7 +126,10 @@ static void destroy_wm_item(wm_item_t* item) {
  */
 static goal_state_t* create_goal_state(uint32_t goal_id, const char* name) {
     goal_state_t* goal = nimcp_malloc(sizeof(goal_state_t));
-    if (!goal) return NULL;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_goal_state: goal is NULL");
+        return NULL;
+    }
 
     goal->goal_id = goal_id;
     strncpy(goal->goal_name, name ? name : "unnamed", 63);
@@ -185,6 +192,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
     if (!bridge->goals) {
         nimcp_free(bridge->wm_items);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_prefrontal_bridge_create: bridge->goals is NULL");
         return NULL;
     }
 
@@ -199,6 +207,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
             nimcp_free(bridge->goals);
             nimcp_free(bridge->wm_items);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: bridge->goals is NULL");
             return NULL;
         }
     }
@@ -213,6 +222,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
         nimcp_free(bridge->goals);
         nimcp_free(bridge->wm_items);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: bridge->accumulator is NULL");
         return NULL;
     }
     memset(bridge->accumulator, 0, sizeof(decision_accumulator_t));
@@ -229,6 +239,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
         nimcp_free(bridge->goals);
         nimcp_free(bridge->wm_items);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: validation failed");
         return NULL;
     }
     memset(bridge->accumulator->evidence, 0, 2 * sizeof(float));
@@ -246,6 +257,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
         nimcp_free(bridge->goals);
         nimcp_free(bridge->wm_items);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: operation failed");
         return NULL;
     }
     memset(bridge->inhibition, 0, sizeof(inhibitory_control_t));
@@ -565,6 +577,7 @@ int snn_prefrontal_accumulate_evidence(
         if (!new_evidence || !new_rates) {
             if (new_evidence) nimcp_free(new_evidence);
             if (new_rates) nimcp_free(new_rates);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_prefrontal_accumulate_evidence: validation failed");
             return -1;
         }
         nimcp_free(bridge->accumulator->evidence);

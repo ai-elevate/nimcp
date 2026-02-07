@@ -483,6 +483,7 @@ social_fep_bridge_t* social_fep_bridge_create(const social_fep_config_t* config)
     /* Initialize base bridge (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "social_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -531,7 +532,10 @@ void social_fep_bridge_destroy(social_fep_bridge_t* bridge) {
 }
 
 int social_fep_bridge_reset(social_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -572,7 +576,10 @@ int social_fep_bridge_register(
     social_bond_system_t* social,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;  /* social can be NULL for standalone testing */
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -605,6 +612,7 @@ int social_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->social = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -621,7 +629,10 @@ int social_fep_bridge_register(
 }
 
 int social_fep_bridge_unregister(social_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -646,7 +657,10 @@ int social_fep_bridge_unregister(social_fep_bridge_t* bridge) {
 }
 
 bool social_fep_bridge_is_registered(const social_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
@@ -671,13 +685,17 @@ uint32_t social_fep_bridge_get_id(const social_fep_bridge_t* bridge) {
 
 int social_fep_update_callback(void* handle) {
     social_fep_bridge_t* bridge = (social_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered and have a social system */
     if (!bridge->registered || !bridge->social) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_update_callback: required parameter is NULL (bridge->registered, bridge->social)");
         return -1;
     }
 
@@ -711,7 +729,10 @@ void social_fep_destroy_callback(void* handle) {
 }
 
 int social_fep_bridge_update(social_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "social_fep_bridge_update");
@@ -726,7 +747,10 @@ int social_fep_bridge_update(social_fep_bridge_t* bridge) {
 }
 
 int social_fep_bridge_force_update(social_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "social_fep_bridge_force_update");
@@ -777,7 +801,10 @@ int social_fep_bridge_get_metrics(
     const social_fep_bridge_t* bridge,
     social_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
@@ -790,7 +817,10 @@ int social_fep_bridge_get_stats(
     const social_fep_bridge_t* bridge,
     social_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
@@ -800,7 +830,10 @@ int social_fep_bridge_get_stats(
 }
 
 int social_fep_bridge_reset_stats(social_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(social_fep_stats_t));
@@ -861,7 +894,10 @@ social_fep_state_t social_fep_bridge_get_state(const social_fep_bridge_t* bridge
 }
 
 bool social_fep_bridge_is_degraded(const social_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == SOCIAL_FEP_STATE_DEGRADED);
@@ -890,7 +926,10 @@ int social_fep_bridge_set_high_fe_callback(
     social_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
@@ -905,7 +944,10 @@ int social_fep_bridge_set_surprise_callback(
     social_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
@@ -920,7 +962,10 @@ int social_fep_bridge_set_metrics_callback(
     social_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
@@ -938,7 +983,10 @@ int social_fep_bridge_set_config(
     social_fep_bridge_t* bridge,
     const social_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
@@ -951,7 +999,10 @@ int social_fep_bridge_get_config(
     const social_fep_bridge_t* bridge,
     social_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((social_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;

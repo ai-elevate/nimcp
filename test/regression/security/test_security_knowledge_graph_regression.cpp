@@ -140,7 +140,10 @@ TEST_F(SecurityKnowledgeGraphRegressionTest, NullPointerHandling) {
     /* All functions should handle NULL gracefully */
 
     EXPECT_EQ(security_kg_default_config(nullptr), NIMCP_ERROR_NULL_POINTER);
-    EXPECT_EQ(security_kg_bridge_create(nullptr), nullptr);  /* Uses defaults */
+    /* create with NULL config uses defaults and succeeds */
+    security_kg_bridge_t* null_bridge = security_kg_bridge_create(nullptr);
+    EXPECT_NE(null_bridge, nullptr);
+    if (null_bridge) security_kg_bridge_destroy(null_bridge);
 
     /* Functions with NULL bridge */
     sec_kg_query_result_t q_result;

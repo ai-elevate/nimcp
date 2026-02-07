@@ -109,6 +109,7 @@ static bool init_omni_world_model(struct brain_struct* brain) {
     omni_wm_config_t config;
     if (omni_wm_get_default_config(&config) != NIMCP_SUCCESS) {
         LOG_ERROR(LOG_MODULE, "Failed to get default omni WM config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_omni_world_model: validation failed");
         return false;
     }
 
@@ -145,6 +146,7 @@ static bool init_omni_world_model(struct brain_struct* brain) {
     brain->omni_world_model = omni_wm_create(&config);
     if (!brain->omni_world_model) {
         LOG_ERROR(LOG_MODULE, "Failed to create omni world model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_omni_world_model: brain->omni_world_model is NULL");
         return false;
     }
 
@@ -190,6 +192,7 @@ static bool init_multimodal_world_model(struct brain_struct* brain) {
     brain->multimodal_world_model = wm_create(&config);
     if (!brain->multimodal_world_model) {
         LOG_ERROR(LOG_MODULE, "Failed to create multimodal world model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_multimodal_world_model: brain->multimodal_world_model is NULL");
         return false;
     }
 
@@ -198,6 +201,7 @@ static bool init_multimodal_world_model(struct brain_struct* brain) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize multimodal world model");
         wm_destroy(brain->multimodal_world_model);
         brain->multimodal_world_model = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "init_multimodal_world_model: validation failed");
         return false;
     }
 
@@ -247,6 +251,7 @@ bool nimcp_brain_factory_init_world_model_subsystem(struct brain_struct* brain) 
     /* Initialize Omni World Model */
     if (!init_omni_world_model(brain)) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize Omni World Model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_brain_factory_init_world_model_subsystem: init_omni_world_model is NULL");
         return false;
     }
 

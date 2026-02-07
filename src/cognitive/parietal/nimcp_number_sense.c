@@ -197,7 +197,10 @@ number_sense_config_t number_sense_default_config(void) {
 }
 
 bool number_sense_validate_config(const number_sense_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     number_sense_heartbeat("number_sense_validate_config", 0.0f);
@@ -205,26 +208,31 @@ bool number_sense_validate_config(const number_sense_config_t* config) {
 
     if (config->weber_fraction <= 0.0f || config->weber_fraction > 1.0f) {
         set_error("Weber fraction must be in (0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "number_sense_validate_config: validation failed");
         return false;
     }
 
     if (config->subitizing_limit < 1 || config->subitizing_limit > 10) {
         set_error("Subitizing limit must be in [1, 10]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "number_sense_validate_config: validation failed");
         return false;
     }
 
     if (config->estimation_noise < 0.0f || config->estimation_noise > 1.0f) {
         set_error("Estimation noise must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "number_sense_validate_config: validation failed");
         return false;
     }
 
     if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
         set_error("Inflammation sensitivity must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "number_sense_validate_config: validation failed");
         return false;
     }
 
     if (config->sleep_deprivation_factor < 0.0f || config->sleep_deprivation_factor > 1.0f) {
         set_error("Sleep deprivation factor must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "number_sense_validate_config: validation failed");
         return false;
     }
 
@@ -248,6 +256,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
 
     if (config) {
         if (!number_sense_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_create_custom: number_sense_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -278,6 +287,7 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
     if (!ns->lock) {
         set_error("Failed to create mutex");
         nimcp_free(ns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "number_sense_create_custom: ns->lock is NULL");
         return NULL;
     }
 

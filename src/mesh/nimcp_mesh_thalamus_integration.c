@@ -378,6 +378,7 @@ mesh_thalamus_integration_t* mesh_thalamus_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create thalamus integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_thalamus_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -532,6 +533,7 @@ mesh_participant_id_t mesh_thalamus_get_participant_id(
 
 bool mesh_thalamus_is_registered(const mesh_thalamus_integration_t* integration) {
     if (!integration || integration->magic != MESH_THALAMUS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_thalamus_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;

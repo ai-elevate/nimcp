@@ -251,6 +251,7 @@ cortical_column_pool_t* cortical_column_pool_create(
     cortical_column_pool_t* pool = nimcp_calloc(1, sizeof(cortical_column_pool_t));
     if (!pool) {
         COLUMN_LOG_ERROR("cortical_column_pool_create: Failed to allocate pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: pool is NULL");
         return NULL;
     }
 
@@ -261,6 +262,7 @@ cortical_column_pool_t* cortical_column_pool_create(
     if (nimcp_platform_mutex_init(&pool->mutex, false) != 0) {
         COLUMN_LOG_ERROR("cortical_column_pool_create: Failed to initialize mutex");
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: validation failed");
         return NULL;
     }
 
@@ -274,6 +276,7 @@ cortical_column_pool_t* cortical_column_pool_create(
         COLUMN_LOG_ERROR("cortical_column_pool_create: Failed to create minicolumn pool");
         nimcp_platform_mutex_destroy(&pool->mutex);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: pool->minicolumn_pool is NULL");
         return NULL;
     }
 
@@ -288,6 +291,7 @@ cortical_column_pool_t* cortical_column_pool_create(
         memory_pool_destroy(pool->minicolumn_pool);
         nimcp_platform_mutex_destroy(&pool->mutex);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: pool->hypercolumn_pool is NULL");
         return NULL;
     }
 
@@ -306,6 +310,7 @@ cortical_column_pool_t* cortical_column_pool_create(
         memory_pool_destroy(pool->minicolumn_pool);
         nimcp_platform_mutex_destroy(&pool->mutex);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_pool_create: pool->neuron_id_pool is NULL");
         return NULL;
     }
 
@@ -322,6 +327,7 @@ cortical_column_pool_t* cortical_column_pool_create(
         memory_pool_destroy(pool->minicolumn_pool);
         nimcp_platform_mutex_destroy(&pool->mutex);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_pool_create: pool->activation_pool is NULL");
         return NULL;
     }
 
@@ -388,16 +394,19 @@ void cortical_column_pool_destroy(cortical_column_pool_t* pool) {
 static bool validate_minicolumn_config(const minicolumn_config_t* config) {
     if (!config) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_minicolumn_config: config is NULL");
         return false;
     }
 
     if (!config->neuron_ids || config->num_neurons == 0) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Invalid neuron array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_minicolumn_config: config->neuron_ids is NULL");
         return false;
     }
 
     if (config->receptive_field.radius <= 0.0F) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Invalid receptive field radius");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_minicolumn_config: validation failed");
         return false;
     }
 
@@ -408,6 +417,7 @@ static bool validate_minicolumn_config(const minicolumn_config_t* config) {
     if (layer_sum != config->num_neurons) {
         COLUMN_LOG_ERROR("validate_minicolumn_config: Layer distribution sum (%u) != num_neurons (%u)",
             layer_sum, config->num_neurons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_minicolumn_config: validation failed");
         return false;
     }
 
@@ -436,6 +446,7 @@ minicolumn_t* minicolumn_create(
     }
 
     if (!validate_minicolumn_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minicolumn_create: validate_minicolumn_config is NULL");
         return NULL;
     }
 
@@ -443,6 +454,7 @@ minicolumn_t* minicolumn_create(
     minicolumn_t* col = (minicolumn_t*)memory_pool_acquire(pool->minicolumn_pool);
     if (!col) {
         COLUMN_LOG_ERROR("minicolumn_create: Pool exhausted");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minicolumn_create: col is NULL");
         return NULL;
     }
 
@@ -454,6 +466,7 @@ minicolumn_t* minicolumn_create(
     if (!col->neuron_ids) {
         COLUMN_LOG_ERROR("minicolumn_create: Failed to allocate neuron IDs");
         memory_pool_release(pool->minicolumn_pool, col);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minicolumn_create: col->neuron_ids is NULL");
         return NULL;
     }
 
@@ -479,6 +492,7 @@ minicolumn_t* minicolumn_create(
         COLUMN_LOG_ERROR("minicolumn_create: Failed to initialize mutex");
         memory_pool_release(pool->neuron_id_pool, col->neuron_ids);
         memory_pool_release(pool->minicolumn_pool, col);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minicolumn_create: validation failed");
         return NULL;
     }
 
@@ -545,26 +559,31 @@ void minicolumn_destroy(minicolumn_t* col) {
 static bool validate_hypercolumn_config(const hypercolumn_config_t* config) {
     if (!config) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_hypercolumn_config: config is NULL");
         return false;
     }
 
     if (config->num_minicolumns == 0) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: Zero minicolumns");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_hypercolumn_config: config->num_minicolumns is zero");
         return false;
     }
 
     if (!config->minicolumn_configs) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: NULL minicolumn configs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_hypercolumn_config: config->minicolumn_configs is NULL");
         return false;
     }
 
     if (config->feature_space_min >= config->feature_space_max) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: Invalid feature space range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_hypercolumn_config: capacity exceeded");
         return false;
     }
 
     if (config->competition == CC_COMPETITION_K_WINNERS && config->k_winners == 0) {
         COLUMN_LOG_ERROR("validate_hypercolumn_config: K_WINNERS mode requires k_winners > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_hypercolumn_config: config->k_winners is zero");
         return false;
     }
 
@@ -593,6 +612,7 @@ hypercolumn_t* hypercolumn_create(
     }
 
     if (!validate_hypercolumn_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: validate_hypercolumn_config is NULL");
         return NULL;
     }
 
@@ -600,6 +620,7 @@ hypercolumn_t* hypercolumn_create(
     hypercolumn_t* hcol = (hypercolumn_t*)memory_pool_acquire(pool->hypercolumn_pool);
     if (!hcol) {
         COLUMN_LOG_ERROR("hypercolumn_create: Pool exhausted");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol is NULL");
         return NULL;
     }
 
@@ -611,6 +632,7 @@ hypercolumn_t* hypercolumn_create(
     if (!hcol->minicolumns) {
         COLUMN_LOG_ERROR("hypercolumn_create: Failed to allocate minicolumn array");
         memory_pool_release(pool->hypercolumn_pool, hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol->minicolumns is NULL");
         return NULL;
     }
 
@@ -620,6 +642,7 @@ hypercolumn_t* hypercolumn_create(
         COLUMN_LOG_ERROR("hypercolumn_create: Failed to allocate activation array");
         nimcp_free(hcol->minicolumns);
         memory_pool_release(pool->hypercolumn_pool, hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypercolumn_create: hcol->activations is NULL");
         return NULL;
     }
 
@@ -635,6 +658,7 @@ hypercolumn_t* hypercolumn_create(
             memory_pool_release(pool->activation_pool, hcol->activations);
             nimcp_free(hcol->minicolumns);
             memory_pool_release(pool->hypercolumn_pool, hcol);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_create: hcol->minicolumns is NULL");
             return NULL;
         }
     }
@@ -674,6 +698,7 @@ hypercolumn_t* hypercolumn_create(
         memory_pool_release(pool->activation_pool, hcol->activations);
         nimcp_free(hcol->minicolumns);
         memory_pool_release(pool->hypercolumn_pool, hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypercolumn_create: validation failed");
         return NULL;
     }
 
@@ -1895,13 +1920,19 @@ int hypercolumn_connect_snn_population(
     hypercolumn_t* hcol,
     cortical_snn_population_t* population
 ) {
-    if (!hcol || !population) return -1;
+    if (!hcol || !population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_connect_snn_population: required parameter is NULL (hcol, population)");
+        return -1;
+    }
     COLUMN_LOG_INFO("Hypercolumn connected to SNN population");
     return 0;
 }
 
 int hypercolumn_disconnect_snn_population(hypercolumn_t* hcol) {
-    if (!hcol) return -1;
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_disconnect_snn_population: hcol is NULL");
+        return -1;
+    }
     COLUMN_LOG_INFO("Hypercolumn disconnected from SNN population");
     return 0;
 }

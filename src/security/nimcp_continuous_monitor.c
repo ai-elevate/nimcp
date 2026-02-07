@@ -284,6 +284,7 @@ static bool run_cfi_check(nimcp_continuous_monitor_t* monitor)
             0,
             msg
         );
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_cfi_check: operation failed");
         return false;
     }
 
@@ -317,6 +318,7 @@ static bool run_ipc_check(nimcp_continuous_monitor_t* monitor)
             0,
             msg
         );
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_ipc_check: operation failed");
         return false;
     }
 
@@ -346,6 +348,7 @@ static bool run_anomaly_check(nimcp_continuous_monitor_t* monitor)
             0,
             msg
         );
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_anomaly_check: operation failed");
         return false;
     }
 
@@ -377,6 +380,7 @@ static bool run_heartbeat_check(nimcp_continuous_monitor_t* monitor)
             0,
             "Temporal coverage gap detected - monitoring interruption"
         );
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "run_heartbeat_check: no_gaps is NULL");
         return false;
     }
 
@@ -390,8 +394,10 @@ static void* monitor_thread_func(void* arg)
 {
     nimcp_continuous_monitor_t* monitor = (nimcp_continuous_monitor_t*)arg;
 
-    if (!monitor)
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor_thread_func: monitor is NULL");
         return NULL;
+    }
 
     while (!monitor->stop_requested) {
         uint64_t cycle_start = get_timestamp_ms();
@@ -451,6 +457,7 @@ static void* monitor_thread_func(void* arg)
         nanosleep(&ts, NULL);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor_thread_func: operation failed");
     return NULL;
 }
 
@@ -702,8 +709,10 @@ bool nimcp_monitor_run_check(
     nimcp_continuous_monitor_t* monitor,
     nimcp_check_type_t check_type)
 {
-    if (!monitor || !monitor->initialized)
+    if (!monitor || !monitor->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_monitor_run_check: required parameter is NULL (monitor, monitor->initialized)");
         return false;
+    }
 
     bool result = true;
 
@@ -749,8 +758,10 @@ int32_t nimcp_monitor_register_callback(
     nimcp_alert_callback_t callback,
     void* user_data)
 {
-    if (!monitor || !callback)
+    if (!monitor || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_monitor_register_callback: required parameter is NULL (monitor, callback)");
         return -1;
+    }
 
     nimcp_mutex_lock(&monitor->callback_mutex);
 
@@ -804,13 +815,16 @@ bool nimcp_monitor_get_alert(
     nimcp_continuous_monitor_t* monitor,
     nimcp_alert_t* alert)
 {
-    if (!monitor || !alert)
+    if (!monitor || !alert) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_monitor_get_alert: required parameter is NULL (monitor, alert)");
         return false;
+    }
 
     nimcp_mutex_lock(&monitor->alert_mutex);
 
     if (monitor->alert_count == 0) {
         nimcp_mutex_unlock(&monitor->alert_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_monitor_get_alert: monitor->alert_count is zero");
         return false;
     }
 
@@ -905,8 +919,10 @@ int32_t nimcp_monitor_generate_report(
     char* buffer,
     size_t buffer_size)
 {
-    if (!monitor || !buffer || buffer_size < 256)
+    if (!monitor || !buffer || buffer_size < 256) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_monitor_generate_report: required parameter is NULL (monitor, buffer)");
         return -1;
+    }
 
     nimcp_monitor_stats_t stats;
     nimcp_monitor_get_stats(monitor, &stats);

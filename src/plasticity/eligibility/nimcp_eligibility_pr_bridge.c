@@ -81,37 +81,46 @@ elig_pr_bridge_config_t elig_pr_bridge_default_config(void) {
 }
 
 bool elig_pr_bridge_validate_config(const elig_pr_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->consolidation_boost_max < 0.0f ||
         config->consolidation_boost_max > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_validate_config: config is NULL");
         return false;
     }
 
     if (config->eligibility_threshold < 0.0f ||
         config->eligibility_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_validate_config: config is NULL");
         return false;
     }
 
     if (config->reward_threshold < 0.0f ||
         config->reward_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_pr_bridge_validate_config: operation failed");
         return false;
     }
 
     if (config->decay_min_lambda < 0.0f ||
         config->decay_max_lambda > 1.0f ||
         config->decay_min_lambda > config->decay_max_lambda) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_pr_bridge_validate_config: operation failed");
         return false;
     }
 
     for (int i = 0; i < ELIG_PR_TIER_COUNT; i++) {
         if (config->tier_lambdas[i] < 0.0f ||
             config->tier_lambdas[i] > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_pr_bridge_validate_config: operation failed");
             return false;
         }
     }
 
     if (config->resonance_elig_boost < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_pr_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -124,6 +133,7 @@ bool elig_pr_bridge_validate_config(const elig_pr_bridge_config_t* config) {
 
 elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
     if (!config || !elig_pr_bridge_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_pr_bridge_create: required parameter is NULL (config, elig_pr_bridge_validate_config)");
         return NULL;
     }
 
@@ -341,6 +351,7 @@ int elig_pr_get_tier_parameters(elig_pr_bridge_t bridge,
     }
 
     if (tier >= ELIG_PR_TIER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "elig_pr_bridge_is_connected: capacity exceeded");
         return -1;
     }
 
@@ -419,6 +430,7 @@ int elig_pr_compute_modulation(elig_pr_bridge_t bridge,
     float tier_lambda;
     float sensitivity;
     if (elig_pr_get_tier_parameters(bridge, tier, &tier_lambda, &sensitivity) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -426,12 +438,14 @@ int elig_pr_compute_modulation(elig_pr_bridge_t bridge,
     float base = (base_lambda > 0.0f) ? base_lambda : tier_lambda;
     if (elig_pr_get_decay_modulation(bridge, consolidation, base,
                                      &effect->effective_lambda) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     /* Apply resonance boost (to a hypothetical base eligibility of 0.5) */
     float boosted_elig;
     if (elig_pr_apply_resonance_boost(bridge, resonance, 0.5f, &boosted_elig) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
     effect->eligibility_boost = boosted_elig - 0.5f;

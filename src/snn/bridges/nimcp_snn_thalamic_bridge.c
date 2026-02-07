@@ -339,7 +339,10 @@ int snn_thalamic_bridge_set_mode(
         total_neurons += bridge->network->populations[i]->n_neurons;
     }
 
-    if (neuron_id >= total_neurons) return -1;
+    if (neuron_id >= total_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_thalamic_bridge_set_mode: capacity exceeded");
+        return -1;
+    }
 
     bridge->neuron_modes[neuron_id] = mode;
     return 0;
@@ -364,7 +367,10 @@ int snn_thalamic_bridge_get_mode(
         total_neurons += bridge->network->populations[i]->n_neurons;
     }
 
-    if (neuron_id >= total_neurons) return -1;
+    if (neuron_id >= total_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_thalamic_bridge_get_mode: capacity exceeded");
+        return -1;
+    }
 
     *mode = bridge->neuron_modes[neuron_id];
     return 0;

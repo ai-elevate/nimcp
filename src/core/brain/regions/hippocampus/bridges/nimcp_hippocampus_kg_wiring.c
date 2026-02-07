@@ -113,7 +113,10 @@ static brain_kg_edge_id_t create_hippocampus_edge(
 //=============================================================================
 
 int hippocampus_kg_default_config(hippocampus_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_ca1 = true;
     config->register_ca3 = true;
@@ -138,7 +141,10 @@ int hippocampus_kg_register_all(
     hippocampus_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     hippocampus_kg_config_t local_config;
@@ -161,6 +167,7 @@ int hippocampus_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(HIPPOCAMPUS_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -217,7 +224,10 @@ int hippocampus_kg_register_subfields(
     hippocampus_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_register_subfields: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register CA1 */
     if (!config || config->register_ca1) {
@@ -473,7 +483,10 @@ int hippocampus_kg_register_memory_nodes(
     hippocampus_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_register_memory_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create memory system subsystem node */
     state->memory_system_id = create_hippocampus_node(
@@ -482,7 +495,10 @@ int hippocampus_kg_register_memory_nodes(
         "Memory system - episodic encoding, consolidation, retrieval",
         admin_token
     );
-    if (state->memory_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->memory_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_kg_register_memory_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -536,7 +552,10 @@ int hippocampus_kg_register_nav_nodes(
     hippocampus_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_register_nav_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create navigation system node */
     state->nav_system_id = create_hippocampus_node(
@@ -545,7 +564,10 @@ int hippocampus_kg_register_nav_nodes(
         "Navigation system - spatial coding, path integration, mapping",
         admin_token
     );
-    if (state->nav_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->nav_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_kg_register_nav_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -732,7 +754,10 @@ int hippocampus_kg_register_cross_edges(
     hippocampus_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register subfield-to-function edges */
     register_subfield_function_edges(kg, state, admin_token);
@@ -760,7 +785,10 @@ int hippocampus_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update encoding metadata */
     if (state->encoding_id != BRAIN_KG_INVALID_NODE) {
@@ -846,7 +874,10 @@ int hippocampus_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Would be used for actual deletion */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /*
      * Note: Full implementation would remove nodes in reverse order

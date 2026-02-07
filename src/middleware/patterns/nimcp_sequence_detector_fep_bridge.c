@@ -69,6 +69,7 @@ sequence_detector_fep_bridge_t* sequence_detector_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "sequence_detector_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         sequence_detector_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -97,7 +98,10 @@ int sequence_detector_fep_bridge_connect_detector(
     sequence_detector_fep_bridge_t* bridge,
     sequence_detector_t* detector
 ) {
-    if (!bridge || !detector) return -1;
+    if (!bridge || !detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_connect_detector: required parameter is NULL (bridge, detector)");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sequence_detector = detector;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -109,7 +113,10 @@ int sequence_detector_fep_bridge_connect_fep(
     sequence_detector_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -191,7 +198,10 @@ int sequence_detector_fep_report_detection(
     sequence_detector_fep_bridge_t* bridge,
     const sequence_detection_t* detection
 ) {
-    if (!bridge || !detection) return -1;
+    if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_report_detection: required parameter is NULL (bridge, detection)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -250,7 +260,10 @@ int sequence_detector_fep_report_replay(
     sequence_detector_fep_bridge_t* bridge,
     const sequence_detection_t* replay
 ) {
-    if (!bridge || !replay) return -1;
+    if (!bridge || !replay) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_report_replay: required parameter is NULL (bridge, replay)");
+        return -1;
+    }
     if (!bridge->config.enable_replay_consolidation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -289,7 +302,10 @@ int sequence_detector_fep_bridge_get_state(
     const sequence_detector_fep_bridge_t* bridge,
     sequence_detector_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
@@ -300,7 +316,10 @@ int sequence_detector_fep_bridge_get_stats(
     const sequence_detector_fep_bridge_t* bridge,
     sequence_detector_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
@@ -360,6 +379,9 @@ int sequence_detector_fep_bridge_disconnect_bio_async(
 bool sequence_detector_fep_bridge_is_bio_async_connected(
     const sequence_detector_fep_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

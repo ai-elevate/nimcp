@@ -189,7 +189,10 @@ static int find_highest_priority_request(
     cognitive_meta_controller_t* controller,
     resource_type_t type) {
 
-    if (!controller || controller->request_count == 0) return -1;
+    if (!controller || controller->request_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: controller is NULL");
+        return -1;
+    }
 
     int best_idx = -1;
     float best_priority = -1.0f;
@@ -488,6 +491,7 @@ cognitive_meta_controller_t* meta_controller_create(
     /* Validate configuration */
     if (validate_config(config) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_controller_default_config: validation failed");
         return NULL;
     }
 
@@ -517,6 +521,7 @@ cognitive_meta_controller_t* meta_controller_create(
     if (!controller->requests) {
         NIMCP_LOGGING_ERROR("Failed to allocate request queue");
         nimcp_free(controller);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_controller_default_config: controller->requests is NULL");
         return NULL;
     }
 
@@ -537,6 +542,7 @@ cognitive_meta_controller_t* meta_controller_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(controller->requests);
         nimcp_free(controller);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_controller_default_config: controller->mutex is NULL");
         return NULL;
     }
 
@@ -857,6 +863,7 @@ bool meta_controller_request_workspace_access(
     float strength) {
 
     if (!controller || !controller->global_workspace || !content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (controller, controller->global_workspace, content)");
         return false;
     }
 

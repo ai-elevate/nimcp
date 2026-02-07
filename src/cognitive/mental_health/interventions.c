@@ -110,16 +110,19 @@ bool mental_health_intervene(mental_health_monitor_t* monitor, brain_t brain)
 
     if (!monitor) {
         set_error("NULL monitor in mental_health_intervene");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_intervene: monitor is NULL");
         return false;
     }
 
     if (!brain) {
         set_error("NULL brain in mental_health_intervene");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_intervene: brain is NULL");
         return false;
     }
 
     if (!monitor->config.enable_auto_intervention) {
         NIMCP_LOGGING_DEBUG("Auto-intervention disabled, skipping");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_intervene: monitor->config is NULL");
         return false;
     }
 
@@ -150,6 +153,7 @@ bool mental_health_intervene(mental_health_monitor_t* monitor, brain_t brain)
     // If no significant disorder, no intervention needed
     if (worst_severity <= DISORDER_SEVERITY_MILD) {
         NIMCP_LOGGING_DEBUG("No significant disorder detected, no intervention needed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_intervene: validation failed");
         return false;
     }
 
@@ -366,6 +370,7 @@ static bool execute_intervention(mental_health_monitor_t* monitor,
 {
     switch (intervention) {
         case INTERVENTION_NONE:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execute_intervention: operation failed");
             return false;  // No action taken
 
         case INTERVENTION_NEUROMOD_ADJUST:
@@ -382,6 +387,7 @@ static bool execute_intervention(mental_health_monitor_t* monitor,
 
         default:
             set_error("Unknown intervention type: %d", intervention);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execute_intervention: operation failed");
             return false;
     }
 }
@@ -478,6 +484,7 @@ static bool intervene_neuromod_adjust(mental_health_monitor_t* monitor,
 
     if (!brain) {
         set_error("NULL brain in neuromodulator adjustment");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intervene_neuromod_adjust: brain is NULL");
         return false;
     }
 
@@ -721,6 +728,7 @@ static bool intervene_neuromod_adjust(mental_health_monitor_t* monitor,
 
         default:
             NIMCP_LOGGING_WARN("Unknown disorder type: %d", disorder);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
             return false;
     }
 
@@ -782,6 +790,7 @@ static bool intervene_memory_reset(mental_health_monitor_t* monitor,
 
     if (reset_fraction < 0.0f || reset_fraction > 1.0f) {
         set_error("Invalid reset_fraction: %.2f (must be [0.0, 1.0])", reset_fraction);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intervene_memory_reset: validation failed");
         return false;
     }
 
@@ -791,6 +800,7 @@ static bool intervene_memory_reset(mental_health_monitor_t* monitor,
 
     if (brain == NULL) {
         set_error("NULL brain in memory reset intervention");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intervene_memory_reset: validation failed");
         return false;
     }
 

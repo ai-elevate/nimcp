@@ -32,7 +32,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(middleware_context)
  * HOW:  Copy entire structure (data is embedded array)
  */
 static bool brain_event_copy(brain_event_t* dest, const brain_event_t* src) {
-    if (!dest || !src) return false;
+    if (!dest || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_event_copy: required parameter is NULL (dest, src)");
+        return false;
+    }
 
     // Simple struct copy - data array is embedded, not dynamically allocated
     *dest = *src;
@@ -108,6 +111,7 @@ cleanup:
     nimcp_free(ctx->recent_events);
     nimcp_free(ctx->stage_timings_us);
     nimcp_free(ctx);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_event_free: operation failed");
     return NULL;
 }
 
@@ -163,7 +167,10 @@ void middleware_context_cache_features(middleware_context_t* context,
 
 bool middleware_context_get_cached_features(middleware_context_t* context,
                                             float** features, uint32_t* count) {
-    if (!context || !context->features_valid) return false;
+    if (!context || !context->features_valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_context_destroy: required parameter is NULL (context, context->features_valid)");
+        return false;
+    }
 
     *features = context->cached_features;
     *count = context->num_cached_features;
@@ -208,7 +215,10 @@ void middleware_context_record_stage_time(middleware_context_t* context,
 
 bool middleware_context_get_stage_timings(middleware_context_t* context,
                                           uint64_t** timings, uint32_t* count) {
-    if (!context) return false;
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_context_get_recent_events: context is NULL");
+        return false;
+    }
 
     *timings = context->stage_timings_us;
     *count = context->num_stages;

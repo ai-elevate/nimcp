@@ -281,6 +281,7 @@ int dragonfly_medulla_bridge_connect(
     medulla_t medulla
 ) {
     if (!bridge || !dragonfly || !medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_connect: required parameter is NULL (bridge, dragonfly, medulla)");
         return -1;
     }
 
@@ -288,6 +289,7 @@ int dragonfly_medulla_bridge_connect(
 
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_medulla_bridge_connect: validation failed");
         return -1;  /* Already connected */
     }
 
@@ -306,7 +308,10 @@ int dragonfly_medulla_bridge_connect(
 }
 
 int dragonfly_medulla_bridge_disconnect(dragonfly_medulla_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -324,7 +329,10 @@ int dragonfly_medulla_bridge_disconnect(dragonfly_medulla_bridge_t bridge) {
 }
 
 bool dragonfly_medulla_bridge_is_connected(const dragonfly_medulla_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 
@@ -333,12 +341,16 @@ bool dragonfly_medulla_bridge_is_connected(const dragonfly_medulla_bridge_t brid
 //=============================================================================
 
 int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_update: bridge->connected is NULL");
         return -1;
     }
 
@@ -493,7 +505,10 @@ int dragonfly_medulla_bridge_get_modulation(
     const dragonfly_medulla_bridge_t bridge,
     dragonfly_medulla_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *modulation = bridge->modulation;
@@ -507,7 +522,10 @@ int dragonfly_medulla_bridge_get_modulation(
 //=============================================================================
 
 int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_start: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -529,7 +547,10 @@ int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bri
 }
 
 int dragonfly_medulla_bridge_notify_intercept_success(dragonfly_medulla_bridge_t bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_intercept_success: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -554,7 +575,10 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
     dragonfly_medulla_bridge_t bridge,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_notify_pursuit_failure: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -579,7 +603,10 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
 //=============================================================================
 
 bool dragonfly_medulla_bridge_hunting_allowed(const dragonfly_medulla_bridge_t bridge) {
-    if (!bridge || !bridge->connected) return false;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_hunting_allowed: required parameter is NULL (bridge, bridge->connected)");
+        return false;
+    }
 
     /* Quick check without lock for performance */
     return bridge->modulation.hunting_allowed;
@@ -589,7 +616,10 @@ int dragonfly_medulla_bridge_get_stats(
     const dragonfly_medulla_bridge_t bridge,
     dragonfly_medulla_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -599,7 +629,10 @@ int dragonfly_medulla_bridge_get_stats(
 }
 
 int dragonfly_medulla_bridge_reset_stats(dragonfly_medulla_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_medulla_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -72,7 +72,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(synapse_compute)
 // Helper: Get dopamine phasic-tonic state from neuromodulator system
 // This is an internal accessor that knows the struct layout
 static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {
-    if (!neuromod_system) return NULL;
+    if (!neuromod_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_dopamine_phasic_tonic: neuromod_system is NULL");
+        return NULL;
+    }
 
     // The neuromodulator_system_struct layout (from nimcp_neuromodulators.c):
     // - nimcp_platform_rwlock_t rwlock
@@ -88,6 +91,7 @@ static phasic_tonic_state_t* get_dopamine_phasic_tonic(void* neuromod_system) {
 
     // Calculate offset: We'll use the actual structure from neuromodulators.c
     // For now, return NULL and use dopamine_level only (safer approach)
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_dopamine_phasic_tonic: operation failed");
     return NULL;
 }
 
@@ -722,6 +726,7 @@ int synapse_compute_state_init(synapse_compute_state_t* state, uint32_t extended
     if (extended_size > 0) {
         state->extended_memory = (float*)nimcp_calloc(extended_size, sizeof(float));
         if (!state->extended_memory) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_compute_state_init: state->extended_memory is NULL");
             return -1; // Allocation failed
         }
         state->extended_size = extended_size;
@@ -768,12 +773,16 @@ int synapse_set_compute_function(
     void* function_data,
     void (*cleanup_fn)(void*)
 ) {
-    if (!syn) return -1;
+    if (!syn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_set_compute_function: syn is NULL");
+        return -1;
+    }
 
     // Allocate compute state if needed
     if (!syn->compute_state && (function_data || compute_fn)) {
         syn->compute_state = (synapse_compute_state_t*)nimcp_calloc(1, sizeof(synapse_compute_state_t));
         if (!syn->compute_state) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_set_compute_function: syn->compute_state is NULL");
             return -1; // Allocation failed
         }
     }

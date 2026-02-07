@@ -124,16 +124,19 @@ bool multimodal_integrate_features(
 
     if (!brain || !features || !output) {
         fprintf(stderr, "multimodal_integrator: Invalid parameters\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integrate_features: required parameter is NULL (brain, features, output)");
         return false;
     }
 
     if (!brain->config.enable_multimodal_integration) {
         fprintf(stderr, "multimodal_integrator: Multimodal integration not enabled\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integrate_features: brain->config is NULL");
         return false;
     }
 
     if (!brain->multimodal || !brain->integrated_feature_buffer) {
         fprintf(stderr, "multimodal_integrator: Multimodal integrator not initialized\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integrate_features: required parameter is NULL (brain->multimodal, brain->integrated_feature_buffer)");
         return false;
     }
 
@@ -166,6 +169,7 @@ bool multimodal_integrate_features(
 
     if (!integrate_success) {
         fprintf(stderr, "multimodal_integrator: Integration failed\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integrate_features: integrate_success is NULL");
         return false;
     }
 

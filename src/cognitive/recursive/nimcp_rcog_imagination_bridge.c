@@ -207,6 +207,7 @@ rcog_imagination_bridge_t* rcog_imagination_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_imagination") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_imagination_bridge_create: validation failed");
         return NULL;
     }
 

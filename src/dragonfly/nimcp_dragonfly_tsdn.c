@@ -128,7 +128,10 @@ void tsdn_config_default(tsdn_config_t* config) {
 }
 
 int tsdn_config_validate(const tsdn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_config_validate: config is NULL");
+        return -1;
+    }
 
     if (config->tuning_width <= 0.0f || config->tuning_width > M_PI) {
         return -2;  /* Invalid tuning width */
@@ -251,7 +254,10 @@ void tsdn_destroy(tsdn_population_t* pop) {
 }
 
 int tsdn_reset(tsdn_population_t* pop) {
-    if (!pop) return -1;
+    if (!pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_reset: pop is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pop->mutex);
 
@@ -446,7 +452,10 @@ tsdn_vector_t tsdn_decode_external(
 //=============================================================================
 
 int tsdn_get_state(const tsdn_population_t* pop, tsdn_state_t* state) {
-    if (!pop || !state) return -1;
+    if (!pop || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_get_state: required parameter is NULL (pop, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((tsdn_population_t*)pop)->mutex);
 
@@ -466,7 +475,10 @@ int tsdn_get_firing_rate(
     uint32_t neuron_id,
     float* rate
 ) {
-    if (!pop || !rate || neuron_id >= TSDN_NEURON_COUNT) return -1;
+    if (!pop || !rate || neuron_id >= TSDN_NEURON_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_get_firing_rate: required parameter is NULL (pop, rate)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((tsdn_population_t*)pop)->mutex);
     *rate = pop->firing_rate[neuron_id];
@@ -480,7 +492,10 @@ int tsdn_get_preferred_direction(
     uint32_t neuron_id,
     float* direction
 ) {
-    if (!pop || !direction || neuron_id >= TSDN_NEURON_COUNT) return -1;
+    if (!pop || !direction || neuron_id >= TSDN_NEURON_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_get_preferred_direction: required parameter is NULL (pop, direction)");
+        return -1;
+    }
 
     /* Preferred directions are constant, no lock needed */
     *direction = pop->preferred_direction[neuron_id];
@@ -488,7 +503,10 @@ int tsdn_get_preferred_direction(
 }
 
 int tsdn_set_firing_rates(tsdn_population_t* pop, const float* firing_rates) {
-    if (!pop || !firing_rates) return -1;
+    if (!pop || !firing_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_set_firing_rates: required parameter is NULL (pop, firing_rates)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pop->mutex);
 
@@ -508,7 +526,10 @@ int tsdn_set_firing_rates(tsdn_population_t* pop, const float* firing_rates) {
 //=============================================================================
 
 int tsdn_set_gain(tsdn_population_t* pop, float gain) {
-    if (!pop || gain < 0.0f) return -1;
+    if (!pop || gain < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tsdn_set_gain: pop is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pop->mutex);
     pop->gain = gain;
@@ -518,7 +539,10 @@ int tsdn_set_gain(tsdn_population_t* pop, float gain) {
 }
 
 int tsdn_get_gain(const tsdn_population_t* pop, float* gain) {
-    if (!pop || !gain) return -1;
+    if (!pop || !gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_get_gain: required parameter is NULL (pop, gain)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((tsdn_population_t*)pop)->mutex);
     *gain = pop->gain;
@@ -533,7 +557,10 @@ int tsdn_apply_facilitation(
     float facilitation_strength,
     float facilitation_width
 ) {
-    if (!pop) return -1;
+    if (!pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_apply_facilitation: pop is NULL");
+        return -1;
+    }
     if (facilitation_strength < 0.0f || facilitation_strength > 1.0f) return -2;
     if (facilitation_width <= 0.0f) return -3;
 
@@ -554,7 +581,10 @@ int tsdn_apply_facilitation(
 }
 
 int tsdn_clear_facilitation(tsdn_population_t* pop) {
-    if (!pop) return -1;
+    if (!pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_clear_facilitation: pop is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pop->mutex);
 
@@ -573,7 +603,10 @@ int tsdn_clear_facilitation(tsdn_population_t* pop) {
 //=============================================================================
 
 int tsdn_update(tsdn_population_t* pop, float dt) {
-    if (!pop || dt <= 0.0f) return -1;
+    if (!pop || dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tsdn_update: pop is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pop->mutex);
 
@@ -599,7 +632,10 @@ int tsdn_update(tsdn_population_t* pop, float dt) {
 //=============================================================================
 
 int tsdn_get_stats(const tsdn_population_t* pop, tsdn_stats_t* stats) {
-    if (!pop || !stats) return -1;
+    if (!pop || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tsdn_get_stats: required parameter is NULL (pop, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((tsdn_population_t*)pop)->mutex);
     memcpy(stats, &pop->stats, sizeof(tsdn_stats_t));

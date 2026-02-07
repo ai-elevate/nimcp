@@ -103,7 +103,10 @@ static int compare_incident_timestamps(const char* key1, const char* key2)
     uint64_t ts1 = strtoull(key1, NULL, 10);
     uint64_t ts2 = strtoull(key2, NULL, 10);
 
-    if (ts1 < ts2) return -1;
+    if (ts1 < ts2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_incident_timestamps: validation failed");
+        return -1;
+    }
     if (ts1 > ts2) return 1;
     return 0;
 }
@@ -163,8 +166,10 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
 
     // Allocate circular buffer
     storage->incident_history = nimcp_calloc(MAX_INCIDENT_HISTORY, sizeof(ethics_incident_t));
-    if (!storage->incident_history)
+    if (!storage->incident_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_init_incident_logging: storage->incident_history is NULL");
         return false;
+    }
 
     storage->incident_count = 0;
     storage->incident_index = 0;
@@ -176,6 +181,7 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
                                          free_incident_data);
     if (!storage->incident_btree) {
         nimcp_free(storage->incident_history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_init_incident_logging: storage->incident_btree is NULL");
         return false;
     }
 
@@ -191,6 +197,7 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
     if (!storage->incident_by_type) {
         btree_destroy(storage->incident_btree);
         nimcp_free(storage->incident_history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_init_incident_logging: storage->incident_by_type is NULL");
         return false;
     }
 
@@ -199,6 +206,7 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
         hash_table_destroy(storage->incident_by_type);
         btree_destroy(storage->incident_btree);
         nimcp_free(storage->incident_history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_init_incident_logging: validation failed");
         return false;
     }
 
@@ -250,15 +258,19 @@ void ethics_cleanup_incident_logging(ethics_engine_t engine)
 bool ethics_log_incident(ethics_engine_t engine, const ethics_incident_t* incident)
 {
     // Guard clause: Validate inputs
-    if (!engine || !incident)
+    if (!engine || !incident) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_log_incident: required parameter is NULL (engine, incident)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_incidents_heartbeat("ethics_incid_ethics_log_incident", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
-    if (!storage || !storage->incident_history || !storage->incident_btree || !storage->incident_by_type)
+    if (!storage || !storage->incident_history || !storage->incident_btree || !storage->incident_by_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_log_incident: required parameter is NULL (storage, storage->incident_history, storage->incident_btree, storage->incident_by_type)");
         return false;
+    }
 
     // Thread safety
     nimcp_mutex_lock(&storage->incident_mutex);
@@ -677,25 +689,32 @@ uint32_t ethics_get_all_incidents(ethics_engine_t engine, ethics_incident_t** in
 bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const char* format)
 {
     // Guard clause: Validate inputs
-    if (!engine || !filepath || !format)
+    if (!engine || !filepath || !format) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_export_incidents: required parameter is NULL (engine, filepath, format)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_incidents_heartbeat("ethics_incid_ethics_export_incide", 0.0f);
 
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
-    if (!storage || !storage->incident_history)
+    if (!storage || !storage->incident_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_export_incidents: required parameter is NULL (storage, storage->incident_history)");
         return false;
+    }
 
     ethics_incident_t* incidents = NULL;
     uint32_t count = ethics_get_all_incidents(engine, &incidents);
 
-    if (count == 0 || !incidents)
+    if (count == 0 || !incidents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_export_incidents: incidents is NULL");
         return false;
+    }
 
     FILE* file = fopen(filepath, "w");
     if (!file) {
         nimcp_free(incidents);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_export_incidents: file is NULL");
         return false;
     }
 
@@ -750,6 +769,7 @@ bool ethics_export_incidents(ethics_engine_t engine, const char* filepath, const
     } else {
         fclose(file);
         nimcp_free(incidents);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_export_incidents: operation failed");
         return false;
     }
 

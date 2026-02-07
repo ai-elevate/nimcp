@@ -132,6 +132,7 @@ self_preservation_system_t* self_preservation_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_preservation_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -459,6 +460,7 @@ bool self_preservation_would_sacrifice_for_human(
 ) {
     /* Guard clause: NULL check */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_preservation_would_sacrifice_for_human: system is NULL");
         return false;
     }
 
@@ -473,6 +475,7 @@ bool self_preservation_would_sacrifice_for_command(
 ) {
     /* Guard clause: NULL check */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_preservation_would_sacrifice_for_command: system is NULL");
         return false;
     }
 
@@ -558,6 +561,7 @@ bool self_preservation_is_bio_async_connected(
 ) {
     /* Guard clause: NULL check */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_preservation_is_bio_async_connected: system is NULL");
         return false;
     }
 

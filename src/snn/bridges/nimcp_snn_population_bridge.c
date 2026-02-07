@@ -413,7 +413,10 @@ int snn_population_bridge_set_tuning(
     }
 
     uint32_t global_idx = neuron_offset + neuron_idx;
-    if (global_idx >= bridge->n_tuning_curves) return -1;
+    if (global_idx >= bridge->n_tuning_curves) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_set_tuning: capacity exceeded");
+        return -1;
+    }
 
     bridge->tuning_curves[global_idx] = *tuning;
     return 0;
@@ -444,7 +447,10 @@ int snn_population_bridge_get_tuning(
     }
 
     uint32_t global_idx = neuron_offset + neuron_idx;
-    if (global_idx >= bridge->n_tuning_curves) return -1;
+    if (global_idx >= bridge->n_tuning_curves) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_get_tuning: capacity exceeded");
+        return -1;
+    }
 
     *tuning = bridge->tuning_curves[global_idx];
     return 0;

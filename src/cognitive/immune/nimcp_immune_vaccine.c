@@ -156,7 +156,10 @@ static uint64_t get_timestamp_ms(void) {
  * HOW:  Linear search through vaccine array
  */
 static vaccine_entry_t* find_vaccine_by_id(vaccine_system_t* system, uint32_t id) {
-    if (!system || !system->vaccines) return NULL;
+    if (!system || !system->vaccines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_vaccine_by_id: required parameter is NULL (system, system->vaccines)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < system->vaccine_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -169,6 +172,7 @@ static vaccine_entry_t* find_vaccine_by_id(vaccine_system_t* system, uint32_t id
             return &system->vaccines[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_vaccine_by_id: validation failed");
     return NULL;
 }
 
@@ -182,9 +186,13 @@ static vaccine_entry_t* find_vaccine_by_id(vaccine_system_t* system, uint32_t id
 static int add_to_schedule(vaccine_system_t* system, uint32_t vaccine_id,
                           uint64_t scheduled_time, bool is_booster,
                           uint32_t original_id) {
-    if (!system || !system->schedule) return -1;
+    if (!system || !system->schedule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_vaccine_by_id: required parameter is NULL (system, system->schedule)");
+        return -1;
+    }
     if (system->schedule_count >= system->schedule_capacity) {
         NIMCP_LOGGING_WARN("Schedule capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_vaccine_by_id: capacity exceeded");
         return -1;
     }
 
@@ -349,7 +357,10 @@ static uint32_t calculate_checksum(const void* data, size_t len) {
  * @brief Get default configuration
  */
 int vaccine_default_config(vaccine_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_default_conf", 0.0f);
@@ -389,6 +400,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
                                  brain_immune_system_t* immune_system) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("Immune system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: immune_system is NULL");
         return NULL;
     }
 
@@ -400,6 +412,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
     vaccine_system_t* system = (vaccine_system_t*)nimcp_malloc(sizeof(vaccine_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate vaccine system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system is NULL");
         return NULL;
     }
     memset(system, 0, sizeof(vaccine_system_t));
@@ -418,6 +431,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
     if (!system->vaccines) {
         NIMCP_LOGGING_ERROR("Failed to allocate vaccine array");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->vaccines is NULL");
         return NULL;
     }
     memset(system->vaccines, 0, system->vaccine_capacity * sizeof(vaccine_entry_t));
@@ -430,6 +444,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
         NIMCP_LOGGING_ERROR("Failed to allocate schedule");
         nimcp_free(system->vaccines);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->schedule is NULL");
         return NULL;
     }
     memset(system->schedule, 0, system->schedule_capacity * sizeof(vaccine_schedule_entry_t));
@@ -444,6 +459,7 @@ vaccine_system_t* vaccine_create(const vaccine_config_t* config,
         nimcp_free(system->schedule);
         nimcp_free(system->vaccines);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vaccine_default_config: system->mutex is NULL");
         return NULL;
     }
 
@@ -495,7 +511,10 @@ void vaccine_destroy(vaccine_system_t* system) {
  * @brief Start vaccine system
  */
 int vaccine_start(vaccine_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_start: system is NULL");
+        return -1;
+    }
     if (system->running) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -514,7 +533,10 @@ int vaccine_start(vaccine_system_t* system) {
  * @brief Stop vaccine system
  */
 int vaccine_stop(vaccine_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: system is NULL");
+        return -1;
+    }
     if (!system->running) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -539,9 +561,18 @@ int vaccine_stop(vaccine_system_t* system) {
 int vaccine_create_entry(vaccine_system_t* system, vaccine_type_t type,
                         const uint8_t* epitope, size_t epitope_len,
                         const char* name, uint32_t* vaccine_id) {
-    if (!system || !epitope || epitope_len == 0 || !vaccine_id) return -1;
-    if (epitope_len > VACCINE_EPITOPE_SIZE) return -1;
-    if (system->vaccine_count >= system->vaccine_capacity) return -1;
+    if (!system || !epitope || epitope_len == 0 || !vaccine_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: required parameter is NULL (system, epitope, vaccine_id)");
+        return -1;
+    }
+    if (epitope_len > VACCINE_EPITOPE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_stop: validation failed");
+        return -1;
+    }
+    if (system->vaccine_count >= system->vaccine_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vaccine_stop: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_create_entry", 0.0f);
@@ -593,7 +624,10 @@ int vaccine_create_entry(vaccine_system_t* system, vaccine_type_t type,
  */
 int vaccine_set_properties(vaccine_system_t* system, uint32_t vaccine_id,
                           float attenuation, float affinity, float decay_rate) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_set_properti", 0.0f);
@@ -604,6 +638,7 @@ int vaccine_set_properties(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: vaccine is NULL");
         return -1;
     }
 
@@ -620,7 +655,10 @@ int vaccine_set_properties(vaccine_system_t* system, uint32_t vaccine_id,
  */
 int vaccine_set_description(vaccine_system_t* system, uint32_t vaccine_id,
                            const char* description) {
-    if (!system || !description) return -1;
+    if (!system || !description) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: required parameter is NULL (system, description)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_set_descript", 0.0f);
@@ -631,6 +669,7 @@ int vaccine_set_description(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_stop: vaccine is NULL");
         return -1;
     }
 
@@ -649,7 +688,10 @@ int vaccine_set_description(vaccine_system_t* system, uint32_t vaccine_id,
  * @brief Administer vaccine (direct memory injection)
  */
 int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
-    if (!system || !system->immune_system) return -1;
+    if (!system || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_administer: required parameter is NULL (system, system->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_administer", 0.0f);
@@ -661,6 +703,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_ERROR("Vaccine %u not found", vaccine_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_administer: vaccine is NULL");
         return -1;
     }
 
@@ -677,6 +720,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_ERROR("Failed to present antigen for vaccine %u", vaccine_id);
         vaccine->status = VACCINE_STATUS_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_administer: validation failed");
         return -1;
     }
 
@@ -690,6 +734,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_ERROR("Failed to create B cell for vaccine %u", vaccine_id);
         vaccine->status = VACCINE_STATUS_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_administer: validation failed");
         return -1;
     }
 
@@ -699,6 +744,7 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_ERROR("Failed to convert B cell to memory for vaccine %u", vaccine_id);
         vaccine->status = VACCINE_STATUS_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_administer: validation failed");
         return -1;
     }
 
@@ -730,7 +776,10 @@ int vaccine_administer(vaccine_system_t* system, uint32_t vaccine_id) {
  */
 int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
                                   float severity_reduction) {
-    if (!system || !system->immune_system) return -1;
+    if (!system || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_administer: required parameter is NULL (system, system->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_administer_a", 0.0f);
@@ -741,6 +790,7 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_administer: vaccine is NULL");
         return -1;
     }
 
@@ -764,6 +814,7 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
     if (result != 0) {
         nimcp_mutex_unlock(system->mutex);
         vaccine->status = VACCINE_STATUS_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_administer: validation failed");
         return -1;
     }
 
@@ -786,7 +837,10 @@ int vaccine_administer_attenuated(vaccine_system_t* system, uint32_t vaccine_id,
  * @brief Administer booster dose
  */
 int vaccine_booster(vaccine_system_t* system, uint32_t vaccine_id) {
-    if (!system || !system->immune_system) return -1;
+    if (!system || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: required parameter is NULL (system, system->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_booster", 0.0f);
@@ -797,6 +851,7 @@ int vaccine_booster(vaccine_system_t* system, uint32_t vaccine_id) {
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: vaccine is NULL");
         return -1;
     }
 
@@ -834,8 +889,14 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
                                    const uint8_t* epitope, size_t epitope_len,
                                    float affinity, const char* source_description,
                                    uint32_t* vaccine_id) {
-    if (!system || !epitope || !vaccine_id) return -1;
-    if (!system->config.enable_passive_import) return -1;
+    if (!system || !epitope || !vaccine_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: required parameter is NULL (system, epitope, vaccine_id)");
+        return -1;
+    }
+    if (!system->config.enable_passive_import) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: system->config is NULL");
+        return -1;
+    }
 
     /* Create passive vaccine entry */
     /* Phase 8: Heartbeat at operation start */
@@ -846,7 +907,10 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
     int result = vaccine_create_entry(system, VACCINE_TYPE_PASSIVE,
                                      epitope, epitope_len,
                                      "passive_immunity", &vid);
-    if (result != 0) return -1;
+    if (result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_booster: validation failed");
+        return -1;
+    }
 
     /* Set description */
     if (source_description) {
@@ -859,7 +923,10 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
 
     /* Administer immediately */
     result = vaccine_administer(system, vid);
-    if (result != 0) return -1;
+    if (result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_booster: validation failed");
+        return -1;
+    }
 
     *vaccine_id = vid;
     system->stats.passive_imports++;
@@ -875,7 +942,10 @@ int vaccine_import_passive_immunity(vaccine_system_t* system,
  */
 int vaccine_import_database(vaccine_system_t* system, const char* filepath,
                            uint32_t* imported_count) {
-    if (!system || !filepath || !imported_count) return -1;
+    if (!system || !filepath || !imported_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: required parameter is NULL (system, filepath, imported_count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_import_datab", 0.0f);
@@ -884,6 +954,7 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
     FILE* file = fopen(filepath, "rb");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open vaccine database: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: file is NULL");
         return -1;
     }
 
@@ -892,6 +963,7 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
     if (fread(&header, sizeof(header), 1, file) != 1) {
         NIMCP_LOGGING_ERROR("Failed to read database header");
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_booster: validation failed");
         return -1;
     }
 
@@ -899,12 +971,14 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
     if (header.magic != VACCINE_DATABASE_MAGIC) {
         NIMCP_LOGGING_ERROR("Invalid database magic number");
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_booster: validation failed");
         return -1;
     }
 
     if (header.version != VACCINE_DATABASE_VERSION) {
         NIMCP_LOGGING_ERROR("Unsupported database version: %u", header.version);
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_booster: validation failed");
         return -1;
     }
 
@@ -950,7 +1024,10 @@ int vaccine_import_database(vaccine_system_t* system, const char* filepath,
  */
 int vaccine_export_database(vaccine_system_t* system, const char* filepath,
                            const char* description) {
-    if (!system || !filepath) return -1;
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: required parameter is NULL (system, filepath)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_export_datab", 0.0f);
@@ -959,6 +1036,7 @@ int vaccine_export_database(vaccine_system_t* system, const char* filepath,
     FILE* file = fopen(filepath, "wb");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to create database file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_booster: file is NULL");
         return -1;
     }
 
@@ -1006,7 +1084,10 @@ int vaccine_export_database(vaccine_system_t* system, const char* filepath,
  */
 int vaccine_schedule_add(vaccine_system_t* system, uint32_t vaccine_id,
                         uint64_t scheduled_time) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_add", 0.0f);
@@ -1017,6 +1098,7 @@ int vaccine_schedule_add(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: vaccine is NULL");
         return -1;
     }
 
@@ -1041,7 +1123,10 @@ int vaccine_schedule_add(vaccine_system_t* system, uint32_t vaccine_id,
  */
 int vaccine_schedule_booster(vaccine_system_t* system, uint32_t vaccine_id,
                             uint64_t interval_ms) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_boo", 0.0f);
@@ -1065,7 +1150,10 @@ int vaccine_schedule_booster(vaccine_system_t* system, uint32_t vaccine_id,
  * @brief Cancel scheduled vaccine
  */
 int vaccine_schedule_cancel(vaccine_system_t* system, uint32_t vaccine_id) {
-    if (!system || !system->schedule) return -1;
+    if (!system || !system->schedule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_schedule_cancel: required parameter is NULL (system, system->schedule)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_schedule_can", 0.0f);
@@ -1093,6 +1181,7 @@ int vaccine_schedule_cancel(vaccine_system_t* system, uint32_t vaccine_id) {
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_schedule_cancel: operation failed");
     return -1;
 }
 
@@ -1105,7 +1194,10 @@ int vaccine_schedule_cancel(vaccine_system_t* system, uint32_t vaccine_id) {
  */
 int vaccine_get_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
                         float* efficacy) {
-    if (!system || !efficacy) return -1;
+    if (!system || !efficacy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_schedule_cancel: required parameter is NULL (system, efficacy)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_get_efficacy", 0.0f);
@@ -1116,6 +1208,7 @@ int vaccine_get_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_schedule_cancel: vaccine is NULL");
         return -1;
     }
 
@@ -1129,7 +1222,10 @@ int vaccine_get_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
  * @brief Record vaccine success
  */
 int vaccine_record_success(vaccine_system_t* system, uint32_t vaccine_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_success: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_record_succe", 0.0f);
@@ -1140,6 +1236,7 @@ int vaccine_record_success(vaccine_system_t* system, uint32_t vaccine_id) {
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_success: vaccine is NULL");
         return -1;
     }
 
@@ -1157,7 +1254,10 @@ int vaccine_record_success(vaccine_system_t* system, uint32_t vaccine_id) {
  * @brief Record vaccine failure
  */
 int vaccine_record_failure(vaccine_system_t* system, uint32_t vaccine_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_record_failu", 0.0f);
@@ -1168,6 +1268,7 @@ int vaccine_record_failure(vaccine_system_t* system, uint32_t vaccine_id) {
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: vaccine is NULL");
         return -1;
     }
 
@@ -1185,7 +1286,10 @@ int vaccine_record_failure(vaccine_system_t* system, uint32_t vaccine_id) {
  */
 int vaccine_update_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
                            uint64_t elapsed_ms) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_update_effic", 0.0f);
@@ -1196,6 +1300,7 @@ int vaccine_update_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);
     if (!vaccine) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: vaccine is NULL");
         return -1;
     }
 
@@ -1240,7 +1345,10 @@ const vaccine_entry_t* vaccine_get_entry(vaccine_system_t* system,
  */
 int vaccine_find_by_epitope(vaccine_system_t* system, const uint8_t* epitope,
                            size_t epitope_len, uint32_t* vaccine_id) {
-    if (!system || !epitope || !vaccine_id) return -1;
+    if (!system || !epitope || !vaccine_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: required parameter is NULL (system, epitope, vaccine_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_find_by_epit", 0.0f);
@@ -1265,6 +1373,7 @@ int vaccine_find_by_epitope(vaccine_system_t* system, const uint8_t* epitope,
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vaccine_record_failure: operation failed");
     return -1;
 }
 
@@ -1273,7 +1382,10 @@ int vaccine_find_by_epitope(vaccine_system_t* system, const uint8_t* epitope,
  */
 int vaccine_get_active_vaccines(vaccine_system_t* system, uint32_t* vaccine_ids,
                                size_t max_count, size_t* count) {
-    if (!system || !vaccine_ids || !count) return -1;
+    if (!system || !vaccine_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_record_failure: required parameter is NULL (system, vaccine_ids, count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_get_active_v", 0.0f);
@@ -1300,7 +1412,10 @@ int vaccine_get_active_vaccines(vaccine_system_t* system, uint32_t* vaccine_ids,
  * @brief Get vaccine statistics
  */
 int vaccine_get_stats(vaccine_system_t* system, vaccine_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_vaccine_heartbeat("immune_vacci_vaccine_get_stats", 0.0f);
@@ -1322,7 +1437,10 @@ int vaccine_get_stats(vaccine_system_t* system, vaccine_stats_t* stats) {
  * @brief Update vaccine system
  */
 int vaccine_update(vaccine_system_t* system, uint64_t delta_ms) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vaccine_update: system is NULL");
+        return -1;
+    }
     if (!system->running) return 0;
 
     /* Phase 8: Heartbeat at operation start */

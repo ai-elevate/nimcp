@@ -80,7 +80,10 @@ void brain_init_state_manager_mesh_unregister(void) {
 static int executive_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !size) return -1;
+    if (!brain || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_state_serialize: required parameter is NULL (brain, size)");
+        return -1;
+    }
 
     // Calculate size needed
     size_t needed = sizeof(uint32_t) * 4;  // Basic stats: task_count, completed, failed, total
@@ -128,10 +131,16 @@ static int executive_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 static int executive_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !buffer) return -1;
+    if (!brain || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_state_deserialize: required parameter is NULL (brain, buffer)");
+        return -1;
+    }
 
     size_t expected = sizeof(uint32_t) * 4;
-    if (size < expected) return -1;
+    if (size < expected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_state_deserialize: validation failed");
+        return -1;
+    }
 
     // For now, just validate the buffer
     // Full implementation would restore executive state
@@ -144,7 +153,10 @@ static int executive_state_deserialize(void* ctx, const uint8_t* buffer, size_t 
 static int executive_state_validate(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_state_validate: brain is NULL");
+        return -1;
+    }
 
     // Executive is optional, so NULL is valid
     return 0;
@@ -156,7 +168,10 @@ static int executive_state_validate(void* ctx)
 static int executive_state_reset(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_state_reset: brain is NULL");
+        return -1;
+    }
 
     // Note: Full reset would clear task queue
     // For safety, we don't actually reset here - leave to executive API
@@ -182,7 +197,10 @@ static size_t executive_state_get_size(void* ctx)
 static int working_memory_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !size) return -1;
+    if (!brain || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_state_serialize: required parameter is NULL (brain, size)");
+        return -1;
+    }
 
     // Calculate size: header + items
     size_t needed = sizeof(uint32_t) * 2;  // count + capacity
@@ -224,9 +242,15 @@ static int working_memory_state_serialize(void* ctx, uint8_t* buffer, size_t* si
 static int working_memory_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !buffer) return -1;
+    if (!brain || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_state_deserialize: required parameter is NULL (brain, buffer)");
+        return -1;
+    }
 
-    if (size < sizeof(uint32_t) * 2) return -1;
+    if (size < sizeof(uint32_t) * 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_state_deserialize: validation failed");
+        return -1;
+    }
 
     // Validate buffer format
     return 0;
@@ -238,7 +262,10 @@ static int working_memory_state_deserialize(void* ctx, const uint8_t* buffer, si
 static int working_memory_state_validate(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_state_validate: brain is NULL");
+        return -1;
+    }
 
     // Working memory is optional
     return 0;
@@ -250,7 +277,10 @@ static int working_memory_state_validate(void* ctx)
 static int working_memory_state_reset(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_state_reset: brain is NULL");
+        return -1;
+    }
 
     if (brain->working_memory) {
         working_memory_clear(brain->working_memory);
@@ -277,7 +307,10 @@ static size_t working_memory_state_get_size(void* ctx)
 static int brain_stats_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !size) return -1;
+    if (!brain || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stats_serialize: required parameter is NULL (brain, size)");
+        return -1;
+    }
 
     size_t needed = sizeof(brain_stats_t);
 
@@ -302,9 +335,15 @@ static int brain_stats_serialize(void* ctx, uint8_t* buffer, size_t* size)
 static int brain_stats_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain || !buffer) return -1;
+    if (!brain || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stats_deserialize: required parameter is NULL (brain, buffer)");
+        return -1;
+    }
 
-    if (size < sizeof(brain_stats_t)) return -1;
+    if (size < sizeof(brain_stats_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stats_deserialize: validation failed");
+        return -1;
+    }
 
     memcpy(&brain->stats, buffer, sizeof(brain_stats_t));
     return 0;
@@ -316,11 +355,20 @@ static int brain_stats_deserialize(void* ctx, const uint8_t* buffer, size_t size
 static int brain_stats_validate(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stats_validate: brain is NULL");
+        return -1;
+    }
 
     // Check for obviously invalid values
-    if (brain->stats.num_neurons > 10000000) return -1;
-    if (brain->stats.num_synapses > 1000000000) return -1;
+    if (brain->stats.num_neurons > 10000000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stats_validate: validation failed");
+        return -1;
+    }
+    if (brain->stats.num_synapses > 1000000000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stats_validate: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -331,7 +379,10 @@ static int brain_stats_validate(void* ctx)
 static int brain_stats_reset(void* ctx)
 {
     brain_t brain = (brain_t)ctx;
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stats_reset: brain is NULL");
+        return -1;
+    }
 
     // Reset stats but preserve structure info
     uint32_t num_neurons = brain->stats.num_neurons;
@@ -372,6 +423,7 @@ static size_t brain_stats_get_size(void* ctx)
 bool brain_init_state_manager(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_init_state_manager: brain is NULL");
         return false;
     }
 
@@ -384,6 +436,7 @@ bool brain_init_state_manager(brain_t brain)
     brain->state_manager = nimcp_state_manager_create();
     if (!brain->state_manager) {
         LOG_ERROR("Failed to create state manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_init_state_manager: brain->state_manager is NULL");
         return false;
     }
 
@@ -483,6 +536,7 @@ void brain_shutdown_state_manager(brain_t brain)
 int brain_checkpoint_state(brain_t brain, uint8_t* buffer, size_t* size)
 {
     if (!brain || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_checkpoint_state: required parameter is NULL (brain, size)");
         return -1;
     }
 
@@ -513,6 +567,7 @@ int brain_checkpoint_state(brain_t brain, uint8_t* buffer, size_t* size)
 int brain_restore_state(brain_t brain, const uint8_t* buffer, size_t size)
 {
     if (!brain || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_state: required parameter is NULL (brain, buffer)");
         return -1;
     }
 

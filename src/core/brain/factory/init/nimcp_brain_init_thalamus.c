@@ -705,7 +705,10 @@ int nimcp_brain_thal_get_stats(brain_t brain, thalamus_stats_t* stats) {
 }
 
 bool nimcp_brain_thal_is_enabled(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_is_enabled: brain is NULL");
+        return false;
+    }
     struct brain_struct* b = (struct brain_struct*)brain;
     return b->thalamus_enabled && b->thalamus != NULL;
 }
@@ -790,6 +793,7 @@ thalamus_t* nimcp_brain_thal_get_handle(brain_t brain) {
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_handle: b->thalamus_enabled is NULL");
         return NULL;
     }
 
@@ -809,6 +813,7 @@ thal_nucleus_t* nimcp_brain_thal_get_nucleus(brain_t brain,
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_handle: required parameter is NULL (b->thalamus_enabled, b->thalamus)");
         return NULL;
     }
 

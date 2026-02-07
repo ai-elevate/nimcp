@@ -287,6 +287,7 @@ contextual_language_t contextual_language_create(
     if (nimcp_mutex_init(&cl->lock, NULL) != 0) {
         set_error("Failed to initialize mutex");
         nimcp_free(cl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "contextual_language_create: validation failed");
         return NULL;
     }
 
@@ -299,6 +300,7 @@ contextual_language_t contextual_language_create(
         set_error("Failed to allocate context history buffer");
         nimcp_mutex_destroy(&cl->lock);
         nimcp_free(cl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "contextual_language_create: cl->history is NULL");
         return NULL;
     }
 
@@ -387,6 +389,7 @@ int contextual_detect_context(
     // Guard clauses
     if (!cl || !message_features || !detected || feature_size == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_detect_context: required parameter is NULL (cl, message_features, detected)");
         return -1;
     }
 
@@ -451,11 +454,13 @@ int contextual_adapt_message(
     // Guard clauses
     if (!cl || !original || !target_context || !adapted || !adapted_size) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_adapt_message: required parameter is NULL (cl, original, target_context, adapted, adapted_size)");
         return -1;
     }
 
     if (size > CONTEXTUAL_MAX_MESSAGE) {
         set_error("Message too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contextual_adapt_message: validation failed");
         return -1;
     }
 
@@ -514,11 +519,13 @@ int contextual_learn_context_mapping(
     // Guard clauses
     if (!cl || !source || !target || !transformation) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_learn_context_mapping: required parameter is NULL (cl, source, target, transformation)");
         return -1;
     }
 
     if (trans_size > CONTEXTUAL_MAX_MESSAGE) {
         set_error("Transformation too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contextual_learn_context_mapping: validation failed");
         return -1;
     }
 
@@ -551,6 +558,7 @@ int contextual_get_current_context(
     // Guard clauses
     if (!cl || !state) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_get_current_context: required parameter is NULL (cl, state)");
         return -1;
     }
 
@@ -568,6 +576,7 @@ int contextual_set_current_context(
     // Guard clauses
     if (!cl || !state) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_set_current_context: required parameter is NULL (cl, state)");
         return -1;
     }
 
@@ -588,6 +597,7 @@ int contextual_get_history(
     // Guard clauses
     if (!cl || !history || !count) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_get_history: required parameter is NULL (cl, history, count)");
         return -1;
     }
 
@@ -612,6 +622,7 @@ int contextual_clear_history(contextual_language_t cl) {
     // Guard clause
     if (!cl) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_clear_history: cl is NULL");
         return -1;
     }
 
@@ -631,6 +642,7 @@ int contextual_get_stats(
     // Guard clauses
     if (!cl || !stats) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_get_stats: required parameter is NULL (cl, stats)");
         return -1;
     }
 
@@ -645,6 +657,7 @@ int contextual_reset_stats(contextual_language_t cl) {
     // Guard clause
     if (!cl) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contextual_reset_stats: cl is NULL");
         return -1;
     }
 
@@ -724,6 +737,7 @@ int contextual_get_default_state(
             state->urgency_level = 0.0F;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contextual_get_default_state: operation failed");
             return -1;
     }
 

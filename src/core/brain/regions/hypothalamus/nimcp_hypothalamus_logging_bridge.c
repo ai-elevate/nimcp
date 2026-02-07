@@ -260,7 +260,10 @@ static uint64_t get_current_time_us(void) {
  * @brief Lock the bridge mutex
  */
 static int bridge_lock(hypo_logging_bridge_t* bridge) {
-    if (!bridge || !bridge->base.mutex) return -1;
+    if (!bridge || !bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge_lock: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
     return nimcp_mutex_lock(bridge->base.mutex);
 }
 
@@ -268,7 +271,10 @@ static int bridge_lock(hypo_logging_bridge_t* bridge) {
  * @brief Unlock the bridge mutex
  */
 static int bridge_unlock(hypo_logging_bridge_t* bridge) {
-    if (!bridge || !bridge->base.mutex) return -1;
+    if (!bridge || !bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge_unlock: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
     return nimcp_mutex_unlock(bridge->base.mutex);
 }
 
@@ -336,7 +342,10 @@ static bool type_enabled(const hypo_logging_bridge_t* bridge, hypo_log_type_t ty
  */
 static int add_entry_unlocked(hypo_logging_bridge_t* bridge,
                                const hypo_log_entry_t* entry) {
-    if (!bridge || !entry) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "type_enabled: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
 
     /* Check type filter */
     if (!type_enabled(bridge, entry->type)) {
@@ -354,6 +363,7 @@ static int add_entry_unlocked(hypo_logging_bridge_t* bridge,
     if (bridge->count >= bridge->buffer_size) {
         if (!bridge->config.overwrite_when_full) {
             bridge->stats.entries_dropped++;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "type_enabled: bridge->config is NULL");
             return -1;
         }
         /* Overwrite oldest entry */
@@ -482,7 +492,10 @@ static hypo_log_entry_t create_entry(hypo_log_type_t type,
  */
 static int orch_event_callback(const hypo_event_data_orch_t* event, void* user_data) {
     hypo_logging_bridge_t* bridge = (hypo_logging_bridge_t*)user_data;
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch_event_callback: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     hypo_log_entry_t entry;
     memset(&entry, 0, sizeof(entry));
@@ -688,6 +701,7 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
     if (!bridge->entries) {
         LOG_ERROR("hypo_logging_bridge_create: buffer allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_logging_bridge_create: bridge->entries is NULL");
         return NULL;
     }
 
@@ -697,6 +711,7 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
         LOG_ERROR("hypo_logging_bridge_create: mutex creation failed");
         nimcp_free(bridge->entries);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_logging_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -809,6 +824,7 @@ int hypo_logging_connect(
 
     if (bridge->connected) {
         LOG_WARN("hypo_logging_connect: already connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logging_connect: validation failed");
         return -1;
     }
 
@@ -824,6 +840,7 @@ int hypo_logging_connect(
 
     if (ret != 0) {
         LOG_ERROR("hypo_logging_connect: failed to register with orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logging_connect: validation failed");
         return -1;
     }
 
@@ -1323,7 +1340,10 @@ int hypo_logging_log_entry(
     hypo_logging_bridge_t* bridge,
     const hypo_log_entry_t* entry)
 {
-    if (!bridge || !entry) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_log_entry: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
 
     bridge_lock(bridge);
     int ret = add_entry_unlocked(bridge, entry);
@@ -1345,7 +1365,10 @@ int hypo_logging_get_recent(
     uint32_t max,
     uint32_t* count)
 {
-    if (!bridge || !entries || !count) return -1;
+    if (!bridge || !entries || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_get_recent: required parameter is NULL (bridge, entries, count)");
+        return -1;
+    }
 
     bridge_lock(bridge);
 
@@ -1381,7 +1404,10 @@ int hypo_logging_query(
     uint32_t max,
     uint32_t* count)
 {
-    if (!bridge || !query || !entries || !count) return -1;
+    if (!bridge || !query || !entries || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_query: required parameter is NULL (bridge, query, entries, count)");
+        return -1;
+    }
 
     bridge_lock(bridge);
 
@@ -1470,11 +1496,15 @@ int hypo_logging_export(
     hypo_logging_bridge_t* bridge,
     const char* filepath)
 {
-    if (!bridge || !filepath) return -1;
+    if (!bridge || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export: required parameter is NULL (bridge, filepath)");
+        return -1;
+    }
 
     FILE* f = fopen(filepath, "w");
     if (!f) {
         LOG_ERROR("hypo_logging_export: failed to open file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export: f is NULL");
         return -1;
     }
 
@@ -1512,11 +1542,15 @@ int hypo_logging_export_json(
     hypo_logging_bridge_t* bridge,
     const char* filepath)
 {
-    if (!bridge || !filepath) return -1;
+    if (!bridge || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export_json: required parameter is NULL (bridge, filepath)");
+        return -1;
+    }
 
     FILE* f = fopen(filepath, "w");
     if (!f) {
         LOG_ERROR("hypo_logging_export_json: failed to open file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export_json: f is NULL");
         return -1;
     }
 
@@ -1557,7 +1591,10 @@ int hypo_logging_export_query(
     const hypo_log_query_t* query,
     const char* filepath)
 {
-    if (!bridge || !query || !filepath) return -1;
+    if (!bridge || !query || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export_query: required parameter is NULL (bridge, query, filepath)");
+        return -1;
+    }
 
     /* Query entries */
     hypo_log_entry_t* entries = nimcp_calloc(HYPO_LOG_MAX_QUERY_ENTRIES,
@@ -1575,6 +1612,7 @@ int hypo_logging_export_query(
                                   HYPO_LOG_MAX_QUERY_ENTRIES, &count);
     if (ret != 0) {
         nimcp_free(entries);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logging_export_query: validation failed");
         return -1;
     }
 
@@ -1582,6 +1620,7 @@ int hypo_logging_export_query(
     FILE* f = fopen(filepath, "w");
     if (!f) {
         nimcp_free(entries);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_export_query: f is NULL");
         return -1;
     }
 
@@ -1607,7 +1646,10 @@ int hypo_logging_get_stats(
     const hypo_logging_bridge_t* bridge,
     hypo_logging_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memcpy(stats, &bridge->stats, sizeof(hypo_logging_stats_t));
 
@@ -1649,7 +1691,10 @@ int hypo_logging_set_config(
     hypo_logging_bridge_t* bridge,
     const hypo_logging_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     bridge_lock(bridge);
     bridge->config = *config;
@@ -1662,7 +1707,10 @@ int hypo_logging_get_config(
     const hypo_logging_bridge_t* bridge,
     hypo_logging_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -1687,7 +1735,10 @@ int hypo_logging_set_type_enabled(
     hypo_log_type_t type,
     bool enable)
 {
-    if (!bridge || type >= HYPO_LOG_COUNT) return -1;
+    if (!bridge || type >= HYPO_LOG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_logging_set_type_enabled: bridge is NULL");
+        return -1;
+    }
 
     if (enable) {
         bridge->config.type_filter_mask |= (1u << type);
@@ -1742,7 +1793,10 @@ int hypo_log_entry_format(
     char* buffer,
     size_t buffer_size)
 {
-    if (!entry || !buffer || buffer_size == 0) return -1;
+    if (!entry || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_log_entry_format: required parameter is NULL (entry, buffer)");
+        return -1;
+    }
 
     return snprintf(buffer, buffer_size,
                     "[%lu] [%s] [%s] val=%.3f sec=%.3f: %s",
@@ -1759,7 +1813,10 @@ int hypo_log_entry_format_json(
     char* buffer,
     size_t buffer_size)
 {
-    if (!entry || !buffer || buffer_size == 0) return -1;
+    if (!entry || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_log_entry_format_json: required parameter is NULL (entry, buffer)");
+        return -1;
+    }
 
     return snprintf(buffer, buffer_size,
                     "{\"timestamp_us\": %lu, \"type\": \"%s\", "

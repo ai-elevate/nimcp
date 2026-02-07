@@ -130,7 +130,10 @@ static void compute_model_hash(
 }
 
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
-    if (!h1 || !h2) return false;
+    if (!h1 || !h2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
+        return false;
+    }
     return memcmp(h1, h2, SECURITY_DISTRIBUTED_HASH_SIZE) == 0;
 }
 
@@ -138,13 +141,17 @@ static int find_worker(
     const security_distributed_training_bridge_t* bridge,
     const char* worker_id)
 {
-    if (!bridge || !worker_id) return -1;
+    if (!bridge || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_worker: required parameter is NULL (bridge, worker_id)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_workers; i++) {
         if (strcmp(bridge->workers[i].worker_id, worker_id) == 0) {
             return (int)i;
         }
     }
+    /* Worker not found - normal case during registration checks, not an error */
     return -1;
 }
 
@@ -152,13 +159,17 @@ static int find_checkpoint(
     const security_distributed_training_bridge_t* bridge,
     const char* checkpoint_name)
 {
-    if (!bridge || !checkpoint_name) return -1;
+    if (!bridge || !checkpoint_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_checkpoint: required parameter is NULL (bridge, checkpoint_name)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_checkpoints; i++) {
         if (strcmp(bridge->checkpoints[i].name, checkpoint_name) == 0) {
             return (int)i;
         }
     }
+    /* Checkpoint not found - normal case during first creation, not an error */
     return -1;
 }
 
@@ -808,12 +819,16 @@ int security_distributed_training_report_worker_anomaly(
     worker->trust_score = clampf(worker->trust_score, 0.0f, 1.0f);
 
     if (bridge->config.auto_quarantine_byzantine &&
-        worker->byzantine_detections >= 3) {
+        worker->byzantine_detections >= 3 &&
+        !worker->is_quarantined) {
         worker->trust_level = SECURITY_WORKER_TRUST_QUARANTINED;
         worker->is_quarantined = true;
         worker->quarantine_time_ms = nimcp_time_monotonic_ms();
         bridge->security_effects.quarantined_worker_count++;
         bridge->security_effects.active_worker_count--;
+
+        internal_stats_t* istats = get_internal_stats(bridge);
+        istats->workers_quarantined++;
     }
 
     BRIDGE_UNLOCK(bridge);
@@ -960,6 +975,7 @@ bool security_distributed_training_validate_aggregated(
 
     if (num_params == 0) {
         if (anomaly_score) *anomaly_score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_distributed_training_validate_aggregated: validation failed");
         return false;
     }
 
@@ -1310,7 +1326,10 @@ float security_distributed_training_get_byzantine_ratio(
 bool security_distributed_training_is_under_attack(
     const security_distributed_training_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_distributed_training_is_under_attack: bridge is NULL");
+        return false;
+    }
     return bridge->security_effects.under_attack;
 }
 

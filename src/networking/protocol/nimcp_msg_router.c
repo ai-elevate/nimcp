@@ -79,6 +79,7 @@ static nimcp_msg_handler_entry_t* find_handler(
             return &router->handlers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_handler: validation failed");
     return NULL;
 }
 
@@ -192,7 +193,10 @@ int nimcp_msg_router_register(
     nimcp_msg_handler_fn handler,
     void* user_data
 ) {
-    if (!router || !handler) return -1;
+    if (!router || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_register: required parameter is NULL (router, handler)");
+        return -1;
+    }
 
     /* Check if already registered */
     nimcp_msg_handler_entry_t* existing = find_handler(router, msg_type);
@@ -228,10 +232,14 @@ int nimcp_msg_router_register_fast(
     nimcp_fast_msg_handler_fn handler,
     void* user_data
 ) {
-    if (!router || !handler) return -1;
+    if (!router || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_register_fast: required parameter is NULL (router, handler)");
+        return -1;
+    }
 
     /* Verify it's a fast path type */
     if (!is_fast_path_type(msg_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_register_fast: is_fast_path_type is NULL");
         return -1;
     }
 
@@ -285,6 +293,7 @@ int nimcp_msg_router_unregister(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_unregister: operation failed");
     return -1;  /* Not found */
 }
 
@@ -292,7 +301,10 @@ bool nimcp_msg_router_has_handler(
     const nimcp_msg_router_t* router,
     nimcp_msg_type_t msg_type
 ) {
-    if (!router) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_has_handler: router is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < router->handler_count; i++) {
         if (router->handlers[i].msg_type == msg_type) {
@@ -300,6 +312,7 @@ bool nimcp_msg_router_has_handler(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_has_handler: validation failed");
     return false;
 }
 
@@ -312,20 +325,30 @@ int nimcp_msg_router_route(
     const uint8_t* data,
     size_t len
 ) {
-    if (!router || !data) return -1;
+    if (!router || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_route: required parameter is NULL (router, data)");
+        return -1;
+    }
 
     /* Need at least header */
-    if (len < NIMCP_MSG_HEADER_SIZE) return -1;
+    if (len < NIMCP_MSG_HEADER_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_route: validation failed");
+        return -1;
+    }
 
     /* Parse header */
     nimcp_msg_header_t header;
     if (nimcp_msg_header_deserialize(data, &header) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_route: validation failed");
         return -1;
     }
 
     /* Check payload length */
     size_t expected_len = NIMCP_MSG_HEADER_SIZE + header.payload_len;
-    if (len < expected_len) return -1;
+    if (len < expected_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_route: validation failed");
+        return -1;
+    }
 
     /* Route based on type */
     return nimcp_msg_router_route_parsed(
@@ -340,7 +363,10 @@ int nimcp_msg_router_route_fast(
     nimcp_msg_router_t* router,
     const nimcp_fast_msg_t* msg
 ) {
-    if (!router || !msg) return -1;
+    if (!router || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_route_fast: required parameter is NULL (router, msg)");
+        return -1;
+    }
 
     /* Find handler */
     nimcp_msg_handler_entry_t* entry = find_handler(router, msg->header.msg_type);
@@ -399,6 +425,7 @@ int nimcp_msg_router_route_fast(
         router->stats.unhandled_messages++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_route_fast: validation failed");
     return -1;
 }
 
@@ -408,7 +435,10 @@ int nimcp_msg_router_route_parsed(
     const uint8_t* payload,
     size_t payload_len
 ) {
-    if (!router || !header) return -1;
+    if (!router || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_route_parsed: required parameter is NULL (router, header)");
+        return -1;
+    }
 
     /* Find handler */
     nimcp_msg_handler_entry_t* entry = find_handler(router, header->msg_type);
@@ -470,6 +500,7 @@ int nimcp_msg_router_route_parsed(
         router->stats.unhandled_messages++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_route_parsed: validation failed");
     return -1;
 }
 
@@ -482,13 +513,17 @@ int nimcp_msg_router_queue(
     const uint8_t* data,
     size_t len
 ) {
-    if (!router || !data || !router->queue) return -1;
+    if (!router || !data || !router->queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_queue: required parameter is NULL (router, data, router->queue)");
+        return -1;
+    }
 
     /* Check if queue is full */
     if (router->queue_count >= router->queue_capacity) {
         if (router->config.enable_stats) {
             router->stats.queue_overflows++;
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_router_queue: validation failed");
         return -1;
     }
 
@@ -519,7 +554,10 @@ int nimcp_msg_router_process_queue(
     nimcp_msg_router_t* router,
     uint32_t max_messages
 ) {
-    if (!router || !router->queue) return -1;
+    if (!router || !router->queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_process_queue: required parameter is NULL (router, router->queue)");
+        return -1;
+    }
 
     /* Phase 8: Send heartbeat at start of queue processing */
     msg_router_heartbeat("process_queue", 0.0f);
@@ -581,7 +619,10 @@ int nimcp_msg_router_get_stats(
     const nimcp_msg_router_t* router,
     nimcp_msg_router_stats_t* stats
 ) {
-    if (!router || !stats) return -1;
+    if (!router || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_router_get_stats: required parameter is NULL (router, stats)");
+        return -1;
+    }
 
     *stats = router->stats;
     return 0;

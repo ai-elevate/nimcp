@@ -89,6 +89,7 @@ myelin_network_config_t myelin_network_default_config(void)
 myelin_sheath_pool_t* myelin_sheath_pool_create(uint32_t capacity)
 {
     if (capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_pool_create: capacity is zero");
         return NULL;
     }
 
@@ -106,6 +107,7 @@ myelin_sheath_pool_t* myelin_sheath_pool_create(uint32_t capacity)
     pool->buffer = nimcp_calloc(aligned_capacity, sizeof(myelin_sheath_t));
     if (!pool->buffer) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_pool_create: pool->buffer is NULL");
         return NULL;
     }
 
@@ -114,6 +116,7 @@ myelin_sheath_pool_t* myelin_sheath_pool_create(uint32_t capacity)
     if (!pool->bitmap) {
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_pool_create: pool->bitmap is NULL");
         return NULL;
     }
     memset(pool->bitmap, 0xFF, pool->num_bitmap_words * sizeof(uint64_t));
@@ -169,6 +172,7 @@ myelin_sheath_t* myelin_sheath_pool_alloc(myelin_sheath_pool_t* pool)
     }
 
     nimcp_spinlock_unlock(&pool->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_pool_alloc: operation failed");
     return NULL;  // Pool exhausted
 }
 
@@ -202,6 +206,7 @@ void myelin_sheath_pool_free(myelin_sheath_pool_t* pool, myelin_sheath_t* sheath
 myelin_segment_pool_t* myelin_segment_pool_create(uint32_t capacity)
 {
     if (capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_segment_pool_create: capacity is zero");
         return NULL;
     }
 
@@ -221,6 +226,7 @@ myelin_segment_pool_t* myelin_segment_pool_create(uint32_t capacity)
     pool->buffer = nimcp_calloc(aligned_capacity, sizeof(myelin_segment_t));
     if (!pool->buffer) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_segment_pool_create: pool->buffer is NULL");
         return NULL;
     }
 
@@ -228,6 +234,7 @@ myelin_segment_pool_t* myelin_segment_pool_create(uint32_t capacity)
     if (!pool->bitmap) {
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_segment_pool_create: pool->bitmap is NULL");
         return NULL;
     }
     memset(pool->bitmap, 0xFF, pool->num_bitmap_words * sizeof(uint64_t));
@@ -280,6 +287,7 @@ myelin_segment_t* myelin_segment_pool_alloc(myelin_segment_pool_t* pool)
     }
 
     nimcp_spinlock_unlock(&pool->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_segment_pool_alloc: operation failed");
     return NULL;
 }
 
@@ -328,6 +336,7 @@ myelin_sheath_t* myelin_sheath_create(uint32_t id, uint32_t axon_id,
     sheath->segments = nimcp_calloc(max_segments, sizeof(myelin_segment_t*));
     if (!sheath->segments) {
         nimcp_free(sheath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_create: sheath->segments is NULL");
         return NULL;
     }
 
@@ -565,7 +574,10 @@ nimcp_result_t myelin_sheath_remove_segment(myelin_sheath_t* sheath,
 
 myelin_segment_t* myelin_sheath_get_segment(myelin_sheath_t* sheath, uint32_t index)
 {
-    if (!sheath || index >= sheath->num_segments) return NULL;
+    if (!sheath || index >= sheath->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "myelin_sheath_get_segment: sheath is NULL");
+        return NULL;
+    }
     return sheath->segments[index];
 }
 
@@ -590,6 +602,7 @@ myelin_segment_t* myelin_sheath_find_segment_at(myelin_sheath_t* sheath,
             }
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_find_segment_at: capacity exceeded");
     return NULL;
 }
 
@@ -971,7 +984,10 @@ void myelin_segment_update_paranode_integrity(myelin_segment_t* segment,
 
 bool myelin_segment_paranodes_functional(const myelin_segment_t* segment)
 {
-    if (!segment) return false;
+    if (!segment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_segment_paranodes_functional: segment is NULL");
+        return false;
+    }
     return (segment->proximal_paranode == PARANODE_MATURE &&
             segment->distal_paranode == PARANODE_MATURE &&
             segment->paranode_integrity > 0.5F);
@@ -1028,7 +1044,10 @@ void myelin_segment_set_trophic_support(myelin_segment_t* segment, float trophic
 
 bool myelin_segment_metabolically_healthy(const myelin_segment_t* segment)
 {
-    if (!segment) return false;
+    if (!segment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_segment_metabolically_healthy: segment is NULL");
+        return false;
+    }
     return (segment->atp_level > 0.3F &&
             segment->trophic_support > NIMCP_MYELIN_TROPHIC_THRESHOLD);
 }
@@ -1183,6 +1202,7 @@ myelin_sheath_t* myelin_sheath_cow_copy(myelin_sheath_t* sheath)
     if (!copy) {
         sheath->cow_ref_count--;
         nimcp_spinlock_unlock(&sheath->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_cow_copy: copy is NULL");
         return NULL;
     }
 
@@ -1195,6 +1215,7 @@ myelin_sheath_t* myelin_sheath_cow_copy(myelin_sheath_t* sheath)
         sheath->cow_ref_count--;
         nimcp_free(copy);
         nimcp_spinlock_unlock(&sheath->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_cow_copy: copy->segments is NULL");
         return NULL;
     }
     memcpy(copy->segments, sheath->segments, sheath->max_segments * sizeof(myelin_segment_t*));
@@ -1298,7 +1319,10 @@ void myelin_sheath_cow_release(myelin_sheath_t* sheath)
 
 bool myelin_sheath_is_cow_copy(const myelin_sheath_t* sheath)
 {
-    if (!sheath) return false;
+    if (!sheath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_is_cow_copy: sheath is NULL");
+        return false;
+    }
     return (sheath->cow_original != NULL && !sheath->cow_modified);
 }
 
@@ -1334,6 +1358,7 @@ myelin_sheath_network_t* myelin_network_create(const myelin_network_config_t* co
     network->sheaths = nimcp_calloc(config->max_sheaths, sizeof(myelin_sheath_t*));
     if (!network->sheaths) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_network_create: network->sheaths is NULL");
         return NULL;
     }
 
@@ -1479,6 +1504,7 @@ myelin_sheath_t* myelin_network_find_sheath(myelin_sheath_network_t* network,
             return network->sheaths[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_network_find_sheath: validation failed");
     return NULL;
 }
 
@@ -1498,6 +1524,7 @@ myelin_sheath_t* myelin_network_find_by_axon(myelin_sheath_network_t* network,
             return network->sheaths[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_network_find_by_axon: validation failed");
     return NULL;
 }
 
@@ -1665,6 +1692,7 @@ myelin_sheath_t* myelin_network_create_sheath_for_axon(
     // Add to network
     if (myelin_network_add_sheath(network, sheath) != NIMCP_SUCCESS) {
         myelin_sheath_destroy(sheath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_network_create_sheath_for_axon: validation failed");
         return NULL;
     }
 

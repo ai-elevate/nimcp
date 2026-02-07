@@ -157,6 +157,7 @@ omni_occipital_bridge_t* omni_occipital_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "omni_occipital") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_occipital_default_config: bridge->base is NULL");
         return NULL;
     }
 

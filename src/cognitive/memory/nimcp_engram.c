@@ -221,14 +221,20 @@ static bool expand_engram_array(engram_system_t* system) {
     // WHY:  Dynamic growth as needed
     // HOW:  Allocate new array, copy, free old (handles both unified and direct memory)
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_engram_array: system is NULL");
+        return false;
+    }
 
     uint32_t new_capacity = (uint32_t)(system->capacity * ENGRAM_GROWTH_FACTOR);
     size_t old_size = system->capacity * sizeof(memory_engram_t);
 
     // Allocate new array (always use direct allocation for grown arrays)
     memory_engram_t* new_array = (memory_engram_t*)nimcp_calloc(new_capacity, sizeof(memory_engram_t));
-    if (!new_array) return false;
+    if (!new_array) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_engram_array: new_array is NULL");
+        return false;
+    }
 
     // Copy existing engrams
     memcpy(new_array, system->engrams, old_size);
@@ -284,6 +290,7 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
     // Need to expand
     uint32_t old_capacity = system->capacity;
     if (!expand_engram_array(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: expand_engram_array is NULL");
         return NULL;
     }
 
@@ -309,6 +316,7 @@ engram_system_t* engram_system_create(void) {
     engram_system_t* system = (engram_system_t*)nimcp_calloc(1, sizeof(engram_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate engram system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "engram_system_create: system is NULL");
         return NULL;
     }
 
@@ -339,6 +347,7 @@ engram_system_t* engram_system_create(void) {
         if (!system->engrams) {
             if (system->mem_manager) unified_mem_destroy(system->mem_manager);
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engram_system_create: validation failed");
             return NULL;
         }
         LOG_DEBUG(LOG_MODULE, "Engram array allocated via direct memory (no CoW)");
@@ -748,9 +757,18 @@ bool engram_recognize(
     // HOW:  Check overlap without full reactivation
 
     // Guard clauses
-    if (!system) return false;
-    if (!pattern) return false;
-    if (count == 0) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: pattern is NULL");
+        return false;
+    }
+    if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: count is zero");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     engram_heartbeat("engram_recognize", 0.0f);
@@ -966,17 +984,29 @@ bool engram_block_reconsolidation(
     // WHY:  Therapeutic weakening of maladaptive memories
     // HOW:  Set to degrading state
 
-    if (!system) return false;
-    if (engram_id == 0) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
+    if (engram_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: engram_id is zero");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     engram_heartbeat("engram_block_reconsolidatio", 0.0f);
 
 
     memory_engram_t* engram = engram_get_by_id(system, engram_id);
-    if (!engram) return false;
+    if (!engram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engram is NULL");
+        return false;
+    }
 
-    if (!engram->is_reconsolidating) return false;
+    if (!engram->is_reconsolidating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engram->is_reconsolidating is NULL");
+        return false;
+    }
 
     // Block = put in degrading state
     engram->state = ENGRAM_STATE_DEGRADING;
@@ -1112,7 +1142,10 @@ memory_engram_t* engram_get_by_id(
 
 
     }
-    if (engram_id == 0) return NULL;
+    if (engram_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: engram_id is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     engram_heartbeat("engram_get_by_id", 0.0f);
@@ -1131,6 +1164,7 @@ memory_engram_t* engram_get_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
     return NULL;
 }
 
@@ -1190,7 +1224,10 @@ bool engram_is_reconsolidating(
     const engram_system_t* system,
     uint64_t engram_id) {
 
-    if (!system || engram_id == 0) return false;
+    if (!system || engram_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     engram_heartbeat("engram_is_reconsolidating", 0.0f);
@@ -1209,6 +1246,7 @@ bool engram_is_reconsolidating(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
 }
 

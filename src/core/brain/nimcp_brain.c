@@ -555,6 +555,7 @@ adaptive_network_t brain_get_network(brain_t brain)
 {
     if (!brain) {
         set_error("NULL brain passed to brain_get_network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_network: brain is NULL");
         return NULL;
     }
 
@@ -562,6 +563,7 @@ adaptive_network_t brain_get_network(brain_t brain)
     // WHY: External subsystems (introspection, salience, consolidation) may mutate the network
     // RISK: Exposing shared network allows corruption from external modifications
     if (!ensure_writable_network(brain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_network: ensure_writable_network is NULL");
         return NULL;  // Error already set
     }
 
@@ -579,6 +581,7 @@ neuromodulator_system_t brain_get_neuromodulator_system(brain_t brain)
 {
     if (!brain) {
         set_error("NULL brain passed to brain_get_neuromodulator_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_neuromodulator_system: brain is NULL");
         return NULL;
     }
 
@@ -596,6 +599,7 @@ struct brain_module_struct* brain_get_brain_regions(brain_t brain)
 {
     if (!brain) {
         set_error("NULL brain passed to brain_get_brain_regions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_brain_regions: brain is NULL");
         return NULL;
     }
 
@@ -920,10 +924,14 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source);
  */
 static bool is_cached_input(brain_t brain, const float* features, uint32_t num_features)
 {
-    if (!brain->last_input || !brain->cached_decision)
+    if (!brain->last_input || !brain->cached_decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_cached_input: required parameter is NULL (brain->last_input, brain->cached_decision)");
         return false;
-    if (brain->input_size != num_features)
+    }
+    if (brain->input_size != num_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_cached_input: validation failed");
         return false;
+    }
 
     return memcmp(brain->last_input, features, num_features * sizeof(float)) == 0;
 }
@@ -1040,6 +1048,7 @@ static int mutex_lock_with_timeout(nimcp_platform_mutex_t* mutex, uint64_t timeo
     // Timeout - log critical error
     LOG_MODULE_ERROR("BRAIN", "CRITICAL: Mutex lock timeout after %lu us - potential deadlock detected",
                      (unsigned long)timeout_us);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mutex_lock_with_timeout: operation failed");
     return -1;
 }
 
@@ -1160,26 +1169,31 @@ static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
 {
     if (!task_name) {
         set_error("task_name cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_creation_params: task_name is NULL");
         return false;
     }
 
     if (num_inputs == 0) {
         set_error("num_inputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_inputs is zero");
         return false;
     }
 
     if (num_inputs > 10000) {
         set_error("num_inputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: validation failed");
         return false;
     }
 
     if (num_outputs == 0) {
         set_error("num_outputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_outputs is zero");
         return false;
     }
 
     if (num_outputs > 10000) {
         set_error("num_outputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: validation failed");
         return false;
     }
 
@@ -1201,6 +1215,7 @@ brain_t allocate_brain(void)
     brain_t brain = nimcp_calloc(1, sizeof(struct brain_struct));
     if (!brain) {
         set_error("Failed to allocate brain structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_brain: brain is NULL");
         return NULL;
     }
 
@@ -1212,6 +1227,7 @@ brain_t allocate_brain(void)
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         set_error("Failed to initialize cache mutex");
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "allocate_brain: validation failed");
         return NULL;
     }
 
@@ -1273,6 +1289,7 @@ adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_output
     // WHY: NULL layer_sizes will cause crash in adaptive_network_create
     if (!net_config.base_config.layer_sizes) {
         // Error already set by build_base_network_config
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_brain_network: net_config is NULL");
         return NULL;
     }
 
@@ -1302,6 +1319,7 @@ bool init_output_labels(brain_t brain, uint32_t num_outputs)
 {
     if (!brain) {
         set_error("NULL brain pointer in init_output_labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_output_labels: brain is NULL");
         return false;
     }
     if (num_outputs == 0) {
@@ -1313,6 +1331,7 @@ bool init_output_labels(brain_t brain, uint32_t num_outputs)
     brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_output_labels: brain->output_labels is NULL");
         return false;
     }
     brain->num_output_labels = 0;
@@ -1383,6 +1402,7 @@ bool init_attention_subsystem(brain_t brain)
     // WHY:  Prevent null pointer dereference
     // HOW:  Check brain pointer before use
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_subsystem: brain is NULL");
         return false;
     }
 
@@ -1436,6 +1456,7 @@ bool init_attention_subsystem(brain_t brain)
     brain->multihead_attention = multihead_attention_create(&attention_config);
     if (!brain->multihead_attention) {
         set_error("Failed to create multihead attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_subsystem: brain->multihead_attention is NULL");
         return false;
     }
 
@@ -1472,6 +1493,7 @@ bool init_brain_regions_subsystem(brain_t brain)
     // WHY:  Prevent null pointer dereference
     // HOW:  Check brain pointer before use
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_brain_regions_subsystem: brain is NULL");
         return false;
     }
 
@@ -1503,6 +1525,7 @@ bool init_brain_regions_subsystem(brain_t brain)
     brain->brain_regions = brain_module_create(num_regions);
     if (!brain->brain_regions) {
         set_error("Failed to create brain regions module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_brain_regions_subsystem: brain->brain_regions is NULL");
         return false;
     }
 
@@ -1520,6 +1543,7 @@ bool init_brain_regions_subsystem(brain_t brain)
         brain_region_t* region = brain_region_create(region_types[i], neurons_per_region);
         if (!region) {
             set_error("Failed to create brain region");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_brain_regions_subsystem: region is NULL");
             return false;
         }
 
@@ -1529,6 +1553,7 @@ bool init_brain_regions_subsystem(brain_t brain)
         if (brain_region_organize_columns(region, columns_x, columns_y) != NIMCP_SUCCESS) {
             brain_region_destroy(region);
             set_error("Failed to organize brain region into minicolumns");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_regions_subsystem: validation failed");
             return false;
         }
 
@@ -1536,6 +1561,7 @@ bool init_brain_regions_subsystem(brain_t brain)
         if (brain_module_add_region(brain->brain_regions, region) != NIMCP_SUCCESS) {
             brain_region_destroy(region);
             set_error("Failed to add region to brain module");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_regions_subsystem: validation failed");
             return false;
         }
     }
@@ -1600,6 +1626,7 @@ bool init_brain_regions_subsystem(brain_t brain)
 bool init_symbolic_logic_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_logic_subsystem: brain is NULL");
         return false;
     }
 
@@ -1623,6 +1650,7 @@ bool init_symbolic_logic_subsystem(brain_t brain)
     brain->logic = neural_logic_create(&logic_config);
     if (!brain->logic) {
         set_error("Failed to create neural logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_logic_subsystem: brain->logic is NULL");
         return false;
     }
 
@@ -1642,6 +1670,7 @@ bool init_symbolic_logic_subsystem(brain_t brain)
 bool init_symbolic_reasoning_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_reasoning_subsystem: brain is NULL");
         return false;
     }
 
@@ -1671,6 +1700,7 @@ bool init_symbolic_reasoning_subsystem(brain_t brain)
     brain->symbolic_logic = symbolic_logic_create(&logic_config);
     if (!brain->symbolic_logic) {
         set_error("Failed to create symbolic logic engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_symbolic_reasoning_subsystem: brain->symbolic_logic is NULL");
         return false;
     }
 
@@ -1690,6 +1720,7 @@ bool init_symbolic_reasoning_subsystem(brain_t brain)
 bool init_epistemic_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_epistemic_subsystem: brain is NULL");
         return false;
     }
 
@@ -1713,6 +1744,7 @@ bool init_epistemic_subsystem(brain_t brain)
     brain->epistemic = epistemic_filter_create(skepticism_level);
     if (!brain->epistemic) {
         set_error("Failed to create epistemic filter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_epistemic_subsystem: brain->epistemic is NULL");
         return false;
     }
 
@@ -2619,6 +2651,7 @@ bool ensure_writable_network(brain_t brain)
     // Guard: Validate parameter
     if (!brain) {
         set_error("NULL brain in ensure_writable_network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain is NULL");
         return false;
     }
 
@@ -2631,6 +2664,7 @@ bool ensure_writable_network(brain_t brain)
     // For Phase 2, we'll create a full copy of the network
     if (!brain->network) {
         set_error("COW clone has NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain->network is NULL");
         return false;
     }
 
@@ -2647,6 +2681,7 @@ bool ensure_writable_network(brain_t brain)
     int fd = mkstemp(temp_file);
     if (fd < 0) {
         set_error("Failed to create secure temp file for COW copy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_writable_network: validation failed");
         return false;
     }
     close(fd);  // Close fd, we'll use the filename with adaptive_network_save
@@ -2655,6 +2690,7 @@ bool ensure_writable_network(brain_t brain)
     if (!adaptive_network_save(shared_network, temp_file, SERIALIZE_FORMAT_BINARY)) {
         unlink(temp_file);  // Clean up on failure
         set_error("Failed to save network for COW copy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_writable_network: adaptive_network_save is NULL");
         return false;
     }
 
@@ -2668,6 +2704,7 @@ bool ensure_writable_network(brain_t brain)
         // Failed to load - restore shared network and fail
         brain->network = shared_network;
         set_error("Failed to load network copy for COW");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain->network is NULL");
         return false;
     }
 
@@ -2987,6 +3024,7 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
 
     if (!decision->output_vector) {
         nimcp_free(decision);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_decision: decision->output_vector is NULL");
         return NULL;
     }
 
@@ -3052,6 +3090,7 @@ brain_decision_t* copy_decision(brain_decision_t* source)
         uint32_t* new_refcount = nimcp_malloc(sizeof(uint32_t));
         if (!new_refcount) {
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision: new_refcount is NULL");
             return NULL;
         }
         // Initial refcount = 2 (source + this copy)
@@ -3135,6 +3174,7 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
         copy->output_vector = nimcp_malloc(source->output_size * sizeof(float));
         if (!copy->output_vector) {
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision_deep: copy->output_vector is NULL");
             return NULL;
         }
         memcpy(copy->output_vector, source->output_vector, source->output_size * sizeof(float));
@@ -3147,6 +3187,7 @@ brain_decision_t* copy_decision_deep(const brain_decision_t* source)
             if (copy->output_vector)
                 nimcp_free(copy->output_vector);
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_decision_deep: validation failed");
             return NULL;
         }
         memcpy(copy->active_neuron_ids, source->active_neuron_ids,
@@ -3370,6 +3411,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     // Guard: Validate parameters
     if (!brain || !features) {
         set_error("Invalid parameters to brain_decide");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: required parameter is NULL (brain, features)");
         return NULL;
     }
 
@@ -3380,6 +3422,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (num_features != brain->config.num_inputs) {
         set_error("Feature count mismatch: expected %u, got %u", brain->config.num_inputs,
                   num_features);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: validation failed");
         return NULL;
     }
 
@@ -3395,6 +3438,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     float* local_features = nimcp_malloc(num_features * sizeof(float));
     if (!local_features) {
         set_error("Failed to allocate local features buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_decide: local_features is NULL");
         return NULL;
     }
     memcpy(local_features, features, num_features * sizeof(float));
@@ -3421,6 +3465,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (nimcp_platform_mutex_lock(&brain->cache_mutex) != 0) {
         set_error("Failed to lock cache mutex for cache check");
         nimcp_free(local_features);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "brain_decide: validation failed");
         return NULL;
     }
 
@@ -3434,6 +3479,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
             set_error("Failed to unlock cache mutex after cache hit");
             brain_free_decision(cached_copy);
             nimcp_free(local_features);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "brain_decide: validation failed");
             return NULL;
         }
 
@@ -3448,6 +3494,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         if (nimcp_platform_mutex_unlock(&brain->cache_mutex) != 0) {
             set_error("Failed to unlock cache mutex after cache miss");
             nimcp_free(local_features);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "brain_decide: validation failed");
             return NULL;
         }
     }
@@ -3475,6 +3522,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
                          brain->last_distress.description ? brain->last_distress.description : "Unknown");
                 // Note: Caller should check error and potentially apply intervention
                 nimcp_free(local_features);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: validation failed");
                 return NULL;
             }
         }
@@ -3487,6 +3535,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
         // Not using read-only mode - ensure network is writable
         if (!ensure_writable_network(brain)) {
             nimcp_free(local_features);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide: ensure_writable_network is NULL");
             return NULL;  // Error already set
         }
     }
@@ -3497,6 +3546,7 @@ brain_decision_t* brain_decide(brain_t brain, const float* features, uint32_t nu
     if (!decision) {
         set_error("Failed to allocate decision structure");
         nimcp_free(local_features);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_decide: decision is NULL");
         return NULL;
     }
 
@@ -4774,6 +4824,7 @@ static bool save_working_memory_state(working_memory_t* wm, FILE* file)
 {
     // Guard: NULL file handle
     if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "save_working_memory_state: file is NULL");
         return false;
     }
 
@@ -4849,6 +4900,7 @@ static bool save_metadata(brain_t brain, const char* filepath)
 
     FILE* meta_file = fopen(meta_path, "wb");
     if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "save_metadata: meta_file is NULL");
         return false;
     }
 
@@ -5031,28 +5083,33 @@ static bool load_working_memory_item(working_memory_t* wm, FILE* file)
 
     // Guard: NULL parameters
     if (!wm || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_working_memory_item: required parameter is NULL (wm, file)");
         return false;
     }
 
     uint32_t item_size = 0;
     if (fread(&item_size, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
         return false;
     }
 
     // Guard: Invalid size
     if (item_size == 0 || item_size > MAX_ITEM_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: item_size is zero");
         return false;
     }
 
     // Allocate temporary buffer
     float* item = nimcp_malloc(item_size * sizeof(float));
     if (!item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_working_memory_item: item is NULL");
         return false;
     }
 
     // Read item data
     if (fread(item, sizeof(float), item_size, file) != item_size) {
         nimcp_free(item);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
         return false;
     }
 
@@ -5083,6 +5140,7 @@ static bool load_working_memory_state(brain_t brain, FILE* file)
 {
     // Guard: NULL parameters
     if (!brain || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_working_memory_state: required parameter is NULL (brain, file)");
         return false;
     }
 
@@ -5147,8 +5205,10 @@ static bool load_metadata(brain_t brain, const char* filepath)
     snprintf(meta_path, sizeof(meta_path), "%s.meta", filepath);
 
     FILE* meta_file = fopen(meta_path, "rb");
-    if (!meta_file)
+    if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_metadata: meta_file is NULL");
         return false;
+    }
 
     // Try to read version header
     nimcp_file_header_t header;
@@ -5170,6 +5230,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
                         header.version_major, header.version_minor,
                         NIMCP_FORMAT_VERSION_MAJOR);
                 fclose(meta_file);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
                 return false;
             }
 
@@ -5201,6 +5262,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
     if (fread(&brain->config, sizeof(brain_config_t), 1, meta_file) != 1) {
         fprintf(stderr, "ERROR: Failed to read brain config from metadata file\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
@@ -5210,6 +5272,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
                                     sizeof(brain->config.learning_rate))) {
         fprintf(stderr, "ERROR: Invalid learning_rate in loaded config (NaN or Inf)\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
 
@@ -5218,6 +5281,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
                                     sizeof(brain->config.sparsity_target))) {
         fprintf(stderr, "ERROR: Invalid sparsity_target in loaded config (NaN or Inf)\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
 
@@ -5226,11 +5290,13 @@ static bool load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->config.num_inputs))) {
         fprintf(stderr, "ERROR: Invalid num_inputs in loaded config\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_inputs < 1 || brain->config.num_inputs > 10000) {
         fprintf(stderr, "ERROR: num_inputs out of range (1-10000): %u\n", brain->config.num_inputs);
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
@@ -5239,18 +5305,21 @@ static bool load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->config.num_outputs))) {
         fprintf(stderr, "ERROR: Invalid num_outputs in loaded config\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
         fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n",
                 brain->config.num_outputs);
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
     if (fread(&brain->num_output_labels, sizeof(uint32_t), 1, meta_file) != 1) {
         fprintf(stderr, "ERROR: Failed to read num_output_labels from metadata file\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
@@ -5263,6 +5332,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->num_output_labels))) {
         fprintf(stderr, "ERROR: Invalid num_output_labels in loaded metadata\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: operation failed");
         return false;
     }
     if (brain->num_output_labels > MAX_OUTPUT_LABELS) {
@@ -5270,6 +5340,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
                 brain->num_output_labels, MAX_OUTPUT_LABELS);
         fprintf(stderr, "This file may be maliciously crafted\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_metadata: validation failed");
         return false;
     }
 
@@ -5284,6 +5355,7 @@ static bool load_metadata(brain_t brain, const char* filepath)
     if (!brain->output_labels) {
         fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_metadata: brain->output_labels is NULL");
         return false;
     }
 
@@ -5430,6 +5502,7 @@ cleanup:
     nimcp_free(brain->output_labels);
     brain->output_labels = NULL;
     fclose(meta_file);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
 }
 
@@ -5459,6 +5532,7 @@ cleanup:
 static bool ensure_snapshot_dir(const char* snapshot_dir)
 {
     if (!snapshot_dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_snapshot_dir: snapshot_dir is NULL");
         return false;
     }
 
@@ -5823,23 +5897,27 @@ char* brain_export_json(brain_t brain, uint32_t flags)
 brain_t brain_import_json(const char* json_str)
 {
     (void)json_str;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_import_json: operation failed");
     return NULL;
 }
 
 bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags)
 {
     if (!brain || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_json: required parameter is NULL (brain, filepath)");
         return false;
     }
 
     char* json = brain_export_json(brain, flags);
     if (!json) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_json: json is NULL");
         return false;
     }
 
     FILE* f = fopen(filepath, "w");
     if (!f) {
         nimcp_free(json);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_json: f is NULL");
         return false;
     }
     
@@ -5869,6 +5947,7 @@ bool brain_save_json(brain_t brain, const char* filepath, uint32_t flags)
 bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new_base_network, uint32_t new_neuron_count)
 {
     if (!brain || !new_base_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize_update_subsystems_internal: required parameter is NULL (brain, new_base_network)");
         return false;
     }
 
@@ -5930,6 +6009,7 @@ bool brain_resize_update_subsystems_internal(brain_t brain, neural_network_t new
 brain_t brain_load_json(const char* filepath)
 {
     (void)filepath;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load_json: operation failed");
     return NULL;
 }
 
@@ -5959,18 +6039,21 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
     if (!brain) {
         LOG_MODULE_ERROR("BRAIN", "brain_predict: NULL brain");
         set_error("brain_predict: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_predict: brain is NULL");
         return false;
     }
 
     if (!input || input_size == 0) {
         LOG_MODULE_ERROR("BRAIN", "brain_predict: invalid input parameters (input=%p, size=%u)", input, input_size);
         set_error("brain_predict: invalid input parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_predict: input is NULL");
         return false;
     }
 
     if (!output || output_size == 0) {
         LOG_MODULE_ERROR("BRAIN", "brain_predict: invalid output parameters (output=%p, size=%u)", output, output_size);
         set_error("brain_predict: invalid output parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_predict: output is NULL");
         return false;
     }
 
@@ -5978,6 +6061,7 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
     if (!brain->network) {
         LOG_MODULE_ERROR("BRAIN", "brain_predict: network not initialized");
         set_error("brain_predict: network not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_predict: brain->network is NULL");
         return false;
     }
 
@@ -5986,6 +6070,7 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
         LOG_MODULE_ERROR("BRAIN", "brain_predict: input size mismatch (expected=%u, got=%u)",
                          brain->config.num_inputs, input_size);
         set_error("brain_predict: input size mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_predict: validation failed");
         return false;
     }
 
@@ -5994,6 +6079,7 @@ bool brain_predict(brain_t brain, const float* input, uint32_t input_size,
         LOG_MODULE_ERROR("BRAIN", "brain_predict: output size mismatch (expected=%u, got=%u)",
                          brain->config.num_outputs, output_size);
         set_error("brain_predict: output size mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_predict: validation failed");
         return false;
     }
 

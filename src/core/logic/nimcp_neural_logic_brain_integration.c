@@ -89,6 +89,7 @@ typedef struct ast_node {
 static neuromodulator_system_t get_neuromod_system(brain_t brain) {
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_neuromod_system: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -214,12 +215,14 @@ bool brain_create_neural_logic(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_create_neural_logic: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_neural_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: logic network already exists
     if (brain->logic) {
         LOG_WARNING("brain_create_neural_logic: logic network already exists");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_neural_logic: validation failed");
         return false;
     }
 
@@ -234,6 +237,7 @@ bool brain_create_neural_logic(
     neural_logic_network_t network = neural_logic_create(config);
     if (!network) {
         LOG_ERROR("brain_create_neural_logic: failed to create network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_neural_logic: network is NULL");
         return false;
     }
 
@@ -279,12 +283,14 @@ bool brain_neural_logic_evaluate(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_neural_logic_evaluate: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_evaluate: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network
     if (!brain->logic) {
         LOG_ERROR("brain_neural_logic_evaluate: no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_neural_logic_evaluate: brain->logic is NULL");
         return false;
     }
 
@@ -292,6 +298,7 @@ bool brain_neural_logic_evaluate(
     if (!nimcp_validate_pointer(inputs, "inputs") ||
         !nimcp_validate_pointer(output, "output")) {
         LOG_ERROR("brain_neural_logic_evaluate: NULL inputs or output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_evaluate: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -303,6 +310,7 @@ bool brain_neural_logic_evaluate(
     logic_neuron_state_t state;
     if (!neural_logic_get_state(brain->logic, gate_id, &state)) {
         LOG_ERROR("brain_neural_logic_evaluate: invalid gate_id %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_evaluate: neural_logic_get_state is NULL");
         return false;
     }
 
@@ -324,6 +332,7 @@ bool brain_neural_logic_evaluate(
 
     if (!success) {
         LOG_ERROR("brain_neural_logic_evaluate: evaluation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_neural_logic_evaluate: success is NULL");
         return false;
     }
 
@@ -385,12 +394,14 @@ bool brain_neural_logic_get_modulated_threshold(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_neural_logic_get_modulated_threshold: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_get_modulated_threshold: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!nimcp_validate_pointer(modulated_threshold, "modulated_threshold")) {
         LOG_ERROR("brain_neural_logic_get_modulated_threshold: NULL output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_get_modulated_threshold: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -416,12 +427,14 @@ bool brain_neural_logic_get_stats(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_neural_logic_get_stats: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_get_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network
     if (!brain->logic) {
         LOG_ERROR("brain_neural_logic_get_stats: no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_neural_logic_get_stats: brain->logic is NULL");
         return false;
     }
 
@@ -432,6 +445,7 @@ bool brain_neural_logic_get_stats(
         !nimcp_validate_pointer(da_level, "da_level") ||
         !nimcp_validate_pointer(ach_level, "ach_level")) {
         LOG_ERROR("brain_neural_logic_get_stats: NULL output parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_get_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -441,6 +455,7 @@ bool brain_neural_logic_get_stats(
     if (!neural_logic_get_stats(brain->logic, total_gates, total_variables,
                                  total_spikes, &avg_eval_time, &gpu_memory)) {
         LOG_ERROR("brain_neural_logic_get_stats: failed to get network stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_neural_logic_get_stats: operation failed");
         return false;
     }
 
@@ -470,6 +485,7 @@ bool parse_variable(const char* expr, size_t* pos, char* var_name) {
     if (!nimcp_validate_pointer(expr, "expr") ||
         !nimcp_validate_pointer(pos, "pos") ||
         !nimcp_validate_pointer(var_name, "var_name")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_variable: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -477,6 +493,7 @@ bool parse_variable(const char* expr, size_t* pos, char* var_name) {
 
     // Check if current char is uppercase letter (A-Z)
     if (!isupper(expr[*pos])) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_variable: isupper is NULL");
         return false;
     }
 
@@ -491,6 +508,7 @@ bool parse_operator(const char* expr, size_t* pos, logic_gate_type_t* gate_type)
     if (!nimcp_validate_pointer(expr, "expr") ||
         !nimcp_validate_pointer(pos, "pos") ||
         !nimcp_validate_pointer(gate_type, "gate_type")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_operator: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -574,6 +592,7 @@ bool parse_operator(const char* expr, size_t* pos, logic_gate_type_t* gate_type)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_operator: validation failed");
     return false;
 }
 
@@ -610,6 +629,7 @@ static ast_node_t* parse_primary(const char* expr, size_t* pos) {
         return node;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_primary: operation failed");
     return NULL;
 }
 

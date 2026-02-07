@@ -139,7 +139,10 @@ static bool check_coincidence(
     uint64_t current_time,
     float window_ms
 ) {
-    if (!cell) return false;
+    if (!cell) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_coincidence: cell is NULL");
+        return false;
+    }
 
     // Check if both basal and apical were active recently
     uint64_t window_ticks = (uint64_t)window_ms;
@@ -218,7 +221,10 @@ static bool generate_calcium_spike_if_threshold_crossed(
     const dendritic_config_t* config,
     uint64_t current_time
 ) {
-    if (!cell || !config) return false;
+    if (!cell || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_calcium_spike_if_threshold_crossed: required parameter is NULL (cell, config)");
+        return false;
+    }
 
     // Check if apical tuft voltage crossed Ca²⁺ threshold
     if (cell->apical_tuft.voltage >= config->calcium_threshold) {
@@ -230,6 +236,7 @@ static bool generate_calcium_spike_if_threshold_crossed(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_calcium_spike_if_threshold_crossed: cell->calcium_spike_active is NULL");
     return false;
 }
 
@@ -269,6 +276,7 @@ cortical_dendritic_t* cortical_dendritic_create(
     // Guard clause: validate inputs
     if (num_cells == 0) {
         NIMCP_LOGGING_ERROR("cortical_dendritic_create: num_cells must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_dendritic_create: num_cells is zero");
         return NULL;
     }
 
@@ -782,7 +790,10 @@ int cortical_dendritic_disconnect_bio_async(cortical_dendritic_t* dend) {
 bool cortical_dendritic_is_bio_async_connected(
     const cortical_dendritic_t* dend
 ) {
-    if (!dend) return false;
+    if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_dendritic_is_bio_async_connected: dend is NULL");
+        return false;
+    }
 
     nimcp_mutex_t* mutex_ptr = (nimcp_mutex_t*)&dend->mutex;
     nimcp_mutex_lock(mutex_ptr);

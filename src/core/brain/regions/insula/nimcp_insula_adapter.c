@@ -382,6 +382,7 @@ insula_adapter_t* insula_create(const insula_config_t* config) {
     insula_adapter_t* adapter = (insula_adapter_t*)nimcp_calloc(1, sizeof(insula_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", INSULA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_create: adapter is NULL");
         return NULL;
     }
 
@@ -401,6 +402,7 @@ insula_adapter_t* insula_create(const insula_config_t* config) {
     if (!adapter->intero_channels) {
         LOG_ERROR("[%s] Failed to allocate intero channels", INSULA_LOG_MODULE);
         insula_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_create: adapter->intero_channels is NULL");
         return NULL;
     }
 
@@ -420,6 +422,7 @@ insula_adapter_t* insula_create(const insula_config_t* config) {
     if (!adapter->somatic_markers) {
         LOG_ERROR("[%s] Failed to allocate somatic markers", INSULA_LOG_MODULE);
         insula_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_create: adapter->somatic_markers is NULL");
         return NULL;
     }
 
@@ -501,7 +504,10 @@ void insula_destroy(insula_adapter_t* adapter) {
 }
 
 bool insula_reset(insula_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", INSULA_LOG_MODULE);
 
@@ -544,11 +550,13 @@ bool insula_update_interoception(insula_adapter_t* adapter,
                                    const insula_intero_signal_t* signal) {
     if (!adapter || !signal) {
         set_error(adapter, INSULA_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: required parameter is NULL (adapter, signal)");
         return false;
     }
 
     if (signal->channel >= INTERO_CHANNEL_COUNT) {
         set_error(adapter, INSULA_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "insula_reset: capacity exceeded");
         return false;
     }
 
@@ -585,10 +593,14 @@ bool insula_update_interoception(insula_adapter_t* adapter,
 bool insula_update_interoception_batch(insula_adapter_t* adapter,
                                          const insula_intero_signal_t* signals,
                                          uint32_t count) {
-    if (!adapter || !signals) return false;
+    if (!adapter || !signals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: required parameter is NULL (adapter, signals)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         if (!insula_update_interoception(adapter, &signals[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_reset: insula_update_interoception is NULL");
             return false;
         }
     }
@@ -598,7 +610,10 @@ bool insula_update_interoception_batch(insula_adapter_t* adapter,
 
 bool insula_get_body_state(const insula_adapter_t* adapter,
                             insula_body_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->body_state;
     return true;
 }
@@ -606,7 +621,10 @@ bool insula_get_body_state(const insula_adapter_t* adapter,
 bool insula_set_interoceptive_sensitivity(insula_adapter_t* adapter,
                                             int channel,
                                             float sensitivity) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: adapter is NULL");
+        return false;
+    }
 
     sensitivity = clamp(sensitivity, 0.0f, 1.0f);
 
@@ -618,6 +636,7 @@ bool insula_set_interoceptive_sensitivity(insula_adapter_t* adapter,
     } else if (channel < INTERO_CHANNEL_COUNT) {
         adapter->intero_channels[channel].sensitivity = sensitivity;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_reset: validation failed");
         return false;
     }
 
@@ -633,6 +652,7 @@ bool insula_process_emotion(insula_adapter_t* adapter,
                              float arousal,
                              const char* source) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: adapter is NULL");
         return false;
     }
 
@@ -668,7 +688,10 @@ bool insula_process_emotion(insula_adapter_t* adapter,
 
 bool insula_get_emotional_state(const insula_adapter_t* adapter,
                                   insula_emotional_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->emotional_state;
     return true;
 }
@@ -676,12 +699,18 @@ bool insula_get_emotional_state(const insula_adapter_t* adapter,
 bool insula_create_somatic_marker(insula_adapter_t* adapter,
                                     uint32_t context,
                                     float valence) {
-    if (!adapter || !adapter->somatic_markers) return false;
+    if (!adapter || !adapter->somatic_markers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_reset: required parameter is NULL (adapter, adapter->somatic_markers)");
+        return false;
+    }
 
     /* Create new marker node */
     somatic_marker_node_t* node = (somatic_marker_node_t*)nimcp_calloc(
         1, sizeof(somatic_marker_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_reset: node is NULL");
+        return false;
+    }
 
     node->context = context;
     node->valence = clamp(valence, -1.0f, 1.0f);
@@ -726,6 +755,7 @@ bool insula_query_somatic_marker(const insula_adapter_t* adapter,
                                    float* valence,
                                    float* confidence) {
     if (!adapter || !adapter->somatic_markers || !valence || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, adapter->somatic_markers, valence, confidence)");
         return false;
     }
 
@@ -741,6 +771,7 @@ bool insula_query_somatic_marker(const insula_adapter_t* adapter,
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;  /* No marker found */
 }
 
@@ -942,7 +973,10 @@ float insula_process_rejection(insula_adapter_t* adapter,
 
 bool insula_get_social_state(const insula_adapter_t* adapter,
                                insula_social_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->social_state;
     return true;
 }
@@ -952,7 +986,10 @@ bool insula_get_social_state(const insula_adapter_t* adapter,
  *===========================================================================*/
 
 bool insula_integrate(insula_adapter_t* adapter, insula_output_t* output) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_integrate: adapter is NULL");
+        return false;
+    }
 
     adapter->status = INSULA_STATUS_INTEGRATION;
 
@@ -1015,7 +1052,10 @@ bool insula_integrate(insula_adapter_t* adapter, insula_output_t* output) {
 }
 
 bool insula_step(insula_adapter_t* adapter, double time_ms) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_step: adapter is NULL");
+        return false;
+    }
 
     double dt_ms = time_ms - adapter->current_time_ms;
     adapter->current_time_ms = time_ms;
@@ -1039,7 +1079,10 @@ bool insula_step(insula_adapter_t* adapter, double time_ms) {
 }
 
 bool insula_get_output(const insula_adapter_t* adapter, insula_output_t* output) {
-    if (!adapter || !output) return false;
+    if (!adapter || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_output: required parameter is NULL (adapter, output)");
+        return false;
+    }
     *output = adapter->current_output;
     return true;
 }
@@ -1051,7 +1094,10 @@ bool insula_get_output(const insula_adapter_t* adapter, insula_output_t* output)
 bool insula_set_body_callback(insula_adapter_t* adapter,
                                 insula_body_callback_t callback,
                                 void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_output: adapter is NULL");
+        return false;
+    }
     adapter->body_callback = callback;
     adapter->body_user_data = user_data;
     return true;
@@ -1060,7 +1106,10 @@ bool insula_set_body_callback(insula_adapter_t* adapter,
 bool insula_set_emotion_callback(insula_adapter_t* adapter,
                                    insula_emotion_callback_t callback,
                                    void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_output: adapter is NULL");
+        return false;
+    }
     adapter->emotion_callback = callback;
     adapter->emotion_user_data = user_data;
     return true;
@@ -1069,7 +1118,10 @@ bool insula_set_emotion_callback(insula_adapter_t* adapter,
 bool insula_set_social_callback(insula_adapter_t* adapter,
                                   insula_social_callback_t callback,
                                   void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_output: adapter is NULL");
+        return false;
+    }
     adapter->social_callback = callback;
     adapter->social_user_data = user_data;
     return true;
@@ -1078,7 +1130,10 @@ bool insula_set_social_callback(insula_adapter_t* adapter,
 bool insula_set_alarm_callback(insula_adapter_t* adapter,
                                  insula_alarm_callback_t callback,
                                  void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_output: adapter is NULL");
+        return false;
+    }
     adapter->alarm_callback = callback;
     adapter->alarm_user_data = user_data;
     return true;
@@ -1126,13 +1181,19 @@ const char* insula_status_string(insula_status_t status) {
 }
 
 bool insula_get_stats(const insula_adapter_t* adapter, insula_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool insula_get_config(const insula_adapter_t* adapter, insula_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }

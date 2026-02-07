@@ -147,14 +147,20 @@ void game_theory_substrate_bridge_destroy(game_theory_substrate_bridge_t* bridge
 }
 
 int game_theory_substrate_bridge_update(game_theory_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_substrate_bridge_heartbeat("game_theory__update", 0.0f);
 
 
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_substrate_bridge_update: validation failed");
+        return -1;
+    }
 
     float atp = metabolic.atp_level;
     float metabolic_cap = metabolic.metabolic_capacity;
@@ -184,7 +190,10 @@ int game_theory_substrate_bridge_update(game_theory_substrate_bridge_t* bridge) 
 }
 
 int game_theory_substrate_bridge_get_effects(const game_theory_substrate_bridge_t* bridge, game_theory_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     game_theory_substrate_bridge_heartbeat("game_theory__get_effects", 0.0f);
@@ -194,7 +203,10 @@ int game_theory_substrate_bridge_get_effects(const game_theory_substrate_bridge_
 }
 
 int game_theory_substrate_bridge_apply_effects(game_theory_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
@@ -263,7 +275,10 @@ int game_theory_substrate_bridge_apply_effects(game_theory_substrate_bridge_t* b
 }
 
 int game_theory_substrate_bridge_register_bio_async(game_theory_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_substrate_bridge_heartbeat("game_theory__register_bio_async", 0.0f);

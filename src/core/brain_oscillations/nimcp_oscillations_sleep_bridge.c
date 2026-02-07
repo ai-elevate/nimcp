@@ -90,7 +90,10 @@ static void oscillations_on_sleep_state_change(sleep_state_t new_state, void* us
 }
 
 int oscillations_sleep_default_config(oscillations_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_frequency_modulation = true;
     config->enable_power_modulation = true;
     config->enable_spindle_generation = true;
@@ -175,7 +178,10 @@ void oscillations_sleep_bridge_destroy(oscillations_sleep_bridge_t bridge) {
 }
 
 int oscillations_sleep_update(oscillations_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -219,7 +225,10 @@ int oscillations_sleep_get_effects(
     const oscillations_sleep_bridge_t bridge,
     oscillations_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

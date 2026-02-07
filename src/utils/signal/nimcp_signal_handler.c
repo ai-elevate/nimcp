@@ -343,12 +343,18 @@ static void safe_write_hex(uintptr_t value)
  */
 static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_size)
 {
-    if (!out_buf || buf_size == 0) return false;
+    if (!out_buf || buf_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: out_buf is NULL");
+        return false;
+    }
 
     out_buf[0] = '\0';
 
     int fd = open("/proc/self/maps", O_RDONLY);
-    if (fd < 0) return false;
+    if (fd < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: validation failed");
+        return false;
+    }
 
     char line_buf[512];
     ssize_t bytes_read;
@@ -433,6 +439,7 @@ static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_si
     }
 
     close(fd);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps_for_address: validation failed");
     return false;
 }
 
@@ -450,7 +457,10 @@ static bool parse_proc_maps_for_address(void* addr, char* out_buf, size_t buf_si
 static bool capture_crash_context(int sig, siginfo_t* info,
                                    ucontext_t* uc, crash_context_t* ctx)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capture_crash_context: ctx is NULL");
+        return false;
+    }
 
     memset(ctx, 0, sizeof(*ctx));
     ctx->signal = sig;
@@ -555,10 +565,16 @@ static void log_crash_context(const crash_context_t* ctx)
  */
 static bool present_crash_to_code_immune(const crash_context_t* ctx)
 {
-    if (!g_code_immune || !ctx) return false;
+    if (!g_code_immune || !ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "present_crash_to_code_immune: required parameter is NULL (g_code_immune, ctx)");
+        return false;
+    }
 
     /* Prevent recursive handling */
-    if (g_in_immune_handling) return false;
+    if (g_in_immune_handling) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "present_crash_to_code_immune: validation failed");
+        return false;
+    }
     g_in_immune_handling = 1;
 
     int result = code_immune_present_crash(
@@ -613,6 +629,7 @@ static int try_recovery_jump(int sig, bool handled)
         /* NOTREACHED */
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "try_recovery_jump: validation failed");
     return -1;
 }
 
@@ -950,6 +967,7 @@ signal_handler_config_t signal_handler_default_config(void)
 bool signal_handler_install(const signal_handler_config_t* config)
 {
     if (g_installed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
         return false;  /* Already installed */
     }
 
@@ -984,6 +1002,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_sigaction = handle_fatal_signal_extended;
         sa.sa_flags = SA_SIGINFO | SA_RESETHAND;  /* Get siginfo, reset after first signal */
         if (sigaction(SIGSEGV, &sa, &g_old_sigsegv) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -995,6 +1014,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_sigaction = handle_fatal_signal_extended;
         sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGABRT, &sa, &g_old_sigabrt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1006,6 +1026,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_sigaction = handle_fatal_signal_extended;
         sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGBUS, &sa, &g_old_sigbus) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1017,6 +1038,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_sigaction = handle_sigfpe_extended;
         sa.sa_flags = SA_SIGINFO;  /* No SA_RESETHAND - allow recovery */
         if (sigaction(SIGFPE, &sa, &g_old_sigfpe) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1028,6 +1050,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_sigaction = handle_fatal_signal_extended;
         sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
         if (sigaction(SIGILL, &sa, &g_old_sigill) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1039,6 +1062,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_handler = handle_shutdown_signal;
         sa.sa_flags = 0;
         if (sigaction(SIGTERM, &sa, &g_old_sigterm) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1050,6 +1074,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_handler = handle_shutdown_signal;
         sa.sa_flags = 0;
         if (sigaction(SIGINT, &sa, &g_old_sigint) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1061,6 +1086,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
         sa.sa_handler = handle_sighup;
         sa.sa_flags = 0;
         if (sigaction(SIGHUP, &sa, &g_old_sighup) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_install: validation failed");
             return false;
         }
     }
@@ -1072,6 +1098,7 @@ bool signal_handler_install(const signal_handler_config_t* config)
 bool signal_handler_uninstall(void)
 {
     if (!g_installed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_handler_uninstall: g_installed is NULL");
         return false;
     }
 
@@ -1358,10 +1385,12 @@ bool signal_handler_checkpoint_save(const char* checkpoint_path)
     const char* path = checkpoint_path ? checkpoint_path : g_config.checkpoint_path;
 
     if (!g_registered_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_handler_checkpoint_save: g_registered_brain is NULL");
         return false;
     }
 
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_handler_checkpoint_save: path is NULL");
         return false;
     }
 
@@ -1387,6 +1416,7 @@ bool signal_handler_checkpoint_save(const char* checkpoint_path)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_checkpoint_save: validation failed");
     return false;
 }
 
@@ -1509,6 +1539,7 @@ bool signal_handler_has_pending_crash(void)
 bool signal_handler_get_pending_crash(signal_crash_context_t* ctx)
 {
     if (!ctx || !g_pending_crash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_handler_get_pending_crash: required parameter is NULL (ctx, g_pending_crash)");
         return false;
     }
 
@@ -1538,6 +1569,7 @@ bool signal_handler_has_code_immune(void)
 #ifdef NIMCP_ENABLE_CODE_IMMUNE
     return (g_code_immune != NULL);
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_has_code_immune: operation failed");
     return false;
 #endif
 }
@@ -1590,6 +1622,7 @@ int signal_handler_init_thread_recovery(void)
     /* Allocate new context for this thread */
     ctx = nimcp_calloc(1, sizeof(signal_recovery_ctx_t));
     if (ctx == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_init_thread_recovery: validation failed");
         return -1;
     }
 
@@ -1605,6 +1638,7 @@ int signal_handler_init_thread_recovery(void)
     /* Store in thread-local storage */
     if (pthread_setspecific(g_recovery_ctx_key, ctx) != 0) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_init_thread_recovery: validation failed");
         return -1;
     }
 
@@ -1761,6 +1795,7 @@ int signal_handler_trigger_recovery(signal_recovery_result_t result)
     }
 
     /* No valid recovery point */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_handler_trigger_recovery: validation failed");
     return -1;
 }
 

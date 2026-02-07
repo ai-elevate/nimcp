@@ -171,6 +171,7 @@ static int create_frames_subsystem(
     state->frames_subsystem_id = brain_kg_add_node(
         kg, RSC_KG_FRAMES_NAME, BRAIN_KG_NODE_INTEGRATION, FRAMES_SUBSYSTEM_DESC);
     if (state->frames_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_frames_subsystem: validation failed");
         return -1;
     }
     state->node_count++;
@@ -202,9 +203,11 @@ int rsc_kg_register_frames(
 {
     (void)admin_token;
     if (!kg || !state || parent_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_frames: required parameter is NULL (kg, state)");
         return -1;
     }
     if (create_frames_subsystem(kg, parent_id, state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_frames: validation failed");
         return -1;
     }
     create_frame_nodes(kg, state);
@@ -224,6 +227,7 @@ static int create_context_subsystem(
     state->context_subsystem_id = brain_kg_add_node(
         kg, RSC_KG_CONTEXT_NAME, BRAIN_KG_NODE_INTEGRATION, CONTEXT_SUBSYSTEM_DESC);
     if (state->context_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_context_subsystem: validation failed");
         return -1;
     }
     state->node_count++;
@@ -259,9 +263,11 @@ int rsc_kg_register_contexts(
 {
     (void)admin_token;
     if (!kg || !state || parent_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_contexts: required parameter is NULL (kg, state)");
         return -1;
     }
     if (create_context_subsystem(kg, parent_id, state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_contexts: validation failed");
         return -1;
     }
     create_context_nodes(kg, state);
@@ -281,6 +287,7 @@ static int create_navigation_subsystem(
     state->navigation_subsystem_id = brain_kg_add_node(
         kg, RSC_KG_NAVIGATION_NAME, BRAIN_KG_NODE_INTEGRATION, NAVIGATION_SUBSYSTEM_DESC);
     if (state->navigation_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_navigation_subsystem: validation failed");
         return -1;
     }
     state->node_count++;
@@ -311,9 +318,11 @@ int rsc_kg_register_navigation(
 {
     (void)admin_token;
     if (!kg || !state || parent_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_navigation: required parameter is NULL (kg, state)");
         return -1;
     }
     if (create_navigation_subsystem(kg, parent_id, state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_navigation: validation failed");
         return -1;
     }
     create_navigation_nodes(kg, state);
@@ -333,6 +342,7 @@ static int create_imagination_subsystem(
     state->imagination_subsystem_id = brain_kg_add_node(
         kg, RSC_KG_IMAGINATION_NAME, BRAIN_KG_NODE_INTEGRATION, IMAGINATION_SUBSYSTEM_DESC);
     if (state->imagination_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_imagination_subsystem: validation failed");
         return -1;
     }
     state->node_count++;
@@ -362,9 +372,11 @@ int rsc_kg_register_imagination(
 {
     (void)admin_token;
     if (!kg || !state || parent_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_imagination: required parameter is NULL (kg, state)");
         return -1;
     }
     if (create_imagination_subsystem(kg, parent_id, state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_imagination: validation failed");
         return -1;
     }
     create_imagination_nodes(kg, state);
@@ -382,6 +394,7 @@ int rsc_kg_register_transform_edges(
 {
     (void)admin_token;
     if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_transform_edges: required parameter is NULL (kg, state)");
         return -1;
     }
 
@@ -420,6 +433,7 @@ int rsc_kg_register_context_edges(
 {
     (void)admin_token;
     if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_context_edges: required parameter is NULL (kg, state)");
         return -1;
     }
 
@@ -502,6 +516,7 @@ int rsc_kg_register_cross_edges(
 {
     (void)admin_token;
     if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_register_cross_edges: required parameter is NULL (kg, state)");
         return -1;
     }
     add_nav_frame_edges(kg, state);
@@ -522,18 +537,22 @@ static int register_subsystems(
 {
     if (config->register_frames &&
         rsc_kg_register_frames(kg, state->root_id, state, admin_token) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "register_subsystems: operation failed");
         return -1;
     }
     if (config->register_contexts &&
         rsc_kg_register_contexts(kg, state->root_id, state, admin_token) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "register_subsystems: operation failed");
         return -1;
     }
     if (config->register_navigation &&
         rsc_kg_register_navigation(kg, state->root_id, state, admin_token) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "register_subsystems: operation failed");
         return -1;
     }
     if (config->register_imagination &&
         rsc_kg_register_imagination(kg, state->root_id, state, admin_token) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "register_subsystems: operation failed");
         return -1;
     }
     return 0;
@@ -585,12 +604,14 @@ int rsc_kg_register_all(
     state->root_id = brain_kg_add_node(
         kg, RSC_KG_ROOT_NAME, BRAIN_KG_NODE_CORTICAL, RSC_ROOT_DESC);
     if (state->root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_all: validation failed");
         return -1;
     }
     state->node_count++;
 
     /* Register subsystems and edges */
     if (register_subsystems(kg, config, state, admin_token) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_register_all: validation failed");
         return -1;
     }
     register_edge_types(kg, config, state, admin_token);
@@ -616,6 +637,7 @@ int rsc_kg_update_state(
     char value_str[64];
 
     if (!kg || !state || !state->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_update_state: required parameter is NULL (kg, state, state->registered)");
         return -1;
     }
 
@@ -646,6 +668,7 @@ int rsc_kg_update_active_frame(
     brain_kg_node_id_t frame_ids[4];
 
     if (!kg || !state || !state->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_update_active_frame: required parameter is NULL (kg, state, state->registered)");
         return -1;
     }
 
@@ -675,9 +698,11 @@ int rsc_kg_update_imagination_state(
     char value_str[64];
 
     if (!kg || !state || !state->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_update_imagination_state: required parameter is NULL (kg, state, state->registered)");
         return -1;
     }
     if (state->imagination_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_kg_update_imagination_state: validation failed");
         return -1;
     }
 
@@ -720,6 +745,7 @@ brain_kg_node_list_t* rsc_kg_get_reference_frames(brain_kg_t* kg)
     }
     id = brain_kg_find_node(kg, RSC_KG_FRAMES_NAME);
     if (id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_get_reference_frames: validation failed");
         return NULL;
     }
     return brain_kg_get_neighbors(kg, id);
@@ -735,6 +761,7 @@ brain_kg_node_list_t* rsc_kg_get_context_types(brain_kg_t* kg)
     }
     id = brain_kg_find_node(kg, RSC_KG_CONTEXT_NAME);
     if (id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_get_context_types: validation failed");
         return NULL;
     }
     return brain_kg_get_neighbors(kg, id);
@@ -750,6 +777,7 @@ brain_kg_node_list_t* rsc_kg_get_navigation_components(brain_kg_t* kg)
     }
     id = brain_kg_find_node(kg, RSC_KG_NAVIGATION_NAME);
     if (id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_get_navigation_components: validation failed");
         return NULL;
     }
     return brain_kg_get_neighbors(kg, id);
@@ -765,6 +793,7 @@ brain_kg_node_list_t* rsc_kg_get_imagination_modes(brain_kg_t* kg)
     }
     id = brain_kg_find_node(kg, RSC_KG_IMAGINATION_NAME);
     if (id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_get_imagination_modes: validation failed");
         return NULL;
     }
     return brain_kg_get_neighbors(kg, id);
@@ -851,6 +880,7 @@ int rsc_kg_unregister_all(
     (void)admin_token;
 
     if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_kg_unregister_all: required parameter is NULL (kg, state)");
         return -1;
     }
     if (!state->registered) {

@@ -333,6 +333,7 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     if (config) {
         if (nimcp_brain_training_validate_config(config) != NIMCP_SUCCESS) {
             LOG_ERROR("Invalid brain-training configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_create: validation failed");
             return NULL;
         }
         local_config = *config;
@@ -343,6 +344,7 @@ nimcp_brain_training_ctx_t* nimcp_brain_training_create(
     nimcp_brain_training_ctx_t* ctx = nimcp_calloc(1, sizeof(nimcp_brain_training_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate brain-training context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_training_create: ctx is NULL");
         return NULL;
     }
 
@@ -633,6 +635,7 @@ static int find_free_loss_slot(nimcp_brain_training_ctx_t* ctx)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_loss_slot: ctx->loss_slots is NULL");
     return -1;
 }
 
@@ -643,6 +646,7 @@ static int find_loss_slot_by_id(nimcp_brain_training_ctx_t* ctx, uint32_t loss_i
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_loss_slot_by_id: validation failed");
     return -1;
 }
 
@@ -701,6 +705,7 @@ nimcp_loss_context_t* nimcp_brain_training_get_loss(
 
     int slot = find_loss_slot_by_id(ctx, loss_id);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_get_loss: validation failed");
         return NULL;
     }
 
@@ -738,6 +743,7 @@ static int find_free_optimizer_slot(nimcp_brain_training_ctx_t* ctx)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_optimizer_slot: ctx->optimizer_slots is NULL");
     return -1;
 }
 
@@ -748,6 +754,7 @@ static int find_optimizer_slot_by_id(nimcp_brain_training_ctx_t* ctx, uint32_t o
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_optimizer_slot_by_id: validation failed");
     return -1;
 }
 
@@ -800,6 +807,7 @@ nimcp_optimizer_context_t* nimcp_brain_training_get_optimizer(
 
     int slot = find_optimizer_slot_by_id(ctx, optimizer_id);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_get_optimizer: validation failed");
         return NULL;
     }
 
@@ -1241,6 +1249,7 @@ static int find_free_scheduler_slot(nimcp_brain_training_ctx_t* ctx)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_scheduler_slot: ctx->scheduler_slots is NULL");
     return -1;
 }
 
@@ -1251,6 +1260,7 @@ static int find_scheduler_slot_by_id(nimcp_brain_training_ctx_t* ctx, uint32_t s
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_scheduler_slot_by_id: validation failed");
     return -1;
 }
 
@@ -1294,6 +1304,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_brain_training_get_scheduler(
 
     int slot = find_scheduler_slot_by_id(ctx, scheduler_id);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_get_scheduler: validation failed");
         return NULL;
     }
 
@@ -1401,6 +1412,7 @@ static int find_free_gradmgr_slot(nimcp_brain_training_ctx_t* ctx)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_gradmgr_slot: ctx->gradmgr_slots is NULL");
     return -1;
 }
 
@@ -1411,6 +1423,7 @@ static int find_gradmgr_slot_by_id(nimcp_brain_training_ctx_t* ctx, uint32_t gra
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_gradmgr_slot_by_id: validation failed");
     return -1;
 }
 
@@ -1453,6 +1466,7 @@ nimcp_gradient_manager_ctx_t* nimcp_brain_training_get_gradient_manager(
 
     int slot = find_gradmgr_slot_by_id(ctx, gradmgr_id);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_get_gradient_manager: validation failed");
         return NULL;
     }
 
@@ -1513,6 +1527,7 @@ bool nimcp_brain_training_gradients_ready(
     uint32_t gradmgr_id)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_gradients_ready: ctx is NULL");
         return false;
     }
 
@@ -1716,6 +1731,7 @@ bool nimcp_brain_training_check_early_stop(
     float current_loss)
 {
     if (!ctx || !ctx->config.enable_early_stopping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_check_early_stop: required parameter is NULL (ctx, ctx->config)");
         return false;
     }
 
@@ -1753,6 +1769,7 @@ bool nimcp_brain_training_check_early_stop(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_training_check_early_stop: operation failed");
     return false;
 }
 
@@ -2477,6 +2494,7 @@ bool nimcp_brain_training_is_paused(
     const nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_training_is_paused: ctx is NULL");
         return false;
     }
 

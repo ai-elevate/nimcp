@@ -254,6 +254,7 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
 ) {
     if (!config || config->num_items == 0 ||
         config->num_items > NIMCP_GT_MAX_COMBO_ITEMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_combo_auction_create: operation failed");
         return NULL;
     }
 
@@ -275,12 +276,14 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
     ctx->bids = nimcp_calloc(ctx->max_bids, sizeof(nimcp_bundle_bid_t));
     if (!ctx->bids) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_combo_auction_create: ctx->bids is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx->bids);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_combo_auction_create: validation failed");
         return NULL;
     }
 
@@ -397,11 +400,17 @@ static int compare_bids_by_density(const void* a, const void* b) {
     float density_b = (items_b > 0) ? bid_b->value / (float)items_b : 0.0f;
 
     if (density_b > density_a) return 1;
-    if (density_b < density_a) return -1;
+    if (density_b < density_a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_bids_by_density: validation failed");
+        return -1;
+    }
 
     // Tie-break by total value
     if (bid_b->value > bid_a->value) return 1;
-    if (bid_b->value < bid_a->value) return -1;
+    if (bid_b->value < bid_a->value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_bids_by_density: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -798,6 +807,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_double_auction_create: required parameter is NULL (ctx->buy_orders, ctx->sell_orders)");
         return NULL;
     }
 
@@ -808,6 +818,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_double_auction_create: ctx->trades is NULL");
         return NULL;
     }
 
@@ -816,6 +827,7 @@ nimcp_double_auction_t nimcp_double_auction_create(
         nimcp_free(ctx->buy_orders);
         nimcp_free(ctx->sell_orders);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_double_auction_create: validation failed");
         return NULL;
     }
 
@@ -974,10 +986,16 @@ static int compare_buy_orders(const void* a, const void* b) {
 
     // Higher price first
     if (order_b->price > order_a->price) return 1;
-    if (order_b->price < order_a->price) return -1;
+    if (order_b->price < order_a->price) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_buy_orders: validation failed");
+        return -1;
+    }
 
     // Earlier timestamp first
-    if (order_a->timestamp_ms < order_b->timestamp_ms) return -1;
+    if (order_a->timestamp_ms < order_b->timestamp_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_buy_orders: validation failed");
+        return -1;
+    }
     if (order_a->timestamp_ms > order_b->timestamp_ms) return 1;
 
     return 0;
@@ -991,11 +1009,17 @@ static int compare_sell_orders(const void* a, const void* b) {
     const nimcp_order_t* order_b = (const nimcp_order_t*)b;
 
     // Lower price first
-    if (order_a->price < order_b->price) return -1;
+    if (order_a->price < order_b->price) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_sell_orders: validation failed");
+        return -1;
+    }
     if (order_a->price > order_b->price) return 1;
 
     // Earlier timestamp first
-    if (order_a->timestamp_ms < order_b->timestamp_ms) return -1;
+    if (order_a->timestamp_ms < order_b->timestamp_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_sell_orders: validation failed");
+        return -1;
+    }
     if (order_a->timestamp_ms > order_b->timestamp_ms) return 1;
 
     return 0;
@@ -1333,6 +1357,7 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     const nimcp_multi_unit_config_t* config
 ) {
     if (!config || config->total_units == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_unit_create: config is NULL");
         return NULL;
     }
 
@@ -1355,12 +1380,14 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
     ctx->bids = nimcp_calloc(ctx->max_bids, sizeof(nimcp_multi_bid_t));
     if (!ctx->bids) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_unit_create: ctx->bids is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx->bids);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_multi_unit_create: validation failed");
         return NULL;
     }
 
@@ -1445,10 +1472,16 @@ static int compare_multi_bids(const void* a, const void* b) {
     const nimcp_multi_bid_t* bid_b = (const nimcp_multi_bid_t*)b;
 
     if (bid_b->price > bid_a->price) return 1;
-    if (bid_b->price < bid_a->price) return -1;
+    if (bid_b->price < bid_a->price) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_multi_bids: validation failed");
+        return -1;
+    }
 
     // Tie-break by timestamp
-    if (bid_a->timestamp_ms < bid_b->timestamp_ms) return -1;
+    if (bid_a->timestamp_ms < bid_b->timestamp_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_multi_bids: validation failed");
+        return -1;
+    }
     if (bid_a->timestamp_ms > bid_b->timestamp_ms) return 1;
 
     return 0;

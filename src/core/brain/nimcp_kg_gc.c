@@ -302,6 +302,7 @@ kg_gc_context_t* kg_gc_create(brain_kg_t* kg, const kg_gc_config_t* config) {
     gc->mutex = nimcp_mutex_create(&attr);
     if (!gc->mutex) {
         nimcp_free(gc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gc_create: gc->mutex is NULL");
         return NULL;
     }
 
@@ -310,6 +311,7 @@ kg_gc_context_t* kg_gc_create(brain_kg_t* kg, const kg_gc_config_t* config) {
     if (!gc->incremental.orphan_queue) {
         nimcp_mutex_free(gc->mutex);
         nimcp_free(gc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gc_create: gc->incremental is NULL");
         return NULL;
     }
 
@@ -345,6 +347,7 @@ void kg_gc_destroy(kg_gc_context_t* gc) {
 
 int kg_gc_update_config(kg_gc_context_t* gc, const kg_gc_config_t* config) {
     if (!gc || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_update_config: required parameter is NULL (gc, config)");
         return -1;
     }
 
@@ -357,6 +360,7 @@ int kg_gc_update_config(kg_gc_context_t* gc, const kg_gc_config_t* config) {
 
 int kg_gc_get_config(const kg_gc_context_t* gc, kg_gc_config_t* config) {
     if (!gc || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_get_config: required parameter is NULL (gc, config)");
         return -1;
     }
 
@@ -383,6 +387,7 @@ int kg_gc_run(kg_gc_context_t* gc, uint32_t targets) {
     if (gc->incremental.in_progress) {
         set_error(gc, "GC already in progress");
         nimcp_mutex_unlock(gc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_run: validation failed");
         return -1;
     }
 
@@ -612,6 +617,7 @@ int kg_gc_cancel(kg_gc_context_t* gc) {
 
     if (!gc->incremental.in_progress) {
         nimcp_mutex_unlock(gc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_cancel: gc->incremental is NULL");
         return -1;
     }
 
@@ -628,6 +634,7 @@ int kg_gc_cancel(kg_gc_context_t* gc) {
 
 int kg_gc_analyze(const kg_gc_context_t* gc, kg_gc_stats_t* stats) {
     if (!gc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_analyze: required parameter is NULL (gc, stats)");
         return -1;
     }
 
@@ -644,6 +651,7 @@ int kg_gc_find_orphans(
     uint32_t* count
 ) {
     if (!gc || !orphans || !count || *count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_find_orphans: required parameter is NULL (gc, orphans, count)");
         return -1;
     }
 
@@ -689,6 +697,7 @@ int64_t kg_gc_estimate_reclaimable(
 
 bool kg_gc_is_running(const kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_is_running: gc is NULL");
         return false;
     }
     return gc->incremental.in_progress;
@@ -696,6 +705,7 @@ bool kg_gc_is_running(const kg_gc_context_t* gc) {
 
 const char* kg_gc_get_last_error(const kg_gc_context_t* gc) {
     if (!gc || gc->last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_get_last_error: gc is NULL");
         return NULL;
     }
     return gc->last_error;
@@ -730,6 +740,7 @@ int kg_gc_cancel_scheduled(kg_gc_context_t* gc) {
 
     if (gc->scheduled_timestamp == 0) {
         nimcp_mutex_unlock(gc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_cancel_scheduled: gc->scheduled_timestamp is zero");
         return -1;
     }
 
@@ -778,6 +789,7 @@ int kg_gc_disable_auto(kg_gc_context_t* gc) {
 
 bool kg_gc_is_auto_enabled(const kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_is_auto_enabled: gc is NULL");
         return false;
     }
     return gc->auto_gc_enabled;

@@ -52,7 +52,10 @@ struct dragonfly_cnn_bridge_s {
 //=============================================================================
 
 int dragonfly_cnn_bridge_default_config(dragonfly_cnn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -83,12 +86,30 @@ int dragonfly_cnn_bridge_default_config(dragonfly_cnn_config_t* config) {
 }
 
 int dragonfly_cnn_bridge_validate_config(const dragonfly_cnn_config_t* config) {
-    if (!config) return -1;
-    if (config->task >= CNN_TASK_TYPE_COUNT) return -1;
-    if (config->frame_width == 0 || config->frame_height == 0) return -1;
-    if (config->motion_history_frames > DRAGONFLY_CNN_MAX_FRAMES) return -1;
-    if (config->batch_size == 0) return -1;
-    if (config->learning_rate <= 0.0f) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_bridge_validate_config: config is NULL");
+        return -1;
+    }
+    if (config->task >= CNN_TASK_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_cnn_bridge_validate_config: capacity exceeded");
+        return -1;
+    }
+    if (config->frame_width == 0 || config->frame_height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: config->frame_width is zero");
+        return -1;
+    }
+    if (config->motion_history_frames > DRAGONFLY_CNN_MAX_FRAMES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: config->batch_size is zero");
+        return -1;
+    }
+    if (config->learning_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_bridge_validate_config: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -160,7 +181,10 @@ void dragonfly_cnn_bridge_destroy(dragonfly_cnn_bridge_t* bridge) {
 }
 
 int dragonfly_cnn_bridge_reset(dragonfly_cnn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Free frame data */
     for (uint32_t i = 0; i < bridge->motion_history.num_frames; i++) {
@@ -184,7 +208,10 @@ int dragonfly_cnn_add_frame(
     dragonfly_cnn_bridge_t* bridge,
     const dragonfly_cnn_frame_t* frame
 ) {
-    if (!bridge || !frame || !frame->data) return -1;
+    if (!bridge || !frame || !frame->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_add_frame: required parameter is NULL (bridge, frame, frame->data)");
+        return -1;
+    }
 
     /* Shift frames if at capacity */
     if (bridge->motion_history.num_frames >= bridge->motion_history.max_frames) {
@@ -200,7 +227,10 @@ int dragonfly_cnn_add_frame(
     uint32_t size = frame->width * frame->height * frame->channels;
 
     bridge->motion_history.frames[idx].data = nimcp_malloc(size * sizeof(float));
-    if (!bridge->motion_history.frames[idx].data) return -1;
+    if (!bridge->motion_history.frames[idx].data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_cnn_add_frame: bridge->motion_history is NULL");
+        return -1;
+    }
 
     memcpy(bridge->motion_history.frames[idx].data, frame->data, size * sizeof(float));
     bridge->motion_history.frames[idx].width = frame->width;
@@ -217,7 +247,10 @@ int dragonfly_cnn_record_episode(
     dragonfly_cnn_bridge_t* bridge,
     bool success
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_record_episode: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.avg_interception_reward =
         (bridge->stats.avg_interception_reward * bridge->stats.samples_processed +
@@ -234,7 +267,10 @@ int dragonfly_cnn_extract_features(
     float* features,
     uint32_t feature_dim
 ) {
-    if (!bridge || !features || feature_dim == 0) return -1;
+    if (!bridge || !features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_extract_features: required parameter is NULL (bridge, features)");
+        return -1;
+    }
 
     uint32_t extracted = 0;
     uint32_t max_extract = feature_dim < DRAGONFLY_CNN_FEATURE_DIM ?
@@ -284,7 +320,10 @@ int dragonfly_cnn_generate_sample(
     dragonfly_cnn_bridge_t* bridge,
     dragonfly_cnn_sample_t* sample
 ) {
-    if (!bridge || !sample) return -1;
+    if (!bridge || !sample) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_generate_sample: required parameter is NULL (bridge, sample)");
+        return -1;
+    }
 
     /* Generate synthetic sample */
     memset(sample, 0, sizeof(*sample));
@@ -349,7 +388,10 @@ float dragonfly_cnn_evaluate(
 }
 
 int dragonfly_cnn_set_learning_rate(dragonfly_cnn_bridge_t* bridge, float lr) {
-    if (!bridge || lr <= 0.0f) return -1;
+    if (!bridge || lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_cnn_set_learning_rate: bridge is NULL");
+        return -1;
+    }
     bridge->config.learning_rate = lr;
     return 0;
 }
@@ -363,7 +405,10 @@ int dragonfly_cnn_infer(
     float* output,
     uint32_t output_size
 ) {
-    if (!bridge || !output || output_size == 0) return -1;
+    if (!bridge || !output || output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_infer: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     /* Placeholder inference */
     memset(output, 0, output_size * sizeof(float));
@@ -397,7 +442,10 @@ int dragonfly_cnn_estimate_velocity(
     float* vx,
     float* vy
 ) {
-    if (!bridge || !vx || !vy) return -1;
+    if (!bridge || !vx || !vy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_estimate_velocity: required parameter is NULL (bridge, vx, vy)");
+        return -1;
+    }
 
     *vx = 0.0f;
     *vy = 0.0f;
@@ -417,7 +465,10 @@ int dragonfly_cnn_predict_trajectory(
     float* predictions,
     uint32_t num_steps
 ) {
-    if (!bridge || !predictions || num_steps == 0) return -1;
+    if (!bridge || !predictions || num_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_predict_trajectory: required parameter is NULL (bridge, predictions)");
+        return -1;
+    }
 
     /* Placeholder: linear extrapolation */
     for (uint32_t i = 0; i < num_steps * 2; i += 2) {
@@ -436,7 +487,10 @@ int dragonfly_cnn_connect_dragonfly(
     dragonfly_cnn_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_connect_dragonfly: bridge is NULL");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -445,7 +499,10 @@ int dragonfly_cnn_connect_trainer(
     dragonfly_cnn_bridge_t* bridge,
     void* trainer
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_connect_trainer: bridge is NULL");
+        return -1;
+    }
     bridge->cnn_trainer = trainer;
     return 0;
 }
@@ -455,7 +512,10 @@ bool dragonfly_cnn_is_training(const dragonfly_cnn_bridge_t* bridge) {
 }
 
 int dragonfly_cnn_set_training(dragonfly_cnn_bridge_t* bridge, bool training) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_set_training: bridge is NULL");
+        return -1;
+    }
     bridge->is_training = training;
     return 0;
 }
@@ -465,7 +525,10 @@ int dragonfly_cnn_set_training(dragonfly_cnn_bridge_t* bridge, bool training) {
 //=============================================================================
 
 int dragonfly_cnn_prepare_snn_conversion(dragonfly_cnn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_prepare_snn_conversion: bridge is NULL");
+        return -1;
+    }
     bridge->config.enable_snn_conversion = true;
     return 0;
 }
@@ -476,7 +539,10 @@ int dragonfly_cnn_get_activation_stats(
     float* mean,
     float* std
 ) {
-    if (!bridge || !mean || !std) return -1;
+    if (!bridge || !mean || !std) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_get_activation_stats: required parameter is NULL (bridge, mean, std)");
+        return -1;
+    }
 
     /* Placeholder stats */
     *mean = 0.5f;
@@ -493,13 +559,19 @@ int dragonfly_cnn_bridge_get_stats(
     const dragonfly_cnn_bridge_t* bridge,
     dragonfly_cnn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_cnn_bridge_reset_stats(dragonfly_cnn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cnn_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

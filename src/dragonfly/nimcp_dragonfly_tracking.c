@@ -270,7 +270,10 @@ tracking_config_t tracking_default_config(void) {
 }
 
 bool tracking_validate_config(const tracking_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracking_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->acquisition_threshold < 0.0f ||
         config->acquisition_threshold > 1.0f) return false;
@@ -278,21 +281,48 @@ bool tracking_validate_config(const tracking_config_t* config) {
         config->lock_threshold > 1.0f) return false;
     if (config->break_threshold < 0.0f ||
         config->break_threshold > 1.0f) return false;
-    if (config->lock_threshold < config->acquisition_threshold) return false;
-    if (config->break_threshold > config->lock_threshold) return false;
+    if (config->lock_threshold < config->acquisition_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "tracking_validate_config: validation failed");
+        return false;
+    }
+    if (config->break_threshold > config->lock_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "tracking_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->prediction_horizon_ms < 0.0f) return false;
-    if (config->max_occlusion_ms == 0) return false;
+    if (config->prediction_horizon_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_occlusion_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: config->max_occlusion_ms is zero");
+        return false;
+    }
 
     if (config->distractor_suppression < 0.0f ||
         config->distractor_suppression > 1.0f) return false;
-    if (config->attention_radius <= 0.0f) return false;
+    if (config->attention_radius <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->process_noise < 0.0f) return false;
-    if (config->measurement_noise < 0.0f) return false;
+    if (config->process_noise < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
+    if (config->measurement_noise < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_target_size < 0.0f) return false;
-    if (config->max_target_size < config->min_target_size) return false;
+    if (config->min_target_size < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_target_size < config->min_target_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -415,7 +445,10 @@ static const target_observation_t* select_best_target(
     const target_observation_t* observations,
     uint32_t num_observations
 ) {
-    if (num_observations == 0) return NULL;
+    if (num_observations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "select_best_target: num_observations is zero");
+        return NULL;
+    }
 
     const target_observation_t* best = NULL;
     float best_score = -1.0f;
@@ -726,6 +759,7 @@ int dragonfly_tracker_predict(
     if (tracker->state != TRACK_STATE_LOCKED &&
         tracker->state != TRACK_STATE_PREDICTING) {
         nimcp_mutex_unlock(tracker->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_tracker_predict: operation failed");
         return -1;
     }
 
@@ -801,9 +835,13 @@ int dragonfly_tracker_break_lock(dragonfly_tracker_t* tracker) {
 const tracked_target_t* dragonfly_tracker_get_target(
     const dragonfly_tracker_t* tracker
 ) {
-    if (!tracker) return NULL;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_target: tracker is NULL");
+        return NULL;
+    }
 
     if (tracker->state == TRACK_STATE_SEARCHING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_get_target: validation failed");
         return NULL;
     }
 
@@ -870,7 +908,10 @@ int dragonfly_tracker_reset_stats(dragonfly_tracker_t* tracker) {
 }
 
 bool dragonfly_tracker_is_locked(const dragonfly_tracker_t* tracker) {
-    if (!tracker) return false;
+    if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_is_locked: tracker is NULL");
+        return false;
+    }
     return tracker->state == TRACK_STATE_LOCKED ||
            tracker->state == TRACK_STATE_PREDICTING;
 }
@@ -1015,6 +1056,7 @@ int dragonfly_tracker_set_external_velocity(
 
     if (!tracker->kalman.initialized) {
         nimcp_mutex_unlock(tracker->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_tracker_set_external_velocity: tracker->kalman is NULL");
         return -1;
     }
 

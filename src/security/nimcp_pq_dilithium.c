@@ -294,6 +294,12 @@ nimcp_error_t nimcp_dilithium_keygen(nimcp_dilithium_variant_t variant,
         return err;
     }
 
+    /* Embed public key at end of secret key (matches real Dilithium layout) */
+    if (secret_key_len >= public_key_len) {
+        memcpy(secret_key + (secret_key_len - public_key_len),
+               public_key, public_key_len);
+    }
+
     /* Initialize keypair structure */
     keypair->magic = NIMCP_DILITHIUM_KEYPAIR_MAGIC;
     keypair->variant = variant;
@@ -387,6 +393,24 @@ nimcp_error_t nimcp_dilithium_sign(
         signature[i] ^= message[i];
     }
 
+    /* Embed a message-keyed digest at end of signature (PLACEHOLDER)
+     * Uses public key (embedded at end of secret key) for keyed hashing
+     * so verify can reproduce the same digest with the public key */
+    if (expected_sig_len >= 32) {
+        const uint8_t* embedded_pk = secret_key + (expected_sk_len - expected_pk_len);
+        uint8_t digest[32];
+        memset(digest, 0, sizeof(digest));
+        for (size_t i = 0; i < message_len; i++) {
+            digest[i % 32] ^= message[i];
+            digest[(i + 13) % 32] += message[i];
+        }
+        /* Mix in public key (available to both sign and verify) */
+        for (size_t i = 0; i < 32; i++) {
+            digest[i] ^= embedded_pk[i % expected_pk_len];
+        }
+        memcpy(signature + expected_sig_len - 32, digest, 32);
+    }
+
     *signature_len = expected_sig_len;
     _local_secure_zero(nonce, sizeof(nonce));
 
@@ -453,22 +477,27 @@ nimcp_error_t nimcp_dilithium_verify(
      */
 
     /*
-     * For this reference implementation, we perform basic sanity checks
-     * Real implementation would do full cryptographic verification
+     * Simplified Dilithium verification (PLACEHOLDER - NOT SECURE):
+     * Verify the message-keyed digest embedded in the signature
      */
 
-    /* Check signature contains some message-dependent data */
-    bool has_message_data = false;
-    for (size_t i = 0; i < message_len && i < signature_len; i++) {
-        if (signature[i] != 0) {
-            has_message_data = true;
-            break;
+    /* Recompute digest using public_key and compare */
+    if (expected_sig_len >= 32) {
+        uint8_t digest[32];
+        memset(digest, 0, sizeof(digest));
+        for (size_t i = 0; i < message_len; i++) {
+            digest[i % 32] ^= message[i];
+            digest[(i + 13) % 32] += message[i];
         }
-    }
-
-    if (!has_message_data) {
-        LOG_ERROR("nimcp_dilithium_verify: Signature verification failed");
-        return NIMCP_ERROR;
+        /* Mix in public key (same as in sign) */
+        for (size_t i = 0; i < 32; i++) {
+            digest[i] ^= public_key[i % expected_pk_len];
+        }
+        /* Compare with stored digest at end of signature */
+        if (memcmp(signature + expected_sig_len - 32, digest, 32) != 0) {
+            LOG_ERROR("nimcp_dilithium_verify: Signature verification failed");
+            return NIMCP_ERROR;
+        }
     }
 
     LOG_DEBUG("nimcp_dilithium_verify: Signature verified (msg=%zu, sig=%zu)",

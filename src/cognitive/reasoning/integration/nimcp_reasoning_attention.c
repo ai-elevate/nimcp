@@ -151,16 +151,34 @@ reasoning_attention_config_t reasoning_attention_default_config(void) {
 //=============================================================================
 
 bool reasoning_attention_validate_config(const reasoning_attention_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_validate_config: config is NULL");
+        return false;
+    }
 
     // Validate salience values [0.0, 1.0]
-    if (config->novel_fact_salience < 0.0F || config->novel_fact_salience > 1.0F) return false;
-    if (config->contradiction_salience < 0.0F || config->contradiction_salience > 1.0F) return false;
-    if (config->proof_found_salience < 0.0F || config->proof_found_salience > 1.0F) return false;
-    if (config->min_salience_threshold < 0.0F || config->min_salience_threshold > 1.0F) return false;
+    if (config->novel_fact_salience < 0.0F || config->novel_fact_salience > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
+        return false;
+    }
+    if (config->contradiction_salience < 0.0F || config->contradiction_salience > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
+        return false;
+    }
+    if (config->proof_found_salience < 0.0F || config->proof_found_salience > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
+        return false;
+    }
+    if (config->min_salience_threshold < 0.0F || config->min_salience_threshold > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: validation failed");
+        return false;
+    }
 
     // Validate decay time constant
-    if (config->attention_decay_tau_ms == 0) return false;
+    if (config->attention_decay_tau_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_validate_config: config->attention_decay_tau_ms is zero");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_attention_heartbeat("reasoning_at_validate_config", 0.0f);
@@ -193,6 +211,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
 ) {
     if (!event_bus || !attention) {
         LOG_ERROR("NULL event_bus or attention");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_create_custom: required parameter is NULL (event_bus, attention)");
         return NULL;
     }
 
@@ -207,6 +226,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     // Validate configuration
     if (!reasoning_attention_validate_config(final_config)) {
         LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_create_custom: reasoning_attention_validate_config is NULL");
         return NULL;
     }
 
@@ -238,6 +258,7 @@ reasoning_attention_t* reasoning_attention_create_custom(
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
         LOG_ERROR("Failed to subscribe to events");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_create_custom: validation failed");
         return NULL;
     }
 
@@ -440,7 +461,10 @@ bool reasoning_attention_get_config(
     const reasoning_attention_t* integration,
     reasoning_attention_config_t* config
 ) {
-    if (!integration || !config) return false;
+    if (!integration || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_get_config: required parameter is NULL (integration, config)");
+        return false;
+    }
     *config = integration->config;
     /* Phase 8: Heartbeat at operation start */
     reasoning_attention_heartbeat("reasoning_at_get_config", 0.0f);
@@ -453,8 +477,14 @@ bool reasoning_attention_set_config(
     reasoning_attention_t* integration,
     const reasoning_attention_config_t* config
 ) {
-    if (!integration || !config) return false;
-    if (!reasoning_attention_validate_config(config)) return false;
+    if (!integration || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_set_config: required parameter is NULL (integration, config)");
+        return false;
+    }
+    if (!reasoning_attention_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_set_config: reasoning_attention_validate_config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_attention_heartbeat("reasoning_at_set_config", 0.0f);
@@ -468,7 +498,10 @@ bool reasoning_attention_get_stats(
     const reasoning_attention_t* integration,
     reasoning_attention_stats_t* stats
 ) {
-    if (!integration || !stats) return false;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_get_stats: required parameter is NULL (integration, stats)");
+        return false;
+    }
     *stats = integration->stats;
     /* Phase 8: Heartbeat at operation start */
     reasoning_attention_heartbeat("reasoning_at_get_stats", 0.0f);
@@ -478,7 +511,10 @@ bool reasoning_attention_get_stats(
 }
 
 bool reasoning_attention_reset_stats(reasoning_attention_t* integration) {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_reset_stats: integration is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     reasoning_attention_heartbeat("reasoning_at_reset_stats", 0.0f);
 

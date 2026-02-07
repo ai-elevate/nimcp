@@ -113,7 +113,10 @@ static brain_kg_edge_id_t create_pfc_edge(
 //=============================================================================
 
 int pfc_kg_default_config(pfc_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_dlpfc = true;
     config->register_vmpfc = true;
@@ -138,7 +141,10 @@ int pfc_kg_register_all(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     pfc_kg_config_t local_config;
@@ -161,6 +167,7 @@ int pfc_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(PFC_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pfc_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -223,7 +230,10 @@ int pfc_kg_register_subregions(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_subregions: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register Dorsolateral PFC */
     if (!config || config->register_dlpfc) {
@@ -483,7 +493,10 @@ int pfc_kg_register_executive_nodes(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_executive_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create executive system node */
     state->executive_system_id = create_pfc_node(
@@ -492,7 +505,10 @@ int pfc_kg_register_executive_nodes(
         "Executive system - core executive functions, cognitive control",
         admin_token
     );
-    if (state->executive_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->executive_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pfc_kg_register_executive_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -549,7 +565,10 @@ int pfc_kg_register_monitoring_nodes(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_monitoring_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Conflict monitoring node */
     state->conflict_id = create_pfc_node(
@@ -641,7 +660,10 @@ int pfc_kg_register_decision_nodes(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_decision_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create decision system node */
     state->decision_system_id = create_pfc_node(
@@ -650,7 +672,10 @@ int pfc_kg_register_decision_nodes(
         "Decision system - goal/action/strategy selection",
         admin_token
     );
-    if (state->decision_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->decision_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pfc_kg_register_decision_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -872,7 +897,10 @@ int pfc_kg_register_cross_edges(
     pfc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register subregion-to-function edges */
     register_subregion_function_edges(kg, state, admin_token);
@@ -900,7 +928,10 @@ int pfc_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update WM load metadata */
     if (state->working_memory_id != BRAIN_KG_INVALID_NODE) {
@@ -986,7 +1017,10 @@ int pfc_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Would be used for actual deletion */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pfc_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /*
      * Note: Full implementation would remove nodes in reverse order

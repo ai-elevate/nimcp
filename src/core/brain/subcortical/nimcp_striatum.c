@@ -86,6 +86,7 @@ static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
 
     pathway->neurons = nimcp_calloc(num_neurons, sizeof(msn_neuron_t));
     if (!pathway->neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sigmoid: pathway->neurons is NULL");
         return -1;
     }
 
@@ -93,6 +94,7 @@ static int init_pathway(striatum_pathway_t* pathway, msn_type_t type,
     if (!pathway->activations) {
         nimcp_free(pathway->neurons);
         pathway->neurons = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sigmoid: pathway->activations is NULL");
         return -1;
     }
 
@@ -241,7 +243,10 @@ void striatum_destroy(striatum_t* striatum) {
 }
 
 int striatum_reset(striatum_t* striatum) {
-    if (!striatum) return -1;
+    if (!striatum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_reset: striatum is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(striatum->mutex);
 
@@ -274,7 +279,10 @@ int striatum_reset(striatum_t* striatum) {
 
 int striatum_process_input(striatum_t* striatum, const float* cortical_input,
                            float dopamine) {
-    if (!striatum || !cortical_input) return -1;
+    if (!striatum || !cortical_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_reset: required parameter is NULL (striatum, cortical_input)");
+        return -1;
+    }
 
     nimcp_mutex_lock(striatum->mutex);
 
@@ -327,7 +335,10 @@ int striatum_process_input(striatum_t* striatum, const float* cortical_input,
 }
 
 int striatum_get_d1_output(const striatum_t* striatum, float* output) {
-    if (!striatum || !output) return -1;
+    if (!striatum || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_get_d1_output: required parameter is NULL (striatum, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)striatum->mutex);
     memcpy(output, striatum->direct.activations,
@@ -338,7 +349,10 @@ int striatum_get_d1_output(const striatum_t* striatum, float* output) {
 }
 
 int striatum_get_d2_output(const striatum_t* striatum, float* output) {
-    if (!striatum || !output) return -1;
+    if (!striatum || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_get_d2_output: required parameter is NULL (striatum, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)striatum->mutex);
     memcpy(output, striatum->indirect.activations,
@@ -369,7 +383,10 @@ float striatum_get_d2_activation(const striatum_t* striatum, uint32_t action_id)
 }
 
 int striatum_set_dopamine(striatum_t* striatum, float level) {
-    if (!striatum) return -1;
+    if (!striatum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_set_dopamine: striatum is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(striatum->mutex);
     striatum->dopamine_level = fmaxf(0.0f, fminf(1.0f, level));
@@ -379,7 +396,10 @@ int striatum_set_dopamine(striatum_t* striatum, float level) {
 }
 
 int striatum_step(striatum_t* striatum, float dt) {
-    if (!striatum) return -1;
+    if (!striatum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_step: striatum is NULL");
+        return -1;
+    }
 
     /* Currently no temporal dynamics beyond immediate processing */
     (void)dt;
@@ -389,7 +409,10 @@ int striatum_step(striatum_t* striatum, float dt) {
 
 int striatum_update_weights(striatum_t* striatum, uint32_t action_id,
                             float delta_d1, float delta_d2) {
-    if (!striatum || action_id >= striatum->config.num_actions) return -1;
+    if (!striatum || action_id >= striatum->config.num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "striatum_step: striatum is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(striatum->mutex);
 
@@ -421,7 +444,10 @@ int striatum_update_weights(striatum_t* striatum, uint32_t action_id,
 }
 
 int striatum_get_stats(const striatum_t* striatum, striatum_stats_t* stats) {
-    if (!striatum || !stats) return -1;
+    if (!striatum || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_get_stats: required parameter is NULL (striatum, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)striatum->mutex);
     *stats = striatum->stats;

@@ -233,12 +233,14 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > AUTOBIO_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "autobio_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "autobio_snn_create: validation failed");
         return NULL;
     }
 
@@ -256,6 +258,7 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -268,6 +271,7 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->recall_buffer || !bridge->prev_state) {
         autobio_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_create: operation failed");
         return NULL;
     }
 
@@ -332,7 +336,10 @@ void autobio_snn_destroy(autobio_snn_bridge_t* bridge) {
 }
 
 int autobio_snn_reset(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_reset", 0.0f);
@@ -390,8 +397,14 @@ int autobio_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_encode_s", 0.0f);
@@ -471,7 +484,10 @@ int autobio_snn_encode_episodic(
     float self_relevance,
     float vividness
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_encode_episodic: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_encode_e", 0.0f);
@@ -495,7 +511,10 @@ int autobio_snn_encode_temporal(
     float recency,
     uint64_t temporal_tag
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_encode_temporal: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_encode_t", 0.0f);
@@ -521,7 +540,10 @@ int autobio_snn_encode_emotional(
     float intensity,
     float arousal
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_encode_emotional: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_encode_e", 0.0f);
@@ -558,8 +580,14 @@ int autobio_snn_encode_emotional(
 //=============================================================================
 
 int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_simulate", 0.0f);
@@ -645,7 +673,10 @@ int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int autobio_snn_step(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_step", 0.0f);
 
@@ -658,16 +689,23 @@ int autobio_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_forward", 0.0f);
 
 
     int spike_count = autobio_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_forward: validation failed");
+        return -1;
+    }
 
     if (autobio_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_forward: validation failed");
         return -1;
     }
 
@@ -682,7 +720,10 @@ int autobio_snn_get_recall(
     autobio_snn_bridge_t* bridge,
     autobio_recall_t* recall
 ) {
-    if (!bridge || !recall) return -1;
+    if (!bridge || !recall) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_get_recall: required parameter is NULL (bridge, recall)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_get_reca", 0.0f);
@@ -700,8 +741,14 @@ int autobio_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_get_acti", 0.0f);
@@ -726,7 +773,10 @@ bool autobio_snn_check_recall(
     autobio_snn_bridge_t* bridge,
     float* recall_strength
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_recall: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_check_re", 0.0f);
@@ -747,7 +797,10 @@ bool autobio_snn_check_emotional(
     autobio_snn_bridge_t* bridge,
     float* emotional_intensity
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_emotional: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_check_em", 0.0f);
@@ -768,7 +821,10 @@ bool autobio_snn_check_state_change(
     autobio_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_check_st", 0.0f);
@@ -807,8 +863,14 @@ int autobio_snn_get_dim_state(
     uint32_t dim,
     autobio_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_get_dim_", 0.0f);
@@ -825,7 +887,10 @@ int autobio_snn_get_state(
     autobio_snn_bridge_t* bridge,
     autobio_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_get_stat", 0.0f);
@@ -859,7 +924,10 @@ int autobio_snn_get_state(
 }
 
 int autobio_snn_get_stats(autobio_snn_bridge_t* bridge, autobio_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_get_stat", 0.0f);
@@ -873,7 +941,10 @@ int autobio_snn_get_stats(autobio_snn_bridge_t* bridge, autobio_snn_stats_t* sta
 }
 
 int autobio_snn_reset_stats(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_reset_st", 0.0f);
@@ -932,7 +1003,10 @@ int autobio_snn_register_recall_callback(
     autobio_snn_recall_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_register_recall_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_register", 0.0f);
@@ -951,7 +1025,10 @@ int autobio_snn_register_encoded_callback(
     autobio_snn_encoded_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_register_encoded_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_register", 0.0f);
@@ -970,7 +1047,10 @@ int autobio_snn_register_emotional_callback(
     autobio_snn_emotional_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_register_emotional_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_register", 0.0f);
@@ -989,8 +1069,14 @@ int autobio_snn_register_emotional_callback(
 //=============================================================================
 
 int autobio_snn_bio_async_connect(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_bio_asyn", 0.0f);
@@ -1005,7 +1091,10 @@ int autobio_snn_bio_async_connect(autobio_snn_bridge_t* bridge) {
 }
 
 int autobio_snn_bio_async_disconnect(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_bio_asyn", 0.0f);
@@ -1019,7 +1108,10 @@ int autobio_snn_bio_async_disconnect(autobio_snn_bridge_t* bridge) {
 }
 
 bool autobio_snn_is_bio_async_connected(autobio_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobio_snn_bridge_heartbeat("autobio_snn__autobio_snn_is_bio_a", 0.0f);

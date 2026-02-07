@@ -307,6 +307,7 @@ int collective_health_monitor_stop(collective_health_monitor_t* monitor) {
 
 bool collective_health_monitor_is_running(const collective_health_monitor_t* monitor) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_monitor_is_running: monitor is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -326,6 +327,7 @@ int collective_health_propose_anomaly(
     collective_anomaly_consensus_t* consensus
 ) {
     if (!monitor || !proposal || !consensus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_propose_anomaly: required parameter is NULL (monitor, proposal, consensus)");
         return -1;
     }
 
@@ -446,6 +448,7 @@ int collective_health_propose_anomaly_async(
     uint64_t* request_id
 ) {
     if (!monitor || !proposal || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_propose_anomaly_async: required parameter is NULL (monitor, proposal, request_id)");
         return -1;
     }
 
@@ -454,6 +457,7 @@ int collective_health_propose_anomaly_async(
 
 
     if (monitor->num_pending_consensus >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_health_propose_anomaly_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -479,6 +483,7 @@ int collective_health_check_consensus(
     collective_anomaly_consensus_t* consensus
 ) {
     if (!monitor || !consensus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_check_consensus: required parameter is NULL (monitor, consensus)");
         return -1;
     }
 
@@ -543,6 +548,7 @@ int collective_health_check_consensus(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_health_check_consensus: operation failed");
     return -1;  /* Not found */
 }
 
@@ -553,6 +559,7 @@ int collective_health_vote_anomaly(
     float confidence
 ) {
     if (!monitor || !proposal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_vote_anomaly: required parameter is NULL (monitor, proposal)");
         return -1;
     }
 
@@ -578,6 +585,7 @@ int collective_health_get_summary(
     collective_health_summary_t* summary
 ) {
     if (!monitor || !summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_summary: required parameter is NULL (monitor, summary)");
         return -1;
     }
 
@@ -684,6 +692,7 @@ int collective_health_get_instance_report(
     instance_health_report_t* report
 ) {
     if (!monitor || !report) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_instance_report: required parameter is NULL (monitor, report)");
         return -1;
     }
 
@@ -704,6 +713,7 @@ int collective_health_get_instance_report(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_health_get_instance_report: validation failed");
     return -1;  /* Instance not found */
 }
 
@@ -714,6 +724,7 @@ int collective_health_get_all_reports(
     uint32_t* num_reports
 ) {
     if (!monitor || !reports || !num_reports) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_all_reports: required parameter is NULL (monitor, reports, num_reports)");
         return -1;
     }
 
@@ -742,6 +753,7 @@ int collective_health_request_swarm_action(
     swarm_immune_response_t* response
 ) {
     if (!monitor || !request || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_request_swarm_action: required parameter is NULL (monitor, request, response)");
         return -1;
     }
 
@@ -828,6 +840,7 @@ int collective_health_request_swarm_action_async(
     uint64_t* request_id
 ) {
     if (!monitor || !request || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_request_swarm_action_async: required parameter is NULL (monitor, request, request_id)");
         return -1;
     }
 
@@ -836,6 +849,7 @@ int collective_health_request_swarm_action_async(
 
 
     if (monitor->num_pending_swarm >= COLLECTIVE_HEALTH_MAX_PENDING_CONSENSUS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_health_request_swarm_action_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -862,6 +876,7 @@ int collective_health_check_swarm_action(
     swarm_immune_response_t* response
 ) {
     if (!monitor || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_check_swarm_action: required parameter is NULL (monitor, response)");
         return -1;
     }
 
@@ -906,6 +921,7 @@ int collective_health_check_swarm_action(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_health_check_swarm_action: operation failed");
     return -1;  /* Not found */
 }
 
@@ -918,6 +934,7 @@ int collective_health_get_sync_state(
     hyperscan_state_t* sync_state
 ) {
     if (!monitor || !sync_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_sync_state: required parameter is NULL (monitor, sync_state)");
         return -1;
     }
 
@@ -1037,6 +1054,7 @@ int collective_health_get_worst_prediction(
     uint32_t* time_to_failure_ms
 ) {
     if (!monitor || !instance_id || !failure_probability || !time_to_failure_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_worst_prediction: required parameter is NULL (monitor, instance_id, failure_probability, time_to_failure_ms)");
         return -1;
     }
 
@@ -1080,6 +1098,7 @@ int collective_health_get_stats(
     collective_health_stats_t* stats
 ) {
     if (!monitor || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_health_get_stats: required parameter is NULL (monitor, stats)");
         return -1;
     }
 

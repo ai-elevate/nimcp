@@ -133,6 +133,7 @@ neuron_orchestrator_bridge_t* neuron_orchestrator_bridge_create(
     /* Guard clause - orchestrator required */
     if (!orchestrator) {
         NIMCP_LOGGING_ERROR("neuron_orchestrator_bridge_create: NULL orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuron_orchestrator_bridge_create: orchestrator is NULL");
         return NULL;
     }
 
@@ -142,6 +143,7 @@ neuron_orchestrator_bridge_t* neuron_orchestrator_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("neuron_orchestrator_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuron_orchestrator_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -169,6 +171,7 @@ neuron_orchestrator_bridge_t* neuron_orchestrator_bridge_create(
     if (!bridge->neurons) {
         NIMCP_LOGGING_ERROR("neuron_orchestrator_bridge_create: neuron array allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuron_orchestrator_bridge_create: bridge->neurons is NULL");
         return NULL;
     }
     bridge->neuron_capacity = capacity;
@@ -242,12 +245,14 @@ static neuron_bridge_entry_t* find_neuron_entry(
             return &bridge->neurons[idx];
         }
         if (!bridge->neurons[idx].valid) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron_entry: bridge->neurons is NULL");
             return NULL;
         }
         idx = (idx + 1) % bridge->neuron_capacity;
         attempts++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron_entry: bridge->neurons is NULL");
     return NULL;
 }
 
@@ -257,6 +262,7 @@ static int grow_neurons(neuron_orchestrator_bridge_t* bridge) {
         new_capacity = NEURON_ORCH_MAX_NEURONS;
         if (bridge->neuron_count >= new_capacity) {
             NIMCP_LOGGING_ERROR("neuron_orchestrator: neuron table full");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "grow_neurons: capacity exceeded");
             return -1;
         }
     }
@@ -384,6 +390,7 @@ int neuron_orchestrator_register_neuron(
             if ((bridge->base.mutex != NULL)) {
                 nimcp_mutex_unlock(bridge->base.mutex);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_register_neuron: validation failed");
             return -1;
         }
     }
@@ -403,6 +410,7 @@ int neuron_orchestrator_register_neuron(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_register_neuron: validation failed");
         return -1;
     }
 
@@ -452,6 +460,7 @@ int neuron_orchestrator_unregister_neuron(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_unregister_neuron: validation failed");
         return -1;
     }
 
@@ -485,6 +494,7 @@ int neuron_orchestrator_add_axon(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_add_axon: validation failed");
         return -1;
     }
 
@@ -492,6 +502,7 @@ int neuron_orchestrator_add_axon(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_add_axon: validation failed");
         return -1;
     }
 
@@ -524,6 +535,7 @@ int neuron_orchestrator_add_dendrite(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_add_dendrite: validation failed");
         return -1;
     }
 
@@ -531,6 +543,7 @@ int neuron_orchestrator_add_dendrite(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neuron_orchestrator_add_dendrite: validation failed");
         return -1;
     }
 
@@ -753,6 +766,7 @@ int neuron_orchestrator_get_stats(
     neuron_orchestrator_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_orchestrator_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -809,6 +823,7 @@ int neuron_orchestrator_connect_bio_async(neuron_orchestrator_bridge_t* bridge) 
 
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("neuron_orchestrator: bio-async router not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "neuron_orchestrator_connect_bio_async: bio_router_is_initialized is NULL");
         return -1;
     }
 
@@ -828,6 +843,7 @@ int neuron_orchestrator_connect_bio_async(neuron_orchestrator_bridge_t* bridge) 
     }
 
     NIMCP_LOGGING_ERROR("neuron_orchestrator: failed to register with bio-async");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_orchestrator_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -857,6 +873,7 @@ bool neuron_orchestrator_is_bio_async_connected(
     const neuron_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_orchestrator_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

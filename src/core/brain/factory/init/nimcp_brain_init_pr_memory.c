@@ -96,6 +96,7 @@ bool nimcp_brain_factory_init_pr_memory_subsystem(struct brain_struct* brain) {
     /* Delegate to the main PR memory initialization function */
     if (!nimcp_brain_pr_memory_init(brain, NULL)) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize PR memory subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_pr_memory_subsystem: nimcp_brain_pr_memory_init is NULL");
         return false;
     }
 

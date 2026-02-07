@@ -137,6 +137,7 @@ static synapse_entry_t* find_synapse(collective_plasticity_bridge_t* bridge, uin
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -152,6 +153,7 @@ static synapse_entry_t* find_free_slot(collective_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -225,6 +227,7 @@ collective_plasticity_bridge_t* collective_plasticity_create(
     /* Initialize bridge base (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "collective_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -234,6 +237,7 @@ collective_plasticity_bridge_t* collective_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -273,7 +277,10 @@ void collective_plasticity_destroy(collective_plasticity_bridge_t* bridge) {
 }
 
 int collective_plasticity_reset(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -322,7 +329,10 @@ int collective_plasticity_register_synapse(
     collective_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -333,6 +343,7 @@ int collective_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -340,6 +351,7 @@ int collective_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -369,7 +381,10 @@ int collective_plasticity_unregister_synapse(
     collective_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -380,6 +395,7 @@ int collective_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -395,7 +411,10 @@ int collective_plasticity_get_synapse(
     uint32_t synapse_id,
     collective_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -406,6 +425,7 @@ int collective_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -420,7 +440,10 @@ int collective_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -431,6 +454,7 @@ int collective_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -451,7 +475,10 @@ int collective_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -464,6 +491,7 @@ int collective_plasticity_learn(
     if (!entry) {
         bridge->state = COLLECTIVE_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -625,7 +653,10 @@ int collective_plasticity_apply_reward(
     collective_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -666,8 +697,14 @@ int collective_plasticity_update_bcm(
     collective_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -703,7 +740,10 @@ int collective_plasticity_homeostatic_update(
     collective_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -768,7 +808,10 @@ int collective_plasticity_update_traces(
     collective_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -795,7 +838,10 @@ int collective_plasticity_update_traces(
 }
 
 int collective_plasticity_consolidate(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -882,7 +928,10 @@ int collective_plasticity_get_coordination_state(
     collective_plasticity_bridge_t* bridge,
     collective_coordination_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_get_coordination_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -899,7 +948,10 @@ int collective_plasticity_get_state(
     collective_plasticity_bridge_t* bridge,
     collective_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -945,7 +997,10 @@ int collective_plasticity_get_stats(
     collective_plasticity_bridge_t* bridge,
     collective_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -959,7 +1014,10 @@ int collective_plasticity_get_stats(
 }
 
 int collective_plasticity_reset_stats(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -981,7 +1039,10 @@ int collective_plasticity_register_learn_callback(
     collective_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -1000,7 +1061,10 @@ int collective_plasticity_register_coordination_callback(
     collective_plasticity_coordination_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_register_coordination_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -1019,8 +1083,14 @@ int collective_plasticity_register_coordination_callback(
 //=============================================================================
 
 int collective_plasticity_bio_async_connect(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -1035,7 +1105,10 @@ int collective_plasticity_bio_async_connect(collective_plasticity_bridge_t* brid
 }
 
 int collective_plasticity_bio_async_disconnect(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);
@@ -1049,7 +1122,10 @@ int collective_plasticity_bio_async_disconnect(collective_plasticity_bridge_t* b
 }
 
 bool collective_plasticity_is_bio_async_connected(collective_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_plasticity_bridge_heartbeat("collective_p_collective_plasticit", 0.0f);

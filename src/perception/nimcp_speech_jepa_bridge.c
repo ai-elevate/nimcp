@@ -217,6 +217,7 @@ speech_jepa_bridge_t* speech_jepa_bridge_create(
 
 cleanup:
     speech_jepa_bridge_destroy(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_jepa_bridge_create: operation failed");
     return NULL;
 }
 
@@ -911,12 +912,14 @@ int speech_jepa_bridge_predict_masked(
 speech_jepa_sequence_t* speech_jepa_sequence_create(uint32_t max_frames)
 {
     if (max_frames == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_jepa_sequence_create: max_frames is zero");
         return NULL;
     }
 
     speech_jepa_sequence_t* seq = (speech_jepa_sequence_t*)nimcp_calloc(
         1, sizeof(speech_jepa_sequence_t));
     if (!seq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_jepa_sequence_create: seq is NULL");
         return NULL;
     }
 
@@ -924,6 +927,7 @@ speech_jepa_sequence_t* speech_jepa_sequence_create(uint32_t max_frames)
         max_frames, sizeof(speech_jepa_frame_t));
     if (!seq->frames) {
         nimcp_free(seq);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_jepa_sequence_create: seq->frames is NULL");
         return NULL;
     }
 

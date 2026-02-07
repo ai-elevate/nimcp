@@ -70,6 +70,7 @@ static int TopologyConfig_init(TopologyConfigObject* self, PyObject* args, PyObj
                                       &topology_type_str, &power_law_gamma,
                                       &hub_ratio, &min_degree, &max_degree,
                                       &spatial_constraint, &bidirectional)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TopologyConfig_init: operation failed");
         return -1;
     }
 
@@ -87,6 +88,7 @@ static int TopologyConfig_init(TopologyConfigObject* self, PyObject* args, PyObj
         self->config.params.fractal = topology_default_fractal_config();
     } else {
         PyErr_SetString(PyExc_ValueError, "Invalid topology type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TopologyConfig_init: operation failed");
         return -1;
     }
 
@@ -94,6 +96,7 @@ static int TopologyConfig_init(TopologyConfigObject* self, PyObject* args, PyObj
     if (!topology_validate_config(&self->config)) {
         const char* error = topology_get_last_error();
         PyErr_SetString(PyExc_ValueError, error ? error : "Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "TopologyConfig_init: topology_validate_config is NULL");
         return -1;
     }
 
@@ -189,12 +192,14 @@ static PyObject* py_topology_generate(PyObject* self, PyObject* args) {
     PyObject* config_obj;
 
     if (!PyArg_ParseTuple(args, "OO", &network_obj, &config_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_topology_generate: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     // Extract neural network
     if (!PyObject_TypeCheck(network_obj, &NeuralNetworkType)) {
         PyErr_SetString(PyExc_TypeError, "First argument must be NeuralNetwork");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_topology_generate: PyObject_TypeCheck is NULL");
         return NULL;
     }
     NeuralNetworkObject* network_py = (NeuralNetworkObject*)network_obj;
@@ -202,6 +207,7 @@ static PyObject* py_topology_generate(PyObject* self, PyObject* args) {
     // Extract topology config
     if (!PyObject_TypeCheck(config_obj, &TopologyConfigType)) {
         PyErr_SetString(PyExc_TypeError, "Second argument must be TopologyConfig");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_topology_generate: PyObject_TypeCheck is NULL");
         return NULL;
     }
     TopologyConfigObject* config_py = (TopologyConfigObject*)config_obj;
@@ -271,30 +277,39 @@ static PyMethodDef topology_methods[] = {
 
 int init_topology_module(PyObject* module) {
     // Prepare types
-    if (PyType_Ready(&TopologyConfigType) < 0)
+    if (PyType_Ready(&TopologyConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
         return -1;
-    if (PyType_Ready(&TopologyStatsType) < 0)
+    }
+    if (PyType_Ready(&TopologyStatsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
         return -1;
+    }
 
     // Add types to module
     Py_INCREF(&TopologyConfigType);
     if (PyModule_AddObject(module, "TopologyConfig", (PyObject*)&TopologyConfigType) < 0) {
         Py_DECREF(&TopologyConfigType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
         return -1;
     }
     Py_INCREF(&TopologyStatsType);
     if (PyModule_AddObject(module, "TopologyStats", (PyObject*)&TopologyStatsType) < 0) {
         Py_DECREF(&TopologyStatsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
         return -1;
     }
 
     // Add methods to module
     for (int i = 0; topology_methods[i].ml_name != NULL; i++) {
         PyObject* func = PyCFunction_New(&topology_methods[i], NULL);
-        if (func == NULL)
+        if (func == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
             return -1;
+        }
         if (PyModule_AddObject(module, topology_methods[i].ml_name, func) < 0) {
             Py_DECREF(func);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_topology_module: validation failed");
             return -1;
         }
     }

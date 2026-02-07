@@ -348,6 +348,7 @@ bool simd_detect_capabilities(simd_capabilities_t* caps)
 {
     if (!caps) {
         LOG_ERROR("NULL capabilities pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "simd_detect_capabilities: caps is NULL");
         return false;
     }
 

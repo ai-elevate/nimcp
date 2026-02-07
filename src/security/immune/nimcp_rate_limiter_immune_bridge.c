@@ -199,6 +199,7 @@ rate_limiter_immune_bridge_t* rate_limiter_immune_create(
     /* Guard clauses */
     if (!rate_limiter || !immune_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for rate limiter immune bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_immune_create: required parameter is NULL (rate_limiter, immune_system)");
         return NULL;
     }
 
@@ -230,6 +231,7 @@ rate_limiter_immune_bridge_t* rate_limiter_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for rate limiter immune bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_limiter_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -329,7 +331,10 @@ int rate_limiter_immune_present_violation(
     uint32_t violation_count,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !client_id || !antigen_id) return -1;
+    if (!bridge || !client_id || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_immune_present_violation: required parameter is NULL (bridge, client_id, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_violation_antigen_presentation) return 0;
 
     /* Check if violations are high enough */
@@ -375,7 +380,10 @@ int rate_limiter_immune_quarantine_client(
     rate_limiter_immune_bridge_t* bridge,
     const char* client_id
 ) {
-    if (!bridge || !client_id) return -1;
+    if (!bridge || !client_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_immune_quarantine_client: required parameter is NULL (bridge, client_id)");
+        return -1;
+    }
     if (!bridge->config.enable_blocked_client_quarantine) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -421,7 +429,10 @@ int rate_limiter_immune_connect_bio_async(rate_limiter_immune_bridge_t* bridge) 
 }
 
 int rate_limiter_immune_disconnect_bio_async(rate_limiter_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_limiter_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

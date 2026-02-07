@@ -122,6 +122,7 @@ static float lerp(float a, float b, float t) {
 
 static bool queue_push(struct nimcp_raphe_adapter* adapter, const nimcp_raphe_message_t* msg) {
     if (adapter->queue_count >= RAPHE_ADAPTER_MSG_QUEUE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
         return false;
     }
 
@@ -133,6 +134,7 @@ static bool queue_push(struct nimcp_raphe_adapter* adapter, const nimcp_raphe_me
 
 static bool queue_pop(struct nimcp_raphe_adapter* adapter, nimcp_raphe_message_t* msg) {
     if (adapter->queue_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_pop: adapter->queue_count is zero");
         return false;
     }
 
@@ -184,6 +186,7 @@ nimcp_raphe_adapter_t nimcp_raphe_adapter_create(const nimcp_raphe_adapter_confi
     nimcp_raphe_config_t raphe_config = nimcp_raphe_default_config();
     if (nimcp_raphe_init(&adapter->raphe, &raphe_config) != RAPHE_OK) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_raphe_adapter_create: validation failed");
         return NULL;
     }
 
@@ -238,7 +241,10 @@ void nimcp_raphe_adapter_destroy(nimcp_raphe_adapter_t adapter) {
 
 int nimcp_raphe_adapter_connect_brain(nimcp_raphe_adapter_t adapter,
                                       struct nimcp_brain* brain) {
-    if (!adapter || !brain) return -1;
+    if (!adapter || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_destroy: required parameter is NULL (adapter, brain)");
+        return -1;
+    }
 
     adapter->brain = brain;
 
@@ -255,7 +261,10 @@ int nimcp_raphe_adapter_connect_brain(nimcp_raphe_adapter_t adapter,
 }
 
 int nimcp_raphe_adapter_disconnect(nimcp_raphe_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_disconnect: adapter is NULL");
+        return -1;
+    }
 
     adapter->brain = NULL;
     adapter->router = NULL;
@@ -268,7 +277,10 @@ int nimcp_raphe_adapter_disconnect(nimcp_raphe_adapter_t adapter) {
 
 int nimcp_raphe_adapter_set_router(nimcp_raphe_adapter_t adapter,
                                    struct nimcp_bio_router* router) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_disconnect: adapter is NULL");
+        return -1;
+    }
 
     adapter->router = router;
     return 0;
@@ -276,7 +288,10 @@ int nimcp_raphe_adapter_set_router(nimcp_raphe_adapter_t adapter,
 
 int nimcp_raphe_adapter_connect_immune(nimcp_raphe_adapter_t adapter,
                                        struct nimcp_immune_system* immune) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_disconnect: adapter is NULL");
+        return -1;
+    }
 
     adapter->immune = immune;
     return 0;
@@ -284,7 +299,10 @@ int nimcp_raphe_adapter_connect_immune(nimcp_raphe_adapter_t adapter,
 
 int nimcp_raphe_adapter_connect_training(nimcp_raphe_adapter_t adapter,
                                          struct nimcp_training_hub* training_hub) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_disconnect: adapter is NULL");
+        return -1;
+    }
 
     adapter->training_hub = training_hub;
     adapter->training_connected = (training_hub != NULL);
@@ -312,9 +330,13 @@ nimcp_raphe_system_t* nimcp_raphe_adapter_get_raphe(nimcp_raphe_adapter_t adapte
 
 int nimcp_raphe_adapter_send_message(nimcp_raphe_adapter_t adapter,
                                      const nimcp_raphe_message_t* msg) {
-    if (!adapter || !msg) return -1;
+    if (!adapter || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_get_raphe: required parameter is NULL (adapter, msg)");
+        return -1;
+    }
 
     if (!queue_push(adapter, msg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_raphe_adapter_get_raphe: queue_push is NULL");
         return -1;  /* Queue full */
     }
 
@@ -323,7 +345,10 @@ int nimcp_raphe_adapter_send_message(nimcp_raphe_adapter_t adapter,
 }
 
 int nimcp_raphe_adapter_process_messages(nimcp_raphe_adapter_t adapter, int max_messages) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_process_messages: adapter is NULL");
+        return -1;
+    }
 
     int processed = 0;
     nimcp_raphe_message_t msg;
@@ -350,9 +375,18 @@ int nimcp_raphe_adapter_register_callback(nimcp_raphe_adapter_t adapter,
                                           nimcp_raphe_msg_type_t type,
                                           nimcp_raphe_callback_fn callback,
                                           void* user_data) {
-    if (!adapter || !callback) return -1;
-    if (type >= RAPHE_MSG_COUNT) return -1;
-    if (adapter->callback_counts[type] >= RAPHE_ADAPTER_MAX_CALLBACKS) return -1;
+    if (!adapter || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_process_messages: required parameter is NULL (adapter, callback)");
+        return -1;
+    }
+    if (type >= RAPHE_MSG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_raphe_adapter_process_messages: capacity exceeded");
+        return -1;
+    }
+    if (adapter->callback_counts[type] >= RAPHE_ADAPTER_MAX_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_raphe_adapter_process_messages: capacity exceeded");
+        return -1;
+    }
 
     uint32_t idx = adapter->callback_counts[type];
     adapter->callbacks[type][idx].callback = callback;
@@ -367,7 +401,10 @@ int nimcp_raphe_adapter_register_callback(nimcp_raphe_adapter_t adapter,
  *===========================================================================*/
 
 int nimcp_raphe_adapter_update(nimcp_raphe_adapter_t adapter, float dt) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     float dt_sec = dt / 1000.0f;
 
@@ -443,7 +480,10 @@ int nimcp_raphe_adapter_update(nimcp_raphe_adapter_t adapter, float dt) {
 int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
                                           nimcp_raphe_train_event_t event,
                                           const nimcp_raphe_training_state_t* state) {
-    if (!adapter || !state) return -1;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: required parameter is NULL (adapter, state)");
+        return -1;
+    }
 
     /* Store training state */
     adapter->last_training_state = *state;
@@ -532,7 +572,10 @@ int nimcp_raphe_adapter_on_training_event(nimcp_raphe_adapter_t adapter,
 
 int nimcp_raphe_adapter_get_training_modulation(nimcp_raphe_adapter_t adapter,
                                                 nimcp_raphe_training_modulation_t* modulation) {
-    if (!adapter || !modulation) return -1;
+    if (!adapter || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: required parameter is NULL (adapter, modulation)");
+        return -1;
+    }
 
     *modulation = adapter->current_modulation;
     return 0;
@@ -541,7 +584,10 @@ int nimcp_raphe_adapter_get_training_modulation(nimcp_raphe_adapter_t adapter,
 int nimcp_raphe_adapter_register_training_callback(nimcp_raphe_adapter_t adapter,
                                                    nimcp_raphe_training_callback_fn callback,
                                                    void* user_data) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     adapter->training_callback = callback;
     adapter->training_callback_data = user_data;
@@ -551,7 +597,10 @@ int nimcp_raphe_adapter_register_training_callback(nimcp_raphe_adapter_t adapter
 int nimcp_raphe_adapter_compute_impulse_control(nimcp_raphe_adapter_t adapter,
                                                 float action_urgency,
                                                 float* inhibition_signal) {
-    if (!adapter || !inhibition_signal) return -1;
+    if (!adapter || !inhibition_signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: required parameter is NULL (adapter, inhibition_signal)");
+        return -1;
+    }
 
     return nimcp_raphe_compute_inhibition(&adapter->raphe, action_urgency, inhibition_signal);
 }
@@ -560,7 +609,10 @@ int nimcp_raphe_adapter_compute_reward_discount(nimcp_raphe_adapter_t adapter,
                                                 float reward,
                                                 float delay,
                                                 float* discounted_reward) {
-    if (!adapter || !discounted_reward) return -1;
+    if (!adapter || !discounted_reward) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_update: required parameter is NULL (adapter, discounted_reward)");
+        return -1;
+    }
 
     return nimcp_raphe_discount_value(&adapter->raphe, reward, delay, discounted_reward);
 }
@@ -570,7 +622,10 @@ int nimcp_raphe_adapter_compute_reward_discount(nimcp_raphe_adapter_t adapter,
  *===========================================================================*/
 
 int nimcp_raphe_adapter_process_stress(nimcp_raphe_adapter_t adapter, float stress_level) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_process_stress: adapter is NULL");
+        return -1;
+    }
 
     /* External stress input */
     nimcp_raphe_modulate_anxiety(&adapter->raphe, stress_level);
@@ -584,7 +639,10 @@ int nimcp_raphe_adapter_process_stress(nimcp_raphe_adapter_t adapter, float stre
 
 int nimcp_raphe_adapter_process_positive_feedback(nimcp_raphe_adapter_t adapter,
                                                   float feedback_magnitude) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_process_stress: adapter is NULL");
+        return -1;
+    }
 
     /* Positive feedback -> mood improvement */
     nimcp_raphe_apply_mood_input(&adapter->raphe, feedback_magnitude);
@@ -604,7 +662,10 @@ int nimcp_raphe_adapter_process_immune(nimcp_raphe_adapter_t adapter,
                                        float inflammation,
                                        const float* cytokines,
                                        uint32_t num_cytokines) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_process_stress: adapter is NULL");
+        return -1;
+    }
 
     /* Inflammation affects 5-HT (sickness behavior) */
     /* Pro-inflammatory cytokines reduce 5-HT synthesis */
@@ -626,7 +687,10 @@ int nimcp_raphe_adapter_process_immune(nimcp_raphe_adapter_t adapter,
 }
 
 int nimcp_raphe_adapter_apply_vta_modulation(nimcp_raphe_adapter_t adapter, float da_level) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_apply_vta_modulation: adapter is NULL");
+        return -1;
+    }
 
     /* DA-5HT interaction:
      * High DA can facilitate 5-HT release via D2 receptors
@@ -646,7 +710,10 @@ int nimcp_raphe_adapter_apply_vta_modulation(nimcp_raphe_adapter_t adapter, floa
 }
 
 int nimcp_raphe_adapter_apply_habenula_input(nimcp_raphe_adapter_t adapter, float input) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_apply_habenula_input: adapter is NULL");
+        return -1;
+    }
 
     /* Habenula provides strong inhibitory input to Raphe */
     /* This is important for aversive learning - habenula inhibits 5-HT */
@@ -661,7 +728,10 @@ int nimcp_raphe_adapter_apply_habenula_input(nimcp_raphe_adapter_t adapter, floa
 
 int nimcp_raphe_adapter_get_state(nimcp_raphe_adapter_t adapter,
                                   nimcp_raphe_adapter_state_t* state) {
-    if (!adapter || !state) return -1;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_apply_habenula_input: required parameter is NULL (adapter, state)");
+        return -1;
+    }
 
     state->is_active = adapter->is_active;
 
@@ -688,7 +758,10 @@ int nimcp_raphe_adapter_get_state(nimcp_raphe_adapter_t adapter,
 }
 
 int nimcp_raphe_adapter_reset_stats(nimcp_raphe_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_adapter_reset_stats: adapter is NULL");
+        return -1;
+    }
 
     adapter->messages_sent = 0;
     adapter->messages_received = 0;

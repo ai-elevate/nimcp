@@ -248,6 +248,7 @@ nimcp_policy_engine_t nimcp_policy_engine_create(
 
     if (!config) {
         LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_policy_engine_create: config is NULL");
         return NULL;
     }
 

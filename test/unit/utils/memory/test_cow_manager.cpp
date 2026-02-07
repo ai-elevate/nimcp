@@ -31,6 +31,8 @@
     #include "utils/memory/nimcp_cow_manager.h"
     #include "utils/memory/nimcp_memory_pool.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/exception/nimcp_exception.h"
+    #include "utils/exception/nimcp_exception_handlers.h"
 
 //=============================================================================
 // Test Fixture
@@ -48,18 +50,38 @@ protected:
         for (int i = 0; i < TEST_DATA_SIZE; i++) {
             test_data[i] = static_cast<float>(i);
         }
+
+        // Warm up exception handler system (one-time mutex allocation)
+        {
+            nimcp_exception_t* warmup = nimcp_exception_create(
+                NIMCP_ERROR_NULL_POINTER, EXCEPTION_SEVERITY_DEBUG,
+                __FILE__, __LINE__, __func__, "warmup");
+            if (warmup) {
+                nimcp_exception_dispatch(warmup);
+                nimcp_exception_unref(warmup);
+            }
+            nimcp_exception_clear_current();
+        }
+        // Record baseline after handler system is initialized
+        nimcp_memory_get_stats(&baseline_stats_);
     }
 
     void TearDown() override {
-        // Check for memory leaks
+        // Release any exception held as "current" by the dispatch system
+        nimcp_exception_clear_current();
+
+        // Check for memory leaks relative to baseline
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
-        EXPECT_EQ(stats.current_allocated, 0)
-            << "Memory leak detected: " << stats.current_allocated << " bytes still allocated";
+        EXPECT_EQ(stats.current_allocated, baseline_stats_.current_allocated)
+            << "Memory leak detected: "
+            << (stats.current_allocated - baseline_stats_.current_allocated)
+            << " bytes leaked since baseline";
     }
 
     static constexpr size_t TEST_DATA_SIZE = 1024;
     float test_data[TEST_DATA_SIZE];
+    nimcp_memory_stats_t baseline_stats_ = {};
 };
 
 //=============================================================================

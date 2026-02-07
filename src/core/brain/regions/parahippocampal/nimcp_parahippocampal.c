@@ -313,6 +313,7 @@ nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
 
 error:
     parahipp_destroy(ph);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_create: operation failed");
     return NULL;
 }
 
@@ -389,7 +390,10 @@ void parahipp_destroy(nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_reset(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_reset: ph is NULL");
+        return -1;
+    }
 
     /* Reset statistics */
     ph->updates_processed = 0;
@@ -438,7 +442,10 @@ int parahipp_reset(nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_update(nimcp_parahippocampal_t* ph, float dt) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_update: ph is NULL");
+        return -1;
+    }
 
     uint64_t start_time = get_current_time_ms();
 
@@ -478,7 +485,10 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
     const float* position, float heading,
     const char* name, uint32_t* scene_id_out) {
 
-    if (!ph || !scene_features || feature_dim == 0) return -1;
+    if (!ph || !scene_features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_update: required parameter is NULL (ph, scene_features)");
+        return -1;
+    }
 
     ph->status = PARAHIPP_STATUS_SCENE_ENCODING;
 
@@ -494,6 +504,7 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
     if (slot == UINT32_MAX) {
         ph->last_error = PARAHIPP_ERROR_MEMORY_FULL;
         ph->status = PARAHIPP_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_update: validation failed");
         return -1;
     }
 
@@ -513,6 +524,7 @@ int parahipp_encode_scene(nimcp_parahippocampal_t* ph,
         scene->scene_id = UINT32_MAX;
         ph->last_error = PARAHIPP_ERROR_ENCODING_FAILED;
         ph->status = PARAHIPP_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parahipp_update: scene->scene_features is NULL");
         return -1;
     }
     memcpy(scene->scene_features, scene_features, feature_dim * sizeof(float));
@@ -580,7 +592,10 @@ int parahipp_recognize_scene(nimcp_parahippocampal_t* ph,
     const float* scene_features, uint32_t feature_dim,
     parahipp_recognition_result_t* result) {
 
-    if (!ph || !scene_features || !result) return -1;
+    if (!ph || !scene_features || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_update: required parameter is NULL (ph, scene_features, result)");
+        return -1;
+    }
 
     ph->status = PARAHIPP_STATUS_SCENE_RECOGNIZING;
     memset(result, 0, sizeof(parahipp_recognition_result_t));
@@ -660,15 +675,20 @@ int parahipp_add_scene_view(nimcp_parahippocampal_t* ph,
     uint32_t scene_id, const float* view_features, uint32_t feature_dim,
     float heading) {
 
-    if (!ph || !view_features || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || !view_features || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (ph, view_features)");
+        return -1;
+    }
 
     nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
     if (scene->scene_id == UINT32_MAX) {
         ph->last_error = PARAHIPP_ERROR_SCENE_NOT_FOUND;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     if (scene->num_views >= ph->config.max_views_per_scene) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return -1;  /* Max views reached */
     }
 
@@ -678,13 +698,19 @@ int parahipp_add_scene_view(nimcp_parahippocampal_t* ph,
     float* new_headings = (float*)nimcp_realloc(scene->view_headings,
         (scene->num_views + 1) * sizeof(float));
 
-    if (!new_features || !new_headings) return -1;
+    if (!new_features || !new_headings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (new_features, new_headings)");
+        return -1;
+    }
 
     scene->view_features = new_features;
     scene->view_headings = new_headings;
 
     scene->view_features[scene->num_views] = (float*)nimcp_malloc(feature_dim * sizeof(float));
-    if (!scene->view_features[scene->num_views]) return -1;
+    if (!scene->view_features[scene->num_views]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: scene->view_features is NULL");
+        return -1;
+    }
 
     memcpy(scene->view_features[scene->num_views], view_features, feature_dim * sizeof(float));
     scene->view_headings[scene->num_views] = heading;
@@ -696,16 +722,28 @@ int parahipp_add_scene_view(nimcp_parahippocampal_t* ph,
 const nimcp_stored_scene_t* parahipp_get_scene(const nimcp_parahippocampal_t* ph,
     uint32_t scene_id) {
 
-    if (!ph || scene_id >= ph->max_stored_scenes) return NULL;
-    if (ph->stored_scenes[scene_id].scene_id == UINT32_MAX) return NULL;
+    if (!ph || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: ph is NULL");
+        return NULL;
+    }
+    if (ph->stored_scenes[scene_id].scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
+        return NULL;
+    }
     return &ph->stored_scenes[scene_id];
 }
 
 int parahipp_update_scene_visit(nimcp_parahippocampal_t* ph, uint32_t scene_id) {
-    if (!ph || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parahipp_update_scene_visit: ph is NULL");
+        return -1;
+    }
 
     nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
-    if (scene->scene_id == UINT32_MAX) return -1;
+    if (scene->scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_update_scene_visit: validation failed");
+        return -1;
+    }
 
     scene->familiarity += (1.0f - scene->familiarity) * 0.1f;
     scene->recency = 1.0f;
@@ -716,10 +754,16 @@ int parahipp_update_scene_visit(nimcp_parahippocampal_t* ph, uint32_t scene_id) 
 }
 
 int parahipp_forget_scene(nimcp_parahippocampal_t* ph, uint32_t scene_id) {
-    if (!ph || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parahipp_forget_scene: ph is NULL");
+        return -1;
+    }
 
     nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
-    if (scene->scene_id == UINT32_MAX) return -1;
+    if (scene->scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_forget_scene: validation failed");
+        return -1;
+    }
 
     /* Free allocated memory */
     nimcp_free(scene->scene_features);
@@ -750,7 +794,10 @@ int parahipp_forget_scene(nimcp_parahippocampal_t* ph, uint32_t scene_id) {
 int parahipp_update_place_cells(nimcp_parahippocampal_t* ph,
     const float* position, uint32_t dim) {
 
-    if (!ph || !position || dim < 2) return -1;
+    if (!ph || !position || dim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_forget_scene: required parameter is NULL (ph, position)");
+        return -1;
+    }
 
     memcpy(ph->current_position, position, fminf(dim, 3) * sizeof(float));
 
@@ -776,7 +823,10 @@ int parahipp_update_place_cells(nimcp_parahippocampal_t* ph,
 int parahipp_get_place_population_vector(const nimcp_parahippocampal_t* ph,
     float* vector_out, uint32_t* dim) {
 
-    if (!ph || !vector_out || !dim) return -1;
+    if (!ph || !vector_out || !dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_forget_scene: required parameter is NULL (ph, vector_out, dim)");
+        return -1;
+    }
 
     /* Weighted sum of place field centers */
     float weighted_sum[3] = {0};
@@ -805,7 +855,10 @@ int parahipp_get_place_population_vector(const nimcp_parahippocampal_t* ph,
 int parahipp_decode_position(const nimcp_parahippocampal_t* ph,
     float* position_out, float* confidence_out) {
 
-    if (!ph || !position_out) return -1;
+    if (!ph || !position_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_forget_scene: required parameter is NULL (ph, position_out)");
+        return -1;
+    }
 
     uint32_t dim;
     int result = parahipp_get_place_population_vector(ph, position_out, &dim);
@@ -825,7 +878,10 @@ int parahipp_decode_position(const nimcp_parahippocampal_t* ph,
 int parahipp_get_active_place_cells(const nimcp_parahippocampal_t* ph,
     uint32_t* cell_ids, float* activations, uint32_t max_cells, uint32_t* num_active) {
 
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_forget_scene: ph is NULL");
+        return -1;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < ph->num_place_cells && count < max_cells; i++) {
@@ -847,7 +903,10 @@ int parahipp_get_active_place_cells(const nimcp_parahippocampal_t* ph,
 int parahipp_process_layout(nimcp_parahippocampal_t* ph,
     const float* boundary_distances, uint32_t num_angles) {
 
-    if (!ph || !boundary_distances) return -1;
+    if (!ph || !boundary_distances) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_forget_scene: required parameter is NULL (ph, boundary_distances)");
+        return -1;
+    }
 
     ph->status = PARAHIPP_STATUS_LAYOUT_PROCESSING;
 
@@ -912,7 +971,10 @@ layout_type_t parahipp_get_layout_type(const nimcp_parahippocampal_t* ph) {
 int parahipp_get_layout_features(const nimcp_parahippocampal_t* ph,
     float* features_out, uint32_t max_dim) {
 
-    if (!ph || !features_out) return -1;
+    if (!ph || !features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_get_layout_type: required parameter is NULL (ph, features_out)");
+        return -1;
+    }
 
     uint32_t copy_dim = fminf(ph->current_layout.feature_dim, max_dim);
     if (ph->current_layout.geometric_features) {
@@ -939,7 +1001,10 @@ float parahipp_get_navigability(const nimcp_parahippocampal_t* ph) {
 int parahipp_get_current_context(const nimcp_parahippocampal_t* ph,
     float* context_out, uint32_t max_dim) {
 
-    if (!ph || !context_out) return -1;
+    if (!ph || !context_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_get_navigability: required parameter is NULL (ph, context_out)");
+        return -1;
+    }
 
     uint32_t copy_dim = fminf(ph->current_context_dim, max_dim);
     memcpy(context_out, ph->current_context, copy_dim * sizeof(float));
@@ -950,7 +1015,10 @@ int parahipp_get_current_context(const nimcp_parahippocampal_t* ph,
 int parahipp_set_context(nimcp_parahippocampal_t* ph,
     const float* context, uint32_t dim) {
 
-    if (!ph || !context) return -1;
+    if (!ph || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_get_navigability: required parameter is NULL (ph, context)");
+        return -1;
+    }
 
     ph->status = PARAHIPP_STATUS_CONTEXT_BINDING;
 
@@ -985,7 +1053,10 @@ int parahipp_set_context(nimcp_parahippocampal_t* ph,
 }
 
 bool parahipp_detect_context_change(const nimcp_parahippocampal_t* ph) {
-    if (!ph) return false;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_detect_context_change: ph is NULL");
+        return false;
+    }
 
     float total_change = 0.0f;
     for (uint32_t i = 0; i < ph->num_context_cells; i++) {
@@ -1020,10 +1091,16 @@ context_state_t parahipp_get_context_state(const nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_bind_context_to_scene(nimcp_parahippocampal_t* ph, uint32_t scene_id) {
-    if (!ph || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parahipp_bind_context_to_scene: ph is NULL");
+        return -1;
+    }
 
     nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
-    if (scene->scene_id == UINT32_MAX) return -1;
+    if (scene->scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_bind_context_to_scene: validation failed");
+        return -1;
+    }
 
     /* Copy current context to scene */
     if (scene->context_vector) {
@@ -1043,7 +1120,10 @@ int parahipp_add_landmark(nimcp_parahippocampal_t* ph,
     const float* visual_features, uint32_t feature_dim,
     const float* position, const char* name, uint32_t* landmark_id_out) {
 
-    if (!ph || !visual_features || !position) return -1;
+    if (!ph || !visual_features || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bind_context_to_scene: required parameter is NULL (ph, visual_features, position)");
+        return -1;
+    }
 
     /* Find empty slot */
     uint32_t slot = UINT32_MAX;
@@ -1056,6 +1136,7 @@ int parahipp_add_landmark(nimcp_parahippocampal_t* ph,
 
     if (slot == UINT32_MAX) {
         ph->last_error = PARAHIPP_ERROR_MEMORY_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_bind_context_to_scene: validation failed");
         return -1;
     }
 
@@ -1072,6 +1153,7 @@ int parahipp_add_landmark(nimcp_parahippocampal_t* ph,
     lm->visual_features = (float*)nimcp_malloc(feature_dim * sizeof(float));
     if (!lm->visual_features) {
         lm->landmark_id = UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parahipp_bind_context_to_scene: lm->visual_features is NULL");
         return -1;
     }
     memcpy(lm->visual_features, visual_features, feature_dim * sizeof(float));
@@ -1096,7 +1178,10 @@ int parahipp_recognize_landmarks(nimcp_parahippocampal_t* ph,
     uint32_t* landmark_ids, float* confidences,
     uint32_t max_landmarks, uint32_t* num_recognized) {
 
-    if (!ph || !visual_features) return -1;
+    if (!ph || !visual_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bind_context_to_scene: required parameter is NULL (ph, visual_features)");
+        return -1;
+    }
 
     ph->status = PARAHIPP_STATUS_LANDMARK_PROCESSING;
 
@@ -1126,15 +1211,24 @@ int parahipp_recognize_landmarks(nimcp_parahippocampal_t* ph,
 const nimcp_stored_landmark_t* parahipp_get_landmark(const nimcp_parahippocampal_t* ph,
     uint32_t landmark_id) {
 
-    if (!ph || landmark_id >= ph->max_landmarks) return NULL;
-    if (ph->stored_landmarks[landmark_id].landmark_id == UINT32_MAX) return NULL;
+    if (!ph || landmark_id >= ph->max_landmarks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parahipp_bind_context_to_scene: ph is NULL");
+        return NULL;
+    }
+    if (ph->stored_landmarks[landmark_id].landmark_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bind_context_to_scene: validation failed");
+        return NULL;
+    }
     return &ph->stored_landmarks[landmark_id];
 }
 
 int parahipp_update_landmark_cells(nimcp_parahippocampal_t* ph,
     const float* current_position) {
 
-    if (!ph || !current_position) return -1;
+    if (!ph || !current_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bind_context_to_scene: required parameter is NULL (ph, current_position)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < ph->num_landmark_cells; i++) {
         if (ph->landmark_cells[i].landmark_id == UINT32_MAX) {
@@ -1189,16 +1283,25 @@ float parahipp_get_landmark_bearing(const nimcp_parahippocampal_t* ph,
 int parahipp_bind_objects_to_scene(nimcp_parahippocampal_t* ph,
     uint32_t scene_id, const uint32_t* object_ids, uint32_t num_objects) {
 
-    if (!ph || !object_ids || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || !object_ids || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bind_context_to_scene: required parameter is NULL (ph, object_ids)");
+        return -1;
+    }
 
     nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
-    if (scene->scene_id == UINT32_MAX) return -1;
+    if (scene->scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_bind_context_to_scene: validation failed");
+        return -1;
+    }
 
     /* Free old objects */
     nimcp_free(scene->object_ids);
 
     scene->object_ids = (uint32_t*)nimcp_malloc(num_objects * sizeof(uint32_t));
-    if (!scene->object_ids) return -1;
+    if (!scene->object_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parahipp_bind_context_to_scene: scene->object_ids is NULL");
+        return -1;
+    }
 
     memcpy(scene->object_ids, object_ids, num_objects * sizeof(uint32_t));
     scene->num_objects = num_objects;
@@ -1210,10 +1313,16 @@ int parahipp_get_scene_objects(const nimcp_parahippocampal_t* ph,
     uint32_t scene_id, uint32_t* object_ids, uint32_t max_objects,
     uint32_t* num_objects) {
 
-    if (!ph || scene_id >= ph->max_stored_scenes) return -1;
+    if (!ph || scene_id >= ph->max_stored_scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parahipp_bind_context_to_scene: ph is NULL");
+        return -1;
+    }
 
     const nimcp_stored_scene_t* scene = &ph->stored_scenes[scene_id];
-    if (scene->scene_id == UINT32_MAX) return -1;
+    if (scene->scene_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_bind_context_to_scene: validation failed");
+        return -1;
+    }
 
     uint32_t copy_count = fminf(scene->num_objects, max_objects);
     if (object_ids && scene->object_ids) {
@@ -1228,7 +1337,10 @@ int parahipp_find_scenes_with_object(const nimcp_parahippocampal_t* ph,
     uint32_t object_id, uint32_t* scene_ids, uint32_t max_scenes,
     uint32_t* num_scenes) {
 
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: ph is NULL");
+        return -1;
+    }
 
     uint32_t found = 0;
     for (uint32_t i = 0; i < ph->max_stored_scenes && found < max_scenes; i++) {
@@ -1253,7 +1365,10 @@ int parahipp_find_scenes_with_object(const nimcp_parahippocampal_t* ph,
  *===========================================================================*/
 
 int parahipp_send_to_entorhinal(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_send_to_entorhinal: ph is NULL");
+        return -1;
+    }
     if (!ph->entorhinal_bridge.entorhinal) return 0;
     ph->entorhinal_bridge.items_transferred++;
     return 0;
@@ -1261,13 +1376,19 @@ int parahipp_send_to_entorhinal(nimcp_parahippocampal_t* ph) {
 
 int parahipp_receive_from_entorhinal(nimcp_parahippocampal_t* ph,
     const float* grid_input, uint32_t dim) {
-    if (!ph || !grid_input) return -1;
+    if (!ph || !grid_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_send_to_entorhinal: required parameter is NULL (ph, grid_input)");
+        return -1;
+    }
     (void)dim;
     return 0;
 }
 
 int parahipp_send_to_perirhinal(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_send_to_perirhinal: ph is NULL");
+        return -1;
+    }
     if (!ph->perirhinal_bridge.perirhinal) return 0;
     ph->perirhinal_bridge.items_transferred++;
     return 0;
@@ -1275,18 +1396,27 @@ int parahipp_send_to_perirhinal(nimcp_parahippocampal_t* ph) {
 
 int parahipp_receive_from_perirhinal(nimcp_parahippocampal_t* ph,
     const uint32_t* object_ids, uint32_t num_objects) {
-    if (!ph || !object_ids) return -1;
+    if (!ph || !object_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_send_to_perirhinal: required parameter is NULL (ph, object_ids)");
+        return -1;
+    }
     (void)num_objects;
     return 0;
 }
 
 int parahipp_sync_entorhinal(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_sync_entorhinal: ph is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int parahipp_sync_perirhinal(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_sync_perirhinal: ph is NULL");
+        return -1;
+    }
     return 0;
 }
 
@@ -1295,7 +1425,10 @@ int parahipp_sync_perirhinal(nimcp_parahippocampal_t* ph) {
  *===========================================================================*/
 
 int parahipp_process_incoming(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_process_incoming: ph is NULL");
+        return -1;
+    }
 
     if (ph->perception_bridge.perception && ph->perception_bridge.visual_input) {
         parahipp_process_visual_input(ph,
@@ -1307,7 +1440,10 @@ int parahipp_process_incoming(nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_send_outgoing(nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_send_outgoing: ph is NULL");
+        return -1;
+    }
 
     parahipp_send_to_entorhinal(ph);
     parahipp_send_to_perirhinal(ph);
@@ -1320,7 +1456,10 @@ int parahipp_send_outgoing(nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_bidirectional_update(nimcp_parahippocampal_t* ph, float dt) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bidirectional_update: ph is NULL");
+        return -1;
+    }
 
     parahipp_process_incoming(ph);
     parahipp_update(ph, dt);
@@ -1332,13 +1471,19 @@ int parahipp_bidirectional_update(nimcp_parahippocampal_t* ph, float dt) {
 int parahipp_process_visual_input(nimcp_parahippocampal_t* ph,
     const float* visual_features, uint32_t feature_dim) {
 
-    if (!ph || !visual_features) return -1;
+    if (!ph || !visual_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_bidirectional_update: required parameter is NULL (ph, visual_features)");
+        return -1;
+    }
 
     /* Store current input */
     if (feature_dim != ph->current_input_dim) {
         float* new_input = (float*)nimcp_realloc(ph->current_scene_input,
             feature_dim * sizeof(float));
-        if (!new_input) return -1;
+        if (!new_input) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parahipp_bidirectional_update: new_input is NULL");
+            return -1;
+        }
         ph->current_scene_input = new_input;
         ph->current_input_dim = feature_dim;
     }
@@ -1364,7 +1509,10 @@ int parahipp_process_visual_input(nimcp_parahippocampal_t* ph,
  *===========================================================================*/
 
 int parahipp_init_entorhinal_bridge(nimcp_parahippocampal_t* ph, nimcp_entorhinal_t* ec) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_entorhinal_bridge: ph is NULL");
+        return -1;
+    }
     ph->entorhinal_bridge.entorhinal = ec;
     ph->entorhinal_bridge.grid_cell_input_weight = 0.5f;
     ph->entorhinal_bridge.spatial_context_weight = 0.6f;
@@ -1372,7 +1520,10 @@ int parahipp_init_entorhinal_bridge(nimcp_parahippocampal_t* ph, nimcp_entorhina
 }
 
 int parahipp_init_perirhinal_bridge(nimcp_parahippocampal_t* ph, nimcp_perirhinal_t* pr) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_perirhinal_bridge: ph is NULL");
+        return -1;
+    }
     ph->perirhinal_bridge.perirhinal = pr;
     ph->perirhinal_bridge.object_context_weight = 0.5f;
     ph->perirhinal_bridge.scene_object_binding = 0.7f;
@@ -1380,7 +1531,10 @@ int parahipp_init_perirhinal_bridge(nimcp_parahippocampal_t* ph, nimcp_perirhina
 }
 
 int parahipp_init_security_bridge(nimcp_parahippocampal_t* ph, nimcp_security_context_t* ctx, nimcp_access_control_t* ac) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_security_bridge: ph is NULL");
+        return -1;
+    }
     ph->security_bridge.security_ctx = ctx;
     ph->security_bridge.access_control = ac;
     ph->security_bridge.access_level = 1;
@@ -1388,26 +1542,38 @@ int parahipp_init_security_bridge(nimcp_parahippocampal_t* ph, nimcp_security_co
 }
 
 int parahipp_init_immune_bridge(nimcp_parahippocampal_t* ph, brain_immune_system_t* immune) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_immune_bridge: ph is NULL");
+        return -1;
+    }
     ph->immune_bridge.immune = immune;
     ph->immune_bridge.health_score = 1.0f;
     return 0;
 }
 
 int parahipp_init_bio_async_bridge(nimcp_parahippocampal_t* ph, nimcp_bio_router_t* router) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_bio_async_bridge: ph is NULL");
+        return -1;
+    }
     ph->bio_async_bridge.router = router;
     return 0;
 }
 
 int parahipp_init_snn_bridge(nimcp_parahippocampal_t* ph, nimcp_snn_network_t* snn) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_snn_bridge: ph is NULL");
+        return -1;
+    }
     ph->snn_bridge.snn = snn;
     return 0;
 }
 
 int parahipp_init_plasticity_bridge(nimcp_parahippocampal_t* ph, nimcp_plasticity_manager_t* plasticity, nimcp_stdp_rule_t* stdp) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_plasticity_bridge: ph is NULL");
+        return -1;
+    }
     ph->plasticity_bridge.plasticity = plasticity;
     ph->plasticity_bridge.stdp_rule = stdp;
     ph->plasticity_bridge.learning_rate = ph->config.learning_rate;
@@ -1415,7 +1581,10 @@ int parahipp_init_plasticity_bridge(nimcp_parahippocampal_t* ph, nimcp_plasticit
 }
 
 int parahipp_init_cognitive_bridge(nimcp_parahippocampal_t* ph, working_memory_t* wm, attention_system_t* attention, cognitive_integration_hub_t* hub) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_cognitive_bridge: ph is NULL");
+        return -1;
+    }
     ph->cognitive_bridge.working_memory = wm;
     ph->cognitive_bridge.attention = attention;
     ph->cognitive_bridge.hub = hub;
@@ -1423,13 +1592,19 @@ int parahipp_init_cognitive_bridge(nimcp_parahippocampal_t* ph, working_memory_t
 }
 
 int parahipp_init_training_bridge(nimcp_parahippocampal_t* ph, nimcp_training_context_t* ctx) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_training_bridge: ph is NULL");
+        return -1;
+    }
     ph->training_bridge.training_ctx = ctx;
     return 0;
 }
 
 int parahipp_init_substrate_bridge(nimcp_parahippocampal_t* ph, nimcp_neural_substrate_t* substrate) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_substrate_bridge: ph is NULL");
+        return -1;
+    }
     ph->substrate_bridge.substrate = substrate;
     ph->substrate_bridge.atp_level = 1.0f;
     ph->substrate_bridge.oxygen_level = 1.0f;
@@ -1438,45 +1613,66 @@ int parahipp_init_substrate_bridge(nimcp_parahippocampal_t* ph, nimcp_neural_sub
 }
 
 int parahipp_init_resonance_bridge(nimcp_parahippocampal_t* ph, nimcp_prime_resonance_t* resonance) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_resonance_bridge: ph is NULL");
+        return -1;
+    }
     ph->resonance_bridge.resonance = resonance;
     return 0;
 }
 
 int parahipp_init_thalamic_bridge(nimcp_parahippocampal_t* ph, thalamus_adapter_t* thalamus) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_thalamic_bridge: ph is NULL");
+        return -1;
+    }
     ph->thalamic_bridge.thalamus = thalamus;
     ph->thalamic_bridge.relay_gain = 1.0f;
     return 0;
 }
 
 int parahipp_init_hippocampus_bridge(nimcp_parahippocampal_t* ph, hippocampus_adapter_t* hippocampus) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_hippocampus_bridge: ph is NULL");
+        return -1;
+    }
     ph->hippocampus_bridge.hippocampus = hippocampus;
     ph->hippocampus_bridge.place_cell_coupling = 0.8f;
     return 0;
 }
 
 int parahipp_init_perception_bridge(nimcp_parahippocampal_t* ph, nimcp_perception_layer_t* perception) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_perception_bridge: ph is NULL");
+        return -1;
+    }
     ph->perception_bridge.perception = perception;
     return 0;
 }
 
 int parahipp_init_omni_bridge(nimcp_parahippocampal_t* ph, nimcp_omnidirectional_system_t* omni) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_omni_bridge: ph is NULL");
+        return -1;
+    }
     ph->omni_bridge.omni = omni;
     return 0;
 }
 
 int parahipp_init_hypothalamus_bridge(nimcp_parahippocampal_t* ph, hypothalamus_adapter_t* hypothalamus) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_hypothalamus_bridge: ph is NULL");
+        return -1;
+    }
     ph->hypothalamus_bridge.hypothalamus = hypothalamus;
     return 0;
 }
 
 int parahipp_init_all_bridges(nimcp_parahippocampal_t* ph, nimcp_brain_t* brain) {
-    if (!ph || !brain) return -1;
+    if (!ph || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_init_all_bridges: required parameter is NULL (ph, brain)");
+        return -1;
+    }
     return 0;
 }
 
@@ -1528,7 +1724,10 @@ const char* parahipp_status_string(parahipp_status_t status) {
 }
 
 int parahipp_get_stats(const nimcp_parahippocampal_t* ph, parahipp_stats_t* stats) {
-    if (!ph || !stats) return -1;
+    if (!ph || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_get_stats: required parameter is NULL (ph, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(parahipp_stats_t));
 
@@ -1564,7 +1763,10 @@ int parahipp_get_stats(const nimcp_parahippocampal_t* ph, parahipp_stats_t* stat
 }
 
 int parahipp_get_config(const nimcp_parahippocampal_t* ph, parahipp_config_t* config) {
-    if (!ph || !config) return -1;
+    if (!ph || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_get_config: required parameter is NULL (ph, config)");
+        return -1;
+    }
     *config = ph->config;
     return 0;
 }
@@ -1583,7 +1785,10 @@ float parahipp_get_health_status(const nimcp_parahippocampal_t* ph) {
 }
 
 int parahipp_log_diagnostics(const nimcp_parahippocampal_t* ph) {
-    if (!ph) return -1;
+    if (!ph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_log_diagnostics: ph is NULL");
+        return -1;
+    }
     return 0;
 }
 
@@ -1633,10 +1838,16 @@ size_t parahipp_get_context_cell_activity(const nimcp_parahippocampal_t* ph,
 int parahipp_serialize(const nimcp_parahippocampal_t* ph,
     uint8_t* buffer, size_t buffer_size, size_t* bytes_written) {
 
-    if (!ph || !buffer || !bytes_written) return -1;
+    if (!ph || !buffer || !bytes_written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_log_diagnostics: required parameter is NULL (ph, buffer, bytes_written)");
+        return -1;
+    }
 
     size_t needed = sizeof(parahipp_config_t) + sizeof(uint64_t) * 4;
-    if (buffer_size < needed) return -1;
+    if (buffer_size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_log_diagnostics: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(buffer + offset, &ph->config, sizeof(parahipp_config_t));
@@ -1661,10 +1872,16 @@ int parahipp_serialize(const nimcp_parahippocampal_t* ph,
 int parahipp_deserialize(nimcp_parahippocampal_t* ph,
     const uint8_t* buffer, size_t buffer_size) {
 
-    if (!ph || !buffer) return -1;
+    if (!ph || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parahipp_log_diagnostics: required parameter is NULL (ph, buffer)");
+        return -1;
+    }
 
     size_t needed = sizeof(parahipp_config_t) + sizeof(uint64_t) * 4;
-    if (buffer_size < needed) return -1;
+    if (buffer_size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parahipp_log_diagnostics: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(&ph->config, buffer + offset, sizeof(parahipp_config_t));

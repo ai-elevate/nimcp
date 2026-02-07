@@ -325,6 +325,7 @@ static void* log_alloc(nimcp_logger_t logger, size_t size) {
         header->size = size;
         return (char*)base + sizeof(log_alloc_header_t);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "log_alloc: validation failed");
     return NULL;
 }
 
@@ -391,6 +392,7 @@ static int mkdir_p(const char* path) {
         if (*p == '/') {
             *p = '\0';
             if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mkdir_p: validation failed");
                 return -1;
             }
             *p = '/';
@@ -398,6 +400,7 @@ static int mkdir_p(const char* path) {
     }
 
     if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mkdir_p: validation failed");
         return -1;
     }
     return 0;
@@ -431,6 +434,7 @@ static const char* get_basename(const char* path) {
 static bool ring_buffer_init(log_ring_buffer_t* rb, size_t capacity, nimcp_logger_t logger) {
     rb->entries = (nimcp_log_entry_t*)log_alloc(logger, capacity * sizeof(nimcp_log_entry_t));
     if (!rb->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ring_buffer_init: rb->entries is NULL");
         return false;
     }
 
@@ -470,6 +474,7 @@ static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* ent
         // Check if buffer is full
         if (next_pos - read_pos >= rb->capacity) {
             nimcp_atomic_fetch_add_u64(&rb->drop_count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ring_buffer_push: capacity exceeded");
             return false;  // Buffer full
         }
 
@@ -485,6 +490,7 @@ static bool ring_buffer_push(log_ring_buffer_t* rb, const nimcp_log_entry_t* ent
     }
 
     nimcp_atomic_fetch_add_u64(&rb->drop_count, 1, NIMCP_MEMORY_ORDER_RELAXED);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_push: operation failed");
     return false;
 }
 
@@ -497,6 +503,7 @@ static bool ring_buffer_pop(log_ring_buffer_t* rb, nimcp_log_entry_t* entry) {
     uint64_t write_pos = nimcp_atomic_load_u64(&rb->write_pos, NIMCP_MEMORY_ORDER_ACQUIRE);
 
     if (read_pos >= write_pos) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_pop: capacity exceeded");
         return false;  // Buffer empty
     }
 
@@ -569,6 +576,7 @@ static bool rate_limiter_try_acquire(log_rate_limiter_t* rl) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_limiter_try_acquire: validation failed");
     return false;
 }
 
@@ -903,6 +911,7 @@ static void* async_writer_thread(void* arg) {
         write_entry(logger, &entry);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_writer_thread: operation failed");
     return NULL;
 }
 
@@ -916,6 +925,7 @@ static void* async_writer_thread(void* arg) {
 static bool should_log(nimcp_logger_t logger, log_level_t level, const char* module) {
     // Check OFF level (never log)
     if (level >= LOG_LEVEL_OFF) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_log: capacity exceeded");
         return false;
     }
 
@@ -935,6 +945,7 @@ static bool should_log(nimcp_logger_t logger, log_level_t level, const char* mod
 
     // Check global level
     if (level < logger->level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_log: validation failed");
         return false;
     }
 
@@ -1072,6 +1083,7 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
         nimcp_platform_mutex_init(&logger->async_mutex, false) != 0 ||
         nimcp_platform_mutex_init(&logger->context_mutex, false) != 0) {
         nimcp_free(logger);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_log_create: validation failed");
         return NULL;
     }
 
@@ -1081,6 +1093,7 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
         nimcp_platform_mutex_destroy(&logger->async_mutex);
         nimcp_platform_mutex_destroy(&logger->context_mutex);
         nimcp_free(logger);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_log_create: validation failed");
         return NULL;
     }
 
@@ -1445,7 +1458,10 @@ log_level_t nimcp_log_get_level(nimcp_logger_t logger) {
 
 bool nimcp_log_is_level_enabled(nimcp_logger_t logger, log_level_t level) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC) return false;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_log_is_level_enabled: logger is NULL");
+        return false;
+    }
     return level >= logger->level && level < LOG_LEVEL_OFF;
 }
 
@@ -1552,7 +1568,10 @@ void nimcp_log_clear_module_filters(nimcp_logger_t logger) {
 
 nimcp_log_context_t nimcp_log_context_create(nimcp_logger_t logger, const char* context_id) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC) return NULL;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_log_context_create: logger is NULL");
+        return NULL;
+    }
 
     nimcp_log_context_t ctx = (nimcp_log_context_t)log_alloc(logger,
                                                               sizeof(struct nimcp_log_context_struct));
@@ -1601,7 +1620,10 @@ void nimcp_log_context_destroy(nimcp_log_context_t context) {
 
 const char* nimcp_log_get_context_id(nimcp_logger_t logger) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC) return NULL;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_log_get_context_id: logger is NULL");
+        return NULL;
+    }
 
     return logger->current_context[0] != '\0' ? logger->current_context : NULL;
 }
@@ -1625,8 +1647,14 @@ void nimcp_log_set_context_id(nimcp_logger_t logger, const char* context_id) {
 
 int nimcp_log_rotate(nimcp_logger_t logger) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC) return -1;
-    if (!logger->file) return -1;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_log_rotate: logger is NULL");
+        return -1;
+    }
+    if (!logger->file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_log_rotate: logger->file is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&logger->file_mutex);
 
@@ -1675,13 +1703,19 @@ void nimcp_log_set_rotation(nimcp_logger_t logger, const nimcp_log_rotation_conf
 
 const char* nimcp_log_get_file_path(nimcp_logger_t logger) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC) return NULL;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_log_get_file_path: logger is NULL");
+        return NULL;
+    }
     return logger->file_path[0] ? logger->file_path : NULL;
 }
 
 int nimcp_log_set_file_path(nimcp_logger_t logger, const char* path) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC || !path) return -1;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_log_set_file_path: required parameter is NULL (logger, path)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&logger->file_mutex);
 
@@ -1734,7 +1768,10 @@ void nimcp_log_reset_rate_limit(nimcp_logger_t logger) {
 
 int nimcp_log_get_stats(nimcp_logger_t logger, nimcp_log_stats_t* stats) {
     if (!logger) logger = g_global_logger;
-    if (!logger || logger->magic != NIMCP_LOG_MAGIC || !stats) return -1;
+    if (!logger || logger->magic != NIMCP_LOG_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_log_get_stats: required parameter is NULL (logger, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(*stats));
 

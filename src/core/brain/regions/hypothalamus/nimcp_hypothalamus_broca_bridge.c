@@ -209,7 +209,10 @@ int hypo_broca_bridge_update_stress(
     hypo_broca_bridge_t* bridge,
     const hypo_stress_input_t* stress)
 {
-    if (!bridge || !stress) return -1;
+    if (!bridge || !stress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_update_stress: required parameter is NULL (bridge, stress)");
+        return -1;
+    }
 
     bridge->stress = *stress;
     return 0;
@@ -229,7 +232,10 @@ int hypo_broca_bridge_set_arousal(hypo_broca_bridge_t* bridge, float arousal) {
 }
 
 int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_compute_modulation: required parameter is NULL (bridge, bridge->drives)");
+        return -1;
+    }
 
     const hypo_broca_config_t* cfg = &bridge->config;
     hypo_speech_modulation_t* mod = &bridge->modulation;
@@ -238,6 +244,7 @@ int hypo_broca_bridge_compute_modulation(hypo_broca_bridge_t* bridge) {
     /* Get current drive states */
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_broca_bridge_compute_modulation: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -370,7 +377,10 @@ int hypo_broca_bridge_get_modulation(
     const hypo_broca_bridge_t* bridge,
     hypo_speech_modulation_t* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     *modulation = bridge->modulation;
     return 0;
@@ -386,13 +396,19 @@ hypo_speech_state_t hypo_broca_bridge_get_state(const hypo_broca_bridge_t* bridg
 }
 
 bool hypo_broca_bridge_is_impaired(const hypo_broca_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_is_impaired: bridge is NULL");
+        return false;
+    }
     return bridge->modulation.state == HYPO_SPEECH_IMPAIRED ||
            bridge->modulation.state == HYPO_SPEECH_BLOCKED;
 }
 
 bool hypo_broca_bridge_is_alarm_active(const hypo_broca_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_is_alarm_active: bridge is NULL");
+        return false;
+    }
     return bridge->modulation.alarm_mode;
 }
 
@@ -461,7 +477,10 @@ static nimcp_error_t broca_handle_modulation_request(
 }
 
 bool hypo_broca_bridge_register_bio(hypo_broca_bridge_t* bridge, bool use_kg_wiring) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring;  /* Future KG wiring integration */
@@ -476,6 +495,7 @@ bool hypo_broca_bridge_register_bio(hypo_broca_bridge_t* bridge, bool use_kg_wir
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_broca_bridge: failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_broca_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 

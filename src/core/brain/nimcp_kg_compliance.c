@@ -145,6 +145,7 @@ int kg_compliance_set_retention(const kg_retention_policy_t* policy) {
     if (!existing) {
         if (g_retention_registry.count >= MAX_RETENTION_POLICIES) {
             nimcp_mutex_unlock(g_retention_registry.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_compliance_set_retention: capacity exceeded");
             return -1;
         }
         existing = &g_retention_registry.policies[g_retention_registry.count++];
@@ -171,6 +172,7 @@ int kg_compliance_get_retention(const char* policy_name, kg_retention_policy_t* 
     ensure_registry_initialized();
 
     if (!policy_name || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_get_retention: required parameter is NULL (policy_name, policy)");
         return -1;
     }
 
@@ -186,6 +188,7 @@ int kg_compliance_get_retention(const char* policy_name, kg_retention_policy_t* 
     }
 
     nimcp_mutex_unlock(g_retention_registry.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compliance_get_retention: validation failed");
     return -1; /* Not found */
 }
 
@@ -209,6 +212,7 @@ int kg_compliance_apply_retention(brain_kg_t* kg) {
 int kg_compliance_set_legal_hold(brain_kg_t* kg, brain_kg_node_id_t node_id,
                                   const char* hold_tag) {
     if (!kg || !hold_tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_apply_retention: required parameter is NULL (kg, hold_tag)");
         return -1;
     }
 
@@ -222,6 +226,7 @@ int kg_compliance_set_legal_hold(brain_kg_t* kg, brain_kg_node_id_t node_id,
 int kg_compliance_remove_legal_hold(brain_kg_t* kg, brain_kg_node_id_t node_id,
                                      const char* hold_tag) {
     if (!kg || !hold_tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_apply_retention: required parameter is NULL (kg, hold_tag)");
         return -1;
     }
 
@@ -238,6 +243,7 @@ int kg_compliance_remove_legal_hold(brain_kg_t* kg, brain_kg_node_id_t node_id,
 
 int kg_compliance_register_subject(brain_kg_t* kg, const kg_data_subject_t* subject) {
     if (!kg || !subject) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_register_subject: required parameter is NULL (kg, subject)");
         return -1;
     }
 
@@ -250,6 +256,7 @@ int kg_compliance_get_subject_data(const brain_kg_t* kg, const char* subject_id,
                                     brain_kg_node_id_t* nodes, uint32_t max,
                                     uint32_t* count) {
     if (!kg || !subject_id || !nodes || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_register_subject: required parameter is NULL (kg, subject_id, nodes, count)");
         return -1;
     }
 
@@ -261,6 +268,7 @@ int kg_compliance_get_subject_data(const brain_kg_t* kg, const char* subject_id,
 
 int kg_compliance_delete_subject_data(brain_kg_t* kg, const char* subject_id) {
     if (!kg || !subject_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_delete_subject_data: required parameter is NULL (kg, subject_id)");
         return -1;
     }
 
@@ -269,6 +277,7 @@ int kg_compliance_delete_subject_data(brain_kg_t* kg, const char* subject_id) {
     uint32_t count = 1024;
     int rc = kg_compliance_get_subject_data(kg, subject_id, nodes, 1024, &count);
     if (rc != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compliance_delete_subject_data: validation failed");
         return -1;
     }
 
@@ -280,6 +289,7 @@ int kg_compliance_delete_subject_data(brain_kg_t* kg, const char* subject_id) {
 int kg_compliance_export_subject_data(const brain_kg_t* kg, const char* subject_id,
                                        const char* output_path) {
     if (!kg || !subject_id || !output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_delete_subject_data: required parameter is NULL (kg, subject_id, output_path)");
         return -1;
     }
 
@@ -294,6 +304,7 @@ int kg_compliance_export_subject_data(const brain_kg_t* kg, const char* subject_
 
 int kg_compliance_anonymize_subject(brain_kg_t* kg, const char* subject_id) {
     if (!kg || !subject_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, subject_id)");
         return -1;
     }
 
@@ -302,6 +313,7 @@ int kg_compliance_anonymize_subject(brain_kg_t* kg, const char* subject_id) {
     uint32_t count = 1024;
     int rc = kg_compliance_get_subject_data(kg, subject_id, nodes, 1024, &count);
     if (rc != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compliance_anonymize_subject: validation failed");
         return -1;
     }
 
@@ -318,6 +330,7 @@ int kg_compliance_anonymize_subject(brain_kg_t* kg, const char* subject_id) {
 int kg_compliance_scan_pii(const brain_kg_t* kg, kg_pii_detection_t* detections,
                             uint32_t max, uint32_t* count) {
     if (!kg || !detections || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, detections, count)");
         return -1;
     }
 
@@ -336,6 +349,7 @@ int kg_compliance_scan_pii(const brain_kg_t* kg, kg_pii_detection_t* detections,
 int kg_compliance_mask_pii(brain_kg_t* kg, brain_kg_node_id_t node_id,
                             const char* field) {
     if (!kg || !field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, field)");
         return -1;
     }
 
@@ -354,6 +368,7 @@ int kg_compliance_mask_pii(brain_kg_t* kg, brain_kg_node_id_t node_id,
 int kg_compliance_unmask_pii(const brain_kg_t* kg, brain_kg_node_id_t node_id,
                               const char* field, char* value, size_t max_size) {
     if (!kg || !field || !value || max_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, field, value)");
         return -1;
     }
 
@@ -366,6 +381,7 @@ int kg_compliance_unmask_pii(const brain_kg_t* kg, brain_kg_node_id_t node_id,
      * 4. Return original value
      */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compliance_anonymize_subject: operation failed");
     return -1; /* Not authorized / not found */
 }
 
@@ -409,6 +425,7 @@ kg_data_classification_t kg_compliance_get_classification(const brain_kg_t* kg,
 int kg_compliance_set_lineage(brain_kg_t* kg, brain_kg_node_id_t node_id,
                                const kg_data_lineage_t* lineage) {
     if (!kg || !lineage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, lineage)");
         return -1;
     }
 
@@ -422,6 +439,7 @@ int kg_compliance_set_lineage(brain_kg_t* kg, brain_kg_node_id_t node_id,
 int kg_compliance_get_lineage(const brain_kg_t* kg, brain_kg_node_id_t node_id,
                                kg_data_lineage_t* lineage) {
     if (!kg || !lineage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, lineage)");
         return -1;
     }
 
@@ -431,6 +449,7 @@ int kg_compliance_get_lineage(const brain_kg_t* kg, brain_kg_node_id_t node_id,
 
     /* In a real implementation, query node metadata for lineage */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_compliance_anonymize_subject: operation failed");
     return -1; /* No lineage set */
 }
 
@@ -438,6 +457,7 @@ int kg_compliance_trace_lineage(const brain_kg_t* kg, brain_kg_node_id_t node_id
                                  kg_data_lineage_t* ancestors, uint32_t max,
                                  uint32_t* count) {
     if (!kg || !ancestors || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_compliance_anonymize_subject: required parameter is NULL (kg, ancestors, count)");
         return -1;
     }
 

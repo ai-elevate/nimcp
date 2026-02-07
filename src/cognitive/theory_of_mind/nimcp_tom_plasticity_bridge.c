@@ -130,6 +130,7 @@ static tom_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -248,7 +249,10 @@ void tom_plasticity_destroy(tom_plasticity_bridge_t* bridge) {
 }
 
 int tom_plasticity_reset(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_reset", 0.0f);
@@ -298,7 +302,10 @@ int tom_plasticity_register_synapse(
     tom_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_regis", 0.0f);
@@ -309,12 +316,14 @@ int tom_plasticity_register_synapse(
     /* Check if already exists */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_plasticity_register_synapse: validation failed");
         return -1;
     }
 
     /* Check capacity */
     if (bridge->num_synapses >= bridge->max_synapses) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "tom_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -349,7 +358,10 @@ int tom_plasticity_unregister_synapse(
     tom_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_unreg", 0.0f);
@@ -376,6 +388,7 @@ int tom_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_plasticity_unregister_synapse: operation failed");
     return -1;
 }
 
@@ -384,7 +397,10 @@ int tom_plasticity_get_synapse(
     uint32_t synapse_id,
     tom_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_get_s", 0.0f);
@@ -395,6 +411,7 @@ int tom_plasticity_get_synapse(
     tom_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_get_synapse: syn is NULL");
         return -1;
     }
 
@@ -409,7 +426,10 @@ int tom_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_prote", 0.0f);
@@ -420,6 +440,7 @@ int tom_plasticity_protect_synapse(
     tom_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_protect_synapse: syn is NULL");
         return -1;
     }
 
@@ -440,7 +461,10 @@ int tom_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_learn", 0.0f);
@@ -453,6 +477,7 @@ int tom_plasticity_learn(
     if (!syn) {
         bridge->state = TOM_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_learn: syn is NULL");
         return -1;
     }
 
@@ -632,7 +657,10 @@ int tom_plasticity_apply_reward(
     tom_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_apply", 0.0f);
@@ -678,8 +706,14 @@ int tom_plasticity_update_bcm(
     tom_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_updat", 0.0f);
@@ -719,8 +753,14 @@ int tom_plasticity_homeostatic_update(
     tom_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_plasticity_homeostatic_update: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_homeo", 0.0f);
@@ -795,8 +835,14 @@ int tom_plasticity_update_traces(
     tom_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_plasticity_update_traces: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_updat", 0.0f);
@@ -824,7 +870,10 @@ int tom_plasticity_update_traces(
 }
 
 int tom_plasticity_consolidate(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_conso", 0.0f);
@@ -859,7 +908,10 @@ int tom_plasticity_get_calibration_state(
     tom_plasticity_bridge_t* bridge,
     tom_calibration_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_get_calibration_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_get_c", 0.0f);
@@ -876,7 +928,10 @@ int tom_plasticity_get_state(
     tom_plasticity_bridge_t* bridge,
     tom_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_get_s", 0.0f);
@@ -922,7 +977,10 @@ int tom_plasticity_get_stats(
     tom_plasticity_bridge_t* bridge,
     tom_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_get_s", 0.0f);
@@ -936,7 +994,10 @@ int tom_plasticity_get_stats(
 }
 
 int tom_plasticity_reset_stats(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_reset", 0.0f);
@@ -958,7 +1019,10 @@ int tom_plasticity_register_learn_callback(
     tom_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_regis", 0.0f);
@@ -977,7 +1041,10 @@ int tom_plasticity_register_calibration_callback(
     tom_plasticity_calibration_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_plasticity_register_calibration_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_plasticity_bridge_heartbeat("tom_plastici_tom_plasticity_regis", 0.0f);

@@ -128,8 +128,10 @@ static nimcp_cfi_target_t* find_target_by_address(
     nimcp_cfi_context_t* cfi,
     void* address)
 {
-    if (!cfi || !address)
+    if (!cfi || !address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_target_by_address: required parameter is NULL (cfi, address)");
         return NULL;
+    }
 
     for (uint32_t i = 0; i < cfi->num_targets; i++) {
         if (cfi->targets[i].valid && cfi->targets[i].address == address) {
@@ -137,6 +139,7 @@ static nimcp_cfi_target_t* find_target_by_address(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_target_by_address: validation failed");
     return NULL;
 }
 
@@ -203,6 +206,7 @@ static bool handle_violation(
     // Check enforcement mode
     if (cfi->mode == NIMCP_CFI_MODE_ENFORCE) {
         cfi->stats.violations_blocked++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_violation: validation failed");
         return false;  // Block transfer
     }
 
@@ -270,14 +274,19 @@ int32_t nimcp_cfi_register_target(
     nimcp_func_type_t category,
     const char* name)
 {
-    if (!cfi || !address)
+    if (!cfi || !address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cfi_register_target: required parameter is NULL (cfi, address)");
         return -1;
+    }
 
-    if (cfi->num_targets >= NIMCP_CFI_MAX_TARGETS)
+    if (cfi->num_targets >= NIMCP_CFI_MAX_TARGETS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_cfi_register_target: capacity exceeded");
         return -1;
+    }
 
     // Check for duplicate
     if (find_target_by_address(cfi, address)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cfi_register_target: validation failed");
         return -1;  // Already registered
     }
 
@@ -314,11 +323,15 @@ int32_t nimcp_cfi_register_call_site(
     void* call_address,
     uint32_t type_id)
 {
-    if (!cfi || !call_address)
+    if (!cfi || !call_address) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cfi_register_call_site: required parameter is NULL (cfi, call_address)");
         return -1;
+    }
 
-    if (cfi->num_call_sites >= NIMCP_CFI_MAX_CALL_SITES)
+    if (cfi->num_call_sites >= NIMCP_CFI_MAX_CALL_SITES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_cfi_register_call_site: capacity exceeded");
         return -1;
+    }
 
     int32_t index = (int32_t)cfi->num_call_sites;
     nimcp_cfi_call_site_t* site = &cfi->call_sites[index];
@@ -421,8 +434,10 @@ nimcp_cfi_result_t nimcp_cfi_check_return(
 
 bool nimcp_cfi_is_valid_target(nimcp_cfi_context_t* cfi, void* target)
 {
-    if (!cfi || !target)
+    if (!cfi || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cfi_is_valid_target: required parameter is NULL (cfi, target)");
         return false;
+    }
 
     return find_target_by_address(cfi, target) != NULL;
 }

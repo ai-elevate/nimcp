@@ -174,7 +174,10 @@ void counterfactual_free_state(cf_state_t* state) {
 
 cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
     const cf_state_t* actual, const cf_intervention_t* what_if) {
-    if (!engine || !actual || !what_if) return NULL;
+    if (!engine || !actual || !what_if) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_free_state: required parameter is NULL (engine, actual, what_if)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_imagine", 0.0f);
@@ -223,7 +226,10 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
 
 cf_counterfactual_t** counterfactual_explore_space(counterfactual_engine_t* engine,
     const cf_state_t* actual, uint32_t max_alternatives, uint32_t* num_found) {
-    if (!engine || !actual || !num_found) return NULL;
+    if (!engine || !actual || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_free_state: required parameter is NULL (engine, actual, num_found)");
+        return NULL;
+    }
 
     cf_counterfactual_t** cfs = nimcp_calloc(max_alternatives, sizeof(cf_counterfactual_t*));
     if (!cfs) {
@@ -255,7 +261,10 @@ cf_counterfactual_t** counterfactual_explore_space(counterfactual_engine_t* engi
 int counterfactual_trace_effects(counterfactual_engine_t* engine,
     const cf_counterfactual_t* cf, cf_consequence_t* consequences,
     uint32_t max_consequences, uint32_t* num_found) {
-    if (!engine || !cf || !consequences || !num_found) return -1;
+    if (!engine || !cf || !consequences || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_free_state: required parameter is NULL (engine, cf, consequences, num_found)");
+        return -1;
+    }
     if (!engine->config.enable_causal_tracing) { *num_found = 0; return 0; }
 
     *num_found = 0;
@@ -313,8 +322,14 @@ float counterfactual_causal_strength(counterfactual_engine_t* engine,
 int counterfactual_find_causes(counterfactual_engine_t* engine,
     const cf_state_t* state, uint32_t effect_var,
     uint32_t* cause_vars, uint32_t max_causes, uint32_t* num_found) {
-    if (!engine || !state || !cause_vars || !num_found) return -1;
-    if (effect_var >= state->dim) return -1;
+    if (!engine || !state || !cause_vars || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_free_state: required parameter is NULL (engine, state, cause_vars, num_found)");
+        return -1;
+    }
+    if (effect_var >= state->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "counterfactual_free_state: capacity exceeded");
+        return -1;
+    }
 
     *num_found = 0;
     /* Phase 8: Heartbeat at operation start */
@@ -360,7 +375,10 @@ float counterfactual_distance(counterfactual_engine_t* engine,
 
 cf_counterfactual_t* counterfactual_find_closest(counterfactual_engine_t* engine,
     const cf_state_t* actual, const cf_state_t* target) {
-    if (!engine || !actual || !target) return NULL;
+    if (!engine || !actual || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_free_state: required parameter is NULL (engine, actual, target)");
+        return NULL;
+    }
 
     /* Create intervention that moves toward target */
     /* Phase 8: Heartbeat at operation start */
@@ -404,7 +422,10 @@ void counterfactual_free(cf_counterfactual_t* cf) {
 }
 
 int counterfactual_set_inflammation(counterfactual_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_set_inflammation: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_set_inflammation", 0.0f);
 
@@ -414,7 +435,10 @@ int counterfactual_set_inflammation(counterfactual_engine_t* engine, float level
 }
 
 int counterfactual_set_fatigue(counterfactual_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_set_fatigue: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_set_fatigue", 0.0f);
 
@@ -424,7 +448,10 @@ int counterfactual_set_fatigue(counterfactual_engine_t* engine, float level) {
 }
 
 int counterfactual_get_stats(const counterfactual_engine_t* engine, cf_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counterfactual_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     parietal_counterfactual_heartbeat("counterfactu_get_stats", 0.0f);

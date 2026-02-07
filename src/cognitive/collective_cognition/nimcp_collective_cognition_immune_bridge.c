@@ -265,6 +265,7 @@ collective_immune_bridge_t* collective_immune_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "collective_immune") != 0) {
         LOG_ERROR("Failed to init collective immune bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_immune_bridge_create: validation failed");
         return NULL;
     }
 
@@ -299,7 +300,10 @@ void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
 
 int collective_immune_bridge_reset(collective_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_reset: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
@@ -329,7 +333,10 @@ int collective_immune_bridge_connect_collective_cognition(
     collective_cognition_t* cc
 )
 {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_connect_collective_cognition: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
@@ -348,7 +355,10 @@ int collective_immune_bridge_connect_immune(
     brain_immune_system_t* immune
 )
 {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_connect_immune: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
@@ -375,7 +385,10 @@ int collective_immune_bridge_report_threat(
      * WHY:  Add threat to pending queue for processing
      * HOW:  Validate and store threat */
 
-    if (!bridge || !bridge->initialized || !threat) return -1;
+    if (!bridge || !bridge->initialized || !threat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_report_threat: required parameter is NULL (bridge, bridge->initialized, threat)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_immune_bridge_heartbeat("collective_c_collective_immune_br", 0.0f);
@@ -387,6 +400,7 @@ int collective_immune_bridge_report_threat(
     if (bridge->pending_threat_count >= MAX_PENDING_THREATS) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Collective immune bridge threat queue full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_immune_bridge_report_threat: capacity exceeded");
         return -1;
     }
 
@@ -560,9 +574,13 @@ int collective_immune_bridge_present_antigen(
      * WHY:  Allow immune system to respond to collective threats
      * HOW:  Convert threat to epitope, present to brain immune */
 
-    if (!bridge || !bridge->initialized || !threat) return -1;
+    if (!bridge || !bridge->initialized || !threat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_present_antigen: required parameter is NULL (bridge, bridge->initialized, threat)");
+        return -1;
+    }
     if (!bridge->immune_system) {
         LOG_WARNING("No immune system connected to collective immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_present_antigen: bridge->immune_system is NULL");
         return -1;
     }
 
@@ -606,8 +624,12 @@ int collective_immune_bridge_sync_inflammation(
      * WHY:  Share immune response state with other instances
      * HOW:  Get inflammation level and broadcast via collective cognition */
 
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_sync_inflammation: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     if (!bridge->immune_system || !bridge->collective_cognition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_sync_inflammation: required parameter is NULL (bridge->immune_system, bridge->collective_cognition)");
         return -1;
     }
 
@@ -659,8 +681,14 @@ int collective_immune_bridge_propagate_memory(
      * WHY:  Share learned threat patterns across instances
      * HOW:  Sync B cell memory to swarm immune system */
 
-    if (!bridge || !bridge->initialized) return -1;
-    if (!bridge->immune_system) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_propagate_memory: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_propagate_memory: bridge->immune_system is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_memory_propagation) {
         return 0;
@@ -696,8 +724,14 @@ int collective_immune_bridge_we_mode_response(
      * WHY:  All instances respond together when unified
      * HOW:  Present antigen, then propagate secondary response */
 
-    if (!bridge || !bridge->initialized || !threat) return -1;
-    if (!bridge->immune_system || !bridge->collective_cognition) return -1;
+    if (!bridge || !bridge->initialized || !threat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_we_mode_response: required parameter is NULL (bridge, bridge->initialized, threat)");
+        return -1;
+    }
+    if (!bridge->immune_system || !bridge->collective_cognition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_we_mode_response: required parameter is NULL (bridge->immune_system, bridge->collective_cognition)");
+        return -1;
+    }
 
     if (!bridge->config.enable_we_mode_coordination) {
         return 0;
@@ -710,6 +744,7 @@ int collective_immune_bridge_we_mode_response(
 
     collective_cognition_state_t state;
     if (collective_cognition_get_state(bridge->collective_cognition, &state) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_immune_bridge_we_mode_response: validation failed");
         return -1;
     }
 
@@ -723,6 +758,7 @@ int collective_immune_bridge_we_mode_response(
     /* Present antigen */
     uint32_t antigen_id;
     if (collective_immune_bridge_present_antigen(bridge, threat, &antigen_id) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_immune_bridge_we_mode_response: validation failed");
         return -1;
     }
 
@@ -771,7 +807,10 @@ int collective_immune_bridge_update(collective_immune_bridge_t* bridge)
      * WHY:  Process pending threats and sync state
      * HOW:  Check for threats, present antigens, sync inflammation */
 
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_update: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     /* Check for new threats */
     /* Phase 8: Heartbeat at operation start */
@@ -817,7 +856,10 @@ int collective_immune_bridge_get_stats(
     collective_immune_bridge_stats_t* stats
 )
 {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_immune_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
+        return -1;
+    }
 
     /* Cast away const for mutex lock */
     /* Phase 8: Heartbeat at operation start */

@@ -138,6 +138,7 @@ perception_immune_context_t* perception_immune_create(
     /* Guard: validate immune system */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("perception_immune", "Cannot create with NULL immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_immune_create: immune_system is NULL");
         return NULL;
     }
 
@@ -150,6 +151,7 @@ perception_immune_context_t* perception_immune_create(
         nimcp_malloc(sizeof(perception_immune_context_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("perception_immune", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_immune_create: ctx is NULL");
         return NULL;
     }
 
@@ -163,6 +165,7 @@ perception_immune_context_t* perception_immune_create(
         nimcp_malloc(sizeof(perception_anomaly_t) * ctx->anomaly_capacity);
     if (!ctx->anomalies) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_immune_create: ctx->anomalies is NULL");
         return NULL;
     }
 
@@ -200,8 +203,14 @@ int perception_immune_connect_visual(
     visual_cortex_t* visual
 ) {
     /* Guard: validate inputs */
-    if (!ctx) return -1;
-    if (!visual) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_visual: ctx is NULL");
+        return -1;
+    }
+    if (!visual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_visual: visual is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_connect_visual", 0.0f);
@@ -216,8 +225,14 @@ int perception_immune_connect_audio(
     perception_immune_context_t* ctx,
     audio_cortex_t* audio
 ) {
-    if (!ctx) return -1;
-    if (!audio) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_audio: ctx is NULL");
+        return -1;
+    }
+    if (!audio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_audio: audio is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_connect_audio", 0.0f);
@@ -232,8 +247,14 @@ int perception_immune_connect_speech(
     perception_immune_context_t* ctx,
     speech_cortex_t* speech
 ) {
-    if (!ctx) return -1;
-    if (!speech) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_speech: ctx is NULL");
+        return -1;
+    }
+    if (!speech) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_connect_speech: speech is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_connect_speech", 0.0f);
@@ -258,9 +279,18 @@ int perception_immune_report_visual_anomaly(
     uint32_t* anomaly_id
 ) {
     /* Guard: validate inputs */
-    if (!ctx || !ctx->immune_system) return -1;
-    if (!features || feature_dim == 0) return -1;
-    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+    if (!ctx || !ctx->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_report_visual_anomaly: required parameter is NULL (ctx, ctx->immune_system)");
+        return -1;
+    }
+    if (!features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_report_visual_anomaly: features is NULL");
+        return -1;
+    }
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_visual_anomaly: capacity exceeded");
+        return -1;
+    }
 
     /* Create anomaly entry */
     /* Phase 8: Heartbeat at operation start */
@@ -321,9 +351,18 @@ int perception_immune_report_audio_anomaly(
     uint32_t num_bins,
     uint32_t* anomaly_id
 ) {
-    if (!ctx || !ctx->immune_system) return -1;
-    if (!spectrum || num_bins == 0) return -1;
-    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+    if (!ctx || !ctx->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_report_audio_anomaly: required parameter is NULL (ctx, ctx->immune_system)");
+        return -1;
+    }
+    if (!spectrum || num_bins == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_report_audio_anomaly: spectrum is NULL");
+        return -1;
+    }
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_audio_anomaly: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_report_audio_anomaly", 0.0f);
@@ -378,9 +417,18 @@ int perception_immune_report_speech_anomaly(
     uint32_t num_phonemes,
     uint32_t* anomaly_id
 ) {
-    if (!ctx || !ctx->immune_system) return -1;
-    if (!phoneme_features || num_phonemes == 0) return -1;
-    if (ctx->anomaly_count >= ctx->anomaly_capacity) return -1;
+    if (!ctx || !ctx->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_report_speech_anomaly: required parameter is NULL (ctx, ctx->immune_system)");
+        return -1;
+    }
+    if (!phoneme_features || num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_report_speech_anomaly: phoneme_features is NULL");
+        return -1;
+    }
+    if (ctx->anomaly_count >= ctx->anomaly_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_immune_report_speech_anomaly: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_report_speech_anomal", 0.0f);
@@ -436,7 +484,10 @@ int perception_immune_report_speech_anomaly(
  * ============================================================================ */
 
 int perception_immune_update_modulation(perception_immune_context_t* ctx) {
-    if (!ctx || !ctx->immune_system) return -1;
+    if (!ctx || !ctx->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_update_modulation: required parameter is NULL (ctx, ctx->immune_system)");
+        return -1;
+    }
 
     /* Query immune system state */
     /* Phase 8: Heartbeat at operation start */
@@ -515,7 +566,10 @@ int perception_immune_update_modulation(perception_immune_context_t* ctx) {
 int perception_immune_apply_visual_modulation(
     perception_immune_context_t* ctx
 ) {
-    if (!ctx || !ctx->visual_cortex) return -1;
+    if (!ctx || !ctx->visual_cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_apply_visual_modulation: required parameter is NULL (ctx, ctx->visual_cortex)");
+        return -1;
+    }
 
     /* Apply gain modulation via neuromodulation */
     /* In full implementation, would use visual_cortex API to adjust gains */
@@ -531,7 +585,10 @@ int perception_immune_apply_visual_modulation(
 int perception_immune_apply_audio_modulation(
     perception_immune_context_t* ctx
 ) {
-    if (!ctx || !ctx->audio_cortex) return -1;
+    if (!ctx || !ctx->audio_cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_apply_audio_modulation: required parameter is NULL (ctx, ctx->audio_cortex)");
+        return -1;
+    }
     /* Apply gain/threshold to audio cortex */
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_apply_audio_modulati", 0.0f);
@@ -543,7 +600,10 @@ int perception_immune_apply_audio_modulation(
 int perception_immune_apply_speech_modulation(
     perception_immune_context_t* ctx
 ) {
-    if (!ctx || !ctx->speech_cortex) return -1;
+    if (!ctx || !ctx->speech_cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_apply_speech_modulation: required parameter is NULL (ctx, ctx->speech_cortex)");
+        return -1;
+    }
     /* Apply gain/threshold to speech cortex */
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_apply_speech_modulat", 0.0f);
@@ -562,7 +622,10 @@ int perception_immune_check_visual_overload(
     uint32_t num_features,
     bool* overload
 ) {
-    if (!ctx || !features || !overload) return -1;
+    if (!ctx || !features || !overload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_check_visual_overload: required parameter is NULL (ctx, features, overload)");
+        return -1;
+    }
 
     /* Compute feature variance as overload metric */
     /* Phase 8: Heartbeat at operation start */
@@ -605,7 +668,10 @@ int perception_immune_check_audio_overload(
     uint32_t num_bins,
     bool* overload
 ) {
-    if (!ctx || !spectrum || !overload) return -1;
+    if (!ctx || !spectrum || !overload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_check_audio_overload: required parameter is NULL (ctx, spectrum, overload)");
+        return -1;
+    }
 
     /* Compute spectral energy */
     /* Phase 8: Heartbeat at operation start */
@@ -636,7 +702,10 @@ int perception_immune_check_speech_overload(
     uint32_t num_phonemes,
     bool* overload
 ) {
-    if (!ctx || !phoneme_confidence || !overload) return -1;
+    if (!ctx || !phoneme_confidence || !overload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_check_speech_overload: required parameter is NULL (ctx, phoneme_confidence, overload)");
+        return -1;
+    }
 
     /* Low average confidence indicates overload */
     /* Phase 8: Heartbeat at operation start */
@@ -663,7 +732,10 @@ int perception_immune_trigger_overload_protection(
     perception_immune_context_t* ctx,
     perception_modality_t modality
 ) {
-    if (!ctx || !ctx->immune_system) return -1;
+    if (!ctx || !ctx->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_trigger_overload_protection: required parameter is NULL (ctx, ctx->immune_system)");
+        return -1;
+    }
 
     /* Trigger inflammation for modality */
     /* Phase 8: Heartbeat at operation start */
@@ -684,6 +756,7 @@ int perception_immune_trigger_overload_protection(
             ctx->modulation.speech_inflammation = INFLAMMATION_REGIONAL;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_trigger_overload_protection: operation failed");
             return -1;
     }
 
@@ -701,7 +774,10 @@ int perception_immune_release_overload_protection(
     perception_immune_context_t* ctx,
     perception_modality_t modality
 ) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_release_overload_protection: ctx is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_release_overload_pro", 0.0f);
@@ -721,6 +797,7 @@ int perception_immune_release_overload_protection(
             ctx->modulation.speech_inflammation = INFLAMMATION_NONE;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_release_overload_protection: operation failed");
             return -1;
     }
 
@@ -736,7 +813,10 @@ int perception_immune_get_modulation(
     const perception_immune_context_t* ctx,
     perception_immune_modulation_t* modulation
 ) {
-    if (!ctx || !modulation) return -1;
+    if (!ctx || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_get_modulation: required parameter is NULL (ctx, modulation)");
+        return -1;
+    }
     *modulation = ctx->modulation;
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_get_modulation", 0.0f);
@@ -772,6 +852,7 @@ const perception_anomaly_t* perception_immune_get_anomaly(
             return &ctx->anomalies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_get_anomaly: validation failed");
     return NULL;
 }
 
@@ -779,7 +860,10 @@ bool perception_immune_is_protected(
     const perception_immune_context_t* ctx,
     perception_modality_t modality
 ) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_immune_is_protected: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     perception_immune_heartbeat("perception_i_is_protected", 0.0f);
@@ -793,6 +877,7 @@ bool perception_immune_is_protected(
         case PERCEPTION_SPEECH:
             return ctx->modulation.speech_overload_protection;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perception_immune_is_protected: operation failed");
             return false;
     }
 }

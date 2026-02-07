@@ -1227,6 +1227,7 @@ belief_t* belief_create(const char* topic, const float* belief_vector,
 {
     belief_t* belief = (belief_t*)nimcp_malloc(sizeof(belief_t));
     if (!belief) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "belief_create: belief is NULL");
         return NULL;
     }
 
@@ -1242,6 +1243,7 @@ belief_t* belief_create(const char* topic, const float* belief_vector,
     belief->belief_vector = (float*)nimcp_malloc(sizeof(float) * vector_size);
     if (!belief->belief_vector) {
         nimcp_free(belief);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "belief_create: belief->belief_vector is NULL");
         return NULL;
     }
 
@@ -1334,6 +1336,7 @@ static agent_info_t* get_or_create_agent(gossip_beliefs_t* gb, uint32_t agent_id
     /* Create new agent */
     agent_info_t* agent = (agent_info_t*)nimcp_malloc(sizeof(agent_info_t));
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_agent: agent is NULL");
         return NULL;
     }
 
@@ -1354,6 +1357,7 @@ static agent_info_t* get_or_create_agent(gossip_beliefs_t* gb, uint32_t agent_id
     agent->beliefs = hash_table_create(&ht_config);
     if (!agent->beliefs) {
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_agent: agent->beliefs is NULL");
         return NULL;
     }
 
@@ -1365,6 +1369,7 @@ static agent_info_t* get_or_create_agent(gossip_beliefs_t* gb, uint32_t agent_id
     } else {
         hash_table_destroy(agent->beliefs);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_agent: operation failed");
         return NULL;
     }
 }

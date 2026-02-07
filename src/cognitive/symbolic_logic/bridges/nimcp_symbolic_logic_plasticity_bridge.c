@@ -560,6 +560,7 @@ safety_plasticity_bridge_t* safety_plasticity_bridge_create(
     safety_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(safety_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "safety_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -567,6 +568,7 @@ safety_plasticity_bridge_t* safety_plasticity_bridge_create(
     if (bridge_base_init(&bridge->base, SAFETY_PLASTICITY_MODULE_ID,
                          SAFETY_PLASTICITY_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -619,6 +621,7 @@ int safety_plasticity_bridge_connect_orchestrator(
     plasticity_orchestrator_t* orchestrator)
 {
     if (!bridge_valid(bridge) || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_bridge_connect_orchestrator: required parameter is NULL (bridge_valid, orchestrator)");
         return -1;
     }
 
@@ -642,6 +645,7 @@ int safety_plasticity_bridge_connect_neuromod(
     neuromodulator_system_t neuromod)
 {
     if (!bridge_valid(bridge) || !neuromod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_bridge_connect_neuromod: required parameter is NULL (bridge_valid, neuromod)");
         return -1;
     }
 
@@ -665,6 +669,7 @@ int safety_plasticity_bridge_connect_logic(
     symbolic_logic_t* logic)
 {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_connect_logic: bridge_valid is NULL");
         return -1;
     }
 
@@ -682,6 +687,7 @@ int safety_plasticity_bridge_connect_logic(
 
 int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_disconnect: bridge_valid is NULL");
         return -1;
     }
 
@@ -706,6 +712,7 @@ int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
 
 bool safety_plasticity_bridge_is_connected(const safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_is_connected: bridge_valid is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -723,6 +730,7 @@ int safety_plasticity_map_event(
     safety_neuromod_response_t* response)
 {
     if (!bridge_valid(bridge) || !event || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_map_event: required parameter is NULL (bridge_valid, event, response)");
         return -1;
     }
 
@@ -767,6 +775,7 @@ int safety_plasticity_apply_response(
     const safety_neuromod_response_t* response)
 {
     if (!bridge_valid(bridge) || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_apply_response: required parameter is NULL (bridge_valid, response)");
         return -1;
     }
 
@@ -865,6 +874,7 @@ int safety_plasticity_register_callback(
     void* user_data)
 {
     if (!bridge_valid(bridge) || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_register_callback: required parameter is NULL (bridge_valid, callback)");
         return -1;
     }
 
@@ -892,6 +902,7 @@ int safety_plasticity_register_callback(
     if (slot < 0) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] No free callback slots");
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_register_callback: validation failed");
         return -1;
     }
 
@@ -911,6 +922,7 @@ int safety_plasticity_unregister_callback(
 {
     if (!bridge_valid(bridge) || callback_id < 0 ||
         callback_id >= SAFETY_MAX_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_unregister_callback: bridge_valid is NULL");
         return -1;
     }
 
@@ -921,6 +933,7 @@ int safety_plasticity_unregister_callback(
 
     if (!bridge->callbacks[callback_id].active) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_unregister_callback: bridge->callbacks is NULL");
         return -1;
     }
 
@@ -940,6 +953,7 @@ int safety_plasticity_bridge_update(
     float delta_ms)
 {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_update: bridge_valid is NULL");
         return -1;
     }
 
@@ -984,6 +998,7 @@ int safety_plasticity_get_state(
     safety_plasticity_state_t* state)
 {
     if (!bridge_valid(bridge) || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_get_state: required parameter is NULL (bridge_valid, state)");
         return -1;
     }
 
@@ -1002,6 +1017,7 @@ int safety_plasticity_get_stats(
     safety_plasticity_stats_t* stats)
 {
     if (!bridge_valid(bridge) || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "safety_plasticity_get_stats: required parameter is NULL (bridge_valid, stats)");
         return -1;
     }
 
@@ -1017,6 +1033,7 @@ int safety_plasticity_get_stats(
 
 int safety_plasticity_reset_stats(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_reset_stats: bridge_valid is NULL");
         return -1;
     }
 
@@ -1049,6 +1066,7 @@ int safety_plasticity_clear_halt(
     uint64_t authorization_code)
 {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_clear_halt: bridge_valid is NULL");
         return -1;
     }
 
@@ -1142,6 +1160,7 @@ void safety_plasticity_print_summary(const safety_plasticity_bridge_t* bridge) {
 
 int safety_plasticity_bridge_connect_bio_async(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_connect_bio_async: bridge_valid is NULL");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1153,6 +1172,7 @@ int safety_plasticity_bridge_connect_bio_async(safety_plasticity_bridge_t* bridg
 
 int safety_plasticity_bridge_disconnect_bio_async(safety_plasticity_bridge_t* bridge) {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_disconnect_bio_async: bridge_valid is NULL");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1166,6 +1186,7 @@ bool safety_plasticity_bridge_is_bio_async_connected(
     const safety_plasticity_bridge_t* bridge)
 {
     if (!bridge_valid(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safety_plasticity_bridge_is_bio_async_connected: bridge_valid is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

@@ -317,6 +317,7 @@ float mcts_compute_puct(
  */
 static mcts_node_t* mcts_alloc_node(mcts_tree_t* tree) {
     if (!tree || tree->num_nodes >= tree->max_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mcts_alloc_node: tree is NULL");
         return NULL;
     }
 

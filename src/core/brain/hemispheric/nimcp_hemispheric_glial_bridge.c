@@ -298,6 +298,7 @@ void hemispheric_glial_destroy(hemispheric_glial_bridge_t* bridge) {
 
 int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_update: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -337,6 +338,7 @@ int hemispheric_glial_update(hemispheric_glial_bridge_t* bridge, float dt) {
 
 int hemispheric_glial_apply_modulation(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized || !bridge->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_apply_modulation: required parameter is NULL (bridge, bridge->initialized, bridge->brain)");
         return -1;
     }
 
@@ -365,6 +367,7 @@ int hemispheric_glial_stimulate_astrocyte(
     float intensity
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_stimulate_astrocyte: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -374,6 +377,7 @@ int hemispheric_glial_stimulate_astrocyte(
 
     if (!glial || !glial->astrocyte_network ||
         !glial->astrocyte_network->calcium_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_glial_stimulate_astrocyte: operation failed");
         return -1;
     }
 
@@ -429,10 +433,12 @@ int hemispheric_glial_trigger_cross_wave(
     float intensity
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_trigger_cross_wave: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
     if (!bridge->config.enable_cross_hemisphere_waves) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_trigger_cross_wave: bridge->config is NULL");
         return -1;
     }
 
@@ -488,10 +494,12 @@ int hemispheric_glial_set_myelin_factor(
     float factor
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_set_myelin_factor: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
     if (factor < 0.0f || factor > 2.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_glial_set_myelin_factor: validation failed");
         return -1;
     }
 
@@ -530,6 +538,7 @@ int hemispheric_glial_transfer_metabolic(
     float amount
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_transfer_metabolic: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -562,6 +571,7 @@ bool hemispheric_glial_should_prune(
     uint32_t synapse_id
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_should_prune: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -570,6 +580,7 @@ bool hemispheric_glial_should_prune(
         : bridge->right_glial;
 
     if (!glial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_should_prune: glial is NULL");
         return false;
     }
 
@@ -649,6 +660,7 @@ int hemispheric_glial_connect_glial(
     glial_integration_t* glial
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_connect_glial: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -674,6 +686,7 @@ int hemispheric_glial_connect_glial(
 
 int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_connect_bio_async: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -701,6 +714,7 @@ int hemispheric_glial_connect_bio_async(hemispheric_glial_bridge_t* bridge) {
 
 int hemispheric_glial_disconnect_bio_async(hemispheric_glial_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_glial_disconnect_bio_async: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

@@ -372,7 +372,10 @@ static int add_entry(
     kg_hemisphere_t hemisphere,
     kg_cortical_layer_t layer
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_entry: hier is NULL");
+        return -1;
+    }
 
     /* Grow entry array if needed */
     if (hier->entry_count >= hier->entry_capacity) {
@@ -383,7 +386,10 @@ static int add_entry(
             hier->entries,
             new_capacity * sizeof(kg_hierarchy_entry_t)
         );
-        if (!new_entries) return -1;
+        if (!new_entries) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_entry: new_entries is NULL");
+            return -1;
+        }
 
         hier->entries = new_entries;
         hier->entry_capacity = new_capacity;
@@ -396,7 +402,10 @@ static int add_entry(
             hier->node_to_entry,
             new_capacity * sizeof(uint32_t)
         );
-        if (!new_map) return -1;
+        if (!new_map) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_entry: new_map is NULL");
+            return -1;
+        }
 
         /* Initialize new entries to invalid */
         for (uint32_t i = hier->node_map_capacity; i < new_capacity; i++) {
@@ -429,7 +438,10 @@ static int add_entry(
             hd->modules,
             new_cap * sizeof(brain_kg_node_id_t)
         );
-        if (!new_mods) return -1;
+        if (!new_mods) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_entry: new_mods is NULL");
+            return -1;
+        }
 
         hd->modules = new_mods;
         hd->module_capacity = new_cap;
@@ -447,7 +459,10 @@ static int add_entry(
             ld->modules,
             new_cap * sizeof(brain_kg_node_id_t)
         );
-        if (!new_mods) return -1;
+        if (!new_mods) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_entry: new_mods is NULL");
+            return -1;
+        }
 
         ld->modules = new_mods;
         ld->module_capacity = new_cap;
@@ -560,7 +575,10 @@ static void invoke_callbacks(
  * ============================================================================ */
 
 int kg_hierarchy_default_config(kg_hierarchy_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_default_config: config is NULL");
+        return -1;
+    }
 
     config->lazy_rebuild = true;
     config->cache_ttl_ms = 0;  /* No expiry */
@@ -576,12 +594,14 @@ kg_hierarchy_t* kg_hierarchy_create(
 ) {
     if (!kg) {
         LOG_ERROR("kg_hierarchy_create: NULL kg");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_create: kg is NULL");
         return NULL;
     }
 
     kg_hierarchy_t* hier = nimcp_calloc(1, sizeof(kg_hierarchy_t));
     if (!hier) {
         LOG_ERROR("kg_hierarchy_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_create: hier is NULL");
         return NULL;
     }
 
@@ -600,6 +620,7 @@ kg_hierarchy_t* kg_hierarchy_create(
     if (!hier->mutex) {
         LOG_ERROR("kg_hierarchy_create: mutex creation failed");
         nimcp_free(hier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_create: hier->mutex is NULL");
         return NULL;
     }
 
@@ -681,7 +702,10 @@ int kg_hierarchy_connect_orchestrator(
     kg_hierarchy_t* hier,
     bio_async_orchestrator_t* orchestrator
 ) {
-    if (!hier || !orchestrator) return -1;
+    if (!hier || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_connect_orchestrator: required parameter is NULL (hier, orchestrator)");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
     hier->orchestrator = orchestrator;
@@ -696,7 +720,10 @@ int kg_hierarchy_connect_wiring(
     kg_hierarchy_t* hier,
     wiring_diagram_t* wd
 ) {
-    if (!hier || !wd) return -1;
+    if (!hier || !wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_connect_wiring: required parameter is NULL (hier, wd)");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
     hier->wiring = wd;
@@ -715,7 +742,10 @@ int kg_hierarchy_get_brain_stats(
     const kg_hierarchy_t* hier,
     kg_brain_stats_t* stats
 ) {
-    if (!hier || !stats) return -1;
+    if (!hier || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_brain_stats: required parameter is NULL (hier, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -868,7 +898,10 @@ int kg_hierarchy_get_hemisphere_info(
     kg_hemisphere_t hemisphere,
     kg_hemisphere_info_t* info
 ) {
-    if (!hier || !info || hemisphere >= KG_HEMISPHERE_COUNT) return -1;
+    if (!hier || !info || hemisphere >= KG_HEMISPHERE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_hemisphere_info: required parameter is NULL (hier, info)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -1018,7 +1051,10 @@ int kg_hierarchy_get_layer_info(
     kg_cortical_layer_t layer,
     kg_layer_info_t* info
 ) {
-    if (!hier || !info || layer >= KG_LAYER_COUNT) return -1;
+    if (!hier || !info || layer >= KG_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_layer_info: required parameter is NULL (hier, info)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -1083,13 +1119,17 @@ int kg_hierarchy_get_module_info(
     brain_kg_node_id_t module_id,
     kg_module_info_t* info
 ) {
-    if (!hier || !info) return -1;
+    if (!hier || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_module_info: required parameter is NULL (hier, info)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_module_info: validation failed");
         return -1;
     }
 
@@ -1188,13 +1228,17 @@ int kg_hierarchy_get_module_hemisphere(
     const kg_hierarchy_t* hier,
     brain_kg_node_id_t module_id
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_module_hemisphere: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_module_hemisphere: validation failed");
         return -1;
     }
 
@@ -1273,13 +1317,17 @@ int kg_hierarchy_get_module_layer(
     const kg_hierarchy_t* hier,
     brain_kg_node_id_t module_id
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_module_layer: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_module_layer: validation failed");
         return -1;
     }
 
@@ -1361,13 +1409,17 @@ int kg_hierarchy_report_state_change(
     kg_module_state_t new_state,
     const char* reason
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_report_state_change: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(hier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_report_state_change: validation failed");
         return -1;
     }
 
@@ -1403,13 +1455,17 @@ int kg_hierarchy_report_health_change(
     brain_kg_node_id_t module_id,
     bio_module_health_t health
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_report_health_change: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(hier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_report_health_change: validation failed");
         return -1;
     }
 
@@ -1428,13 +1484,17 @@ int kg_hierarchy_report_message_stats(
     uint64_t sent,
     uint64_t received
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_report_message_stats: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(hier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_report_message_stats: validation failed");
         return -1;
     }
 
@@ -1451,13 +1511,17 @@ int kg_hierarchy_report_anomaly(
     brain_kg_node_id_t module_id,
     bool has_anomaly
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_report_anomaly: hier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
     uint32_t idx = find_entry_index(hier, module_id);
     if (idx == UINT32_MAX) {
         nimcp_mutex_unlock(hier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_report_anomaly: validation failed");
         return -1;
     }
 
@@ -1476,12 +1540,16 @@ int kg_hierarchy_register_state_callback(
     kg_state_change_callback_t callback,
     void* user_data
 ) {
-    if (!hier || !callback) return -1;
+    if (!hier || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_register_state_callback: required parameter is NULL (hier, callback)");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
     if (hier->callback_count >= KG_HIERARCHY_MAX_CALLBACKS) {
         nimcp_mutex_unlock(hier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_hierarchy_register_state_callback: capacity exceeded");
         return -1;
     }
 
@@ -1497,7 +1565,10 @@ int kg_hierarchy_unregister_state_callback(
     kg_hierarchy_t* hier,
     kg_state_change_callback_t callback
 ) {
-    if (!hier || !callback) return -1;
+    if (!hier || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_unregister_state_callback: required parameter is NULL (hier, callback)");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
@@ -1514,6 +1585,7 @@ int kg_hierarchy_unregister_state_callback(
     }
 
     nimcp_mutex_unlock(hier->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_unregister_state_callback: operation failed");
     return -1;
 }
 
@@ -1522,12 +1594,18 @@ int kg_hierarchy_unregister_state_callback(
  * ============================================================================ */
 
 int kg_hierarchy_read_lock(kg_hierarchy_t* hier) {
-    if (!hier || !hier->mutex) return -1;
+    if (!hier || !hier->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_read_lock: required parameter is NULL (hier, hier->mutex)");
+        return -1;
+    }
     return nimcp_mutex_lock(hier->mutex);
 }
 
 int kg_hierarchy_read_unlock(kg_hierarchy_t* hier) {
-    if (!hier || !hier->mutex) return -1;
+    if (!hier || !hier->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_read_unlock: required parameter is NULL (hier, hier->mutex)");
+        return -1;
+    }
     return nimcp_mutex_unlock(hier->mutex);
 }
 
@@ -1536,7 +1614,10 @@ int kg_hierarchy_read_unlock(kg_hierarchy_t* hier) {
  * ============================================================================ */
 
 int kg_hierarchy_rebuild(kg_hierarchy_t* hier) {
-    if (!hier || !hier->kg) return -1;
+    if (!hier || !hier->kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_rebuild: required parameter is NULL (hier, hier->kg)");
+        return -1;
+    }
 
     nimcp_mutex_lock(hier->mutex);
 
@@ -1610,7 +1691,10 @@ int kg_hierarchy_rebuild(kg_hierarchy_t* hier) {
 }
 
 int kg_hierarchy_sync_all(kg_hierarchy_t* hier) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_sync_all: hier is NULL");
+        return -1;
+    }
 
     /* Rebuild from KG */
     int result = kg_hierarchy_rebuild(hier);
@@ -1871,7 +1955,10 @@ static int build_node_mappings(
     uint32_t** node_index_map,
     uint32_t* max_node_id
 ) {
-    if (!hier || !node_id_map || !node_index_map || !max_node_id) return -1;
+    if (!hier || !node_id_map || !node_index_map || !max_node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_node_mappings: required parameter is NULL (hier, node_id_map, node_index_map, max_node_id)");
+        return -1;
+    }
 
     uint32_t count = hier->entry_count;
     if (count == 0) {
@@ -1883,7 +1970,10 @@ static int build_node_mappings(
 
     /* Allocate node_id_map: index -> node_id */
     *node_id_map = (brain_kg_node_id_t*)nimcp_calloc(count, sizeof(brain_kg_node_id_t));
-    if (!*node_id_map) return -1;
+    if (!*node_id_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_node_mappings: validation failed");
+        return -1;
+    }
 
     /* Find max node ID and populate node_id_map */
     *max_node_id = 0;
@@ -1900,6 +1990,7 @@ static int build_node_mappings(
     if (!*node_index_map) {
         nimcp_free(*node_id_map);
         *node_id_map = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "build_node_mappings: validation failed");
         return -1;
     }
 
@@ -1934,7 +2025,10 @@ static void free_node_mappings(
 static int compare_node_ids(const void* a, const void* b) {
     brain_kg_node_id_t id_a = *(const brain_kg_node_id_t*)a;
     brain_kg_node_id_t id_b = *(const brain_kg_node_id_t*)b;
-    if (id_a < id_b) return -1;
+    if (id_a < id_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_node_ids: validation failed");
+        return -1;
+    }
     if (id_a > id_b) return 1;
     return 0;
 }
@@ -1949,7 +2043,10 @@ int kg_hierarchy_topological_sort(
     uint32_t max_order,
     uint32_t* sorted_count
 ) {
-    if (!hier || !order || !sorted_count) return -1;
+    if (!hier || !order || !sorted_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_topological_sort: required parameter is NULL (hier, order, sorted_count)");
+        return -1;
+    }
     *sorted_count = 0;
 
     if (hier->entry_count == 0) return 0;
@@ -1963,6 +2060,7 @@ int kg_hierarchy_topological_sort(
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_topological_sort: validation failed");
         return -1;
     }
 
@@ -1989,6 +2087,7 @@ int kg_hierarchy_topological_sort(
     if (!index_order) {
         free_node_mappings(node_id_map, node_index_map);
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_topological_sort: index_order is NULL");
         return -1;
     }
 
@@ -2014,7 +2113,10 @@ int kg_hierarchy_topological_sort(
 }
 
 bool kg_hierarchy_has_dependency_cycle(const kg_hierarchy_t* hier) {
-    if (!hier) return false;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_has_dependency_cycle: hier is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -2025,6 +2127,7 @@ bool kg_hierarchy_has_dependency_cycle(const kg_hierarchy_t* hier) {
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_has_dependency_cycle: validation failed");
         return false;
     }
 
@@ -2060,7 +2163,10 @@ int kg_hierarchy_find_cycle_modules(
     uint32_t max_modules,
     uint32_t* cycle_count
 ) {
-    if (!hier || !cycle_modules || !cycle_count) return -1;
+    if (!hier || !cycle_modules || !cycle_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_find_cycle_modules: required parameter is NULL (hier, cycle_modules, cycle_count)");
+        return -1;
+    }
     *cycle_count = 0;
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
@@ -2072,6 +2178,7 @@ int kg_hierarchy_find_cycle_modules(
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_find_cycle_modules: validation failed");
         return -1;
     }
 
@@ -2097,6 +2204,7 @@ int kg_hierarchy_find_cycle_modules(
     if (!cycle_indices) {
         free_node_mappings(node_id_map, node_index_map);
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_find_cycle_modules: cycle_indices is NULL");
         return -1;
     }
 
@@ -2121,22 +2229,32 @@ int kg_hierarchy_get_startup_phase(
     const kg_hierarchy_t* hier,
     brain_kg_node_id_t module_id
 ) {
-    if (!hier) return -1;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_startup_phase: hier is NULL");
+        return -1;
+    }
 
     uint32_t entry_idx = find_entry_index(hier, module_id);
-    if (entry_idx == UINT32_MAX) return -1;
+    if (entry_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_startup_phase: validation failed");
+        return -1;
+    }
 
     /* Get topological order */
     brain_kg_node_id_t* order = (brain_kg_node_id_t*)nimcp_calloc(
         hier->entry_count, sizeof(brain_kg_node_id_t)
     );
-    if (!order) return -1;
+    if (!order) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_get_startup_phase: order is NULL");
+        return -1;
+    }
 
     uint32_t sorted_count = 0;
     int result = kg_hierarchy_topological_sort(hier, order, hier->entry_count, &sorted_count);
 
     if (result < 0) {
         nimcp_free(order);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_startup_phase: validation failed");
         return -1;
     }
 
@@ -2211,10 +2329,16 @@ int kg_hierarchy_bfs(
     kg_traversal_visitor_fn visitor,
     void* user_data
 ) {
-    if (!hier || !visitor) return -1;
+    if (!hier || !visitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_bfs: required parameter is NULL (hier, visitor)");
+        return -1;
+    }
 
     uint32_t start_idx = find_entry_index(hier, start_module);
-    if (start_idx == UINT32_MAX) return -1;
+    if (start_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_bfs: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -2225,6 +2349,7 @@ int kg_hierarchy_bfs(
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_bfs: validation failed");
         return -1;
     }
 
@@ -2263,10 +2388,16 @@ int kg_hierarchy_dfs(
     kg_traversal_visitor_fn visitor,
     void* user_data
 ) {
-    if (!hier || !visitor) return -1;
+    if (!hier || !visitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_dfs: required parameter is NULL (hier, visitor)");
+        return -1;
+    }
 
     uint32_t start_idx = find_entry_index(hier, start_module);
-    if (start_idx == UINT32_MAX) return -1;
+    if (start_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_dfs: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -2277,6 +2408,7 @@ int kg_hierarchy_dfs(
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_dfs: validation failed");
         return -1;
     }
 
@@ -2314,7 +2446,10 @@ int kg_hierarchy_dfs(
  */
 static bool shortest_path_visitor(uint32_t node_index, uint32_t depth, void* user_data) {
     path_context_t* ctx = (path_context_t*)user_data;
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shortest_path_visitor: ctx is NULL");
+        return false;
+    }
 
     ctx->distance[node_index] = depth;
 
@@ -2333,7 +2468,10 @@ int kg_hierarchy_shortest_path(
     uint32_t max_path,
     uint32_t* path_length
 ) {
-    if (!hier || !path || !path_length) return -1;
+    if (!hier || !path || !path_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_shortest_path: required parameter is NULL (hier, path, path_length)");
+        return -1;
+    }
     *path_length = 0;
 
     if (from_module == to_module) {
@@ -2344,7 +2482,10 @@ int kg_hierarchy_shortest_path(
 
     uint32_t from_idx = find_entry_index(hier, from_module);
     uint32_t to_idx = find_entry_index(hier, to_module);
-    if (from_idx == UINT32_MAX || to_idx == UINT32_MAX) return -1;
+    if (from_idx == UINT32_MAX || to_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_shortest_path: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(((kg_hierarchy_t*)hier)->mutex);
 
@@ -2360,6 +2501,7 @@ int kg_hierarchy_shortest_path(
         nimcp_free(parent);
         nimcp_free(visited);
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_shortest_path: required parameter is NULL (distance, parent, visited)");
         return -1;
     }
 
@@ -2378,6 +2520,7 @@ int kg_hierarchy_shortest_path(
         nimcp_free(parent);
         nimcp_free(visited);
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_shortest_path: validation failed");
         return -1;
     }
 
@@ -2389,6 +2532,7 @@ int kg_hierarchy_shortest_path(
         nimcp_free(parent);
         nimcp_free(visited);
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_shortest_path: queue is NULL");
         return -1;
     }
 
@@ -2541,7 +2685,10 @@ int kg_hierarchy_find_components(
     uint32_t* component_ids,
     uint32_t* num_components
 ) {
-    if (!hier || !component_ids || !num_components) return -1;
+    if (!hier || !component_ids || !num_components) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_find_components: required parameter is NULL (hier, component_ids, num_components)");
+        return -1;
+    }
     *num_components = 0;
 
     if (hier->entry_count == 0) return 0;
@@ -2557,6 +2704,7 @@ int kg_hierarchy_find_components(
 
     if (build_node_mappings(hier, &node_id_map, &node_index_map, &max_node_id) < 0) {
         nimcp_mutex_unlock(((kg_hierarchy_t*)hier)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "kg_hierarchy_find_components: validation failed");
         return -1;
     }
 
@@ -2594,20 +2742,28 @@ int kg_hierarchy_get_component_info(
     uint32_t component_id,
     kg_component_info_t* info
 ) {
-    if (!hier || !info) return -1;
+    if (!hier || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_component_info: required parameter is NULL (hier, info)");
+        return -1;
+    }
 
     /* Get component IDs for all modules */
     uint32_t* comp_ids = (uint32_t*)nimcp_calloc(hier->entry_count, sizeof(uint32_t));
-    if (!comp_ids) return -1;
+    if (!comp_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_get_component_info: comp_ids is NULL");
+        return -1;
+    }
 
     uint32_t num_components = 0;
     if (kg_hierarchy_find_components(hier, comp_ids, &num_components) < 0) {
         nimcp_free(comp_ids);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_component_info: validation failed");
         return -1;
     }
 
     if (component_id >= num_components) {
         nimcp_free(comp_ids);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_get_component_info: capacity exceeded");
         return -1;
     }
 
@@ -2697,20 +2853,30 @@ bool kg_hierarchy_are_connected(
     brain_kg_node_id_t module_a,
     brain_kg_node_id_t module_b
 ) {
-    if (!hier) return false;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_are_connected: hier is NULL");
+        return false;
+    }
     if (module_a == module_b) return true;
 
     uint32_t idx_a = find_entry_index(hier, module_a);
     uint32_t idx_b = find_entry_index(hier, module_b);
-    if (idx_a == UINT32_MAX || idx_b == UINT32_MAX) return false;
+    if (idx_a == UINT32_MAX || idx_b == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_are_connected: validation failed");
+        return false;
+    }
 
     /* Get component IDs */
     uint32_t* comp_ids = (uint32_t*)nimcp_calloc(hier->entry_count, sizeof(uint32_t));
-    if (!comp_ids) return false;
+    if (!comp_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hierarchy_are_connected: comp_ids is NULL");
+        return false;
+    }
 
     uint32_t num_components = 0;
     if (kg_hierarchy_find_components(hier, comp_ids, &num_components) < 0) {
         nimcp_free(comp_ids);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_hierarchy_are_connected: validation failed");
         return false;
     }
 
@@ -2847,7 +3013,10 @@ struct kg_edge_iterator {
 };
 
 int kg_hierarchy_get_node_count(const kg_hierarchy_t* hier, uint32_t* count) {
-    if (!hier || !count) return -1;
+    if (!hier || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_node_count: required parameter is NULL (hier, count)");
+        return -1;
+    }
     *count = hier->entry_count;
     return 0;
 }
@@ -2879,7 +3048,10 @@ kg_edge_iterator_t* kg_hierarchy_edge_iterator(const kg_hierarchy_t* hier) {
 }
 
 int kg_edge_iterator_next(kg_edge_iterator_t* iter, kg_edge_t* edge) {
-    if (!iter || !edge || !iter->hier) return -1;
+    if (!iter || !edge || !iter->hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_edge_iterator_next: required parameter is NULL (iter, edge, iter->hier)");
+        return -1;
+    }
 
     const kg_hierarchy_t* hier = iter->hier;
 
@@ -2910,6 +3082,7 @@ int kg_edge_iterator_next(kg_edge_iterator_t* iter, kg_edge_t* edge) {
         iter->current_edge = 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_edge_iterator_next: validation failed");
     return -1;  /* No more edges */
 }
 
@@ -2929,7 +3102,10 @@ int kg_hierarchy_set_edge_metadata_int(
     const char* key,
     int32_t value
 ) {
-    if (!hier || !key) return -1;
+    if (!hier || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_set_edge_metadata_int: required parameter is NULL (hier, key)");
+        return -1;
+    }
 
     /* For now, edge metadata is stored in the brain_kg edge description
      * A more complete implementation would use a separate metadata store */
@@ -2947,7 +3123,10 @@ int kg_hierarchy_get_edge_metadata_int(
     const char* key,
     int32_t* value
 ) {
-    if (!hier || !key || !value) return -1;
+    if (!hier || !key || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_hierarchy_get_edge_metadata_int: required parameter is NULL (hier, key, value)");
+        return -1;
+    }
 
     /* Stub implementation - return default value */
     (void)from;

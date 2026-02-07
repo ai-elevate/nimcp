@@ -130,7 +130,10 @@ static const pronoun_info_t PRONOUNS[] = {
  * @brief Case-insensitive strstr
  */
 static const char* strcasestr_local(const char* haystack, const char* needle) {
-    if (!haystack || !needle) return NULL;
+    if (!haystack || !needle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: required parameter is NULL (haystack, needle)");
+        return NULL;
+    }
     if (!*needle) return haystack;
 
     size_t needle_len = strlen(needle);
@@ -146,11 +149,15 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
         if (match) return haystack;
         haystack++;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: validation failed");
     return NULL;
 }
 
 static bool contains_word(const char* text, const char* word) {
-    if (!text || !word) return false;
+    if (!text || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_word: required parameter is NULL (text, word)");
+        return false;
+    }
 
     const char* p = text;
     size_t word_len = strlen(word);
@@ -188,6 +195,7 @@ static const pronoun_info_t* find_pronoun(const char* word) {
             return p;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_pronoun: validation failed");
     return NULL;
 }
 
@@ -242,6 +250,7 @@ discourse_manager_t* discourse_create(const discourse_config_t* config) {
         manager->config.max_referents, sizeof(discourse_referent_t));
     if (!manager->referents) {
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "discourse_create: manager->referents is NULL");
         return NULL;
     }
 
@@ -251,6 +260,7 @@ discourse_manager_t* discourse_create(const discourse_config_t* config) {
     if (!manager->topics) {
         nimcp_free(manager->referents);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "discourse_create: manager->topics is NULL");
         return NULL;
     }
 
@@ -261,6 +271,7 @@ discourse_manager_t* discourse_create(const discourse_config_t* config) {
         nimcp_free(manager->topics);
         nimcp_free(manager->referents);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_create: manager->turns is NULL");
         return NULL;
     }
 
@@ -283,7 +294,10 @@ void discourse_destroy(discourse_manager_t* manager) {
 }
 
 bool discourse_reset(discourse_manager_t* manager) {
-    if (!manager) return false;
+    if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_reset: manager is NULL");
+        return false;
+    }
 
     manager->referent_count = 0;
     manager->topic_count = 0;
@@ -353,7 +367,10 @@ bool discourse_get_referent(
     uint32_t referent_id,
     discourse_referent_t* referent) {
 
-    if (!manager || !referent || referent_id == 0) return false;
+    if (!manager || !referent || referent_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_reset: required parameter is NULL (manager, referent)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < manager->referent_count; i++) {
         if (manager->referents[i].referent_id == referent_id) {
@@ -362,6 +379,7 @@ bool discourse_get_referent(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_reset: validation failed");
     return false;
 }
 
@@ -370,7 +388,10 @@ bool discourse_find_referent(
     const char* name,
     discourse_referent_t* referent) {
 
-    if (!manager || !name || !referent) return false;
+    if (!manager || !name || !referent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_reset: required parameter is NULL (manager, name, referent)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < manager->referent_count; i++) {
         if (strcmp(manager->referents[i].name, name) == 0) {
@@ -379,6 +400,7 @@ bool discourse_find_referent(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_reset: validation failed");
     return false;
 }
 
@@ -422,7 +444,10 @@ bool discourse_boost_referent_salience(
     uint32_t referent_id,
     float salience_boost) {
 
-    if (!manager || referent_id == 0) return false;
+    if (!manager || referent_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_reset: manager is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < manager->referent_count; i++) {
         if (manager->referents[i].referent_id == referent_id) {
@@ -436,6 +461,7 @@ bool discourse_boost_referent_salience(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_reset: validation failed");
     return false;
 }
 
@@ -449,7 +475,10 @@ bool discourse_resolve_anaphora(
     const char* context,
     anaphora_resolution_t* result) {
 
-    if (!manager || !expression || !result) return false;
+    if (!manager || !expression || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_reset: required parameter is NULL (manager, expression, result)");
+        return false;
+    }
     (void)context;  /* Context used in more sophisticated implementation */
 
     manager->status = DISCOURSE_STATUS_RESOLVING;
@@ -464,6 +493,7 @@ bool discourse_resolve_anaphora(
             result->type = ANAPHORA_TYPE_DEMONSTRATIVE;
         } else {
             manager->status = DISCOURSE_STATUS_READY;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_reset: validation failed");
             return false;
         }
     } else {
@@ -623,7 +653,10 @@ bool discourse_get_current_topic(
     const discourse_manager_t* manager,
     discourse_topic_t* topic) {
 
-    if (!manager || !topic || manager->current_topic_id == 0) return false;
+    if (!manager || !topic || manager->current_topic_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (manager, topic)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < manager->topic_count; i++) {
         if (manager->topics[i].topic_id == manager->current_topic_id) {
@@ -632,6 +665,7 @@ bool discourse_get_current_topic(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -639,7 +673,10 @@ bool discourse_set_current_topic(
     discourse_manager_t* manager,
     uint32_t topic_id) {
 
-    if (!manager || topic_id == 0) return false;
+    if (!manager || topic_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: manager is NULL");
+        return false;
+    }
 
     /* Clear current flags */
     for (uint32_t i = 0; i < manager->topic_count; i++) {
@@ -656,6 +693,7 @@ bool discourse_set_current_topic(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -785,7 +823,10 @@ bool discourse_get_turn(
     uint32_t turn_id,
     discourse_turn_t* turn) {
 
-    if (!manager || !turn || turn_id == 0) return false;
+    if (!manager || !turn || turn_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (manager, turn)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < manager->turn_count; i++) {
         uint32_t idx = (manager->turn_head + manager->config.max_turns - 1 - i)
@@ -796,6 +837,7 @@ bool discourse_get_turn(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -898,6 +940,7 @@ bool discourse_analyze(
 
     if (!manager || !utterance || !analysis) {
         if (manager) manager->last_error = DISCOURSE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "discourse_get_overall_coherence: validation failed");
         return false;
     }
 
@@ -968,7 +1011,10 @@ discourse_error_t discourse_get_last_error(const discourse_manager_t* manager) {
 }
 
 bool discourse_get_stats(const discourse_manager_t* manager, discourse_stats_t* stats) {
-    if (!manager || !stats) return false;
+    if (!manager || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_get_stats: required parameter is NULL (manager, stats)");
+        return false;
+    }
     *stats = manager->stats;
     return true;
 }
@@ -979,7 +1025,10 @@ void discourse_reset_stats(discourse_manager_t* manager) {
 }
 
 bool discourse_get_config(const discourse_manager_t* manager, discourse_config_t* config) {
-    if (!manager || !config) return false;
+    if (!manager || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_get_config: required parameter is NULL (manager, config)");
+        return false;
+    }
     *config = manager->config;
     return true;
 }
@@ -992,7 +1041,10 @@ bool discourse_register_bio_handler(
     discourse_manager_t* manager,
     bio_router_t* router) {
 
-    if (!manager || !router) return false;
+    if (!manager || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "discourse_get_config: required parameter is NULL (manager, router)");
+        return false;
+    }
 
     manager->router = router;
     manager->bio_registered = true;

@@ -989,8 +989,8 @@ TEST_F(EventTypesTest, Stress_ManyAllocations) {
  * HOW:  Check EVENT_TYPE_COUNT value
  */
 TEST_F(EventTypesTest, Regression_EventTypeCount) {
-    // Should be 14 types (0-13 plus COUNT)
-    EXPECT_EQ(EVENT_TYPE_COUNT, 14);
+    // Should be 22 types (includes new event categories added)
+    EXPECT_EQ(EVENT_TYPE_COUNT, 22);
 }
 
 /**

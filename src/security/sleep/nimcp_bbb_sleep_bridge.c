@@ -86,7 +86,10 @@ static void bbb_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 }
 
 int bbb_sleep_default_config(bbb_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_permeability_modulation = true;
     config->enable_detection_modulation = true;
     config->enable_response_modulation = true;
@@ -147,14 +150,20 @@ void bbb_sleep_bridge_destroy(bbb_sleep_bridge_t bridge) {
 }
 
 int bbb_sleep_update(bbb_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_update: bridge is NULL");
+        return -1;
+    }
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     bbb_on_sleep_state_change(state, bridge);
     return 0;
 }
 
 int bbb_sleep_get_effects(const bbb_sleep_bridge_t bridge, bbb_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -170,7 +179,10 @@ float bbb_sleep_get_permeability(const bbb_sleep_bridge_t bridge) {
 }
 
 bool bbb_sleep_is_glymphatic_active(const bbb_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_is_glymphatic_active: bridge is NULL");
+        return false;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.glymphatic_active;
     nimcp_mutex_unlock(bridge->base.mutex);

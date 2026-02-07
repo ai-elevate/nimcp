@@ -219,6 +219,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
     if (!meta->baseline_window) {
         LOG_ERROR("Failed to create baseline window");
         nimcp_free(meta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metacognition_create: meta->baseline_window is NULL");
         return NULL;
     }
 
@@ -229,6 +230,7 @@ metacognition_t* metacognition_create(const metacognition_config_t* config) {
         LOG_ERROR("Failed to create anomaly detector");
         baseline_window_destroy(meta->baseline_window);
         nimcp_free(meta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metacognition_create: meta->detector is NULL");
         return NULL;
     }
 
@@ -317,16 +319,19 @@ bool metacognition_monitor_self(
     // GUARD: NULL checks
     if (!meta) {
         LOG_ERROR("NULL metacognition in monitor_self");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_monitor_self: meta is NULL");
         return false;
     }
 
     if (!state) {
         LOG_ERROR("NULL cognitive state in monitor_self");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_monitor_self: state is NULL");
         return false;
     }
 
     if (!meta->initialized) {
         LOG_ERROR("Metacognition not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_monitor_self: meta->initialized is NULL");
         return false;
     }
 
@@ -399,6 +404,7 @@ bool metacognition_is_degraded(
 ) {
     // GUARD: NULL check
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_degraded: meta is NULL");
         return false;
     }
 
@@ -409,11 +415,13 @@ bool metacognition_is_degraded(
 
     if (threshold < 0.0F || threshold > 1.0F) {
         LOG_WARNING("Invalid degradation threshold %.2f, expected [0,1]", threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metacognition_is_degraded: validation failed");
         return false;
     }
 
     // GUARD: Baseline not established
     if (!meta->baseline.established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_degraded: meta->baseline is NULL");
         return false;  // Can't detect degradation without baseline
     }
 
@@ -431,6 +439,7 @@ diagnosis_t* metacognition_self_diagnose(metacognition_t* meta) {
     // GUARD: NULL check
     if (!meta) {
         LOG_ERROR("NULL metacognition in self_diagnose");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_self_diagnose: meta is NULL");
         return NULL;
     }
 
@@ -443,6 +452,7 @@ diagnosis_t* metacognition_self_diagnose(metacognition_t* meta) {
     diagnosis_t* diagnosis = create_diagnosis(meta);
     if (!diagnosis) {
         LOG_ERROR("Failed to allocate diagnosis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metacognition_self_diagnose: diagnosis is NULL");
         return NULL;
     }
 
@@ -536,6 +546,7 @@ bool metacognition_has_high_uncertainty(
     float threshold
 ) {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_has_high_uncertainty: meta is NULL");
         return false;
     }
 
@@ -555,6 +566,7 @@ bool metacognition_get_baseline(
 ) {
     // GUARD: NULL checks
     if (!meta || !baseline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_get_baseline: required parameter is NULL (meta, baseline)");
         return false;
     }
 
@@ -575,6 +587,7 @@ bool metacognition_get_current_health(
 ) {
     // GUARD: NULL checks
     if (!meta || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_get_current_health: required parameter is NULL (meta, health)");
         return false;
     }
 
@@ -591,6 +604,7 @@ bool metacognition_get_current_health(
 
 bool metacognition_is_initialized(const metacognition_t* meta) {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metacognition_is_initialized: meta is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -729,6 +743,7 @@ static baseline_window_t* baseline_window_create(uint32_t capacity) {
     window->samples = (cognitive_state_t*)nimcp_calloc(capacity, sizeof(cognitive_state_t));
     if (!window->samples) {
         nimcp_free(window);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "baseline_window_create: window->samples is NULL");
         return NULL;
     }
 
@@ -769,6 +784,7 @@ static bool baseline_window_compute_baseline(
     performance_baseline_t* baseline
 ) {
     if (!window || !baseline || window->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "baseline_window_compute_baseline: required parameter is NULL (window, baseline)");
         return false;
     }
 

@@ -176,7 +176,10 @@ static exhaustion_cell_record_t* find_cell_record(
     exhaustion_system_t* system,
     uint32_t t_cell_id
 ) {
-    if (!system || !system->cells) return NULL;
+    if (!system || !system->cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cell_record: required parameter is NULL (system, system->cells)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < system->cell_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -189,6 +192,7 @@ static exhaustion_cell_record_t* find_cell_record(
             return &system->cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cell_record: validation failed");
     return NULL;
 }
 
@@ -240,6 +244,7 @@ static exhaustion_cell_record_t* get_or_create_cell_record(
     /* Need to expand array */
     if (system->cell_count >= system->cell_capacity) {
         NIMCP_LOGGING_WARN("Exhaustion tracking capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_cell_record: capacity exceeded");
         return NULL;
     }
 
@@ -560,7 +565,10 @@ static void update_system_stats(exhaustion_system_t* system) {
  * @brief Get default configuration
  */
 int exhaustion_default_config(exhaustion_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_default_c", 0.0f);
@@ -644,6 +652,7 @@ exhaustion_system_t* exhaustion_create(
     );
     if (!system->cells) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "exhaustion_create: system->cells is NULL");
         return NULL;
     }
     memset(system->cells, 0, system->cell_capacity * sizeof(exhaustion_cell_record_t));
@@ -653,6 +662,7 @@ exhaustion_system_t* exhaustion_create(
     if (!system->mutex) {
         nimcp_free(system->cells);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "exhaustion_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -703,7 +713,10 @@ int exhaustion_update(
     exhaustion_system_t* system,
     uint64_t delta_ms
 ) {
-    if (!system || !system->running) return -1;
+    if (!system || !system->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_update: required parameter is NULL (system, system->running)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_update", 0.0f);
@@ -785,7 +798,10 @@ int exhaustion_get_markers(
     uint32_t t_cell_id,
     exhaustion_markers_t* markers
 ) {
-    if (!system || !markers) return -1;
+    if (!system || !markers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_get_markers: required parameter is NULL (system, markers)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_marke", 0.0f);
@@ -801,6 +817,7 @@ int exhaustion_get_markers(
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "exhaustion_get_markers: validation failed");
     return -1;
 }
 
@@ -828,7 +845,10 @@ int exhaustion_get_stats(
     exhaustion_system_t* system,
     exhaustion_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_get_stats", 0.0f);
@@ -852,7 +872,10 @@ int exhaustion_initiate_recovery(
     exhaustion_system_t* system,
     uint32_t t_cell_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_initiate_recovery: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_initiate_", 0.0f);
@@ -863,6 +886,7 @@ int exhaustion_initiate_recovery(
     exhaustion_cell_record_t* cell = get_or_create_cell_record(system, t_cell_id);
     if (!cell) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_initiate_recovery: cell is NULL");
         return -1;
     }
 
@@ -870,6 +894,7 @@ int exhaustion_initiate_recovery(
     if (cell->state != EXHAUSTION_STATE_EXHAUSTED &&
         cell->state != EXHAUSTION_STATE_TERMINAL) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_initiate_recovery: cell is NULL");
         return -1;
     }
 
@@ -895,7 +920,10 @@ int exhaustion_checkpoint_blockade(
     exhaustion_system_t* system,
     uint32_t t_cell_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_checkpoint_blockade: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_checkpoin", 0.0f);
@@ -906,6 +934,7 @@ int exhaustion_checkpoint_blockade(
     exhaustion_cell_record_t* cell = get_or_create_cell_record(system, t_cell_id);
     if (!cell) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_checkpoint_blockade: cell is NULL");
         return -1;
     }
 
@@ -913,6 +942,7 @@ int exhaustion_checkpoint_blockade(
     if (cell->state != EXHAUSTION_STATE_EXHAUSTED &&
         cell->state != EXHAUSTION_STATE_TERMINAL) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_checkpoint_blockade: cell is NULL");
         return -1;
     }
 
@@ -948,7 +978,10 @@ int exhaustion_set_exhaustion_callback(
     exhaustion_event_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_set_exhaustion_callback: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_set_exhau", 0.0f);
@@ -970,7 +1003,10 @@ int exhaustion_set_recovery_callback(
     exhaustion_recovery_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exhaustion_set_recovery_callback: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     immune_exhaustion_heartbeat("immune_exhau_exhaustion_set_recov", 0.0f);

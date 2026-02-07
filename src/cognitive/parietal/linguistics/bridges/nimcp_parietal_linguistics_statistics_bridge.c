@@ -309,6 +309,7 @@ ling_stats_bridge_t* ling_stats_bridge_create(
     ling_stats_bridge_t* bridge = (ling_stats_bridge_t*)nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         set_error("Failed to allocate statistics bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_stats_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -562,7 +563,10 @@ int ling_stats_hmm_predict_next(
 }
 
 int ling_stats_parse_number_word(const char* word, num_observation_t* obs) {
-    if (!word || !obs) return -1;
+    if (!word || !obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ling_stats_parse_number_word: required parameter is NULL (word, obs)");
+        return -1;
+    }
 
     static const struct {
         const char* word;
@@ -593,6 +597,7 @@ int ling_stats_parse_number_word(const char* word, num_observation_t* obs) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ling_stats_parse_number_word: validation failed");
     return -1;
 }
 

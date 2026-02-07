@@ -215,7 +215,10 @@ static void softmax(float* values, uint32_t n, float temperature) {
  * @brief Initialize belief structure
  */
 static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precision) {
-    if (!belief || dim == 0) return -1;
+    if (!belief || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_belief: belief is NULL");
+        return -1;
+    }
 
     /* Guard: Ensure precision is positive to prevent division by zero */
     if (initial_precision < FEP_MIN_PRECISION) {
@@ -236,6 +239,7 @@ static int init_belief(fep_belief_t* belief, uint32_t dim, float initial_precisi
         belief->variance = NULL;
         belief->precision = NULL;
         belief->dim = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_belief: validation failed");
         return -1;
     }
 
@@ -273,7 +277,10 @@ static void free_belief(fep_belief_t* belief) {
  * @brief Initialize prediction error structure
  */
 static int init_prediction_error(fep_prediction_error_t* error, uint32_t dim) {
-    if (!error || dim == 0) return -1;
+    if (!error || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_prediction_error: error is NULL");
+        return -1;
+    }
 
     error->dim = dim;
     error->error = (float*)nimcp_calloc(dim, sizeof(float));
@@ -289,6 +296,7 @@ static int init_prediction_error(fep_prediction_error_t* error, uint32_t dim) {
         error->weighted_error = NULL;
         error->precision = NULL;
         error->dim = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_prediction_error: validation failed");
         return -1;
     }
 
@@ -342,6 +350,7 @@ static int init_level(
 
     /* Initialize beliefs */
     if (init_belief(&level->beliefs, state_dim, initial_precision) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "init_level: validation failed");
         return -1;
     }
 
@@ -352,6 +361,7 @@ static int init_level(
         if (!level->predictions) {
             /* Clean up beliefs before returning */
             free_belief(&level->beliefs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_level: level->predictions is NULL");
             return -1;
         }
     }
@@ -362,6 +372,7 @@ static int init_level(
         free_belief(&level->beliefs);
         if (level->predictions) nimcp_free(level->predictions);
         level->predictions = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_level: validation failed");
         return -1;
     }
 
@@ -378,6 +389,7 @@ static int init_level(
         level->predictions = NULL;
         level->prior_mean = NULL;
         level->prior_precision = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_level: validation failed");
         return -1;
     }
 
@@ -461,6 +473,7 @@ fep_system_t* fep_create(
 
     if (observation_dim == 0) {
         NIMCP_LOGGING_ERROR("Observation dimension must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_create: observation_dim is zero");
         return NULL;
     }
 
@@ -497,6 +510,7 @@ fep_system_t* fep_create(
     fep->observations = (float*)nimcp_calloc(observation_dim, sizeof(float));
     if (!fep->observations) {
         fep_destroy(fep);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_create: fep->observations is NULL");
         return NULL;
     }
 
@@ -507,6 +521,7 @@ fep_system_t* fep_create(
     );
     if (!fep->levels) {
         fep_destroy(fep);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_create: fep->levels is NULL");
         return NULL;
     }
 
@@ -540,6 +555,7 @@ fep_system_t* fep_create(
                        fep->config.initial_precision) != 0) {
             NIMCP_LOGGING_ERROR("Failed to initialize level %u", i);
             fep_destroy(fep);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_create: operation failed");
             return NULL;
         }
     }
@@ -551,6 +567,7 @@ fep_system_t* fep_create(
         );
         if (!fep->policies) {
             fep_destroy(fep);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_create: fep->policies is NULL");
             return NULL;
         }
 
@@ -580,6 +597,7 @@ fep_system_t* fep_create(
     fep->mutex = nimcp_platform_mutex_create();
     if (!fep->mutex) {
         fep_destroy(fep);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_create: fep->mutex is NULL");
         return NULL;
     }
 
@@ -716,8 +734,14 @@ int fep_process_observation(
     const float* observation,
     uint32_t observation_dim
 ) {
-    if (!fep || !observation) return -1;
-    if (observation_dim != fep->observation_dim) return -1;
+    if (!fep || !observation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_process_observation: required parameter is NULL (fep, observation)");
+        return -1;
+    }
+    if (observation_dim != fep->observation_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_process_observation: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_process_observat", 0.0f);
@@ -789,7 +813,10 @@ int fep_compute_prediction_error(
     const fep_system_t* fep,
     fep_prediction_error_t* error
 ) {
-    if (!fep || !error) return -1;
+    if (!fep || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_prediction_error: required parameter is NULL (fep, error)");
+        return -1;
+    }
 
     /* Get level 0 */
     /* Phase 8: Heartbeat at operation start */
@@ -1000,7 +1027,10 @@ int fep_compute_free_energy(
     const fep_system_t* fep,
     fep_free_energy_t* fe
 ) {
-    if (!fep || !fe) return -1;
+    if (!fep || !fe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_free_energy: required parameter is NULL (fep, fe)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_compute_free_ene", 0.0f);
@@ -1113,7 +1143,10 @@ float fep_compute_surprise(const fep_system_t* fep) {
  * @brief Internal policy evaluation (no mutex - caller must hold lock)
  */
 static int fep_evaluate_policies_unlocked(fep_system_t* fep) {
-    if (!fep || !fep->policies) return -1;
+    if (!fep || !fep->policies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evaluate_policies_unlocked: required parameter is NULL (fep, fep->policies)");
+        return -1;
+    }
 
     /* Compute EFE for each policy */
     for (uint32_t i = 0; i < fep->num_policies; i++) {
@@ -1164,7 +1197,10 @@ int fep_compute_efe(
     const fep_policy_t* policy,
     fep_efe_t* efe
 ) {
-    if (!fep || !policy || !efe) return -1;
+    if (!fep || !policy || !efe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_efe: required parameter is NULL (fep, policy, efe)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_compute_efe", 0.0f);
@@ -1202,7 +1238,10 @@ int fep_compute_efe(
 }
 
 int fep_evaluate_policies(fep_system_t* fep) {
-    if (!fep || !fep->policies) return -1;
+    if (!fep || !fep->policies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evaluate_policies: required parameter is NULL (fep, fep->policies)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_evaluate_policie", 0.0f);
@@ -1220,8 +1259,14 @@ int fep_select_action(
     float* action,
     uint32_t action_dim
 ) {
-    if (!fep || !action) return -1;
-    if (action_dim < fep->action_dim) return -1;
+    if (!fep || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_select_action: required parameter is NULL (fep, action)");
+        return -1;
+    }
+    if (action_dim < fep->action_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_select_action: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_select_action", 0.0f);
@@ -1291,7 +1336,10 @@ int fep_set_preferences(
     float precision,
     uint32_t dim
 ) {
-    if (!fep || !preferred) return -1;
+    if (!fep || !preferred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_set_preferences: required parameter is NULL (fep, preferred)");
+        return -1;
+    }
 
     /* Store preferences as prior for level 0 */
     /* Phase 8: Heartbeat at operation start */
@@ -1323,7 +1371,10 @@ int fep_get_beliefs(
     uint32_t level,
     fep_belief_t* beliefs
 ) {
-    if (!fep || !beliefs || level >= fep->num_levels) return -1;
+    if (!fep || !beliefs || level >= fep->num_levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_get_beliefs: required parameter is NULL (fep, beliefs)");
+        return -1;
+    }
 
     *beliefs = fep->levels[level].beliefs;
     /* Phase 8: Heartbeat at operation start */
@@ -1352,8 +1403,14 @@ float fep_get_prediction_error(const fep_system_t* fep, uint32_t level) {
 }
 
 int fep_get_selected_policy(const fep_system_t* fep, fep_policy_t* policy) {
-    if (!fep || !policy || !fep->policies) return -1;
-    if (fep->selected_policy >= fep->num_policies) return -1;
+    if (!fep || !policy || !fep->policies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_get_selected_policy: required parameter is NULL (fep, policy, fep->policies)");
+        return -1;
+    }
+    if (fep->selected_policy >= fep->num_policies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_get_selected_policy: capacity exceeded");
+        return -1;
+    }
 
     *policy = fep->policies[fep->selected_policy];
     /* Phase 8: Heartbeat at operation start */
@@ -1364,7 +1421,10 @@ int fep_get_selected_policy(const fep_system_t* fep, fep_policy_t* policy) {
 }
 
 int fep_get_stats(const fep_system_t* fep, fep_stats_t* stats) {
-    if (!fep || !stats) return -1;
+    if (!fep || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_get_stats: required parameter is NULL (fep, stats)");
+        return -1;
+    }
     *stats = fep->stats;
     /* Phase 8: Heartbeat at operation start */
     free_energy_instance_heartbeat("free_energy_fep_get_stats", 0.0f);
@@ -1455,7 +1515,10 @@ void free_energy_set_instance_health_agent(void* ctx, nimcp_health_agent_t* agen
  * Phase 8: Full Training Implementation
  * ============================================================================ */
 int free_energy_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_training_begin: ctx is NULL");
+        return -1;
+    }
     free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_begin", 0.0f);
     fep_system_t* s = (fep_system_t*)ctx;
     s->stats.total_updates = 0;
@@ -1467,7 +1530,10 @@ int free_energy_training_begin(void* ctx) {
 }
 
 int free_energy_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_training_step: ctx is NULL");
+        return -1;
+    }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
     free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_step", clamped);
     fep_system_t* s = (fep_system_t*)ctx;
@@ -1490,7 +1556,10 @@ int free_energy_training_step(void* ctx, float progress) {
 }
 
 int free_energy_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_training_end: ctx is NULL");
+        return -1;
+    }
     free_energy_heartbeat_instance(g_free_energy_instance_health_agent, "free_energy_training_end", 1.0f);
     fep_system_t* s = (fep_system_t*)ctx;
     float metric_sum = 0.0f;

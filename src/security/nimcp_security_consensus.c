@@ -507,6 +507,7 @@ static void* timer_thread_func(void* arg) {
         usleep(10000);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "timer_thread_func: operation failed");
     return NULL;
 }
 
@@ -549,6 +550,7 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
     if (!c->log) {
         LOG_ERROR("Failed to allocate log");
         nimcp_free(c);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_consensus_create: c->log is NULL");
         return NULL;
     }
 
@@ -563,6 +565,7 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
         LOG_ERROR("Failed to initialize mutex");
         nimcp_free(c->log);
         nimcp_free(c);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_consensus_create: validation failed");
         return NULL;
     }
 
@@ -589,6 +592,7 @@ nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t
         nimcp_mutex_destroy(&c->mutex);
         nimcp_free(c->log);
         nimcp_free(c);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_consensus_create: validation failed");
         return NULL;
     }
 

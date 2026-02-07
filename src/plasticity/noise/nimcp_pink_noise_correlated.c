@@ -48,6 +48,7 @@ static bool compute_cholesky(
                 float diag = matrix[i * n + j] - sum;
                 if (diag < 0.0f) {
                     NIMCP_LOGGING_ERROR("Matrix not positive semi-definite");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_cholesky: validation failed");
                     return false;
                 }
                 lower[i * n + j] = sqrtf(diag);
@@ -59,6 +60,7 @@ static bool compute_cholesky(
                 float diag = lower[j * n + j];
                 if (fabsf(diag) < 1e-10f) {
                     NIMCP_LOGGING_ERROR("Near-zero diagonal in Cholesky");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_cholesky: validation failed");
                     return false;
                 }
                 lower[i * n + j] = (matrix[i * n + j] - sum) / diag;
@@ -228,6 +230,7 @@ pink_noise_correlated_t* pink_noise_correlated_create(
         if (!cn->generators[i]) {
             NIMCP_LOGGING_ERROR("Failed to create generator for channel %u", i);
             pink_noise_correlated_destroy(cn);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pink_noise_correlated_create: cn->generators is NULL");
             return NULL;
         }
     }
@@ -273,6 +276,7 @@ int pink_noise_correlated_step(pink_noise_correlated_t* cn) {
     for (uint32_t i = 0; i < n; i++) {
         float sample;
         if (!pink_noise_generate_sample(cn->generators[i], &sample)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_correlated_step: pink_noise_generate_sample is NULL");
             return -1;
         }
         cn->white_buffer[i] = sample;
@@ -493,6 +497,7 @@ int pink_noise_correlated_reset(
     for (uint32_t i = 0; i < cn->config.num_channels; i++) {
         uint32_t seed = (new_seed == 0) ? cn->config.seed + i : new_seed + i;
         if (!pink_noise_reset(cn->generators[i], seed)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_correlated_reset: pink_noise_reset is NULL");
             return -1;
         }
         cn->current_values[i] = 0.0f;

@@ -128,6 +128,7 @@ distributed_immune_bridge_t* distributed_immune_bridge_create(
     /* Guard: require systems */
     if (!immune_system || !distributed_cognition) {
         NIMCP_LOGGING_ERROR("distributed_immune_bridge_create: immune_system and distributed_cognition required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distributed_immune_bridge_create: required parameter is NULL (immune_system, distributed_cognition)");
         return NULL;
     }
 
@@ -135,6 +136,7 @@ distributed_immune_bridge_t* distributed_immune_bridge_create(
     distributed_immune_bridge_t* bridge = nimcp_malloc(sizeof(distributed_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("distributed_immune_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distributed_immune_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -192,6 +194,7 @@ void distributed_immune_bridge_destroy(distributed_immune_bridge_t* bridge) {
 int distributed_immune_apply_cytokine_effects(distributed_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -237,6 +240,7 @@ int distributed_immune_apply_cytokine_effects(distributed_immune_bridge_t* bridg
 int distributed_immune_apply_inflammation_effects(distributed_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -272,6 +276,7 @@ float distributed_immune_compute_broadcast_rate(const distributed_immune_bridge_
 int distributed_immune_update_congestion_metrics(distributed_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->distributed_cognition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_update_congestion_metrics: required parameter is NULL (bridge, bridge->distributed_cognition)");
         return -1;
     }
 
@@ -281,6 +286,7 @@ int distributed_immune_update_congestion_metrics(distributed_immune_bridge_t* br
     distrib_cognition_stats_t dc_stats;
     if (!distrib_cognition_get_stats(bridge->distributed_cognition, &dc_stats)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distributed_immune_update_congestion_metrics: distrib_cognition_get_stats is NULL");
         return -1;
     }
 
@@ -302,6 +308,7 @@ int distributed_immune_update_congestion_metrics(distributed_immune_bridge_t* br
 int distributed_immune_trigger_congestion_inflammation(distributed_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_trigger_congestion_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -335,6 +342,7 @@ int distributed_immune_present_peer_failure(
 ) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_present_peer_failure: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -374,6 +382,7 @@ int distributed_immune_present_peer_failure(
 int distributed_immune_release_il10_from_recovery(distributed_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_release_il10_from_recovery: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -448,6 +457,7 @@ int distributed_immune_get_cytokine_effects(
     cytokine_network_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -463,6 +473,7 @@ int distributed_immune_get_inflammation_state(
     inflammation_network_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -475,6 +486,7 @@ int distributed_immune_get_inflammation_state(
 
 bool distributed_immune_is_congested(const distributed_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_is_congested: bridge is NULL");
         return false;
     }
 
@@ -496,6 +508,7 @@ int distributed_immune_connect_bio_async(distributed_immune_bridge_t* bridge) {
     /* Guard: null check */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("distributed_immune_connect_bio_async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -556,6 +569,7 @@ int distributed_immune_disconnect_bio_async(distributed_immune_bridge_t* bridge)
 
 bool distributed_immune_is_bio_async_connected(const distributed_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

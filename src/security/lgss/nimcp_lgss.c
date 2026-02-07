@@ -130,6 +130,7 @@ struct lgss_context {
     do { \
         if (!(lgss) || (lgss)->magic != NIMCP_LGSS_MAGIC) { \
             LGSS_LOG_ERROR("Invalid LGSS context"); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_validate: invalid LGSS context"); \
             return -1; \
         } \
     } while (0)
@@ -138,6 +139,7 @@ struct lgss_context {
     do { \
         if (!(lgss) || (lgss)->magic != NIMCP_LGSS_MAGIC) { \
             LGSS_LOG_ERROR("Invalid LGSS context"); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_validate_ptr: invalid LGSS context"); \
             return NULL; \
         } \
     } while (0)
@@ -263,6 +265,7 @@ lgss_context_t* lgss_create(const lgss_config_t* config)
 
 cleanup:
     lgss_destroy(lgss);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_create: operation failed");
     return NULL;
 }
 
@@ -409,6 +412,7 @@ int lgss_lock(lgss_context_t* lgss)
 bool lgss_is_locked(const lgss_context_t* lgss)
 {
     if (!lgss || lgss->magic != NIMCP_LGSS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_is_locked: lgss is NULL");
         return false;
     }
     return symbolic_logic_safety_is_locked(lgss->safety_kb);

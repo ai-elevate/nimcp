@@ -135,6 +135,7 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
 
     if (!decision->output_vector) {
         nimcp_free(decision);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_decision: decision->output_vector is NULL");
         return NULL;
     }
 
@@ -185,6 +186,7 @@ static brain_decision_t* copy_decision(const brain_decision_t* source)
         copy->output_vector = nimcp_malloc(source->output_size * sizeof(float));
         if (!copy->output_vector) {
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "copy_decision: copy->output_vector is NULL");
             return NULL;
         }
         memcpy(copy->output_vector, source->output_vector, source->output_size * sizeof(float));
@@ -197,6 +199,7 @@ static brain_decision_t* copy_decision(const brain_decision_t* source)
             if (copy->output_vector)
                 nimcp_free(copy->output_vector);
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_decision: validation failed");
             return NULL;
         }
         memcpy(copy->active_neuron_ids, source->active_neuron_ids,
@@ -490,6 +493,7 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
     // Guard: Validate parameters
     if (!brain || !inputs || !decisions || num_inputs == 0) {
         set_error("Invalid parameters to brain_decide_batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: required parameter is NULL (brain, inputs, decisions)");
         return false;
     }
 
@@ -497,6 +501,7 @@ bool brain_decide_batch(brain_t brain, const float** inputs, uint32_t num_inputs
         brain_decision_t* decision = brain_decide(brain, inputs[i], features_per_input);
 
         if (!decision) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_decide_batch: decision is NULL");
             return false;
         }
 
@@ -539,11 +544,13 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
     // Guard: Validate parameters
     if (!brain || !features) {
         set_error("Invalid parameters to brain_observe_action");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_observe_action: required parameter is NULL (brain, features)");
         return false;
     }
 
     if (agent_id == 0) {
         set_error("agent_id must be > 0 (0 is reserved for self)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_observe_action: agent_id is zero");
         return false;
     }
 
@@ -560,6 +567,7 @@ bool brain_observe_action(brain_t brain, const float* features, uint32_t num_fea
     bool success = mirror_neurons_observe_action(brain->mirror_neurons, &action);
     if (!success) {
         set_error("Failed to record observed action in mirror neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_observe_action: success is NULL");
         return false;
     }
 
@@ -674,6 +682,7 @@ static void* async_infer_thread(void* arg)
     nimcp_promise_destroy(ctx->promise);
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_infer_thread: operation failed");
     return NULL;
 }
 
@@ -712,11 +721,13 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
     // Validate parameters
     if (!brain || !features) {
         LOG_MODULE_ERROR("brain_inference", "Invalid parameters to nimcp_brain_infer_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_infer_async: required parameter is NULL (brain, features)");
         return NULL;
     }
 
     if (num_features == 0) {
         LOG_MODULE_ERROR("brain_inference", "Invalid num_features=0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_infer_async: num_features is zero");
         return NULL;
     }
 
@@ -724,6 +735,7 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
     async_infer_context_t* ctx = nimcp_malloc(sizeof(async_infer_context_t));
     if (!ctx) {
         LOG_MODULE_ERROR("brain_inference", "Failed to allocate async inference context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_infer_async: ctx is NULL");
         return NULL;
     }
 
@@ -732,6 +744,7 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
     if (!ctx->features) {
         LOG_MODULE_ERROR("brain_inference", "Failed to allocate features array (%u floats)", num_features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_infer_async: ctx->features is NULL");
         return NULL;
     }
     memcpy(ctx->features, features, num_features * sizeof(float));
@@ -746,6 +759,7 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
         LOG_MODULE_ERROR("brain_inference", "Failed to create promise for async inference");
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_infer_async: ctx->promise is NULL");
         return NULL;
     }
 
@@ -756,6 +770,7 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
         nimcp_promise_destroy(ctx->promise);
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_infer_async: future is NULL");
         return NULL;
     }
 
@@ -774,6 +789,7 @@ nimcp_future_t nimcp_brain_infer_async(brain_t brain, const float* features,
         nimcp_promise_destroy(ctx->promise);
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_infer_async: validation failed");
         return NULL;
     }
 

@@ -231,12 +231,14 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > REASONING_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "reasoning_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_snn_create: validation failed");
         return NULL;
     }
 
@@ -254,6 +256,7 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -266,6 +269,7 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
         reasoning_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_create: operation failed");
         return NULL;
     }
 
@@ -331,7 +335,10 @@ void reasoning_snn_destroy(reasoning_snn_bridge_t* bridge) {
 }
 
 int reasoning_snn_reset(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_reset", 0.0f);
@@ -389,8 +396,14 @@ int reasoning_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_encode_state: num_dims is zero");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
@@ -473,7 +486,10 @@ int reasoning_snn_encode_deduction(
     float premise_strength,
     float rule_validity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_encode_deduction: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_encode", 0.0f);
@@ -495,7 +511,10 @@ int reasoning_snn_encode_causal(
     float cause_strength,
     float effect_probability
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_encode_causal: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_encode", 0.0f);
@@ -520,7 +539,10 @@ int reasoning_snn_encode_evidence(
     float evidence_strength,
     uint32_t evidence_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_encode_evidence: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_encode", 0.0f);
@@ -542,8 +564,14 @@ int reasoning_snn_encode_evidence(
 //=============================================================================
 
 int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_simula", 0.0f);
@@ -649,7 +677,10 @@ int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int reasoning_snn_step(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_step", 0.0f);
 
@@ -666,7 +697,10 @@ int reasoning_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
@@ -674,9 +708,13 @@ int reasoning_snn_forward(
 
 
     int spike_count = reasoning_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_forward: validation failed");
+        return -1;
+    }
 
     if (reasoning_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_forward: validation failed");
         return -1;
     }
 
@@ -691,7 +729,10 @@ int reasoning_snn_get_inference(
     reasoning_snn_bridge_t* bridge,
     reasoning_inference_t* inference
 ) {
-    if (!bridge || !inference) return -1;
+    if (!bridge || !inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_get_inference: required parameter is NULL (bridge, inference)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_get_in", 0.0f);
@@ -709,8 +750,14 @@ int reasoning_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_get_ac", 0.0f);
@@ -735,7 +782,10 @@ bool reasoning_snn_check_conflict(
     reasoning_snn_bridge_t* bridge,
     float* conflict_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_conflict: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_check_", 0.0f);
@@ -756,7 +806,10 @@ bool reasoning_snn_check_conclusion(
     reasoning_snn_bridge_t* bridge,
     float* validity
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_conclusion: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_check_", 0.0f);
@@ -777,7 +830,10 @@ bool reasoning_snn_check_causal(
     reasoning_snn_bridge_t* bridge,
     float* causal_strength
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_check_causal: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_check_", 0.0f);
@@ -803,8 +859,14 @@ int reasoning_snn_get_dim_state(
     uint32_t dim,
     reasoning_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_get_di", 0.0f);
@@ -821,7 +883,10 @@ int reasoning_snn_get_state(
     reasoning_snn_bridge_t* bridge,
     reasoning_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_get_st", 0.0f);
@@ -856,7 +921,10 @@ int reasoning_snn_get_state(
 }
 
 int reasoning_snn_get_stats(reasoning_snn_bridge_t* bridge, reasoning_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_get_st", 0.0f);
@@ -870,7 +938,10 @@ int reasoning_snn_get_stats(reasoning_snn_bridge_t* bridge, reasoning_snn_stats_
 }
 
 int reasoning_snn_reset_stats(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_reset_", 0.0f);
@@ -931,7 +1002,10 @@ int reasoning_snn_register_conflict_callback(
     reasoning_snn_conflict_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_register_conflict_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_regist", 0.0f);
@@ -950,7 +1024,10 @@ int reasoning_snn_register_inference_callback(
     reasoning_snn_inference_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_register_inference_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_regist", 0.0f);
@@ -969,7 +1046,10 @@ int reasoning_snn_register_conclusion_callback(
     reasoning_snn_conclusion_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_register_conclusion_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_regist", 0.0f);
@@ -988,8 +1068,14 @@ int reasoning_snn_register_conclusion_callback(
 //=============================================================================
 
 int reasoning_snn_bio_async_connect(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_bio_as", 0.0f);
@@ -1004,7 +1090,10 @@ int reasoning_snn_bio_async_connect(reasoning_snn_bridge_t* bridge) {
 }
 
 int reasoning_snn_bio_async_disconnect(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_bio_as", 0.0f);
@@ -1018,7 +1107,10 @@ int reasoning_snn_bio_async_disconnect(reasoning_snn_bridge_t* bridge) {
 }
 
 bool reasoning_snn_is_bio_async_connected(reasoning_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_snn_bridge_heartbeat("reasoning_sn_reasoning_snn_is_bio", 0.0f);

@@ -99,6 +99,7 @@ static struct language_perception_bridge* language_perception_bridge_create_stub
     (void)orchestrator;
     (void)config;
     /* Stub - returns NULL, actual implementation in bridge .c files */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_perception_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -108,6 +109,7 @@ static struct language_cognitive_bridge* language_cognitive_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cognitive_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -117,6 +119,7 @@ static struct language_training_bridge* language_training_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -126,6 +129,7 @@ static struct language_omni_bridge* language_omni_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -135,6 +139,7 @@ static struct language_immune_bridge* language_immune_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -144,6 +149,7 @@ static struct language_gpu_bridge* language_gpu_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -153,6 +159,7 @@ static struct language_thalamic_bridge* language_thalamic_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_thalamic_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -162,6 +169,7 @@ static struct language_substrate_bridge* language_substrate_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -171,6 +179,7 @@ static struct language_logic_bridge* language_logic_bridge_create_stub(
 {
     (void)orchestrator;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_logic_bridge_create_stub: operation failed");
     return NULL;
 }
 
@@ -183,6 +192,7 @@ static struct language_logic_bridge* language_logic_bridge_create_stub(
  */
 static bool check_prerequisites(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_prerequisites: brain is NULL");
         return false;
     }
 
@@ -190,6 +200,7 @@ static bool check_prerequisites(brain_t brain) {
     if (!brain->config.enable_speech_cortex &&
         !brain->config.enable_multimodal_integration) {
         LOG_DEBUG(LOG_MODULE, "Language layer not needed - no speech/multimodal config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_prerequisites: brain is NULL");
         return false;
     }
 
@@ -246,6 +257,7 @@ static bool connect_wernicke(brain_t brain) {
 
     if (result != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect Wernicke to language layer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connect_wernicke: validation failed");
         return false;
     }
 
@@ -270,6 +282,7 @@ static bool connect_broca(brain_t brain) {
 
     if (result != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect Broca to language layer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connect_broca: validation failed");
         return false;
     }
 
@@ -290,6 +303,7 @@ static bool connect_nlp_network(brain_t brain) {
 
     if (result != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect NLP network to language layer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connect_nlp_network: validation failed");
         return false;
     }
 
@@ -314,6 +328,7 @@ static bool connect_speech_cortex(brain_t brain) {
 
     if (result != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect speech cortex to language layer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connect_speech_cortex: validation failed");
         return false;
     }
 
@@ -350,6 +365,7 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
     brain->language_layer = language_orchestrator_create(&config);
     if (!brain->language_layer) {
         set_error("Failed to create language orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_subsystem: brain->language_layer is NULL");
         return false;
     }
 
@@ -426,6 +442,7 @@ bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_perception_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_perception_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -455,6 +472,7 @@ bool nimcp_brain_factory_init_language_perception_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_cognitive_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_cognitive_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -482,6 +500,7 @@ bool nimcp_brain_factory_init_language_cognitive_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_training_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_training_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -504,6 +523,7 @@ bool nimcp_brain_factory_init_language_training_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_omni_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_omni_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -530,6 +550,7 @@ bool nimcp_brain_factory_init_language_omni_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_immune_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_immune_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -556,6 +577,7 @@ bool nimcp_brain_factory_init_language_immune_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_gpu_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_gpu_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -586,6 +608,7 @@ bool nimcp_brain_factory_init_language_gpu_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_thalamic_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_thalamic_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -610,6 +633,7 @@ bool nimcp_brain_factory_init_language_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_substrate_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_substrate_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -634,6 +658,7 @@ bool nimcp_brain_factory_init_language_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_logic_bridge(brain_t brain) {
     if (!brain || !brain->language_layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_language_logic_bridge: required parameter is NULL (brain, brain->language_layer)");
         return false;
     }
 
@@ -704,6 +729,7 @@ void nimcp_brain_factory_destroy_language_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_language_is_initialized(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_language_is_initialized: brain is NULL");
         return false;
     }
     return brain->language_layer_enabled && brain->language_layer != NULL;

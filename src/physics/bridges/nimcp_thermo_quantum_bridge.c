@@ -224,8 +224,14 @@ int thermo_qmc_estimate_partition(
     const thermo_partition_config_t* config,
     thermo_partition_result_t* result
 ) {
-    if (!state || !result) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_estimate_partition: required parameter is NULL (state, result)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_estimate_partition: state->initialized is NULL");
+        return -1;
+    }
 
     thermo_partition_config_t default_cfg;
     if (!config) {
@@ -262,6 +268,7 @@ int thermo_qmc_estimate_partition(
     );
 
     if (err != QMC_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_qmc_estimate_partition: validation failed");
         return -1;
     }
 
@@ -286,8 +293,14 @@ int thermo_qmc_free_energy_landscape(
     float* temperatures,
     float* free_energies
 ) {
-    if (!state || !temperatures || !free_energies) return -1;
-    if (!state->initialized || num_points == 0) return -1;
+    if (!state || !temperatures || !free_energies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_free_energy_landscape: required parameter is NULL (state, temperatures, free_energies)");
+        return -1;
+    }
+    if (!state->initialized || num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_free_energy_landscape: state->initialized is NULL");
+        return -1;
+    }
 
     thermo_partition_config_t cfg;
     if (config) {
@@ -326,8 +339,14 @@ int thermo_qmc_optimize_landauer(
     const thermo_landauer_config_t* config,
     thermo_landauer_result_t* result
 ) {
-    if (!state || !config || !result) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !config || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimize_landauer: required parameter is NULL (state, config, result)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimize_landauer: state->initialized is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -361,6 +380,7 @@ int thermo_qmc_optimize_landauer(
 
     if (err != QMC_OK) {
         result->converged = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_qmc_optimize_landauer: validation failed");
         return -1;
     }
 
@@ -406,8 +426,14 @@ int thermo_qmc_landauer_efficiency(
     float bit_rate,
     float* efficiency
 ) {
-    if (!state || !efficiency) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !efficiency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_landauer_efficiency: required parameter is NULL (state, efficiency)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_landauer_efficiency: state->initialized is NULL");
+        return -1;
+    }
 
     // Get current Landauer limit
     double landauer_limit = compute_landauer_limit(THERMO_QMC_DEFAULT_TEMP);
@@ -452,8 +478,14 @@ int thermo_qmc_optimize_atp(
     const thermo_atp_config_t* config,
     thermo_atp_result_t* result
 ) {
-    if (!state || !config || !result) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !config || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimize_atp: required parameter is NULL (state, config, result)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimize_atp: state->initialized is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -494,7 +526,10 @@ int thermo_qmc_atp_sustainability(
     float load_factor,
     float* sustainability
 ) {
-    if (!state || !sustainability) return -1;
+    if (!state || !sustainability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_atp_sustainability: required parameter is NULL (state, sustainability)");
+        return -1;
+    }
 
     // Sustainability based on ATP availability vs consumption
     double atp_available = state->atp_available;
@@ -522,8 +557,14 @@ int thermo_qmc_entropy_production(
     const thermo_entropy_config_t* config,
     thermo_entropy_result_t* result
 ) {
-    if (!state || !result) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_entropy_production: required parameter is NULL (state, result)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_entropy_production: state->initialized is NULL");
+        return -1;
+    }
 
     (void)config;  // Use state's current values
 
@@ -565,7 +606,10 @@ int thermo_qmc_information_cost(
     float* energy_cost,
     float* entropy_cost
 ) {
-    if (!state || !energy_cost || !entropy_cost) return -1;
+    if (!state || !energy_cost || !entropy_cost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_information_cost: required parameter is NULL (state, energy_cost, entropy_cost)");
+        return -1;
+    }
 
     // Landauer minimum
     double landauer = compute_landauer_limit(THERMO_QMC_DEFAULT_TEMP);
@@ -595,8 +639,14 @@ int thermo_qmc_optimal_temperature(
     float temp_max,
     float* optimal_temp
 ) {
-    if (!state || !optimal_temp) return -1;
-    if (!state->initialized) return -1;
+    if (!state || !optimal_temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimal_temperature: required parameter is NULL (state, optimal_temp)");
+        return -1;
+    }
+    if (!state->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_qmc_optimal_temperature: state->initialized is NULL");
+        return -1;
+    }
 
     // For neural systems, optimal temperature balances:
     // - Enzymatic rates (increase with temp, Arrhenius)

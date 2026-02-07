@@ -144,12 +144,14 @@ int capacity_manager_create(capacity_manager_t** cm,
     *cm = (capacity_manager_t*)nimcp_calloc(1, sizeof(capacity_manager_t));
     if (!*cm) {
         LOG_ERROR("Failed to allocate capacity manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_peak: validation failed");
         return -1;
     }
 
     if (capacity_manager_init(*cm, config, module_name) != 0) {
         nimcp_free(*cm);
         *cm = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "update_peak: validation failed");
         return -1;
     }
 
@@ -218,7 +220,10 @@ int capacity_manager_set_callbacks(capacity_manager_t* cm,
                                    capacity_expand_callback_t expand,
                                    capacity_shrink_callback_t shrink,
                                    capacity_cleanup_callback_t cleanup) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_destroy: cm is NULL");
+        return -1;
+    }
 
     cm->module = module;
     cm->expand_callback = expand;
@@ -233,7 +238,10 @@ int capacity_manager_set_callbacks(capacity_manager_t* cm,
  * ============================================================================ */
 
 int capacity_manager_request_slot(capacity_manager_t* cm) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_request_slot: cm is NULL");
+        return -1;
+    }
 
     uint32_t count = atomic_load(&cm->current_count);
     uint32_t cap = atomic_load(&cm->capacity);
@@ -254,14 +262,17 @@ int capacity_manager_request_slot(capacity_manager_t* cm) {
                     count = atomic_load(&cm->current_count);
                 } else {
                     atomic_fetch_add(&cm->failed_allocations, 1);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_request_slot: validation failed");
                     return -1;
                 }
             } else {
                 atomic_fetch_add(&cm->failed_allocations, 1);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_request_slot: validation failed");
                 return -1;
             }
         } else {
             atomic_fetch_add(&cm->failed_allocations, 1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_request_slot: operation failed");
             return -1;
         }
     }
@@ -275,11 +286,15 @@ int capacity_manager_request_slot(capacity_manager_t* cm) {
 }
 
 int capacity_manager_release_slot(capacity_manager_t* cm) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_release_slot: cm is NULL");
+        return -1;
+    }
 
     uint32_t count = atomic_load(&cm->current_count);
     if (count == 0) {
         LOG_WARN("Capacity manager '%s': release called with count=0", cm->module_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_release_slot: count is zero");
         return -1;
     }
 
@@ -371,7 +386,10 @@ bool capacity_manager_is_full(const capacity_manager_t* cm) {
  * ============================================================================ */
 
 int capacity_manager_trigger_expand(capacity_manager_t* cm) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_trigger_expand: cm is NULL");
+        return -1;
+    }
 
     uint32_t cap = atomic_load(&cm->capacity);
     uint32_t new_cap = (uint32_t)((float)cap * cm->config.growth_factor);
@@ -384,6 +402,7 @@ int capacity_manager_trigger_expand(capacity_manager_t* cm) {
         if (cap >= cm->config.max_capacity) {
             LOG_WARN("Capacity manager '%s': at max capacity %u",
                      cm->module_name, cm->config.max_capacity);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "capacity_manager_trigger_expand: capacity exceeded");
             return -1;
         }
         new_cap = cm->config.max_capacity;
@@ -393,6 +412,7 @@ int capacity_manager_trigger_expand(capacity_manager_t* cm) {
     if (cm->expand_callback) {
         if (cm->expand_callback(cm->module, new_cap) != 0) {
             LOG_ERROR("Capacity manager '%s': expansion callback failed", cm->module_name);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_trigger_expand: validation failed");
             return -1;
         }
     }
@@ -407,7 +427,10 @@ int capacity_manager_trigger_expand(capacity_manager_t* cm) {
 }
 
 int capacity_manager_trigger_shrink(capacity_manager_t* cm) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_trigger_shrink: cm is NULL");
+        return -1;
+    }
 
     uint32_t cap = atomic_load(&cm->capacity);
     uint32_t count = atomic_load(&cm->current_count);
@@ -426,6 +449,7 @@ int capacity_manager_trigger_shrink(capacity_manager_t* cm) {
     if (cm->shrink_callback) {
         if (cm->shrink_callback(cm->module, new_cap) != 0) {
             LOG_WARN("Capacity manager '%s': shrink callback failed", cm->module_name);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_trigger_shrink: validation failed");
             return -1;
         }
     }
@@ -439,7 +463,10 @@ int capacity_manager_trigger_shrink(capacity_manager_t* cm) {
 }
 
 int capacity_manager_trigger_cleanup(capacity_manager_t* cm, uint32_t target_free) {
-    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) return -1;
+    if (!cm || cm->magic != CAPACITY_MANAGER_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capacity_manager_trigger_cleanup: cm is NULL");
+        return -1;
+    }
 
     if (!cm->cleanup_callback) {
         LOG_DEBUG("Capacity manager '%s': no cleanup callback", cm->module_name);

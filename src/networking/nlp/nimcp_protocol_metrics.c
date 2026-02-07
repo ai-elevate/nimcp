@@ -173,6 +173,7 @@ static primitive_entry_t* find_or_create_primitive(
     /* Guard clause: max primitives reached */
     if (pm->primitive_count >= METRICS_MAX_PRIMITIVES) {
         LOG_WARN("Maximum primitives reached (%u)", METRICS_MAX_PRIMITIVES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_primitive: capacity exceeded");
         return NULL;
     }
 
@@ -274,6 +275,7 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
         if (!pm->history.buffer) {
             LOG_ERROR("Failed to allocate history buffer");
             nimcp_free(pm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_metrics_create: pm->history is NULL");
             return NULL;
         }
         pm->history.capacity = pm->config.history_depth;
@@ -286,6 +288,7 @@ protocol_metrics_t* protocol_metrics_create(const metrics_config_t* config) {
             nimcp_free(pm->history.buffer);
         }
         nimcp_free(pm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_create: validation failed");
         return NULL;
     }
 

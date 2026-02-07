@@ -55,6 +55,7 @@ bool nimcp_aes_available(void)
     LOG_DEBUG("Entering nimcp_aes_available");
     // AES not yet implemented - using XOR fallback
     LOG_ERROR("nimcp_aes_available failed: returning error");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_aes_available: operation failed");
     return false;
 }
 
@@ -91,6 +92,7 @@ static uint8_t* compress_zlib(const uint8_t* data, size_t size, size_t* out_size
     if (result != Z_OK) {
         nimcp_free(compressed);
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compress_zlib: validation failed");
         return NULL;
     }
 
@@ -105,6 +107,7 @@ static uint8_t* decompress_zlib(const uint8_t* data, size_t size, size_t* out_si
 {
     if (size < sizeof(uint32_t)) {
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "decompress_zlib: validation failed");
         return NULL;
     }
 
@@ -129,6 +132,7 @@ static uint8_t* decompress_zlib(const uint8_t* data, size_t size, size_t* out_si
     if (result != Z_OK) {
         nimcp_free(decompressed);
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decompress_zlib: validation failed");
         return NULL;
     }
 
@@ -165,6 +169,7 @@ static uint8_t* decompress_fallback(const uint8_t* data, size_t size, size_t* ou
 {
     if (size < sizeof(uint32_t)) {
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "decompress_fallback: validation failed");
         return NULL;
     }
 
@@ -260,6 +265,7 @@ static uint8_t* xor_cipher(const uint8_t* data, size_t size,
 {
     if (!data || !key || key_size == 0 || size == 0) {
         if (out_size) *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "xor_cipher: validation failed");
         return NULL;
     }
 
@@ -285,6 +291,7 @@ uint8_t* nimcp_encrypt(const uint8_t* data, size_t size,
 {
     if (!data || size == 0 || !key || key_size == 0 || !out_size) {
         if (out_size) *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt: validation failed");
         return NULL;
     }
 
@@ -298,6 +305,7 @@ uint8_t* nimcp_decrypt(const uint8_t* data, size_t size,
 {
     if (!data || size == 0 || !key || key_size == 0 || !out_size) {
         if (out_size) *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt: validation failed");
         return NULL;
     }
 
@@ -315,6 +323,7 @@ uint8_t* nimcp_read_processed(FILE* file, uint32_t flags, size_t size,
 {
     if (!file || size == 0 || !out_size) {
         if (out_size) *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_read_processed: validation failed");
         return NULL;
     }
 
@@ -322,12 +331,14 @@ uint8_t* nimcp_read_processed(FILE* file, uint32_t flags, size_t size,
     uint8_t* raw_data = nimcp_malloc(size);
     if (!raw_data) {
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_read_processed: raw_data is NULL");
         return NULL;
     }
 
     if (fread(raw_data, 1, size, file) != size) {
         nimcp_free(raw_data);
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_read_processed: validation failed");
         return NULL;
     }
 
@@ -340,6 +351,7 @@ uint8_t* nimcp_read_processed(FILE* file, uint32_t flags, size_t size,
         if (!key || key_size == 0) {
             nimcp_free(raw_data);
             *out_size = 0;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_read_processed: key is NULL");
             return NULL;
         }
 
@@ -351,6 +363,7 @@ uint8_t* nimcp_read_processed(FILE* file, uint32_t flags, size_t size,
 
         if (!decrypted) {
             *out_size = 0;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_read_processed: decrypted is NULL");
             return NULL;
         }
 
@@ -370,6 +383,7 @@ uint8_t* nimcp_read_processed(FILE* file, uint32_t flags, size_t size,
 
         if (!decompressed) {
             *out_size = 0;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_read_processed: decompressed is NULL");
             return NULL;
         }
 
@@ -389,6 +403,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
                            uint32_t flags, const uint8_t* key, size_t key_size)
 {
     if (!file || !data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_write_processed: required parameter is NULL (file, data)");
         return false;
     }
 
@@ -402,6 +417,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
         size_t comp_size;
         temp1 = nimcp_compress(current, current_size, &comp_size);
         if (!temp1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_write_processed: temp1 is NULL");
             return false;
         }
         current = temp1;
@@ -412,6 +428,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
     if (flags & 0x00000002) { // NIMCP_FORMAT_FLAG_ENCRYPTED
         if (!key || key_size == 0) {
             if (temp1) nimcp_free(temp1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_processed: validation failed");
             return false;
         }
 
@@ -419,6 +436,7 @@ bool nimcp_write_processed(FILE* file, const uint8_t* data, size_t size,
         temp2 = nimcp_encrypt(current, current_size, key, key_size, &enc_size);
         if (!temp2) {
             if (temp1) nimcp_free(temp1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_processed: validation failed");
             return false;
         }
         current = temp2;

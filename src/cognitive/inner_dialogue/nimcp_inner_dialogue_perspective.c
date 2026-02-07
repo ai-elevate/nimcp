@@ -214,13 +214,17 @@ int inner_dialogue_perspective_unregister(
 const inner_dialogue_perspective_entry_t* inner_dialogue_perspective_find(
     const inner_dialogue_perspective_registry_t* registry,
     perspective_type_t type) {
-    if (!registry) return NULL;
+    if (!registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perspective_type_to_string: registry is NULL");
+        return NULL;
+    }
     for (uint32_t i = 0; i < INNER_DIALOGUE_MAX_PERSPECTIVES; i++) {
         if (registry->entries[i].registered &&
             registry->entries[i].desc.type == type) {
             return &registry->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perspective_type_to_string: registry is NULL");
     return NULL;
 }
 
@@ -305,6 +309,7 @@ int inner_dialogue_perspective_select_next(
     const perspective_turn_context_t* context,
     uint32_t turn_number) {
     if (!registry || !context || registry->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clamp_f: required parameter is NULL (registry, context)");
         return -1;
     }
 
@@ -348,7 +353,10 @@ static bool stub_formulate_generic(const perspective_turn_context_t* context,
                                     inner_dialogue_turn_t* output,
                                     perspective_type_t type,
                                     const char* prefix) {
-    if (!context || !output) return false;
+    if (!context || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clamp_f: required parameter is NULL (context, output)");
+        return false;
+    }
 
     output->perspective_idx = (uint32_t)type;
     output->act = DIALOGUE_ACT_ASSERT;
@@ -382,6 +390,7 @@ static bool stub_formulate_generic(const perspective_turn_context_t* context,
 static bool formulate_analytical(const perspective_turn_context_t* ctx,
                                   inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ANALYTICAL, "Analytical")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->confidence = 0.65f;
@@ -392,6 +401,7 @@ static bool formulate_analytical(const perspective_turn_context_t* ctx,
 static bool formulate_emotional(const perspective_turn_context_t* ctx,
                                  inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_EMOTIONAL, "Emotional")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->confidence = 0.55f;
@@ -402,6 +412,7 @@ static bool formulate_emotional(const perspective_turn_context_t* ctx,
 static bool formulate_critical(const perspective_turn_context_t* ctx,
                                 inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CRITICAL, "Critical")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->act = DIALOGUE_ACT_CHALLENGE;
@@ -413,6 +424,7 @@ static bool formulate_critical(const perspective_turn_context_t* ctx,
 static bool formulate_creative(const perspective_turn_context_t* ctx,
                                 inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_CREATIVE, "Creative")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->act = DIALOGUE_ACT_REFRAME;
@@ -424,6 +436,7 @@ static bool formulate_creative(const perspective_turn_context_t* ctx,
 static bool formulate_memory(const perspective_turn_context_t* ctx,
                               inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_MEMORY, "Memory")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->act = DIALOGUE_ACT_ELABORATE;
@@ -435,6 +448,7 @@ static bool formulate_memory(const perspective_turn_context_t* ctx,
 static bool formulate_ethical(const perspective_turn_context_t* ctx,
                                inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_ETHICAL, "Ethical")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clamp_f: stub_formulate_generic is NULL");
         return false;
     }
     out->act = DIALOGUE_ACT_WARN;
@@ -445,6 +459,7 @@ static bool formulate_ethical(const perspective_turn_context_t* ctx,
 static bool formulate_metacognitive(const perspective_turn_context_t* ctx,
                                      inner_dialogue_turn_t* out) {
     if (!stub_formulate_generic(ctx, out, PERSPECTIVE_METACOGNITIVE, "Metacognitive")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: stub_formulate_generic is NULL");
         return false;
     }
     out->act = DIALOGUE_ACT_INTROSPECT;

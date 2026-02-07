@@ -163,6 +163,7 @@ language_parietal_bridge_t* language_parietal_bridge_create(
     const language_parietal_config_t* config)
 {
     if (!language || !parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_bridge_create: required parameter is NULL (language, parietal)");
         return NULL;
     }
 
@@ -225,10 +226,12 @@ int language_parietal_process_spatial_word(
     uint32_t vec_size)
 {
     if (!bridge || !word || !spatial_vector || vec_size < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_process_spatial_word: required parameter is NULL (bridge, word, spatial_vector)");
         return -1;
     }
 
     if (!bridge->config.enable_spatial_language) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_process_spatial_word: bridge->config is NULL");
         return -1;
     }
 
@@ -252,6 +255,7 @@ int language_parietal_process_spatial_word(
     spatial_vector[2] = 0.0f;
     bridge->state = LP_STATE_IDLE;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_parietal_process_spatial_word: operation failed");
     return -1;  /* Word not in spatial vocabulary */
 }
 
@@ -262,10 +266,12 @@ int language_parietal_number_to_word(
     uint32_t max_len)
 {
     if (!bridge || !word || max_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_number_to_word: required parameter is NULL (bridge, word)");
         return -1;
     }
 
     if (!bridge->config.enable_number_processing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_number_to_word: bridge->config is NULL");
         return -1;
     }
 
@@ -330,10 +336,12 @@ int language_parietal_word_to_number(
     float* number)
 {
     if (!bridge || !word || !number) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_word_to_number: required parameter is NULL (bridge, word, number)");
         return -1;
     }
 
     if (!bridge->config.enable_number_processing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_word_to_number: bridge->config is NULL");
         return -1;
     }
 
@@ -386,6 +394,7 @@ int language_parietal_word_to_number(
     }
 
     bridge->state = LP_STATE_IDLE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_parietal_word_to_number: operation failed");
     return -1;  /* Word not recognized as number */
 }
 
@@ -401,6 +410,7 @@ int language_parietal_direct_attention(
     }
 
     if (!bridge->config.enable_attention_direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_direct_attention: bridge->config is NULL");
         return -1;
     }
 
@@ -418,6 +428,7 @@ int language_parietal_get_stats(
     language_parietal_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_parietal_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

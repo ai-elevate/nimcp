@@ -182,12 +182,18 @@ static const scalar_pair_t SCALAR_PAIRS[] = {
  * @brief Case-insensitive substring search
  */
 static bool contains_ci(const char* haystack, const char* needle) {
-    if (!haystack || !needle) return false;
+    if (!haystack || !needle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_ci: required parameter is NULL (haystack, needle)");
+        return false;
+    }
 
     size_t h_len = strlen(haystack);
     size_t n_len = strlen(needle);
 
-    if (n_len > h_len) return false;
+    if (n_len > h_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_ci: validation failed");
+        return false;
+    }
 
     for (size_t i = 0; i <= h_len - n_len; i++) {
         bool match = true;
@@ -206,9 +212,15 @@ static bool contains_ci(const char* haystack, const char* needle) {
  * @brief Check if utterance ends with question mark
  */
 static bool ends_with_question(const char* utterance) {
-    if (!utterance) return false;
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ends_with_question: utterance is NULL");
+        return false;
+    }
     size_t len = strlen(utterance);
-    if (len == 0) return false;
+    if (len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ends_with_question: len is zero");
+        return false;
+    }
 
     /* Skip trailing whitespace */
     while (len > 0 && isspace((unsigned char)utterance[len - 1])) {
@@ -275,6 +287,7 @@ pragmatics_processor_t* pragmatics_create(const pragmatics_config_t* config) {
         processor->config.max_utterances, sizeof(utterance_context_t));
     if (!processor->context_buffer) {
         nimcp_free(processor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pragmatics_create: processor->context_buffer is NULL");
         return NULL;
     }
 
@@ -301,7 +314,10 @@ void pragmatics_destroy(pragmatics_processor_t* processor) {
 }
 
 bool pragmatics_reset(pragmatics_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pragmatics_reset: processor is NULL");
+        return false;
+    }
 
     processor->status = PRAGMATICS_STATUS_IDLE;
     processor->last_error = PRAGMATICS_ERROR_NONE;
@@ -685,6 +701,7 @@ bool pragmatics_detect_scalar_implicature(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pragmatics_grice_maxim_name: operation failed");
     return false;
 }
 
@@ -850,6 +867,7 @@ bool pragmatics_analyze(
     /* 1. Classify speech act */
     if (!pragmatics_classify_speech_act(processor, utterance, speaker_id,
                                         &analysis->speech_act)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pragmatics_clear_context: operation failed");
         return false;
     }
 
@@ -861,6 +879,7 @@ bool pragmatics_analyze(
     if (!pragmatics_analyze_grice(processor, utterance,
                                   context_count > 0 ? &recent_context[0] : NULL,
                                   &analysis->grice_analysis)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pragmatics_clear_context: operation failed");
         return false;
     }
 

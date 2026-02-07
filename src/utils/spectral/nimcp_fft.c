@@ -169,6 +169,7 @@ bool fft_apply_window(float* signal, uint32_t size, fft_window_t window)
 {
     // Guard: Validate inputs
     if (!signal || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_apply_window: signal is NULL");
         return false;
     }
 
@@ -179,6 +180,7 @@ bool fft_apply_window(float* signal, uint32_t size, fft_window_t window)
     // Allocate temporary window
     float* win_coeffs = (float*)nimcp_malloc(size * sizeof(float));
     if (!win_coeffs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_apply_window: win_coeffs is NULL");
         return false;
     }
 
@@ -195,6 +197,7 @@ bool fft_apply_window(float* signal, uint32_t size, fft_window_t window)
             break;
         default:
             nimcp_free(win_coeffs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_apply_window: operation failed");
             return false;
     }
 
@@ -218,6 +221,7 @@ fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)
 {
     // Guard: Validate size is power of 2
     if (!fft_is_power_of_2(size) || size < 2 || size > 65536) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_plan_create: fft_is_power_of_2 is NULL");
         return NULL;
     }
 
@@ -238,6 +242,7 @@ fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)
     plan->twiddle = (fft_complex_t*)nimcp_malloc(size * sizeof(fft_complex_t));
     if (!plan->twiddle) {
         fft_plan_destroy(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_plan_create: plan->twiddle is NULL");
         return NULL;
     }
 
@@ -252,6 +257,7 @@ fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)
     plan->bit_reverse = (uint32_t*)nimcp_malloc(size * sizeof(uint32_t));
     if (!plan->bit_reverse) {
         fft_plan_destroy(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_plan_create: plan->bit_reverse is NULL");
         return NULL;
     }
 
@@ -296,6 +302,7 @@ bool fft_plan_set_window(fft_plan_t* plan, fft_window_t window)
 {
     // Guard: Validate plan
     if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_plan_set_window: plan is NULL");
         return false;
     }
 
@@ -311,6 +318,7 @@ bool fft_plan_set_window(fft_plan_t* plan, fft_window_t window)
     if (window != FFT_WINDOW_NONE) {
         plan->window_coeffs = (float*)nimcp_malloc(plan->size * sizeof(float));
         if (!plan->window_coeffs) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_plan_set_window: plan->window_coeffs is NULL");
             return false;
         }
 
@@ -327,6 +335,7 @@ bool fft_plan_set_window(fft_plan_t* plan, fft_window_t window)
             default:
                 nimcp_free(plan->window_coeffs);
                 plan->window_coeffs = NULL;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_plan_set_window: operation failed");
                 return false;
         }
     }
@@ -425,10 +434,12 @@ bool fft_execute_real(fft_plan_t* plan, const float* input, fft_complex_t* outpu
 {
     // Guard: Validate inputs
     if (!plan || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_execute_real: required parameter is NULL (plan, input, output)");
         return false;
     }
 
     if (plan->type != FFT_REAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_execute_real: validation failed");
         return false;
     }
 
@@ -437,6 +448,7 @@ bool fft_execute_real(fft_plan_t* plan, const float* input, fft_complex_t* outpu
     // Allocate temporary complex buffer
     fft_complex_t* temp = (fft_complex_t*)nimcp_calloc(n, sizeof(fft_complex_t));
     if (!temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_execute_real: temp is NULL");
         return false;
     }
 
@@ -470,6 +482,7 @@ bool fft_execute_complex(fft_plan_t* plan, const fft_complex_t* input,
 {
     // Guard: Validate inputs
     if (!plan || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_execute_complex: required parameter is NULL (plan, input, output)");
         return false;
     }
 
@@ -494,10 +507,12 @@ bool fft_execute_inverse_real(fft_plan_t* plan, const fft_complex_t* input,
 {
     // Guard: Validate inputs
     if (!plan || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_execute_inverse_real: required parameter is NULL (plan, input, output)");
         return false;
     }
 
     if (plan->type != FFT_INVERSE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_execute_inverse_real: validation failed");
         return false;
     }
 
@@ -506,6 +521,7 @@ bool fft_execute_inverse_real(fft_plan_t* plan, const fft_complex_t* input,
     // Allocate temporary buffer
     fft_complex_t* temp = (fft_complex_t*)nimcp_calloc(n, sizeof(fft_complex_t));
     if (!temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_execute_inverse_real: temp is NULL");
         return false;
     }
 
@@ -565,6 +581,7 @@ bool fft_execute_inverse_complex(
 {
     // Guard: Validate inputs
     if (!plan || !input || !output || plan->type != FFT_INVERSE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_execute_inverse_complex: required parameter is NULL (plan, input, output)");
         return false;
     }
 
@@ -573,6 +590,7 @@ bool fft_execute_inverse_complex(
     // Allocate temporary buffer for conjugated input
     fft_complex_t* temp = (fft_complex_t*)nimcp_calloc(n, sizeof(fft_complex_t));
     if (!temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_execute_inverse_complex: temp is NULL");
         return false;
     }
 
@@ -607,6 +625,7 @@ bool fft_power_spectrum(const fft_complex_t* spectrum, float* power, uint32_t si
 {
     // Guard: Validate inputs
     if (!spectrum || !power || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_power_spectrum: required parameter is NULL (spectrum, power)");
         return false;
     }
 
@@ -627,6 +646,7 @@ bool fft_power_spectrum_db(const fft_complex_t* spectrum, float* psd_db,
 {
     // Guard: Validate inputs
     if (!spectrum || !psd_db || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_power_spectrum_db: required parameter is NULL (spectrum, psd_db)");
         return false;
     }
 
@@ -650,6 +670,7 @@ bool fft_magnitude_spectrum(const fft_complex_t* spectrum, float* magnitude,
 {
     // Guard: Validate inputs
     if (!spectrum || !magnitude || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_magnitude_spectrum: required parameter is NULL (spectrum, magnitude)");
         return false;
     }
 
@@ -669,6 +690,7 @@ bool fft_phase_spectrum(const fft_complex_t* spectrum, float* phase, uint32_t si
 {
     // Guard: Validate inputs
     if (!spectrum || !phase || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_phase_spectrum: required parameter is NULL (spectrum, phase)");
         return false;
     }
 
@@ -753,6 +775,7 @@ float fft_band_power(const float* power, uint32_t size, float sampling_rate,
 int32_t fft_frequency_to_bin(float frequency, uint32_t fft_size, float sampling_rate)
 {
     if (frequency < 0.0F || frequency > sampling_rate / 2.0F || sampling_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fft_frequency_to_bin: validation failed");
         return -1;
     }
 

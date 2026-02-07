@@ -103,7 +103,10 @@ multimodal_director_t* multimodal_director_create(
     const multimodal_director_config_t* config)
 {
     multimodal_director_t* dir = nimcp_calloc(1, sizeof(multimodal_director_t));
-    if (!dir) return NULL;
+    if (!dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_director_create: dir is NULL");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -194,7 +197,10 @@ int director_develop_concept(multimodal_director_t* dir,
                               creative_project_type_t type,
                               extended_project_spec_t* spec)
 {
-    if (!dir || !description || !spec) return -1;
+    if (!dir || !description || !spec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_develop_concept: required parameter is NULL (dir, description, spec)");
+        return -1;
+    }
 
     memset(spec, 0, sizeof(extended_project_spec_t));
 
@@ -292,7 +298,10 @@ int director_develop_concept(multimodal_director_t* dir,
 int director_generate_treatment(multimodal_director_t* dir,
                                  extended_project_spec_t* spec)
 {
-    if (!dir || !spec) return -1;
+    if (!dir || !spec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_treatment: required parameter is NULL (dir, spec)");
+        return -1;
+    }
 
     update_phase(dir, PHASE_TREATMENT, 0.0f, "Generating treatment");
 
@@ -323,7 +332,10 @@ int director_generate_characters(multimodal_director_t* dir,
                                   extended_project_spec_t* spec,
                                   uint32_t num_characters)
 {
-    if (!dir || !spec) return -1;
+    if (!dir || !spec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_characters: required parameter is NULL (dir, spec)");
+        return -1;
+    }
     if (num_characters == 0) num_characters = 3;  /* Default: protagonist, antagonist, supporting */
 
     /* Free existing characters */
@@ -335,7 +347,10 @@ int director_generate_characters(multimodal_director_t* dir,
     }
 
     spec->characters = nimcp_calloc(num_characters, sizeof(character_def_t));
-    if (!spec->characters) return -1;
+    if (!spec->characters) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "director_generate_characters: spec->characters is NULL");
+        return -1;
+    }
 
     spec->num_characters = num_characters;
 
@@ -388,7 +403,10 @@ int director_generate_structure(multimodal_director_t* dir,
                                  extended_project_spec_t* spec,
                                  const char* structure_type)
 {
-    if (!dir || !spec) return -1;
+    if (!dir || !spec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_structure: required parameter is NULL (dir, spec)");
+        return -1;
+    }
 
     story_structure_t* structure = &spec->structure;
 
@@ -473,7 +491,10 @@ int director_generate_screenplay(multimodal_director_t* dir,
                                   const extended_project_spec_t* spec,
                                   text_generation_result_t* result)
 {
-    if (!dir || !spec || !result) return -1;
+    if (!dir || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_screenplay: required parameter is NULL (dir, spec, result)");
+        return -1;
+    }
 
     update_phase(dir, PHASE_SCREENPLAY, 0.0f, "Generating screenplay");
 
@@ -482,7 +503,10 @@ int director_generate_screenplay(multimodal_director_t* dir,
     /* Build screenplay from project spec */
     size_t screenplay_size = 64 * 1024;  /* 64KB buffer */
     result->text = nimcp_calloc(screenplay_size, sizeof(char));
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "director_generate_screenplay: result->text is NULL");
+        return -1;
+    }
 
     char* p = result->text;
     size_t remaining = screenplay_size;
@@ -562,8 +586,14 @@ int director_generate_screenplay(multimodal_director_t* dir,
 int director_generate_storyboard(multimodal_director_t* dir,
                                   extended_project_spec_t* spec)
 {
-    if (!dir || !spec) return -1;
-    if (!dir->visual_gen) return -1;
+    if (!dir || !spec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_storyboard: required parameter is NULL (dir, spec)");
+        return -1;
+    }
+    if (!dir->visual_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_storyboard: dir->visual_gen is NULL");
+        return -1;
+    }
 
     update_phase(dir, PHASE_STORYBOARD, 0.0f, "Generating storyboard");
 
@@ -580,7 +610,10 @@ int director_generate_storyboard(multimodal_director_t* dir,
     }
 
     spec->scenes = nimcp_calloc(num_scenes, sizeof(extended_scene_t));
-    if (!spec->scenes) return -1;
+    if (!spec->scenes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "director_generate_storyboard: spec->scenes is NULL");
+        return -1;
+    }
     spec->num_scenes = num_scenes;
 
     /* Generate each scene's storyboard */
@@ -636,8 +669,14 @@ int director_generate_previz(multimodal_director_t* dir,
                               const extended_project_spec_t* spec,
                               video_generation_result_t* result)
 {
-    if (!dir || !spec || !result) return -1;
-    if (!dir->video_gen) return -1;
+    if (!dir || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_previz: required parameter is NULL (dir, spec, result)");
+        return -1;
+    }
+    if (!dir->video_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_previz: dir->video_gen is NULL");
+        return -1;
+    }
 
     update_phase(dir, PHASE_PREVIZ, 0.0f, "Generating pre-visualization");
 
@@ -667,7 +706,10 @@ int director_produce(multimodal_director_t* dir,
                       const extended_project_spec_t* spec,
                       project_output_t* output)
 {
-    if (!dir || !spec || !output) return -1;
+    if (!dir || !spec || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_produce: required parameter is NULL (dir, spec, output)");
+        return -1;
+    }
 
     memset(output, 0, sizeof(project_output_t));
 
@@ -681,6 +723,7 @@ int director_produce(multimodal_director_t* dir,
         output->success = false;
         strncpy(output->error_message, "No scenes defined",
                 sizeof(output->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "director_produce: spec->num_scenes is zero");
         return -1;
     }
 
@@ -689,6 +732,7 @@ int director_produce(multimodal_director_t* dir,
         nimcp_calloc(spec->num_scenes, sizeof(video_generation_result_t));
     if (!scene_videos) {
         output->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "director_produce: scene_videos is NULL");
         return -1;
     }
 
@@ -731,8 +775,14 @@ int director_produce_scene(multimodal_director_t* dir,
                             const extended_scene_t* scene,
                             video_generation_result_t* output)
 {
-    if (!dir || !scene || !output) return -1;
-    if (!dir->video_gen) return -1;
+    if (!dir || !scene || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_produce_scene: required parameter is NULL (dir, scene, output)");
+        return -1;
+    }
+    if (!dir->video_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_produce_scene: dir->video_gen is NULL");
+        return -1;
+    }
 
     memset(output, 0, sizeof(video_generation_result_t));
 
@@ -781,8 +831,14 @@ int director_generate_scene_music(multimodal_director_t* dir,
                                    const extended_scene_t* scene,
                                    music_generation_result_t* result)
 {
-    if (!dir || !scene || !result) return -1;
-    if (!dir->music_gen) return -1;
+    if (!dir || !scene || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_scene_music: required parameter is NULL (dir, scene, result)");
+        return -1;
+    }
+    if (!dir->music_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_scene_music: dir->music_gen is NULL");
+        return -1;
+    }
 
     /* Build music request based on scene mood */
     music_generation_request_t request;
@@ -817,7 +873,10 @@ int director_assemble_final(multimodal_director_t* dir,
                              uint32_t num_scenes,
                              project_output_t* output)
 {
-    if (!dir || !scene_videos || !output) return -1;
+    if (!dir || !scene_videos || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_assemble_final: required parameter is NULL (dir, scene_videos, output)");
+        return -1;
+    }
 
     /* Concatenate all scene videos into a temp result */
     video_generation_result_t video_result;
@@ -861,8 +920,14 @@ int director_generate_full_score(multimodal_director_t* dir,
                                   const extended_project_spec_t* spec,
                                   music_generation_result_t* result)
 {
-    if (!dir || !spec || !result) return -1;
-    if (!dir->music_gen) return -1;
+    if (!dir || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_full_score: required parameter is NULL (dir, spec, result)");
+        return -1;
+    }
+    if (!dir->music_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_generate_full_score: dir->music_gen is NULL");
+        return -1;
+    }
 
     update_phase(dir, PHASE_SCORING, 0.0f, "Generating score");
 
@@ -890,7 +955,10 @@ int director_mix_audio(multimodal_director_t* dir,
     (void)dialogue;
     (void)sfx;
 
-    if (!music || !output) return -1;
+    if (!music || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_mix_audio: required parameter is NULL (music, output)");
+        return -1;
+    }
 
     /* Simple mix: just return music for now */
     if (music->tracks && music->num_tracks > 0 &&
@@ -909,7 +977,10 @@ int director_mix_audio(multimodal_director_t* dir,
 int director_get_progress(const multimodal_director_t* dir,
                            production_progress_t* progress)
 {
-    if (!dir || !progress) return -1;
+    if (!dir || !progress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "director_get_progress: required parameter is NULL (dir, progress)");
+        return -1;
+    }
     *progress = dir->progress;
     return 0;
 }

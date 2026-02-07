@@ -304,6 +304,7 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
     bridge->phoneme_history = nimcp_calloc(PHONEME_HISTORY_SIZE, sizeof(float));
     if (!bridge->phoneme_history) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wernicke_bridge_create: bridge->phoneme_history is NULL");
         return NULL;
     }
     bridge->phoneme_history_len = 0;
@@ -314,6 +315,7 @@ omni_wernicke_bridge_t* omni_wernicke_bridge_create(
     if (!bridge->word_context) {
         nimcp_free(bridge->phoneme_history);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wernicke_bridge_create: bridge->word_context is NULL");
         return NULL;
     }
 
@@ -568,7 +570,10 @@ int omni_wernicke_predict_phoneme(omni_wernicke_bridge_t* bridge,
     if (!prediction->phoneme_probs || prediction->num_phonemes != num_phonemes) {
         nimcp_free(prediction->phoneme_probs);
         prediction->phoneme_probs = nimcp_calloc(num_phonemes, sizeof(float));
-        if (!prediction->phoneme_probs) return -1;
+        if (!prediction->phoneme_probs) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wernicke_apply_to_omni: prediction->phoneme_probs is NULL");
+            return -1;
+        }
         prediction->num_phonemes = num_phonemes;
     }
 
@@ -925,7 +930,10 @@ float omni_wernicke_process_audiovisual(omni_wernicke_bridge_t* bridge,
 }
 
 bool omni_wernicke_has_mcgurk_conflict(const omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wernicke_has_mcgurk_conflict: bridge is NULL");
+        return false;
+    }
     return bridge->omni_effects.crossmodal.mcgurk_conflict;
 }
 
@@ -989,6 +997,7 @@ int omni_wernicke_set_precision(omni_wernicke_bridge_t* bridge,
             bridge->omni_effects.semantic_precision = precision;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wernicke_has_mcgurk_conflict: operation failed");
             return -1;
     }
 
@@ -1406,7 +1415,10 @@ int omni_wernicke_disconnect_bio_async(omni_wernicke_bridge_t* bridge) {
 }
 
 bool omni_wernicke_is_bio_async_connected(const omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wernicke_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }
 

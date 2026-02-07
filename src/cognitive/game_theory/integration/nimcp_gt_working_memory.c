@@ -147,6 +147,7 @@ static int find_free_slot(const gt_wm_auction_ctx_t ctx) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: ctx->slots is NULL");
     return -1;
 }
 

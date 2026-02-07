@@ -169,22 +169,58 @@ collision_config_t collision_default_config(void) {
 }
 
 bool collision_validate_config(const collision_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collision_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->detection_range_m <= 0.0f) return false;
-    if (config->detection_cone_rad <= 0.0f || config->detection_cone_rad > M_PI) return false;
-    if (config->peripheral_range_m < 0.0f) return false;
+    if (config->detection_range_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->detection_cone_rad <= 0.0f || config->detection_cone_rad > M_PI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->peripheral_range_m < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "collision_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_clearance_m < 0.0f) return false;
-    if (config->ttc_warning_threshold_s <= 0.0f) return false;
-    if (config->ttc_critical_threshold_s <= 0.0f) return false;
-    if (config->ttc_critical_threshold_s > config->ttc_warning_threshold_s) return false;
+    if (config->min_clearance_m < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->ttc_warning_threshold_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->ttc_critical_threshold_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->ttc_critical_threshold_s > config->ttc_warning_threshold_s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->max_avoidance_angle_rad <= 0.0f) return false;
-    if (config->avoidance_aggression < 0.0f || config->avoidance_aggression > 1.0f) return false;
+    if (config->max_avoidance_angle_rad <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->avoidance_aggression < 0.0f || config->avoidance_aggression > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->prediction_horizon_s <= 0.0f) return false;
-    if (config->pursuit_vs_safety < 0.0f || config->pursuit_vs_safety > 1.0f) return false;
+    if (config->prediction_horizon_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
+    if (config->pursuit_vs_safety < 0.0f || config->pursuit_vs_safety > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collision_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -199,6 +235,7 @@ static int find_obstacle_by_id(const dragonfly_collision_t collision, uint32_t i
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_obstacle_by_id: validation failed");
     return -1;
 }
 
@@ -360,7 +397,10 @@ void dragonfly_collision_destroy(dragonfly_collision_t collision) {
 }
 
 int dragonfly_collision_reset(dragonfly_collision_t collision) {
-    if (!collision) return -1;
+    if (!collision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_reset: collision is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
@@ -386,7 +426,10 @@ int dragonfly_collision_add_obstacle(
     dragonfly_collision_t collision,
     const detected_obstacle_t* obstacle
 ) {
-    if (!collision || !obstacle) return -1;
+    if (!collision || !obstacle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_add_obstacle: required parameter is NULL (collision, obstacle)");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
@@ -414,13 +457,17 @@ int dragonfly_collision_remove_obstacle(
     dragonfly_collision_t collision,
     uint32_t obstacle_id
 ) {
-    if (!collision) return -1;
+    if (!collision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_remove_obstacle: collision is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
     int idx = find_obstacle_by_id(collision, obstacle_id);
     if (idx < 0) {
         nimcp_mutex_unlock(collision->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_collision_remove_obstacle: validation failed");
         return -1;
     }
 
@@ -436,7 +483,10 @@ int dragonfly_collision_remove_obstacle(
 }
 
 int dragonfly_collision_clear(dragonfly_collision_t collision) {
-    if (!collision) return -1;
+    if (!collision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_clear: collision is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
     collision->num_obstacles = 0;
@@ -452,7 +502,10 @@ int dragonfly_collision_update_depth(
     uint32_t height,
     float fov_rad
 ) {
-    if (!collision || !depth_map) return -1;
+    if (!collision || !depth_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_update_depth: required parameter is NULL (collision, depth_map)");
+        return -1;
+    }
     (void)width;
     (void)height;
     (void)fov_rad;
@@ -473,7 +526,10 @@ int dragonfly_collision_analyze(
     const float self_velocity[3],
     collision_summary_t* summary
 ) {
-    if (!collision || !self_position || !self_velocity || !summary) return -1;
+    if (!collision || !self_position || !self_velocity || !summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_analyze: required parameter is NULL (collision, self_position, self_velocity, summary)");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
@@ -626,7 +682,10 @@ int dragonfly_collision_get_avoidance(
     const float pursuit_direction[3],
     avoidance_command_t* command
 ) {
-    if (!collision || !self_position || !self_velocity || !command) return -1;
+    if (!collision || !self_position || !self_velocity || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_get_avoidance: required parameter is NULL (collision, self_position, self_velocity, command)");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
@@ -749,7 +808,10 @@ int dragonfly_collision_find_safe_direction(
     const float preferred_direction[3],
     float safe_direction[3]
 ) {
-    if (!collision || !self_position || !safe_direction) return -1;
+    if (!collision || !self_position || !safe_direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_find_safe_direction: required parameter is NULL (collision, self_position, safe_direction)");
+        return -1;
+    }
 
     nimcp_mutex_lock(collision->mutex);
 
@@ -802,7 +864,10 @@ int dragonfly_collision_get_obstacles(
     uint32_t max_obstacles,
     uint32_t* num_obstacles
 ) {
-    if (!collision || !obstacles || !num_obstacles) return -1;
+    if (!collision || !obstacles || !num_obstacles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_get_obstacles: required parameter is NULL (collision, obstacles, num_obstacles)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)collision->mutex);
 
@@ -820,7 +885,10 @@ int dragonfly_collision_get_stats(
     const dragonfly_collision_t collision,
     collision_stats_t* stats
 ) {
-    if (!collision || !stats) return -1;
+    if (!collision || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_collision_get_stats: required parameter is NULL (collision, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)collision->mutex);
     *stats = collision->stats;

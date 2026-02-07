@@ -145,6 +145,7 @@ hypo_epi_fep_bridge_t* hypo_epi_fep_create(
     /* Validate required parameters */
     if (!fep_system) {
         NIMCP_LOGGING_ERROR("Hypo EPI FEP bridge: FEP system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_create: fep_system is NULL");
         return NULL;
     }
 
@@ -152,6 +153,7 @@ hypo_epi_fep_bridge_t* hypo_epi_fep_create(
     hypo_epi_fep_bridge_t* bridge = (hypo_epi_fep_bridge_t*)nimcp_malloc(sizeof(hypo_epi_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Hypo EPI FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_epi_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -173,6 +175,7 @@ hypo_epi_fep_bridge_t* hypo_epi_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo EPI FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_epi_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -184,6 +187,7 @@ hypo_epi_fep_bridge_t* hypo_epi_fep_create(
     if (!bridge->drive_features || !bridge->belief_features || !bridge->evidence_features) {
         NIMCP_LOGGING_ERROR("Hypo EPI FEP bridge: feature buffer allocation failed");
         hypo_epi_fep_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_epi_fep_create: required parameter is NULL (bridge->drive_features, bridge->belief_features, bridge->evidence_features)");
         return NULL;
     }
 

@@ -96,6 +96,7 @@ mesh_kg_integration_t* mesh_kg_integration_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create KG integration without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_integration_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -108,6 +109,7 @@ mesh_kg_integration_t* mesh_kg_integration_create(
     mesh_kg_integration_t* kg = nimcp_calloc(1, sizeof(*kg));
     if (!kg) {
         LOG_ERROR("Failed to allocate KG integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_integration_create: kg is NULL");
         return NULL;
     }
 
@@ -129,6 +131,7 @@ mesh_kg_integration_t* mesh_kg_integration_create(
         LOG_ERROR("Failed to create KG integration mutex");
         if (kg->topology_ctx) mesh_topology_destroy(kg->topology_ctx);
         nimcp_free(kg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_kg_integration_create: validation failed");
         return NULL;
     }
 
@@ -168,6 +171,7 @@ static int find_mapping_by_name(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_mapping_by_name: operation failed");
     return -1;
 }
 
@@ -181,6 +185,7 @@ static int find_mapping_by_id(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_mapping_by_id: operation failed");
     return -1;
 }
 

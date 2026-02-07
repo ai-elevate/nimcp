@@ -189,6 +189,7 @@ static active_inference_t* find_inference_by_id(
             return &integration->active_inferences[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inference_by_id: operation failed");
     return NULL;
 }
 
@@ -211,6 +212,7 @@ static rule_usage_t* find_rule_by_string(
             return &integration->tracked_rules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_rule_by_string: validation failed");
     return NULL;
 }
 
@@ -676,6 +678,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
 
     if (config && !reasoning_integration_validate_config(config)) {
         set_error("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: reasoning_integration_validate_config is NULL");
         return NULL;
     }
 
@@ -707,6 +710,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
     if (!integration->active_inferences) {
         set_error("Failed to allocate active inferences array");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: integration->active_inferences is NULL");
         return NULL;
     }
 
@@ -719,6 +723,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
         set_error("Failed to allocate tracked rules array");
         nimcp_free(integration->active_inferences);
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_integration_create_custom: integration->tracked_rules is NULL");
         return NULL;
     }
 
@@ -729,6 +734,7 @@ reasoning_integration_t* reasoning_integration_create_custom(
         nimcp_free(integration->tracked_rules);
         nimcp_free(integration->active_inferences);
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_integration_create_custom: validation failed");
         return NULL;
     }
 
@@ -888,8 +894,14 @@ bool reasoning_attention_hook(
         bio_router_process_inbox(integration->bio_ctx, 5);
     }
 
-    if (!integration || !event) return false;
-    if (!integration->config.enable_attention_integration) return false;
+    if (!integration || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_hook: required parameter is NULL (integration, event)");
+        return false;
+    }
+    if (!integration->config.enable_attention_integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_attention_hook: integration->config is NULL");
+        return false;
+    }
 
     float salience_boost = 0.0F;
 
@@ -904,6 +916,7 @@ bool reasoning_attention_hook(
             salience_boost = integration->config.proof_found_salience_boost;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_attention_hook: operation failed");
             return false;
     }
 
@@ -919,8 +932,14 @@ bool reasoning_curiosity_hook(
     const brain_event_t* event
 )
 {
-    if (!integration || !event) return false;
-    if (!integration->config.enable_curiosity_integration) return false;
+    if (!integration || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_hook: required parameter is NULL (integration, event)");
+        return false;
+    }
+    if (!integration->config.enable_curiosity_integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_hook: integration->config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_reasoning_curiosity_", 0.0f);
@@ -939,6 +958,7 @@ bool reasoning_curiosity_hook(
             curiosity_boost = integration->config.novel_fact_curiosity_boost;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_curiosity_hook: operation failed");
             return false;
     }
 
@@ -954,8 +974,14 @@ bool reasoning_working_memory_hook(
     const brain_event_t* event
 )
 {
-    if (!integration || !event) return false;
-    if (!integration->config.enable_working_memory_integration) return false;
+    if (!integration || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_working_memory_hook: required parameter is NULL (integration, event)");
+        return false;
+    }
+    if (!integration->config.enable_working_memory_integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_working_memory_hook: integration->config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_reasoning_working_me", 0.0f);
@@ -991,6 +1017,7 @@ bool reasoning_working_memory_hook(
         }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_working_memory_hook: validation failed");
             return false;
     }
 
@@ -1002,7 +1029,10 @@ bool reasoning_executive_hook(
     const brain_event_t* event
 )
 {
-    if (!integration || !event) return false;
+    if (!integration || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_executive_hook: required parameter is NULL (integration, event)");
+        return false;
+    }
     // if (!integration->config.enable_executive_integration) return false; // Executive not available
 
     /* Phase 8: Heartbeat at operation start */
@@ -1025,6 +1055,7 @@ bool reasoning_executive_hook(
         }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_executive_hook: operation failed");
             return false;
     }
 
@@ -1036,8 +1067,14 @@ bool reasoning_consolidation_hook(
     const brain_event_t* event
 )
 {
-    if (!integration || !event) return false;
-    if (!integration->config.enable_consolidation_integration) return false;
+    if (!integration || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_consolidation_hook: required parameter is NULL (integration, event)");
+        return false;
+    }
+    if (!integration->config.enable_consolidation_integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_consolidation_hook: integration->config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_reasoning_consolidat", 0.0f);
@@ -1080,6 +1117,7 @@ bool reasoning_consolidation_hook(
         }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_consolidation_hook: operation failed");
             return false;
     }
 
@@ -1147,7 +1185,10 @@ bool reasoning_integration_get_config(
     reasoning_integration_config_t* config
 )
 {
-    if (!integration || !config) return false;
+    if (!integration || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_get_config: required parameter is NULL (integration, config)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_get_config", 0.0f);
@@ -1165,8 +1206,14 @@ bool reasoning_integration_set_config(
     const reasoning_integration_config_t* config
 )
 {
-    if (!integration || !config) return false;
-    if (!reasoning_integration_validate_config(config)) return false;
+    if (!integration || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_set_config: required parameter is NULL (integration, config)");
+        return false;
+    }
+    if (!reasoning_integration_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_set_config: reasoning_integration_validate_config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_set_config", 0.0f);
@@ -1188,7 +1235,10 @@ bool reasoning_integration_get_stats(
     reasoning_integration_stats_t* stats
 )
 {
-    if (!integration || !stats) return false;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_get_stats: required parameter is NULL (integration, stats)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_get_stats", 0.0f);
@@ -1203,7 +1253,10 @@ bool reasoning_integration_get_stats(
 
 bool reasoning_integration_reset_stats(reasoning_integration_t* integration)
 {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_reset_stats: integration is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_reset_stats", 0.0f);
@@ -1262,39 +1315,60 @@ bool reasoning_integration_validate_config(
     const reasoning_integration_config_t* config
 )
 {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_validate_config: config is NULL");
+        return false;
+    }
 
     // Validate salience boosts [0.0, 1.0]
     /* Phase 8: Heartbeat at operation start */
     reasoning_integration_heartbeat("reasoning_in_validate_config", 0.0f);
 
 
-    if (config->novel_fact_salience_boost < 0.0F || config->novel_fact_salience_boost > 1.0F)
+    if (config->novel_fact_salience_boost < 0.0F || config->novel_fact_salience_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
-    if (config->contradiction_salience_boost < 0.0F || config->contradiction_salience_boost > 1.0F)
+    }
+    if (config->contradiction_salience_boost < 0.0F || config->contradiction_salience_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
-    if (config->proof_found_salience_boost < 0.0F || config->proof_found_salience_boost > 1.0F)
+    }
+    if (config->proof_found_salience_boost < 0.0F || config->proof_found_salience_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
+    }
 
     // Validate curiosity boosts [0.0, 1.0]
-    if (config->unexplained_curiosity_boost < 0.0F || config->unexplained_curiosity_boost > 1.0F)
+    if (config->unexplained_curiosity_boost < 0.0F || config->unexplained_curiosity_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
-    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F)
+    }
+    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
+    }
 
     // Validate working memory configuration
-    if (config->max_active_inferences < 1 || config->max_active_inferences > 32)
+    if (config->max_active_inferences < 1 || config->max_active_inferences > 32) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
-    if (config->inference_decay_tau_ms < 0.0F)
+    }
+    if (config->inference_decay_tau_ms < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
+    }
 
     // Validate executive configuration
-    if (config->planning_priority < 0.0F || config->planning_priority > 1.0F)
+    if (config->planning_priority < 0.0F || config->planning_priority > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
+    }
 
     // Validate consolidation configuration
-    if (config->consolidation_threshold < 0.0F || config->consolidation_threshold > 1.0F)
+    if (config->consolidation_threshold < 0.0F || config->consolidation_threshold > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_validate_config: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -1317,6 +1391,7 @@ bool reasoning_integration_validate_config(
 bool reasoning_integration_connect_kg(reasoning_integration_t* integration, brain_t brain)
 {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_connect_kg: integration is NULL");
         return false;
     }
 
@@ -1331,6 +1406,7 @@ bool reasoning_integration_connect_kg(reasoning_integration_t* integration, brai
     if (result != 0) {
         NIMCP_LOGGING_ERROR(LOG_MODULE, "Failed to initialize KG context");
         nimcp_platform_mutex_unlock(&integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_connect_kg: validation failed");
         return false;
     }
 
@@ -1403,6 +1479,7 @@ int reasoning_integration_query_resources(reasoning_integration_t* integration)
 bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integration)
 {
     if (!integration || !integration->kg_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_integration_query_self_knowledge: required parameter is NULL (integration, integration->kg_connected)");
         return false;
     }
 
@@ -1414,6 +1491,7 @@ bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integra
 
     if (!kg_has_node(&integration->kg_context)) {
         nimcp_platform_mutex_unlock(&integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_query_self_knowledge: kg_has_node is NULL");
         return false;
     }
 
@@ -1430,6 +1508,7 @@ bool reasoning_integration_query_self_knowledge(reasoning_integration_t* integra
     }
 
     nimcp_platform_mutex_unlock(&integration->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_integration_query_self_knowledge: validation failed");
     return false;
 }
 

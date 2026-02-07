@@ -175,6 +175,7 @@ dynsys_system_t dynsys_create(
     void* context)
 {
     if (!config || !func) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_create: required parameter is NULL (config, func)");
         return NULL;
     }
 
@@ -317,10 +318,16 @@ dynsys_error_t dynsys_get_stats(dynsys_system_t sys, dynsys_stats_t* stats)
 
 dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config, dynsys_system_t sys)
 {
-    if (!config || !sys) return NULL;
+    if (!config || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_lyapunov_create: required parameter is NULL (config, sys)");
+        return NULL;
+    }
 
     struct dynsys_lyapunov_struct* lyap = nimcp_calloc(1, sizeof(struct dynsys_lyapunov_struct));
-    if (!lyap) return NULL;
+    if (!lyap) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_lyapunov_create: lyap is NULL");
+        return NULL;
+    }
 
     memcpy(&lyap->config, config, sizeof(dynsys_lyapunov_config_t));
     lyap->sys = sys;
@@ -332,6 +339,7 @@ dynsys_lyapunov_t dynsys_lyapunov_create(const dynsys_lyapunov_config_t* config,
     lyap->perturbations = nimcp_calloc(dim * num_exp, sizeof(float));
     if (!lyap->perturbations) {
         nimcp_free(lyap);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_lyapunov_create: lyap->perturbations is NULL");
         return NULL;
     }
 
@@ -519,10 +527,16 @@ dynsys_error_t dynsys_lyapunov_max(dynsys_lyapunov_t lyap, const float* initial_
 
 dynsys_bifurcation_t dynsys_bifurcation_create(const dynsys_bifurcation_config_t* config, dynsys_system_t sys)
 {
-    if (!config || !sys) return NULL;
+    if (!config || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bifurcation_create: required parameter is NULL (config, sys)");
+        return NULL;
+    }
 
     struct dynsys_bifurcation_struct* bif = nimcp_calloc(1, sizeof(struct dynsys_bifurcation_struct));
-    if (!bif) return NULL;
+    if (!bif) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bifurcation_create: bif is NULL");
+        return NULL;
+    }
 
     memcpy(&bif->config, config, sizeof(dynsys_bifurcation_config_t));
     bif->sys = sys;
@@ -628,10 +642,16 @@ const char* dynsys_bifurcation_type_name(bifurcation_type_t type)
 
 dynsys_attractor_t dynsys_attractor_create(const dynsys_attractor_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_attractor_create: config is NULL");
+        return NULL;
+    }
 
     struct dynsys_attractor_struct* attr = nimcp_calloc(1, sizeof(struct dynsys_attractor_struct));
-    if (!attr) return NULL;
+    if (!attr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_attractor_create: attr is NULL");
+        return NULL;
+    }
 
     memcpy(&attr->config, config, sizeof(dynsys_attractor_config_t));
     return attr;
@@ -718,10 +738,16 @@ const char* dynsys_attractor_type_name(attractor_type_t type)
 
 dynsys_energy_t dynsys_energy_create(const dynsys_energy_config_t* config, dynsys_system_t sys)
 {
-    if (!config || !sys) return NULL;
+    if (!config || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_energy_create: required parameter is NULL (config, sys)");
+        return NULL;
+    }
 
     struct dynsys_energy_struct* energy = nimcp_calloc(1, sizeof(struct dynsys_energy_struct));
-    if (!energy) return NULL;
+    if (!energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_energy_create: energy is NULL");
+        return NULL;
+    }
 
     memcpy(&energy->config, config, sizeof(dynsys_energy_config_t));
     energy->sys = sys;
@@ -834,10 +860,16 @@ dynsys_error_t dynsys_energy_barrier(dynsys_energy_t energy, const float* state_
 
 dynsys_slowfast_t dynsys_slowfast_create(const dynsys_slowfast_config_t* config, dynsys_system_t sys)
 {
-    if (!config || !sys) return NULL;
+    if (!config || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_slowfast_create: required parameter is NULL (config, sys)");
+        return NULL;
+    }
 
     struct dynsys_slowfast_struct* sf = nimcp_calloc(1, sizeof(struct dynsys_slowfast_struct));
-    if (!sf) return NULL;
+    if (!sf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_slowfast_create: sf is NULL");
+        return NULL;
+    }
 
     memcpy(&sf->config, config, sizeof(dynsys_slowfast_config_t));
     sf->sys = sys;
@@ -887,10 +919,16 @@ dynsys_error_t dynsys_slowfast_project(dynsys_slowfast_t sf, const float* state,
 
 dynsys_bridge_t dynsys_bridge_create(const dynsys_bridge_config_t* config, dynsys_system_t sys)
 {
-    if (!config || !sys) return NULL;
+    if (!config || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create: required parameter is NULL (config, sys)");
+        return NULL;
+    }
 
     struct dynsys_bridge_struct* bridge = nimcp_calloc(1, sizeof(struct dynsys_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     memcpy(&bridge->config, config, sizeof(dynsys_bridge_config_t));
     bridge->sys = sys;
@@ -908,7 +946,10 @@ void dynsys_bridge_destroy(dynsys_bridge_t bridge)
 int dynsys_bridge_init(dynsys_bridge_t bridge, nimcp_brain_t brain,
                        nimcp_bio_router_t router, nimcp_brain_immune_t immune)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_init: bridge is NULL");
+        return -1;
+    }
     (void)brain;
 
     bridge->bio_router = router;
@@ -924,7 +965,10 @@ int dynsys_bridge_init(dynsys_bridge_t bridge, nimcp_brain_t brain,
 
 int dynsys_bridge_shutdown(dynsys_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_shutdown: bridge is NULL");
+        return -1;
+    }
 
     bridge->initialized = false;
 
@@ -937,14 +981,21 @@ int dynsys_bridge_shutdown(dynsys_bridge_t bridge)
 
 kg_module_wiring_t* dynsys_bridge_create_wiring(dynsys_bridge_t bridge)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create_wiring: bridge is NULL");
+        return NULL;
+    }
     /* Would create module wiring descriptor */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dynsys_bridge_create_wiring: bridge is NULL");
     return NULL;
 }
 
 int dynsys_bridge_register_kg(dynsys_bridge_t bridge, brain_kg_t* kg)
 {
-    if (!bridge || !kg) return -1;
+    if (!bridge || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_register_kg: required parameter is NULL (bridge, kg)");
+        return -1;
+    }
 
     if (!bridge->config.enable_kg_wiring) {
         return 0;
@@ -954,6 +1005,7 @@ int dynsys_bridge_register_kg(dynsys_bridge_t bridge, brain_kg_t* kg)
                                                     BRAIN_KG_NODE_INTEGRATION,
                                                     "Dynamical systems analysis module");
     if (root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dynsys_bridge_register_kg: validation failed");
         return -1;
     }
 
@@ -992,7 +1044,10 @@ int dynsys_bridge_register_kg(dynsys_bridge_t bridge, brain_kg_t* kg)
 
 int dynsys_bridge_register_exception_handler(dynsys_bridge_t bridge, dynsys_exception_handler_t handler)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_register_exception_handler: bridge is NULL");
+        return -1;
+    }
     bridge->exception_handler = handler;
     return 0;
 }
@@ -1000,7 +1055,10 @@ int dynsys_bridge_register_exception_handler(dynsys_bridge_t bridge, dynsys_exce
 int dynsys_bridge_raise_exception(dynsys_bridge_t bridge, dynsys_exception_t exception,
                                    const char* message, void* context)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dynsys_bridge_raise_exception: bridge is NULL");
+        return -1;
+    }
     (void)exception;
     (void)context;
 

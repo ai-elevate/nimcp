@@ -27,6 +27,8 @@
 // Headers have their own extern "C" guards
     #include "utils/memory/nimcp_memory_pool.h"
     #include "utils/memory/nimcp_memory.h"
+    #include "utils/exception/nimcp_exception.h"
+    #include "utils/exception/nimcp_exception_handlers.h"
 
 //=============================================================================
 // Test Fixture
@@ -39,15 +41,37 @@ protected:
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
         nimcp_memory_clear_stats();
+        // Warm up exception handler system (one-time mutex allocation)
+        // by dispatching a dummy exception, then clearing it
+        {
+            nimcp_exception_t* warmup = nimcp_exception_create(
+                NIMCP_ERROR_NULL_POINTER, EXCEPTION_SEVERITY_DEBUG,
+                __FILE__, __LINE__, __func__, "warmup");
+            if (warmup) {
+                nimcp_exception_dispatch(warmup);
+                nimcp_exception_unref(warmup);
+            }
+            nimcp_exception_clear_current();
+        }
+        // Record baseline after handler system is initialized
+        nimcp_memory_get_stats(&baseline_stats_);
     }
 
     void TearDown() override {
-        // Check for memory leaks after each test
+        // Release any exception held as "current" by the dispatch system
+        // before checking for leaks (exception objects are ~4KB)
+        nimcp_exception_clear_current();
+
+        // Check for memory leaks relative to baseline
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
-        EXPECT_EQ(stats.current_allocated, 0)
-            << "Memory leak detected: " << stats.current_allocated << " bytes still allocated";
+        EXPECT_EQ(stats.current_allocated, baseline_stats_.current_allocated)
+            << "Memory leak detected: "
+            << (stats.current_allocated - baseline_stats_.current_allocated)
+            << " bytes leaked since baseline";
     }
+
+    nimcp_memory_stats_t baseline_stats_ = {};
 };
 
 //=============================================================================

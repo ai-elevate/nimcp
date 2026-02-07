@@ -308,6 +308,7 @@ financial_regret_bridge_t* financial_regret_bridge_create(
     if (!bridge->history) {
         set_error("Failed to allocate trade history");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_regret_bridge_create: bridge->history is NULL");
         return NULL;
     }
 
@@ -319,6 +320,7 @@ financial_regret_bridge_t* financial_regret_bridge_create(
         set_error("Failed to allocate lesson storage");
         nimcp_free(bridge->history);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_regret_bridge_create: bridge->lessons is NULL");
         return NULL;
     }
 

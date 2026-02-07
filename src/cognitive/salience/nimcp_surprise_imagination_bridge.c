@@ -33,6 +33,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surprise_imagination)
+void surprise_imagination_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
@@ -135,6 +136,7 @@ static surprise_imagination_scenario_t* find_scenario(
             return &bridge->scenarios[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_scenario: operation failed");
     return NULL;
 }
 
@@ -148,6 +150,7 @@ static surprise_imagination_scenario_t* find_free_slot(
             return &bridge->scenarios[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: operation failed");
     return NULL;
 }
 

@@ -185,7 +185,10 @@ void pr_quantum_reset(pr_memory_quantum_ctx_t ctx) {
 }
 
 bool pr_quantum_attach(pr_memory_quantum_ctx_t ctx, struct brain_struct* brain) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_attach: ctx is NULL");
+        return false;
+    }
     ctx->attached_brain = brain;
     return true;
 }
@@ -212,6 +215,7 @@ bool pr_quantum_search_memory(
     pr_quantum_search_result_t* result
 ) {
     if (!ctx || !query_pattern || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_search_memory: required parameter is NULL (ctx, query_pattern, result)");
         return false;
     }
 
@@ -254,6 +258,7 @@ bool pr_quantum_similarity_search(
     uint32_t* num_found
 ) {
     if (!ctx || !query_pattern || !results || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_similarity_search: required parameter is NULL (ctx, query_pattern, results, num_found)");
         return false;
     }
 
@@ -284,6 +289,7 @@ bool pr_quantum_associative_recall(
     uint32_t* num_found
 ) {
     if (!ctx || !cue || !associated_signatures || !association_strengths || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_associative_recall: required parameter is NULL (ctx, cue, associated_signatures, association_strengths, num_found)");
         return false;
     }
 
@@ -317,6 +323,7 @@ bool pr_quantum_optimize_consolidation(
     uint32_t* num_decisions
 ) {
     if (!ctx || !candidates || !decisions || !num_decisions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_optimize_consolidation: required parameter is NULL (ctx, candidates, decisions, num_decisions)");
         return false;
     }
 
@@ -374,7 +381,10 @@ bool pr_quantum_get_anneal_state(
     float* tunneling_prob,
     uint64_t* iteration
 ) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_get_anneal_state: ctx is NULL");
+        return false;
+    }
     if (temperature) *temperature = ctx->anneal_temperature;
     if (tunneling_prob) *tunneling_prob = ctx->anneal_tunneling_prob;
     if (iteration) *iteration = ctx->anneal_iteration;
@@ -408,6 +418,7 @@ bool pr_quantum_detect_entangle_bottlenecks(
     uint32_t* num_found
 ) {
     if (!ctx || !bottlenecks || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_detect_entangle_bottlenecks: required parameter is NULL (ctx, bottlenecks, num_found)");
         return false;
     }
 
@@ -450,6 +461,7 @@ bool pr_quantum_detect_communities(
     pr_quantum_community_t* result
 ) {
     if (!ctx || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_detect_communities: required parameter is NULL (ctx, result)");
         return false;
     }
 
@@ -483,6 +495,7 @@ bool pr_quantum_find_memory_hubs(
     pr_quantum_hubs_t* result
 ) {
     if (!ctx || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_find_memory_hubs: required parameter is NULL (ctx, result)");
         return false;
     }
 
@@ -518,6 +531,7 @@ bool pr_quantum_diffuse_resonance(
     uint32_t* num_affected
 ) {
     if (!ctx || !diffused_resonances || !num_affected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_diffuse_resonance: required parameter is NULL (ctx, diffused_resonances, num_affected)");
         return false;
     }
 
@@ -570,6 +584,7 @@ bool pr_quantum_diffuse_resonance_multi(
     uint32_t* num_affected
 ) {
     if (!ctx || !source_signatures || !initial_resonances || !diffused_resonances || !num_affected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_diffuse_resonance_multi: required parameter is NULL (ctx, source_signatures, initial_resonances, diffused_resonances, num_affected)");
         return false;
     }
 
@@ -611,6 +626,7 @@ bool pr_quantum_store_enhanced(
     uint64_t* signature_out
 ) {
     if (!ctx || !content || !signature_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_store_enhanced: required parameter is NULL (ctx, content, signature_out)");
         return false;
     }
 
@@ -636,6 +652,7 @@ bool pr_quantum_retrieve_enhanced(
     float* strength_out
 ) {
     if (!ctx || !query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_retrieve_enhanced: required parameter is NULL (ctx, query)");
         return false;
     }
 
@@ -672,26 +689,38 @@ uint32_t pr_quantum_tick(
  *===========================================================================*/
 
 bool pr_quantum_get_metrics(pr_memory_quantum_ctx_t ctx, pr_quantum_metrics_t* metrics) {
-    if (!ctx || !metrics) return false;
+    if (!ctx || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_get_metrics: required parameter is NULL (ctx, metrics)");
+        return false;
+    }
     *metrics = ctx->metrics;
     metrics->last_update_ms = get_time_ms();
     return true;
 }
 
 int32_t pr_quantum_flush_metrics(pr_memory_quantum_ctx_t ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_flush_metrics: ctx is NULL");
+        return -1;
+    }
     /* Would write to file */
     return 0;
 }
 
 bool pr_quantum_export_csv(pr_memory_quantum_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename) return false;
+    if (!ctx || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_export_csv: required parameter is NULL (ctx, filename)");
+        return false;
+    }
     /* Would export to CSV */
     return true;
 }
 
 bool pr_quantum_export_json(pr_memory_quantum_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename) return false;
+    if (!ctx || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_export_json: required parameter is NULL (ctx, filename)");
+        return false;
+    }
     /* Would export to JSON */
     return true;
 }
@@ -713,7 +742,10 @@ void pr_quantum_print_status(const pr_memory_quantum_ctx_t ctx) {
 }
 
 bool pr_quantum_verify(const pr_memory_quantum_ctx_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quantum_verify: ctx is NULL");
+        return false;
+    }
     return ctx->enabled;
 }
 

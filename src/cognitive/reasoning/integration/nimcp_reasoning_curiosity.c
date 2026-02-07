@@ -111,9 +111,18 @@ reasoning_curiosity_config_t reasoning_curiosity_default_config(void) {
 }
 
 bool reasoning_curiosity_validate_config(const reasoning_curiosity_config_t* config) {
-    if (!config) return false;
-    if (config->proof_failed_curiosity_boost < 0.0F || config->proof_failed_curiosity_boost > 1.0F) return false;
-    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_validate_config: config is NULL");
+        return false;
+    }
+    if (config->proof_failed_curiosity_boost < 0.0F || config->proof_failed_curiosity_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_curiosity_validate_config: validation failed");
+        return false;
+    }
+    if (config->novel_fact_curiosity_boost < 0.0F || config->novel_fact_curiosity_boost > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_curiosity_validate_config: validation failed");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_validate_config", 0.0f);
 
@@ -134,7 +143,10 @@ reasoning_curiosity_t* reasoning_curiosity_create(event_bus_t bus, curiosity_eng
 reasoning_curiosity_t* reasoning_curiosity_create_custom(
     event_bus_t bus, curiosity_engine_t curiosity, const reasoning_curiosity_config_t* config
 ) {
-    if (!bus || !curiosity) return NULL;
+    if (!bus || !curiosity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_curiosity_create_custom: required parameter is NULL (bus, curiosity)");
+        return NULL;
+    }
     
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_create_custom", 0.0f);
@@ -160,6 +172,7 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
     
     if (integration->subscription_handle == INVALID_SUBSCRIPTION_HANDLE) {
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_create_custom: validation failed");
         return NULL;
     }
     
@@ -246,7 +259,10 @@ void reasoning_curiosity_callback(const brain_event_t* event, void* context) {
 }
 
 bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integration, const char* fact) {
-    if (!integration || !fact) return false;
+    if (!integration || !fact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_explore_unexplained_fact: required parameter is NULL (integration, fact)");
+        return false;
+    }
     
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_explore_unexplained_", 0.0f);
@@ -261,7 +277,10 @@ bool reasoning_curiosity_explore_unexplained_fact(reasoning_curiosity_t* integra
 }
 
 bool reasoning_curiosity_get_stats(const reasoning_curiosity_t* integration, reasoning_curiosity_stats_t* stats) {
-    if (!integration || !stats) return false;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_get_stats: required parameter is NULL (integration, stats)");
+        return false;
+    }
     *stats = integration->stats;
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_get_stats", 0.0f);
@@ -271,7 +290,10 @@ bool reasoning_curiosity_get_stats(const reasoning_curiosity_t* integration, rea
 }
 
 bool reasoning_curiosity_reset_stats(reasoning_curiosity_t* integration) {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_reset_stats: integration is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_reset_stats", 0.0f);
 
@@ -281,7 +303,10 @@ bool reasoning_curiosity_reset_stats(reasoning_curiosity_t* integration) {
 }
 
 bool reasoning_curiosity_get_config(const reasoning_curiosity_t* integration, reasoning_curiosity_config_t* config) {
-    if (!integration || !config) return false;
+    if (!integration || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_get_config: required parameter is NULL (integration, config)");
+        return false;
+    }
     *config = integration->config;
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_get_config", 0.0f);
@@ -291,7 +316,10 @@ bool reasoning_curiosity_get_config(const reasoning_curiosity_t* integration, re
 }
 
 bool reasoning_curiosity_set_config(reasoning_curiosity_t* integration, const reasoning_curiosity_config_t* config) {
-    if (!integration || !config || !reasoning_curiosity_validate_config(config)) return false;
+    if (!integration || !config || !reasoning_curiosity_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_curiosity_set_config: required parameter is NULL (integration, config, reasoning_curiosity_validate_config)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     reasoning_curiosity_heartbeat("reasoning_cu_set_config", 0.0f);
 

@@ -330,6 +330,7 @@ mesh_basal_ganglia_integration_t* mesh_basal_ganglia_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create basal ganglia integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_basal_ganglia_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -484,6 +485,7 @@ mesh_participant_id_t mesh_basal_ganglia_get_participant_id(
 
 bool mesh_basal_ganglia_is_registered(const mesh_basal_ganglia_integration_t* integration) {
     if (!integration || integration->magic != MESH_BG_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_basal_ganglia_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;

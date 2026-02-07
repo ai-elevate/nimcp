@@ -222,6 +222,7 @@ self_model_system_t self_model_create(const char* name,
     // Initialize mutex
     if (nimcp_mutex_init(&system->mutex, NULL) != NIMCP_SUCCESS) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_model_create: validation failed");
         return NULL;
     }
 
@@ -339,6 +340,7 @@ bool self_model_add_belief(self_model_system_t system, const self_belief_t* beli
     // Guard: Check capacity
     if (system->model.num_beliefs >= SELF_MAX_BELIEFS) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_model_add_belief: capacity exceeded");
         return false;
     }
 
@@ -651,6 +653,7 @@ bool self_model_generate_summary(self_model_system_t system,
 
     if (written < 0 || (size_t)written >= summary_len) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_model_generate_summary: capacity exceeded");
         return false;
     }
 
@@ -843,6 +846,7 @@ bool self_model_connect_internal_kg(self_model_system_t system, brain_t brain)
 
     if (result != 0) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_model_connect_internal_kg: validation failed");
         return false;
     }
 
@@ -902,6 +906,7 @@ bool self_model_update_topology_awareness(self_model_system_t system)
     /* Check if KG is connected */
     if (!system->kg_connected || !kg_is_available(&system->kg_context)) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_update_topology_awareness: required parameter is NULL (system->kg_connected, kg_is_available)");
         return false;
     }
 

@@ -229,12 +229,14 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > EXECUTIVE_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "executive_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_snn_create: validation failed");
         return NULL;
     }
 
@@ -252,6 +254,7 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -264,6 +267,7 @@ executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* confi
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->control_buffer || !bridge->prev_state) {
         executive_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_create: operation failed");
         return NULL;
     }
 
@@ -329,7 +333,10 @@ void executive_snn_destroy(executive_snn_bridge_t* bridge) {
 }
 
 int executive_snn_reset(executive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_reset", 0.0f);
@@ -387,8 +394,14 @@ int executive_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_encode_state: num_dims is zero");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
@@ -470,7 +483,10 @@ int executive_snn_encode_inhibition(
     float inhibition_strength,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_encode_inhibition: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_encode", 0.0f);
@@ -493,7 +509,10 @@ int executive_snn_encode_task(
     float task_load,
     uint32_t task_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_encode_task: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_encode", 0.0f);
@@ -516,7 +535,10 @@ int executive_snn_encode_conflict(
     float conflict_magnitude,
     uint32_t conflict_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_encode_conflict: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_encode", 0.0f);
@@ -551,8 +573,14 @@ int executive_snn_encode_conflict(
 //=============================================================================
 
 int executive_snn_simulate(executive_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_simula", 0.0f);
@@ -636,7 +664,10 @@ int executive_snn_simulate(executive_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int executive_snn_step(executive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_step", 0.0f);
 
@@ -653,7 +684,10 @@ int executive_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
@@ -661,9 +695,13 @@ int executive_snn_forward(
 
 
     int spike_count = executive_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_forward: validation failed");
+        return -1;
+    }
 
     if (executive_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_forward: validation failed");
         return -1;
     }
 
@@ -678,7 +716,10 @@ int executive_snn_get_control_output(
     executive_snn_bridge_t* bridge,
     executive_control_output_t* output
 ) {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_get_control_output: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_get_co", 0.0f);
@@ -696,8 +737,14 @@ int executive_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_get_ac", 0.0f);
@@ -722,7 +769,10 @@ bool executive_snn_check_conflict(
     executive_snn_bridge_t* bridge,
     float* conflict_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_conflict: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_check_", 0.0f);
@@ -743,7 +793,10 @@ bool executive_snn_check_error(
     executive_snn_bridge_t* bridge,
     float* error_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_error: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_check_", 0.0f);
@@ -764,7 +817,10 @@ bool executive_snn_check_goal_change(
     executive_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_check_goal_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_check_", 0.0f);
@@ -801,8 +857,14 @@ int executive_snn_get_dim_state(
     uint32_t dim,
     executive_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_get_di", 0.0f);
@@ -819,7 +881,10 @@ int executive_snn_get_state(
     executive_snn_bridge_t* bridge,
     executive_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_get_st", 0.0f);
@@ -853,7 +918,10 @@ int executive_snn_get_state(
 }
 
 int executive_snn_get_stats(executive_snn_bridge_t* bridge, executive_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_get_st", 0.0f);
@@ -867,7 +935,10 @@ int executive_snn_get_stats(executive_snn_bridge_t* bridge, executive_snn_stats_
 }
 
 int executive_snn_reset_stats(executive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_reset_", 0.0f);
@@ -926,7 +997,10 @@ int executive_snn_register_conflict_callback(
     executive_snn_conflict_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_register_conflict_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_regist", 0.0f);
@@ -945,7 +1019,10 @@ int executive_snn_register_control_callback(
     executive_snn_control_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_register_control_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_regist", 0.0f);
@@ -964,7 +1041,10 @@ int executive_snn_register_error_callback(
     executive_snn_error_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_register_error_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_regist", 0.0f);
@@ -983,8 +1063,14 @@ int executive_snn_register_error_callback(
 //=============================================================================
 
 int executive_snn_bio_async_connect(executive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_bio_as", 0.0f);
@@ -999,7 +1085,10 @@ int executive_snn_bio_async_connect(executive_snn_bridge_t* bridge) {
 }
 
 int executive_snn_bio_async_disconnect(executive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_bio_as", 0.0f);
@@ -1013,7 +1102,10 @@ int executive_snn_bio_async_disconnect(executive_snn_bridge_t* bridge) {
 }
 
 bool executive_snn_is_bio_async_connected(executive_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_snn_bridge_heartbeat("executive_sn_executive_snn_is_bio", 0.0f);

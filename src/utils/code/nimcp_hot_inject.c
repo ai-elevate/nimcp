@@ -146,6 +146,7 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     // Guard: Invalid dispatch table
     if (!fn_dispatch_is_valid(dispatch_table)) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid dispatch table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hot_injector_create: fn_dispatch_is_valid is NULL");
         return NULL;
     }
 
@@ -172,6 +173,7 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     if (nimcp_mutex_init(&injector->lock, NULL) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize lock");
         nimcp_free(injector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hot_injector_create: validation failed");
         return NULL;
     }
 
@@ -180,6 +182,7 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize thread mutex");
         nimcp_mutex_destroy(&injector->lock);
         nimcp_free(injector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hot_injector_create: validation failed");
         return NULL;
     }
 
@@ -191,6 +194,7 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
         nimcp_mutex_destroy(&injector->thread_mutex);
         nimcp_mutex_destroy(&injector->lock);
         nimcp_free(injector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hot_injector_create: injector->patches is NULL");
         return NULL;
     }
 
@@ -923,6 +927,7 @@ NIMCP_EXPORT int hot_inject_unregister_thread(hot_injector_t injector)
 NIMCP_EXPORT bool hot_inject_pause_requested(hot_injector_t injector)
 {
     if (!injector || !hot_inject_is_valid(injector)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hot_inject_pause_requested: required parameter is NULL (injector, hot_inject_is_valid)");
         return false;
     }
 
@@ -986,6 +991,7 @@ NIMCP_EXPORT void hot_inject_set_validator(
 NIMCP_EXPORT bool hot_inject_is_valid(hot_injector_t injector)
 {
     if (!injector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hot_inject_is_valid: injector is NULL");
         return false;
     }
     return injector->magic == HOT_INJECT_MAGIC;
@@ -1149,6 +1155,7 @@ static injected_patch_t* find_patch_by_id(hot_injector_t injector, uint64_t id)
             return &injector->patches[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_patch_by_id: validation failed");
     return NULL;
 }
 
@@ -1165,6 +1172,7 @@ static injected_patch_t* find_patch_by_function(hot_injector_t injector, const c
             return &injector->patches[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_patch_by_function: operation failed");
     return NULL;
 }
 

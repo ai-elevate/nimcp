@@ -83,6 +83,7 @@ language_insula_bridge_t* language_insula_bridge_create(
     const language_insula_config_t* config)
 {
     if (!language || !insula) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_bridge_create: required parameter is NULL (language, insula)");
         return NULL;
     }
 
@@ -150,10 +151,12 @@ int language_insula_create_plan(
     articulation_plan_t* plan)
 {
     if (!bridge || !phonemes || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_create_plan: required parameter is NULL (bridge, phonemes, plan)");
         return -1;
     }
 
     if (!bridge->config.enable_articulatory_planning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_create_plan: bridge->config is NULL");
         return -1;
     }
 
@@ -203,6 +206,7 @@ int language_insula_execute_plan(
     const articulation_plan_t* plan)
 {
     if (!bridge || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_execute_plan: required parameter is NULL (bridge, plan)");
         return -1;
     }
 
@@ -240,10 +244,12 @@ int language_insula_set_prosody(
     float intensity)
 {
     if (!bridge || prosody >= PROSODY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_insula_set_prosody: bridge is NULL");
         return -1;
     }
 
     if (!bridge->config.enable_emotional_prosody) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_set_prosody: bridge->config is NULL");
         return -1;
     }
 
@@ -266,6 +272,7 @@ int language_insula_get_prosody(
     prosody_state_t* state)
 {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_get_prosody: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -279,6 +286,7 @@ int language_insula_modulate_speech(
     float* tempo)
 {
     if (!bridge || !pitch || !tempo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_modulate_speech: required parameter is NULL (bridge, pitch, tempo)");
         return -1;
     }
 
@@ -294,6 +302,7 @@ int language_insula_get_stats(
     language_insula_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_insula_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

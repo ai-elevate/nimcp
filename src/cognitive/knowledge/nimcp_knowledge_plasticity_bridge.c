@@ -137,6 +137,7 @@ static synapse_entry_t* find_synapse(knowledge_plasticity_bridge_t* bridge, uint
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -152,6 +153,7 @@ static synapse_entry_t* find_free_slot(knowledge_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -271,7 +273,10 @@ void knowledge_plasticity_destroy(knowledge_plasticity_bridge_t* bridge) {
 }
 
 int knowledge_plasticity_reset(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -320,7 +325,10 @@ int knowledge_plasticity_register_synapse(
     knowledge_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -331,6 +339,7 @@ int knowledge_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -338,6 +347,7 @@ int knowledge_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -367,7 +377,10 @@ int knowledge_plasticity_unregister_synapse(
     knowledge_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -378,6 +391,7 @@ int knowledge_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -393,7 +407,10 @@ int knowledge_plasticity_get_synapse(
     uint32_t synapse_id,
     knowledge_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -404,6 +421,7 @@ int knowledge_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -418,7 +436,10 @@ int knowledge_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -429,6 +450,7 @@ int knowledge_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -449,7 +471,10 @@ int knowledge_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -462,6 +487,7 @@ int knowledge_plasticity_learn(
     if (!entry) {
         bridge->state = KNOWLEDGE_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -623,7 +649,10 @@ int knowledge_plasticity_apply_reward(
     knowledge_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -664,8 +693,14 @@ int knowledge_plasticity_update_bcm(
     knowledge_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -701,7 +736,10 @@ int knowledge_plasticity_homeostatic_update(
     knowledge_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -766,7 +804,10 @@ int knowledge_plasticity_update_traces(
     knowledge_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -793,7 +834,10 @@ int knowledge_plasticity_update_traces(
 }
 
 int knowledge_plasticity_consolidate(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -880,7 +924,10 @@ int knowledge_plasticity_get_consolidation_state(
     knowledge_plasticity_bridge_t* bridge,
     knowledge_consolidation_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_get_consolidation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -897,7 +944,10 @@ int knowledge_plasticity_get_state(
     knowledge_plasticity_bridge_t* bridge,
     knowledge_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -946,7 +996,10 @@ int knowledge_plasticity_get_stats(
     knowledge_plasticity_bridge_t* bridge,
     knowledge_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -960,7 +1013,10 @@ int knowledge_plasticity_get_stats(
 }
 
 int knowledge_plasticity_reset_stats(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -982,7 +1038,10 @@ int knowledge_plasticity_register_learn_callback(
     knowledge_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -1001,7 +1060,10 @@ int knowledge_plasticity_register_consolidation_callback(
     knowledge_plasticity_consolidation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_register_consolidation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -1020,8 +1082,14 @@ int knowledge_plasticity_register_consolidation_callback(
 //=============================================================================
 
 int knowledge_plasticity_bio_async_connect(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -1036,7 +1104,10 @@ int knowledge_plasticity_bio_async_connect(knowledge_plasticity_bridge_t* bridge
 }
 
 int knowledge_plasticity_bio_async_disconnect(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);
@@ -1050,7 +1121,10 @@ int knowledge_plasticity_bio_async_disconnect(knowledge_plasticity_bridge_t* bri
 }
 
 bool knowledge_plasticity_is_bio_async_connected(knowledge_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_plasticity_bridge_heartbeat("knowledge_pl_knowledge_plasticity", 0.0f);

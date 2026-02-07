@@ -104,7 +104,10 @@ static brain_kg_edge_id_t create_rn_edge(
 //=============================================================================
 
 int rn_kg_default_config(rn_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_subdivisions = true;
     config->register_motor_cmds = true;
@@ -127,7 +130,10 @@ int rn_kg_register_all(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     rn_kg_config_t local_config;
     if (config) {
@@ -148,6 +154,7 @@ int rn_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(RN_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -208,7 +215,10 @@ int rn_kg_register_subdivisions(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_subdivisions: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create subdivisions subsystem node */
     state->subdiv_subsystem_id = create_rn_node(
@@ -217,7 +227,10 @@ int rn_kg_register_subdivisions(
         "Red Nucleus subdivisions - Magnocellular and Parvocellular regions",
         admin_token
     );
-    if (state->subdiv_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->subdiv_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_subdivisions: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -273,7 +286,10 @@ int rn_kg_register_motor(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_motor: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create motor commands subsystem node */
     state->motor_subsystem_id = create_rn_node(
@@ -282,7 +298,10 @@ int rn_kg_register_motor(
         "Red Nucleus motor commands - Velocity, force, position, trajectory control",
         admin_token
     );
-    if (state->motor_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->motor_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_motor: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -399,7 +418,10 @@ int rn_kg_register_effectors(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_effectors: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create effectors subsystem node */
     state->effector_subsystem_id = create_rn_node(
@@ -408,7 +430,10 @@ int rn_kg_register_effectors(
         "Red Nucleus effectors - Forelimb, hindlimb, and axial musculature targets",
         admin_token
     );
-    if (state->effector_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->effector_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_effectors: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -497,7 +522,10 @@ int rn_kg_register_errors(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_errors: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create error types subsystem node */
     state->error_subsystem_id = create_rn_node(
@@ -506,7 +534,10 @@ int rn_kg_register_errors(
         "Red Nucleus error types - Position, velocity, force, timing, trajectory errors",
         admin_token
     );
-    if (state->error_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->error_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_errors: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -595,7 +626,10 @@ int rn_kg_register_cerebellar(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_cerebellar: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create cerebellar connections subsystem node */
     state->cerebellar_subsystem_id = create_rn_node(
@@ -604,7 +638,10 @@ int rn_kg_register_cerebellar(
         "Red Nucleus cerebellar connections - Dentate input, olivary/thalamic outputs",
         admin_token
     );
-    if (state->cerebellar_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->cerebellar_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_kg_register_cerebellar: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -664,7 +701,10 @@ int rn_kg_register_cross_edges(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* ==========================================
      * Subdivision -> Motor Command relationships
@@ -861,7 +901,10 @@ int rn_kg_update_state(
     float skill_level,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
     (void)admin_token;  /* Used for future access control */
 
     /* Update magnocellular activity metadata */
@@ -972,7 +1015,10 @@ int rn_kg_unregister_all(
     rn_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
     (void)admin_token;  /* Would be used for actual deletion */
 
     /* Note: In a full implementation, would iterate and remove all nodes */

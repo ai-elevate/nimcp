@@ -119,6 +119,7 @@ neural_plasticity_coordinator_t* neural_plasticity_coordinator_create(
     );
     if (!coord) {
         NIMCP_LOGGING_ERROR("neural_plasticity_coordinator_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_plasticity_coordinator_create: coord is NULL");
         return NULL;
     }
 
@@ -138,6 +139,7 @@ neural_plasticity_coordinator_t* neural_plasticity_coordinator_create(
     if (!coord->orchestrator) {
         NIMCP_LOGGING_ERROR("neural_plasticity_coordinator_create: orchestrator creation failed");
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_plasticity_coordinator_create: coord->orchestrator is NULL");
         return NULL;
     }
     coord->owns_orchestrator = true;
@@ -168,6 +170,7 @@ neural_plasticity_coordinator_t* neural_plasticity_coordinator_create(
         }
         plasticity_orchestrator_destroy(coord->orchestrator);
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_coordinator_create: validation failed");
         return NULL;
     }
 
@@ -250,6 +253,7 @@ int neural_plasticity_connect_immune(
     struct brain_immune_system* immune_system
 ) {
     if (!coordinator || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_connect_immune: required parameter is NULL (coordinator, immune_system)");
         return -1;
     }
 
@@ -270,6 +274,7 @@ int neural_plasticity_connect_umm(
     struct unified_mem_manager* umm
 ) {
     if (!coordinator || !umm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_connect_umm: required parameter is NULL (coordinator, umm)");
         return -1;
     }
 
@@ -289,6 +294,7 @@ int neural_plasticity_connect_bio_async(neural_plasticity_coordinator_t* coordin
 
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("neural_plasticity_coordinator: bio-async not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "neural_plasticity_connect_bio_async: bio_router_is_initialized is NULL");
         return -1;
     }
 
@@ -303,6 +309,7 @@ int neural_plasticity_connect_bio_async(neural_plasticity_coordinator_t* coordin
     coordinator->bio_ctx = bio_router_register_module(&info);
     if (!coordinator->bio_ctx) {
         NIMCP_LOGGING_ERROR("neural_plasticity_coordinator: failed to register with bio-async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_connect_bio_async: coordinator->bio_ctx is NULL");
         return -1;
     }
 
@@ -340,6 +347,7 @@ int neural_plasticity_register_neuron(
     const neuron_model_vtable_t* vtable
 ) {
     if (!coordinator || !coordinator->neuron_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_register_neuron: required parameter is NULL (coordinator, coordinator->neuron_bridge)");
         return -1;
     }
 
@@ -357,6 +365,7 @@ int neural_plasticity_add_neuron_axon(
     uint32_t axon_id
 ) {
     if (!coordinator || !coordinator->neuron_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_add_neuron_axon: required parameter is NULL (coordinator, coordinator->neuron_bridge)");
         return -1;
     }
 
@@ -373,6 +382,7 @@ int neural_plasticity_add_neuron_dendrite(
     uint32_t dendrite_id
 ) {
     if (!coordinator || !coordinator->neuron_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_add_neuron_dendrite: required parameter is NULL (coordinator, coordinator->neuron_bridge)");
         return -1;
     }
 
@@ -572,6 +582,7 @@ int neural_plasticity_reward(
     uint64_t timestamp_us
 ) {
     if (!coordinator || !coordinator->orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_reward: required parameter is NULL (coordinator, coordinator->orchestrator)");
         return -1;
     }
 
@@ -603,6 +614,7 @@ int neural_plasticity_set_weight(
     float weight
 ) {
     if (!coordinator || !coordinator->orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_set_weight: required parameter is NULL (coordinator, coordinator->orchestrator)");
         return -1;
     }
 
@@ -639,6 +651,7 @@ int neural_plasticity_get_stats(
     neural_plasticity_stats_t* stats
 ) {
     if (!coordinator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_plasticity_get_stats: required parameter is NULL (coordinator, stats)");
         return -1;
     }
 

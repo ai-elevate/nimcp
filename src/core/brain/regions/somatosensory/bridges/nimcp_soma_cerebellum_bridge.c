@@ -90,7 +90,10 @@ struct soma_cereb_bridge_struct {
  * ============================================================================ */
 
 int soma_cereb_default_config(soma_cereb_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(soma_cereb_config_t));
 
@@ -126,6 +129,7 @@ soma_cereb_bridge_t* soma_cereb_bridge_create(const soma_cereb_config_t* config)
         bridge->config.max_joints, sizeof(soma_cereb_joint_state_t));
     if (!bridge->joint_states) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_cereb_bridge_create: bridge->joint_states is NULL");
         return NULL;
     }
 
@@ -134,6 +138,7 @@ soma_cereb_bridge_t* soma_cereb_bridge_create(const soma_cereb_config_t* config)
     if (!bridge->prediction_buffer) {
         nimcp_free(bridge->joint_states);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_cereb_bridge_create: bridge->prediction_buffer is NULL");
         return NULL;
     }
 
@@ -158,7 +163,10 @@ void soma_cereb_bridge_destroy(soma_cereb_bridge_t* bridge) {
  * ============================================================================ */
 
 int soma_cereb_connect(soma_cereb_bridge_t* bridge, nimcp_somatosensory_t* soma, void* cerebellum) {
-    if (!bridge || !soma) return -1;
+    if (!bridge || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_connect: required parameter is NULL (bridge, soma)");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->cerebellum = cerebellum;
@@ -169,7 +177,10 @@ int soma_cereb_connect(soma_cereb_bridge_t* bridge, nimcp_somatosensory_t* soma,
 }
 
 int soma_cereb_disconnect(soma_cereb_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->cerebellum = NULL;
@@ -189,8 +200,14 @@ bool soma_cereb_is_connected(const soma_cereb_bridge_t* bridge) {
 int soma_cereb_send_proprio(soma_cereb_bridge_t* bridge,
                             const soma_cereb_joint_state_t* joints,
                             uint32_t num_joints) {
-    if (!bridge || !bridge->is_connected || !joints) return -1;
-    if (num_joints > bridge->config.max_joints) return -1;
+    if (!bridge || !bridge->is_connected || !joints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, bridge->is_connected, joints)");
+        return -1;
+    }
+    if (num_joints > bridge->config.max_joints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_cereb_is_connected: validation failed");
+        return -1;
+    }
 
     memcpy(bridge->joint_states, joints, num_joints * sizeof(soma_cereb_joint_state_t));
     bridge->num_joints = num_joints;
@@ -203,7 +220,10 @@ int soma_cereb_send_proprio(soma_cereb_bridge_t* bridge,
 int soma_cereb_send_touch_during_move(soma_cereb_bridge_t* bridge,
                                       body_segment_t region,
                                       float intensity) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     (void)region;
     (void)intensity;
 
@@ -214,7 +234,10 @@ int soma_cereb_send_touch_during_move(soma_cereb_bridge_t* bridge,
 
 int soma_cereb_send_balance_update(soma_cereb_bridge_t* bridge,
                                    float roll, float pitch, float yaw) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     (void)roll;
     (void)pitch;
     (void)yaw;
@@ -228,7 +251,10 @@ int soma_cereb_send_balance_update(soma_cereb_bridge_t* bridge,
 
 int soma_cereb_send_prediction_error(soma_cereb_bridge_t* bridge,
                                      const soma_cereb_prediction_error_t* error) {
-    if (!bridge || !bridge->is_connected || !error) return -1;
+    if (!bridge || !bridge->is_connected || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, bridge->is_connected, error)");
+        return -1;
+    }
 
     bridge->stats.prediction_errors++;
     bridge->stats.avg_prediction_error =
@@ -246,7 +272,10 @@ int soma_cereb_send_prediction_error(soma_cereb_bridge_t* bridge,
 
 int soma_cereb_receive_efference(soma_cereb_bridge_t* bridge,
                                  soma_cereb_efference_t* efference) {
-    if (!bridge || !bridge->is_connected || !efference) return -1;
+    if (!bridge || !bridge->is_connected || !efference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, bridge->is_connected, efference)");
+        return -1;
+    }
 
     bridge->stats.efference_copies++;
 
@@ -256,8 +285,14 @@ int soma_cereb_receive_efference(soma_cereb_bridge_t* bridge,
 int soma_cereb_compute_prediction(soma_cereb_bridge_t* bridge,
                                   const soma_cereb_efference_t* efference,
                                   float* prediction) {
-    if (!bridge || !efference || !prediction) return -1;
-    if (!bridge->config.enable_prediction) return -1;
+    if (!bridge || !efference || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: required parameter is NULL (bridge, efference, prediction)");
+        return -1;
+    }
+    if (!bridge->config.enable_prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_is_connected: bridge->config is NULL");
+        return -1;
+    }
 
     /* Simple forward model prediction */
     for (uint32_t i = 0; i < efference->prediction_dim && i < bridge->prediction_dim; i++) {
@@ -272,7 +307,10 @@ int soma_cereb_compute_prediction(soma_cereb_bridge_t* bridge,
  * ============================================================================ */
 
 int soma_cereb_request_coordination(soma_cereb_bridge_t* bridge, uint32_t task_id) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_request_coordination: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     (void)task_id;
 
     bridge->status = SOMA_CEREB_STATUS_COORDINATING;
@@ -282,7 +320,10 @@ int soma_cereb_request_coordination(soma_cereb_bridge_t* bridge, uint32_t task_i
 
 int soma_cereb_report_movement_complete(soma_cereb_bridge_t* bridge,
                                         uint32_t task_id, bool success) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_request_coordination: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     (void)task_id;
     (void)success;
 
@@ -296,13 +337,19 @@ int soma_cereb_report_movement_complete(soma_cereb_bridge_t* bridge,
  * ============================================================================ */
 
 int soma_cereb_get_stats(const soma_cereb_bridge_t* bridge, soma_cereb_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(soma_cereb_stats_t));
     return 0;
 }
 
 int soma_cereb_reset_stats(soma_cereb_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_cereb_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(soma_cereb_stats_t));
     return 0;
 }

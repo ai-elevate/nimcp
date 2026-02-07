@@ -258,12 +258,14 @@ nimcp_loss_context_t* nimcp_loss_create(
 {
     if (!config) {
         LOG_ERROR(LOSS_MODULE_NAME, "NULL config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_loss_create: config is NULL");
         return NULL;
     }
 
     nimcp_loss_context_t* ctx = (nimcp_loss_context_t*)nimcp_calloc(1, sizeof(nimcp_loss_context_t));
     if (!ctx) {
         LOG_ERROR(LOSS_MODULE_NAME, "Failed to allocate loss context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_loss_create: ctx is NULL");
         return NULL;
     }
 
@@ -1334,7 +1336,10 @@ void nimcp_loss_result_free(nimcp_loss_result_t* result) {
 }
 
 bool nimcp_loss_is_registered(const nimcp_loss_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_loss_is_registered: ctx is NULL");
+        return false;
+    }
     return ctx->security_registered;
 }
 
@@ -1404,11 +1409,13 @@ nimcp_tensor_t* nimcp_loss_mse_grad_tensor(
     const nimcp_tensor_t* targets
 ) {
     if (!predictions || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_loss_mse_grad_tensor: required parameter is NULL (predictions, targets)");
         return NULL;
     }
 
     size_t n = nimcp_tensor_numel(predictions);
     if (n != nimcp_tensor_numel(targets) || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_loss_mse_grad_tensor: n is zero");
         return NULL;
     }
 

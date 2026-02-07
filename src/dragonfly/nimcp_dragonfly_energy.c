@@ -128,23 +128,62 @@ energy_config_t energy_default_config(void) {
 }
 
 bool energy_validate_config(const energy_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->max_energy_j <= 0.0f) return false;
-    if (config->reserve_fraction < 0.0f || config->reserve_fraction > 1.0f) return false;
+    if (config->max_energy_j <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->reserve_fraction < 0.0f || config->reserve_fraction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->rest_power_w < 0.0f) return false;
-    if (config->hover_power_w < config->rest_power_w) return false;
-    if (config->patrol_power_w < config->hover_power_w) return false;
-    if (config->pursuit_power_w < config->patrol_power_w) return false;
-    if (config->max_power_w < config->pursuit_power_w) return false;
+    if (config->rest_power_w < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->hover_power_w < config->rest_power_w) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->patrol_power_w < config->hover_power_w) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->pursuit_power_w < config->patrol_power_w) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_power_w < config->pursuit_power_w) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->small_prey_value_j < 0.0f) return false;
-    if (config->medium_prey_value_j < config->small_prey_value_j) return false;
-    if (config->large_prey_value_j < config->medium_prey_value_j) return false;
+    if (config->small_prey_value_j < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->medium_prey_value_j < config->small_prey_value_j) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->large_prey_value_j < config->medium_prey_value_j) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_roi_threshold < 0.0f) return false;
-    if (config->recovery_rate_w < 0.0f) return false;
+    if (config->min_roi_threshold < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
+    if (config->recovery_rate_w < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "energy_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -256,7 +295,10 @@ void dragonfly_energy_destroy(dragonfly_energy_t energy) {
 }
 
 int dragonfly_energy_reset(dragonfly_energy_t energy) {
-    if (!energy) return -1;
+    if (!energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_reset: energy is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(energy->mutex);
 
@@ -283,7 +325,10 @@ int dragonfly_energy_update(
     activity_type_t activity,
     float dt_s
 ) {
-    if (!energy || dt_s <= 0.0f) return -1;
+    if (!energy || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_energy_update: energy is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(energy->mutex);
 
@@ -323,7 +368,10 @@ int dragonfly_energy_spend(
     float amount_j,
     const char* reason
 ) {
-    if (!energy || amount_j < 0.0f) return -1;
+    if (!energy || amount_j < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_energy_spend: energy is NULL");
+        return -1;
+    }
     (void)reason;  /* For logging */
 
     nimcp_mutex_lock(energy->mutex);
@@ -346,7 +394,10 @@ int dragonfly_energy_gain(
     dragonfly_energy_t energy,
     float amount_j
 ) {
-    if (!energy || amount_j < 0.0f) return -1;
+    if (!energy || amount_j < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_energy_gain: energy is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(energy->mutex);
 
@@ -369,7 +420,10 @@ int dragonfly_energy_capture_prey(
     float prey_size,
     float pursuit_energy_j
 ) {
-    if (!energy) return -1;
+    if (!energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_capture_prey: energy is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(energy->mutex);
 
@@ -417,7 +471,10 @@ int dragonfly_energy_estimate_pursuit(
     float success_probability,
     pursuit_energy_t* estimate
 ) {
-    if (!energy || !solution || !estimate) return -1;
+    if (!energy || !solution || !estimate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_estimate_pursuit: required parameter is NULL (energy, solution, estimate)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
 
@@ -466,7 +523,10 @@ int dragonfly_energy_optimize_pursuit(
     float prey_size,
     energy_optimization_t* optimization
 ) {
-    if (!energy || !self || !target || !optimization) return -1;
+    if (!energy || !self || !target || !optimization) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_optimize_pursuit: required parameter is NULL (energy, self, target, optimization)");
+        return -1;
+    }
     (void)self;  /* For future distance-based optimization */
     (void)target;
 
@@ -511,7 +571,10 @@ bool dragonfly_energy_can_afford(
     const dragonfly_energy_t energy,
     float estimated_cost_j
 ) {
-    if (!energy) return false;
+    if (!energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_can_afford: energy is NULL");
+        return false;
+    }
 
     float available = energy->budget.current_energy_j - energy->budget.reserve_minimum_j;
     return estimated_cost_j < available;
@@ -525,7 +588,10 @@ int dragonfly_energy_get_budget(
     const dragonfly_energy_t energy,
     energy_budget_t* budget
 ) {
-    if (!energy || !budget) return -1;
+    if (!energy || !budget) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_get_budget: required parameter is NULL (energy, budget)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
     *budget = energy->budget;
@@ -548,7 +614,10 @@ int dragonfly_energy_get_stats(
     const dragonfly_energy_t energy,
     energy_stats_t* stats
 ) {
-    if (!energy || !stats) return -1;
+    if (!energy || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_energy_get_stats: required parameter is NULL (energy, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)energy->mutex);
 

@@ -119,6 +119,7 @@ static int32_t find_free_slot(nimcp_capability_system_t* caps)
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: required parameter is NULL (caps->entries, caps->entries)");
     return -1;
 }
 
@@ -129,18 +130,24 @@ static nimcp_cap_entry_t* validate_capability(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability)
 {
-    if (!caps || capability.index >= NIMCP_CAP_MAX_CAPABILITIES)
+    if (!caps || capability.index >= NIMCP_CAP_MAX_CAPABILITIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_capability: caps is NULL");
         return NULL;
+    }
 
     nimcp_cap_entry_t* entry = &caps->entries[capability.index];
 
     // Check validity
-    if (!entry->valid || entry->revoked)
+    if (!entry->valid || entry->revoked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_capability: entry->valid is NULL");
         return NULL;
+    }
 
     // Check generation (prevents use-after-revoke attacks)
-    if (entry->generation != capability.generation)
+    if (entry->generation != capability.generation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_capability: validation failed");
         return NULL;
+    }
 
     return entry;
 }
@@ -404,8 +411,10 @@ bool nimcp_capability_is_valid(
     nimcp_capability_system_t* caps,
     nimcp_capability_t capability)
 {
-    if (!caps)
+    if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_capability_is_valid: caps is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(caps->mutex);
     bool valid = validate_capability(caps, capability) != NULL;
@@ -428,6 +437,7 @@ static bool capability_check_unlocked(
     nimcp_cap_entry_t* entry = validate_capability(caps, capability);
     if (!entry) {
         caps->stats.checks_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capability_check_unlocked: entry is NULL");
         return false;
     }
 
@@ -455,8 +465,10 @@ bool nimcp_capability_check(
     nimcp_capability_t capability,
     uint32_t permission)
 {
-    if (!caps)
+    if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_capability_check: caps is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(caps->mutex);
     bool result = capability_check_unlocked(caps, capability, permission);
@@ -471,8 +483,10 @@ bool nimcp_capability_check_access(
     void* resource_ptr,
     uint32_t permission)
 {
-    if (!caps)
+    if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_capability_check_access: caps is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(caps->mutex);
 
@@ -480,6 +494,7 @@ bool nimcp_capability_check_access(
     if (!entry) {
         caps->stats.checks_failed++;
         nimcp_mutex_unlock(caps->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_capability_check_access: entry is NULL");
         return false;
     }
 
@@ -487,6 +502,7 @@ bool nimcp_capability_check_access(
     if (entry->resource_ptr != NULL && entry->resource_ptr != resource_ptr) {
         caps->stats.checks_failed++;
         nimcp_mutex_unlock(caps->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_capability_check_access: validation failed");
         return false;
     }
 

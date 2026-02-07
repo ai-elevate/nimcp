@@ -266,6 +266,7 @@ static mirror_emotion_agent_state_t* get_or_create_agent(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_agent: operation failed");
     return NULL; /* No slots available */
 }
 
@@ -423,6 +424,7 @@ mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* co
     mirror_emotion_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_emotion_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_emotion_create: bridge is NULL");
         return NULL;
     }
 
@@ -443,6 +445,7 @@ mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* co
     if (bridge_base_init(&bridge->base, 0, "mirror_emotion") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to initialize bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_emotion_create: validation failed");
         return NULL;
     }
 
@@ -541,6 +544,7 @@ bool mirror_emotion_process_observation(
     if (observation->resonance_strength < bridge->config.resonance_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.total_observations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_process_observation: validation failed");
         return false;  /* Insufficient resonance */
     }
 
@@ -922,7 +926,10 @@ void mirror_emotion_set_crisis_mode(
 }
 
 bool mirror_emotion_register_bio_async(mirror_emotion_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_registered) return false;
+    if (!bridge || bridge->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_register_bio_async: bridge is NULL");
+        return false;
+    }
 
     /* Mark as registered - actual router registration would happen
      * when integrated into a full bio-async context */

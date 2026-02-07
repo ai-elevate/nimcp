@@ -165,6 +165,7 @@ static bool neuron_step(bias_neuron_t* neuron, float dt_ms, float input) {
 
     if (neuron->refractory_remaining > 0.0f) {
         neuron->refractory_remaining -= dt_ms;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: validation failed");
         return false;
     }
 
@@ -186,6 +187,7 @@ static bool neuron_step(bias_neuron_t* neuron, float dt_ms, float input) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: capacity exceeded");
     return false;
 }
 
@@ -256,6 +258,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->bias_neurons = nimcp_calloc(bridge->num_types, sizeof(bias_neuron_t*));
     if (!bridge->bias_neurons) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_snn_create: bridge->bias_neurons is NULL");
         return NULL;
     }
 
@@ -279,6 +282,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
             }
             nimcp_free(bridge->bias_neurons);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_snn_create: validation failed");
             return NULL;
         }
         for (uint32_t n = 0; n < config->neurons_per_type; n++) {
@@ -297,6 +301,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->conflict_neurons = nimcp_calloc(bridge->num_conflict_neurons, sizeof(bias_neuron_t));
     if (!bridge->conflict_neurons) {
         bias_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_snn_create: bridge->conflict_neurons is NULL");
         return NULL;
     }
     for (uint32_t n = 0; n < bridge->num_conflict_neurons; n++) {
@@ -314,6 +319,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->output_neurons = nimcp_calloc(bridge->num_output_neurons, sizeof(bias_neuron_t));
     if (!bridge->output_neurons) {
         bias_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_snn_create: bridge->output_neurons is NULL");
         return NULL;
     }
     for (uint32_t n = 0; n < bridge->num_output_neurons; n++) {
@@ -331,6 +337,7 @@ bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
     bridge->type_confidences = nimcp_calloc(bridge->num_types, sizeof(float));
     if (!bridge->type_activations || !bridge->type_confidences) {
         bias_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_snn_create: required parameter is NULL (bridge->type_activations, bridge->type_confidences)");
         return NULL;
     }
 
@@ -366,7 +373,10 @@ void bias_snn_destroy(bias_snn_bridge_t* bridge) {
 }
 
 int bias_snn_reset(bias_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_reset", 0.0f);
@@ -439,7 +449,10 @@ int bias_snn_encode_evidence(
     uint32_t evidence_count,
     float prior_belief
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_encode_evidence: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_evid", 0.0f);
@@ -500,7 +513,10 @@ int bias_snn_encode_decision_context(
     float recent_evidence_weight,
     float emotional_valence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_encode_decision_context: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_deci", 0.0f);
@@ -566,7 +582,10 @@ int bias_snn_encode_prediction_error(
     float prediction_error,
     float prediction_confidence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_encode_prediction_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_encode_pred", 0.0f);
@@ -598,7 +617,10 @@ int bias_snn_encode_prediction_error(
 //=============================================================================
 
 int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_simulate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_simulate", 0.0f);
@@ -624,7 +646,10 @@ int bias_snn_simulate(bias_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int bias_snn_step(bias_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_step: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_step", 0.0f);
@@ -731,7 +756,10 @@ int bias_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     // Distribute inputs to bias type neurons
     /* Phase 8: Heartbeat at operation start */
@@ -768,7 +796,10 @@ int bias_snn_detect_biases(
     bias_snn_bridge_t* bridge,
     bias_snn_output_t* output
 ) {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_detect_biases: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_detect_bias", 0.0f);
@@ -909,7 +940,10 @@ int bias_snn_get_type_state(
     bias_snn_type_t type,
     bias_type_state_t* state
 ) {
-    if (!bridge || !state || type >= BIAS_SNN_TYPE_COUNT) return -1;
+    if (!bridge || !state || type >= BIAS_SNN_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_get_type_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_type_st", 0.0f);
@@ -942,7 +976,10 @@ int bias_snn_get_state(
     bias_snn_bridge_t* bridge,
     bias_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_state", 0.0f);
@@ -985,7 +1022,10 @@ int bias_snn_get_state(
 }
 
 int bias_snn_get_stats(bias_snn_bridge_t* bridge, bias_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_get_stats", 0.0f);
@@ -995,7 +1035,10 @@ int bias_snn_get_stats(bias_snn_bridge_t* bridge, bias_snn_stats_t* stats) {
 }
 
 int bias_snn_reset_stats(bias_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_reset_stats", 0.0f);
 
@@ -1013,7 +1056,10 @@ int bias_snn_register_detection_callback(
     bias_snn_detection_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_register_detection_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_register_de", 0.0f);
 
@@ -1028,7 +1074,10 @@ int bias_snn_register_conflict_callback(
     bias_snn_conflict_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_register_conflict_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_register_co", 0.0f);
 
@@ -1043,8 +1092,14 @@ int bias_snn_register_conflict_callback(
 //=============================================================================
 
 int bias_snn_bio_async_connect(bias_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_bio_async_c", 0.0f);
 
@@ -1054,7 +1109,10 @@ int bias_snn_bio_async_connect(bias_snn_bridge_t* bridge) {
 }
 
 int bias_snn_bio_async_disconnect(bias_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_bio_async_d", 0.0f);
 
@@ -1064,7 +1122,10 @@ int bias_snn_bio_async_disconnect(bias_snn_bridge_t* bridge) {
 }
 
 bool bias_snn_is_bio_async_connected(bias_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     bias_snn_bridge_heartbeat("bias_snn_bri_bias_snn_is_bio_asyn", 0.0f);
 

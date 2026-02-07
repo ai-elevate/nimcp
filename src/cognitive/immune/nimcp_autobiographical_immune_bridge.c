@@ -228,6 +228,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     if (!immune_system || !autobio_memory) {
         LOG_MODULE_ERROR("autobio_immune_bridge",
                   "Cannot create bridge without immune and autobio memory systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_bridge_create: required parameter is NULL (immune_system, autobio_memory)");
         return NULL;
     }
 
@@ -272,6 +273,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
         nimcp_malloc(sizeof(sickness_landmark_t) * bridge->sickness_landmark_capacity);
     if (!bridge->sickness_landmarks) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_bridge_create: bridge->sickness_landmarks is NULL");
         return NULL;
     }
 
@@ -322,7 +324,10 @@ int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* brid
 
     }
     if (!bridge->enable_cytokine_encoding_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_apply_cytokine_encoding_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
@@ -384,7 +389,10 @@ int autobio_immune_apply_inflammation_consolidation_effects(
 
     }
     if (!bridge->enable_inflammation_consolidation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_apply_inflammation_consolidation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_apply", 0.0f);
@@ -464,9 +472,15 @@ int autobio_immune_create_sickness_landmark(
     uint64_t* landmark_id
 ) {
     /* Guard clauses */
-    if (!bridge || !landmark_id) return -1;
+    if (!bridge || !landmark_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_create_sickness_landmark: required parameter is NULL (bridge, landmark_id)");
+        return -1;
+    }
     if (!bridge->enable_sickness_landmark_creation) return 0;
-    if (!bridge->autobio_memory) return -1;
+    if (!bridge->autobio_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_create_sickness_landmark: bridge->autobio_memory is NULL");
+        return -1;
+    }
     if (severity < INFLAMMATION_SYSTEMIC) return 0; /* Only create for systemic+ */
 
     /* Phase 8: Heartbeat at operation start */
@@ -478,6 +492,7 @@ int autobio_immune_create_sickness_landmark(
     /* Check capacity */
     if (bridge->sickness_landmark_count >= bridge->sickness_landmark_capacity) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "autobio_immune_create_sickness_landmark: capacity exceeded");
         return -1;
     }
 
@@ -505,6 +520,7 @@ int autobio_immune_create_sickness_landmark(
     uint64_t mem_id = autobio_store(*bridge->autobio_memory, &memory);
     if (mem_id == 0) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_immune_create_sickness_landmark: mem_id is zero");
         return -1;
     }
 
@@ -547,7 +563,10 @@ int autobio_immune_close_sickness_landmark(
 
     }
     if (!bridge->autobio_memory) return -1;
-    if (landmark_id == 0) return -1;
+    if (landmark_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_immune_close_sickness_landmark: landmark_id is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_close", 0.0f);
@@ -572,6 +591,7 @@ int autobio_immune_close_sickness_landmark(
 
     if (!landmark) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_close_sickness_landmark: landmark is NULL");
         return -1;
     }
 
@@ -619,9 +639,15 @@ int autobio_immune_trigger_from_trauma_recall(
     const autobiographical_memory_entry_t* memory
 ) {
     /* Guard clauses */
-    if (!bridge || !memory) return -1;
+    if (!bridge || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_trigger_from_trauma_recall: required parameter is NULL (bridge, memory)");
+        return -1;
+    }
     if (!bridge->enable_trauma_memory_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_trigger_from_trauma_recall: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Check if memory is traumatic enough to trigger immune */
     /* Phase 8: Heartbeat at operation start */
@@ -678,7 +704,10 @@ int autobio_immune_ruminate_on_negative_memory(
 
     }
     if (!bridge->enable_rumination_tracking) return 0;
-    if (!bridge->autobio_memory) return -1;
+    if (!bridge->autobio_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_ruminate_on_negative_memory: bridge->autobio_memory is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_rumin", 0.0f);
@@ -709,9 +738,15 @@ int autobio_immune_boost_from_positive_memory(
     const autobiographical_memory_entry_t* memory
 ) {
     /* Guard clauses */
-    if (!bridge || !memory) return -1;
+    if (!bridge || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_boost_from_positive_memory: required parameter is NULL (bridge, memory)");
+        return -1;
+    }
     if (!bridge->enable_positive_memory_immune_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_boost_from_positive_memory: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Check if memory is positive enough to boost immune */
     /* Phase 8: Heartbeat at operation start */
@@ -755,7 +790,10 @@ int autobio_immune_boost_from_positive_memory(
 bool autobio_immune_is_identity_threatening(
     const autobiographical_memory_entry_t* memory
 ) {
-    if (!memory) return false;
+    if (!memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_immune_is_identity_threatening: memory is NULL");
+        return false;
+    }
 
     /* Identity-threatening: core memory + negative + high importance */
     /* Phase 8: Heartbeat at operation start */
@@ -836,7 +874,10 @@ int autobio_immune_get_cytokine_effects(
     const autobio_immune_bridge_t* bridge,
     cytokine_memory_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_c", 0.0f);
@@ -853,7 +894,10 @@ int autobio_immune_get_inflammation_state(
     const autobio_immune_bridge_t* bridge,
     inflammation_memory_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_i", 0.0f);
@@ -867,7 +911,10 @@ int autobio_immune_get_inflammation_state(
 }
 
 bool autobio_immune_is_sickness_affecting_memory(const autobio_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_is_sickness_affecting_memory: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_is_si", 0.0f);
@@ -883,7 +930,10 @@ int autobio_immune_get_sickness_landmarks(
     uint32_t max_landmarks,
     uint32_t* num_found
 ) {
-    if (!bridge || !landmarks || !num_found) return -1;
+    if (!bridge || !landmarks || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_immune_get_sickness_landmarks: required parameter is NULL (bridge, landmarks, num_found)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobio_immune_get_s", 0.0f);
@@ -994,7 +1044,10 @@ int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge
  * @brief Check if bio-async is connected
  */
 bool autobiographical_immune_is_bio_async_connected(const autobio_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     autobiographical_immune_bridge_heartbeat("autobiograph_autobiographical_imm", 0.0f);
 

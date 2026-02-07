@@ -113,7 +113,10 @@ static brain_kg_edge_id_t create_ofc_edge(
 //=============================================================================
 
 int ofc_kg_default_config(ofc_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_lateral = true;
     config->register_medial = true;
@@ -138,7 +141,10 @@ int ofc_kg_register_all(
     ofc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     ofc_kg_config_t local_config;
@@ -161,6 +167,7 @@ int ofc_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(OFC_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -217,7 +224,10 @@ int ofc_kg_register_subdivisions(
     ofc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_register_subdivisions: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register lateral OFC */
     if (!config || config->register_lateral) {
@@ -430,7 +440,10 @@ int ofc_kg_register_value_nodes(
     ofc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_register_value_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create value computation subsystem node */
     state->value_system_id = create_ofc_node(
@@ -439,7 +452,10 @@ int ofc_kg_register_value_nodes(
         "Value computation system - economic utility estimation",
         admin_token
     );
-    if (state->value_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->value_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_kg_register_value_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -494,7 +510,10 @@ int ofc_kg_register_decision_nodes(
     ofc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_register_decision_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create decision system subsystem node */
     state->decision_system_id = create_ofc_node(
@@ -503,7 +522,10 @@ int ofc_kg_register_decision_nodes(
         "Decision system - choice selection and execution",
         admin_token
     );
-    if (state->decision_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->decision_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_kg_register_decision_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -712,7 +734,10 @@ int ofc_kg_register_cross_edges(
     ofc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register value-to-decision edges */
     register_value_decision_edges(kg, state, admin_token);
@@ -740,7 +765,10 @@ int ofc_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update expected value metadata */
     if (state->expected_value_id != BRAIN_KG_INVALID_NODE) {
@@ -835,7 +863,10 @@ int ofc_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Would be used for actual deletion */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /*
      * Note: Full implementation would remove nodes in reverse order

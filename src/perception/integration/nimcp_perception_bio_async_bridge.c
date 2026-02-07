@@ -73,7 +73,10 @@ static percept_bio_subscription_t* find_subscription(
     percept_modality_t modality,
     uint32_t module_id
 ) {
-    if (modality >= PERCEPT_MODALITY_COUNT) return NULL;
+    if (modality >= PERCEPT_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_subscription: capacity exceeded");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < b->subscription_count[modality]; i++) {
         if (b->subscriptions[modality][i].module_id == module_id &&
@@ -81,6 +84,7 @@ static percept_bio_subscription_t* find_subscription(
             return &b->subscriptions[modality][i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_subscription: capacity exceeded");
     return NULL;
 }
 
@@ -133,7 +137,10 @@ static void init_percept_header(
  * ============================================================================ */
 
 int perception_bio_async_default_config(perception_bio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     /* Broadcast timing - aligned with typical perceptual refresh rates */
     config->visual_broadcast_interval_ms = PERCEPT_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
@@ -206,6 +213,7 @@ perception_bio_bridge_t* perception_bio_async_bridge_create(
                 nimcp_free(bridge->subscriptions[j]);
             }
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_bridge_create: bridge->subscriptions is NULL");
             return NULL;
         }
         bridge->subscription_count[m] = 0;
@@ -245,7 +253,10 @@ int perception_bio_async_connect(
     perception_bio_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->router = router;
     bridge->connected = true;
@@ -257,7 +268,10 @@ int perception_bio_async_connect(
 }
 
 int perception_bio_async_disconnect(perception_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->router = NULL;
     bridge->connected = false;
@@ -282,7 +296,10 @@ int perception_bio_async_process_inbox(
     perception_bio_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -298,7 +315,10 @@ int perception_bio_async_update(
     perception_bio_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Update timing counters */
     bridge->time_since_visual_broadcast_ms += delta_ms;
@@ -333,8 +353,14 @@ int perception_bio_async_broadcast_visual_feature(
     float strength,
     const void* feature_data
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_feature: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_feature: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_visual_routing) return 0;
 
     percept_visual_feature_msg_t msg = {0};
@@ -388,8 +414,14 @@ int perception_bio_async_broadcast_visual_object(
     const float* position,
     float confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_object: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_object: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_visual_routing) return 0;
 
     percept_object_detected_msg_t msg = {0};
@@ -427,8 +459,14 @@ int perception_bio_async_broadcast_visual_attention(
     const float* new_target,
     float salience
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!new_target) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_attention: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!new_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_visual_attention: new_target is NULL");
+        return -1;
+    }
 
     percept_message_header_t header = {0};
     nimcp_bio_channel_type_t channel = (salience >= bridge->config.salience_urgent_threshold)
@@ -463,7 +501,10 @@ int perception_bio_async_broadcast_auditory_feature(
     float amplitude,
     float duration_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_auditory_feature: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_auditory_routing) return 0;
 
     percept_auditory_feature_msg_t msg = {0};
@@ -491,8 +532,14 @@ int perception_bio_async_broadcast_word_recognized(
     const char* word_text,
     float confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!word_text) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_word_recognized: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!word_text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_word_recognized: word_text is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_auditory_routing) return 0;
 
     percept_auditory_feature_msg_t msg = {0};
@@ -520,7 +567,10 @@ int perception_bio_async_broadcast_auditory_spatial(
     float elevation,
     float distance
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_auditory_spatial: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_auditory_routing) return 0;
 
     percept_auditory_feature_msg_t msg = {0};
@@ -553,8 +603,14 @@ int perception_bio_async_broadcast_touch(
     const float* position,
     float pressure
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_touch: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_touch: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_somato_routing) return 0;
 
     percept_message_header_t header = {0};
@@ -579,7 +635,10 @@ int perception_bio_async_broadcast_pain(
     float intensity,
     bool is_urgent
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_pain: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_somato_routing) return 0;
 
     percept_message_header_t header = {0};
@@ -610,8 +669,14 @@ int perception_bio_async_broadcast_proprioception(
     const float* position,
     const float* velocity
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position || !velocity) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_proprioception: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position || !velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_proprioception: required parameter is NULL (position, velocity)");
+        return -1;
+    }
     if (!bridge->config.enable_somato_routing) return 0;
 
     percept_message_header_t header = {0};
@@ -698,7 +763,10 @@ int perception_bio_async_broadcast_binding_result(
     uint32_t bound_object_id,
     float binding_strength
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_binding_result: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_binding) return 0;
 
     percept_binding_result_msg_t msg = {0};
@@ -737,8 +805,14 @@ int perception_bio_async_broadcast_multimodal_object(
     const float* position,
     float confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_multimodal_object: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_multimodal_object: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_binding) return 0;
 
     percept_object_detected_msg_t msg = {0};
@@ -781,9 +855,18 @@ int perception_bio_async_broadcast_salience(
     const float* peak_position,
     float peak_salience
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!peak_position) return -1;
-    if (modality >= PERCEPT_MODALITY_COUNT) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_salience: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!peak_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_salience: peak_position is NULL");
+        return -1;
+    }
+    if (modality >= PERCEPT_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_salience: capacity exceeded");
+        return -1;
+    }
 
     percept_salience_map_msg_t msg = {0};
     nimcp_bio_channel_type_t channel = (peak_salience >= bridge->config.salience_urgent_threshold)
@@ -817,9 +900,18 @@ int perception_bio_async_broadcast_novelty(
     float novelty_level,
     const float* position
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
-    if (modality >= PERCEPT_MODALITY_COUNT) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_novelty: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_novelty: position is NULL");
+        return -1;
+    }
+    if (modality >= PERCEPT_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_novelty: capacity exceeded");
+        return -1;
+    }
 
     percept_message_header_t header = {0};
     nimcp_bio_channel_type_t channel = (novelty_level >= bridge->config.salience_urgent_threshold)
@@ -847,10 +939,22 @@ int perception_bio_async_broadcast_cross_modal_attention(
     percept_modality_t target_modality,
     const float* position
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
-    if (source_modality >= PERCEPT_MODALITY_COUNT) return -1;
-    if (target_modality >= PERCEPT_MODALITY_COUNT) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_cross_modal_attention: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_broadcast_cross_modal_attention: position is NULL");
+        return -1;
+    }
+    if (source_modality >= PERCEPT_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
+        return -1;
+    }
+    if (target_modality >= PERCEPT_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "perception_bio_async_broadcast_cross_modal_attention: capacity exceeded");
+        return -1;
+    }
 
     percept_message_header_t header = {0};
     init_percept_header(&header, PERCEPT_MSG_CROSS_MODAL_ATTENTION,
@@ -879,7 +983,10 @@ int perception_bio_async_subscribe_module(
     uint32_t msg_types_low,
     uint32_t msg_types_high
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Handle subscription to all modalities */
     if (modality >= PERCEPT_MODALITY_COUNT) {
@@ -930,7 +1037,10 @@ int perception_bio_async_unsubscribe_module(
     uint32_t module_id,
     percept_modality_t modality
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Handle unsubscription from all modalities */
     if (modality >= PERCEPT_MODALITY_COUNT) {
@@ -942,7 +1052,10 @@ int perception_bio_async_unsubscribe_module(
     }
 
     percept_bio_subscription_t* sub = find_subscription(bridge, modality, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask_low = 0;
@@ -969,14 +1082,20 @@ int perception_bio_async_get_stats(
     const perception_bio_bridge_t* bridge,
     perception_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int perception_bio_async_reset_stats(perception_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Preserve active subscription counts */
     uint32_t active_subs[PERCEPT_MODALITY_COUNT];

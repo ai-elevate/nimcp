@@ -100,6 +100,7 @@ int motor_thalamic_bridge_reset(motor_thalamic_bridge_t* bridge) {
 int motor_thalamic_route_signal(motor_thalamic_bridge_t* bridge,
                                  const motor_thalamic_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_thalamic_bridge_reset: required parameter is NULL (bridge, signal)");
         return -1;
     }
 
@@ -166,6 +167,7 @@ int motor_thalamic_set_attention(motor_thalamic_bridge_t* bridge, float attentio
     }
 
     if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_thalamic_set_attention: validation failed");
         return -1;
     }
 
@@ -175,6 +177,7 @@ int motor_thalamic_set_attention(motor_thalamic_bridge_t* bridge, float attentio
 
 int motor_thalamic_get_attention(const motor_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
 
@@ -185,6 +188,7 @@ int motor_thalamic_get_attention(const motor_thalamic_bridge_t* bridge, float* a
 int motor_thalamic_bridge_get_stats(const motor_thalamic_bridge_t* bridge,
                                      motor_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_thalamic_get_attention: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

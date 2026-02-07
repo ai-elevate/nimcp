@@ -125,7 +125,10 @@ void bg_neuromod_destroy(bg_neuromod_system_t* system) {
 }
 
 int bg_neuromod_reset(bg_neuromod_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_reset: system is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
     system->levels = system->config.baseline;
     system->targets = system->config.baseline;
@@ -142,7 +145,10 @@ int bg_neuromod_reset(bg_neuromod_system_t* system) {
  * ============================================================================ */
 
 int bg_neuromod_set_level(bg_neuromod_system_t* system, bg_neuromod_type_t type, float level) {
-    if (!system || type >= BG_NEUROMOD_COUNT) return -1;
+    if (!system || type >= BG_NEUROMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_neuromod_set_level: system is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
     level = clamp_f(level, 0.0f, 1.0f);
     switch (type) {
@@ -158,7 +164,10 @@ int bg_neuromod_set_level(bg_neuromod_system_t* system, bg_neuromod_type_t type,
 }
 
 int bg_neuromod_trigger_release(bg_neuromod_system_t* system, bg_neuromod_type_t type, float magnitude) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_trigger_release: system is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
     magnitude = clamp_f(magnitude, 0.0f, 1.0f);
     float boost = magnitude * system->config.release_rate;
@@ -175,7 +184,10 @@ int bg_neuromod_trigger_release(bg_neuromod_system_t* system, bg_neuromod_type_t
 }
 
 int bg_neuromod_trigger_pause(bg_neuromod_system_t* system, bg_neuromod_type_t type, float magnitude) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_trigger_pause: system is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
     magnitude = clamp_f(magnitude, 0.0f, 1.0f);
     float drop = magnitude * system->config.release_rate;
@@ -192,7 +204,10 @@ int bg_neuromod_trigger_pause(bg_neuromod_system_t* system, bg_neuromod_type_t t
 }
 
 int bg_neuromod_process_reward(bg_neuromod_system_t* system, float reward, float prediction) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_process_reward: system is NULL");
+        return -1;
+    }
     float rpe = reward - prediction;
     if (rpe > 0) {
         bg_neuromod_trigger_release(system, BG_NEUROMOD_DOPAMINE, rpe);
@@ -203,27 +218,39 @@ int bg_neuromod_process_reward(bg_neuromod_system_t* system, float reward, float
 }
 
 int bg_neuromod_process_aversion(bg_neuromod_system_t* system, float aversion_level) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_process_aversion: system is NULL");
+        return -1;
+    }
     bg_neuromod_trigger_release(system, BG_NEUROMOD_SEROTONIN, aversion_level);
     bg_neuromod_trigger_release(system, BG_NEUROMOD_NOREPINEPHRINE, aversion_level * 0.5f);
     return 0;
 }
 
 int bg_neuromod_process_uncertainty(bg_neuromod_system_t* system, float uncertainty) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_process_uncertainty: system is NULL");
+        return -1;
+    }
     bg_neuromod_trigger_release(system, BG_NEUROMOD_NOREPINEPHRINE, uncertainty);
     bg_neuromod_trigger_release(system, BG_NEUROMOD_ACETYLCHOLINE, uncertainty * 0.7f);
     return 0;
 }
 
 int bg_neuromod_process_effort(bg_neuromod_system_t* system, float effort_level) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_process_effort: system is NULL");
+        return -1;
+    }
     bg_neuromod_trigger_release(system, BG_NEUROMOD_ADENOSINE, effort_level);
     return 0;
 }
 
 int bg_neuromod_process_attention_cue(bg_neuromod_system_t* system, float salience) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_process_attention_cue: system is NULL");
+        return -1;
+    }
     bg_neuromod_trigger_release(system, BG_NEUROMOD_ACETYLCHOLINE, salience);
     return 0;
 }
@@ -233,7 +260,10 @@ int bg_neuromod_process_attention_cue(bg_neuromod_system_t* system, float salien
  * ============================================================================ */
 
 int bg_neuromod_step(bg_neuromod_system_t* system, float dt_ms) {
-    if (!system || dt_ms <= 0) return -1;
+    if (!system || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_neuromod_step: system is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
 
     float dt_s = dt_ms / 1000.0f;
@@ -284,7 +314,10 @@ int bg_neuromod_step(bg_neuromod_system_t* system, float dt_ms) {
 }
 
 int bg_neuromod_compute_effects(bg_neuromod_system_t* system, bg_neuromod_effects_t* effects) {
-    if (!system || !effects) return -1;
+    if (!system || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_compute_effects: required parameter is NULL (system, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(system->mutex);
 
     effects->direct_pathway_gain = 1.0f + (system->receptors.d1_activation - 0.5f);
@@ -328,19 +361,28 @@ float bg_neuromod_get_level(const bg_neuromod_system_t* system, bg_neuromod_type
 }
 
 int bg_neuromod_get_all_levels(const bg_neuromod_system_t* system, bg_neuromod_levels_t* levels) {
-    if (!system || !levels) return -1;
+    if (!system || !levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_get_all_levels: required parameter is NULL (system, levels)");
+        return -1;
+    }
     *levels = system->levels;
     return 0;
 }
 
 int bg_neuromod_get_receptor_state(const bg_neuromod_system_t* system, bg_receptor_state_t* state) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_get_receptor_state: required parameter is NULL (system, state)");
+        return -1;
+    }
     *state = system->receptors;
     return 0;
 }
 
 int bg_neuromod_get_stats(const bg_neuromod_system_t* system, bg_neuromod_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
     *stats = system->stats;
     return 0;
 }
@@ -350,7 +392,10 @@ int bg_neuromod_get_stats(const bg_neuromod_system_t* system, bg_neuromod_stats_
  * ============================================================================ */
 
 int bg_neuromod_get_striatal_modulation(const bg_neuromod_system_t* system, float* d1_mod, float* d2_mod) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_neuromod_get_striatal_modulation: system is NULL");
+        return -1;
+    }
     if (d1_mod) *d1_mod = 1.0f + (system->levels.dopamine - 0.5f) * system->config.d1_sensitivity;
     if (d2_mod) *d2_mod = 1.0f - (system->levels.dopamine - 0.5f) * system->config.d2_sensitivity * 0.8f;
     return 0;

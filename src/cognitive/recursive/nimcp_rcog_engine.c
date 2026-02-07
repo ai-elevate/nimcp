@@ -216,6 +216,7 @@ static rcog_active_request_t* find_request_by_id(rcog_engine_t* engine, uint64_t
             return &engine->requests[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_request_by_id: operation failed");
     return NULL;
 }
 
@@ -234,6 +235,7 @@ static rcog_active_request_t* allocate_request_slot(rcog_engine_t* engine) {
             return &engine->requests[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_request_slot: engine->requests is NULL");
     return NULL;
 }
 
@@ -327,6 +329,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     engine->mutex = nimcp_mutex_create(NULL);
     if (!engine->mutex) {
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_engine_create: engine->mutex is NULL");
         return NULL;
     }
 
@@ -335,6 +338,7 @@ rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     if (!engine->request_cond) {
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_engine_create: engine->request_cond is NULL");
         return NULL;
     }
     nimcp_cond_init(engine->request_cond);
@@ -1765,6 +1769,7 @@ const char* rcog_engine_state_name(rcog_engine_state_t state) {
 
 bool rcog_engine_is_ready(const rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_engine_is_ready: engine is NULL");
         return false;
     }
 
@@ -1779,10 +1784,12 @@ bool rcog_engine_is_ready(const rcog_engine_t* engine) {
 
 bool rcog_engine_has_capacity(const rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_engine_has_capacity: engine is NULL");
         return false;
     }
 
     if (!rcog_engine_is_ready(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_engine_has_capacity: rcog_engine_is_ready is NULL");
         return false;
     }
 

@@ -112,6 +112,7 @@ int claustrum_brain_init_register(brain_t brain) {
     if (claustrum_brain_init_create(brain, &config, &result) < 0) {
         NIMCP_LOG_ERROR(CLAUSTRUM_INIT_MODULE_NAME,
             "Claustrum subsystem initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "claustrum_brain_init_register: validation failed");
         return -1;
     }
 
@@ -127,7 +128,10 @@ int claustrum_brain_init_create(
     const claustrum_init_config_t* config,
     claustrum_init_result_t* result
 ) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_brain_init_create: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     claustrum_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -217,7 +221,10 @@ bool claustrum_init_modalities(
     nimcp_claustrum_t* claustrum,
     const claustrum_init_config_t* config
 ) {
-    if (!claustrum || !config) return false;
+    if (!claustrum || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_modalities: required parameter is NULL (claustrum, config)");
+        return false;
+    }
 
     /* Modalities are initialized as part of nimcp_claustrum_init */
     NIMCP_LOG_DEBUG(CLAUSTRUM_INIT_MODULE_NAME,
@@ -230,18 +237,23 @@ bool claustrum_init_oscillators(
     nimcp_claustrum_t* claustrum,
     const claustrum_init_config_t* config
 ) {
-    if (!claustrum || !config) return false;
+    if (!claustrum || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_oscillators: required parameter is NULL (claustrum, config)");
+        return false;
+    }
 
     /* Set oscillator frequencies */
     if (nimcp_claustrum_set_gamma(claustrum, config->gamma_frequency, 1.0f) != CLAUSTRUM_OK) {
         NIMCP_LOG_WARN(CLAUSTRUM_INIT_MODULE_NAME,
             "Failed to set gamma frequency");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_init_oscillators: validation failed");
         return false;
     }
 
     if (nimcp_claustrum_set_alpha(claustrum, config->alpha_frequency, 1.0f) != CLAUSTRUM_OK) {
         NIMCP_LOG_WARN(CLAUSTRUM_INIT_MODULE_NAME,
             "Failed to set alpha frequency");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_init_oscillators: validation failed");
         return false;
     }
 
@@ -257,7 +269,10 @@ bool claustrum_init_oscillators(
 //=============================================================================
 
 bool claustrum_init_bio_async_bridges(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_bio_async_bridges: brain is NULL");
+        return false;
+    }
 
     /* Bio-async bridges would connect here */
     /* This requires access to the brain's bio-router */
@@ -268,7 +283,10 @@ bool claustrum_init_bio_async_bridges(brain_t brain) {
 }
 
 bool claustrum_init_kg_wiring(brain_t brain, uint64_t admin_token) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_kg_wiring: brain is NULL");
+        return false;
+    }
 
     /* Would access brain's KG and register claustrum nodes */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -283,7 +301,10 @@ bool claustrum_init_kg_wiring(brain_t brain, uint64_t admin_token) {
 }
 
 bool claustrum_init_security(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_security: brain is NULL");
+        return false;
+    }
 
     /* Would access brain's BBB and register claustrum module */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -296,7 +317,10 @@ bool claustrum_init_security(brain_t brain) {
 }
 
 bool claustrum_init_immune_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_init_immune_bridge: brain is NULL");
+        return false;
+    }
 
     /* Would create claustrum-immune bridge and connect */
     NIMCP_LOG_DEBUG(CLAUSTRUM_INIT_MODULE_NAME,
@@ -310,7 +334,10 @@ bool claustrum_init_immune_bridge(brain_t brain) {
 //=============================================================================
 
 bool claustrum_is_initialized(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_is_initialized: brain is NULL");
+        return false;
+    }
 
     /* Would check if claustrum subsystem exists in brain */
     /* return brain_has_claustrum_subsystem(brain); */

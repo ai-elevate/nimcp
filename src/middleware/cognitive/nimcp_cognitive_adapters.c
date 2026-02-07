@@ -97,6 +97,7 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
         if (!adapter->window) {
             nimcp_free(adapter->items);
             nimcp_free(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_adapter_create: adapter->window is NULL");
             return NULL;
         }
     }
@@ -113,6 +114,7 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
         if (adapter->window) sliding_window_destroy(adapter->window);
         nimcp_free(adapter->items);
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_adapter_create: validation failed");
         return NULL;
     }
 
@@ -148,7 +150,10 @@ void wm_adapter_destroy(wm_adapter_t* adapter) {
  * HOW:  Scan items array
  */
 static int32_t wm_find_item(const wm_adapter_t* adapter, uint32_t item_id) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_item: adapter is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < adapter->config.capacity; i++) {
         if (adapter->items[i].is_active &&
@@ -156,6 +161,7 @@ static int32_t wm_find_item(const wm_adapter_t* adapter, uint32_t item_id) {
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_item: adapter is NULL");
     return -1;
 }
 
@@ -167,7 +173,10 @@ static int32_t wm_find_item(const wm_adapter_t* adapter, uint32_t item_id) {
  * HOW:  Linear scan for minimum salience
  */
 static int32_t wm_find_lowest_salience(const wm_adapter_t* adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_lowest_salience: adapter is NULL");
+        return -1;
+    }
 
     int32_t min_idx = -1;
     float min_salience = 2.0F; // Higher than max possible (1.0)
@@ -190,10 +199,14 @@ bool wm_adapter_add_item(wm_adapter_t* adapter,
                           const float* data,
                           size_t data_size,
                           float salience) {
-    if (!adapter || !data || data_size == 0) return false;
+    if (!adapter || !data || data_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_lowest_salience: required parameter is NULL (adapter, data)");
+        return false;
+    }
 
     // Check salience threshold
     if (salience < adapter->config.attention_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_find_lowest_salience: validation failed");
         return false;
     }
 
@@ -221,11 +234,17 @@ bool wm_adapter_add_item(wm_adapter_t* adapter,
         }
     }
 
-    if (idx < 0) return false; // Should never happen
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_find_lowest_salience: validation failed");
+        return false;
+    }
 
     // Allocate and copy data
     float* item_data = nimcp_malloc(data_size * sizeof(float));
-    if (!item_data) return false;
+    if (!item_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_find_lowest_salience: item_data is NULL");
+        return false;
+    }
     memcpy(item_data, data, data_size * sizeof(float));
 
     // Initialize item
@@ -251,13 +270,20 @@ bool wm_adapter_add_item(wm_adapter_t* adapter,
 bool wm_adapter_set_attention(wm_adapter_t* adapter,
                                 uint32_t item_id,
                                 float attention_weight) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_lowest_salience: adapter is NULL");
+        return false;
+    }
 
     int32_t idx = wm_find_item(adapter, item_id);
-    if (idx < 0) return false;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_find_lowest_salience: validation failed");
+        return false;
+    }
 
     // Update attention gate
     if (!attention_gate_set_weight(adapter->gate, 0, item_id, attention_weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_find_lowest_salience: attention_gate_set_weight is NULL");
         return false;
     }
 
@@ -275,10 +301,16 @@ bool wm_adapter_set_attention(wm_adapter_t* adapter,
  */
 const wm_item_t* wm_adapter_get_item(const wm_adapter_t* adapter,
                                       uint32_t item_id) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_lowest_salience: adapter is NULL");
+        return NULL;
+    }
 
     int32_t idx = wm_find_item(adapter, item_id);
-    if (idx < 0) return NULL;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_find_lowest_salience: validation failed");
+        return NULL;
+    }
 
     return &adapter->items[idx];
 }
@@ -305,10 +337,16 @@ uint32_t wm_adapter_get_all_items(const wm_adapter_t* adapter,
  * @brief Remove item from working memory
  */
 bool wm_adapter_remove_item(wm_adapter_t* adapter, uint32_t item_id) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_adapter_remove_item: adapter is NULL");
+        return false;
+    }
 
     int32_t idx = wm_find_item(adapter, item_id);
-    if (idx < 0) return false;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_adapter_remove_item: validation failed");
+        return false;
+    }
 
     if (adapter->items[idx].data) {
         nimcp_free(adapter->items[idx].data);
@@ -364,7 +402,10 @@ void wm_adapter_update_decay(wm_adapter_t* adapter, uint64_t dt) {
  */
 bool wm_adapter_get_stats(const wm_adapter_t* adapter,
                            wm_adapter_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_adapter_update_decay: required parameter is NULL (adapter, stats)");
+        return false;
+    }
 
     uint32_t active_count = 0;
     float total_salience = 0.0F;
@@ -426,7 +467,10 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
     }
 
     consol_adapter_t* adapter = nimcp_calloc(1, sizeof(consol_adapter_t));
-    if (!adapter) return NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consol_adapter_create: adapter is NULL");
+        return NULL;
+    }
 
     adapter->config = *config;
 
@@ -440,6 +484,7 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
 
     if (!adapter->buffer) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consol_adapter_create: adapter->buffer is NULL");
         return NULL;
     }
 
@@ -453,6 +498,7 @@ consol_adapter_t* consol_adapter_create(const consol_adapter_config_t* config) {
     if (!adapter->accumulator) {
         integration_buffer_destroy(adapter->buffer);
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consol_adapter_create: adapter->accumulator is NULL");
         return NULL;
     }
 
@@ -483,16 +529,19 @@ bool consol_adapter_update(consol_adapter_t* adapter,
                             float value,
                             uint64_t timestamp) {
     if (!adapter || channel >= adapter->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consol_adapter_destroy: adapter is NULL");
         return false;
     }
 
     // Add to integration buffer
     if (!integration_buffer_add(adapter->buffer, channel, value, timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consol_adapter_destroy: integration_buffer_add is NULL");
         return false;
     }
 
     // Update temporal accumulator
     if (!temporal_accumulator_update(adapter->accumulator, channel, value, 1.0F)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consol_adapter_destroy: temporal_accumulator_update is NULL");
         return false;
     }
 
@@ -623,7 +672,10 @@ void consol_adapter_clear(consol_adapter_t* adapter) {
  */
 bool consol_adapter_get_stats(const consol_adapter_t* adapter,
                                consol_adapter_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consol_adapter_clear: required parameter is NULL (adapter, stats)");
+        return false;
+    }
 
     stats->total_updates = adapter->stats.total_updates;
 
@@ -692,7 +744,10 @@ attention_adapter_t* attention_adapter_create(
     }
 
     attention_adapter_t* adapter = nimcp_calloc(1, sizeof(attention_adapter_t));
-    if (!adapter) return NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_adapter_default_config: adapter is NULL");
+        return NULL;
+    }
 
     adapter->config = *config;
 
@@ -722,6 +777,7 @@ attention_adapter_t* attention_adapter_create(
     adapter->gate = attention_gate_create(&gate_config);
     if (!adapter->gate) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_adapter_default_config: adapter->gate is NULL");
         return NULL;
     }
 
@@ -748,7 +804,10 @@ bool attention_adapter_set_weight(attention_adapter_t* adapter,
                                    uint32_t source_id,
                                    uint32_t target_id,
                                    float weight) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: adapter is NULL");
+        return false;
+    }
 
     return attention_gate_set_weight(adapter->gate, source_id, target_id, weight);
 }
@@ -759,7 +818,10 @@ bool attention_adapter_set_weight(attention_adapter_t* adapter,
 bool attention_adapter_update_salience(attention_adapter_t* adapter,
                                         uint32_t target_id,
                                         float salience) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: adapter is NULL");
+        return false;
+    }
 
     return attention_gate_update_salience(adapter->gate, target_id, salience);
 }
@@ -769,7 +831,10 @@ bool attention_adapter_update_salience(attention_adapter_t* adapter,
  */
 bool attention_adapter_apply_wta(attention_adapter_t* adapter,
                                   uint32_t* winner_id) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: adapter is NULL");
+        return false;
+    }
 
     return attention_gate_apply_wta(adapter->gate, winner_id);
 }
@@ -780,7 +845,10 @@ bool attention_adapter_apply_wta(attention_adapter_t* adapter,
 bool attention_adapter_update_spotlight(attention_adapter_t* adapter,
                                          uint32_t* spotlight_ids,
                                          uint32_t* num_in_spotlight) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: adapter is NULL");
+        return false;
+    }
 
     return attention_gate_update_spotlight(adapter->gate,
                                             spotlight_ids,
@@ -796,12 +864,14 @@ bool attention_adapter_route_signal(attention_adapter_t* adapter,
                                      float* signal_out,
                                      size_t signal_size) {
     if (!adapter || !signal_in || !signal_out || signal_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: required parameter is NULL (adapter, signal_in, signal_out)");
         return false;
     }
 
     // Get attention weight
     float weight = 0.0F;
     if (!attention_gate_get_weight(adapter->gate, 0, target_id, &weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_adapter_destroy: attention_gate_get_weight is NULL");
         return false;
     }
 
@@ -819,6 +889,7 @@ bool attention_adapter_route_signal(attention_adapter_t* adapter,
 bool attention_adapter_detect_pattern(attention_adapter_t* adapter,
                                        attention_pattern_t* pattern) {
     if (!adapter || !adapter->config.enable_pattern_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: required parameter is NULL (adapter, adapter->config)");
         return false;
     }
 
@@ -829,10 +900,14 @@ bool attention_adapter_detect_pattern(attention_adapter_t* adapter,
     if (!attention_gate_update_spotlight(adapter->gate,
                                           spotlight_ids,
                                           &num_in_spotlight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_adapter_destroy: operation failed");
         return false;
     }
 
-    if (num_in_spotlight < 2) return false;
+    if (num_in_spotlight < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_adapter_destroy: validation failed");
+        return false;
+    }
 
     // Simple pattern: if spotlight stable, it's a pattern
     if (pattern) {
@@ -859,7 +934,10 @@ bool attention_adapter_get_shifts(const attention_adapter_t* adapter,
                                    attention_shift_t* shifts,
                                    uint32_t max_shifts,
                                    uint32_t* num_shifts) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_destroy: adapter is NULL");
+        return false;
+    }
 
     return attention_gate_get_shifts(adapter->gate, shifts,
                                       max_shifts, num_shifts);
@@ -881,7 +959,10 @@ void attention_adapter_reset(attention_adapter_t* adapter) {
  */
 bool attention_adapter_get_stats(const attention_adapter_t* adapter,
                                   attention_adapter_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_adapter_reset: required parameter is NULL (adapter, stats)");
+        return false;
+    }
 
     uint32_t num_targets = 0;
     uint32_t num_in_spotlight = 0;

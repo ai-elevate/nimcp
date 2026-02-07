@@ -497,6 +497,7 @@ const float* nimcp_training_read_weights(
     const nimcp_training_weights_t* weights)
 {
     if (!ctx || !weights || !weights->handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_read_weights: required parameter is NULL (ctx, weights, weights->handle)");
         return NULL;
     }
 
@@ -513,11 +514,13 @@ float* nimcp_training_write_weights(
     nimcp_training_weights_t* weights)
 {
     if (!ctx || !weights || !weights->handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_write_weights: required parameter is NULL (ctx, weights, weights->handle)");
         return NULL;
     }
 
     if (weights->is_frozen) {
         LOG_WARNING("Attempted to write to frozen weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_write_weights: validation failed");
         return NULL;
     }
 
@@ -544,6 +547,7 @@ float* nimcp_training_write_weights(
 bool nimcp_training_weights_are_shared(const nimcp_training_weights_t* weights)
 {
     if (!weights || !weights->handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_weights_are_shared: required parameter is NULL (weights, weights->handle)");
         return false;
     }
     return unified_mem_is_shared(weights->handle);
@@ -743,7 +747,10 @@ uint32_t nimcp_training_get_security_id(nimcp_training_context_t* ctx)
 
 nimcp_sec_integration_t* nimcp_training_get_security_ctx(nimcp_training_context_t* ctx)
 {
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_get_security_ctx: ctx is NULL");
+        return NULL;
+    }
     return ctx->security_ctx;
 }
 
@@ -804,7 +811,10 @@ nimcp_training_module_type_t nimcp_training_get_type(nimcp_training_context_t* c
 
 unified_mem_manager_t nimcp_training_get_mem_manager(nimcp_training_context_t* ctx)
 {
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_training_get_mem_manager: ctx is NULL");
+        return NULL;
+    }
     return ctx->mem_manager;
 }
 

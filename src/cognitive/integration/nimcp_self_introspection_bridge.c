@@ -188,6 +188,7 @@ static introspection_query_t* find_query_unlocked(
             return &bridge->queries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_query_unlocked: validation failed");
     return NULL;
 }
 
@@ -326,6 +327,7 @@ self_introspection_bridge_t* self_introspection_bridge_create(
         bridge->query_capacity, sizeof(introspection_query_t));
     if (!bridge->queries) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge->queries is NULL");
         return NULL;
     }
 
@@ -334,6 +336,7 @@ self_introspection_bridge_t* self_introspection_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->queries);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_introspection_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -411,9 +414,11 @@ int self_introspection_guide_query(
     self_introspection_guidance_t* guidance_out
 ) {
     if (!bridge || !guidance_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_guide_query: required parameter is NULL (bridge, guidance_out)");
         return -1;
     }
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_guide_query: bridge->initialized is NULL");
         return -1;
     }
 
@@ -497,9 +502,11 @@ int self_introspection_on_result(
     const self_introspection_result_t* result_data
 ) {
     if (!bridge || !result_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_on_result: required parameter is NULL (bridge, result_data)");
         return -1;
     }
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_on_result: bridge->initialized is NULL");
         return -1;
     }
 
@@ -673,6 +680,7 @@ int self_introspection_trigger_reflection(
             /* Cannot add more queries - reflection fails */
             bridge->stats.reflection_failures++;
             nimcp_platform_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_introspection_trigger_reflection: capacity exceeded");
             return -1;
         }
 
@@ -711,9 +719,11 @@ int self_introspection_get_self_state(
     self_introspection_self_state_t* state_out
 ) {
     if (!bridge || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_get_self_state: required parameter is NULL (bridge, state_out)");
         return -1;
     }
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_get_self_state: bridge->initialized is NULL");
         return -1;
     }
 
@@ -773,9 +783,11 @@ int self_introspection_get_stats(
     self_introspection_stats_t* stats_out
 ) {
     if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_get_stats: required parameter is NULL (bridge, stats_out)");
         return -1;
     }
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_get_stats: bridge->initialized is NULL");
         return -1;
     }
 

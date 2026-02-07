@@ -211,6 +211,7 @@ dragonfly_cortical_bridge_t* dragonfly_cortical_bridge_create(
     if (config) {
         if (dragonfly_cortical_bridge_validate_config(config) != 0) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_cortical_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;

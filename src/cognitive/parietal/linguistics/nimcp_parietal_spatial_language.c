@@ -366,6 +366,7 @@ static const preposition_definition_t* find_preposition(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_preposition: validation failed");
     return NULL;
 }
 
@@ -454,18 +455,39 @@ spatial_language_config_t spatial_language_default_config(void) {
 }
 
 bool spatial_language_validate_config(const spatial_language_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_language_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->near_sigma <= 0.0f) return false;
-    if (config->far_threshold <= 0.0f) return false;
-    if (config->angle_tolerance <= 0.0f || config->angle_tolerance > 180.0f) return false;
+    if (config->near_sigma <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
+    if (config->far_threshold <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
+    if (config->angle_tolerance <= 0.0f || config->angle_tolerance > 180.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
 
     /* Priors should sum to approximately 1.0 */
     float prior_sum = config->egocentric_prior + config->allocentric_prior + config->intrinsic_prior;
-    if (prior_sum < 0.9f || prior_sum > 1.1f) return false;
+    if (prior_sum < 0.9f || prior_sum > 1.1f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) return false;
-    if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) return false;
+    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
+    if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_language_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -602,7 +624,10 @@ bool spatial_language_is_preposition(
     const spatial_language_t* sl,
     const char* word
 ) {
-    if (!sl || !word) return false;
+    if (!sl || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_language_is_preposition: required parameter is NULL (sl, word)");
+        return false;
+    }
     return find_preposition(sl, word) != NULL;
 }
 

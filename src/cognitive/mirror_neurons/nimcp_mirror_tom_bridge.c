@@ -201,6 +201,7 @@ static int32_t find_agent_slot(const struct mirror_tom_bridge* bridge,
             return (int32_t)idx;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: operation failed");
     return -1;
 }
 
@@ -225,6 +226,7 @@ static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
     if (bridge->agent_count >= MIRROR_TOM_MAX_AGENTS) {
         nimcp_log(LOG_LEVEL_WARN, "Mirror-ToM: max agents (%d) reached",
                   MIRROR_TOM_MAX_AGENTS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hash_agent_id: capacity exceeded");
         return -1;
     }
 
@@ -261,6 +263,7 @@ static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
             return (int32_t)idx;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: validation failed");
     return -1;
 }
 
@@ -363,6 +366,7 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     if (bridge_base_init(&bridge->base, 0, "mirror_tom") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to initialize bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_tom_create: validation failed");
         return NULL;
     }
 
@@ -488,7 +492,10 @@ int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_connect_tom: validation failed");
+        return -1;
+    }
 
     mirror_tom_agent_state_t* agent = &bridge->agents[slot];
     agent->last_seen_us = observation->timestamp_us;
@@ -554,7 +561,10 @@ int mirror_tom_infer_intention(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_connect_tom: validation failed");
+        return -1;
+    }
 
     mirror_tom_agent_state_t* agent = &bridge->agents[slot];
 
@@ -607,7 +617,10 @@ int mirror_tom_trigger_empathy(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_connect_tom: validation failed");
+        return -1;
+    }
 
     bridge->stats.empathy_activations++;
 
@@ -645,7 +658,10 @@ int mirror_tom_signal_false_belief(mirror_tom_bridge_t bridge,
     (void)context_dim;
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_connect_tom: validation failed");
+        return -1;
+    }
 
     mirror_tom_agent_state_t* agent = &bridge->agents[slot];
     agent->false_belief_count++;
@@ -685,7 +701,10 @@ int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_or_create_agent_slot(bridge, mental_state->agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return -1;
+    }
 
     /* Update mental state */
     bridge->agents[slot].mental_state = *mental_state;
@@ -748,7 +767,10 @@ bool mirror_tom_should_suppress_imitation(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_agent_slot(bridge, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return false;
+    }
 
     return bridge->agents[slot].mental_state.deception_likelihood >
            bridge->config.deception_suppress_threshold;
@@ -771,7 +793,10 @@ int mirror_tom_get_observation_bias(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return -1;
+    }
 
     mirror_tom_agent_state_t* agent = &bridge->agents[slot];
 
@@ -886,7 +911,10 @@ int mirror_tom_get_agent_state(mirror_tom_bridge_t bridge,
 
 
     int32_t slot = find_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return -1;
+    }
 
     *out_state = bridge->agents[slot];
     return 0;
@@ -985,7 +1013,10 @@ int mirror_tom_reset_agent(mirror_tom_bridge_t bridge, uint32_t agent_id) {
 
 
     int32_t slot = find_agent_slot(bridge, agent_id);
-    if (slot < 0) return -1;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_reset_agent: validation failed");
+        return -1;
+    }
 
     bridge->agents[slot].is_active = false;
     bridge->agent_count--;
@@ -1000,7 +1031,10 @@ int mirror_tom_reset_agent(mirror_tom_bridge_t bridge, uint32_t agent_id) {
  * ============================================================================ */
 
 bool mirror_tom_register_bio_async(mirror_tom_bridge_t bridge) {
-    if (!bridge || bridge->bio_async_registered) return false;
+    if (!bridge || bridge->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_register_bio_async: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_register_bio_async", 0.0f);

@@ -127,7 +127,10 @@ void symbolic_logic_thalamic_bridge_destroy(symbolic_logic_thalamic_bridge_t* br
 }
 
 int symbolic_logic_thalamic_bridge_reset(symbolic_logic_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_reset", 0.0f);
 
@@ -141,7 +144,10 @@ int symbolic_logic_thalamic_route_signal(
     symbolic_logic_thalamic_bridge_t* bridge,
     const symbolic_logic_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
@@ -175,6 +181,7 @@ int symbolic_logic_thalamic_route_signal(
             bridge->stats.proof_steps++;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -195,7 +202,10 @@ int symbolic_logic_thalamic_apply_rule(
     float complexity,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_apply_rule: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
@@ -216,7 +226,10 @@ int symbolic_logic_thalamic_apply_rule(
 }
 
 int symbolic_logic_thalamic_set_attention(symbolic_logic_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
 
@@ -226,7 +239,10 @@ int symbolic_logic_thalamic_set_attention(symbolic_logic_thalamic_bridge_t* brid
 }
 
 int symbolic_logic_thalamic_get_attention(const symbolic_logic_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_symbolic_logic_thala", 0.0f);
@@ -239,7 +255,10 @@ int symbolic_logic_thalamic_bridge_get_stats(
     const symbolic_logic_thalamic_bridge_t* bridge,
     symbolic_logic_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_thalamic_bridge_heartbeat("symbolic_log_get_stats", 0.0f);

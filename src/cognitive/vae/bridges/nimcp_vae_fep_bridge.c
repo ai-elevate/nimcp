@@ -121,7 +121,10 @@ static void update_ema_stats(vae_fep_bridge_t* bridge, float free_energy,
  */
 static int init_mapping_state(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_mapping_state: bridge is NULL");
+        return -1;
+    }
 
     vae_fep_mapping_state_t* mapping = &bridge->mapping;
 
@@ -258,6 +261,7 @@ vae_fep_bridge_t* vae_fep_bridge_create(const vae_fep_bridge_config_t* config)
 
     if (!config) {
         if (vae_fep_bridge_default_config(&default_config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_create: validation failed");
             return NULL;
         }
         config = &default_config;
@@ -281,6 +285,7 @@ vae_fep_bridge_t* vae_fep_bridge_create(const vae_fep_bridge_config_t* config)
     if (!bridge->mutex) {
         NIMCP_LOG_ERROR("VAE-FEP Bridge: Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_fep_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -440,7 +445,10 @@ int vae_fep_bridge_connect_fep(vae_fep_bridge_t* bridge, fep_system_t* fep)
 
 int vae_fep_bridge_disconnect(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -457,7 +465,10 @@ int vae_fep_bridge_disconnect(vae_fep_bridge_t* bridge)
 
 bool vae_fep_bridge_is_connected(const vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return (bridge->vae != NULL) && (bridge->fep != NULL);
 }
 
@@ -683,7 +694,10 @@ int vae_fep_sync_belief_to_latent(vae_fep_bridge_t* bridge)
 
 int vae_fep_bridge_sync(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_sync: bridge is NULL");
+        return -1;
+    }
 
     int result = 0;
 
@@ -709,7 +723,10 @@ int vae_fep_bridge_sync(vae_fep_bridge_t* bridge)
 int vae_fep_bridge_sync_direction(vae_fep_bridge_t* bridge,
                                    vae_fep_sync_direction_t direction)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_sync_direction: bridge is NULL");
+        return -1;
+    }
 
     switch (direction) {
         case VAE_FEP_SYNC_VAE_TO_FEP:
@@ -719,6 +736,7 @@ int vae_fep_bridge_sync_direction(vae_fep_bridge_t* bridge,
         case VAE_FEP_SYNC_BIDIRECTIONAL:
             return vae_fep_bridge_sync(bridge);
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_fep_bridge_sync_direction: operation failed");
             return -1;
     }
 }
@@ -781,7 +799,10 @@ int vae_fep_get_free_energy_decomposition(vae_fep_bridge_t* bridge,
                                            float* inaccuracy,
                                            float* complexity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_get_free_energy_decomposition: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -797,7 +818,10 @@ int vae_fep_get_free_energy_decomposition(vae_fep_bridge_t* bridge,
 int vae_fep_update_free_energy_from_vae(vae_fep_bridge_t* bridge,
                                          const vae_loss_t* vae_loss)
 {
-    if (!bridge || !vae_loss) return -1;
+    if (!bridge || !vae_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_update_free_energy_from_vae: required parameter is NULL (bridge, vae_loss)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -828,7 +852,10 @@ int vae_fep_update_free_energy_from_vae(vae_fep_bridge_t* bridge,
 
 int vae_fep_get_precision(vae_fep_bridge_t* bridge, float* precision, uint32_t dim)
 {
-    if (!bridge || !precision) return -1;
+    if (!bridge || !precision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_get_precision: required parameter is NULL (bridge, precision)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -851,7 +878,10 @@ int vae_fep_get_precision(vae_fep_bridge_t* bridge, float* precision, uint32_t d
 
 int vae_fep_sync_precision(vae_fep_bridge_t* bridge)
 {
-    if (!bridge || !vae_fep_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !vae_fep_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_sync_precision: required parameter is NULL (bridge, vae_fep_bridge_is_connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -860,6 +890,7 @@ int vae_fep_sync_precision(vae_fep_bridge_t* bridge)
 
     if (!precision) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_fep_sync_precision: precision is NULL");
         return -1;
     }
 
@@ -914,7 +945,10 @@ float vae_fep_get_avg_precision(const vae_fep_bridge_t* bridge)
 
 int vae_fep_report_prediction_error(vae_fep_bridge_t* bridge, float error_magnitude)
 {
-    if (!bridge || !vae_fep_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !vae_fep_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_report_prediction_error: required parameter is NULL (bridge, vae_fep_bridge_is_connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -935,7 +969,10 @@ int vae_fep_report_prediction_error(vae_fep_bridge_t* bridge, float error_magnit
 int vae_fep_report_prediction_error_tensor(vae_fep_bridge_t* bridge,
                                             const nimcp_tensor_t* error)
 {
-    if (!bridge || !error) return -1;
+    if (!bridge || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_report_prediction_error_tensor: required parameter is NULL (bridge, error)");
+        return -1;
+    }
 
     /* Compute magnitude */
     uint32_t total = nimcp_tensor_numel(error);
@@ -954,7 +991,10 @@ int vae_fep_report_prediction_error_tensor(vae_fep_bridge_t* bridge,
 int vae_fep_get_fep_prediction_error(vae_fep_bridge_t* bridge,
                                       nimcp_tensor_t* error)
 {
-    if (!bridge || !error || !vae_fep_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !error || !vae_fep_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_get_fep_prediction_error: required parameter is NULL (bridge, error, vae_fep_bridge_is_connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -985,8 +1025,14 @@ int vae_fep_compute_expected_free_energy(vae_fep_bridge_t* bridge,
                                           const nimcp_tensor_t* action_latent,
                                           float* expected_fe)
 {
-    if (!bridge || !action_latent || !expected_fe) return -1;
-    if (!vae_fep_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !action_latent || !expected_fe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_compute_expected_free_energy: required parameter is NULL (bridge, action_latent, expected_fe)");
+        return -1;
+    }
+    if (!vae_fep_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_fep_compute_expected_free_energy: vae_fep_bridge_is_connected is NULL");
+        return -1;
+    }
 
     /* For now, return current free energy as estimate
      * Full implementation would use VAE decoder to predict outcomes */
@@ -998,8 +1044,14 @@ int vae_fep_compute_expected_free_energy(vae_fep_bridge_t* bridge,
 int vae_fep_sample_action_latent(vae_fep_bridge_t* bridge,
                                   nimcp_tensor_t* action_latent)
 {
-    if (!bridge || !action_latent) return -1;
-    if (!vae_fep_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !action_latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_sample_action_latent: required parameter is NULL (bridge, action_latent)");
+        return -1;
+    }
+    if (!vae_fep_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_fep_sample_action_latent: vae_fep_bridge_is_connected is NULL");
+        return -1;
+    }
 
     /* Sample from prior as default action
      * Full implementation would use FEP policy selection */
@@ -1013,7 +1065,10 @@ int vae_fep_sample_action_latent(vae_fep_bridge_t* bridge,
 
 int vae_fep_bridge_update(vae_fep_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge || !bridge->is_initialized) return -1;
+    if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1040,7 +1095,10 @@ int vae_fep_bridge_update(vae_fep_bridge_t* bridge, uint64_t delta_ms)
 
 int vae_fep_bridge_process_messages(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_process_messages: bridge is NULL");
+        return -1;
+    }
 
     /* Bio-async message processing placeholder */
     /* Full implementation would process queued messages */
@@ -1055,7 +1113,10 @@ int vae_fep_bridge_process_messages(vae_fep_bridge_t* bridge)
 int vae_fep_bridge_get_stats(const vae_fep_bridge_t* bridge,
                               vae_fep_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -1063,7 +1124,10 @@ int vae_fep_bridge_get_stats(const vae_fep_bridge_t* bridge,
 int vae_fep_bridge_get_mapping(const vae_fep_bridge_t* bridge,
                                 vae_fep_mapping_state_t* mapping)
 {
-    if (!bridge || !mapping) return -1;
+    if (!bridge || !mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_get_mapping: required parameter is NULL (bridge, mapping)");
+        return -1;
+    }
 
     /* Copy scalar values only, not pointers */
     mapping->latent_dim = bridge->mapping.latent_dim;
@@ -1083,7 +1147,10 @@ int vae_fep_bridge_get_mapping(const vae_fep_bridge_t* bridge,
 int vae_fep_bridge_get_health(const vae_fep_bridge_t* bridge,
                                vae_fep_bridge_health_t* health)
 {
-    if (!bridge || !health) return -1;
+    if (!bridge || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_get_health: required parameter is NULL (bridge, health)");
+        return -1;
+    }
     *health = bridge->health;
     return 0;
 }
@@ -1091,7 +1158,10 @@ int vae_fep_bridge_get_health(const vae_fep_bridge_t* bridge,
 int vae_fep_bridge_get_config(const vae_fep_bridge_t* bridge,
                                vae_fep_bridge_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -1114,7 +1184,10 @@ uint32_t vae_fep_bridge_get_belief_dim(const vae_fep_bridge_t* bridge)
 
 bool vae_fep_bridge_dims_compatible(const vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_dims_compatible: bridge is NULL");
+        return false;
+    }
 
     if (bridge->config.mapping_mode == VAE_FEP_MAP_DIRECT) {
         /* For direct mapping, dimensions should match */
@@ -1131,7 +1204,10 @@ bool vae_fep_bridge_dims_compatible(const vae_fep_bridge_t* bridge)
 
 int vae_fep_bridge_connect_bio_async(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Bio-async connection placeholder */
     bridge->config.enable_bio_async = true;
@@ -1143,7 +1219,10 @@ int vae_fep_bridge_connect_bio_async(vae_fep_bridge_t* bridge)
 
 int vae_fep_bridge_disconnect_bio_async(vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     bridge->config.enable_bio_async = false;
 
@@ -1154,7 +1233,10 @@ int vae_fep_bridge_disconnect_bio_async(vae_fep_bridge_t* bridge)
 
 bool vae_fep_bridge_is_bio_async_connected(const vae_fep_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->config.enable_bio_async;
 }
 

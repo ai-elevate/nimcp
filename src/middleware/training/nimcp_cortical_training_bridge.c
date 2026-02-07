@@ -560,6 +560,7 @@ cortical_training_bridge_t* cortical_training_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -571,6 +572,7 @@ cortical_training_bridge_t* cortical_training_create(
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->fe_history is NULL");
         return NULL;
     }
     memset(bridge->fe_history, 0, sizeof(float) * CORTICAL_HISTORY_SIZE);
@@ -584,6 +586,7 @@ cortical_training_bridge_t* cortical_training_create(
         nimcp_free(bridge->fe_history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_training_create: bridge->cortical_effects is NULL");
         return NULL;
     }
     bridge->cortical_effects.num_layers = CORTICAL_TRAINING_MAX_LAYERS;
@@ -944,6 +947,7 @@ bool cortical_training_are_predictions_stable(
     const cortical_training_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_training_are_predictions_stable: bridge is NULL");
         return false;
     }
 
@@ -1140,6 +1144,7 @@ bool cortical_training_is_bio_async_connected(
     const cortical_training_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

@@ -150,6 +150,7 @@ logic_batch_result_t* logic_batch_result_create(
     // Guard: zero gates
     if (num_gates == 0) {
         LOG_ERROR("logic_batch_result_create: num_gates is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_batch_result_create: num_gates is zero");
         return NULL;
     }
 
@@ -179,6 +180,7 @@ logic_batch_result_t* logic_batch_result_create(
         !result->inputs_per_gate || !result->outputs) {
         LOG_ERROR("logic_batch_result_create: failed to allocate tensors");
         logic_batch_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_batch_result_create: operation failed");
         return NULL;
     }
 
@@ -218,6 +220,7 @@ bool brain_evaluate_logic_gate(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_gate: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -225,24 +228,28 @@ bool brain_evaluate_logic_gate(
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_gate: brain '%s' has no logic network",
                   "brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL inputs
     if (!nimcp_validate_pointer(inputs, "inputs")) {
         LOG_ERROR("brain_evaluate_logic_gate: NULL inputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!nimcp_validate_pointer(output, "output")) {
         LOG_ERROR("brain_evaluate_logic_gate: NULL output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: zero inputs
     if (num_inputs == 0) {
         LOG_ERROR("brain_evaluate_logic_gate: num_inputs is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate: num_inputs is zero");
         return false;
     }
 
@@ -264,6 +271,7 @@ bool brain_evaluate_logic_gate(
 
     if (!success) {
         LOG_ERROR("brain_evaluate_logic_gate: evaluation failed for gate %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evaluate_logic_gate: success is NULL");
         return false;
     }
 
@@ -296,24 +304,28 @@ bool brain_evaluate_logic_gate_tensor(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network attached
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL inputs tensor
     if (!nimcp_validate_pointer(inputs, "inputs")) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL inputs tensor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!nimcp_validate_pointer(output, "output")) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: NULL output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -321,6 +333,7 @@ bool brain_evaluate_logic_gate_tensor(
     if (nimcp_tensor_rank(inputs) != 1) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs must be 1D tensor, got rank %u",
                   nimcp_tensor_rank(inputs));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: validation failed");
         return false;
     }
 
@@ -328,6 +341,7 @@ bool brain_evaluate_logic_gate_tensor(
     if (nimcp_tensor_dtype(inputs) != NIMCP_DTYPE_F32) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs must be F32, got %s",
                   nimcp_dtype_name(nimcp_tensor_dtype(inputs)));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: validation failed");
         return false;
     }
 
@@ -335,6 +349,7 @@ bool brain_evaluate_logic_gate_tensor(
     size_t num_inputs = nimcp_tensor_numel(inputs);
     if (num_inputs == 0) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: inputs tensor is empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gate_tensor: num_inputs is zero");
         return false;
     }
 
@@ -345,6 +360,7 @@ bool brain_evaluate_logic_gate_tensor(
     const float* inputs_data = (const float*)nimcp_tensor_data_const(inputs);
     if (!inputs_data) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: failed to get tensor data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evaluate_logic_gate_tensor: inputs_data is NULL");
         return false;
     }
 
@@ -362,6 +378,7 @@ bool brain_evaluate_logic_gate_tensor(
 
     if (!success) {
         LOG_ERROR("brain_evaluate_logic_gate_tensor: evaluation failed for gate %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evaluate_logic_gate_tensor: success is NULL");
         return false;
     }
 
@@ -391,6 +408,7 @@ bool brain_evaluate_logic_expression(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_expression: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -398,18 +416,21 @@ bool brain_evaluate_logic_expression(
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_expression: brain '%s' has no logic network",
                   "brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL expression
     if (!nimcp_validate_pointer(expression, "expression")) {
         LOG_ERROR("brain_evaluate_logic_expression: NULL expression");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: empty expression
     if (expression[0] == '\0') {
         LOG_ERROR("brain_evaluate_logic_expression: empty expression");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: validation failed");
         return false;
     }
 
@@ -417,12 +438,14 @@ bool brain_evaluate_logic_expression(
     if (num_bindings > 0 && !nimcp_validate_pointer(bindings, "bindings")) {
         LOG_ERROR("brain_evaluate_logic_expression: NULL bindings with num_bindings=%u",
                   num_bindings);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!nimcp_validate_pointer(output, "output")) {
         LOG_ERROR("brain_evaluate_logic_expression: NULL output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -433,6 +456,7 @@ bool brain_evaluate_logic_expression(
     uint32_t circuit_id = brain_build_logic_circuit(brain, expression);
     if (circuit_id == UINT32_MAX) {
         LOG_ERROR("brain_evaluate_logic_expression: failed to parse '%s'", expression);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expression: validation failed");
         return false;
     }
 
@@ -458,6 +482,7 @@ bool brain_evaluate_logic_expression(
 
     if (!success) {
         LOG_ERROR("brain_evaluate_logic_expression: evaluation failed for '%s'", expression);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evaluate_logic_expression: success is NULL");
         return false;
     }
 
@@ -509,6 +534,7 @@ static bool evaluate_gates_batch_cpu(
 
         if (!success) {
             LOG_ERROR("evaluate_gates_batch_cpu: failed at gate %u (index %u)", gate_id, i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_gates_batch_cpu: success is NULL");
             return false;
         }
 
@@ -533,42 +559,49 @@ bool brain_evaluate_logic_gates_batch(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network attached
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL gate_ids
     if (!nimcp_validate_pointer(gate_ids, "gate_ids")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: NULL gate_ids");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: zero gates
     if (num_gates == 0) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: num_gates is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: num_gates is zero");
         return false;
     }
 
     // Guard: NULL all_inputs
     if (!nimcp_validate_pointer(all_inputs, "all_inputs")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: NULL all_inputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL inputs_per_gate
     if (!nimcp_validate_pointer(inputs_per_gate, "inputs_per_gate")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: NULL inputs_per_gate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL outputs
     if (!nimcp_validate_pointer(outputs, "outputs")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch: NULL outputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -617,6 +650,7 @@ static bool evaluate_gates_batch_tensor_cpu(
 
     if (!gate_ids || !all_inputs || !offsets || !counts || !outputs) {
         LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed to get tensor data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_gates_batch_tensor_cpu: required parameter is NULL (gate_ids, all_inputs, offsets, counts, outputs)");
         return false;
     }
 
@@ -639,6 +673,7 @@ static bool evaluate_gates_batch_tensor_cpu(
 
         if (!gate_inputs) {
             LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed to create input tensor at index %zu", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_gates_batch_tensor_cpu: gate_inputs is NULL");
             return false;
         }
 
@@ -650,6 +685,7 @@ static bool evaluate_gates_batch_tensor_cpu(
 
         if (!success) {
             LOG_ERROR("evaluate_gates_batch_tensor_cpu: failed at gate %u (index %zu)", gate_id, i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_gates_batch_tensor_cpu: success is NULL");
             return false;
         }
 
@@ -674,12 +710,14 @@ bool brain_evaluate_logic_gates_batch_tensor(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network attached
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: brain_has_neural_logic is NULL");
         return false;
     }
 
@@ -689,12 +727,14 @@ bool brain_evaluate_logic_gates_batch_tensor(
         !nimcp_validate_pointer(offsets_tensor, "offsets_tensor") ||
         !nimcp_validate_pointer(counts_tensor, "counts_tensor")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL tensor(s)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL result
     if (!nimcp_validate_pointer(result, "result")) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: NULL result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -704,6 +744,7 @@ bool brain_evaluate_logic_gates_batch_tensor(
         nimcp_tensor_rank(offsets_tensor) != 1 ||
         nimcp_tensor_rank(counts_tensor) != 1) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: all tensors must be 1D");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: validation failed");
         return false;
     }
 
@@ -712,12 +753,14 @@ bool brain_evaluate_logic_gates_batch_tensor(
         nimcp_tensor_dtype(offsets_tensor) != NIMCP_DTYPE_I32 ||
         nimcp_tensor_dtype(counts_tensor) != NIMCP_DTYPE_I32) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: gate_ids/offsets/counts must be I32");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: validation failed");
         return false;
     }
 
     // Guard: inputs must be F32
     if (nimcp_tensor_dtype(inputs_tensor) != NIMCP_DTYPE_F32) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: inputs must be F32");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: validation failed");
         return false;
     }
 
@@ -726,12 +769,14 @@ bool brain_evaluate_logic_gates_batch_tensor(
     if (nimcp_tensor_numel(offsets_tensor) != num_gates ||
         nimcp_tensor_numel(counts_tensor) != num_gates) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: size mismatch in batch tensors");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_gates_batch_tensor: validation failed");
         return false;
     }
 
     // Guard: result outputs tensor must match
     if (!result->outputs || nimcp_tensor_numel(result->outputs) != num_gates) {
         LOG_ERROR("brain_evaluate_logic_gates_batch_tensor: result outputs size mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_evaluate_logic_gates_batch_tensor: result->outputs is NULL");
         return false;
     }
 
@@ -772,42 +817,49 @@ bool brain_evaluate_logic_expressions_batch(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network attached
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL expressions
     if (!nimcp_validate_pointer(expressions, "expressions")) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL expressions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: zero expressions
     if (num_expressions == 0) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: num_expressions is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: num_expressions is zero");
         return false;
     }
 
     // Guard: NULL bindings
     if (!nimcp_validate_pointer(bindings, "bindings")) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL bindings");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL num_bindings_per_expr
     if (!nimcp_validate_pointer(num_bindings_per_expr, "num_bindings_per_expr")) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL num_bindings_per_expr");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL outputs
     if (!nimcp_validate_pointer(outputs, "outputs")) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL outputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -819,6 +871,7 @@ bool brain_evaluate_logic_expressions_batch(
     uint32_t* circuit_ids = (uint32_t*)nimcp_calloc(num_expressions, sizeof(uint32_t));
     if (!circuit_ids) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to allocate circuit_ids");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_evaluate_logic_expressions_batch: circuit_ids is NULL");
         return false;
     }
 
@@ -826,6 +879,7 @@ bool brain_evaluate_logic_expressions_batch(
         if (!expressions[i] || expressions[i][0] == '\0') {
             LOG_ERROR("brain_evaluate_logic_expressions_batch: NULL or empty expression at index %u", i);
             nimcp_free(circuit_ids);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: expressions is NULL");
             return false;
         }
 
@@ -833,6 +887,7 @@ bool brain_evaluate_logic_expressions_batch(
         if (circuit_ids[i] == UINT32_MAX) {
             LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to parse expression '%s'", expressions[i]);
             nimcp_free(circuit_ids);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_evaluate_logic_expressions_batch: validation failed");
             return false;
         }
     }
@@ -847,6 +902,7 @@ bool brain_evaluate_logic_expressions_batch(
     if (!all_inputs) {
         LOG_ERROR("brain_evaluate_logic_expressions_batch: failed to allocate all_inputs");
         nimcp_free(circuit_ids);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_evaluate_logic_expressions_batch: all_inputs is NULL");
         return false;
     }
 
@@ -890,6 +946,7 @@ bool brain_get_evaluation_stats(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("brain_get_evaluation_stats: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_evaluation_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -897,18 +954,21 @@ bool brain_get_evaluation_stats(
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("brain_get_evaluation_stats: brain '%s' has no logic network",
                   "brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_evaluation_stats: brain_has_neural_logic is NULL");
         return false;
     }
 
     // Guard: NULL eval_time_us
     if (!nimcp_validate_pointer(eval_time_us, "eval_time_us")) {
         LOG_ERROR("brain_get_evaluation_stats: NULL eval_time_us");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_evaluation_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL spike_count
     if (!nimcp_validate_pointer(spike_count, "spike_count")) {
         LOG_ERROR("brain_get_evaluation_stats: NULL spike_count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_evaluation_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -935,6 +995,7 @@ bool brain_get_evaluation_stats(
 
     if (!success) {
         LOG_ERROR("brain_get_evaluation_stats: failed to get network stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_evaluation_stats: success is NULL");
         return false;
     }
 

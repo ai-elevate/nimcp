@@ -161,6 +161,7 @@ static action_evaluation_t* find_evaluation_unlocked(ethics_executive_bridge_t* 
             return &bridge->evaluations[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: validation failed");
     return NULL;
 }
 
@@ -198,6 +199,7 @@ static action_evaluation_t* get_or_create_evaluation_unlocked(
 
     /* Create new evaluation if capacity available */
     if (bridge->eval_count >= bridge->eval_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_evaluation_unlocked: capacity exceeded");
         return NULL;
     }
 
@@ -261,6 +263,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     bridge->evaluations = nimcp_malloc(sizeof(action_evaluation_t) * DEFAULT_EVAL_CAPACITY);
     if (!bridge->evaluations) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_executive_bridge_create: bridge->evaluations is NULL");
         return NULL;
     }
     memset(bridge->evaluations, 0, sizeof(action_evaluation_t) * DEFAULT_EVAL_CAPACITY);
@@ -275,6 +278,7 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->evaluations);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -321,10 +325,12 @@ int ethics_executive_constrain_action(
     ethics_constraints_out_t* constraints_out
 ) {
     if (!bridge || !constraints_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_constrain_action: required parameter is NULL (bridge, constraints_out)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_constrain_action: bridge->initialized is NULL");
         return -1;
     }
 
@@ -338,6 +344,7 @@ int ethics_executive_constrain_action(
     action_evaluation_t* eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
     if (!eval) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_constrain_action: eval is NULL");
         return -1;
     }
 
@@ -401,10 +408,12 @@ int ethics_executive_evaluate_action(
     float* ethical_score_out
 ) {
     if (!bridge || !ethical_score_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_evaluate_action: required parameter is NULL (bridge, ethical_score_out)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_evaluate_action: bridge->initialized is NULL");
         return -1;
     }
 
@@ -418,6 +427,7 @@ int ethics_executive_evaluate_action(
     action_evaluation_t* eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
     if (!eval) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_evaluate_action: eval is NULL");
         return -1;
     }
 
@@ -459,6 +469,7 @@ int ethics_executive_veto_action(
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_veto_action: bridge->initialized is NULL");
         return -1;
     }
 
@@ -471,6 +482,7 @@ int ethics_executive_veto_action(
     /* Check if veto is enabled */
     if (!bridge->config.veto_enabled) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_veto_action: bridge->config is NULL");
         return -1;
     }
 
@@ -481,6 +493,7 @@ int ethics_executive_veto_action(
         eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
         if (!eval) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_veto_action: eval is NULL");
             return -1;
         }
         /* Evaluate if newly created */
@@ -514,10 +527,12 @@ int ethics_executive_get_permitted_actions(
     size_t max_count
 ) {
     if (!bridge || !actions || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_get_permitted_actions: required parameter is NULL (bridge, actions)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_get_permitted_actions: bridge->initialized is NULL");
         return -1;
     }
 
@@ -557,10 +572,12 @@ int ethics_executive_bridge_get_stats(
     ethics_executive_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_bridge_get_stats: bridge->initialized is NULL");
         return -1;
     }
 

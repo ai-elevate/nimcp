@@ -116,7 +116,10 @@ static int find_coordinator_index(
     mesh_coordinator_pool_t* pool,
     mesh_participant_id_t coord_id
 ) {
-    if (!pool) return -1;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_coordinator_index: pool is NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < pool->coordinator_count; i++) {
         if (pool->coordinators[i] &&
@@ -124,6 +127,7 @@ static int find_coordinator_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_coordinator_index: pool is NULL");
     return -1;
 }
 
@@ -168,7 +172,10 @@ static mesh_coordinator_t* get_first_with_role(
     mesh_coordinator_pool_t* pool,
     coordinator_role_t role
 ) {
-    if (!pool) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_first_with_role: pool is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i < pool->coordinator_count; i++) {
         if (pool->coordinators[i] &&
@@ -176,6 +183,7 @@ static mesh_coordinator_t* get_first_with_role(
             return pool->coordinators[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_first_with_role: pool is NULL");
     return NULL;
 }
 
@@ -183,13 +191,17 @@ static mesh_coordinator_t* get_first_with_role(
  * @brief Find vote tally for candidate
  */
 static vote_tally_t* find_tally(mesh_coordinator_pool_t* pool, mesh_participant_id_t candidate) {
-    if (!pool || !pool->vote_tallies) return NULL;
+    if (!pool || !pool->vote_tallies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tally: required parameter is NULL (pool, pool->vote_tallies)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < pool->tally_count; i++) {
         if (pool->vote_tallies[i].candidate == candidate) {
             return &pool->vote_tallies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tally: validation failed");
     return NULL;
 }
 
@@ -213,7 +225,10 @@ static void add_vote(mesh_coordinator_pool_t* pool, mesh_participant_id_t candid
  * @brief Check if voter has already voted in current term (Byzantine detection)
  */
 static bool has_voter_already_voted(mesh_coordinator_pool_t* pool, mesh_participant_id_t voter_id) {
-    if (!pool || !pool->voter_records) return false;
+    if (!pool || !pool->voter_records) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "has_voter_already_voted: required parameter is NULL (pool, pool->voter_records)");
+        return false;
+    }
 
     for (size_t i = 0; i < pool->voter_record_count; i++) {
         if (pool->voter_records[i].voter_id == voter_id &&
@@ -280,7 +295,10 @@ static mesh_participant_id_t get_election_winner(mesh_coordinator_pool_t* pool) 
  * @brief Get least loaded worker
  */
 static mesh_coordinator_t* get_least_loaded_worker(mesh_coordinator_pool_t* pool) {
-    if (!pool) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_least_loaded_worker: pool is NULL");
+        return NULL;
+    }
 
     mesh_coordinator_t* least_loaded = NULL;
     float min_load = 2.0f;
@@ -390,6 +408,7 @@ mesh_coordinator_pool_t* mesh_coordinator_pool_create(
     mesh_coordinator_pool_t* pool = nimcp_calloc(1, sizeof(*pool));
     if (!pool) {
         LOG_ERROR("Failed to allocate coordinator pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool_create: pool is NULL");
         return NULL;
     }
 
@@ -409,6 +428,7 @@ mesh_coordinator_pool_t* mesh_coordinator_pool_create(
     if (!pool->coordinators) {
         LOG_ERROR("Failed to allocate coordinator array");
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool_create: pool->coordinators is NULL");
         return NULL;
     }
 
@@ -418,6 +438,7 @@ mesh_coordinator_pool_t* mesh_coordinator_pool_create(
         LOG_ERROR("Failed to allocate vote tallies");
         nimcp_free(pool->coordinators);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool_create: pool->vote_tallies is NULL");
         return NULL;
     }
 
@@ -429,6 +450,7 @@ mesh_coordinator_pool_t* mesh_coordinator_pool_create(
         nimcp_free(pool->vote_tallies);
         nimcp_free(pool->coordinators);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool_create: pool->voter_records is NULL");
         return NULL;
     }
 
@@ -440,6 +462,7 @@ mesh_coordinator_pool_t* mesh_coordinator_pool_create(
         nimcp_free(pool->vote_tallies);
         nimcp_free(pool->coordinators);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_pool_create: pool->mutex is NULL");
         return NULL;
     }
 
@@ -624,7 +647,10 @@ mesh_coordinator_t* mesh_coordinator_pool_get(
     mesh_coordinator_pool_t* pool,
     mesh_participant_id_t coordinator_id
 ) {
-    if (!validate_pool(pool)) return NULL;
+    if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_get: validate_pool is NULL");
+        return NULL;
+    }
 
     int idx = find_coordinator_index(pool, coordinator_id);
     return idx >= 0 ? pool->coordinators[idx] : NULL;
@@ -634,7 +660,10 @@ mesh_coordinator_t* mesh_coordinator_pool_get_by_index(
     mesh_coordinator_pool_t* pool,
     size_t index
 ) {
-    if (!validate_pool(pool) || index >= pool->coordinator_count) return NULL;
+    if (!validate_pool(pool) || index >= pool->coordinator_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_coordinator_pool_get_by_index: validate_pool is NULL");
+        return NULL;
+    }
     return pool->coordinators[index];
 }
 
@@ -649,8 +678,14 @@ size_t mesh_coordinator_pool_get_size(const mesh_coordinator_pool_t* pool) {
 mesh_coordinator_t* mesh_coordinator_pool_get_leader(
     mesh_coordinator_pool_t* pool
 ) {
-    if (!validate_pool(pool)) return NULL;
-    if (pool->leader_index >= pool->coordinator_count) return NULL;
+    if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_get_leader: validate_pool is NULL");
+        return NULL;
+    }
+    if (pool->leader_index >= pool->coordinator_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_coordinator_pool_get_leader: capacity exceeded");
+        return NULL;
+    }
     return pool->coordinators[pool->leader_index];
 }
 
@@ -661,7 +696,10 @@ mesh_participant_id_t mesh_coordinator_pool_get_leader_id(
 }
 
 bool mesh_coordinator_pool_has_leader(const mesh_coordinator_pool_t* pool) {
-    if (!pool) return false;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_has_leader: pool is NULL");
+        return false;
+    }
     return pool->leader_index < pool->coordinator_count && pool->leader_id != 0;
 }
 
@@ -998,7 +1036,10 @@ mesh_coordinator_t* mesh_coordinator_pool_get_assignment(
     mesh_coordinator_pool_t* pool,
     mesh_participant_id_t participant_id
 ) {
-    if (!validate_pool(pool)) return NULL;
+    if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_get_assignment: validate_pool is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i < pool->coordinator_count; i++) {
         if (pool->coordinators[i] &&
@@ -1006,6 +1047,7 @@ mesh_coordinator_t* mesh_coordinator_pool_get_assignment(
             return pool->coordinators[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_get_assignment: validate_pool is NULL");
     return NULL;
 }
 
@@ -1312,7 +1354,10 @@ void mesh_coordinator_pool_print_status(const mesh_coordinator_pool_t* pool) {
 }
 
 bool mesh_coordinator_pool_is_bft_valid(const mesh_coordinator_pool_t* pool) {
-    if (!pool) return false;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_coordinator_pool_is_bft_valid: pool is NULL");
+        return false;
+    }
 
     size_t active = get_active_count(pool);
     size_t failed = pool->coordinator_count - active;

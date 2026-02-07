@@ -189,6 +189,7 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
     if (bridge_base_init(&bridge->base, 0, "fep_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         fep_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -248,7 +249,10 @@ int fep_immune_bridge_connect_immune(
     fep_immune_bridge_t* bridge,
     brain_immune_system_t* immune
 ) {
-    if (!bridge || !immune) return -1;
+    if (!bridge || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_bridge_connect_immune: required parameter is NULL (bridge, immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_connect_immune", 0.0f);
@@ -341,7 +345,10 @@ int fep_immune_report_model_violation(
     const uint8_t* pattern,
     size_t len
 ) {
-    if (!bridge || !pattern || len == 0) return -1;
+    if (!bridge || !pattern || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_report_model_violation: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -443,7 +450,10 @@ int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int fep_immune_apply_inflammation_effects(fep_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_apply_inf", 0.0f);
@@ -517,7 +527,10 @@ int fep_immune_get_precision_modifier(
     const fep_immune_bridge_t* bridge,
     float* modifier
 ) {
-    if (!bridge || !modifier) return -1;
+    if (!bridge || !modifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_get_precision_modifier: required parameter is NULL (bridge, modifier)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_preci", 0.0f);
@@ -541,7 +554,10 @@ int fep_immune_get_learning_modifier(
     const fep_immune_bridge_t* bridge,
     float* modifier
 ) {
-    if (!bridge || !modifier) return -1;
+    if (!bridge || !modifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_get_learning_modifier: required parameter is NULL (bridge, modifier)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_fep_immune_get_learn", 0.0f);
@@ -805,7 +821,10 @@ int fep_immune_bridge_get_state(
     const fep_immune_bridge_t* bridge,
     fep_immune_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_get_state", 0.0f);
@@ -818,7 +837,10 @@ int fep_immune_bridge_get_stats(
     const fep_immune_bridge_t* bridge,
     fep_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_immune_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_immune_bridge_instance_heartbeat("fep_immune_b_get_stats", 0.0f);

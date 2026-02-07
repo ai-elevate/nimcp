@@ -258,6 +258,7 @@ static swarm_emergence_tier_t apply_hysteresis(
 static bool check_health_ratio(const swarm_state_t* state)
 {
     if (!state || state->connected_drones == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_health_ratio: state is NULL");
         return false;
     }
 
@@ -583,15 +584,18 @@ bool swarm_emergence_can_do(
 )
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_can_do: ctx is NULL");
         return false;
     }
 
     if (!capability_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_emergence_can_do: capability_name is NULL");
         return false;
     }
 
     swarm_capabilities_t caps;
     if (swarm_emergence_get_capabilities(ctx, &caps) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_can_do: validation failed");
         return false;
     }
 
@@ -619,6 +623,7 @@ bool swarm_emergence_can_do(
     }
 
     LOG_WARN("Unknown capability name: %s", capability_name);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_can_do: operation failed");
     return false;
 }
 
@@ -768,6 +773,7 @@ void swarm_emergence_reset_stats(swarm_emergence_ctx_t* ctx)
 bool swarm_emergence_validate_state(const swarm_state_t* state)
 {
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_emergence_validate_state: state is NULL");
         return false;
     }
 
@@ -775,6 +781,7 @@ bool swarm_emergence_validate_state(const swarm_state_t* state)
     if (state->healthy_drones > state->connected_drones) {
         LOG_ERROR("Healthy drones (%u) exceeds connected drones (%u)",
                   state->healthy_drones, state->connected_drones);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_validate_state: validation failed");
         return false;
     }
 
@@ -782,6 +789,7 @@ bool swarm_emergence_validate_state(const swarm_state_t* state)
     if (state->collective_coherence < 0.0F || state->collective_coherence > 1.0F) {
         LOG_ERROR("Invalid coherence value: %f (must be 0.0-1.0)",
                   state->collective_coherence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_validate_state: validation failed");
         return false;
     }
 
@@ -796,10 +804,12 @@ bool swarm_emergence_validate_state(const swarm_state_t* state)
 bool swarm_emergence_is_valid(const swarm_emergence_ctx_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_emergence_is_valid: ctx is NULL");
         return false;
     }
 
     if (ctx->magic != NIMCP_SWARM_EMERGENCE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_emergence_is_valid: validation failed");
         return false;
     }
 

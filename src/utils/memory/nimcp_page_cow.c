@@ -230,6 +230,7 @@ static page_cow_view_t find_view_by_address(void* addr) {
             return view;
         }
     }
+    /* Address not found in any registered view */
     return NULL;
 }
 
@@ -241,6 +242,7 @@ static bool register_view(page_cow_view_t view) {
 
     if (g_page_cow.view_count >= PAGE_COW_MAX_REGIONS * 16) {
         spinlock_release(&g_page_cow.lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "register_view: capacity exceeded");
         return false;
     }
 
@@ -276,13 +278,19 @@ static void unregister_view(page_cow_view_t view) {
  * @return true if fault was handled, false otherwise
  */
 static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return false;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: view is NULL");
+        return false;
+    }
 
     // Calculate page index
     size_t offset = (char*)fault_addr - (char*)view->view_base;
     size_t page_idx = offset / PAGE_COW_PAGE_SIZE;
 
-    if (page_idx >= view->num_pages) return false;
+    if (page_idx >= view->num_pages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: capacity exceeded");
+        return false;
+    }
 
     spinlock_acquire(&view->spinlock);
 
@@ -291,12 +299,14 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     // If already private, this isn't a COW fault
     if (vpage->is_private) {
         spinlock_release(&view->spinlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 
     page_cow_region_t region = view->region;
     if (!region || region->magic != PAGE_COW_MAGIC) {
         spinlock_release(&view->spinlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: region is NULL");
         return false;
     }
 
@@ -306,6 +316,7 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (private_page == MAP_FAILED) {
         spinlock_release(&view->spinlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 
@@ -323,6 +334,7 @@ static bool handle_cow_fault(page_cow_view_t view, void* fault_addr) {
     if (result == MAP_FAILED) {
         munmap(private_page, PAGE_COW_PAGE_SIZE);
         spinlock_release(&view->spinlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_cow_fault: validation failed");
         return false;
     }
 
@@ -405,6 +417,7 @@ NIMCP_EXPORT bool page_cow_init(void) {
     sigemptyset(&sa.sa_mask);
 
     if (sigaction(SIGSEGV, &sa, &g_page_cow.old_handler) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_init: validation failed");
         return false;
     }
 
@@ -425,9 +438,15 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     const page_cow_config_t* config,
     const void* initial_data
 ) {
-    if (!config || config->size == 0) return NULL;
+    if (!config || config->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_region_create: config is NULL");
+        return NULL;
+    }
     if (!g_page_cow.initialized) {
-        if (!page_cow_init()) return NULL;
+        if (!page_cow_init()) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "page_cow_region_create: page_cow_init is NULL");
+            return NULL;
+        }
     }
 
     // Allocate region structure
@@ -454,6 +473,7 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
                              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (region->base_data == MAP_FAILED) {
         nimcp_free(region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_region_create: validation failed");
         return NULL;
     }
 
@@ -469,6 +489,7 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
     if (!region->pages) {
         munmap(region->base_data, region->size);
         nimcp_free(region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_region_create: region->pages is NULL");
         return NULL;
     }
 
@@ -529,7 +550,10 @@ NIMCP_EXPORT bool page_cow_region_get_stats(
     page_cow_region_t region,
     page_cow_stats_t* stats
 ) {
-    if (!region || region->magic != PAGE_COW_MAGIC || !stats) return false;
+    if (!region || region->magic != PAGE_COW_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_region_get_stats: required parameter is NULL (region, stats)");
+        return false;
+    }
 
     spinlock_acquire(&region->spinlock);
     memcpy(stats, &region->stats, sizeof(page_cow_stats_t));
@@ -549,7 +573,10 @@ NIMCP_EXPORT size_t page_cow_region_get_size(page_cow_region_t region) {
 //=============================================================================
 
 NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
-    if (!region || region->magic != PAGE_COW_MAGIC) return NULL;
+    if (!region || region->magic != PAGE_COW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_view_create: region is NULL");
+        return NULL;
+    }
 
     // Allocate view structure
     page_cow_view_t view = nimcp_calloc(1, sizeof(struct page_cow_view_struct));
@@ -572,6 +599,7 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     view->pages = nimcp_calloc(region->num_pages, sizeof(view_page_entry_t));
     if (!view->pages) {
         nimcp_free(view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_view_create: view->pages is NULL");
         return NULL;
     }
 
@@ -582,6 +610,7 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
     if (view->view_base == MAP_FAILED) {
         nimcp_free(view->pages);
         nimcp_free(view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_create: validation failed");
         return NULL;
     }
 
@@ -593,6 +622,7 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
         munmap(view->view_base, region->size);
         nimcp_free(view->pages);
         nimcp_free(view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_view_create: validation failed");
         return NULL;
     }
 
@@ -624,7 +654,10 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
 }
 
 NIMCP_EXPORT page_cow_view_t page_cow_view_clone(page_cow_view_t source) {
-    if (!source || source->magic != PAGE_VIEW_MAGIC) return NULL;
+    if (!source || source->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_clone: source is NULL");
+        return NULL;
+    }
 
     page_cow_region_t region = source->region;
     if (!region) {
@@ -695,18 +728,25 @@ NIMCP_EXPORT void page_cow_view_destroy(page_cow_view_t view) {
 }
 
 NIMCP_EXPORT const void* page_cow_view_read(page_cow_view_t view) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_read: view is NULL");
+        return NULL;
+    }
     return view->view_base;
 }
 
 NIMCP_EXPORT void* page_cow_view_write(page_cow_view_t view) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_write: view is NULL");
+        return NULL;
+    }
 
     // Mark as writable and enable write access
     if (!view->writable) {
         // Make view memory writable (will trigger COW on shared pages)
         if (mprotect(view->view_base, view->num_pages * PAGE_COW_PAGE_SIZE,
                      PROT_READ | PROT_WRITE) < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_write: view->writable is NULL");
             return NULL;
         }
         view->writable = true;
@@ -719,8 +759,14 @@ NIMCP_EXPORT bool page_cow_view_make_page_private(
     page_cow_view_t view,
     size_t page_index
 ) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return false;
-    if (page_index >= view->num_pages) return false;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_view_make_page_private: view is NULL");
+        return false;
+    }
+    if (page_index >= view->num_pages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "page_cow_view_make_page_private: capacity exceeded");
+        return false;
+    }
 
     spinlock_acquire(&view->spinlock);
 
@@ -733,6 +779,7 @@ NIMCP_EXPORT bool page_cow_view_make_page_private(
     page_cow_region_t region = view->region;
     if (!region || region->magic != PAGE_COW_MAGIC) {
         spinlock_release(&view->spinlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_view_make_page_private: region is NULL");
         return false;
     }
 
@@ -741,6 +788,7 @@ NIMCP_EXPORT bool page_cow_view_make_page_private(
         if (mprotect(view->view_base, view->num_pages * PAGE_COW_PAGE_SIZE,
                      PROT_READ | PROT_WRITE) < 0) {
             spinlock_release(&view->spinlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "page_cow_view_make_page_private: view->writable is NULL");
             return false;
         }
         view->writable = true;
@@ -825,7 +873,10 @@ NIMCP_EXPORT size_t page_cow_view_get_memory_saved(page_cow_view_t view) {
 //=============================================================================
 
 NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_snapshot_create: view is NULL");
+        return NULL;
+    }
 
     page_cow_snapshot_t snap = nimcp_calloc(1, sizeof(struct page_cow_snapshot_struct));
     if (!snap) {
@@ -846,6 +897,7 @@ NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) 
     snap->pages = nimcp_calloc(view->num_pages, sizeof(view_page_entry_t));
     if (!snap->pages) {
         nimcp_free(snap);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "page_cow_snapshot_create: snap->pages is NULL");
         return NULL;
     }
 
@@ -870,12 +922,24 @@ NIMCP_EXPORT bool page_cow_snapshot_restore(
     page_cow_view_t view,
     page_cow_snapshot_t snapshot
 ) {
-    if (!view || view->magic != PAGE_VIEW_MAGIC) return false;
-    if (!snapshot || snapshot->magic != PAGE_SNAP_MAGIC) return false;
-    if (view != snapshot->source_view) return false;
+    if (!view || view->magic != PAGE_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_snapshot_restore: view is NULL");
+        return false;
+    }
+    if (!snapshot || snapshot->magic != PAGE_SNAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_snapshot_restore: snapshot is NULL");
+        return false;
+    }
+    if (view != snapshot->source_view) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_snapshot_restore: validation failed");
+        return false;
+    }
 
     page_cow_region_t region = view->region;
-    if (!region || region->magic != PAGE_COW_MAGIC) return false;
+    if (!region || region->magic != PAGE_COW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "page_cow_snapshot_restore: region is NULL");
+        return false;
+    }
 
     spinlock_acquire(&view->spinlock);
 

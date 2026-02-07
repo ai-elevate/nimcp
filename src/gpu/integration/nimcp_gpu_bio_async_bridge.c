@@ -245,6 +245,7 @@ gpu_bio_bridge_t* gpu_bio_bridge_create(
     int result = gpu_bio_bridge_init(bridge, config, multigpu_ctx);
     if (result != NIMCP_SUCCESS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_bio_bridge_create: validation failed");
         return NULL;
     }
 

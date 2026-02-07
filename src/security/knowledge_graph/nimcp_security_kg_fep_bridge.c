@@ -124,6 +124,7 @@ int sec_kg_fep_get_config(
     sec_kg_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -141,6 +142,7 @@ int sec_kg_fep_set_config(
     const sec_kg_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -168,6 +170,7 @@ sec_kg_fep_bridge_t* sec_kg_fep_create(
     /* Validate required parameters */
     if (!sec_kg || !fep_system) {
         NIMCP_LOGGING_ERROR("Security KG FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_create: required parameter is NULL (sec_kg, fep_system)");
         return NULL;
     }
 
@@ -177,6 +180,7 @@ sec_kg_fep_bridge_t* sec_kg_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security KG FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_kg_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -199,6 +203,7 @@ sec_kg_fep_bridge_t* sec_kg_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security KG FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -300,6 +305,7 @@ int sec_kg_fep_compute_effects(sec_kg_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -545,6 +551,7 @@ int sec_kg_fep_select_action(
     sec_kg_fep_action_t* action
 ) {
     if (!bridge || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_select_action: required parameter is NULL (bridge, action)");
         return -1;
     }
 
@@ -574,6 +581,7 @@ int sec_kg_fep_get_action_efe(
     float* efe
 ) {
     if (!bridge || !efe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_action_efe: required parameter is NULL (bridge, efe)");
         return -1;
     }
 
@@ -783,6 +791,7 @@ int sec_kg_fep_get_fep_effects(
     fep_to_sec_kg_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->fep_effects;
@@ -794,6 +803,7 @@ int sec_kg_fep_get_sec_effects(
     sec_kg_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_sec_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->sec_effects;
@@ -805,6 +815,7 @@ int sec_kg_fep_get_state(
     sec_kg_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
     *state = bridge->state;
@@ -816,6 +827,7 @@ int sec_kg_fep_get_stats(
     sec_kg_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_kg_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
     *stats = bridge->stats;

@@ -169,7 +169,10 @@ static void build_adjacency_matrix(
 //=============================================================================
 
 int ephaptic_qmc_coherence_default_config(ephaptic_coherence_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_coherence_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -194,7 +197,10 @@ int ephaptic_qmc_coherence_default_config(ephaptic_coherence_config_t* config) {
 }
 
 int ephaptic_qmc_coherence_default_target(ephaptic_coherence_target_t* target) {
-    if (!target) return -1;
+    if (!target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_coherence_default_target: target is NULL");
+        return -1;
+    }
 
     memset(target, 0, sizeof(*target));
 
@@ -207,7 +213,10 @@ int ephaptic_qmc_coherence_default_target(ephaptic_coherence_target_t* target) {
 }
 
 int ephaptic_qmc_walk_default_config(ephaptic_walk_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_walk_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -221,7 +230,10 @@ int ephaptic_qmc_walk_default_config(ephaptic_walk_config_t* config) {
 }
 
 int ephaptic_qmc_entropy_default_config(ephaptic_entropy_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_entropy_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -235,7 +247,10 @@ int ephaptic_qmc_entropy_default_config(ephaptic_entropy_config_t* config) {
 }
 
 int ephaptic_qmc_pattern_default_config(ephaptic_pattern_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_pattern_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -258,8 +273,14 @@ int ephaptic_qmc_optimize_coherence(
     const ephaptic_coherence_config_t* config,
     ephaptic_coherence_result_t* result
 ) {
-    if (!system || !target || !result) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_optimize_coherence: required parameter is NULL (system, target, result)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_optimize_coherence: system->initialized is NULL");
+        return -1;
+    }
 
     ephaptic_coherence_config_t default_cfg;
     if (!config) {
@@ -303,6 +324,7 @@ int ephaptic_qmc_optimize_coherence(
 
     if (err != QMC_OK) {
         result->converged = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_qmc_optimize_coherence: validation failed");
         return -1;
     }
 
@@ -341,8 +363,14 @@ int ephaptic_qmc_apply_coherence_result(
     nimcp_ephaptic_system_t* system,
     const ephaptic_coherence_result_t* result
 ) {
-    if (!system || !result) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_apply_coherence_result: required parameter is NULL (system, result)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_apply_coherence_result: system->initialized is NULL");
+        return -1;
+    }
 
     system->config.kuramoto_coupling = result->opt_coupling;
     system->config.sync_threshold = result->opt_sync_threshold;
@@ -355,8 +383,14 @@ int ephaptic_qmc_current_coherence(
     const nimcp_ephaptic_system_t* system,
     float* coherence
 ) {
-    if (!system || !coherence) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !coherence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_current_coherence: required parameter is NULL (system, coherence)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_current_coherence: system->initialized is NULL");
+        return -1;
+    }
 
     return nimcp_ephaptic_get_phase_coherence(system, coherence);
 }
@@ -372,9 +406,16 @@ int ephaptic_qmc_field_walk(
     const ephaptic_walk_config_t* config,
     ephaptic_walk_result_t* result
 ) {
-    if (!system || !result) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_field_walk: required parameter is NULL (system, result)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_field_walk: system->initialized is NULL");
+        return -1;
+    }
     if (start_idx >= system->neuron_count || target_idx >= system->neuron_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ephaptic_qmc_field_walk: capacity exceeded");
         return -1;
     }
 
@@ -417,6 +458,7 @@ int ephaptic_qmc_field_walk(
     nimcp_free(adjacency);
 
     if (err != QMC_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_qmc_field_walk: validation failed");
         return -1;
     }
 
@@ -454,8 +496,14 @@ int ephaptic_qmc_propagation_speed(
     const nimcp_ephaptic_system_t* system,
     float* speed
 ) {
-    if (!system || !speed) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !speed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_propagation_speed: required parameter is NULL (system, speed)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_propagation_speed: system->initialized is NULL");
+        return -1;
+    }
 
     // Estimate from field decay and typical frequencies
     // Speed ~ wavelength / period
@@ -478,8 +526,14 @@ int ephaptic_qmc_collective_entropy(
     const ephaptic_entropy_config_t* config,
     ephaptic_entropy_result_t* result
 ) {
-    if (!system || !result) return -1;
-    if (!system->initialized || system->neuron_count == 0) return -1;
+    if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_collective_entropy: required parameter is NULL (system, result)");
+        return -1;
+    }
+    if (!system->initialized || system->neuron_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_collective_entropy: system->initialized is NULL");
+        return -1;
+    }
 
     ephaptic_entropy_config_t default_cfg;
     if (!config) {
@@ -600,9 +654,18 @@ int ephaptic_qmc_region_mutual_info(
     uint32_t count2,
     float* mi
 ) {
-    if (!system || !region1 || !region2 || !mi) return -1;
-    if (!system->initialized) return -1;
-    if (count1 == 0 || count2 == 0) return -1;
+    if (!system || !region1 || !region2 || !mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_region_mutual_info: required parameter is NULL (system, region1, region2, mi)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_region_mutual_info: system->initialized is NULL");
+        return -1;
+    }
+    if (count1 == 0 || count2 == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_qmc_region_mutual_info: count1 is zero");
+        return -1;
+    }
 
     // Extract phases for both regions
     float* phases1 = nimcp_calloc(count1, sizeof(float));
@@ -665,8 +728,14 @@ int ephaptic_qmc_discover_patterns(
     const ephaptic_pattern_config_t* config,
     ephaptic_pattern_result_t* result
 ) {
-    if (!system || !result) return -1;
-    if (!system->initialized || system->neuron_count == 0) return -1;
+    if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_discover_patterns: required parameter is NULL (system, result)");
+        return -1;
+    }
+    if (!system->initialized || system->neuron_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_discover_patterns: system->initialized is NULL");
+        return -1;
+    }
 
     ephaptic_pattern_config_t default_cfg;
     if (!config) {
@@ -794,8 +863,14 @@ int ephaptic_qmc_classify_neuron(
     int32_t* best_pattern,
     float* match_score
 ) {
-    if (!system || !patterns || !best_pattern || !match_score) return -1;
-    if (!system->initialized || neuron_idx >= system->neuron_count) return -1;
+    if (!system || !patterns || !best_pattern || !match_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_classify_neuron: required parameter is NULL (system, patterns, best_pattern, match_score)");
+        return -1;
+    }
+    if (!system->initialized || neuron_idx >= system->neuron_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_classify_neuron: system->initialized is NULL");
+        return -1;
+    }
 
     float neuron_phase = system->neurons[neuron_idx].phase;
     *best_pattern = -1;
@@ -826,8 +901,14 @@ int ephaptic_qmc_correlation_length(
     const nimcp_ephaptic_system_t* system,
     float* corr_length
 ) {
-    if (!system || !corr_length) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !corr_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_correlation_length: required parameter is NULL (system, corr_length)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_correlation_length: system->initialized is NULL");
+        return -1;
+    }
 
     // Correlation length ~ 1 / field_decay_constant
     // Modified by coherence (higher coherence = longer correlation)
@@ -846,8 +927,14 @@ int ephaptic_qmc_field_capacity(
     const nimcp_ephaptic_system_t* system,
     float* capacity
 ) {
-    if (!system || !capacity) return -1;
-    if (!system->initialized) return -1;
+    if (!system || !capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_field_capacity: required parameter is NULL (system, capacity)");
+        return -1;
+    }
+    if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_qmc_field_capacity: system->initialized is NULL");
+        return -1;
+    }
 
     // Information capacity ~ N * log2(resolution) * coherence
     // where resolution depends on field strength discretization

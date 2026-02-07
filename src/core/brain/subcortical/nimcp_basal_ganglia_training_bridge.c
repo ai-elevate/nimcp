@@ -156,7 +156,10 @@ void bgtr_bridge_destroy(bgtr_bridge_t* bridge) {
 }
 
 int bgtr_bridge_reset(bgtr_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Clear traces */
     bridge->num_traces = 0;
@@ -178,7 +181,10 @@ int bgtr_bridge_reset(bgtr_bridge_t* bridge) {
  * ============================================================================ */
 
 int bgtr_bridge_connect_bg(bgtr_bridge_t* bridge, basal_ganglia_t* bg) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_connect_bg: bridge is NULL");
+        return -1;
+    }
     bridge->bg = bg;
 
     /* Update num_actions if BG has different count */
@@ -193,7 +199,10 @@ int bgtr_bridge_connect_training(
     bgtr_bridge_t* bridge,
     nimcp_training_context_t* training
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_connect_training: bridge is NULL");
+        return -1;
+    }
     bridge->training = training;
 
     /* Allocate weights using training module */
@@ -202,16 +211,25 @@ int bgtr_bridge_connect_training(
 
         result = nimcp_training_alloc_weights(
             training, bridge->num_actions, NULL, &bridge->d1_weights);
-        if (result != NIMCP_SUCCESS) return -1;
+        if (result != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_connect_training: validation failed");
+            return -1;
+        }
 
         result = nimcp_training_alloc_weights(
             training, bridge->num_actions, NULL, &bridge->d2_weights);
-        if (result != NIMCP_SUCCESS) return -1;
+        if (result != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_connect_training: validation failed");
+            return -1;
+        }
 
         if (bridge->config.enable_habit_learning) {
             result = nimcp_training_alloc_weights(
                 training, bridge->num_actions, NULL, &bridge->habit_weights);
-            if (result != NIMCP_SUCCESS) return -1;
+            if (result != NIMCP_SUCCESS) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_connect_training: validation failed");
+                return -1;
+            }
         }
 
         /* Initialize weights to baseline */
@@ -229,7 +247,10 @@ int bgtr_bridge_connect_training(
 }
 
 bool bgtr_bridge_is_connected(const bgtr_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bg != NULL;
 }
 
@@ -243,7 +264,10 @@ int bgtr_bridge_record_action(
     uint32_t context_id,
     uint64_t current_time_ms
 ) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_record_action: bridge is NULL");
+        return -1;
+    }
 
     bridge->last_action = action_id;
     bridge->last_action_time = current_time_ms;
@@ -281,7 +305,10 @@ int bgtr_bridge_process_reward(
     float reward,
     float expected_reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_process_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Compute RPE */
     float rpe = (reward - expected_reward) * bridge->config.da_scaling;
@@ -303,7 +330,10 @@ int bgtr_bridge_process_reward(
 }
 
 int bgtr_bridge_update_weights(bgtr_bridge_t* bridge, float rpe) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_update_weights: bridge is NULL");
+        return -1;
+    }
 
     int updates = 0;
 
@@ -358,7 +388,10 @@ int bgtr_bridge_update_weights(bgtr_bridge_t* bridge, float rpe) {
 }
 
 int bgtr_bridge_decay_traces(bgtr_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_decay_traces: bridge is NULL");
+        return -1;
+    }
 
     float decay = powf(bridge->config.trace_decay, dt_ms / 1000.0f);
 
@@ -377,7 +410,10 @@ int bgtr_bridge_strengthen_habit(
     uint32_t action_id,
     float amount
 ) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_strengthen_habit: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_habit_learning) return 0;
 
     if (bridge->training && bridge->habit_weights.handle) {
@@ -452,8 +488,14 @@ int bgtr_bridge_set_weight(
     bgtr_pathway_target_t target,
     float weight
 ) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
-    if (!bridge->training) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtr_bridge_set_weight: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_set_weight: bridge->training is NULL");
+        return -1;
+    }
 
     weight = clamp(weight, 0.0f, 1.0f);
 
@@ -537,7 +579,10 @@ int bgtr_bridge_checkpoint(
     bgtr_bridge_t* bridge,
     nimcp_training_checkpoint_t* checkpoint
 ) {
-    if (!bridge || !checkpoint || !bridge->training) return -1;
+    if (!bridge || !checkpoint || !bridge->training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_checkpoint: required parameter is NULL (bridge, checkpoint, bridge->training)");
+        return -1;
+    }
 
     nimcp_training_weights_t weights[3] = {
         bridge->d1_weights,
@@ -557,7 +602,10 @@ int bgtr_bridge_restore(
     bgtr_bridge_t* bridge,
     const nimcp_training_checkpoint_t* checkpoint
 ) {
-    if (!bridge || !checkpoint || !bridge->training) return -1;
+    if (!bridge || !checkpoint || !bridge->training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_restore: required parameter is NULL (bridge, checkpoint, bridge->training)");
+        return -1;
+    }
 
     nimcp_training_weights_t weights[3] = {
         bridge->d1_weights,
@@ -581,7 +629,10 @@ int bgtr_bridge_get_stats(
     const bgtr_bridge_t* bridge,
     bgtr_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtr_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

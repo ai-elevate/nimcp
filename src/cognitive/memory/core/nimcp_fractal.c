@@ -165,24 +165,29 @@ bool fractal_config_validate(const fractal_config_t* config) {
 
 
     if (config->min_scale < 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
     if (config->num_scales < 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate confidence threshold */
     if (config->confidence_threshold < 0.5f || config->confidence_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate DFA order */
     if (config->dfa_poly_order < 1 || config->dfa_poly_order > 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
     /* Validate spectral overlap */
     if (config->spectral_overlap < 0.0f || config->spectral_overlap > 0.9f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_config_validate: validation failed");
         return false;
     }
 
@@ -273,6 +278,7 @@ static bool linear_regression(const float* x, const float* y, size_t n, linear_f
     double ss_xy = sum_xy - sum_x * sum_y / (double)n;
 
     if (fabs(ss_xx) < EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linear_regression: validation failed");
         return false;  /* Singular */
     }
 
@@ -319,6 +325,7 @@ static bool linear_regression(const float* x, const float* y, size_t n, linear_f
  */
 static bool polynomial_fit(const float* x, const float* y, size_t n, int order, float* coeffs) {
     if (!x || !y || !coeffs || n < (size_t)(order + 1) || order < 1 || order > 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "polynomial_fit: required parameter is NULL (x, y, coeffs)");
         return false;
     }
 
@@ -326,6 +333,7 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
     if (order == 1) {
         linear_fit_t fit;
         if (!linear_regression(x, y, n, &fit)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "polynomial_fit: linear_regression is NULL");
             return false;
         }
         coeffs[0] = fit.intercept;
@@ -341,6 +349,7 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
     if (!A || !b) {
         nimcp_free(A);
         nimcp_free(b);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "polynomial_fit: required parameter is NULL (A, b)");
         return false;
     }
 
@@ -403,6 +412,7 @@ static bool polynomial_fit(const float* x, const float* y, size_t n, int order, 
         if (max_val < EPSILON) {
             nimcp_free(A);
             nimcp_free(b);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "polynomial_fit: validation failed");
             return false;  /* Singular */
         }
 
@@ -538,6 +548,7 @@ static bool validate_input(const float* samples, size_t count, size_t min_requir
         }
 
         if (!isfinite(samples[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "validate_input: isfinite is NULL");
             return false;
         }
     }
@@ -2005,6 +2016,7 @@ bool fractal_is_pink_noise(
 
     fractal_result_t result;
     if (fractal_dfa(samples, count, NULL, &result) != FRACTAL_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_is_pink_noise: validation failed");
         return false;
     }
 
@@ -2038,6 +2050,7 @@ bool fractal_is_self_similar(
 
     fractal_result_t result;
     if (fractal_dfa(samples, count, &config, &result) != FRACTAL_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_is_self_similar: validation failed");
         return false;
     }
 
@@ -2070,6 +2083,7 @@ bool fractal_validate_signal(
         }
 
         if (!isfinite(samples[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fractal_validate_signal: isfinite is NULL");
             return false;
         }
     }

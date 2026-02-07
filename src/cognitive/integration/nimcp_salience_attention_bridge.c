@@ -172,6 +172,7 @@ static float clamp_float(float value, float min, float max) {
  */
 static int salience_attention_on_event(const cognitive_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -305,6 +306,7 @@ static int salience_attention_query_handler(
     void* context
 ) {
     if (!query || !result || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_query_handler: required parameter is NULL (query, result, context)");
         return -1;
     }
 
@@ -474,6 +476,7 @@ salience_attention_bridge_t* salience_attention_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "salience_attention") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "salience_attention_bridge_create: validation failed");
         return NULL;
     }
 
@@ -539,6 +542,7 @@ int salience_attention_bridge_register_with_hub(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !bridge->initialized || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_register_with_hub: required parameter is NULL (bridge, bridge->initialized, hub)");
         return -1;
     }
 
@@ -551,6 +555,7 @@ int salience_attention_bridge_register_with_hub(
     /* Check if already registered */
     if (bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_attention_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -572,6 +577,7 @@ int salience_attention_bridge_register_with_hub(
         nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_attention_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -637,6 +643,7 @@ int salience_attention_bridge_unregister_from_hub(
     salience_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_unregister_from_hub: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -648,6 +655,7 @@ int salience_attention_bridge_unregister_from_hub(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_unregister_from_hub: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -681,6 +689,7 @@ bool salience_attention_bridge_is_registered(
     const salience_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_is_registered: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -707,6 +716,7 @@ int salience_attention_bridge_set_salience(
     salience_evaluator_t evaluator
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_salience: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -726,6 +736,7 @@ int salience_attention_bridge_set_attention(
     multihead_attention_t attention
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_attention: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -750,6 +761,7 @@ int salience_attention_bridge_set_salience_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_salience_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -771,6 +783,7 @@ int salience_attention_bridge_set_attention_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_attention_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -792,6 +805,7 @@ int salience_attention_bridge_set_priority_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_priority_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -813,6 +827,7 @@ int salience_attention_bridge_set_eval_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_eval_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -838,6 +853,7 @@ int salience_attention_publish_salience_detection(
     float score
 ) {
     if (!bridge || !bridge->initialized || !item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_publish_salience_detection: required parameter is NULL (bridge, bridge->initialized, item)");
         return -1;
     }
 
@@ -849,6 +865,7 @@ int salience_attention_publish_salience_detection(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_publish_salience_detection: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -904,6 +921,7 @@ int salience_attention_request_attention_shift(
     const attention_target_t* target
 ) {
     if (!bridge || !bridge->initialized || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_request_attention_shift: required parameter is NULL (bridge, bridge->initialized, target)");
         return -1;
     }
 
@@ -915,6 +933,7 @@ int salience_attention_request_attention_shift(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_request_attention_shift: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -958,6 +977,7 @@ int salience_attention_publish_priority_update(
     uint32_t num_priorities
 ) {
     if (!bridge || !bridge->initialized || !priorities || num_priorities == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_publish_priority_update: required parameter is NULL (bridge, bridge->initialized, priorities)");
         return -1;
     }
 
@@ -973,6 +993,7 @@ int salience_attention_publish_priority_update(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_publish_priority_update: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -1014,6 +1035,7 @@ int salience_attention_notify_attention_focus(
     const attention_focus_t* focus
 ) {
     if (!bridge || !bridge->initialized || !focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_notify_attention_focus: required parameter is NULL (bridge, bridge->initialized, focus)");
         return -1;
     }
 
@@ -1025,6 +1047,7 @@ int salience_attention_notify_attention_focus(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_notify_attention_focus: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -1070,6 +1093,7 @@ int salience_attention_request_salience_evaluation(
     const salience_eval_request_t* request
 ) {
     if (!bridge || !bridge->initialized || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_request_salience_evaluation: required parameter is NULL (bridge, bridge->initialized, request)");
         return -1;
     }
 
@@ -1078,6 +1102,7 @@ int salience_attention_request_salience_evaluation(
 
 
     if (request->num_items == 0 || request->num_items > SALIENCE_ATTENTION_MAX_ITEMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_attention_request_salience_evaluation: request->num_items is zero");
         return -1;
     }
 
@@ -1085,6 +1110,7 @@ int salience_attention_request_salience_evaluation(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_request_salience_evaluation: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -1126,6 +1152,7 @@ int salience_attention_bridge_get_salience_state(
     uint32_t* detection_count
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_get_salience_state: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1154,6 +1181,7 @@ int salience_attention_bridge_get_attention_state(
     uint32_t* num_targets
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_get_attention_state: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1184,6 +1212,7 @@ int salience_attention_bridge_get_stats(
     salience_attention_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1203,6 +1232,7 @@ int salience_attention_bridge_get_stats(
 
 int salience_attention_bridge_reset_stats(salience_attention_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1228,6 +1258,7 @@ int salience_attention_bridge_set_threshold(
     float threshold
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_threshold: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1247,6 +1278,7 @@ int salience_attention_bridge_set_shift_weight(
     float weight
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_attention_bridge_set_shift_weight: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

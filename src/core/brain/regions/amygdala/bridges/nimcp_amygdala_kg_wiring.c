@@ -113,7 +113,10 @@ static brain_kg_edge_id_t create_amygdala_edge(
 //=============================================================================
 
 int amygdala_kg_default_config(amygdala_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_bla = true;
     config->register_cea = true;
@@ -138,7 +141,10 @@ int amygdala_kg_register_all(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     amygdala_kg_config_t local_config;
@@ -161,6 +167,7 @@ int amygdala_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(AMYGDALA_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amygdala_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -225,7 +232,10 @@ int amygdala_kg_register_nuclei(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_nuclei: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register Basolateral Complex */
     if (!config || config->register_bla) {
@@ -376,7 +386,10 @@ int amygdala_kg_register_emotion_nodes(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_emotion_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create emotional processing system node */
     state->emotion_system_id = create_amygdala_node(
@@ -385,7 +398,10 @@ int amygdala_kg_register_emotion_nodes(
         "Emotional processing system - fear, threat, valence assessment",
         admin_token
     );
-    if (state->emotion_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->emotion_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amygdala_kg_register_emotion_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -496,7 +512,10 @@ int amygdala_kg_register_learning_nodes(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_learning_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create learning system node */
     state->learning_system_id = create_amygdala_node(
@@ -505,7 +524,10 @@ int amygdala_kg_register_learning_nodes(
         "Emotional learning system - fear conditioning, extinction, memory",
         admin_token
     );
-    if (state->learning_system_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->learning_system_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amygdala_kg_register_learning_nodes: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -597,7 +619,10 @@ int amygdala_kg_register_output_nodes(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_output_nodes: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Autonomic output node */
     state->autonomic_id = create_amygdala_node(
@@ -785,7 +810,10 @@ int amygdala_kg_register_cross_edges(
     amygdala_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register nucleus-to-function edges */
     register_nucleus_function_edges(kg, state, admin_token);
@@ -813,7 +841,10 @@ int amygdala_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update threat metadata */
     if (state->threat_id != BRAIN_KG_INVALID_NODE) {
@@ -899,7 +930,10 @@ int amygdala_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Would be used for actual deletion */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /*
      * Note: Full implementation would remove nodes in reverse order

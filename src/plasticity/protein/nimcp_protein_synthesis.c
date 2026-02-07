@@ -84,6 +84,7 @@ static int find_tag_index(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tag_index: validation failed");
     return -1;
 }
 
@@ -354,7 +355,10 @@ bool protein_synthesis_is_tagged(
     const protein_synthesis_system_t system,
     uint32_t synapse_id
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_is_tagged: system is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     int idx = find_tag_index(system, synapse_id);
@@ -600,7 +604,10 @@ bool protein_synthesis_can_consolidate(
     const protein_synthesis_system_t system,
     uint32_t synapse_id
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_can_consolidate: system is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -608,6 +615,7 @@ bool protein_synthesis_can_consolidate(
     int idx = find_tag_index(system, synapse_id);
     if (idx < 0) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_synthesis_can_consolidate: validation failed");
         return false;
     }
 

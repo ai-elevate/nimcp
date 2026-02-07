@@ -374,6 +374,7 @@ pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "predictive_attention_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pa_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -425,7 +426,10 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
 }
 
 int pa_fep_bridge_reset(pa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_reset", 0.0f);
@@ -470,7 +474,10 @@ int pa_fep_bridge_register(
     predictive_attention_bridge_t* pa_bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_regist", 0.0f);
@@ -510,6 +517,7 @@ int pa_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->pa_bridge = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -527,7 +535,10 @@ int pa_fep_bridge_register(
 }
 
 int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_unregi", 0.0f);
@@ -562,7 +573,10 @@ int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
 }
 
 bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_reg", 0.0f);
@@ -599,13 +613,17 @@ int pa_fep_update_callback(void* handle) {
 
 
     pa_fep_bridge_t* bridge = (pa_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_update_callback: bridge->registered is NULL");
         return -1;
     }
 
@@ -705,7 +723,10 @@ void pa_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int pa_fep_bridge_force_update(pa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_force_", 0.0f);
@@ -739,7 +760,10 @@ int pa_fep_bridge_update_prediction_accuracy(
     pa_fep_bridge_t* bridge,
     float accuracy
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_update_prediction_accuracy: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
@@ -757,7 +781,10 @@ int pa_fep_bridge_update_attention_precision(
     pa_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_update_attention_precision: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
@@ -775,7 +802,10 @@ int pa_fep_bridge_update_error_signal_quality(
     pa_fep_bridge_t* bridge,
     float quality
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_update_error_signal_quality: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_update", 0.0f);
@@ -796,7 +826,10 @@ int pa_fep_bridge_get_metrics(
     const pa_fep_bridge_t* bridge,
     pa_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_me", 0.0f);
@@ -813,7 +846,10 @@ int pa_fep_bridge_get_stats(
     const pa_fep_bridge_t* bridge,
     pa_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_st", 0.0f);
@@ -827,7 +863,10 @@ int pa_fep_bridge_get_stats(
 }
 
 int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_reset_", 0.0f);
@@ -917,7 +956,10 @@ pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
 }
 
 bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_deg", 0.0f);
@@ -931,7 +973,10 @@ bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
 }
 
 bool pa_fep_bridge_is_high_precision(const pa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_is_high_precision: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_is_hig", 0.0f);
@@ -964,7 +1009,10 @@ int pa_fep_bridge_set_high_fe_callback(
     pa_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_hi", 0.0f);
@@ -983,7 +1031,10 @@ int pa_fep_bridge_set_surprise_callback(
     pa_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_su", 0.0f);
@@ -1002,7 +1053,10 @@ int pa_fep_bridge_set_metrics_callback(
     pa_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_me", 0.0f);
@@ -1024,7 +1078,10 @@ int pa_fep_bridge_set_config(
     pa_fep_bridge_t* bridge,
     const pa_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_set_co", 0.0f);
@@ -1041,7 +1098,10 @@ int pa_fep_bridge_get_config(
     const pa_fep_bridge_t* bridge,
     pa_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_attention_fep_bridge_heartbeat("predictive_a_pa_fep_bridge_get_co", 0.0f);

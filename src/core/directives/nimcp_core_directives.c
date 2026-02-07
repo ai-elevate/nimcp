@@ -563,10 +563,14 @@ int core_directives_evaluate_command(core_directives_system_t* system,
 
 bool core_directives_allow_action(core_directives_system_t* system,
                                    const proposed_action_t* action) {
-    if (!system || !action) return false;
+    if (!system || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, action)");
+        return false;
+    }
 
     directive_evaluation_t evaluation;
     if (core_directives_evaluate(system, action, &evaluation) != NIMCP_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -699,7 +703,10 @@ int core_directives_disconnect_bio_async(core_directives_system_t* system) {
 }
 
 bool core_directives_is_bio_async_connected(const core_directives_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "core_directives_is_bio_async_connected: system is NULL");
+        return false;
+    }
     return system->bio_async_enabled;
 }
 

@@ -278,6 +278,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     if (read_header(fp, &weights->header) != NIMCP_SUCCESS) {
         fclose(fp);
         nimcp_free(weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_weights_open: validation failed");
         return NULL;
     }
 
@@ -289,6 +290,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
     if (!weights->tensors) {
         fclose(fp);
         nimcp_free(weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_weights_open: weights->tensors is NULL");
         return NULL;
     }
     memset(weights->tensors, 0, weights->header.num_tensors * sizeof(jepa_tensor_desc_t));
@@ -304,6 +306,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
         if (read_tensor_desc(fp, &weights->tensors[i]) != NIMCP_SUCCESS) {
             jepa_weights_close(weights);
             fclose(fp);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_weights_open: validation failed");
             return NULL;
         }
     }
@@ -319,6 +322,7 @@ jepa_weights_t* jepa_weights_open(const char* path) {
         if (read_tensor_data(fp, &weights->tensors[i]) != NIMCP_SUCCESS) {
             jepa_weights_close(weights);
             fclose(fp);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_weights_open: validation failed");
             return NULL;
         }
     }
@@ -741,7 +745,10 @@ void jepa_weights_list_tensors(const jepa_weights_t* weights) {
 
 const jepa_tensor_desc_t* jepa_weights_get_tensor(const jepa_weights_t* weights,
                                                     const char* name) {
-    if (!weights || !name) return NULL;
+    if (!weights || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_weights_list_tensors: required parameter is NULL (weights, name)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_weights_heartbeat("jepa_weights_get_tensor", 0.0f);
@@ -759,6 +766,7 @@ const jepa_tensor_desc_t* jepa_weights_get_tensor(const jepa_weights_t* weights,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_weights_list_tensors: validation failed");
     return NULL;
 }
 

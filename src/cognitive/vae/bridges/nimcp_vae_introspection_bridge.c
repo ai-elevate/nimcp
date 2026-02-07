@@ -161,10 +161,16 @@ int vae_intro_bridge_default_config(vae_intro_bridge_config_t* config) {
 }
 
 vae_intro_bridge_t* vae_intro_bridge_create(const vae_intro_bridge_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_intro_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_intro_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_intro_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_intro_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_INTRO_STATE_DISCONNECTED;

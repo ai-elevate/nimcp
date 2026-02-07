@@ -228,12 +228,14 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > IMAGINATION_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "imagination_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_snn_create: validation failed");
         return NULL;
     }
 
@@ -251,6 +253,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -263,6 +266,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->imagery_buffer || !bridge->prev_state) {
         imagination_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_create: operation failed");
         return NULL;
     }
 
@@ -325,7 +329,10 @@ void imagination_snn_destroy(imagination_snn_bridge_t* bridge) {
 }
 
 int imagination_snn_reset(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_rese", 0.0f);
@@ -383,8 +390,14 @@ int imagination_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_enco", 0.0f);
@@ -462,7 +475,10 @@ int imagination_snn_encode_vividness(
     float vividness,
     float detail
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_encode_vividness: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_enco", 0.0f);
@@ -485,7 +501,10 @@ int imagination_snn_encode_scenario(
     float coherence,
     float complexity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_encode_scenario: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_enco", 0.0f);
@@ -509,7 +528,10 @@ int imagination_snn_encode_creativity(
     float creativity,
     float novelty
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_encode_creativity: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_enco", 0.0f);
@@ -544,7 +566,10 @@ int imagination_snn_encode_counterfactual(
     float divergence,
     uint32_t steps_ahead
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_encode_counterfactual: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_enco", 0.0f);
@@ -567,8 +592,14 @@ int imagination_snn_encode_counterfactual(
 //=============================================================================
 
 int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_simu", 0.0f);
@@ -654,7 +685,10 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
 }
 
 int imagination_snn_step(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_step", 0.0f);
 
@@ -667,16 +701,23 @@ int imagination_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_forw", 0.0f);
 
 
     int spike_count = imagination_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_forward: validation failed");
+        return -1;
+    }
 
     if (imagination_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_forward: validation failed");
         return -1;
     }
 
@@ -691,7 +732,10 @@ int imagination_snn_get_imagery(
     imagination_snn_bridge_t* bridge,
     imagination_imagery_t* imagery
 ) {
-    if (!bridge || !imagery) return -1;
+    if (!bridge || !imagery) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_get_imagery: required parameter is NULL (bridge, imagery)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_get_", 0.0f);
@@ -709,8 +753,14 @@ int imagination_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_get_", 0.0f);
@@ -735,7 +785,10 @@ bool imagination_snn_check_vividness(
     imagination_snn_bridge_t* bridge,
     float* vividness_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_vividness: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_chec", 0.0f);
@@ -756,7 +809,10 @@ bool imagination_snn_check_creative(
     imagination_snn_bridge_t* bridge,
     float* creative_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_creative: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_chec", 0.0f);
@@ -777,7 +833,10 @@ bool imagination_snn_check_state_change(
     imagination_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_chec", 0.0f);
@@ -816,8 +875,14 @@ int imagination_snn_get_dim_state(
     uint32_t dim,
     imagination_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_get_", 0.0f);
@@ -834,7 +899,10 @@ int imagination_snn_get_state(
     imagination_snn_bridge_t* bridge,
     imagination_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_get_", 0.0f);
@@ -868,7 +936,10 @@ int imagination_snn_get_state(
 }
 
 int imagination_snn_get_stats(imagination_snn_bridge_t* bridge, imagination_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_get_", 0.0f);
@@ -882,7 +953,10 @@ int imagination_snn_get_stats(imagination_snn_bridge_t* bridge, imagination_snn_
 }
 
 int imagination_snn_reset_stats(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_rese", 0.0f);
@@ -941,7 +1015,10 @@ int imagination_snn_register_vividness_callback(
     imagination_snn_vividness_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_register_vividness_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_regi", 0.0f);
@@ -960,7 +1037,10 @@ int imagination_snn_register_imagery_callback(
     imagination_snn_imagery_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_register_imagery_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_regi", 0.0f);
@@ -979,7 +1059,10 @@ int imagination_snn_register_creative_callback(
     imagination_snn_creative_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_register_creative_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_regi", 0.0f);
@@ -998,8 +1081,14 @@ int imagination_snn_register_creative_callback(
 //=============================================================================
 
 int imagination_snn_bio_async_connect(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_bio_", 0.0f);
@@ -1014,7 +1103,10 @@ int imagination_snn_bio_async_connect(imagination_snn_bridge_t* bridge) {
 }
 
 int imagination_snn_bio_async_disconnect(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_bio_", 0.0f);
@@ -1028,7 +1120,10 @@ int imagination_snn_bio_async_disconnect(imagination_snn_bridge_t* bridge) {
 }
 
 bool imagination_snn_is_bio_async_connected(imagination_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_snn_bridge_heartbeat("imagination__imagination_snn_is_b", 0.0f);

@@ -179,10 +179,12 @@ int nimcp_da_release_update(
     float firing_rate
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_release_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_da_release_update: validation failed");
         return -1;
     }
 
@@ -270,6 +272,7 @@ int nimcp_da_release_trigger(
     uint32_t spikes
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_release_trigger: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -306,6 +309,7 @@ int nimcp_da_release_burst(
     float enhancement
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_release_burst: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -332,10 +336,12 @@ int nimcp_da_get_concentration(
     float* concentration
 ) {
     if (!system || !concentration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_concentration: required parameter is NULL (system, concentration)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_concentration: system->initialized is NULL");
         return -1;
     }
 
@@ -353,6 +359,7 @@ int nimcp_da_get_concentration(
             *concentration = system->concentrations.extrasynaptic;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_da_get_concentration: operation failed");
             return -1;
     }
 
@@ -365,6 +372,7 @@ int nimcp_da_set_concentration(
     float concentration
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_set_concentration: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -384,6 +392,7 @@ int nimcp_da_set_concentration(
             system->concentrations.extrasynaptic = concentration;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_da_set_concentration: operation failed");
             return -1;
     }
 
@@ -395,10 +404,12 @@ int nimcp_da_get_total_extracellular(
     float* total
 ) {
     if (!system || !total) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_total_extracellular: required parameter is NULL (system, total)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_total_extracellular: system->initialized is NULL");
         return -1;
     }
 
@@ -416,10 +427,12 @@ int nimcp_da_get_receptor_activation(
     float* activation
 ) {
     if (!system || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_receptor_activation: required parameter is NULL (system, activation)");
         return -1;
     }
 
     if (!system->initialized || type >= DA_RECEPTOR_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_receptor_activation: system->initialized is NULL");
         return -1;
     }
 
@@ -432,10 +445,12 @@ int nimcp_da_get_d1_d2_balance(
     float* balance
 ) {
     if (!system || !balance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_d1_d2_balance: required parameter is NULL (system, balance)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_d1_d2_balance: system->initialized is NULL");
         return -1;
     }
 
@@ -458,6 +473,7 @@ int nimcp_da_apply_drug(
     float affinity
 ) {
     if (!system || !system->initialized || receptor >= DA_RECEPTOR_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_apply_drug: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -482,6 +498,7 @@ int nimcp_da_set_dat_inhibition(
     float inhibition
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_set_dat_inhibition: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -494,10 +511,12 @@ int nimcp_da_get_uptake_rate(
     float* rate
 ) {
     if (!system || !rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_uptake_rate: required parameter is NULL (system, rate)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_uptake_rate: system->initialized is NULL");
         return -1;
     }
 
@@ -522,10 +541,12 @@ int nimcp_da_get_autoreceptor_feedback(
     float* feedback
 ) {
     if (!system || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_autoreceptor_feedback: required parameter is NULL (system, feedback)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_autoreceptor_feedback: system->initialized is NULL");
         return -1;
     }
 
@@ -542,10 +563,12 @@ int nimcp_da_get_vesicle_pool(
     nimcp_da_vesicle_pool_t* pool
 ) {
     if (!system || !pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_vesicle_pool: required parameter is NULL (system, pool)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_vesicle_pool: system->initialized is NULL");
         return -1;
     }
 
@@ -558,10 +581,12 @@ int nimcp_da_get_release_efficacy(
     float* efficacy
 ) {
     if (!system || !efficacy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_release_efficacy: required parameter is NULL (system, efficacy)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_da_get_release_efficacy: system->initialized is NULL");
         return -1;
     }
 

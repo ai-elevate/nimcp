@@ -59,6 +59,7 @@ nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coord
     coord->registry = nimcp_layer_registry_create(&coord->config.registry_config);
     if (!coord->registry) {
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layer_coordinator_create: coord->registry is NULL");
         return NULL;
     }
 
@@ -67,6 +68,7 @@ nimcp_layer_coordinator_t nimcp_layer_coordinator_create(const nimcp_layer_coord
     if (!coord->router) {
         nimcp_layer_registry_destroy(coord->registry);
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layer_coordinator_create: coord->router is NULL");
         return NULL;
     }
 

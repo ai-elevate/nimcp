@@ -533,7 +533,10 @@ bool nimcp_audit_verify_chain(
     nimcp_audit_log_t* audit,
     uint64_t* first_broken
 ) {
-    if (!audit || !audit->initialized) return false;
+    if (!audit || !audit->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_audit_verify_chain: required parameter is NULL (audit, audit->initialized)");
+        return false;
+    }
     if (!audit->config.enable_chain_verification) return true;
 
     nimcp_mutex_lock(&audit->lock);
@@ -556,6 +559,7 @@ bool nimcp_audit_verify_chain(
             audit->stats.chain_failures++;
             if (first_broken) *first_broken = event->sequence;
             nimcp_mutex_unlock(&audit->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_chain: validation failed");
             return false;
         }
 
@@ -570,6 +574,7 @@ bool nimcp_audit_verify_chain(
             if (first_broken) *first_broken = event->sequence;
             memcpy(event->hash, saved_hash, NIMCP_AUDIT_HASH_SIZE);  // Restore
             nimcp_mutex_unlock(&audit->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_chain: validation failed");
             return false;
         }
 
@@ -586,6 +591,7 @@ bool nimcp_audit_verify_event(
 ) {
     nimcp_audit_event_t event;
     if (nimcp_audit_get_by_sequence(audit, sequence, &event) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_verify_event: validation failed");
         return false;
     }
 
@@ -952,7 +958,10 @@ static uint64_t get_timestamp_ns(void) {
 }
 
 static bool write_event_to_file(nimcp_audit_log_t* audit, const nimcp_audit_event_t* event) {
-    if (!audit->log_file) return false;
+    if (!audit->log_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_event_to_file: audit->log_file is NULL");
+        return false;
+    }
 
     char buffer[1024];
     int len = nimcp_audit_format_event(event, buffer, sizeof(buffer) - 1);
@@ -981,34 +990,41 @@ static bool matches_query(const nimcp_audit_event_t* event, const nimcp_audit_qu
 
     // Time range filter
     if (query->start_time > 0 && event->timestamp < query->start_time) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
     if (query->end_time > 0 && event->timestamp > query->end_time) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Category filter
     if ((int)query->category >= 0 && event->category != query->category) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: capacity exceeded");
         return false;
     }
 
     // Severity filter
     if (event->severity < query->min_severity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Subject filter
     if (query->subject_id > 0 && event->subject_id != query->subject_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Source pattern filter
     if (query->source_pattern && strstr(event->source, query->source_pattern) == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Message pattern filter
     if (query->message_pattern && strstr(event->message, query->message_pattern) == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 

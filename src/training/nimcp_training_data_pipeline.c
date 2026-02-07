@@ -146,7 +146,10 @@ static nimcp_tensor_t* extract_sample(
     uint32_t sample_idx,
     const nimcp_tensor_shape_t* sample_shape
 ) {
-    if (!dataset || !sample_shape) return NULL;
+    if (!dataset || !sample_shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_sample: required parameter is NULL (dataset, sample_shape)");
+        return NULL;
+    }
 
     /* Create output tensor for single sample */
     nimcp_tensor_t* sample = nimcp_tensor_create(
@@ -184,6 +187,7 @@ static nimcp_tensor_t* create_batch_tensor(
     const nimcp_tensor_shape_t* sample_shape
 ) {
     if (!dataset || !indices || !sample_shape || batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_batch_tensor: required parameter is NULL (dataset, indices, sample_shape)");
         return NULL;
     }
 
@@ -241,7 +245,10 @@ static int apply_normalize(
     nimcp_tensor_t* tensor,
     const transform_normalize_config_t* cfg
 ) {
-    if (!tensor || !cfg) return -1;
+    if (!tensor || !cfg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_normalize: required parameter is NULL (tensor, cfg)");
+        return -1;
+    }
 
     float* data = (float*)nimcp_tensor_data(tensor);
     size_t numel = nimcp_tensor_numel(tensor);
@@ -319,7 +326,10 @@ static int apply_random_flip_h(
     nimcp_tensor_t* tensor,
     uint64_t* rng
 ) {
-    if (!tensor) return -1;
+    if (!tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_random_flip_h: tensor is NULL");
+        return -1;
+    }
 
     /* Only flip 50% of the time */
     if (randf(rng) < 0.5f) return 0;
@@ -366,7 +376,10 @@ static int apply_cutout(
     const transform_cutout_config_t* cfg,
     uint64_t* rng
 ) {
-    if (!tensor || !cfg) return -1;
+    if (!tensor || !cfg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_cutout: required parameter is NULL (tensor, cfg)");
+        return -1;
+    }
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
     if (!shape || shape->rank < 2) return 0;
@@ -427,7 +440,10 @@ static int apply_transform(
     const training_transform_t* transform,
     uint64_t* rng
 ) {
-    if (!tensor || !*tensor || !transform) return -1;
+    if (!tensor || !*tensor || !transform) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_transform: required parameter is NULL (tensor, transform)");
+        return -1;
+    }
 
     /* Check probability */
     if (transform->probability < 1.0f && randf(rng) > transform->probability) {
@@ -471,7 +487,10 @@ static int apply_transform_chain(
     nimcp_tensor_t** data_tensor,
     nimcp_tensor_t** label_tensor
 ) {
-    if (!ctx || !data_tensor || !*data_tensor) return -1;
+    if (!ctx || !data_tensor || !*data_tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_transform_chain: required parameter is NULL (ctx, data_tensor)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < ctx->num_transforms; i++) {
         int result = apply_transform(data_tensor, label_tensor, &ctx->transforms[i], &ctx->rng_state);
@@ -492,7 +511,10 @@ static int load_batch_entry(
     training_pipeline_ctx_t* ctx,
     prefetch_entry_t* entry
 ) {
-    if (!ctx || !entry) return -1;
+    if (!ctx || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_batch_entry: required parameter is NULL (ctx, entry)");
+        return -1;
+    }
 
     /* Determine batch size */
     uint32_t remaining = ctx->dataset_size - ctx->current_index;
@@ -501,6 +523,7 @@ static int load_batch_entry(
 
     if (remaining < batch_size) {
         if (ctx->config.drop_last) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_batch_entry: validation failed");
             return -1;  /* No more complete batches */
         }
         batch_size = remaining;
@@ -518,6 +541,7 @@ static int load_batch_entry(
     );
     if (!entry->batch.data) {
         ctx->stats.load_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_batch_entry: entry->batch is NULL");
         return -1;
     }
 
@@ -529,6 +553,7 @@ static int load_batch_entry(
         nimcp_tensor_destroy(entry->batch.data);
         entry->batch.data = NULL;
         ctx->stats.load_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_batch_entry: entry->batch is NULL");
         return -1;
     }
 
@@ -564,6 +589,7 @@ static int load_batch_entry(
 int training_pipeline_default_config(training_pipeline_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_default_config: config is NULL");
         return -1;
     }
 
@@ -615,6 +641,7 @@ training_pipeline_ctx_t* training_pipeline_create(
 ) {
     if (!data || !labels) {
         NIMCP_LOGGING_ERROR("NULL data or labels tensor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create: required parameter is NULL (data, labels)");
         return NULL;
     }
 
@@ -628,6 +655,7 @@ training_pipeline_ctx_t* training_pipeline_create(
     /* Validate batch size */
     if (config->batch_size == 0) {
         NIMCP_LOGGING_ERROR("Invalid batch size: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_pipeline_create: config->batch_size is zero");
         return NULL;
     }
 
@@ -637,6 +665,7 @@ training_pipeline_ctx_t* training_pipeline_create(
     );
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate pipeline context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_create: ctx is NULL");
         return NULL;
     }
 
@@ -650,6 +679,7 @@ training_pipeline_ctx_t* training_pipeline_create(
     if (!data_shape || data_shape->rank < 1) {
         NIMCP_LOGGING_ERROR("Invalid data tensor shape");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create: data_shape is NULL");
         return NULL;
     }
 
@@ -681,6 +711,7 @@ training_pipeline_ctx_t* training_pipeline_create(
     if (!ctx->indices) {
         NIMCP_LOGGING_ERROR("Failed to allocate index array");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_create: ctx->indices is NULL");
         return NULL;
     }
 
@@ -709,6 +740,7 @@ training_pipeline_ctx_t* training_pipeline_create(
         NIMCP_LOGGING_ERROR("Failed to allocate prefetch buffer");
         nimcp_free(ctx->indices);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_create: ctx->prefetch_buffer is NULL");
         return NULL;
     }
 
@@ -718,6 +750,7 @@ training_pipeline_ctx_t* training_pipeline_create(
         nimcp_free(ctx->prefetch_buffer);
         nimcp_free(ctx->indices);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_pipeline_create: validation failed");
         return NULL;
     }
 
@@ -764,6 +797,7 @@ training_pipeline_ctx_t* training_pipeline_create_from_files(
     (void)label_paths;
     (void)num_files;
     (void)config;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create_from_files: operation failed");
     return NULL;
 }
 
@@ -801,6 +835,7 @@ int training_pipeline_next_batch(
     training_batch_t* batch
 ) {
     if (!pipeline || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_next_batch: required parameter is NULL (pipeline, batch)");
         return -1;
     }
 
@@ -866,7 +901,10 @@ void training_batch_release(training_batch_t* batch) {
 }
 
 bool training_pipeline_has_more(const training_pipeline_ctx_t* pipeline) {
-    if (!pipeline) return false;
+    if (!pipeline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_has_more: pipeline is NULL");
+        return false;
+    }
 
     uint32_t remaining = pipeline->dataset_size - pipeline->current_index;
     if (pipeline->config.drop_last) {
@@ -886,7 +924,10 @@ uint32_t training_pipeline_num_batches(const training_pipeline_ctx_t* pipeline) 
 }
 
 int training_pipeline_reset_epoch(training_pipeline_ctx_t* pipeline) {
-    if (!pipeline) return -1;
+    if (!pipeline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_reset_epoch: pipeline is NULL");
+        return -1;
+    }
 
     /* Reset index */
     pipeline->current_index = 0;
@@ -921,7 +962,10 @@ uint64_t training_pipeline_get_epoch(const training_pipeline_ctx_t* pipeline) {
 }
 
 int training_pipeline_set_seed(training_pipeline_ctx_t* pipeline, uint64_t seed) {
-    if (!pipeline) return -1;
+    if (!pipeline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_set_seed: pipeline is NULL");
+        return -1;
+    }
     pipeline->rng_state = seed;
     return 0;
 }
@@ -930,10 +974,14 @@ int training_pipeline_add_transform(
     training_pipeline_ctx_t* pipeline,
     const training_transform_t* transform
 ) {
-    if (!pipeline || !transform) return -1;
+    if (!pipeline || !transform) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_add_transform: required parameter is NULL (pipeline, transform)");
+        return -1;
+    }
 
     if (pipeline->num_transforms >= TRAINING_PIPELINE_MAX_TRANSFORMS) {
         NIMCP_LOGGING_ERROR("Maximum transforms reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_pipeline_add_transform: capacity exceeded");
         return -1;
     }
 
@@ -942,7 +990,10 @@ int training_pipeline_add_transform(
         pipeline->transforms,
         (pipeline->num_transforms + 1) * sizeof(training_transform_t)
     );
-    if (!new_transforms) return -1;
+    if (!new_transforms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_add_transform: new_transforms is NULL");
+        return -1;
+    }
 
     pipeline->transforms = new_transforms;
     memcpy(&pipeline->transforms[pipeline->num_transforms], transform,
@@ -967,7 +1018,10 @@ int training_pipeline_set_transforms(
     const training_transform_t* transforms,
     uint32_t num_transforms
 ) {
-    if (!pipeline) return -1;
+    if (!pipeline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_set_transforms: pipeline is NULL");
+        return -1;
+    }
 
     training_pipeline_clear_transforms(pipeline);
 
@@ -981,7 +1035,10 @@ int training_pipeline_set_transforms(
     pipeline->transforms = (training_transform_t*)nimcp_malloc(
         count * sizeof(training_transform_t)
     );
-    if (!pipeline->transforms) return -1;
+    if (!pipeline->transforms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_pipeline_set_transforms: pipeline->transforms is NULL");
+        return -1;
+    }
 
     memcpy(pipeline->transforms, transforms, count * sizeof(training_transform_t));
     pipeline->num_transforms = count;
@@ -993,7 +1050,10 @@ int training_pipeline_get_stats(
     const training_pipeline_ctx_t* pipeline,
     training_pipeline_stats_t* stats
 ) {
-    if (!pipeline || !stats) return -1;
+    if (!pipeline || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_get_stats: required parameter is NULL (pipeline, stats)");
+        return -1;
+    }
     *stats = pipeline->stats;
     return 0;
 }
@@ -1057,7 +1117,10 @@ int training_pipeline_create_image_augmentation(
     uint32_t* num_transforms,
     uint32_t image_size
 ) {
-    if (!transforms || !num_transforms) return -1;
+    if (!transforms || !num_transforms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create_image_augmentation: required parameter is NULL (transforms, num_transforms)");
+        return -1;
+    }
 
     uint32_t idx = 0;
 
@@ -1102,7 +1165,10 @@ int training_pipeline_create_audio_augmentation(
     training_transform_t* transforms,
     uint32_t* num_transforms
 ) {
-    if (!transforms || !num_transforms) return -1;
+    if (!transforms || !num_transforms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_pipeline_create_audio_augmentation: required parameter is NULL (transforms, num_transforms)");
+        return -1;
+    }
 
     uint32_t idx = 0;
 

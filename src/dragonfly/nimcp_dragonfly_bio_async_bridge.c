@@ -69,7 +69,10 @@ struct dragonfly_bio_async_bridge_s {
 //=============================================================================
 
 int dragonfly_bio_async_bridge_default_config(dragonfly_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     /* Neuromodulator settings */
     config->dopamine_decay_rate = 0.1f;
@@ -93,15 +96,39 @@ int dragonfly_bio_async_bridge_default_config(dragonfly_bio_async_config_t* conf
 }
 
 int dragonfly_bio_async_bridge_validate_config(const dragonfly_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->dopamine_decay_rate < 0.0f) return -1;
-    if (config->norepinephrine_threshold < 0.0f || config->norepinephrine_threshold > 1.0f) return -1;
-    if (config->acetylcholine_focus_gain < 0.0f) return -1;
-    if (config->phase_coherence_threshold < 0.0f || config->phase_coherence_threshold > 1.0f) return -1;
-    if (config->base_priority < 0.0f || config->base_priority > 1.0f) return -1;
-    if (config->default_timeout_ms <= 0.0f) return -1;
-    if (config->default_phase > DRAGONFLY_PHASE_THETA) return -1;
+    if (config->dopamine_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->norepinephrine_threshold < 0.0f || config->norepinephrine_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->acetylcholine_focus_gain < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->phase_coherence_threshold < 0.0f || config->phase_coherence_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->base_priority < 0.0f || config->base_priority > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->default_timeout_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->default_phase > DRAGONFLY_PHASE_THETA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_bridge_validate_config: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -166,7 +193,10 @@ void dragonfly_bio_async_bridge_destroy(dragonfly_bio_async_bridge_t* bridge) {
 }
 
 int dragonfly_bio_async_bridge_reset(dragonfly_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset neuromodulator levels */
     bridge->dopamine_level = 0.3f;
@@ -204,11 +234,20 @@ dragonfly_bio_future_t* dragonfly_bio_async_start(
     const float* input,
     uint32_t input_size
 ) {
-    if (!bridge) return NULL;
-    if (bridge->num_futures >= DRAGONFLY_BIO_MAX_FUTURES) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_start: bridge is NULL");
+        return NULL;
+    }
+    if (bridge->num_futures >= DRAGONFLY_BIO_MAX_FUTURES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dragonfly_bio_async_start: capacity exceeded");
+        return NULL;
+    }
 
     dragonfly_bio_future_t* future = nimcp_calloc(1, sizeof(dragonfly_bio_future_t));
-    if (!future) return NULL;
+    if (!future) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_bio_async_start: future is NULL");
+        return NULL;
+    }
 
     future->parent = bridge;
     future->operation = operation;
@@ -243,7 +282,10 @@ int dragonfly_bio_future_wait(
     dragonfly_async_result_t* result,
     float timeout_ms
 ) {
-    if (!future || !result) return -1;
+    if (!future || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_future_wait: required parameter is NULL (future, result)");
+        return -1;
+    }
 
     /* Simulate completion - in real implementation this would block */
     (void)timeout_ms;
@@ -264,7 +306,10 @@ int dragonfly_bio_future_wait(
 }
 
 bool dragonfly_bio_future_is_ready(const dragonfly_bio_future_t* future) {
-    if (!future) return false;
+    if (!future) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_future_is_ready: future is NULL");
+        return false;
+    }
     return future->ready;
 }
 
@@ -303,7 +348,10 @@ int dragonfly_bio_async_signal_reward(
     dragonfly_bio_async_bridge_t* bridge,
     float reward_magnitude
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_signal_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Dopamine burst for successful interception */
     bridge->dopamine_level += reward_magnitude * 0.5f;
@@ -318,7 +366,10 @@ int dragonfly_bio_async_signal_alert(
     dragonfly_bio_async_bridge_t* bridge,
     float alert_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_signal_alert: bridge is NULL");
+        return -1;
+    }
 
     /* Norepinephrine for alert/arousal */
     bridge->norepinephrine_level = alert_level;
@@ -341,7 +392,10 @@ int dragonfly_bio_async_signal_focus(
     dragonfly_bio_async_bridge_t* bridge,
     float focus_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_signal_focus: bridge is NULL");
+        return -1;
+    }
 
     /* Acetylcholine for attention focus */
     bridge->acetylcholine_level = focus_level * bridge->config.acetylcholine_focus_gain;
@@ -375,8 +429,14 @@ int dragonfly_bio_async_set_phase_mode(
     dragonfly_bio_async_bridge_t* bridge,
     dragonfly_phase_mode_t mode
 ) {
-    if (!bridge) return -1;
-    if (mode > DRAGONFLY_PHASE_THETA) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_set_phase_mode: bridge is NULL");
+        return -1;
+    }
+    if (mode > DRAGONFLY_PHASE_THETA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_bio_async_set_phase_mode: validation failed");
+        return -1;
+    }
 
     bridge->current_phase = mode;
     return 0;
@@ -393,7 +453,10 @@ int dragonfly_bio_async_sync_futures(
     uint32_t num_futures,
     float coherence_threshold
 ) {
-    if (!bridge || !futures || num_futures == 0) return -1;
+    if (!bridge || !futures || num_futures == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_sync_futures: required parameter is NULL (bridge, futures)");
+        return -1;
+    }
 
     /* Check if coherence is above threshold for synchronization */
     if (bridge->coherence_level < coherence_threshold) {
@@ -419,7 +482,10 @@ int dragonfly_bio_async_connect_dragonfly(
     dragonfly_bio_async_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_connect_dragonfly: bridge is NULL");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -428,13 +494,19 @@ int dragonfly_bio_async_connect_system(
     dragonfly_bio_async_bridge_t* bridge,
     void* bio_async_system
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_connect_system: bridge is NULL");
+        return -1;
+    }
     bridge->bio_async_system = bio_async_system;
     return 0;
 }
 
 int dragonfly_bio_async_update(dragonfly_bio_async_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_time_ms += dt_ms;
 
@@ -496,13 +568,19 @@ int dragonfly_bio_async_bridge_get_stats(
     const dragonfly_bio_async_bridge_t* bridge,
     dragonfly_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_bio_async_bridge_reset_stats(dragonfly_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_bio_async_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

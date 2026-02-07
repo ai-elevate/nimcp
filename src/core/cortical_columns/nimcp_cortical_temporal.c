@@ -70,8 +70,14 @@ struct cortical_temporal_system {
  */
 static inline bool validate_system(const cortical_temporal_system_t* system)
 {
-    if (!system) return false;
-    if (system->magic != CORTICAL_TEMPORAL_MAGIC) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_system: system is NULL");
+        return false;
+    }
+    if (system->magic != CORTICAL_TEMPORAL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_system: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -96,15 +102,24 @@ static int initialize_trf_weights(
 
     }
     if (num_bins == 0) return -1;
-    if (bin_width_ms <= 0.0f) return -1;
-    if (tau <= 0.0f) return -1;
+    if (bin_width_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_trf_weights: validation failed");
+        return -1;
+    }
+    if (tau <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_trf_weights: validation failed");
+        return -1;
+    }
 
     trf->num_bins = num_bins;
     trf->bin_width_ms = bin_width_ms;
     trf->total_window_ms = num_bins * bin_width_ms;
 
     trf->history_weights = nimcp_calloc(num_bins, sizeof(float));
-    if (!trf->history_weights) return -1;
+    if (!trf->history_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_trf_weights: trf->history_weights is NULL");
+        return -1;
+    }
 
     // Exponential kernel
     float sum = 0.0f;
@@ -149,16 +164,28 @@ static int initialize_temporal_state(
 )
 {
     // Guard clauses
-    if (!state || !config) return -1;
-    if (config->num_columns == 0) return -1;
-    if (config->history_bins == 0) return -1;
+    if (!state || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: required parameter is NULL (state, config)");
+        return -1;
+    }
+    if (config->num_columns == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_temporal_state: config->num_columns is zero");
+        return -1;
+    }
+    if (config->history_bins == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_temporal_state: config->history_bins is zero");
+        return -1;
+    }
 
     // Allocate layer activity history
     state->layer_activities = nimcp_calloc(
         CORTICAL_TEMPORAL_NUM_LAYERS,
         sizeof(float*)
     );
-    if (!state->layer_activities) return -1;
+    if (!state->layer_activities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_temporal_state: state->layer_activities is NULL");
+        return -1;
+    }
 
     for (uint32_t layer = 0; layer < CORTICAL_TEMPORAL_NUM_LAYERS; layer++) {
         state->layer_activities[layer] = nimcp_calloc(
@@ -171,6 +198,7 @@ static int initialize_temporal_state(
                 nimcp_free(state->layer_activities[j]);
             }
             nimcp_free(state->layer_activities);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->layer_activities is NULL");
             return -1;
         }
     }
@@ -185,6 +213,7 @@ static int initialize_temporal_state(
             nimcp_free(state->layer_activities[layer]);
         }
         nimcp_free(state->layer_activities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->adaptation_states is NULL");
         return -1;
     }
 
@@ -199,6 +228,7 @@ static int initialize_temporal_state(
             nimcp_free(state->layer_activities[layer]);
         }
         nimcp_free(state->layer_activities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_temporal_state: state->habituation_states is NULL");
         return -1;
     }
 
@@ -257,10 +287,12 @@ cortical_temporal_system_t* cortical_temporal_create(
     }
     if (config->num_columns == 0) {
         NIMCP_LOGGING_ERROR("Invalid num_columns: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_create: config->num_columns is zero");
         return NULL;
     }
     if (config->history_bins == 0) {
         NIMCP_LOGGING_ERROR("Invalid history_bins: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_create: config->history_bins is zero");
         return NULL;
     }
 
@@ -284,6 +316,7 @@ cortical_temporal_system_t* cortical_temporal_create(
     if (initialize_temporal_state(&system->state, config) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize temporal state");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_temporal_create: validation failed");
         return NULL;
     }
 
@@ -305,6 +338,7 @@ cortical_temporal_system_t* cortical_temporal_create(
             }
             free_temporal_state(&system->state);
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_create: operation failed");
             return NULL;
         }
     }
@@ -415,7 +449,10 @@ int cortical_temporal_set_layer_timescale(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_set_layer_timescale: validate_system is NULL");
+        return -1;
+    }
     if (!timescale) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "timescale is NULL");
@@ -424,7 +461,10 @@ int cortical_temporal_set_layer_timescale(
 
     }
     if (layer >= CORTICAL_TEMPORAL_NUM_LAYERS) return -1;
-    if (timescale->tau <= 0.0f) return -1;
+    if (timescale->tau <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_set_layer_timescale: validation failed");
+        return -1;
+    }
 
     // Update configuration
     system->config.layer_timescales[layer] = *timescale;
@@ -442,6 +482,7 @@ int cortical_temporal_set_layer_timescale(
         ) != 0)
     {
         NIMCP_LOGGING_ERROR("Failed to reinitialize TRF for layer %u", layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_set_layer_timescale: operation failed");
         return -1;
     }
 
@@ -476,8 +517,14 @@ int cortical_temporal_update(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
-    if (delta_time_ms < 0.0f) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_update: validate_system is NULL");
+        return -1;
+    }
+    if (delta_time_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_update: validation failed");
+        return -1;
+    }
 
     temporal_state_t* state = &system->state;
     const temporal_config_t* config = &system->config;
@@ -607,8 +654,14 @@ int cortical_temporal_reset_adaptation(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
-    if (column_id >= system->config.num_columns) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_reset_adaptation: validate_system is NULL");
+        return -1;
+    }
+    if (column_id >= system->config.num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_reset_adaptation: capacity exceeded");
+        return -1;
+    }
 
     system->state.adaptation_states[column_id] = 0.0f;
     return 0;
@@ -620,8 +673,14 @@ int cortical_temporal_reset_habituation(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
-    if (column_id >= system->config.num_columns) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_reset_habituation: validate_system is NULL");
+        return -1;
+    }
+    if (column_id >= system->config.num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_reset_habituation: capacity exceeded");
+        return -1;
+    }
 
     system->state.habituation_states[column_id] = 0.0f;
     return 0;
@@ -646,10 +705,12 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     }
     if (sequence_length == 0) {
         NIMCP_LOGGING_ERROR("Invalid sequence length: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_create_sequence_detector: sequence_length is zero");
         return NULL;
     }
     if (detection_threshold < 0.0f || detection_threshold > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid threshold: %.2f", detection_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_create_sequence_detector: validation failed");
         return NULL;
     }
 
@@ -673,6 +734,7 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     if (!detector->sequence_template) {
         NIMCP_LOGGING_ERROR("Failed to allocate sequence template");
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_create_sequence_detector: detector->sequence_template is NULL");
         return NULL;
     }
 
@@ -692,6 +754,7 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
         NIMCP_LOGGING_ERROR("Failed to allocate match scores");
         nimcp_free(detector->sequence_template);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_create_sequence_detector: detector->match_scores is NULL");
         return NULL;
     }
 
@@ -735,16 +798,29 @@ bool cortical_temporal_detect_sequence(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return false;
-    if (!detector) return false;
-    if (column_id >= system->config.num_columns) return false;
-    if (layer >= CORTICAL_TEMPORAL_NUM_LAYERS) return false;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_detect_sequence: validate_system is NULL");
+        return false;
+    }
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_detect_sequence: detector is NULL");
+        return false;
+    }
+    if (column_id >= system->config.num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_detect_sequence: capacity exceeded");
+        return false;
+    }
+    if (layer >= CORTICAL_TEMPORAL_NUM_LAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_detect_sequence: capacity exceeded");
+        return false;
+    }
 
     const temporal_state_t* state = &system->state;
     const temporal_config_t* config = &system->config;
 
     // Ensure we have enough history
     if (detector->sequence_length > config->history_bins) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_detect_sequence: validation failed");
         return false;
     }
 
@@ -795,7 +871,10 @@ int cortical_temporal_get_stats(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_get_stats: validate_system is NULL");
+        return -1;
+    }
     if (!stats) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
@@ -850,7 +929,10 @@ int cortical_temporal_reset_stats(
 )
 {
     // Guard clause
-    if (!validate_system(system)) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_reset_stats: validate_system is NULL");
+        return -1;
+    }
 
     memset(&system->stats, 0, sizeof(temporal_stats_t));
     return 0;
@@ -865,7 +947,10 @@ int cortical_temporal_connect_bio_async(
 )
 {
     // Guard clause
-    if (!validate_system(system)) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_connect_bio_async: validate_system is NULL");
+        return -1;
+    }
     if (system->bio_async_enabled) return 0;  // Already connected
 
     // Register with bio-async router
@@ -883,6 +968,7 @@ int cortical_temporal_connect_bio_async(
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -892,7 +978,10 @@ int cortical_temporal_disconnect_bio_async(
 )
 {
     // Guard clauses
-    if (!validate_system(system)) return -1;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_disconnect_bio_async: validate_system is NULL");
+        return -1;
+    }
     if (!system->bio_async_enabled) return 0;
 
     if (system->bio_ctx) {
@@ -911,6 +1000,9 @@ bool cortical_temporal_is_bio_async_connected(
 )
 {
     // Guard clause
-    if (!validate_system(system)) return false;
+    if (!validate_system(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_temporal_is_bio_async_connected: validate_system is NULL");
+        return false;
+    }
     return system->bio_async_enabled;
 }

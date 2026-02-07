@@ -280,6 +280,7 @@ executive_middleware_adapter_t* executive_middleware_adapter_create_custom(
     // Guard: NULL checks (shannon_monitor is optional)
     if (!executive || !propagator || !config) {
         LOG_ERROR("executive_middleware_adapter_create_custom: NULL executive, propagator, or config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_middleware_adapter_create_custom: required parameter is NULL (executive, propagator, config)");
         return NULL;
     }
 
@@ -365,6 +366,7 @@ bool executive_middleware_adapter_register_handlers(
     // Guard: NULL checks
     if (!adapter || !event_bus) {
         LOG_ERROR("executive_middleware_adapter_register_handlers: NULL adapter or event_bus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_register_handlers: required parameter is NULL (adapter, event_bus)");
         return false;
     }
 
@@ -476,6 +478,7 @@ bool executive_middleware_adapter_on_task_switched(
     // Guard: NULL checks
     if (!adapter) {
         LOG_ERROR("executive_middleware_adapter_on_task_switched: NULL adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_on_task_switched: adapter is NULL");
         return false;
     }
 
@@ -516,6 +519,7 @@ bool executive_middleware_adapter_on_task_switched(
     if (priority < adapter->config.command_priority_threshold) {
         LOG_DEBUG("Task switch filtered: priority %.2f < threshold %.2f",
                   priority, adapter->config.command_priority_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_middleware_adapter_on_task_switched: validation failed");
         return false;
     }
 
@@ -615,6 +619,7 @@ bool executive_middleware_adapter_on_cognitive_load_changed(
     // Guard: NULL checks
     if (!adapter) {
         LOG_ERROR("executive_middleware_adapter_on_cognitive_load_changed: NULL adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_on_cognitive_load_changed: adapter is NULL");
         return false;
     }
 
@@ -688,6 +693,7 @@ bool executive_middleware_adapter_on_pattern_detected(
     // Guard: NULL checks
     if (!adapter) {
         LOG_ERROR("executive_middleware_adapter_on_pattern_detected: NULL adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_on_pattern_detected: adapter is NULL");
         return false;
     }
 
@@ -702,6 +708,7 @@ bool executive_middleware_adapter_on_pattern_detected(
     // Filter low-confidence patterns
     if (confidence < 0.5F) {
         LOG_DEBUG("Pattern filtered: confidence %.2f < 0.5", confidence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_middleware_adapter_on_pattern_detected: validation failed");
         return false;
     }
 
@@ -754,6 +761,7 @@ bool executive_middleware_adapter_on_oscillation_changed(
     // Guard: NULL checks
     if (!adapter) {
         LOG_ERROR("executive_middleware_adapter_on_oscillation_changed: NULL adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_on_oscillation_changed: adapter is NULL");
         return false;
     }
 
@@ -813,6 +821,7 @@ bool executive_middleware_adapter_on_salience_peak(
     // Guard: NULL checks
     if (!adapter) {
         LOG_ERROR("executive_middleware_adapter_on_salience_peak: NULL adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_on_salience_peak: adapter is NULL");
         return false;
     }
 
@@ -871,6 +880,7 @@ bool executive_middleware_adapter_get_metrics(
     executive_middleware_metrics_t* metrics
 ) {
     if (!adapter || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_middleware_adapter_get_metrics: required parameter is NULL (adapter, metrics)");
         return false;
     }
 

@@ -125,6 +125,7 @@ int pattern_fep_match(pattern_fep_bridge_t* bridge, const char* input,
     nimcp_error_t err = nimcp_pattern_db_match(bridge->pattern_db, input, result);
     if (err != NIMCP_SUCCESS) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_fep_update: validation failed");
         return -1;
     }
 

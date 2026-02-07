@@ -32,13 +32,17 @@ static bio_module_entry_t* find_module(
     bio_async_orchestrator_t* orchestrator,
     bio_module_id_t module_id
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: orchestrator is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < orchestrator->module_count; i++) {
         if (orchestrator->modules[i].module_id == module_id) {
             return &orchestrator->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
     return NULL;
 }
 
@@ -71,7 +75,10 @@ static float compute_health_score(const bio_async_orchestrator_t* orchestrator) 
  * ============================================================================ */
 
 int bio_orchestrator_default_config(bio_orchestrator_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(bio_orchestrator_config_t));
 
@@ -203,7 +210,10 @@ void bio_orchestrator_destroy(bio_async_orchestrator_t* orchestrator) {
 }
 
 int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_start: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -242,7 +252,10 @@ int bio_orchestrator_start(bio_async_orchestrator_t* orchestrator) {
 }
 
 int bio_orchestrator_stop(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_stop: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -273,7 +286,10 @@ int bio_orchestrator_register_module(
     bio_module_context_t bio_context,
     uint32_t startup_phase
 ) {
-    if (!orchestrator || !name) return -1;
+    if (!orchestrator || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_register_module: required parameter is NULL (orchestrator, name)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -281,6 +297,7 @@ int bio_orchestrator_register_module(
     if (orchestrator->module_count >= orchestrator->module_capacity) {
         NIMCP_LOGGING_ERROR("Module registry full");
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bio_orchestrator_register_module: capacity exceeded");
         return -1;
     }
 
@@ -323,7 +340,10 @@ int bio_orchestrator_unregister_module(
     bio_async_orchestrator_t* orchestrator,
     bio_module_id_t module_id
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_unregister_module: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -338,6 +358,7 @@ int bio_orchestrator_unregister_module(
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_unregister_module: validation failed");
         return -1;
     }
 
@@ -365,13 +386,17 @@ int bio_orchestrator_add_dependency(
     bio_module_id_t module_id,
     bio_module_id_t depends_on
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_add_dependency: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
     bio_module_entry_t* entry = find_module(orchestrator, module_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_add_dependency: entry is NULL");
         return -1;
     }
 
@@ -382,6 +407,7 @@ int bio_orchestrator_add_dependency(
     );
     if (!new_deps) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_add_dependency: new_deps is NULL");
         return -1;
     }
 
@@ -398,13 +424,17 @@ int bio_orchestrator_set_module_enabled(
     bio_module_id_t module_id,
     bool enabled
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_set_module_enabled: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
     bio_module_entry_t* entry = find_module(orchestrator, module_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_set_module_enabled: entry is NULL");
         return -1;
     }
 
@@ -419,7 +449,10 @@ int bio_orchestrator_set_module_enabled(
  * ============================================================================ */
 
 int bio_orchestrator_execute_startup(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_execute_startup: orchestrator is NULL");
+        return -1;
+    }
 
     if (!orchestrator->config.enforce_startup_order) {
         /* No ordering enforcement */
@@ -470,7 +503,10 @@ uint32_t bio_orchestrator_get_phase_modules(
  * ============================================================================ */
 
 int bio_orchestrator_health_check_all(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_health_check_all: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -504,13 +540,17 @@ int bio_orchestrator_health_check_module(
     bio_module_id_t module_id,
     bio_module_health_t* health_out
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_health_check_module: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
     bio_module_entry_t* entry = find_module(orchestrator, module_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_health_check_module: entry is NULL");
         return -1;
     }
 
@@ -600,7 +640,10 @@ const bio_module_entry_t* bio_orchestrator_get_module_info(
     const bio_async_orchestrator_t* orchestrator,
     bio_module_id_t module_id
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_get_module_info: orchestrator is NULL");
+        return NULL;
+    }
 
     /* Note: The returned pointer is only valid while orchestrator is not modified.
      * Caller should ensure no concurrent module registration/unregistration. */
@@ -634,7 +677,10 @@ int bio_orchestrator_connect_brain_immune(
     bio_async_orchestrator_t* orchestrator,
     void* immune
 ) {
-    if (!orchestrator || !immune) return -1;
+    if (!orchestrator || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_connect_brain_immune: required parameter is NULL (orchestrator, immune)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -650,7 +696,10 @@ int bio_orchestrator_connect_brain_immune(
 }
 
 int bio_orchestrator_disconnect_brain_immune(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_disconnect_brain_immune: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -669,7 +718,10 @@ int bio_orchestrator_get_stats(
     const bio_async_orchestrator_t* orchestrator,
     bio_orchestrator_stats_t* stats
 ) {
-    if (!orchestrator || !stats) return -1;
+    if (!orchestrator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_get_stats: required parameter is NULL (orchestrator, stats)");
+        return -1;
+    }
 
     *stats = orchestrator->stats;
 
@@ -795,7 +847,10 @@ int bio_orchestrator_connect_internal_kg(
     bio_async_orchestrator_t* orchestrator,
     brain_t brain
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_connect_internal_kg: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -808,6 +863,7 @@ int bio_orchestrator_connect_internal_kg(
 
     if (result != 0) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_connect_internal_kg: validation failed");
         return -1;
     }
 
@@ -852,7 +908,10 @@ int bio_orchestrator_connect_internal_kg(
 }
 
 int bio_orchestrator_disconnect_internal_kg(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_disconnect_internal_kg: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -876,7 +935,10 @@ int bio_orchestrator_disconnect_internal_kg(bio_async_orchestrator_t* orchestrat
 }
 
 int bio_orchestrator_sync_health_to_kg(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_sync_health_to_kg: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -922,7 +984,10 @@ int bio_orchestrator_sync_health_to_kg(bio_async_orchestrator_t* orchestrator) {
 }
 
 int bio_orchestrator_validate_startup_ordering(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_validate_startup_ordering: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1053,7 +1118,10 @@ int bio_orchestrator_register_handler_callback(
     wiring_handler_callback_t callback,
     void* user_data
 ) {
-    if (!orchestrator || !callback) return -1;
+    if (!orchestrator || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_register_handler_callback: required parameter is NULL (orchestrator, callback)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1061,6 +1129,7 @@ int bio_orchestrator_register_handler_callback(
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
         NIMCP_LOGGING_WARN("Cannot register callback: module 0x%04X not found", module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_register_handler_callback: entry is NULL");
         return -1;
     }
 
@@ -1111,7 +1180,10 @@ uint32_t bio_orchestrator_get_module_handlers(
  * HOW:  Iterate modules, call callbacks with wiring.handles_messages
  */
 int bio_orchestrator_invoke_handler_callbacks(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_invoke_handler_callbacks: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1163,7 +1235,10 @@ int bio_orchestrator_set_wiring_diagram(
     bio_async_orchestrator_t* orchestrator,
     wiring_diagram_t* wd
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_set_wiring_diagram: orchestrator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->wiring_diagram = wd;
@@ -1187,7 +1262,10 @@ int bio_orchestrator_set_wiring_diagram(
 wiring_diagram_t* bio_orchestrator_get_wiring_diagram(
     const bio_async_orchestrator_t* orchestrator
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_get_wiring_diagram: orchestrator is NULL");
+        return NULL;
+    }
     return orchestrator->wiring_diagram;
 }
 
@@ -1202,13 +1280,17 @@ int bio_orchestrator_discover_module_wiring(
     bio_async_orchestrator_t* orchestrator,
     bio_module_id_t module_id
 ) {
-    if (!orchestrator || !orchestrator->wiring_diagram) return -1;
+    if (!orchestrator || !orchestrator->wiring_diagram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_discover_module_wiring: required parameter is NULL (orchestrator, orchestrator->wiring_diagram)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
     bio_module_entry_t* entry = find_module(orchestrator, module_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_discover_module_wiring: entry is NULL");
         return -1;
     }
 
@@ -1241,7 +1323,10 @@ int bio_orchestrator_discover_module_wiring(
  * HOW:  Iterate all modules, query wiring diagram for each
  */
 int bio_orchestrator_discover_all_wiring(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator || !orchestrator->wiring_diagram) return -1;
+    if (!orchestrator || !orchestrator->wiring_diagram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_discover_all_wiring: required parameter is NULL (orchestrator, orchestrator->wiring_diagram)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -1283,8 +1368,14 @@ int bio_orchestrator_discover_all_wiring(bio_async_orchestrator_t* orchestrator)
 bool bio_orchestrator_self_assembly_available(
     const bio_async_orchestrator_t* orchestrator
 ) {
-    if (!orchestrator) return false;
-    if (!orchestrator->wiring_diagram) return false;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_self_assembly_available: orchestrator is NULL");
+        return false;
+    }
+    if (!orchestrator->wiring_diagram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_self_assembly_available: orchestrator->wiring_diagram is NULL");
+        return false;
+    }
 
     /* Check if wiring diagram has any modules */
     uint32_t count = wiring_diagram_get_module_count(orchestrator->wiring_diagram);
@@ -1301,7 +1392,10 @@ int bio_orchestrator_compute_startup_order(
     bio_module_id_t* order_out,
     uint32_t max_modules
 ) {
-    if (!orchestrator || !order_out || max_modules == 0) return -1;
+    if (!orchestrator || !order_out || max_modules == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_compute_startup_order: required parameter is NULL (orchestrator, order_out)");
+        return -1;
+    }
 
     /* If wiring diagram available, use KG-driven ordering */
     if (orchestrator->wiring_diagram) {
@@ -1352,7 +1446,10 @@ int bio_orchestrator_compute_startup_order(
  * HOW:  Compute order, discover wiring, invoke callbacks, start each
  */
 int bio_orchestrator_start_modules_ordered(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_start_modules_ordered: orchestrator is NULL");
+        return -1;
+    }
 
     /* First, discover wiring if available */
     if (orchestrator->wiring_diagram) {
@@ -1369,6 +1466,7 @@ int bio_orchestrator_start_modules_ordered(bio_async_orchestrator_t* orchestrato
 
     if (order_count < 0) {
         NIMCP_LOGGING_ERROR("Self-assembly: failed to compute startup order");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_start_modules_ordered: validation failed");
         return -1;
     }
 
@@ -1424,7 +1522,10 @@ int bio_orchestrator_start_modules_ordered(bio_async_orchestrator_t* orchestrato
  * HOW:  Compute startup order, traverse in reverse
  */
 int bio_orchestrator_stop_modules_ordered(bio_async_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_stop_modules_ordered: orchestrator is NULL");
+        return -1;
+    }
 
     /* Compute startup order */
     bio_module_id_t order[BIO_ORCHESTRATOR_MAX_MODULES];
@@ -1433,6 +1534,7 @@ int bio_orchestrator_stop_modules_ordered(bio_async_orchestrator_t* orchestrator
 
     if (order_count < 0) {
         NIMCP_LOGGING_ERROR("Self-assembly: failed to compute shutdown order");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_stop_modules_ordered: validation failed");
         return -1;
     }
 
@@ -1482,14 +1584,20 @@ int bio_orchestrator_get_module_startup_position(
     bio_async_orchestrator_t* orchestrator,
     bio_module_id_t module_id
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_get_module_startup_position: orchestrator is NULL");
+        return -1;
+    }
 
     /* Compute startup order */
     bio_module_id_t order[BIO_ORCHESTRATOR_MAX_MODULES];
     int order_count = bio_orchestrator_compute_startup_order(
         orchestrator, order, BIO_ORCHESTRATOR_MAX_MODULES);
 
-    if (order_count <= 0) return -1;
+    if (order_count <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_get_module_startup_position: validation failed");
+        return -1;
+    }
 
     /* Find module's position */
     for (int i = 0; i < order_count; i++) {
@@ -1498,6 +1606,7 @@ int bio_orchestrator_get_module_startup_position(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_orchestrator_get_module_startup_position: validation failed");
     return -1;  /* Not found */
 }
 
@@ -1510,7 +1619,10 @@ int bio_orchestrator_validate_self_assembly(
     bio_async_orchestrator_t* orchestrator,
     wiring_validation_result_t* result
 ) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_orchestrator_validate_self_assembly: orchestrator is NULL");
+        return -1;
+    }
 
     /* No wiring diagram means no self-assembly - not an error, just not available */
     if (!orchestrator->wiring_diagram) {

@@ -115,18 +115,21 @@ static inline float clamp_f(float value, float min_val, float max_val) {
 static bool validate_state(portia_attention_state_t state) {
     if (!state) {
         LOG_ERROR("Attention state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_state: state is NULL");
         return false;
     }
 
     bbb_validation_result_t result;
     if (!bbb_validate_pointer(NULL, state, sizeof(*state), &result)) {
         LOG_ERROR("Invalid attention state pointer: %s", result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_state: bbb_validate_pointer is NULL");
         return false;
     }
 
     if (state->magic != PORTIA_ATTENTION_MAGIC) {
         LOG_ERROR("Invalid magic number: 0x%08x (expected 0x%08x)",
                   state->magic, PORTIA_ATTENTION_MAGIC);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_state: validation failed");
         return false;
     }
 
@@ -169,7 +172,10 @@ static int compare_resources(const void* a, const void* b) {
     const resource_sort_entry_t* entry_b = (const resource_sort_entry_t*)b;
 
     // Sort by score descending
-    if (entry_a->score > entry_b->score) return -1;
+    if (entry_a->score > entry_b->score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_resources: validation failed");
+        return -1;
+    }
     if (entry_a->score < entry_b->score) return 1;
     return 0;
 }
@@ -344,11 +350,13 @@ int portia_attention_update_salience(
     float salience) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validate_state is NULL");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d (max=%u)", target, state->resource_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_attention_destroy: capacity exceeded");
         return -1;
     }
 
@@ -356,6 +364,7 @@ int portia_attention_update_salience(
     if (salience < MIN_SALIENCE || salience > MAX_SALIENCE) {
         LOG_ERROR("Salience %.3f out of range [%.1f, %.1f]",
                   salience, MIN_SALIENCE, MAX_SALIENCE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validation failed");
         return -1;
     }
 
@@ -395,6 +404,7 @@ int portia_attention_decay(
     uint64_t current_time_ms) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_destroy: validate_state is NULL");
         return -1;
     }
 
@@ -464,6 +474,7 @@ int portia_attention_reallocate(
     bool force_reallocation) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_attention_destroy: validate_state is NULL");
         return -1;
     }
 
@@ -629,11 +640,13 @@ int portia_attention_request(
     float amount) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return -1;
     }
 
@@ -664,11 +677,13 @@ int portia_attention_release(
     float amount) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
         return -1;
     }
 
     if (target >= state->resource_count) {
         LOG_ERROR("Invalid target: %d", target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return -1;
     }
 
@@ -725,6 +740,7 @@ int portia_attention_get_all_allocations(
     uint32_t max_count) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
         return -1;
     }
 
@@ -732,6 +748,7 @@ int portia_attention_get_all_allocations(
     if (!bbb_validate_pointer(NULL, resources,
                               max_count * sizeof(attention_resource_t), &result)) {
         LOG_ERROR("Invalid resources buffer: %s", result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
         return -1;
     }
 
@@ -756,12 +773,14 @@ int portia_attention_get_stats(
     portia_attention_stats_t* stats) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validate_state is NULL");
         return -1;
     }
 
     bbb_validation_result_t result;
     if (!bbb_validate_pointer(NULL, stats, sizeof(*stats), &result)) {
         LOG_ERROR("Invalid stats pointer: %s", result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bbb_validate_pointer is NULL");
         return -1;
     }
 
@@ -798,6 +817,7 @@ bool portia_attention_needs_reallocation(
     uint64_t current_time_ms) {
 
     if (!validate_state(state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_attention_reset_stats: validate_state is NULL");
         return false;
     }
 
@@ -807,6 +827,7 @@ bool portia_attention_needs_reallocation(
     uint64_t elapsed = current_time_ms - state->last_reallocation_ms;
     if (elapsed < state->config.update_interval_ms) {
         nimcp_platform_mutex_unlock(&state->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_reset_stats: validation failed");
         return false;
     }
 

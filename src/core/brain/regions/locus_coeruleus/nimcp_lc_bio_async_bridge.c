@@ -116,6 +116,7 @@ static lc_bio_subscription_t* find_subscription(lc_bio_async_bridge_t* b, uint32
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -124,7 +125,10 @@ static lc_bio_subscription_t* find_subscription(lc_bio_async_bridge_t* b, uint32
  * ============================================================================ */
 
 int lc_bio_async_default_config(lc_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->ne_broadcast_interval_ms = LC_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -162,6 +166,7 @@ lc_bio_async_bridge_t* lc_bio_async_bridge_create(const lc_bio_async_config_t* c
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(lc_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lc_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -191,7 +196,10 @@ int lc_bio_async_connect(
     nimcp_lc_adapter_t adapter,
     bio_router_t router
 ) {
-    if (!bridge || !adapter) return -1;
+    if (!bridge || !adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_connect: required parameter is NULL (bridge, adapter)");
+        return -1;
+    }
 
     bridge->adapter = adapter;
     bridge->router = router;
@@ -201,7 +209,10 @@ int lc_bio_async_connect(
 }
 
 int lc_bio_async_disconnect(lc_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->adapter = NULL;
     bridge->router = NULL;
@@ -219,7 +230,10 @@ bool lc_bio_async_is_connected(const lc_bio_async_bridge_t* bridge) {
  * ============================================================================ */
 
 int lc_bio_async_process_inbox(lc_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Process incoming modulation requests - stub for now */
     uint32_t processed = 0;
@@ -230,7 +244,10 @@ int lc_bio_async_process_inbox(lc_bio_async_bridge_t* bridge, uint32_t max_messa
 }
 
 int lc_bio_async_update(lc_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -249,7 +266,10 @@ int lc_bio_async_update(lc_bio_async_bridge_t* bridge, uint32_t delta_ms) {
  * ============================================================================ */
 
 int lc_bio_async_broadcast_ne_state(lc_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_ne_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lc_bio_ne_state_msg_t msg = {0};
     msg.header.type = BIO_MSG_LC_NE_STATE;
@@ -286,7 +306,10 @@ int lc_bio_async_update_state(
     float gain_modulation,
     bool phasic_mode
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_update_state: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne_level = ne_level;
     bridge->state.tonic_ne = phasic_mode ? ne_level * 0.3f : ne_level * 0.7f;
@@ -306,7 +329,10 @@ int lc_bio_async_broadcast_arousal_change(
     float current_arousal,
     uint32_t trigger_source
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_arousal_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lc_bio_arousal_change_msg_t msg = {0};
     msg.header.type = BIO_MSG_LC_AROUSAL_CHANGE;
@@ -331,7 +357,10 @@ int lc_bio_async_broadcast_phasic_burst(
     float novelty_score,
     uint32_t trigger_source
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_phasic_burst: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lc_bio_phasic_burst_msg_t msg = {0};
     msg.header.type = BIO_MSG_LC_PHASIC_BURST;
@@ -357,7 +386,10 @@ int lc_bio_async_send_gain_modulation(
     float gain_factor,
     uint32_t target_module
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_send_gain_modulation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_gain_modulation) return 0;
 
     lc_bio_gain_modulation_msg_t msg = {0};
@@ -387,7 +419,10 @@ int lc_bio_async_broadcast_stress_response(
     float stress_intensity,
     bool is_acute
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_stress_response: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_stress_routing) return 0;
 
     lc_bio_stress_response_msg_t msg = {0};
@@ -416,7 +451,10 @@ int lc_bio_async_send_plasticity_gate(
     float lr_multiplier,
     uint32_t target_module
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_send_plasticity_gate: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_plasticity_gating) return 0;
 
     lc_bio_plasticity_gate_msg_t msg = {0};
@@ -443,7 +481,10 @@ int lc_bio_async_send_plasticity_gate(
 }
 
 int lc_bio_async_broadcast_vigilance(lc_bio_async_bridge_t* bridge, float vigilance_level) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_vigilance: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Broadcast via NE state with updated vigilance */
     bridge->stats.broadcasts_sent++;
@@ -451,7 +492,10 @@ int lc_bio_async_broadcast_vigilance(lc_bio_async_bridge_t* bridge, float vigila
 }
 
 int lc_bio_async_broadcast_tonic_shift(lc_bio_async_bridge_t* bridge, float new_tonic_level) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_broadcast_tonic_shift: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Update tonic level and broadcast */
     (void)new_tonic_level;
@@ -468,7 +512,10 @@ int lc_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     lc_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -479,6 +526,7 @@ int lc_bio_async_subscribe_module(
 
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "lc_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -498,7 +546,10 @@ int lc_bio_async_subscribe_module(
 }
 
 int lc_bio_async_unsubscribe_module(lc_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -508,6 +559,7 @@ int lc_bio_async_unsubscribe_module(lc_bio_async_bridge_t* bridge, uint32_t modu
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lc_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
@@ -516,10 +568,16 @@ int lc_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     lc_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -549,13 +607,19 @@ uint32_t lc_bio_async_get_subscriber_count(
  * ============================================================================ */
 
 int lc_bio_async_get_stats(const lc_bio_async_bridge_t* bridge, lc_bio_async_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int lc_bio_async_reset_stats(lc_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;

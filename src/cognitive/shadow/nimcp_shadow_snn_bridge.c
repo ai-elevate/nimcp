@@ -212,12 +212,14 @@ shadow_snn_bridge_t* shadow_snn_create(const shadow_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > SHADOW_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "shadow_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shadow_snn_create: validation failed");
         return NULL;
     }
 
@@ -235,6 +237,7 @@ shadow_snn_bridge_t* shadow_snn_create(const shadow_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shadow_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -247,6 +250,7 @@ shadow_snn_bridge_t* shadow_snn_create(const shadow_snn_config_t* config) {
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->suppression_buffer || !bridge->prev_state) {
         shadow_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_create: operation failed");
         return NULL;
     }
 
@@ -299,7 +303,10 @@ void shadow_snn_destroy(shadow_snn_bridge_t* bridge) {
 }
 
 int shadow_snn_reset(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -347,9 +354,15 @@ int shadow_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, dimensions, num_dims * sizeof(float));
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SHADOW_SNN_STATE_ENCODING;
@@ -405,7 +418,10 @@ int shadow_snn_encode_suppression(
     float suppression,
     float repression
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_encode_suppression: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -426,7 +442,10 @@ int shadow_snn_encode_unconscious(
     float unconscious_level,
     uint32_t defense_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_encode_unconscious: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -446,7 +465,10 @@ int shadow_snn_encode_defense(
     float defense_strength,
     shadow_defense_type_t defense_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_encode_defense: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -475,8 +497,14 @@ int shadow_snn_encode_defense(
 //=============================================================================
 
 int shadow_snn_simulate(shadow_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_simulate: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SHADOW_SNN_STATE_SIMULATING;
@@ -554,7 +582,10 @@ int shadow_snn_simulate(shadow_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int shadow_snn_step(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_step: bridge is NULL");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "shadow_snn_step");
@@ -567,13 +598,20 @@ int shadow_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, inputs, input_count * sizeof(float));
 
     int spike_count = shadow_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_forward: validation failed");
+        return -1;
+    }
 
     if (shadow_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_forward: validation failed");
         return -1;
     }
 
@@ -588,7 +626,10 @@ int shadow_snn_get_output(
     shadow_snn_bridge_t* bridge,
     shadow_processing_output_t* output
 ) {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_get_output: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *output = bridge->last_output;
@@ -602,8 +643,14 @@ int shadow_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
@@ -618,7 +665,10 @@ bool shadow_snn_check_suppression(
     shadow_snn_bridge_t* bridge,
     float* suppression_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_suppression: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_output.suppression_level;
@@ -635,7 +685,10 @@ bool shadow_snn_check_defense(
     shadow_snn_bridge_t* bridge,
     float* defense_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_defense: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_output.defense_activation;
@@ -652,7 +705,10 @@ bool shadow_snn_check_state_change(
     shadow_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
@@ -681,8 +737,14 @@ int shadow_snn_get_dim_state(
     uint32_t dim,
     shadow_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shadow_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
@@ -695,7 +757,10 @@ int shadow_snn_get_state(
     shadow_snn_bridge_t* bridge,
     shadow_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -719,7 +784,10 @@ int shadow_snn_get_state(
 }
 
 int shadow_snn_get_stats(shadow_snn_bridge_t* bridge, shadow_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -729,7 +797,10 @@ int shadow_snn_get_stats(shadow_snn_bridge_t* bridge, shadow_snn_stats_t* stats)
 }
 
 int shadow_snn_reset_stats(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(shadow_snn_stats_t));
@@ -770,7 +841,10 @@ int shadow_snn_register_suppression_callback(
     shadow_snn_suppression_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_register_suppression_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->suppression_callback = callback;
@@ -785,7 +859,10 @@ int shadow_snn_register_processing_callback(
     shadow_snn_processing_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_register_processing_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->processing_callback = callback;
@@ -800,7 +877,10 @@ int shadow_snn_register_defense_callback(
     shadow_snn_defense_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_register_defense_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->defense_callback = callback;
@@ -815,8 +895,14 @@ int shadow_snn_register_defense_callback(
 //=============================================================================
 
 int shadow_snn_bio_async_connect(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
@@ -827,7 +913,10 @@ int shadow_snn_bio_async_connect(shadow_snn_bridge_t* bridge) {
 }
 
 int shadow_snn_bio_async_disconnect(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -837,7 +926,10 @@ int shadow_snn_bio_async_disconnect(shadow_snn_bridge_t* bridge) {
 }
 
 bool shadow_snn_is_bio_async_connected(shadow_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

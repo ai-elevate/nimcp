@@ -159,7 +159,10 @@ static inline size_t align_size(size_t size, size_t alignment) {
  * HOW: Header stored immediately before user data
  */
 static inline block_header_t* get_block_header(void* user_ptr) {
-    if (!user_ptr) return NULL;
+    if (!user_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_block_header: user_ptr is NULL");
+        return NULL;
+    }
     return (block_header_t*)((uint8_t*)user_ptr - sizeof(block_header_t));
 }
 
@@ -170,7 +173,10 @@ static inline block_header_t* get_block_header(void* user_ptr) {
  * HOW: Add sizeof(block_header_t) to header pointer
  */
 static inline void* get_user_pointer(block_header_t* header) {
-    if (!header) return NULL;
+    if (!header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_user_pointer: header is NULL");
+        return NULL;
+    }
     return (void*)((uint8_t*)header + sizeof(block_header_t));
 }
 
@@ -363,12 +369,18 @@ NIMCP_EXPORT void memory_pool_destroy(memory_pool_t pool) {
  * THREAD SAFETY: Thread-safe (mutex protected)
  */
 NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
-    if (!pool) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_acquire: pool is NULL");
+        return NULL;
+    }
 
     struct memory_pool_struct* p = (struct memory_pool_struct*)pool;
 
     // Validate magic
-    if (p->magic != MEMORY_POOL_MAGIC) return NULL;
+    if (p->magic != MEMORY_POOL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_pool_acquire: validation failed");
+        return NULL;
+    }
 
     // Lock for thread safety
     nimcp_platform_mutex_lock(&p->mutex);
@@ -379,6 +391,7 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
             p->failed_allocations++;
         }
         nimcp_platform_mutex_unlock(&p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_acquire: validation failed");
         return NULL;
     }
 
@@ -398,6 +411,7 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
                 p->failed_allocations++;
             }
             nimcp_platform_mutex_unlock(&p->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_acquire: validation failed");
             return NULL;
         }
         // Verify next block has valid magic
@@ -408,6 +422,7 @@ NIMCP_EXPORT void* memory_pool_acquire(memory_pool_t pool) {
                 p->failed_allocations++;
             }
             nimcp_platform_mutex_unlock(&p->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_acquire: validation failed");
             return NULL;
         }
     }
@@ -554,11 +569,17 @@ NIMCP_EXPORT bool memory_pool_get_stats(
     memory_pool_t pool,
     memory_pool_stats_t* stats
 ) {
-    if (!pool || !stats) return false;
+    if (!pool || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_get_stats: required parameter is NULL (pool, stats)");
+        return false;
+    }
 
     struct memory_pool_struct* p = (struct memory_pool_struct*)pool;
 
-    if (p->magic != MEMORY_POOL_MAGIC) return false;
+    if (p->magic != MEMORY_POOL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_pool_get_stats: validation failed");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&p->mutex);
 
@@ -593,11 +614,17 @@ NIMCP_EXPORT bool memory_pool_get_stats(
  * THREAD SAFETY: Lock-free (read-only check)
  */
 NIMCP_EXPORT bool memory_pool_owns(memory_pool_t pool, const void* ptr) {
-    if (!pool || !ptr) return false;
+    if (!pool || !ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_pool_owns: required parameter is NULL (pool, ptr)");
+        return false;
+    }
 
     struct memory_pool_struct* p = (struct memory_pool_struct*)pool;
 
-    if (p->magic != MEMORY_POOL_MAGIC) return false;
+    if (p->magic != MEMORY_POOL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_pool_owns: validation failed");
+        return false;
+    }
 
     // Check if pointer is within pool bounds
     return (ptr >= p->memory_region && ptr < p->memory_region_end);

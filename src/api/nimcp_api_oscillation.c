@@ -78,11 +78,13 @@ bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
 
     // For actual enable/disable, we would need brain_config_t access
     // This is a placeholder implementation that at least validates the state
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_enable_complex_oscillations: validation failed");
     return false;
 }
 
 bool nimcp_is_complex_oscillations_enabled(nimcp_brain_t brain) {
     if (!brain || !brain->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_is_complex_oscillations_enabled: required parameter is NULL (brain, brain->internal_brain)");
         return false;
     }
 

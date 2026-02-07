@@ -394,6 +394,7 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
     // Not found - still holding lock to prevent TOCTOU
     if (!create) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_client_bucket: create is NULL");
         return NULL;
     }
 
@@ -402,6 +403,7 @@ static client_bucket_t* get_client_bucket(nimcp_rate_limiter_t limiter,
     bucket = (client_bucket_t*)nimcp_calloc(1, sizeof(client_bucket_t));
     if (!bucket) {
         nimcp_platform_mutex_unlock(&limiter->client_table->bucket_locks[hash]);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_client_bucket: bucket is NULL");
         return NULL;
     }
 
@@ -474,6 +476,7 @@ nimcp_rate_limiter_t nimcp_rate_limiter_create(
     if (actual_config.requests_per_second <= 0.0F ||
         actual_config.burst_size == 0) {
         LOG_ERROR("Invalid rate limiter configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rate_limiter_create: operation failed");
         return NULL;
     }
 
@@ -574,6 +577,7 @@ bool nimcp_rate_limiter_allow(
     const char* client_id)
 {
     if (!is_valid_limiter(limiter)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_allow: is_valid_limiter is NULL");
         return false;
     }
 
@@ -617,6 +621,7 @@ bool nimcp_rate_limiter_allow(
     if (!bucket) {
         LOG_MODULE_ERROR("rate_limiter",
             "Failed to get bucket for client %s", client_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rate_limiter_allow: bucket is NULL");
         return false;
     }
 
@@ -629,6 +634,7 @@ bool nimcp_rate_limiter_allow(
         nimcp_platform_mutex_lock(&limiter->limiter_lock);
         limiter->stats.requests_denied++;
         nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_rate_limiter_allow: validation failed");
         return false;
     }
 
@@ -638,6 +644,7 @@ bool nimcp_rate_limiter_allow(
             nimcp_platform_mutex_lock(&limiter->limiter_lock);
             limiter->stats.requests_denied++;
             nimcp_platform_mutex_unlock(&limiter->limiter_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_rate_limiter_allow: validation failed");
             return false;
         } else {
             // Unblock
@@ -719,6 +726,7 @@ bool nimcp_rate_limiter_allow(
                                  deferred_cb.action, deferred_cb.user_data);
         }
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_allow: validation failed");
         return false;  // Request was denied
     }
 }
@@ -738,11 +746,13 @@ bool nimcp_rate_limiter_acquire(
     uint32_t count)
 {
     if (!is_valid_limiter(limiter) || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_acquire: is_valid_limiter is NULL");
         return false;
     }
 
     client_bucket_t* bucket = get_client_bucket(limiter, client_id, true);
     if (!bucket) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rate_limiter_acquire: bucket is NULL");
         return false;
     }
 
@@ -771,6 +781,7 @@ bool nimcp_rate_limiter_check(
     const char* client_id)
 {
     if (!is_valid_limiter(limiter)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_rate_limiter_check: is_valid_limiter is NULL");
         return false;
     }
 

@@ -199,13 +199,19 @@ void metabolic_plasticity_destroy(metabolic_plasticity_t* metabolic) {
  * ============================================================================ */
 
 bool metabolic_plasticity_can_ltp(const metabolic_plasticity_t* metabolic) {
-    if (!metabolic) return false;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_can_ltp: metabolic is NULL");
+        return false;
+    }
     if (!metabolic->config.enable_ltp_gating) return true;
     return metabolic->atp_state.ltp_permitted;
 }
 
 bool metabolic_plasticity_can_ltd(const metabolic_plasticity_t* metabolic) {
-    if (!metabolic) return false;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_can_ltd: metabolic is NULL");
+        return false;
+    }
     if (!metabolic->config.enable_ltd_gating) return true;
     return metabolic->atp_state.ltd_permitted;
 }
@@ -237,6 +243,7 @@ int metabolic_plasticity_consume_atp(
             if (metabolic->config.enable_ltp_gating && !metabolic->atp_state.ltp_permitted) {
                 metabolic->stats.ltp_blocked_count++;
                 nimcp_platform_mutex_unlock(metabolic->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_consume_atp: metabolic->atp_state is NULL");
                 return -1;
             }
             break;
@@ -248,6 +255,7 @@ int metabolic_plasticity_consume_atp(
             if (metabolic->config.enable_ltd_gating && !metabolic->atp_state.ltd_permitted) {
                 metabolic->stats.ltd_blocked_count++;
                 nimcp_platform_mutex_unlock(metabolic->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_consume_atp: metabolic->atp_state is NULL");
                 return -1;
             }
             break;
@@ -262,6 +270,7 @@ int metabolic_plasticity_consume_atp(
 
         default:
             nimcp_platform_mutex_unlock(metabolic->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_plasticity_consume_atp: operation failed");
             return -1;
     }
 

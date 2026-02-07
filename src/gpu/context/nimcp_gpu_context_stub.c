@@ -25,11 +25,13 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(gpu_context_stub)
 nimcp_gpu_context_t* nimcp_gpu_context_create(int device_id) {
     (void)device_id;
     // No GPU available in non-CUDA build
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_context_create: operation failed");
     return NULL;
 }
 
 nimcp_gpu_context_t* nimcp_gpu_context_create_auto(void) {
     // No GPU available in non-CUDA build
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gpu_context_create_auto: operation failed");
     return NULL;
 }
 
@@ -72,6 +74,7 @@ const char* nimcp_gpu_context_get_error(const nimcp_gpu_context_t* ctx) {
 void* nimcp_gpu_malloc(nimcp_gpu_context_t* ctx, size_t size_bytes) {
     (void)ctx;
     (void)size_bytes;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gpu_malloc: operation failed");
     return NULL; // No GPU memory available
 }
 
@@ -92,6 +95,7 @@ int nimcp_gpu_memcpy(nimcp_gpu_context_t* ctx,
         memcpy(dst, src, size_bytes);
         return 0;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_free: validation failed");
     return -1;
 }
 
@@ -113,6 +117,7 @@ int nimcp_gpu_memset(nimcp_gpu_context_t* ctx,
         memset(dev_ptr, value, size_bytes);
         return 0;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gpu_free: validation failed");
     return -1;
 }
 

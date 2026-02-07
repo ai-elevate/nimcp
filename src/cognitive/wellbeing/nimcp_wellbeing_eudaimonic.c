@@ -231,6 +231,7 @@ int enhanced_wellbeing_update_eudaimonic(enhanced_wellbeing_system_t* system)
     // Guard: NULL system
     if (!system) {
         NIMCP_LOGGING_ERROR("enhanced_wellbeing_update_eudaimonic: NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_update_eudaimonic: system is NULL");
         return -1;
     }
 
@@ -409,6 +410,7 @@ int enhanced_wellbeing_compute_satisfaction(
     // Guard: NULL inputs
     if (!system || !satisfaction) {
         NIMCP_LOGGING_ERROR("enhanced_wellbeing_compute_satisfaction: NULL input");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_compute_satisfaction: required parameter is NULL (system, satisfaction)");
         return -1;
     }
 

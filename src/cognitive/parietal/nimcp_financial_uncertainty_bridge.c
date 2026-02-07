@@ -1160,11 +1160,15 @@ int financial_uncertainty_bridge_recommend_info(
 
 fin_prediction_t* financial_uncertainty_prediction_create(uint32_t count) {
     if (count == 0 || count > FIN_UNCERTAINTY_MAX_PREDICTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_prediction_create: count is zero");
         return NULL;
     }
 
     fin_prediction_t* pred = (fin_prediction_t*)nimcp_malloc(sizeof(fin_prediction_t));
-    if (!pred) return NULL;
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_prediction_create: pred is NULL");
+        return NULL;
+    }
 
     memset(pred, 0, sizeof(*pred));
     pred->count = count;
@@ -1174,6 +1178,7 @@ fin_prediction_t* financial_uncertainty_prediction_create(uint32_t count) {
 
     if (!pred->values || !pred->confidences) {
         financial_uncertainty_prediction_destroy(pred);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_prediction_create: required parameter is NULL (pred->values, pred->confidences)");
         return NULL;
     }
 
@@ -1198,7 +1203,10 @@ fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
 {
     fin_uncertainty_analysis_t* analysis =
         (fin_uncertainty_analysis_t*)nimcp_malloc(sizeof(fin_uncertainty_analysis_t));
-    if (!analysis) return NULL;
+    if (!analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_analysis_create: analysis is NULL");
+        return NULL;
+    }
 
     memset(analysis, 0, sizeof(*analysis));
 
@@ -1208,6 +1216,7 @@ fin_uncertainty_analysis_t* financial_uncertainty_analysis_create(
                                                 sizeof(fin_info_recommendation_t));
         if (!analysis->recommendations) {
             nimcp_free(analysis);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_uncertainty_analysis_create: analysis->recommendations is NULL");
             return NULL;
         }
         analysis->num_recommendations = max_recommendations;

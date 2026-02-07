@@ -230,6 +230,7 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
     if (!immune_system || !introspection_context) {
         LOG_MODULE_ERROR("introspection_immune_bridge",
                   "Cannot create bridge without immune and introspection systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_immune_bridge_create: required parameter is NULL (immune_system, introspection_context)");
         return NULL;
     }
 
@@ -318,7 +319,10 @@ int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* b
 
     }
     if (!bridge->enable_cytokine_introspection_modulation) return 0;
-    if (!bridge->immune_system || !bridge->introspection_context) return -1;
+    if (!bridge->immune_system || !bridge->introspection_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->introspection_context)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -381,7 +385,10 @@ int introspection_immune_apply_inflammation_effects(introspection_immune_bridge_
 
     }
     if (!bridge->enable_inflammation_phi_reduction) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -480,7 +487,10 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
 
     }
     if (!bridge->enable_sickness_detection) return 0;
-    if (!bridge->introspection_context) return -1;
+    if (!bridge->introspection_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_detect_sickness: bridge->introspection_context is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -551,7 +561,10 @@ int introspection_immune_correlate_patterns(introspection_immune_bridge_t* bridg
 
     }
     if (!bridge->enable_pattern_immune_correlation) return 0;
-    if (!bridge->introspection_context || !bridge->immune_system) return -1;
+    if (!bridge->introspection_context || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_correlate_patterns: required parameter is NULL (bridge->introspection_context, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -612,7 +625,10 @@ int introspection_immune_get_cytokine_effects(
     const introspection_immune_bridge_t* bridge,
     cytokine_introspection_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -628,7 +644,10 @@ int introspection_immune_get_consciousness_state(
     const introspection_immune_bridge_t* bridge,
     inflammation_consciousness_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_get_consciousness_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
@@ -641,7 +660,10 @@ int introspection_immune_get_consciousness_state(
 }
 
 bool introspection_immune_is_sickness_detected(const introspection_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_is_sickness_detected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
 
@@ -794,7 +816,10 @@ int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bri
  * @brief Check if bio-async is connected
  */
 bool introspection_immune_is_bio_async_connected(const introspection_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_immune_bridge_heartbeat("introspectio_introspection_immune", 0.0f);
 

@@ -77,6 +77,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
 {
     if (!brain) {
         LOG_ERROR("Null brain in init_lgss_subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_lgss_subsystem: brain is NULL");
         return false;
     }
 
@@ -130,6 +131,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     if (!lgss) {
         LOG_ERROR("FATAL: Failed to create LGSS context");
         LOG_ERROR("Brain initialization MUST fail - no safety system available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_lgss_subsystem: lgss is NULL");
         return false;  // FATAL - cannot proceed without safety
     }
 
@@ -138,6 +140,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     if (num_rules < 0) {
         LOG_ERROR("FATAL: Failed to load LGSS rules from: %s", lgss_config.rules_path);
         lgss_destroy(lgss);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_lgss_subsystem: validation failed");
         return false;  // FATAL - cannot proceed without rules
     }
 
@@ -145,6 +148,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     if (!lgss_is_locked(lgss)) {
         LOG_ERROR("FATAL: LGSS safety KB is not locked!");
         lgss_destroy(lgss);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_brain_factory_init_lgss_subsystem: lgss_is_locked is NULL");
         return false;  // FATAL - unlocked KB is not secure
     }
 
@@ -152,6 +156,7 @@ bool nimcp_brain_factory_init_lgss_subsystem(brain_t brain)
     if (lgss_verify_integrity(lgss) != 0) {
         LOG_ERROR("FATAL: LGSS safety KB integrity check failed!");
         lgss_destroy(lgss);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_lgss_subsystem: validation failed");
         return false;  // FATAL - integrity failure
     }
 
@@ -180,6 +185,7 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
 {
     if (!brain) {
         LOG_ERROR("Null brain in verify_safety");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_verify_safety: brain is NULL");
         return false;
     }
 
@@ -197,6 +203,7 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
 
     if (!brain->lgss) {
         LOG_ERROR("FATAL: LGSS context is NULL but LGSS is enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_verify_safety: brain->lgss is NULL");
         return false;
     }
 
@@ -204,12 +211,14 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
     lgss_status_t status = lgss_get_status(brain->lgss);
     if (status != LGSS_STATUS_ACTIVE && status != LGSS_STATUS_DEGRADED) {
         LOG_ERROR("FATAL: LGSS is not active (status=%s)", lgss_status_name(status));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_verify_safety: validation failed");
         return false;
     }
 
     // Step 3: Verify KB is locked
     if (!lgss_is_locked(brain->lgss)) {
         LOG_ERROR("FATAL: Safety KB is not locked!");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_brain_factory_verify_safety: lgss_is_locked is NULL");
         return false;
     }
     LOG_INFO("[PASS] Safety KB is locked");
@@ -217,6 +226,7 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
     // Step 4: Verify integrity
     if (lgss_verify_integrity(brain->lgss) != 0) {
         LOG_ERROR("FATAL: Safety KB integrity verification failed!");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_verify_safety: validation failed");
         return false;
     }
     LOG_INFO("[PASS] Safety KB integrity verified");
@@ -232,6 +242,7 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
     LOG_INFO("Running safety probe tests...");
     if (!nimcp_brain_run_safety_probes(brain)) {
         LOG_ERROR("FATAL: Safety probe tests failed!");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_verify_safety: nimcp_brain_run_safety_probes is NULL");
         return false;
     }
     LOG_INFO("[PASS] All safety probe tests passed");
@@ -365,6 +376,7 @@ static bool run_probe(
 
     if (ret != 0) {
         LOG_ERROR("  [FAIL] Probe '%s': evaluation error", probe_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_probe: validation failed");
         return false;
     }
 
@@ -379,6 +391,7 @@ static bool run_probe(
             probe_name,
             safety_action_name(result.action),
             safety_action_name(expected_action));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_probe: operation failed");
         return false;
     }
 }
@@ -387,6 +400,7 @@ bool nimcp_brain_run_safety_probes(brain_t brain)
 {
     if (!brain || !brain->lgss) {
         LOG_ERROR("Cannot run safety probes: invalid brain or LGSS");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_run_safety_probes: required parameter is NULL (brain, brain->lgss)");
         return false;
     }
 

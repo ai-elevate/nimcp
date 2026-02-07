@@ -383,6 +383,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
             nimcp_free(labels);
             nimcp_free(confidences);
             PyErr_SetString(PyExc_ValueError, "All feature lists must have same length");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: operation failed");
             return NULL;
         }
         feature_arrays[i] = features;
@@ -446,6 +447,7 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_predict_batch: validation failed");
         return NULL;
     }
 
@@ -742,19 +744,24 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     }
 
     // Prepare types
-    if (PyType_Ready(&BrainType) < 0)
+    if (PyType_Ready(&BrainType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
     // Create module
     m = PyModule_Create(&nimcp_module);
-    if (m == NULL)
+    if (m == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
     // Add Brain type
     Py_INCREF(&BrainType);
     if (PyModule_AddObject(m, "Brain", (PyObject*)&BrainType) < 0) {
         Py_DECREF(&BrainType);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -779,6 +786,7 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (init_signal_filter_module(m) < 0) {
         LOG_MODULE_ERROR("bindings.python", "Failed to initialize signal filter module");
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "PyInit_nimcp: validation failed");
         return NULL;
     }
 

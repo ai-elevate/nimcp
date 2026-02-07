@@ -275,6 +275,7 @@ nimcp_entropy_analyzer_t* nimcp_entropy_create(void)
 
     if (nimcp_mutex_init(&analyzer->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_entropy_create: validation failed");
         return NULL;
     }
     return analyzer;
@@ -564,6 +565,7 @@ nimcp_trust_network_t* nimcp_trust_create(void)
 
     if (nimcp_mutex_init(&network->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_trust_create: validation failed");
         return NULL;
     }
     return network;
@@ -605,6 +607,7 @@ static nimcp_trust_entity_t* find_entity(nimcp_trust_network_t* network, uint32_
             return &network->entities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entity: operation failed");
     return NULL;
 }
 
@@ -823,6 +826,7 @@ bool nimcp_trust_is_trusted(
 {
     nimcp_trust_score_t score;
     if (nimcp_trust_get_score(network, entity_id, &score) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_trust_is_trusted: validation failed");
         return false;
     }
     return score.expected_trust >= threshold;
@@ -868,6 +872,7 @@ nimcp_dp_context_t* nimcp_dp_create(void)
 
     if (nimcp_mutex_init(&ctx->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_dp_create: validation failed");
         return NULL;
     }
     return ctx;

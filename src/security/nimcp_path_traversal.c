@@ -196,13 +196,19 @@ static const char* windows_patterns[] = {
  */
 static const char* case_insensitive_strstr(const char* text, const char* pattern)
 {
-    if (!text || !pattern) return NULL;
+    if (!text || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "case_insensitive_strstr: required parameter is NULL (text, pattern)");
+        return NULL;
+    }
     if (!*pattern) return text;
 
     size_t pattern_len = strlen(pattern);
     size_t text_len = strlen(text);
 
-    if (pattern_len > text_len) return NULL;
+    if (pattern_len > text_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "case_insensitive_strstr: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i <= text_len - pattern_len; i++) {
         size_t j;
@@ -216,6 +222,7 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
             return &text[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "case_insensitive_strstr: validation failed");
     return NULL;
 }
 
@@ -225,7 +232,10 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
 static bool check_patterns(const char* input, const char* patterns[],
                           size_t* offset)
 {
-    if (!input || !patterns) return false;
+    if (!input || !patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
+        return false;
+    }
 
     for (int i = 0; patterns[i] != NULL; i++) {
         const char* found = case_insensitive_strstr(input, patterns[i]);
@@ -308,6 +318,7 @@ static bool contains_null_byte(const char* path, size_t max_len)
     if (strstr(path, "%00") != NULL) return true;
     if (strstr(path, "%0") != NULL) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_null_byte: validation failed");
     return false;
 }
 
@@ -849,6 +860,7 @@ bool nimcp_path_is_safe(const char* path)
     /* Guard: NULL path is not safe */
     if (!path) {
         LOG_WARN(LOG_MODULE, "nimcp_path_is_safe: NULL path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_path_is_safe: path is NULL");
         return false;
     }
 
@@ -857,6 +869,7 @@ bool nimcp_path_is_safe(const char* path)
     if (!validator) {
         /* If validator creation failed, be conservative and reject */
         LOG_ERROR(LOG_MODULE, "nimcp_path_is_safe: Failed to create validator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_path_is_safe: validator is NULL");
         return false;
     }
 

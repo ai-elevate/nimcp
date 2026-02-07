@@ -224,6 +224,7 @@ mental_health_immune_bridge_t* mental_health_immune_bridge_create(
     if (!immune_system || !mental_health_monitor) {
         LOG_MODULE_ERROR("mental_health_immune_bridge",
                   "Cannot create bridge without immune and mental health systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_immune_bridge_create: required parameter is NULL (immune_system, mental_health_monitor)");
         return NULL;
     }
 
@@ -309,7 +310,10 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
 
     }
     if (!bridge->enable_cytokine_disorder_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -502,7 +506,10 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
 
     }
     if (!bridge->enable_disorder_immune_trigger) return 0;
-    if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
+    if (!bridge->mental_health_monitor || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_trigger_from_depression: required parameter is NULL (bridge->mental_health_monitor, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -558,7 +565,10 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
 
     }
     if (!bridge->enable_disorder_immune_trigger) return 0;
-    if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
+    if (!bridge->mental_health_monitor || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_trigger_from_anxiety: required parameter is NULL (bridge->mental_health_monitor, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -611,7 +621,10 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
 
     }
     if (!bridge->enable_disorder_immune_trigger) return 0;
-    if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
+    if (!bridge->mental_health_monitor || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_trigger_from_ptsd: required parameter is NULL (bridge->mental_health_monitor, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -667,7 +680,10 @@ int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* brid
 
     }
     if (!bridge->enable_recovery_immune_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_boost_from_recovery: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -757,7 +773,10 @@ int mental_health_immune_get_cytokine_effects(
     const mental_health_immune_bridge_t* bridge,
     cytokine_mental_health_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -774,7 +793,10 @@ int mental_health_immune_get_inflammation_state(
     const mental_health_immune_bridge_t* bridge,
     inflammation_mental_health_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
@@ -788,7 +810,10 @@ int mental_health_immune_get_inflammation_state(
 }
 
 bool mental_health_immune_is_cytokine_depression(const mental_health_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_is_cytokine_depression: bridge is NULL");
+        return false;
+    }
 
     /* Cytokine-induced depression threshold */
     /* Phase 8: Heartbeat at operation start */
@@ -907,7 +932,10 @@ int mental_health_immune_disconnect_bio_async(mental_health_immune_bridge_t* bri
  * @brief Check if bio-async is connected
  */
 bool mental_health_immune_is_bio_async_connected(const mental_health_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_immune_bridge_heartbeat("mental_healt_mental_health_immune", 0.0f);
 

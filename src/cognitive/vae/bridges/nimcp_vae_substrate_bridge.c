@@ -255,10 +255,16 @@ int vae_substrate_bridge_default_config(vae_substrate_bridge_config_t* config)
 
 vae_substrate_bridge_t* vae_substrate_bridge_create(const vae_substrate_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_substrate_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_substrate_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_SUBSTRATE_STATE_DISCONNECTED;
@@ -282,6 +288,7 @@ vae_substrate_bridge_t* vae_substrate_bridge_create(const vae_substrate_bridge_c
 
     if (!bridge->atp_history || !bridge->temp_history) {
         vae_substrate_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_substrate_bridge_create: required parameter is NULL (bridge->atp_history, bridge->temp_history)");
         return NULL;
     }
 
@@ -392,7 +399,10 @@ int vae_substrate_bridge_disconnect(vae_substrate_bridge_t* bridge)
 
 bool vae_substrate_bridge_is_connected(const vae_substrate_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_substrate_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_SUBSTRATE_STATE_CONNECTED ||
            bridge->state == VAE_SUBSTRATE_STATE_MONITORING ||
            bridge->state == VAE_SUBSTRATE_STATE_ADAPTING;
@@ -689,7 +699,10 @@ float vae_substrate_estimate_cost(const vae_substrate_bridge_t* bridge,
 bool vae_substrate_can_afford(const vae_substrate_bridge_t* bridge,
                                vae_energy_category_t category)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_substrate_can_afford: bridge is NULL");
+        return false;
+    }
 
     float cost = vae_substrate_estimate_cost(bridge, category);
     float available = bridge->current_state.atp_level *

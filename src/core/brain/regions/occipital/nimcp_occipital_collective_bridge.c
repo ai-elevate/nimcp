@@ -179,6 +179,7 @@ occipital_collective_bridge_t* occipital_collective_create(
     if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex for occipital-collective bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_collective_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -296,6 +297,7 @@ int occipital_collective_connect_occipital(
 ) {
     if (!bridge) {
         LOG_ERROR("Null bridge in connect_occipital");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_collective_connect_occipital: bridge is NULL");
         return -1;
     }
 
@@ -316,6 +318,7 @@ int occipital_collective_connect_collective(
 ) {
     if (!bridge) {
         LOG_ERROR("Null bridge in connect_collective");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_collective_connect_collective: bridge is NULL");
         return -1;
     }
 
@@ -343,6 +346,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
     return -1;
 }
 
@@ -355,6 +359,7 @@ static int find_target_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_target_index: validation failed");
     return -1;
 }
 
@@ -571,7 +576,10 @@ static nimcp_error_t occipital_collective_message_handler(
     void* user_data
 ) {
     occipital_collective_bridge_t* bridge = (occipital_collective_bridge_t*)user_data;
-    if (!bridge || !msg) return -1;
+    if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_collective_message_handler: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     (void)response_promise;  /* Currently unused - fire-and-forget messages */
 
@@ -582,7 +590,10 @@ static nimcp_error_t occipital_collective_message_handler(
     switch (header->type) {
         case BIO_MSG_OCCIPITAL_COLLECTIVE_ATTENTION: {
             /* Handle joint attention from remote instance */
-            if (payload_size < sizeof(joint_attention_target_t)) return -1;
+            if (payload_size < sizeof(joint_attention_target_t)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_message_handler: validation failed");
+                return -1;
+            }
             const joint_attention_target_t* target = (const joint_attention_target_t*)payload;
             nimcp_mutex_lock(bridge->base.mutex);
             if (bridge->target_count < OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
@@ -594,7 +605,10 @@ static nimcp_error_t occipital_collective_message_handler(
         }
         case BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE: {
             /* Handle shared feature from remote instance */
-            if (payload_size < sizeof(shared_visual_feature_t)) return -1;
+            if (payload_size < sizeof(shared_visual_feature_t)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_message_handler: validation failed");
+                return -1;
+            }
             const shared_visual_feature_t* feature = (const shared_visual_feature_t*)payload;
             nimcp_mutex_lock(bridge->base.mutex);
             if (bridge->feature_count < OCCIPITAL_COLLECTIVE_MAX_FEATURES) {
@@ -606,7 +620,10 @@ static nimcp_error_t occipital_collective_message_handler(
         }
         case BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE: {
             /* Handle visual state update from remote instance */
-            if (payload_size < sizeof(collective_visual_state_t)) return -1;
+            if (payload_size < sizeof(collective_visual_state_t)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_message_handler: validation failed");
+                return -1;
+            }
             const collective_visual_state_t* state = (const collective_visual_state_t*)payload;
             nimcp_mutex_lock(bridge->base.mutex);
             int idx = find_instance_index(bridge, state->instance_id);
@@ -621,6 +638,7 @@ static nimcp_error_t occipital_collective_message_handler(
         }
         default:
             LOG_DEBUG("Unknown message type: 0x%04X", header->type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_message_handler: capacity exceeded");
             return -1;
     }
 }
@@ -700,6 +718,7 @@ int occipital_collective_initiate_attention(
     if (bridge->target_count >= OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot initiate attention: max targets reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "occipital_collective_initiate_attention: capacity exceeded");
         return -1;
     }
 
@@ -772,6 +791,7 @@ int occipital_collective_follow_attention(
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot follow attention: target %u not found", target_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_follow_attention: validation failed");
         return -1;
     }
 
@@ -809,6 +829,7 @@ int occipital_collective_release_attention(
     int idx = find_target_index(bridge, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_release_attention: validation failed");
         return -1;
     }
 
@@ -1073,6 +1094,7 @@ int occipital_collective_get_instance_state(
     int idx = find_instance_index(bridge, instance_id);
     if (idx < 0) {
         nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_collective_get_instance_state: validation failed");
         return -1;
     }
 
@@ -1202,6 +1224,7 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
         LOG_WARNING("Failed to register with bio-async router");
         bridge->bio_async_connected = false;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_collective_connect_bio_async: bridge->bio_ctx is NULL");
         return -1;
     }
 

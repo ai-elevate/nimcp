@@ -114,6 +114,7 @@ omni_training_bridge_t* omni_training_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "omni_training") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_training_default_config: bridge->base is NULL");
         return NULL;
     }
 
@@ -552,7 +553,10 @@ int omni_training_disconnect_bio_async(omni_training_bridge_t* bridge) {
 }
 
 bool omni_training_is_bio_async_connected(const omni_training_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_training_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }
 

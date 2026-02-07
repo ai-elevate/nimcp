@@ -200,6 +200,7 @@ anomaly_immune_bridge_t* anomaly_immune_create(
     /* Guard clauses */
     if (!anomaly_detector || !immune_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for anomaly immune bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_immune_create: required parameter is NULL (anomaly_detector, immune_system)");
         return NULL;
     }
 
@@ -231,6 +232,7 @@ anomaly_immune_bridge_t* anomaly_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for anomaly immune bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anomaly_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -323,7 +325,10 @@ int anomaly_immune_present_anomaly(
     const nimcp_anomaly_result_t* result,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !result || !antigen_id) return -1;
+    if (!bridge || !result || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_immune_present_anomaly: required parameter is NULL (bridge, result, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_anomaly_antigen_presentation) return 0;
 
     /* Check if score is high enough */
@@ -425,7 +430,10 @@ int anomaly_immune_connect_bio_async(anomaly_immune_bridge_t* bridge) {
 }
 
 int anomaly_immune_disconnect_bio_async(anomaly_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

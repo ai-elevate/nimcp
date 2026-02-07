@@ -147,6 +147,7 @@ static int find_worker_index(
     const char* worker_id
 ) {
     if (!security || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_worker_index: required parameter is NULL (security, worker_id)");
         return -1;
     }
 
@@ -156,6 +157,7 @@ static int find_worker_index(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_worker_index: validation failed");
     return -1;
 }
 
@@ -165,6 +167,7 @@ static int find_worker_index(
 
 int security_dist_fep_default_config(security_dist_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_default_config: config is NULL");
         return -1;
     }
 
@@ -303,6 +306,7 @@ void security_dist_fep_destroy(security_dist_fep_bridge_t* bridge) {
 
 int security_dist_fep_reset(security_dist_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_reset: bridge is NULL");
         return -1;
     }
 
@@ -345,6 +349,7 @@ int security_dist_fep_get_config(
     security_dist_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -357,6 +362,7 @@ int security_dist_fep_set_config(
     const security_dist_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -373,10 +379,12 @@ int security_dist_fep_set_config(
 
 int security_dist_fep_compute_effects(security_dist_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_compute_effects: bridge is NULL");
         return -1;
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_compute_effects: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -498,10 +506,12 @@ int security_dist_fep_update_from_detection(
     float gradient_divergence
 ) {
     if (!bridge || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_update_from_detection: required parameter is NULL (bridge, worker_id)");
         return -1;
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_update_from_detection: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -590,6 +600,7 @@ int security_dist_fep_update_worker_precision(
     security_worker_trust_t trust_level
 ) {
     if (!bridge || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_update_worker_precision: required parameter is NULL (bridge, worker_id)");
         return -1;
     }
 
@@ -599,6 +610,7 @@ int security_dist_fep_update_worker_precision(
     int idx = find_worker_index(bridge->security_bridge, worker_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_dist_fep_update_worker_precision: validation failed");
         return -1;
     }
 
@@ -606,6 +618,7 @@ int security_dist_fep_update_worker_precision(
     if (!bridge->fep_effects.worker_precisions ||
         (uint32_t)idx >= bridge->fep_effects.num_worker_precisions) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_dist_fep_update_worker_precision: validation failed");
         return -1;
     }
 
@@ -632,6 +645,7 @@ int security_dist_fep_report_quarantine(
     security_byzantine_type_t byzantine_type
 ) {
     if (!bridge || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_report_quarantine: required parameter is NULL (bridge, worker_id)");
         return -1;
     }
 
@@ -669,6 +683,7 @@ int security_dist_fep_report_false_positive(
     const char* worker_id
 ) {
     if (!bridge || !worker_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_report_false_positive: required parameter is NULL (bridge, worker_id)");
         return -1;
     }
 
@@ -706,6 +721,7 @@ int security_dist_fep_get_fep_effects(
     security_dist_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -719,6 +735,7 @@ int security_dist_fep_get_security_effects(
     fep_security_dist_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_get_security_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -731,6 +748,7 @@ int security_dist_fep_get_stats(
     security_dist_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -781,6 +799,7 @@ float security_dist_fep_get_byzantine_score(const security_dist_fep_bridge_t* br
 
 bool security_dist_fep_should_quarantine(const security_dist_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_should_quarantine: required parameter is NULL (bridge, bridge->fep_system)");
         return false;
     }
 
@@ -794,6 +813,7 @@ bool security_dist_fep_should_quarantine(const security_dist_fep_bridge_t* bridg
 
 int security_dist_fep_connect_bio_async(security_dist_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_connect_bio_async: bridge is NULL");
         return -1;
     }
 

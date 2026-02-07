@@ -382,6 +382,7 @@ bool sleep_is_needed(const sleep_system_t sleep)
 {
     /* Guard clause: Validate input */
     if (sleep == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_is_needed: validation failed");
         return false;
     }
 
@@ -457,6 +458,7 @@ sleep_state_t sleep_get_current_state(const sleep_system_t sleep)
 bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
 {
     if (sleep == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_enter_state: validation failed");
         return false;
     }
 
@@ -494,6 +496,7 @@ bool sleep_enter_state(sleep_system_t sleep, sleep_state_t state)
 bool sleep_wake_up(sleep_system_t sleep)
 {
     if (sleep == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_up: validation failed");
         return false;
     }
 
@@ -771,6 +774,7 @@ bool sleep_run_cycle(sleep_system_t sleep, uint32_t num_cycles)
     }
 
     if (sleep == NULL || num_cycles == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_run_cycle: num_cycles is zero");
         return false;
     }
 
@@ -817,6 +821,7 @@ bool sleep_run_cycle(sleep_system_t sleep, uint32_t num_cycles)
 bool sleep_get_statistics(const sleep_system_t sleep, sleep_stats_t* stats)
 {
     if (sleep == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_get_statistics: validation failed");
         return false;
     }
 
@@ -943,6 +948,7 @@ bool sleep_register_state_callback(sleep_system_t sleep,
 {
     /* Guard clause: Validate inputs */
     if (sleep == NULL || callback == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_register_state_callback: validation failed");
         return false;
     }
 
@@ -951,6 +957,7 @@ bool sleep_register_state_callback(sleep_system_t sleep,
         (sleep_callback_entry_t*)nimcp_malloc(sizeof(sleep_callback_entry_t));
     if (entry == NULL) {
         NIMCP_LOGGING_ERROR("Failed to allocate callback entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_register_state_callback: validation failed");
         return false;
     }
 
@@ -980,6 +987,7 @@ bool sleep_unregister_state_callback(sleep_system_t sleep,
 {
     /* Guard clause: Validate inputs */
     if (sleep == NULL || callback == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_unregister_state_callback: validation failed");
         return false;
     }
 

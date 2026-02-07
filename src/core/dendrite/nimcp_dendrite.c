@@ -543,11 +543,13 @@ uint32_t dendrite_add_spine(
 bool dendrite_remove_spine(dendrite_t* dendrite, uint32_t spine_id) {
     // Guard: NULL dendrite
     if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_remove_spine: dendrite is NULL");
         return false;
     }
 
     // Guard: Invalid spine ID
     if (spine_id >= dendrite->num_spines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_remove_spine: capacity exceeded");
         return false;
     }
 
@@ -556,6 +558,7 @@ bool dendrite_remove_spine(dendrite_t* dendrite, uint32_t spine_id) {
 
     // Guard: Invalid segment
     if (segment_id >= dendrite->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_remove_spine: capacity exceeded");
         return false;
     }
 
@@ -629,6 +632,7 @@ bool dendrite_receive_input(
 ) {
     // Guard: NULL dendrite
     if (!dendrite || segment_id >= dendrite->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_receive_input: dendrite is NULL");
         return false;
     }
 
@@ -999,6 +1003,7 @@ void dendrite_update_structural_plasticity(dendrite_t* dendrite, uint64_t timest
 bool dendrite_is_in_plateau(dendrite_t* dendrite) {
     // Guard: NULL dendrite
     if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_is_in_plateau: dendrite is NULL");
         return false;
     }
 
@@ -1023,6 +1028,7 @@ dendritic_spine_t* dendrite_get_spine_by_synapse(
 ) {
     // Guard: NULL dendrite
     if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_get_spine_by_synapse: dendrite is NULL");
         return NULL;
     }
 
@@ -1102,6 +1108,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
     // Guard: Invalid size
     if (max_dendrites == 0) {
         LOG_ERROR(LOG_MODULE, "dendrite_network_create: Invalid max_dendrites");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_network_create: max_dendrites is zero");
         return NULL;
     }
 
@@ -1111,6 +1118,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
     );
     if (!network) {
         LOG_ERROR(LOG_MODULE, "dendrite_network_create: Failed to allocate network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_network_create: network is NULL");
         return NULL;
     }
 
@@ -1120,6 +1128,7 @@ dendrite_network_t* dendrite_network_create(uint32_t max_dendrites) {
     );
     if (!network->dendrites) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_network_create: network->dendrites is NULL");
         return NULL;
     }
 
@@ -1170,6 +1179,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
     // Guard: NULL parameters
     if (!network || !dendrite) {
         LOG_ERROR(LOG_MODULE, "dendrite_network_add: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_network_add: required parameter is NULL (network, dendrite)");
         return false;
     }
 
@@ -1180,6 +1190,7 @@ bool dendrite_network_add(dendrite_network_t* network, dendrite_t* dendrite) {
         nimcp_mutex_unlock(&network->lock);
         LOG_ERROR(LOG_MODULE, "dendrite_network_add: Network full (%u/%u)",
                   network->num_dendrites, network->max_dendrites);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dendrite_network_add: capacity exceeded");
         return false;
     }
 
@@ -1281,13 +1292,22 @@ static float calculate_mg_block(float voltage_mv) {
 bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
                                    uint64_t timestamp) {
     // Guard: NULL dendrite
-    if (!dendrite) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calculate_mg_block: dendrite is NULL");
+        return false;
+    }
 
     // Guard: Invalid segment
-    if (segment_id >= dendrite->num_segments) return false;
+    if (segment_id >= dendrite->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: capacity exceeded");
+        return false;
+    }
 
     // Guard: Already in NMDA spike
-    if (dendrite->nmda_state.active) return false;
+    if (dendrite->nmda_state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&dendrite->lock);
 
@@ -1297,12 +1317,14 @@ bool dendrite_initiate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id,
     float voltage_mv = segment->voltage * 1000.0F;  // Convert to mV
     if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV) {
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calculate_mg_block: validation failed");
         return false;
     }
 
     // Check if segment has active properties
     if (!segment->has_active_properties) {
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calculate_mg_block: segment->has_active_properties is NULL");
         return false;
     }
 
@@ -1376,24 +1398,42 @@ void dendrite_update_nmda_spike(dendrite_t* dendrite, float dt_ms) {
 
 bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id) {
     // Guard clauses
-    if (!dendrite) return false;
-    if (segment_id >= dendrite->num_segments) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_can_generate_nmda_spike: dendrite is NULL");
+        return false;
+    }
+    if (segment_id >= dendrite->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: capacity exceeded");
+        return false;
+    }
 
     dendritic_segment_t* segment = &dendrite->segments[segment_id];
 
     // Check voltage threshold
     float voltage_mv = segment->voltage * 1000.0F;
-    if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV * 0.8F) return false;
+    if (voltage_mv < NIMCP_NMDA_SPIKE_THRESHOLD_MV * 0.8F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: validation failed");
+        return false;
+    }
 
     // Check active properties
-    if (!segment->has_active_properties) return false;
+    if (!segment->has_active_properties) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_can_generate_nmda_spike: segment->has_active_properties is NULL");
+        return false;
+    }
 
     // Check if already in NMDA spike
-    if (segment->nmda_spike_active) return false;
+    if (segment->nmda_spike_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: validation failed");
+        return false;
+    }
 
     // Check Mg²⁺ block is sufficiently relieved
     float mg_block = calculate_mg_block(voltage_mv);
-    if (mg_block < 0.5F) return false;
+    if (mg_block < 0.5F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dendrite_can_generate_nmda_spike: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -1405,10 +1445,16 @@ bool dendrite_can_generate_nmda_spike(dendrite_t* dendrite, uint32_t segment_id)
 bool dendrite_initiate_bap(dendrite_t* dendrite, float amplitude_mv,
                             uint64_t timestamp) {
     // Guard: NULL dendrite
-    if (!dendrite) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_can_generate_nmda_spike: dendrite is NULL");
+        return false;
+    }
 
     // Guard: Already propagating
-    if (dendrite->bap_state.active) return false;
+    if (dendrite->bap_state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_can_generate_nmda_spike: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&dendrite->lock);
 
@@ -1516,13 +1562,22 @@ void dendrite_update_bap(dendrite_t* dendrite, float dt_ms) {
 
 bool dendrite_bap_reached_spine(dendrite_t* dendrite, uint32_t spine_id) {
     // Guard clauses
-    if (!dendrite) return false;
-    if (spine_id >= dendrite->num_spines) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_bap_reached_spine: dendrite is NULL");
+        return false;
+    }
+    if (spine_id >= dendrite->num_spines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_bap_reached_spine: capacity exceeded");
+        return false;
+    }
 
     dendritic_spine_t* spine = &dendrite->spines[spine_id];
     uint32_t segment_id = spine->segment_id;
 
-    if (segment_id >= dendrite->num_segments) return false;
+    if (segment_id >= dendrite->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_bap_reached_spine: capacity exceeded");
+        return false;
+    }
 
     return dendrite->segments[segment_id].bap_reached;
 }
@@ -1838,10 +1893,16 @@ void dendrite_stdp_apply_weight_changes(dendrite_t* dendrite) {
 
 bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
     // Guard: NULL dendrite
-    if (!dendrite) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_create_spine_pool: dendrite is NULL");
+        return false;
+    }
 
     // Guard: Already has pool
-    if (dendrite->spine_pool) return false;
+    if (dendrite->spine_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_create_spine_pool: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&dendrite->lock);
 
@@ -1851,6 +1912,7 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
     );
     if (!dendrite->spine_pool) {
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_create_spine_pool: dendrite->spine_pool is NULL");
         return false;
     }
 
@@ -1862,6 +1924,7 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
         nimcp_free(dendrite->spine_pool);
         dendrite->spine_pool = NULL;
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_create_spine_pool: dendrite->spine_pool->spines is NULL");
         return false;
     }
 
@@ -1875,6 +1938,7 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
         nimcp_free(dendrite->spine_pool);
         dendrite->spine_pool = NULL;
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_create_spine_pool: dendrite->spine_pool->allocation_bitmap is NULL");
         return false;
     }
 
@@ -1895,7 +1959,10 @@ bool dendrite_create_spine_pool(dendrite_t* dendrite, uint32_t capacity) {
 
 dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
     // Guard: NULL dendrite or no pool
-    if (!dendrite || !dendrite->spine_pool) return NULL;
+    if (!dendrite || !dendrite->spine_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_pool_alloc_spine: required parameter is NULL (dendrite, dendrite->spine_pool)");
+        return NULL;
+    }
 
     dendrite_spine_pool_t* pool = dendrite->spine_pool;
 
@@ -1904,6 +1971,7 @@ dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
     // Check capacity
     if (pool->allocated_count >= pool->capacity) {
         nimcp_mutex_unlock(&pool->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_pool_alloc_spine: capacity exceeded");
         return NULL;
     }
 
@@ -1929,6 +1997,7 @@ dendritic_spine_t* dendrite_pool_alloc_spine(dendrite_t* dendrite) {
     }
 
     nimcp_mutex_unlock(&pool->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_pool_alloc_spine: operation failed");
     return NULL;
 }
 
@@ -1970,7 +2039,10 @@ void dendrite_pool_free_spine(dendrite_t* dendrite, dendritic_spine_t* spine) {
 
 dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
     // Guard: NULL dendrite
-    if (!dendrite) return NULL;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_cow_copy: dendrite is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&dendrite->lock);
 
@@ -1982,6 +2054,7 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
     if (!copy) {
         dendrite->cow_ref_count--;
         nimcp_mutex_unlock(&dendrite->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_cow_copy: copy is NULL");
         return NULL;
     }
 
@@ -2008,7 +2081,10 @@ dendrite_t* dendrite_cow_copy(dendrite_t* dendrite) {
 
 bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
     // Guard: NULL dendrite
-    if (!dendrite) return false;
+    if (!dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_cow_prepare_write: dendrite is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&dendrite->lock);
 
@@ -2043,6 +2119,7 @@ bool dendrite_cow_prepare_write(dendrite_t* dendrite) {
             nimcp_free(new_segments);
             nimcp_mutex_unlock(&dendrite->lock);
             LOG_ERROR(LOG_MODULE, "dendrite_cow_prepare_write: Failed to allocate spines copy");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_cow_prepare_write: new_spines is NULL");
             return false;
         }
         if (new_spines) {

@@ -144,7 +144,10 @@ static void autobio_on_sleep_state_change(sleep_state_t new_state, void* user_da
 }
 
 int autobio_sleep_default_config(autobio_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_defaul", 0.0f);
 
@@ -240,7 +243,10 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
 }
 
 int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_update", 0.0f);
@@ -289,7 +295,10 @@ int autobio_sleep_update(autobio_sleep_bridge_t bridge) {
 }
 
 int autobio_sleep_get_effects(const autobio_sleep_bridge_t bridge, autobio_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_get_ef", 0.0f);
 
@@ -313,7 +322,10 @@ float autobio_sleep_get_encoding_efficiency(const autobio_sleep_bridge_t bridge)
 }
 
 bool autobio_sleep_is_consolidation_active(const autobio_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_sleep_is_consolidation_active: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     autobiographical_memory_sleep_bridge_heartbeat("autobiograph_autobio_sleep_is_con", 0.0f);
 

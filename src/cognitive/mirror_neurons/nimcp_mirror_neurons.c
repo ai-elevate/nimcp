@@ -767,6 +767,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     mirror_neurons_t mirror = (mirror_neurons_t)nimcp_malloc(sizeof(struct mirror_neurons_system));
     if (!mirror) {
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate system structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror is NULL");
         return NULL;
     }
 
@@ -783,6 +784,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     if (mirror->config.num_mirror_neurons == 0 || mirror->config.max_actions == 0) {
         MIRROR_LOG_ERROR("Mirror neurons: invalid configuration");
         nimcp_free(mirror);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_create: mirror->config.num_mirror_neurons is zero");
         return NULL;
     }
 
@@ -794,6 +796,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
     if (!mirror->neurons) {
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate neurons");
         nimcp_free(mirror);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->neurons is NULL");
         return NULL;
     }
     mirror->num_neurons = mirror->config.num_mirror_neurons;
@@ -808,6 +811,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         MIRROR_LOG_ERROR("Mirror neurons: failed to allocate actions");
         nimcp_free(mirror->neurons);
         nimcp_free(mirror);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->actions is NULL");
         return NULL;
     }
 
@@ -822,6 +826,7 @@ mirror_neurons_t mirror_neurons_create(const mirror_neuron_config_t* config)
         nimcp_free(mirror->actions);
         nimcp_free(mirror->neurons);
         nimcp_free(mirror);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_create: mirror->agents is NULL");
         return NULL;
     }
 
@@ -1001,11 +1006,13 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
 {
     if (!mirror || !mirror->initialized) {
         MIRROR_LOG_ERROR("Mirror neurons: invalid system handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_observe_action: required parameter is NULL (mirror, mirror->initialized)");
         return false;
     }
 
     if (!action) {
         MIRROR_LOG_ERROR("Mirror neurons: null action");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_observe_action: action is NULL");
         return false;
     }
 
@@ -1016,6 +1023,7 @@ bool mirror_neurons_observe_action(mirror_neurons_t mirror, const action_t* acti
 
     uint32_t action_idx = find_or_create_action(mirror, action);
     if (action_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_observe_action: validation failed");
         return false;
     }
 
@@ -1057,11 +1065,13 @@ bool mirror_neurons_execute_action(mirror_neurons_t mirror, const action_t* acti
 {
     if (!mirror || !mirror->initialized) {
         MIRROR_LOG_ERROR("Mirror neurons: invalid system handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_execute_action: required parameter is NULL (mirror, mirror->initialized)");
         return false;
     }
 
     if (!action) {
         MIRROR_LOG_ERROR("Mirror neurons: null action");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_execute_action: action is NULL");
         return false;
     }
 
@@ -1072,6 +1082,7 @@ bool mirror_neurons_execute_action(mirror_neurons_t mirror, const action_t* acti
 
     uint32_t action_idx = find_or_create_action(mirror, action);
     if (action_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_execute_action: validation failed");
         return false;
     }
 
@@ -1162,6 +1173,7 @@ bool mirror_neurons_match_actions(
 {
     if (!mirror || !observed_action || !executed_action) {
         if (out_similarity) *out_similarity = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_match_actions: validation failed");
         return false;
     }
 
@@ -1175,6 +1187,7 @@ bool mirror_neurons_match_actions(
 
     if (num_features == 0) {
         if (out_similarity) *out_similarity = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_match_actions: validation failed");
         return false;
     }
 
@@ -1212,6 +1225,7 @@ bool mirror_neurons_learn_demonstration(
     (void)demonstrator_id;  // TODO: Use for agent-specific learning
 
     if (!mirror || !actions || num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_learn_demonstration: required parameter is NULL (mirror, actions)");
         return false;
     }
 
@@ -1245,6 +1259,7 @@ bool mirror_neurons_learn_demonstration(
 bool mirror_neurons_update_associations(mirror_neurons_t mirror)
 {
     if (!mirror || !mirror->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_update_associations: required parameter is NULL (mirror, mirror->initialized)");
         return false;
     }
 
@@ -1305,6 +1320,7 @@ bool mirror_neurons_update_associations(mirror_neurons_t mirror)
 bool mirror_neurons_decay_activations(mirror_neurons_t mirror, uint32_t delta_time_ms)
 {
     if (!mirror || !mirror->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_decay_activations: required parameter is NULL (mirror, mirror->initialized)");
         return false;
     }
 
@@ -1350,6 +1366,7 @@ bool mirror_neurons_decay_activations(mirror_neurons_t mirror, uint32_t delta_ti
 bool mirror_neurons_get_stats(mirror_neurons_t mirror, mirror_neuron_stats_t* stats)
 {
     if (!mirror || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_get_stats: required parameter is NULL (mirror, stats)");
         return false;
     }
 
@@ -1409,6 +1426,7 @@ bool mirror_neurons_get_activation_record(
     mirror_activation_t* activation)
 {
     if (!mirror || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_get_activation_record: required parameter is NULL (mirror, activation)");
         return false;
     }
 
@@ -1432,6 +1450,7 @@ bool mirror_neurons_get_activation_record(
     }
 
     if (action_idx == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_activation_record: validation failed");
         return false;
     }
 
@@ -1492,6 +1511,7 @@ bool mirror_neurons_predict_next_action(
 {
     if (!mirror || !previous_actions || num_previous == 0 || !predicted_action) {
         if (confidence) *confidence = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_predict_next_action: validation failed");
         return false;
     }
 
@@ -1529,6 +1549,7 @@ bool mirror_neurons_predict_next_action(
 
     if (best_action_id == 0) {
         if (confidence) *confidence = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_predict_next_action: validation failed");
         return false;
     }
 
@@ -1557,6 +1578,7 @@ bool mirror_neurons_predict_next_action(
     }
 
     if (confidence) *confidence = 0.0F;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_predict_next_action: validation failed");
     return false;
 }
 
@@ -1572,6 +1594,7 @@ bool mirror_neurons_integrate_working_memory(
     void* working_memory)
 {
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_integrate_working_memory: mirror is NULL");
         return false;
     }
 
@@ -1596,6 +1619,7 @@ bool mirror_neurons_integrate_theory_of_mind(
     void* theory_of_mind)
 {
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_integrate_theory_of_mind: mirror is NULL");
         return false;
     }
 
@@ -1620,6 +1644,7 @@ bool mirror_neurons_integrate_predictive(
     void* predictive_network)
 {
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_integrate_predictive: mirror is NULL");
         return false;
     }
 
@@ -1663,6 +1688,7 @@ bool mirror_neurons_integrate_glial(
     void* glial_integration)
 {
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_integrate_glial: mirror is NULL");
         return false;
     }
 
@@ -1814,6 +1840,7 @@ bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
 {
     // Guard: Validate mirror system
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_has_recent_observations: mirror is NULL");
         return false;
     }
 
@@ -1823,6 +1850,7 @@ bool mirror_neurons_has_recent_observations(mirror_neurons_t mirror)
 
 
     if (mirror->last_update_time == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_has_recent_observations: mirror->last_update_time is zero");
         return false;
     }
 
@@ -1856,6 +1884,7 @@ bool mirror_neurons_get_all_activations(
     // Guard: Validate inputs
     if (!mirror || !activations || !out_size) {
         if (out_size) *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_all_activations: validation failed");
         return false;
     }
 
@@ -1863,6 +1892,7 @@ bool mirror_neurons_get_all_activations(
     if (!mirror->initialized) {
         MIRROR_LOG_ERROR("Mirror neurons: system not initialized");
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_get_all_activations: mirror->initialized is NULL");
         return false;
     }
 
@@ -1955,6 +1985,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
 {
     // Guard: Validate parameters
     if (!mirror || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_save: required parameter is NULL (mirror, file)");
         return false;
     }
 
@@ -1967,6 +1998,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
 
     uint32_t version = 1;
     if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -1974,6 +2006,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Restore mirror neuron behavior on load
     // HOW:  Binary write of config struct
     if (fwrite(&mirror->config, sizeof(mirror_neuron_config_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -1981,6 +2014,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Restore learned neuron representations
     // HOW:  Write count, then each neuron unit
     if (fwrite(&mirror->num_neurons, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -1992,6 +2026,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
         }
 
         if (fwrite(&mirror->neurons[i], sizeof(mirror_neuron_unit_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
             return false;
         }
     }
@@ -2000,6 +2035,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Restore action-to-neuron associations
     // HOW:  Write count, then each action with its neuron indices
     if (fwrite(&mirror->num_actions, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -2013,17 +2049,39 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
         action_mapping_t* action = &mirror->actions[i];
 
         // Write action metadata (excluding neuron_indices pointer)
-        if (fwrite(&action->action_id, sizeof(uint32_t), 1, file) != 1) return false;
-        if (fwrite(action->action_name, sizeof(char), 64, file) != 64) return false;
-        if (fwrite(&action->num_neurons, sizeof(uint32_t), 1, file) != 1) return false;
-        if (fwrite(&action->capacity, sizeof(uint32_t), 1, file) != 1) return false;
-        if (fwrite(&action->total_observations, sizeof(uint32_t), 1, file) != 1) return false;
-        if (fwrite(&action->total_executions, sizeof(uint32_t), 1, file) != 1) return false;
-        if (fwrite(&action->avg_similarity, sizeof(float), 1, file) != 1) return false;
+        if (fwrite(&action->action_id, sizeof(uint32_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(action->action_name, sizeof(char), 64, file) != 64) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(&action->num_neurons, sizeof(uint32_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(&action->capacity, sizeof(uint32_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(&action->total_observations, sizeof(uint32_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(&action->total_executions, sizeof(uint32_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
+        if (fwrite(&action->avg_similarity, sizeof(float), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
+            return false;
+        }
 
         // Write neuron indices array
         if (action->num_neurons > 0 && action->neuron_indices) {
             if (fwrite(action->neuron_indices, sizeof(uint32_t), action->num_neurons, file) != action->num_neurons) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
                 return false;
             }
         }
@@ -2033,6 +2091,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Restore multi-agent learning state
     // HOW:  Write count, then each agent info
     if (fwrite(&mirror->num_agents, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -2044,6 +2103,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
         }
 
         if (fwrite(&mirror->agents[i], sizeof(agent_info_t), 1, file) != 1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
             return false;
         }
     }
@@ -2052,6 +2112,7 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Preserve performance metrics
     // HOW:  Binary write of stats struct
     if (fwrite(&mirror->stats, sizeof(mirror_neuron_stats_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -2059,10 +2120,12 @@ bool mirror_neurons_save(mirror_neurons_t mirror, FILE* file)
     // WHY:  Restore timing information
     // HOW:  Write creation_time and last_update_time
     if (fwrite(&mirror->creation_time, sizeof(uint64_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
     if (fwrite(&mirror->last_update_time, sizeof(uint64_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_save: validation failed");
         return false;
     }
 
@@ -2103,10 +2166,12 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
 
     uint32_t version = 0;
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_load: validation failed");
         return NULL;
     }
 
     if (version != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_load: validation failed");
         return NULL;
     }
 
@@ -2280,6 +2345,7 @@ cleanup:
         }
         nimcp_free(mirror);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_load: validation failed");
     return NULL;
 }
 
@@ -2328,6 +2394,7 @@ bool mirror_neurons_enable_substrate(mirror_neurons_t mirror)
             mirror->config.substrate_pool_size);
         if (!mirror->substrate_pool) {
             MIRROR_LOG_ERROR("Mirror neurons: failed to create substrate pool");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_enable_substrate: mirror->substrate_pool is NULL");
             return false;
         }
     }
@@ -2629,6 +2696,7 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
     mirror_stdp_t stdp = mirror_stdp_create(NULL, max_synapses);
     if (!stdp) {
         MIRROR_LOG_ERROR("Failed to create STDP system\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_enable_stdp: stdp is NULL");
         return false;
     }
 
@@ -2714,6 +2782,7 @@ bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_chann
     motor_resonance_t resonance = motor_resonance_create(NULL, max_channels);
     if (!resonance) {
         MIRROR_LOG_ERROR("Failed to create motor resonance system\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_enable_resonance: resonance is NULL");
         return false;
     }
 
@@ -2809,7 +2878,10 @@ bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
     motor_resonance_t resonance = (motor_resonance_t)mirror->resonance_system;
     uint32_t channel_id = motor_resonance_find_channel(resonance, action_id);
 
-    if (channel_id == UINT32_MAX) return false;
+    if (channel_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_should_imitate: validation failed");
+        return false;
+    }
 
     return motor_resonance_above_threshold(resonance, channel_id);
 }
@@ -2837,6 +2909,7 @@ bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
     mirror_hierarchy_t hierarchy = mirror_hierarchy_create(NULL);
     if (!hierarchy) {
         MIRROR_LOG_ERROR("Failed to create hierarchy system\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_enable_hierarchy: hierarchy is NULL");
         return false;
     }
 
@@ -2913,7 +2986,10 @@ bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
         }
     }
 
-    if (motor_id == UINT32_MAX) return false;
+    if (motor_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_infer_goal: validation failed");
+        return false;
+    }
 
     // Infer goal
     uint32_t goal_ids[4];
@@ -2921,7 +2997,10 @@ bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
     uint32_t num_goals = mirror_hierarchy_infer_goal(hierarchy, motor_id,
                                                       goal_ids, probs, 4);
 
-    if (num_goals == 0) return false;
+    if (num_goals == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_infer_goal: num_goals is zero");
+        return false;
+    }
 
     *out_goal = goal_ids[0];
     *out_confidence = probs[0];

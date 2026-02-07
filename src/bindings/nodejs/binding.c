@@ -675,11 +675,17 @@ static napi_value Init(napi_env env, napi_value exports) {
                                CreateNeuralNetwork, NULL,
                                sizeof(neural_network_props) / sizeof(napi_property_descriptor),
                                neural_network_props, &neural_network_class);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Init: validation failed");
+        return NULL;
+    }
 
     // Export NeuralNetwork class
     status = napi_set_named_property(env, exports, "NeuralNetwork", neural_network_class);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Init: validation failed");
+        return NULL;
+    }
 
     // Define MetricsCollector class
     napi_value metrics_collector_class;
@@ -697,11 +703,17 @@ static napi_value Init(napi_env env, napi_value exports) {
                                CreateMetricsCollector, NULL,
                                sizeof(metrics_collector_props) / sizeof(napi_property_descriptor),
                                metrics_collector_props, &metrics_collector_class);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Init: validation failed");
+        return NULL;
+    }
 
     // Export MetricsCollector class
     status = napi_set_named_property(env, exports, "MetricsCollector", metrics_collector_class);
-    if (status != napi_ok) return NULL;
+    if (status != napi_ok) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Init: validation failed");
+        return NULL;
+    }
 
     // Export metric category constants
     napi_value category_performance, category_memory, category_network;

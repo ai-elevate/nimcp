@@ -98,7 +98,10 @@ static uint64_t get_timestamp(void) {
  * ============================================================================ */
 
 int soma_medulla_default_config(soma_medulla_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(soma_medulla_config_t));
 
@@ -148,7 +151,10 @@ void soma_medulla_bridge_destroy(soma_medulla_bridge_t* bridge) {
  * ============================================================================ */
 
 int soma_medulla_connect(soma_medulla_bridge_t* bridge, nimcp_somatosensory_t* soma, void* medulla) {
-    if (!bridge || !soma) return -1;
+    if (!bridge || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_connect: required parameter is NULL (bridge, soma)");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->medulla = medulla;
@@ -159,7 +165,10 @@ int soma_medulla_connect(soma_medulla_bridge_t* bridge, nimcp_somatosensory_t* s
 }
 
 int soma_medulla_disconnect(soma_medulla_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->medulla = NULL;
@@ -178,7 +187,10 @@ bool soma_medulla_is_connected(const soma_medulla_bridge_t* bridge) {
 
 int soma_medulla_send_pain_urgent(soma_medulla_bridge_t* bridge,
                                   const soma_medulla_pain_t* pain) {
-    if (!bridge || !bridge->is_connected || !pain) return -1;
+    if (!bridge || !bridge->is_connected || !pain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_is_connected: required parameter is NULL (bridge, bridge->is_connected, pain)");
+        return -1;
+    }
 
     bridge->stats.pain_signals++;
 
@@ -202,8 +214,14 @@ int soma_medulla_send_pain_urgent(soma_medulla_bridge_t* bridge,
 }
 
 int soma_medulla_request_withdrawal(soma_medulla_bridge_t* bridge, body_segment_t region) {
-    if (!bridge || !bridge->is_connected) return -1;
-    if (!bridge->config.enable_withdrawal_reflex) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_withdrawal: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
+    if (!bridge->config.enable_withdrawal_reflex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_withdrawal: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->active_reflex.type = SOMA_MEDULLA_REFLEX_WITHDRAWAL;
     bridge->active_reflex.affected = region;
@@ -220,7 +238,10 @@ int soma_medulla_request_withdrawal(soma_medulla_bridge_t* bridge, body_segment_
 
 int soma_medulla_check_reflex_status(soma_medulla_bridge_t* bridge,
                                      soma_medulla_reflex_response_t* response) {
-    if (!bridge || !response) return -1;
+    if (!bridge || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_withdrawal: required parameter is NULL (bridge, response)");
+        return -1;
+    }
 
     if (bridge->reflex_pending) {
         memcpy(response, &bridge->active_reflex, sizeof(soma_medulla_reflex_response_t));
@@ -247,7 +268,10 @@ int soma_medulla_check_reflex_status(soma_medulla_bridge_t* bridge,
 
 int soma_medulla_send_temp_extreme(soma_medulla_bridge_t* bridge,
                                    const soma_medulla_temp_extreme_t* temp) {
-    if (!bridge || !bridge->is_connected || !temp) return -1;
+    if (!bridge || !bridge->is_connected || !temp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_withdrawal: required parameter is NULL (bridge, bridge->is_connected, temp)");
+        return -1;
+    }
 
     bridge->stats.temp_extremes++;
 
@@ -270,7 +294,10 @@ int soma_medulla_send_temp_extreme(soma_medulla_bridge_t* bridge,
 }
 
 int soma_medulla_request_thermoregulation(soma_medulla_bridge_t* bridge, float target_temp) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_thermoregulation: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     (void)target_temp;
 
     bridge->stats.autonomic_adjustments++;
@@ -284,8 +311,14 @@ int soma_medulla_request_thermoregulation(soma_medulla_bridge_t* bridge, float t
 
 int soma_medulla_trigger_autonomic(soma_medulla_bridge_t* bridge,
                                    const soma_medulla_autonomic_t* adj) {
-    if (!bridge || !bridge->is_connected || !adj) return -1;
-    if (!bridge->config.enable_autonomic_response) return -1;
+    if (!bridge || !bridge->is_connected || !adj) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_thermoregulation: required parameter is NULL (bridge, bridge->is_connected, adj)");
+        return -1;
+    }
+    if (!bridge->config.enable_autonomic_response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_thermoregulation: bridge->config is NULL");
+        return -1;
+    }
 
     memcpy(&bridge->current_autonomic, adj, sizeof(soma_medulla_autonomic_t));
     bridge->current_autonomic.timestamp = get_timestamp();
@@ -298,7 +331,10 @@ int soma_medulla_trigger_autonomic(soma_medulla_bridge_t* bridge,
 
 int soma_medulla_get_autonomic_state(soma_medulla_bridge_t* bridge,
                                      soma_medulla_autonomic_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_request_thermoregulation: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     memcpy(state, &bridge->current_autonomic, sizeof(soma_medulla_autonomic_t));
 
@@ -310,13 +346,19 @@ int soma_medulla_get_autonomic_state(soma_medulla_bridge_t* bridge,
  * ============================================================================ */
 
 int soma_medulla_get_stats(const soma_medulla_bridge_t* bridge, soma_medulla_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(soma_medulla_stats_t));
     return 0;
 }
 
 int soma_medulla_reset_stats(soma_medulla_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_medulla_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(soma_medulla_stats_t));
     return 0;
 }

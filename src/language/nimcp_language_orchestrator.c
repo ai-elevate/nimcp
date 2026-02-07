@@ -593,6 +593,7 @@ int language_orchestrator_process_input(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_orchestrator_process_input: operation failed");
             return -1;
     }
 

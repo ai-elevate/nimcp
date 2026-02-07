@@ -856,6 +856,7 @@ bool neuron_type_is_excitatory(neuron_type_t type) {
         case NEURON_EXCITATORY:
             return true;
         case NEURON_INHIBITORY:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_type_is_excitatory: operation failed");
             return false;
         default:
             // Most specialized types are excitatory

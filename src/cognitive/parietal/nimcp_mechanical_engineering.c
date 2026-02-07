@@ -628,7 +628,10 @@ int mechanical_eng_set_fatigue(mechanical_eng_t* me, float level) {
  * ============================================================================ */
 
 int mechanical_eng_get_stats(const mechanical_eng_t* me, me_stats_t* stats) {
-    if (!me || !stats) return -1;
+    if (!me || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mechanical_eng_get_stats: required parameter is NULL (me, stats)");
+        return -1;
+    }
     *stats = me->stats;
     /* Phase 8: Heartbeat at operation start */
     mechanical_engineering_heartbeat("mechanical_e_mechanical_eng_get_s", 0.0f);

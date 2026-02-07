@@ -167,7 +167,10 @@ static void create_cortical_epitope(
  * ============================================================================ */
 
 int cortical_immune_default_config(cortical_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_default_config: config is NULL");
+        return -1;
+    }
 
     config->max_microglial_sites = CORTICAL_IMMUNE_MAX_MICROGLIAL_SITES;
     config->microglial_density = 50.0f;  /* 50 sites/mm² */
@@ -219,6 +222,7 @@ cortical_immune_system_t* cortical_immune_create(
         nimcp_malloc(sizeof(microglial_site_t) * system->site_capacity);
     if (!system->microglial_sites) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->microglial_sites is NULL");
         return NULL;
     }
     memset(system->microglial_sites, 0, sizeof(microglial_site_t) * system->site_capacity);
@@ -230,6 +234,7 @@ cortical_immune_system_t* cortical_immune_create(
     if (!system->column_states) {
         nimcp_free(system->microglial_sites);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->column_states is NULL");
         return NULL;
     }
     memset(system->column_states, 0, sizeof(cortical_column_immune_t) * system->column_capacity);
@@ -242,6 +247,7 @@ cortical_immune_system_t* cortical_immune_create(
         nimcp_free(system->column_states);
         nimcp_free(system->microglial_sites);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_immune_create: system->layer_states is NULL");
         return NULL;
     }
     memset(system->layer_states, 0, sizeof(layer_immune_state_t) * system->layer_capacity);
@@ -253,6 +259,7 @@ cortical_immune_system_t* cortical_immune_create(
         nimcp_free(system->column_states);
         nimcp_free(system->microglial_sites);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -307,7 +314,10 @@ int cortical_immune_connect_brain_immune(
     cortical_immune_system_t* system,
     brain_immune_system_t* brain_immune
 ) {
-    if (!system || !brain_immune) return -1;
+    if (!system || !brain_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_connect_brain_immune: required parameter is NULL (system, brain_immune)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->brain_immune = brain_immune;
@@ -325,12 +335,16 @@ int cortical_immune_register_minicolumn(
     minicolumn_t* column,
     uint32_t column_id
 ) {
-    if (!system || !column) return -1;
+    if (!system || !column) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_minicolumn: required parameter is NULL (system, column)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     if (system->num_columns >= system->column_capacity) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_register_minicolumn: capacity exceeded");
         return -1;
     }
 
@@ -362,7 +376,10 @@ int cortical_immune_register_hypercolumn(
     hypercolumn_t* hcol,
     uint32_t hcol_id
 ) {
-    if (!system || !hcol) return -1;
+    if (!system || !hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_hypercolumn: required parameter is NULL (system, hcol)");
+        return -1;
+    }
 
     /* For now, just log registration */
     LOG_MODULE_DEBUG("cortical_immune",
@@ -376,7 +393,10 @@ int cortical_immune_register_laminar_structure(
     laminar_structure_t* layers,
     uint32_t region_id
 ) {
-    if (!system || !layers) return -1;
+    if (!system || !layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_laminar_structure: required parameter is NULL (system, layers)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -416,7 +436,10 @@ int cortical_immune_register_orientation_hypercolumn(
     orientation_hypercolumn_t* orient_hcol,
     uint32_t hcol_id
 ) {
-    if (!system || !orient_hcol) return -1;
+    if (!system || !orient_hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_register_orientation_hypercolumn: required parameter is NULL (system, orient_hcol)");
+        return -1;
+    }
 
     LOG_MODULE_DEBUG("cortical_immune",
                   "Registered orientation hypercolumn %u for selectivity monitoring",
@@ -436,12 +459,16 @@ int cortical_immune_create_microglial_site(
     float radius,
     uint32_t* site_id
 ) {
-    if (!system || !site_id) return -1;
+    if (!system || !site_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_create_microglial_site: required parameter is NULL (system, site_id)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
     if (system->num_sites >= system->site_capacity) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_immune_create_microglial_site: capacity exceeded");
         return -1;
     }
 
@@ -515,7 +542,10 @@ int cortical_immune_activate_microglia(
     uint32_t site_id,
     cortical_abnormality_type_t abnormality_type
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_activate_microglia: system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -530,6 +560,7 @@ int cortical_immune_activate_microglia(
 
     if (!site) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_activate_microglia: site is NULL");
         return -1;
     }
 
@@ -686,7 +717,10 @@ int cortical_immune_apply_inflammation(
     uint32_t column_id,
     float inflammation_level
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_inflammation: system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -701,6 +735,7 @@ int cortical_immune_apply_inflammation(
 
     if (!col) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_inflammation: col is NULL");
         return -1;
     }
 
@@ -744,7 +779,10 @@ int cortical_immune_apply_cytokine(
     brain_cytokine_type_t cytokine_type,
     float concentration
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_cytokine: system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -759,6 +797,7 @@ int cortical_immune_apply_cytokine(
 
     if (!state) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_apply_cytokine: state is NULL");
         return -1;
     }
 
@@ -809,7 +848,10 @@ int cortical_immune_update_cytokine_diffusion(
     cortical_immune_system_t* system,
     uint64_t delta_ms
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_update_cytokine_diffusion: system is NULL");
+        return -1;
+    }
 
     /* Simple diffusion: cytokines spread from microglial sites */
     float dt = delta_ms / 1000.0f;  /* Convert to seconds */
@@ -839,7 +881,10 @@ int cortical_immune_resolve_inflammation(
     cortical_immune_system_t* system,
     uint32_t column_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_resolve_inflammation: system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -854,6 +899,7 @@ int cortical_immune_resolve_inflammation(
 
     if (!col) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_resolve_inflammation: col is NULL");
         return -1;
     }
 
@@ -889,9 +935,13 @@ int cortical_immune_present_abnormality(
     float abnormality_score,
     uint32_t* antigen_id
 ) {
-    if (!system || !antigen_id) return -1;
+    if (!system || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_present_abnormality: required parameter is NULL (system, antigen_id)");
+        return -1;
+    }
 
     if (!system->brain_immune_connected || !system->brain_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_present_abnormality: required parameter is NULL (system->brain_immune_connected, system->brain_immune)");
         return -1;
     }
 
@@ -933,7 +983,10 @@ int cortical_immune_get_column_status(
     uint32_t column_id,
     cortical_column_immune_t* status
 ) {
-    if (!system || !status) return -1;
+    if (!system || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_get_column_status: required parameter is NULL (system, status)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -946,6 +999,7 @@ int cortical_immune_get_column_status(
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_immune_get_column_status: validation failed");
     return -1;
 }
 
@@ -955,7 +1009,10 @@ int cortical_immune_get_layer_state(
     cc_cortical_layer_t layer,
     layer_immune_state_t* state
 ) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_get_layer_state: required parameter is NULL (system, state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -968,6 +1025,7 @@ int cortical_immune_get_layer_state(
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_immune_get_layer_state: validation failed");
     return -1;
 }
 
@@ -976,7 +1034,10 @@ int cortical_immune_get_microglial_site(
     uint32_t site_id,
     microglial_site_t* site
 ) {
-    if (!system || !site) return -1;
+    if (!system || !site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_get_microglial_site: required parameter is NULL (system, site)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -989,6 +1050,7 @@ int cortical_immune_get_microglial_site(
     }
 
     nimcp_platform_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_immune_get_microglial_site: validation failed");
     return -1;
 }
 
@@ -996,7 +1058,10 @@ int cortical_immune_get_stats(
     cortical_immune_system_t* system,
     cortical_immune_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     *stats = system->stats;
@@ -1013,7 +1078,10 @@ int cortical_immune_update(
     cortical_immune_system_t* system,
     uint64_t delta_ms
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_immune_update: system is NULL");
+        return -1;
+    }
 
     /* Update surveillance */
     cortical_immune_update_surveillance(system, delta_ms);

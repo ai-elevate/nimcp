@@ -940,6 +940,7 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
     mesh_bootstrap_t* bootstrap = nimcp_calloc(1, sizeof(*bootstrap));
     if (!bootstrap) {
         LOG_ERROR("Failed to allocate mesh bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bootstrap_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -953,6 +954,7 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
     if (!bootstrap->mutex) {
         LOG_ERROR("Failed to create bootstrap mutex");
         nimcp_free(bootstrap);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bootstrap_create: bootstrap->mutex is NULL");
         return NULL;
     }
 
@@ -961,6 +963,7 @@ mesh_bootstrap_t* mesh_bootstrap_create(const mesh_bootstrap_config_t* config) {
     if (!bootstrap->integration) {
         LOG_ERROR("Failed to create mesh integration");
         mesh_bootstrap_destroy(bootstrap);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bootstrap_create: bootstrap->integration is NULL");
         return NULL;
     }
 
@@ -1181,12 +1184,18 @@ void mesh_bootstrap_destroy(mesh_bootstrap_t* bootstrap) {
  * ============================================================================ */
 
 mesh_integration_t* mesh_bootstrap_get_integration(mesh_bootstrap_t* bootstrap) {
-    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) return NULL;
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_integration: bootstrap is NULL");
+        return NULL;
+    }
     return bootstrap->integration;
 }
 
 mesh_participant_registry_t* mesh_bootstrap_get_registry(mesh_bootstrap_t* bootstrap) {
-    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) return NULL;
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_registry: bootstrap is NULL");
+        return NULL;
+    }
     return mesh_integration_get_registry(bootstrap->integration);
 }
 
@@ -1194,7 +1203,10 @@ mesh_channel_t* mesh_bootstrap_get_channel(
     mesh_bootstrap_t* bootstrap,
     mesh_channel_id_t channel_id
 ) {
-    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) return NULL;
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_channel: bootstrap is NULL");
+        return NULL;
+    }
     return mesh_integration_get_channel(bootstrap->integration, channel_id);
 }
 
@@ -1342,7 +1354,10 @@ nimcp_error_t mesh_bootstrap_gossip_all(
 }
 
 bool mesh_bootstrap_has_converged(const mesh_bootstrap_t* bootstrap) {
-    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) return false;
+    if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bootstrap_has_converged: bootstrap is NULL");
+        return false;
+    }
     return mesh_integration_has_converged(bootstrap->integration);
 }
 
@@ -1671,6 +1686,7 @@ nimcp_error_t mesh_bootstrap_register_swarm(
 
 mesh_pattern_router_t* mesh_bootstrap_get_pattern_router(mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_pattern_router: bootstrap is NULL");
         return NULL;
     }
     return bootstrap->pattern_router;
@@ -1772,6 +1788,7 @@ nimcp_error_t mesh_bootstrap_learn_routing_outcome(
 
 mesh_module_registry_t* mesh_bootstrap_get_module_registry(mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_module_registry: bootstrap is NULL");
         return NULL;
     }
     return bootstrap->module_registry;
@@ -1779,6 +1796,7 @@ mesh_module_registry_t* mesh_bootstrap_get_module_registry(mesh_bootstrap_t* boo
 
 mesh_bio_bridge_t* mesh_bootstrap_get_bio_bridge(mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_bio_bridge: bootstrap is NULL");
         return NULL;
     }
     return bootstrap->bio_bridge;
@@ -1786,6 +1804,7 @@ mesh_bio_bridge_t* mesh_bootstrap_get_bio_bridge(mesh_bootstrap_t* bootstrap) {
 
 mesh_exception_bridge_t* mesh_bootstrap_get_exception_bridge(mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_exception_bridge: bootstrap is NULL");
         return NULL;
     }
     return bootstrap->exception_bridge;
@@ -1793,6 +1812,7 @@ mesh_exception_bridge_t* mesh_bootstrap_get_exception_bridge(mesh_bootstrap_t* b
 
 mesh_health_bridge_t* mesh_bootstrap_get_health_bridge(mesh_bootstrap_t* bootstrap) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_health_bridge: bootstrap is NULL");
         return NULL;
     }
     return bootstrap->health_bridge;
@@ -1864,9 +1884,11 @@ mesh_registered_module_t* mesh_bootstrap_lookup_module(
     const char* name
 ) {
     if (!bootstrap || bootstrap->magic != MESH_BOOTSTRAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_lookup_module: bootstrap is NULL");
         return NULL;
     }
     if (!name || !bootstrap->module_registry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_lookup_module: required parameter is NULL (name, bootstrap->module_registry)");
         return NULL;
     }
 

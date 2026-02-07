@@ -220,7 +220,10 @@ static float action_threat_reduction(amyg_fep_action_t action, float current_thr
 //=============================================================================
 
 int amyg_fep_bridge_default_config(amyg_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     /* Model settings */
     config->default_model = AMYG_FEP_MODEL_VIGILANT;
@@ -253,17 +256,47 @@ int amyg_fep_bridge_default_config(amyg_fep_config_t* config) {
 }
 
 int amyg_fep_bridge_validate_config(const amyg_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->default_model > AMYG_FEP_MODEL_PANIC) return -1;
-    if (config->precision_mode > AMYG_FEP_PRECISION_INTEROCEPTIVE) return -1;
-    if (config->sensory_precision < 0.0f) return -1;
-    if (config->interoceptive_precision < 0.0f) return -1;
-    if (config->contextual_precision < 0.0f) return -1;
-    if (config->prior_precision < 0.0f) return -1;
-    if (config->learning_rate <= 0.0f || config->learning_rate > 1.0f) return -1;
-    if (config->inference_steps == 0) return -1;
-    if (config->prediction_horizon_ms < 0.0f) return -1;
+    if (config->default_model > AMYG_FEP_MODEL_PANIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->precision_mode > AMYG_FEP_PRECISION_INTEROCEPTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->sensory_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->interoceptive_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->contextual_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->prior_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->learning_rate <= 0.0f || config->learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->inference_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: config->inference_steps is zero");
+        return -1;
+    }
+    if (config->prediction_horizon_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_bridge_validate_config: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -289,6 +322,7 @@ amyg_fep_bridge_t* amyg_fep_bridge_create(
     if (config) {
         if (amyg_fep_bridge_validate_config(config) != 0) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -327,7 +361,10 @@ void amyg_fep_bridge_destroy(amyg_fep_bridge_t* bridge) {
 }
 
 int amyg_fep_bridge_reset(amyg_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset beliefs */
     for (uint32_t i = 0; i < bridge->state_dim; i++) {
@@ -365,7 +402,10 @@ int amyg_fep_compute_errors(
     uint32_t obs_dim,
     amyg_fep_errors_t* errors
 ) {
-    if (!bridge || !observations || !errors) return -1;
+    if (!bridge || !observations || !errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_compute_errors: required parameter is NULL (bridge, observations, errors)");
+        return -1;
+    }
 
     /* Store observations */
     bridge->obs_dim = (obs_dim > AMYG_FEP_MAX_OBS_DIM) ?
@@ -471,7 +511,10 @@ int amyg_fep_update_precision(
     float arousal,
     float stress
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_update_precision: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_arousal = clamp(arousal, 0.0f, 1.0f);
     bridge->current_stress = clamp(stress, 0.0f, 1.0f);
@@ -509,7 +552,10 @@ int amyg_fep_set_interoception(
     amyg_fep_bridge_t* bridge,
     const amyg_fep_interoception_t* intero
 ) {
-    if (!bridge || !intero) return -1;
+    if (!bridge || !intero) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_set_interoception: required parameter is NULL (bridge, intero)");
+        return -1;
+    }
 
     bridge->interoception = *intero;
     bridge->interoception_valid = true;
@@ -534,7 +580,10 @@ int amyg_fep_infer_state(
     uint32_t obs_dim,
     amyg_fep_inference_t* inference
 ) {
-    if (!bridge || !observations || !inference) return -1;
+    if (!bridge || !observations || !inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_infer_state: required parameter is NULL (bridge, observations, inference)");
+        return -1;
+    }
 
     uint32_t compare_dim = (obs_dim < bridge->state_dim) ? obs_dim : bridge->state_dim;
 
@@ -580,7 +629,10 @@ int amyg_fep_select_action(
     amyg_fep_action_t* action,
     float* action_value
 ) {
-    if (!bridge || !action) return -1;
+    if (!bridge || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_select_action: required parameter is NULL (bridge, action)");
+        return -1;
+    }
 
     /* Compute expected free energy for each action */
     float min_efe = 1e10f;
@@ -608,8 +660,14 @@ int amyg_fep_apply_action(
     amyg_fep_bridge_t* bridge,
     amyg_fep_action_t action
 ) {
-    if (!bridge) return -1;
-    if (action > AMYG_FEP_ACTION_APPROACH) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_apply_action: bridge is NULL");
+        return -1;
+    }
+    if (action > AMYG_FEP_ACTION_APPROACH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_apply_action: validation failed");
+        return -1;
+    }
 
     bridge->current_action = action;
 
@@ -715,8 +773,14 @@ int amyg_fep_set_model(
     amyg_fep_bridge_t* bridge,
     amyg_fep_model_t model
 ) {
-    if (!bridge) return -1;
-    if (model > AMYG_FEP_MODEL_PANIC) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_set_model: bridge is NULL");
+        return -1;
+    }
+    if (model > AMYG_FEP_MODEL_PANIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "amyg_fep_set_model: validation failed");
+        return -1;
+    }
 
     if (bridge->current_model != model) {
         bridge->stats.model_switches++;
@@ -757,7 +821,10 @@ int amyg_fep_predict(
     float* predicted_state,
     uint32_t state_dim
 ) {
-    if (!bridge || !predicted_state) return -1;
+    if (!bridge || !predicted_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_predict: required parameter is NULL (bridge, predicted_state)");
+        return -1;
+    }
 
     float temp_state[AMYG_FEP_MAX_STATE_DIM];
     memcpy(temp_state, bridge->beliefs, bridge->state_dim * sizeof(float));
@@ -792,7 +859,10 @@ int amyg_fep_condition(
     uint32_t cs_dim,
     float threat_intensity
 ) {
-    if (!bridge || !cs_features) return -1;
+    if (!bridge || !cs_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_condition: required parameter is NULL (bridge, cs_features)");
+        return -1;
+    }
 
     /* Conditioning shifts priors toward threat expectation */
     float intensity = clamp(threat_intensity, 0.0f, 1.0f);
@@ -825,7 +895,10 @@ int amyg_fep_extinction(
     const float* cs_features,
     uint32_t cs_dim
 ) {
-    if (!bridge || !cs_features) return -1;
+    if (!bridge || !cs_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_extinction: required parameter is NULL (bridge, cs_features)");
+        return -1;
+    }
 
     /* Extinction reduces threat expectations */
     bridge->beliefs[0] *= 0.9f;  /* Gradual reduction */
@@ -860,7 +933,10 @@ int amyg_fep_connect_amygdala(
     amyg_fep_bridge_t* bridge,
     amygdala_t* amygdala
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_connect_amygdala: bridge is NULL");
+        return -1;
+    }
     bridge->amygdala = amygdala;
     return 0;
 }
@@ -869,13 +945,19 @@ int amyg_fep_connect_system(
     amyg_fep_bridge_t* bridge,
     void* fep_system
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_connect_system: bridge is NULL");
+        return -1;
+    }
     bridge->fep_system = fep_system;
     return 0;
 }
 
 int amyg_fep_update(amyg_fep_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_time_ms += dt_ms;
 
@@ -920,7 +1002,10 @@ int amyg_fep_update(amyg_fep_bridge_t* bridge, float dt_ms) {
 }
 
 int amyg_fep_sync_with_amygdala(amyg_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_sync_with_amygdala: bridge is NULL");
+        return -1;
+    }
     /* Would sync beliefs with amygdala fear/threat state */
     return 0;
 }
@@ -933,13 +1018,19 @@ int amyg_fep_bridge_get_stats(
     const amyg_fep_bridge_t* bridge,
     amyg_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int amyg_fep_bridge_reset_stats(amyg_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

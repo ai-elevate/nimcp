@@ -443,6 +443,7 @@ bool contralateral_controls_side(
     body_side_t side
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contralateral_controls_side: required parameter is NULL (system, system->initialized)");
         return false;
     }
     return system->controlled_side == side;

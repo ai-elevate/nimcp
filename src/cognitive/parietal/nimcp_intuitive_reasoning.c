@@ -404,6 +404,7 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
     if (!engine->patterns) {
         set_error("Failed to allocate pattern memory");
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_engine_create_custom: engine->patterns is NULL");
         return NULL;
     }
     engine->num_patterns = 0;
@@ -416,6 +417,7 @@ intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* con
         set_error("Failed to allocate incubation queue");
         nimcp_free(engine->patterns);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_engine_create_custom: engine->incubation_queue is NULL");
         return NULL;
     }
     engine->num_incubating = 0;
@@ -498,6 +500,7 @@ hunch_t* intuitive_form_hunch(
 ) {
     if (!engine || !observations || num_observations == 0) {
         set_error("Invalid parameters for hunch formation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_form_hunch: required parameter is NULL (engine, observations)");
         return NULL;
     }
 
@@ -540,6 +543,7 @@ hunch_t* intuitive_form_hunch(
     if (max_dim == 0) {
         set_error("No observation data");
         nimcp_free(hunch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_form_hunch: max_dim is zero");
         return NULL;
     }
 
@@ -674,6 +678,7 @@ hunch_t* intuitive_form_hunch_from_data(
 ) {
     if (!engine || !data || length == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_form_hunch_from_data: required parameter is NULL (engine, data)");
         return NULL;
     }
 
@@ -700,6 +705,7 @@ int intuitive_update_hunch(
 ) {
     if (!engine || !hunch || !observation) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_update_hunch: required parameter is NULL (engine, hunch, observation)");
         return -1;
     }
 
@@ -751,6 +757,7 @@ int intuitive_refine_hunch(
 ) {
     if (!engine || !hunch || !context || context_dim == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_refine_hunch: required parameter is NULL (engine, hunch, context)");
         return -1;
     }
 
@@ -843,6 +850,7 @@ int intuitive_score_hypothesis(
 ) {
     if (!engine || !hypothesis || !score) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_score_hypothesis: required parameter is NULL (engine, hypothesis, score)");
         return -1;
     }
 
@@ -883,6 +891,7 @@ int intuitive_rank_hypotheses(
 ) {
     if (!engine || !hypotheses || !rankings || num_hypotheses == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_rank_hypotheses: required parameter is NULL (engine, hypotheses, rankings)");
         return -1;
     }
 
@@ -894,6 +903,7 @@ int intuitive_rank_hypotheses(
     float* scores = nimcp_calloc(num_hypotheses, sizeof(float));
     if (!scores) {
         set_error("Failed to allocate scores");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_rank_hypotheses: scores is NULL");
         return -1;
     }
 
@@ -979,6 +989,7 @@ int intuitive_track_confidence(
 ) {
     if (!engine || !step_confidences || !gradient || num_steps == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_track_confidence: required parameter is NULL (engine, step_confidences, gradient)");
         return -1;
     }
 
@@ -989,6 +1000,7 @@ int intuitive_track_confidence(
     gradient->confidence_values = nimcp_calloc(num_steps, sizeof(float));
     if (!gradient->confidence_values) {
         set_error("Failed to allocate gradient");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_track_confidence: gradient->confidence_values is NULL");
         return -1;
     }
 
@@ -1053,6 +1065,7 @@ int intuitive_find_weak_links(
 ) {
     if (!engine || !gradient || !weak_indices || !num_found) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_find_weak_links: required parameter is NULL (engine, gradient, weak_indices, num_found)");
         return -1;
     }
 
@@ -1107,6 +1120,7 @@ insight_t* intuitive_leap_with_strategy(
 ) {
     if (!engine || !problem) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_leap_with_strategy: required parameter is NULL (engine, problem)");
         return NULL;
     }
 
@@ -1120,6 +1134,7 @@ insight_t* intuitive_leap_with_strategy(
     float leap_probability = intuitive_can_leap(engine, problem);
     if (leap_probability < 0.3f) {
         set_error("Leap probability too low");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_leap_with_strategy: validation failed");
         return NULL;
     }
 
@@ -1350,11 +1365,13 @@ int intuitive_gestalt_perceive(
 ) {
     if (!engine || !data || !result || dim == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_gestalt_perceive: required parameter is NULL (engine, data, result)");
         return -1;
     }
 
     if (!engine->config.enable_gestalt) {
         set_error("Gestalt perception disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_gestalt_perceive: engine->config is NULL");
         return -1;
     }
 
@@ -1369,6 +1386,7 @@ int intuitive_gestalt_perceive(
     result->whole_representation = nimcp_calloc(result->repr_dim, sizeof(float));
     if (!result->whole_representation) {
         set_error("Failed to allocate representation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuitive_gestalt_perceive: result->whole_representation is NULL");
         return -1;
     }
 
@@ -1451,6 +1469,7 @@ int intuitive_gestalt_group(
     if (!engine || !elements || !group_assignments || !num_groups ||
         num_elements == 0 || element_dim == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_gestalt_group: operation failed");
         return -1;
     }
 
@@ -1529,6 +1548,7 @@ int intuitive_match_patterns(
 ) {
     if (!engine || !input || !matches || !num_found || input_dim == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_match_patterns: required parameter is NULL (engine, input, matches, num_found)");
         return -1;
     }
 
@@ -1620,6 +1640,7 @@ int intuitive_forget_pattern(
 ) {
     if (!engine || pattern_id == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_forget_pattern: engine is NULL");
         return -1;
     }
 
@@ -1650,6 +1671,7 @@ int intuitive_forget_pattern(
     }
 
     set_error("Pattern not found");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_forget_pattern: operation failed");
     return -1;
 }
 
@@ -1727,6 +1749,7 @@ int intuitive_check_incubation(
 ) {
     if (!engine || !insight || problem_id == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_check_incubation: required parameter is NULL (engine, insight)");
         return -1;
     }
 
@@ -1754,6 +1777,7 @@ int intuitive_check_incubation(
     }
 
     set_error("Problem not found in incubation queue");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_check_incubation: operation failed");
     return -1;
 }
 
@@ -1826,6 +1850,7 @@ int intuitive_cancel_incubation(
 ) {
     if (!engine || problem_id == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_cancel_incubation: engine is NULL");
         return -1;
     }
 
@@ -1871,6 +1896,7 @@ int intuitive_cancel_incubation(
     }
 
     set_error("Problem not found");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intuitive_cancel_incubation: operation failed");
     return -1;
 }
 
@@ -1931,7 +1957,10 @@ int intuitive_set_emotional_valence(intuitive_engine_t* engine, float valence) {
  * ============================================================================ */
 
 int intuitive_get_stats(const intuitive_engine_t* engine, intuitive_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuitive_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     intuitive_reasoning_heartbeat("intuitive_re_intuitive_get_stats", 0.0f);

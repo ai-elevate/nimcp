@@ -531,6 +531,7 @@ bool compartment_check_spike(compartment_state_t* state,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compartment_state_init: operation failed");
     return false;
 }
 

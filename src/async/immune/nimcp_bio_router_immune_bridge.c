@@ -159,6 +159,7 @@ static quarantined_node_state_t* find_quarantined_node(
             return &bridge->quarantined_nodes[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_quarantined_node: validation failed");
     return NULL;
 }
 
@@ -182,6 +183,7 @@ static inflammation_routing_impact_t* find_inflammation_impact(
             return &bridge->inflammation_impacts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inflammation_impact: validation failed");
     return NULL;
 }
 
@@ -190,7 +192,10 @@ static inflammation_routing_impact_t* find_inflammation_impact(
  * ============================================================================ */
 
 int router_immune_default_config(router_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_default_config: config is NULL");
+        return -1;
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_priority_routing = true;
@@ -226,6 +231,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     if (!router || !immune_system) {
         LOG_MODULE_ERROR("router_immune_bridge",
                   "Cannot create bridge without router and immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: required parameter is NULL (router, immune_system)");
         return NULL;
     }
 
@@ -234,6 +240,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_malloc(sizeof(router_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("router_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -263,6 +270,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_malloc(sizeof(cytokine_routing_state_t) * bridge->cytokine_capacity);
     if (!bridge->cytokine_states) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->cytokine_states is NULL");
         return NULL;
     }
 
@@ -273,6 +281,7 @@ router_immune_bridge_t* router_immune_bridge_create(
     if (!bridge->inflammation_impacts) {
         nimcp_free(bridge->cytokine_states);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->inflammation_impacts is NULL");
         return NULL;
     }
 
@@ -284,6 +293,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_free(bridge->inflammation_impacts);
         nimcp_free(bridge->cytokine_states);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "router_immune_bridge_create: bridge->quarantined_nodes is NULL");
         return NULL;
     }
 
@@ -296,6 +306,7 @@ router_immune_bridge_t* router_immune_bridge_create(
         nimcp_free(bridge->inflammation_impacts);
         nimcp_free(bridge->cytokine_states);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_create: bridge->recent_anomalies is NULL");
         return NULL;
     }
 
@@ -335,8 +346,14 @@ void router_immune_bridge_destroy(router_immune_bridge_t* bridge) {
 
 int router_immune_bridge_start(router_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->router || !bridge->immune_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_start: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->router || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_start: required parameter is NULL (bridge->router, bridge->immune_system)");
+        return -1;
+    }
 
     /* Register module with router if not already registered */
     if (!bridge->module_ctx) {
@@ -350,6 +367,7 @@ int router_immune_bridge_start(router_immune_bridge_t* bridge) {
         if (!bridge->module_ctx) {
             LOG_MODULE_ERROR("router_immune_bridge",
                   "Failed to register with bio-async router");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_start: bridge->module_ctx is NULL");
             return -1;
         }
     }
@@ -359,7 +377,10 @@ int router_immune_bridge_start(router_immune_bridge_t* bridge) {
 }
 
 int router_immune_bridge_stop(router_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_stop: bridge is NULL");
+        return -1;
+    }
 
     /* Unregister from router */
     if (bridge->module_ctx) {
@@ -382,9 +403,15 @@ int router_immune_prioritize_cytokine(
     uint32_t source_cell
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_prioritize_cytokine: bridge is NULL");
+        return -1;
+    }
     if (!bridge->enable_cytokine_priority_routing) return 0;
-    if (bridge->cytokine_count >= bridge->cytokine_capacity) return -1;
+    if (bridge->cytokine_count >= bridge->cytokine_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_prioritize_cytokine: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -413,7 +440,10 @@ int router_immune_apply_inflammation_latency(
     brain_inflammation_level_t inflammation_level
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_apply_inflammation_latency: bridge is NULL");
+        return -1;
+    }
     if (!bridge->enable_inflammation_latency_impact) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -424,6 +454,7 @@ int router_immune_apply_inflammation_latency(
         /* Add new inflammation impact */
         if (bridge->inflammation_count >= bridge->inflammation_capacity) {
             nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_apply_inflammation_latency: capacity exceeded");
             return -1;
         }
         impact = &bridge->inflammation_impacts[bridge->inflammation_count++];
@@ -453,7 +484,10 @@ int router_immune_quarantine_node(
     uint32_t antigen_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_quarantine_node: bridge is NULL");
+        return -1;
+    }
     if (!bridge->enable_quarantine_routing_exclusion) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -473,6 +507,7 @@ int router_immune_quarantine_node(
     if (bridge->quarantine_count >= bridge->quarantine_capacity) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         LOG_MODULE_WARN("router_immune_bridge", "Quarantine capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "router_immune_quarantine_node: capacity exceeded");
         return -1;
     }
 
@@ -499,7 +534,10 @@ int router_immune_restore_node(
     uint32_t node_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_restore_node: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -522,6 +560,7 @@ int router_immune_restore_node(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "router_immune_restore_node: operation failed");
     return -1;  /* Node not found in quarantine */
 }
 
@@ -531,8 +570,14 @@ int router_immune_broadcast_alert(
     brain_inflammation_level_t severity
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->module_ctx) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_broadcast_alert: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->module_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_broadcast_alert: bridge->module_ctx is NULL");
+        return -1;
+    }
 
     /* Create immune alert message */
     /* Note: Actual message structure would be defined in bio_messages.h */
@@ -556,6 +601,7 @@ int router_immune_broadcast_alert(
     if (err != NIMCP_SUCCESS) {
         LOG_MODULE_ERROR("router_immune_bridge",
                   "Failed to broadcast immune alert");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "router_immune_broadcast_alert: validation failed");
         return -1;
     }
 
@@ -575,7 +621,10 @@ int router_immune_detect_anomalies(
     uint32_t node_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_detect_anomalies: bridge is NULL");
+        return -1;
+    }
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
     /* Update statistics first */
@@ -643,8 +692,14 @@ int router_immune_trigger_from_anomaly(
     const router_anomaly_event_t* anomaly
 ) {
     /* Guard clauses */
-    if (!bridge || !anomaly) return -1;
-    if (!bridge->immune_system) return -1;
+    if (!bridge || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_trigger_from_anomaly: required parameter is NULL (bridge, anomaly)");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_trigger_from_anomaly: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Create antigen signature from anomaly */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -688,7 +743,10 @@ int router_immune_detect_byzantine(
     size_t msg_size
 ) {
     /* Guard clauses */
-    if (!bridge || !msg) return -1;
+    if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_detect_byzantine: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
     if (!bridge->enable_byzantine_detection) return 0;
 
     /* Byzantine detection logic would go here */
@@ -707,8 +765,14 @@ int router_immune_present_byzantine(
     size_t sig_len
 ) {
     /* Guard clauses */
-    if (!bridge || !behavior_signature) return -1;
-    if (!bridge->immune_system) return -1;
+    if (!bridge || !behavior_signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_present_byzantine: required parameter is NULL (bridge, behavior_signature)");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_present_byzantine: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Present Byzantine behavior as antigen */
     uint32_t antigen_id;
@@ -740,7 +804,10 @@ int router_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -769,13 +836,20 @@ int router_immune_bridge_update(
 
 int router_immune_update_stats(router_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (!bridge->router) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_update_stats: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_update_stats: bridge->router is NULL");
+        return -1;
+    }
 
     /* Query router statistics */
     bio_router_stats_t router_stats;
     nimcp_error_t err = bio_router_get_stats(&router_stats);
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "router_immune_update_stats: validation failed");
         return -1;
     }
 
@@ -804,7 +878,10 @@ int router_immune_expire_cytokines(
     router_immune_bridge_t* bridge,
     uint64_t current_time
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_expire_cytokines: bridge is NULL");
+        return -1;
+    }
 
     /* Mark expired cytokines and compact array */
     size_t write_idx = 0;
@@ -837,7 +914,10 @@ int router_immune_release_expired_quarantines(
     router_immune_bridge_t* bridge,
     uint64_t current_time
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_release_expired_quarantines: bridge is NULL");
+        return -1;
+    }
 
     /* Release expired quarantines and compact array */
     size_t write_idx = 0;
@@ -870,7 +950,10 @@ int router_immune_get_stats(
     const router_immune_bridge_t* bridge,
     router_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -883,7 +966,10 @@ bool router_immune_is_node_quarantined(
     const router_immune_bridge_t* bridge,
     uint32_t node_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router_immune_is_node_quarantined: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool quarantined = (find_quarantined_node((router_immune_bridge_t*)bridge, node_id) != NULL);

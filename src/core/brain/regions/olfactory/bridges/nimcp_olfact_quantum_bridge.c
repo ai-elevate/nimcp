@@ -90,7 +90,10 @@ static float randf(void) {
  * ============================================================================ */
 
 int olfact_quantum_default_config(olfact_quantum_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(olfact_quantum_config_t));
 
@@ -151,7 +154,10 @@ void olfact_quantum_bridge_destroy(olfact_quantum_bridge_t* bridge) {
  * ============================================================================ */
 
 int olfact_quantum_connect(olfact_quantum_bridge_t* bridge, nimcp_olfactory_t* olfact) {
-    if (!bridge || !olfact) return -1;
+    if (!bridge || !olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_connect: required parameter is NULL (bridge, olfact)");
+        return -1;
+    }
 
     bridge->olfact = olfact;
     bridge->is_connected = true;
@@ -161,7 +167,10 @@ int olfact_quantum_connect(olfact_quantum_bridge_t* bridge, nimcp_olfactory_t* o
 }
 
 int olfact_quantum_disconnect(olfact_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->olfact = NULL;
     bridge->is_connected = false;
@@ -185,14 +194,21 @@ olfact_quantum_status_t olfact_quantum_get_status(const olfact_quantum_bridge_t*
 int olfact_quantum_estimate_binding(olfact_quantum_bridge_t* bridge,
                                     const olfact_binding_est_spec_t* spec,
                                     olfact_qmc_binding_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_qmc) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
     result->binding_affinities = (float*)nimcp_calloc(spec->num_receptor_types, sizeof(float));
     if (!result->binding_affinities) {
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_get_status: result->binding_affinities is NULL");
         return -1;
     }
     result->num_receptors = spec->num_receptor_types;
@@ -238,7 +254,10 @@ int olfact_quantum_sample_receptor_response(olfact_quantum_bridge_t* bridge,
                                             uint32_t dim,
                                             uint32_t num_samples,
                                             float* responses) {
-    if (!bridge || !odorant || !responses) return -1;
+    if (!bridge || !odorant || !responses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: required parameter is NULL (bridge, odorant, responses)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_samples; i++) {
         float response = 0.0f;
@@ -258,8 +277,14 @@ int olfact_quantum_sample_receptor_response(olfact_quantum_bridge_t* bridge,
 int olfact_quantum_search_similar(olfact_quantum_bridge_t* bridge,
                                   const olfact_similarity_spec_t* spec,
                                   olfact_quantum_similarity_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_walks) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_walks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
@@ -269,6 +294,7 @@ int olfact_quantum_search_similar(olfact_quantum_bridge_t* bridge,
         nimcp_free(result->similar_odors);
         nimcp_free(result->similarity_scores);
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_get_status: required parameter is NULL (result->similar_odors, result->similarity_scores)");
         return -1;
     }
 
@@ -306,7 +332,10 @@ int olfact_quantum_search_memory(olfact_quantum_bridge_t* bridge,
                                  const float* odor,
                                  uint32_t dim,
                                  uint32_t* memory_id) {
-    if (!bridge || !odor || !memory_id) return -1;
+    if (!bridge || !odor || !memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_get_status: required parameter is NULL (bridge, odor, memory_id)");
+        return -1;
+    }
     (void)dim;
 
     /* Placeholder - random memory association */
@@ -319,7 +348,10 @@ int olfact_quantum_complete_pattern(olfact_quantum_bridge_t* bridge,
                                     const float* partial_odor,
                                     uint32_t dim,
                                     float* completed) {
-    if (!bridge || !partial_odor || !completed) return -1;
+    if (!bridge || !partial_odor || !completed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: required parameter is NULL (bridge, partial_odor, completed)");
+        return -1;
+    }
 
     /* Simple pattern completion - fill missing with average */
     float avg = 0.0f;
@@ -348,8 +380,14 @@ int olfact_quantum_classify_odor(olfact_quantum_bridge_t* bridge,
                                  const float* odor,
                                  uint32_t dim,
                                  olfact_quantum_classification_result_t* result) {
-    if (!bridge || !odor || !result) return -1;
-    if (!bridge->config.enable_annealing) return -1;
+    if (!bridge || !odor || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: required parameter is NULL (bridge, odor, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_annealing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = OLFACT_QUANTUM_STATUS_COMPUTING;
 
@@ -357,6 +395,7 @@ int olfact_quantum_classify_odor(olfact_quantum_bridge_t* bridge,
     result->category_probabilities = (float*)nimcp_calloc(num_cats, sizeof(float));
     if (!result->category_probabilities) {
         bridge->status = OLFACT_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_quantum_get_status: result->category_probabilities is NULL");
         return -1;
     }
     result->num_categories = num_cats;
@@ -405,7 +444,10 @@ int olfact_quantum_decompose_mixture(olfact_quantum_bridge_t* bridge,
                                      const float* mixture,
                                      uint32_t dim,
                                      olfact_quantum_mixture_result_t* result) {
-    if (!bridge || !mixture || !result) return -1;
+    if (!bridge || !mixture || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, mixture, result)");
+        return -1;
+    }
 
     /* Simple decomposition - assume 2-3 components */
     uint32_t num_comp = 2;
@@ -414,6 +456,7 @@ int olfact_quantum_decompose_mixture(olfact_quantum_bridge_t* bridge,
     if (!result->component_odors || !result->component_concentrations) {
         nimcp_free(result->component_odors);
         nimcp_free(result->component_concentrations);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (result->component_odors, result->component_concentrations)");
         return -1;
     }
 
@@ -432,7 +475,10 @@ int olfact_quantum_optimize_hedonic(olfact_quantum_bridge_t* bridge,
                                     const float* odor,
                                     uint32_t dim,
                                     float* hedonic_value) {
-    if (!bridge || !odor || !hedonic_value) return -1;
+    if (!bridge || !odor || !hedonic_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, odor, hedonic_value)");
+        return -1;
+    }
 
     /* Compute hedonic value from odor profile */
     float sum = 0.0f;
@@ -481,13 +527,19 @@ void olfact_quantum_mixture_result_free(olfact_quantum_mixture_result_t* result)
  * ============================================================================ */
 
 int olfact_quantum_get_stats(const olfact_quantum_bridge_t* bridge, olfact_quantum_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(olfact_quantum_stats_t));
     return 0;
 }
 
 int olfact_quantum_reset_stats(olfact_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_quantum_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(olfact_quantum_stats_t));
     return 0;
 }

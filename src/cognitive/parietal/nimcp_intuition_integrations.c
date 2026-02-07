@@ -257,6 +257,7 @@ intuition_system_t* intuition_system_create(void) {
 intuition_system_t* intuition_system_create_custom(const intuition_system_config_t* config) {
     if (!config) {
         set_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuition_system_create_custom: config is NULL");
         return NULL;
     }
 
@@ -267,6 +268,7 @@ intuition_system_t* intuition_system_create_custom(const intuition_system_config
     intuition_system_t* s = nimcp_calloc(1, sizeof(intuition_system_t));
     if (!s) {
         set_error("Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuition_system_create_custom: s is NULL");
         return NULL;
     }
 
@@ -327,7 +329,10 @@ void intuition_system_destroy(intuition_system_t* system) {
  * ============================================================================ */
 
 int intuition_attach_training(intuition_system_t* system, training_engine_t* training) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_training: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_tra", 0.0f);
 
@@ -338,7 +343,10 @@ int intuition_attach_training(intuition_system_t* system, training_engine_t* tra
 
 int intuition_feedback_success(intuition_system_t* system, const hunch_t* hunch,
                                float actual_outcome) {
-    if (!system || !hunch) return -1;
+    if (!system || !hunch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_training: required parameter is NULL (system, hunch)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_feedback_s", 0.0f);
@@ -372,7 +380,10 @@ int intuition_feedback_success(intuition_system_t* system, const hunch_t* hunch,
 
 int intuition_update_priors(intuition_system_t* system,
                             const hypogen_theory_t* confirmed_theory) {
-    if (!system || !confirmed_theory) return -1;
+    if (!system || !confirmed_theory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_training: required parameter is NULL (system, confirmed_theory)");
+        return -1;
+    }
 
     /* Update hypothesis engine with confirmed theory */
     /* Phase 8: Heartbeat at operation start */
@@ -391,7 +402,10 @@ int intuition_update_priors(intuition_system_t* system,
 int intuition_train_from_experience(intuition_system_t* system,
                                     const intuition_experience_t** experiences,
                                     uint32_t count) {
-    if (!system || !experiences) return -1;
+    if (!system || !experiences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_training: required parameter is NULL (system, experiences)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_train_from", 0.0f);
@@ -418,7 +432,10 @@ int intuition_train_from_experience(intuition_system_t* system,
  * ============================================================================ */
 
 int intuition_attach_working_memory(intuition_system_t* system, working_memory_t* wm) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_working_memory: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_wor", 0.0f);
 
@@ -428,7 +445,10 @@ int intuition_attach_working_memory(intuition_system_t* system, working_memory_t
 }
 
 int intuition_attach_episodic_memory(intuition_system_t* system, episodic_memory_t* episodic) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_episodic_memory: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_epi", 0.0f);
 
@@ -438,7 +458,10 @@ int intuition_attach_episodic_memory(intuition_system_t* system, episodic_memory
 }
 
 int intuition_attach_semantic_memory(intuition_system_t* system, semantic_memory_t* semantic) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_semantic_memory: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_sem", 0.0f);
 
@@ -452,7 +475,10 @@ int intuition_attach_semantic_memory(intuition_system_t* system, semantic_memory
  * ============================================================================ */
 
 int intuition_attach_attention(intuition_system_t* system, attention_system_t* attention) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_attention: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_att", 0.0f);
 
@@ -462,7 +488,10 @@ int intuition_attach_attention(intuition_system_t* system, attention_system_t* a
 }
 
 int intuition_attach_executive(intuition_system_t* system, executive_function_t* executive) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_executive: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_exe", 0.0f);
 
@@ -472,7 +501,10 @@ int intuition_attach_executive(intuition_system_t* system, executive_function_t*
 }
 
 int intuition_attach_emotion(intuition_system_t* system, emotion_system_t* emotion) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_emotion: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_emo", 0.0f);
 
@@ -482,7 +514,10 @@ int intuition_attach_emotion(intuition_system_t* system, emotion_system_t* emoti
 }
 
 int intuition_attach_logic_gates(intuition_system_t* system, logic_gate_network_t* logic) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_attach_logic_gates: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_attach_log", 0.0f);
 
@@ -496,7 +531,10 @@ int intuition_attach_logic_gates(intuition_system_t* system, logic_gate_network_
  * ============================================================================ */
 
 bool intuition_validate_with_logic(intuition_system_t* system, const hunch_t* hunch) {
-    if (!system || !hunch) return false;
+    if (!system || !hunch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_validate_with_logic: required parameter is NULL (system, hunch)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_validate_w", 0.0f);
@@ -523,8 +561,14 @@ bool intuition_validate_with_logic(intuition_system_t* system, const hunch_t* hu
 }
 
 hypogen_theory_t* intuition_logic_refine(intuition_system_t* system, const hunch_t* hunch) {
-    if (!system || !hunch) return NULL;
-    if (!system->hypothesis) return NULL;
+    if (!system || !hunch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_logic_refine: required parameter is NULL (system, hunch)");
+        return NULL;
+    }
+    if (!system->hypothesis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_logic_refine: system->hypothesis is NULL");
+        return NULL;
+    }
 
     /* Convert hunch to observation for hypothesis generation */
     /* Phase 8: Heartbeat at operation start */
@@ -551,7 +595,10 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
                                        const intuition_data_point_t** known,
                                        uint32_t count,
                                        const intuition_range_t* target_range) {
-    if (!system || !known || count == 0 || !target_range) return NULL;
+    if (!system || !known || count == 0 || !target_range) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_logic_refine: required parameter is NULL (system, known, target_range)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_extrapolat", 0.0f);
@@ -677,7 +724,10 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
                                                    const extrapolation_t* previous,
                                                    const intuition_data_point_t** new_data,
                                                    uint32_t new_count) {
-    if (!system || !previous || !new_data) return NULL;
+    if (!system || !previous || !new_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "intuition_logic_refine: required parameter is NULL (system, previous, new_data)");
+        return NULL;
+    }
 
     /* Combine old and new data */
     /* Phase 8: Heartbeat at operation start */
@@ -719,7 +769,10 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
 bool intuition_detect_extrapolation_failure(intuition_system_t* system,
                                             const extrapolation_t* extrapolation,
                                             const intuition_data_point_t* actual) {
-    if (!system || !extrapolation || !actual) return false;
+    if (!system || !extrapolation || !actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_logic_refine: required parameter is NULL (system, extrapolation, actual)");
+        return false;
+    }
 
     /* Find predicted value at actual's timestamp */
     /* Phase 8: Heartbeat at operation start */
@@ -750,7 +803,10 @@ bool intuition_detect_extrapolation_failure(intuition_system_t* system,
         found = true;
     }
 
-    if (!found) return false;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: found is NULL");
+        return false;
+    }
 
     /* Compare to actual */
     float actual_val = (actual->values && actual->dim > 0) ? actual->values[0] : 0;
@@ -807,7 +863,10 @@ void extrapolation_free(extrapolation_t* ext) {
 novel_prediction_t** intuition_predict_novel(intuition_system_t* system,
                                              const prediction_domain_t* domain,
                                              uint32_t* num_predictions) {
-    if (!system || !domain || !num_predictions) return NULL;
+    if (!system || !domain || !num_predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extrapolation_free: required parameter is NULL (system, domain, num_predictions)");
+        return NULL;
+    }
 
     *num_predictions = 0;
 
@@ -880,7 +939,10 @@ void novel_prediction_free(novel_prediction_t* pred) {
 synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
                                             const knowledge_fragment_t** fragments,
                                             uint32_t count) {
-    if (!system || !fragments || count == 0) return NULL;
+    if (!system || !fragments || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "novel_prediction_free: required parameter is NULL (system, fragments)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_synthesize", 0.0f);
@@ -1055,7 +1117,10 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
 intuition_gap_t** intuition_identify_knowledge_gaps(intuition_system_t* system,
                                                     const prediction_domain_t* domain,
                                                     uint32_t* num_gaps) {
-    if (!system || !domain || !num_gaps) return NULL;
+    if (!system || !domain || !num_gaps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "novel_prediction_free: required parameter is NULL (system, domain, num_gaps)");
+        return NULL;
+    }
 
     *num_gaps = 0;
 
@@ -1091,7 +1156,10 @@ intuition_question_t** intuition_generate_questions(intuition_system_t* system,
                                                     const intuition_gap_t** gaps,
                                                     uint32_t num_gaps,
                                                     uint32_t* num_questions) {
-    if (!system || !gaps || !num_questions) return NULL;
+    if (!system || !gaps || !num_questions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, gaps, num_questions)");
+        return NULL;
+    }
 
     *num_questions = 0;
 
@@ -1347,7 +1415,10 @@ meta_engine_t* intuition_get_meta_engine(intuition_system_t* system) {
  * ============================================================================ */
 
 int intuition_system_set_inflammation(intuition_system_t* system, float level) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_system_set_inflammation: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_system_set", 0.0f);
@@ -1368,7 +1439,10 @@ int intuition_system_set_inflammation(intuition_system_t* system, float level) {
 }
 
 int intuition_system_set_fatigue(intuition_system_t* system, float level) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_system_set_fatigue: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_system_set", 0.0f);
@@ -1394,7 +1468,10 @@ int intuition_system_set_fatigue(intuition_system_t* system, float level) {
 
 int intuition_system_get_stats(const intuition_system_t* system,
                                intuition_system_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intuition_system_set_fatigue: required parameter is NULL (system, stats)");
+        return -1;
+    }
     *stats = system->stats;
     /* Phase 8: Heartbeat at operation start */
     intuition_integrations_heartbeat("intuition_in_intuition_system_get", 0.0f);

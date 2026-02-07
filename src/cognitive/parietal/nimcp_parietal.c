@@ -266,6 +266,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
     nn->layers = nimcp_calloc(nn->num_layers, sizeof(physics_nn_layer_t));
     if (!nn->layers) {
         nimcp_free(nn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_time_us: nn->layers is NULL");
         return NULL;
     }
 
@@ -293,6 +294,7 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
             }
             nimcp_free(nn->layers);
             nimcp_free(nn);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_time_us: required parameter is NULL (layer->weights, layer->biases)");
             return NULL;
         }
 
@@ -546,7 +548,10 @@ parietal_config_t parietal_default_config(void) {
 }
 
 bool parietal_validate_config(const parietal_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_validate_config", 0.0f);
@@ -554,16 +559,19 @@ bool parietal_validate_config(const parietal_config_t* config) {
 
     if (config->nn_hidden_size == 0 || config->nn_hidden_size > 4096) {
         set_parietal_error("Invalid NN hidden size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_validate_config: config->nn_hidden_size is zero");
         return false;
     }
 
     if (config->nn_learning_rate <= 0.0f || config->nn_learning_rate > 1.0f) {
         set_parietal_error("Invalid learning rate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_validate_config: validation failed");
         return false;
     }
 
     if (config->request_timeout_ms == 0) {
         set_parietal_error("Invalid request timeout");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_validate_config: config->request_timeout_ms is zero");
         return false;
     }
 
@@ -587,6 +595,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
 
     if (config) {
         if (!parietal_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_create_custom: parietal_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -597,6 +606,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
     parietal_lobe_t* parietal = nimcp_calloc(1, sizeof(parietal_lobe_t));
     if (!parietal) {
         set_parietal_error("Failed to allocate parietal lobe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_create_custom: parietal is NULL");
         return NULL;
     }
 
@@ -615,6 +625,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
         !parietal->equation) {
         set_parietal_error("Failed to create submodules");
         parietal_destroy(parietal);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_create_custom: operation failed");
         return NULL;
     }
 
@@ -680,6 +691,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
     if (!parietal->pending_requests) {
         set_parietal_error("Failed to allocate request queue");
         parietal_destroy(parietal);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_create_custom: parietal->pending_requests is NULL");
         return NULL;
     }
 
@@ -689,6 +701,7 @@ parietal_lobe_t* parietal_create_custom(const parietal_config_t* config) {
     if (!parietal->lock) {
         set_parietal_error("Failed to create mutex");
         parietal_destroy(parietal);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_create_custom: parietal->lock is NULL");
         return NULL;
     }
 
@@ -752,7 +765,10 @@ void parietal_destroy(parietal_lobe_t* parietal) {
 
 int parietal_attach_to_brain(parietal_lobe_t* parietal, brain_module_t* brain,
                               uint32_t num_neurons) {
-    if (!parietal || !brain) return -1;
+    if (!parietal || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_destroy: required parameter is NULL (parietal, brain)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_attach_to_brain", 0.0f);
@@ -790,7 +806,10 @@ brain_region_t* parietal_get_brain_region(parietal_lobe_t* parietal) {
 
 int parietal_connect_to_region(parietal_lobe_t* parietal, uint32_t target_region_id,
                                 float connection_strength) {
-    if (!parietal || !parietal->brain) return -1;
+    if (!parietal || !parietal->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_get_brain_region: required parameter is NULL (parietal, parietal->brain)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_connect_to_region", 0.0f);
@@ -1527,7 +1546,10 @@ uint64_t parietal_process_async(parietal_lobe_t* parietal,
 
 int parietal_poll_result(parietal_lobe_t* parietal, uint64_t request_id,
                           parietal_result_t* result) {
-    if (!parietal || !result) return -1;
+    if (!parietal || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (parietal, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_poll_result", 0.0f);
@@ -1554,12 +1576,16 @@ int parietal_poll_result(parietal_lobe_t* parietal, uint64_t request_id,
     }
 
     nimcp_mutex_unlock(parietal->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return -1;
 }
 
 int parietal_wait_result(parietal_lobe_t* parietal, uint64_t request_id,
                           uint32_t timeout_ms, parietal_result_t* result) {
-    if (!parietal || !result) return -1;
+    if (!parietal || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (parietal, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_wait_result", 0.0f);
@@ -1571,12 +1597,16 @@ int parietal_wait_result(parietal_lobe_t* parietal, uint64_t request_id,
     while (get_time_us() - start < timeout_us) {
         int status = parietal_poll_result(parietal, request_id, result);
         if (status == 1) return 0;
-        if (status == -1) return -1;
+        if (status == -1) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+            return -1;
+        }
 
         /* Process pending if not done */
         parietal_process_pending(parietal);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -1634,6 +1664,7 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
                                uint32_t steps,
                                float** predicted_states) {
     if (!parietal || !parietal->physics_nn || !initial_state || !predicted_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (parietal, parietal->physics_nn, initial_state, predicted_states)");
         return -1;
     }
 
@@ -1650,6 +1681,7 @@ int parietal_predict_dynamics(parietal_lobe_t* parietal,
         nimcp_free(current);
         nimcp_free(derivative);
         nimcp_mutex_unlock(parietal->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (current, derivative)");
         return -1;
     }
 
@@ -1785,7 +1817,10 @@ rotation_result_t parietal_mental_rotate_compare(parietal_lobe_t* parietal,
  * ============================================================================ */
 
 int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_set_inflammation: parietal is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_set_inflammation", 0.0f);
@@ -1833,7 +1868,10 @@ int parietal_set_inflammation(parietal_lobe_t* parietal, float level) {
 }
 
 int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_set_fatigue: parietal is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_set_fatigue", 0.0f);
@@ -1879,7 +1917,10 @@ int parietal_set_fatigue(parietal_lobe_t* parietal, float level) {
 }
 
 int parietal_update_from_sleep(parietal_lobe_t* parietal) {
-    if (!parietal || !parietal->sleep) return -1;
+    if (!parietal || !parietal->sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_update_from_sleep: required parameter is NULL (parietal, parietal->sleep)");
+        return -1;
+    }
 
     /* Would query sleep system for current sleep quality */
     /* float quality = sleep_get_quality(parietal->sleep); */
@@ -1893,7 +1934,10 @@ int parietal_update_from_sleep(parietal_lobe_t* parietal) {
 }
 
 int parietal_update_from_immune(parietal_lobe_t* parietal) {
-    if (!parietal || !parietal->immune) return -1;
+    if (!parietal || !parietal->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_update_from_immune: required parameter is NULL (parietal, parietal->immune)");
+        return -1;
+    }
 
     /* Would query immune system for inflammation level */
     /* float inflammation = code_immune_get_inflammation(parietal->immune); */
@@ -1911,7 +1955,10 @@ int parietal_update_from_immune(parietal_lobe_t* parietal) {
  * ============================================================================ */
 
 int parietal_step(parietal_lobe_t* parietal, uint64_t delta_t) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_step: parietal is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_step", 0.0f);
@@ -2080,7 +2127,10 @@ civil_eng_t* parietal_get_civil(parietal_lobe_t* parietal) {
  * ============================================================================ */
 
 int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled) {
-    if (!parietal || !parietal->quantum_bridge) return -1;
+    if (!parietal || !parietal->quantum_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_set_quantum_enabled: required parameter is NULL (parietal, parietal->quantum_bridge)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_set_quantum_enabled", 0.0f);
@@ -2094,7 +2144,10 @@ int parietal_set_quantum_enabled(parietal_lobe_t* parietal, bool enabled) {
 }
 
 bool parietal_quantum_available(const parietal_lobe_t* parietal) {
-    if (!parietal || !parietal->quantum_bridge) return false;
+    if (!parietal || !parietal->quantum_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_available: required parameter is NULL (parietal, parietal->quantum_bridge)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     parietal_heartbeat("parietal_quantum_available", 0.0f);
 
@@ -2105,10 +2158,14 @@ bool parietal_quantum_available(const parietal_lobe_t* parietal) {
 int parietal_lobe_quantum_optimize(parietal_lobe_t* parietal,
                                     const parietal_opt_problem_t* problem,
                                     parietal_opt_result_t* result) {
-    if (!parietal || !problem || !result) return -1;
+    if (!parietal || !problem || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_available: required parameter is NULL (parietal, problem, result)");
+        return -1;
+    }
 
     if (!parietal->quantum_bridge) {
         set_parietal_error("Quantum bridge not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_available: parietal->quantum_bridge is NULL");
         return -1;
     }
 
@@ -2133,10 +2190,14 @@ int parietal_lobe_quantum_optimize(parietal_lobe_t* parietal,
 int parietal_lobe_quantum_vqe(parietal_lobe_t* parietal,
                                const parietal_hamiltonian_t* hamiltonian,
                                parietal_vqe_result_t* result) {
-    if (!parietal || !hamiltonian || !result) return -1;
+    if (!parietal || !hamiltonian || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_available: required parameter is NULL (parietal, hamiltonian, result)");
+        return -1;
+    }
 
     if (!parietal->quantum_bridge) {
         set_parietal_error("Quantum bridge not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_available: parietal->quantum_bridge is NULL");
         return -1;
     }
 
@@ -2323,7 +2384,10 @@ imagination_scenario_t* parietal_mental_rotate(
     float angle_y,
     float angle_z
 ) {
-    if (!parietal || !object) return NULL;
+    if (!parietal || !object) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_mental_rotate: required parameter is NULL (parietal, object)");
+        return NULL;
+    }
 
     /* TODO: Integrate with imagination engine for visualization */
     /* This is a stub for the new imagination-integrated API */
@@ -2335,6 +2399,7 @@ imagination_scenario_t* parietal_mental_rotate(
     (void)angle_y;
     (void)angle_z;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_mental_rotate: operation failed");
     return NULL;
 }
 
@@ -2343,7 +2408,10 @@ imagination_scenario_t* parietal_spatial_transform(
     nimcp_tensor_t* scene,
     nimcp_tensor_t* transform
 ) {
-    if (!parietal || !scene || !transform) return NULL;
+    if (!parietal || !scene || !transform) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_spatial_transform: required parameter is NULL (parietal, scene, transform)");
+        return NULL;
+    }
 
     /* TODO: Integrate with imagination engine for spatial transformation */
     /* This is a stub for the new imagination-integrated API */
@@ -2352,6 +2420,7 @@ imagination_scenario_t* parietal_spatial_transform(
     parietal_heartbeat("parietal_spatial_transform", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_spatial_transform: required parameter is NULL (parietal, scene, transform)");
     return NULL;
 }
 
@@ -2361,7 +2430,10 @@ imagination_scenario_t* parietal_spatial_transform(
 
 int parietal_handle_bio_msg(parietal_lobe_t* parietal, uint32_t msg_type,
                              const void* payload, uint32_t payload_size) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_spatial_transform: parietal is NULL");
+        return -1;
+    }
 
     (void)msg_type;
     (void)payload;

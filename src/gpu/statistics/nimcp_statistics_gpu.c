@@ -16,6 +16,7 @@
 #include "gpu/statistics/nimcp_statistics_gpu.h"
 #include <stdlib.h>
 #include <string.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 #ifndef NIMCP_ENABLE_CUDA
 
@@ -35,6 +36,7 @@ stats_gpu_rng_t* stats_gpu_rng_create(
     uint64_t seed)
 {
     (void)ctx; (void)n; (void)seed;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats_gpu_rng_create: operation failed");
     return NULL;
 }
 
@@ -46,6 +48,7 @@ void stats_gpu_rng_destroy(stats_gpu_rng_t* rng)
 bool stats_gpu_rng_reseed(stats_gpu_rng_t* rng, uint64_t seed)
 {
     (void)rng; (void)seed;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stats_gpu_rng_reseed: operation failed");
     return false;
 }
 
@@ -59,6 +62,7 @@ stats_gpu_workspace_t* stats_gpu_workspace_create(
     uint32_t max_vars)
 {
     (void)ctx; (void)max_samples; (void)max_vars;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats_gpu_workspace_create: operation failed");
     return NULL;
 }
 
@@ -78,6 +82,7 @@ bool nimcp_stats_gpu_mean_batch(
     const stats_gpu_descriptive_params_t* params)
 {
     (void)ctx; (void)data; (void)means_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_mean_batch: operation failed");
     return false;
 }
 
@@ -89,6 +94,7 @@ bool nimcp_stats_gpu_variance_batch(
     const stats_gpu_descriptive_params_t* params)
 {
     (void)ctx; (void)data; (void)means_out; (void)variances_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_variance_batch: operation failed");
     return false;
 }
 
@@ -99,6 +105,7 @@ bool nimcp_stats_gpu_covariance_matrix(
     const stats_gpu_covariance_params_t* params)
 {
     (void)ctx; (void)data; (void)cov_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_covariance_matrix: operation failed");
     return false;
 }
 
@@ -109,6 +116,7 @@ bool nimcp_stats_gpu_correlation_matrix(
     const stats_gpu_covariance_params_t* params)
 {
     (void)ctx; (void)data; (void)corr_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_correlation_matrix: operation failed");
     return false;
 }
 
@@ -119,6 +127,7 @@ bool nimcp_stats_gpu_quantiles_batch(
     const stats_gpu_quantile_params_t* params)
 {
     (void)ctx; (void)data; (void)quantiles_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_quantiles_batch: operation failed");
     return false;
 }
 
@@ -134,6 +143,7 @@ bool nimcp_stats_gpu_bootstrap(
     const stats_gpu_bootstrap_params_t* params)
 {
     (void)ctx; (void)rng; (void)data; (void)result; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_bootstrap: operation failed");
     return false;
 }
 
@@ -146,6 +156,7 @@ bool nimcp_stats_gpu_bootstrap_ci(
     const stats_gpu_ci_params_t* params)
 {
     (void)ctx; (void)rng; (void)data; (void)num_samples; (void)ci_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_bootstrap_ci: operation failed");
     return false;
 }
 
@@ -169,6 +180,7 @@ bool nimcp_stats_gpu_sample_normal(
     uint32_t n)
 {
     (void)ctx; (void)rng; (void)mean; (void)std; (void)samples; (void)n;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_sample_normal: operation failed");
     return false;
 }
 
@@ -181,6 +193,7 @@ bool nimcp_stats_gpu_sample_uniform(
     uint32_t n)
 {
     (void)ctx; (void)rng; (void)min_val; (void)max_val; (void)samples; (void)n;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_sample_uniform: operation failed");
     return false;
 }
 
@@ -191,6 +204,7 @@ bool nimcp_stats_gpu_sample_distribution(
     const stats_gpu_sample_params_t* params)
 {
     (void)ctx; (void)rng; (void)samples; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_sample_distribution: operation failed");
     return false;
 }
 
@@ -201,6 +215,7 @@ bool nimcp_stats_gpu_pdf_batch(
     const stats_gpu_density_params_t* params)
 {
     (void)ctx; (void)points; (void)pdf_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_pdf_batch: operation failed");
     return false;
 }
 
@@ -211,6 +226,7 @@ bool nimcp_stats_gpu_cdf_batch(
     const stats_gpu_density_params_t* params)
 {
     (void)ctx; (void)points; (void)cdf_out; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_cdf_batch: operation failed");
     return false;
 }
 
@@ -225,6 +241,7 @@ bool nimcp_stats_gpu_entropy(
     const stats_gpu_entropy_params_t* params)
 {
     (void)ctx; (void)data; (void)entropy; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_entropy: operation failed");
     return false;
 }
 
@@ -236,6 +253,7 @@ bool nimcp_stats_gpu_mutual_information(
     const stats_gpu_entropy_params_t* params)
 {
     (void)ctx; (void)data_x; (void)data_y; (void)mi; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_mutual_information: operation failed");
     return false;
 }
 
@@ -248,6 +266,7 @@ bool nimcp_stats_gpu_kl_divergence(
     float base)
 {
     (void)ctx; (void)p; (void)q; (void)n; (void)kl_divergence; (void)base;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_kl_divergence: operation failed");
     return false;
 }
 
@@ -260,6 +279,7 @@ bool nimcp_stats_gpu_js_divergence(
     float base)
 {
     (void)ctx; (void)p; (void)q; (void)n; (void)js_div; (void)base;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_js_divergence: operation failed");
     return false;
 }
 
@@ -274,6 +294,7 @@ bool nimcp_stats_gpu_eigendecomposition(
     const stats_gpu_eigen_params_t* params)
 {
     (void)ctx; (void)matrix; (void)result; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_eigendecomposition: operation failed");
     return false;
 }
 
@@ -284,6 +305,7 @@ bool nimcp_stats_gpu_svd(
     const stats_gpu_svd_params_t* params)
 {
     (void)ctx; (void)matrix; (void)result; (void)params;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_svd: operation failed");
     return false;
 }
 
@@ -294,6 +316,7 @@ bool nimcp_stats_gpu_matrix_inverse(
     uint32_t n)
 {
     (void)ctx; (void)matrix; (void)inverse; (void)n;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_matrix_inverse: operation failed");
     return false;
 }
 
@@ -306,6 +329,7 @@ bool nimcp_stats_gpu_matrix_pinverse(
     float tolerance)
 {
     (void)ctx; (void)matrix; (void)pinv; (void)m; (void)n; (void)tolerance;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_matrix_pinverse: operation failed");
     return false;
 }
 
@@ -317,6 +341,7 @@ bool nimcp_stats_gpu_solve_linear(
     uint32_t n)
 {
     (void)ctx; (void)A; (void)b; (void)x; (void)n;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_solve_linear: operation failed");
     return false;
 }
 
@@ -327,6 +352,7 @@ bool nimcp_stats_gpu_cholesky(
     uint32_t n)
 {
     (void)ctx; (void)matrix; (void)L; (void)n;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_cholesky: operation failed");
     return false;
 }
 
@@ -380,6 +406,7 @@ const char* nimcp_stats_gpu_get_last_error(void)
 
 bool nimcp_stats_gpu_is_available(void)
 {
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stats_gpu_is_available: operation failed");
     return false;
 }
 

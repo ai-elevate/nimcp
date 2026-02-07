@@ -144,6 +144,7 @@ axon_orchestrator_bridge_t* axon_orchestrator_bridge_create(
     /* Guard clauses */
     if (!orchestrator) {
         NIMCP_LOGGING_ERROR("axon_orchestrator_bridge_create: NULL orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_orchestrator_bridge_create: orchestrator is NULL");
         return NULL;
     }
     /* Allow NULL axon_network for testing - will operate with reduced functionality */
@@ -157,6 +158,7 @@ axon_orchestrator_bridge_t* axon_orchestrator_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("axon_orchestrator_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_orchestrator_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -183,6 +185,7 @@ axon_orchestrator_bridge_t* axon_orchestrator_bridge_create(
     if (!bridge->mappings) {
         NIMCP_LOGGING_ERROR("axon_orchestrator_bridge_create: mapping allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_orchestrator_bridge_create: bridge->mappings is NULL");
         return NULL;
     }
     bridge->mapping_capacity = capacity;
@@ -269,6 +272,7 @@ static int grow_mappings(axon_orchestrator_bridge_t* bridge) {
         new_capacity = AXON_ORCH_MAX_MAPPINGS;
         if (bridge->mapping_count >= new_capacity) {
             NIMCP_LOGGING_ERROR("axon_orchestrator: mapping table full");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "grow_mappings: capacity exceeded");
             return -1;
         }
     }
@@ -326,6 +330,7 @@ int axon_orchestrator_map_synapse(
             if ((bridge->base.mutex != NULL)) {
                 nimcp_mutex_unlock(bridge->base.mutex);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "axon_orchestrator_map_synapse: validation failed");
             return -1;
         }
     }
@@ -345,6 +350,7 @@ int axon_orchestrator_map_synapse(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "axon_orchestrator_map_synapse: validation failed");
         return -1;
     }
 
@@ -402,6 +408,7 @@ int axon_orchestrator_unmap_synapse(
         nimcp_mutex_unlock(bridge->base.mutex);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "axon_orchestrator_unmap_synapse: validation failed");
     return -1;  /* Not found */
 }
 
@@ -570,6 +577,7 @@ int axon_orchestrator_get_stats(
     axon_orchestrator_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_orchestrator_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -670,6 +678,7 @@ int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
     /* Check if router is initialized */
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("axon_orchestrator: bio-async router not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "axon_orchestrator_connect_bio_async: bio_router_is_initialized is NULL");
         return -1;
     }
 
@@ -690,6 +699,7 @@ int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_ERROR("axon_orchestrator: failed to register with bio-async");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_orchestrator_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -719,6 +729,7 @@ bool axon_orchestrator_is_bio_async_connected(
     const axon_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_orchestrator_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

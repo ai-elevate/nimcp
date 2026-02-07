@@ -105,7 +105,10 @@ safety_verification_config_t safety_verification_default_config(void) {
 
 safety_verification_t* safety_verification_create(const safety_verification_config_t* config) {
     safety_verification_t* system = nimcp_calloc(1, sizeof(safety_verification_t));
-    if (system == NULL) return NULL;
+    if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "safety_verification_create: validation failed");
+        return NULL;
+    }
 
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) { nimcp_free(system); return NULL; }

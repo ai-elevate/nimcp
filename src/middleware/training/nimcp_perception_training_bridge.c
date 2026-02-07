@@ -293,6 +293,7 @@ static bool should_skip_sample(
     const perception_training_effects_t* effects)
 {
     if (!bridge->config.enable_emergency_skip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_skip_sample: bridge->config is NULL");
         return false;  /* Skip disabled */
     }
 
@@ -317,6 +318,7 @@ static bool should_skip_sample(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_skip_sample: validation failed");
     return false;
 }
 
@@ -529,6 +531,7 @@ perception_training_bridge_t* perception_training_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_training_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -540,6 +543,7 @@ perception_training_bridge_t* perception_training_create(
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perception_training_create: bridge->loss_history is NULL");
         return NULL;
     }
     memset(bridge->loss_history, 0, sizeof(float) * PERCEPTION_HISTORY_SIZE);
@@ -922,6 +926,7 @@ bool perception_training_should_skip_sample(
     const perception_training_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_training_should_skip_sample: bridge is NULL");
         return false;
     }
 
@@ -1170,6 +1175,7 @@ bool perception_training_is_bio_async_connected(
     const perception_training_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -1178,6 +1184,7 @@ bool perception_training_is_bio_async_connected(
 
 int perception_training_process_inbox(perception_training_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perception_training_process_inbox: bridge is NULL");
         return -1;  /* Return negative for null pointer */
     }
 

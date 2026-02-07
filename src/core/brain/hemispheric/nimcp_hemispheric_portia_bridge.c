@@ -128,7 +128,10 @@ static void fraction_to_tiers(
  * @brief Check if transition cooldown has passed
  */
 static bool can_transition(const hemisphere_resource_state_t* state, uint32_t cooldown_ms) {
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "can_transition: state is NULL");
+        return false;
+    }
 
     // Simple time check (would use actual time in production)
     return !state->transition_in_progress;
@@ -220,6 +223,7 @@ hemispheric_portia_bridge_t* hemispheric_portia_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_portia_create: mutex allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_portia_create: bridge->base is NULL");
         return NULL;
     }
     nimcp_mutex_init(bridge->base.mutex, NULL);

@@ -25,6 +25,7 @@
 #include "security/nimcp_security_integration.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/validation/nimcp_common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -313,7 +314,7 @@ nimcp_result_t tcb_unregister(tcb_context_t* ctx, uint32_t callback_id) {
     }
 
     nimcp_platform_mutex_unlock(&ctx->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 nimcp_result_t tcb_set_enabled(tcb_context_t* ctx, uint32_t callback_id, bool enabled) {
@@ -331,7 +332,7 @@ nimcp_result_t tcb_set_enabled(tcb_context_t* ctx, uint32_t callback_id, bool en
     }
 
     nimcp_platform_mutex_unlock(&ctx->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    return NIMCP_NOT_FOUND;
 }
 
 uint32_t tcb_unregister_all(tcb_context_t* ctx, tcb_event_type_t event_type) {
@@ -619,6 +620,7 @@ nimcp_result_t tcb_set_checkpoint_handler(
 
 const char* tcb_get_last_checkpoint(const tcb_context_t* ctx) {
     if (!ctx || ctx->last_checkpoint_path[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tcb_get_last_checkpoint: ctx is NULL");
         return NULL;
     }
     return ctx->last_checkpoint_path;
@@ -630,6 +632,7 @@ const char* tcb_get_last_checkpoint(const tcb_context_t* ctx) {
 
 bool tcb_should_stop(tcb_context_t* ctx, float current_loss) {
     if (!ctx || !ctx->config.enable_early_stopping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tcb_should_stop: required parameter is NULL (ctx, ctx->config)");
         return false;
     }
 

@@ -426,6 +426,7 @@ void nimcp_brain_factory_destroy_cycle_coordinator_subsystem(brain_t brain) {
  */
 struct brain_cycle_coordinator* brain_get_cycle_coordinator(brain_t brain) {
     if (!brain || !brain->cycle_coordinator_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_cycle_coordinator: required parameter is NULL (brain, brain->cycle_coordinator_enabled)");
         return NULL;
     }
     return brain->cycle_coordinator;

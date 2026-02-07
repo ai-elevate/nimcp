@@ -76,6 +76,7 @@ static hr_circuit_breaker_t* hr_find_circuit(hr_context_t* ctx, const char* name
             return &ctx->circuits[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_find_circuit: validation failed");
     return NULL;
 }
 
@@ -151,6 +152,7 @@ hr_context_t* hr_create(const hr_config_t* config) {
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("HR", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hr_create: validation failed");
         return NULL;
     }
 
@@ -245,6 +247,7 @@ bool hr_remove_child(hr_context_t* ctx, uint32_t child_id) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_remove_child: operation failed");
     return false;
 }
 
@@ -279,6 +282,7 @@ bool hr_get_node_context(hr_context_t* ctx, uint32_t node_id, hr_node_context_t*
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_get_node_context: validation failed");
     return false;
 }
 
@@ -480,6 +484,7 @@ bool hr_remove_policy(hr_context_t* ctx, const char* policy_name) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_remove_policy: operation failed");
     return false;
 }
 
@@ -501,6 +506,7 @@ bool hr_set_policy_enabled(hr_context_t* ctx, const char* policy_name, bool enab
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_set_policy_enabled: validation failed");
     return false;
 }
 
@@ -552,6 +558,7 @@ bool hr_get_circuit_breaker(hr_context_t* ctx, const char* name, hr_circuit_brea
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_get_circuit_breaker: validation failed");
     return false;
 }
 
@@ -636,6 +643,7 @@ bool hr_reset_circuit(hr_context_t* ctx, const char* name) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hr_reset_circuit: operation failed");
     return false;
 }
 

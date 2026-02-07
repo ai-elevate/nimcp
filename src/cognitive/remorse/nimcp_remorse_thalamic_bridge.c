@@ -107,6 +107,7 @@ remorse_thalamic_bridge_t* remorse_thalamic_bridge_create(void* remorse, thalami
     if (bridge_base_init(&bridge->base, 0, "remorse_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->remorse = remorse;
@@ -132,7 +133,10 @@ void remorse_thalamic_bridge_destroy(remorse_thalamic_bridge_t* bridge) {
 }
 
 int remorse_thalamic_bridge_reset(remorse_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_reset", 0.0f);
 
@@ -145,7 +149,10 @@ int remorse_thalamic_bridge_reset(remorse_thalamic_bridge_t* bridge) {
 }
 
 int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remorse_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_route_guilt: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_rou", 0.0f);
 
@@ -166,7 +173,10 @@ int remorse_thalamic_route_guilt(remorse_thalamic_bridge_t* bridge, const remors
 }
 
 int remorse_thalamic_route_repair(remorse_thalamic_bridge_t* bridge, const void* action, float motivation) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_route_repair: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_rou", 0.0f);
 
@@ -180,7 +190,10 @@ int remorse_thalamic_route_repair(remorse_thalamic_bridge_t* bridge, const void*
 }
 
 int remorse_thalamic_set_attention(remorse_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_set", 0.0f);
 
@@ -192,7 +205,10 @@ int remorse_thalamic_set_attention(remorse_thalamic_bridge_t* bridge, float atte
 }
 
 int remorse_thalamic_get_attention(const remorse_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_remorse_thalamic_get", 0.0f);
@@ -202,7 +218,10 @@ int remorse_thalamic_get_attention(const remorse_thalamic_bridge_t* bridge, floa
 }
 
 int remorse_thalamic_bridge_get_stats(const remorse_thalamic_bridge_t* bridge, remorse_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     remorse_thalamic_bridge_heartbeat("remorse_thal_get_stats", 0.0f);

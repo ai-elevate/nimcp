@@ -271,7 +271,10 @@ static inline void bridge_unlock(pr_pink_bridge_t bridge) {
  * @brief Get index for target enum
  */
 static inline int target_to_index(pr_pink_target_t target) {
-    if (target >= PR_PINK_TARGET_ALL) return -1;
+    if (target >= PR_PINK_TARGET_ALL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "target_to_index: capacity exceeded");
+        return -1;
+    }
     return (int)target;
 }
 
@@ -318,6 +321,7 @@ static bool compute_cholesky_4x4(
                 float diag = correlation[j][j] - sum;
                 if (diag <= 0.0f) {
                     /* Matrix not positive-definite */
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_cholesky_4x4: validation failed");
                     return false;
                 }
                 cholesky_L[j][j] = sqrtf(diag);
@@ -333,6 +337,7 @@ static bool compute_cholesky_4x4(
                     sum += cholesky_L[i][k] * cholesky_L[j][k];
                 }
                 if (fabsf(cholesky_L[j][j]) < PR_PINK_EPSILON) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_cholesky_4x4: validation failed");
                     return false;
                 }
                 cholesky_L[i][j] = (correlation[i][j] - sum) / cholesky_L[j][j];
@@ -377,12 +382,14 @@ static bool generate_correlated_quat_noise(
     pr_quat_pink_generators_t* qg = &bridge->quat_generators;
 
     if (qg->quat_state == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_correlated_quat_noise: validation failed");
         return false;
     }
 
     /* Use the quaternionic pink noise generator */
     pr_quat_sample_t sample;
     if (!pr_quat_pink_next(qg->quat_state, &sample)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_correlated_quat_noise: pr_quat_pink_next is NULL");
         return false;
     }
 
@@ -415,6 +422,7 @@ static bool init_target_generator(
 
     state->generator = pink_noise_create(&noise_cfg);
     if (state->generator == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_target_generator: validation failed");
         return false;
     }
 
@@ -588,6 +596,7 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
     const pr_pink_bridge_config_t* config)
 {
     if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -611,13 +620,16 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
 
         if (params[i]->amplitude < PR_PINK_MIN_AMPLITUDE ||
             params[i]->amplitude > PR_PINK_MAX_AMPLITUDE) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
         if (params[i]->correlation_time < PR_PINK_MIN_CORRELATION_TIME) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
         if (params[i]->spectral_exponent < PR_PINK_MIN_SPECTRAL_EXPONENT ||
             params[i]->spectral_exponent > PR_PINK_MAX_SPECTRAL_EXPONENT) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
             return false;
         }
     }
@@ -625,11 +637,13 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
     /* Validate global amplitude */
     if (config->global_amplitude < PR_PINK_MIN_AMPLITUDE ||
         config->global_amplitude > PR_PINK_MAX_AMPLITUDE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: operation failed");
         return false;
     }
 
     /* Validate sample rate */
     if (config->sample_rate_hz <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: validation failed");
         return false;
     }
 
@@ -638,6 +652,7 @@ NIMCP_EXPORT bool pr_pink_bridge_validate_config(
     float cholesky[4][4];
     build_correlation_matrix(config->quaternion_correlation, correlation);
     if (!compute_cholesky_4x4(correlation, cholesky)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate_config: compute_cholesky_4x4 is NULL");
         return false;
     }
 
@@ -655,6 +670,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     if (config != NULL) {
         if (!pr_pink_bridge_validate_config(config)) {
             pr_pink_bridge_set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_create: pr_pink_bridge_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -666,6 +682,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     pr_pink_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_pink_bridge_struct));
     if (bridge == NULL) {
         pr_pink_bridge_set_error("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_create: validation failed");
         return NULL;
     }
 
@@ -685,6 +702,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     if (nimcp_mutex_init(&bridge->base.mutex, &attr) != 0) {
         nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_pink_bridge_create: validation failed");
         return NULL;
     }
     bridge->mutex_initialized = true;
@@ -722,6 +740,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
             nimcp_mutex_destroy(&bridge->base.mutex);
             nimcp_free(bridge);
             pr_pink_bridge_set_error("Failed to initialize target %d generator", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_create: operation failed");
             return NULL;
         }
     }
@@ -750,6 +769,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create quaternion generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
     }
     memcpy(bridge->quat_generators.correlation_matrix, correlation,
@@ -772,6 +792,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create consolidation timer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
     }
     bridge->consolidation_timer.base_interval_ms =
@@ -799,6 +820,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         nimcp_mutex_destroy(&bridge->base.mutex);
         nimcp_free(bridge);
         pr_pink_bridge_set_error("Failed to create promotion timer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_bridge_create: operation failed");
         return NULL;
     }
     bridge->promotion_timer.base_interval_ms = 1000.0f;
@@ -875,10 +897,12 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
 NIMCP_EXPORT bool pr_pink_bridge_reset(pr_pink_bridge_t bridge, uint32_t new_seed) {
     if (!is_valid_bridge(bridge)) {
         pr_pink_bridge_set_error("Invalid bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_reset: is_valid_bridge is NULL");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_bridge_reset: bridge_lock is NULL");
         return false;
     }
 
@@ -960,6 +984,7 @@ NIMCP_EXPORT bool pr_pink_should_consolidate_now(
     uint64_t current_time_ms)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_should_consolidate_now: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1019,16 +1044,19 @@ NIMCP_EXPORT bool pr_pink_set_base_consolidation_interval(
     float interval_ms)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_base_consolidation_interval: is_valid_bridge is NULL");
         return false;
     }
 
     if (interval_ms < PR_PINK_BRIDGE_MIN_CONSOLIDATION_INTERVAL_MS ||
         interval_ms > PR_PINK_BRIDGE_MAX_CONSOLIDATION_INTERVAL_MS) {
         pr_pink_bridge_set_error("Invalid interval: %.2f", interval_ms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_base_consolidation_interval: is_valid_bridge is NULL");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_set_base_consolidation_interval: bridge_lock is NULL");
         return false;
     }
 
@@ -1092,6 +1120,7 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     size_t count)
 {
     if (!is_valid_bridge(bridge) || scores == NULL || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_modulate_resonance_batch: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1111,11 +1140,13 @@ NIMCP_EXPORT bool pr_pink_bridge_modulate_resonance_batch(
     /* Generate batch of noise samples */
     float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_modulate_resonance_batch: validation failed");
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_modulate_resonance_batch: pink_noise_generate is NULL");
         return false;
     }
 
@@ -1196,6 +1227,7 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     size_t count)
 {
     if (!is_valid_bridge(bridge) || nodes == NULL || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_decay_batch: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1209,11 +1241,13 @@ NIMCP_EXPORT bool pr_pink_modulate_decay_batch(
     /* Generate batch of noise samples */
     float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_decay_batch: validation failed");
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_decay_batch: pink_noise_generate is NULL");
         return false;
     }
 
@@ -1267,6 +1301,7 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion(
     nimcp_quaternion_t* quat)
 {
     if (!is_valid_bridge(bridge) || quat == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_drift_quaternion: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1276,6 +1311,7 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion(
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_drift_quaternion: bridge_lock is NULL");
         return false;
     }
 
@@ -1283,6 +1319,7 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion(
     float noise[4];
     if (!generate_correlated_quat_noise(bridge, noise)) {
         bridge_unlock(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_drift_quaternion: generate_correlated_quat_noise is NULL");
         return false;
     }
 
@@ -1314,6 +1351,7 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion_correlated(
     const float correlation[4][4])
 {
     if (!is_valid_bridge(bridge) || quat == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_drift_quaternion_correlated: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1321,6 +1359,7 @@ NIMCP_EXPORT bool pr_pink_drift_quaternion_correlated(
     if (correlation != NULL) {
         /* Temporarily update correlation matrix */
         if (!pr_pink_set_quat_correlation(bridge, correlation)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_drift_quaternion_correlated: pr_pink_set_quat_correlation is NULL");
             return false;
         }
     }
@@ -1333,6 +1372,7 @@ NIMCP_EXPORT bool pr_pink_get_quat_noise(
     float noise_out[4])
 {
     if (!is_valid_bridge(bridge) || noise_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_get_quat_noise: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1345,6 +1385,7 @@ NIMCP_EXPORT bool pr_pink_set_quat_correlation(
     const float correlation[4][4])
 {
     if (!is_valid_bridge(bridge) || correlation == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_quat_correlation: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1352,10 +1393,12 @@ NIMCP_EXPORT bool pr_pink_set_quat_correlation(
     float cholesky[4][4];
     if (!compute_cholesky_4x4(correlation, cholesky)) {
         pr_pink_bridge_set_error("Correlation matrix not positive-definite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_quat_correlation: compute_cholesky_4x4 is NULL");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_set_quat_correlation: bridge_lock is NULL");
         return false;
     }
 
@@ -1380,6 +1423,7 @@ NIMCP_EXPORT bool pr_pink_modulate_edge_weight(
     entangle_edge_t* edge)
 {
     if (!is_valid_bridge(bridge) || edge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_edge_weight: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1519,6 +1563,7 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     size_t count)
 {
     if (!is_valid_bridge(bridge) || scores == NULL || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_retrieval_order: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1533,11 +1578,13 @@ NIMCP_EXPORT bool pr_pink_modulate_retrieval_order(
     /* Generate batch of noise samples */
     float* noise_batch = nimcp_malloc(count * sizeof(float));
     if (noise_batch == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_retrieval_order: validation failed");
         return false;
     }
 
     if (!pink_noise_generate(target->generator, noise_batch, (uint32_t)count)) {
         nimcp_free(noise_batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_retrieval_order: pink_noise_generate is NULL");
         return false;
     }
 
@@ -1596,11 +1643,13 @@ NIMCP_EXPORT bool pr_pink_verify_fractal(
     pr_pink_target_t target)
 {
     if (!is_valid_bridge(bridge) || !is_valid_target(target)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_verify_fractal: required parameter is NULL (is_valid_bridge, is_valid_target)");
         return false;
     }
 
     int idx = target_to_index(target);
     if (idx < 0 || !bridge->targets[idx].initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_verify_fractal: bridge->targets is NULL");
         return false;
     }
 
@@ -1609,6 +1658,7 @@ NIMCP_EXPORT bool pr_pink_verify_fractal(
     pr_target_state_t* state = &bridge->targets[idx];
 
     if (!pink_noise_generate(state->generator, samples, 1024)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_verify_fractal: pink_noise_generate is NULL");
         return false;
     }
 
@@ -1649,15 +1699,18 @@ NIMCP_EXPORT bool pr_pink_set_amplitude(
     float amplitude)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_amplitude: is_valid_bridge is NULL");
         return false;
     }
 
     if (amplitude < PR_PINK_MIN_AMPLITUDE || amplitude > PR_PINK_MAX_AMPLITUDE) {
         pr_pink_bridge_set_error("Invalid amplitude: %.3f", amplitude);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_amplitude: validation failed");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_set_amplitude: bridge_lock is NULL");
         return false;
     }
 
@@ -1676,6 +1729,7 @@ NIMCP_EXPORT bool pr_pink_set_amplitude(
         bridge->targets[target].params.amplitude = amplitude;
     } else {
         bridge_unlock(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_amplitude: operation failed");
         return false;
     }
 
@@ -1700,10 +1754,12 @@ NIMCP_EXPORT bool pr_pink_set_enabled(
     bool enabled)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_enabled: is_valid_bridge is NULL");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_set_enabled: bridge_lock is NULL");
         return false;
     }
 
@@ -1721,6 +1777,7 @@ NIMCP_EXPORT bool pr_pink_set_enabled(
         bridge->targets[target].params.enabled = enabled;
     } else {
         bridge_unlock(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_enabled: operation failed");
         return false;
     }
 
@@ -1733,6 +1790,7 @@ NIMCP_EXPORT bool pr_pink_is_enabled(
     pr_pink_target_t target)
 {
     if (!is_valid_bridge(bridge) || !is_valid_target(target)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_is_enabled: required parameter is NULL (is_valid_bridge, is_valid_target)");
         return false;
     }
 
@@ -1741,10 +1799,12 @@ NIMCP_EXPORT bool pr_pink_is_enabled(
 
 NIMCP_EXPORT bool pr_pink_step_all(pr_pink_bridge_t bridge, float dt_seconds) {
     if (!is_valid_bridge(bridge) || dt_seconds <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_step_all: is_valid_bridge is NULL");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_step_all: bridge_lock is NULL");
         return false;
     }
 
@@ -1774,10 +1834,12 @@ NIMCP_EXPORT bool pr_pink_set_global_amplitude(
     float amplitude)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_global_amplitude: is_valid_bridge is NULL");
         return false;
     }
 
     if (amplitude < PR_PINK_MIN_AMPLITUDE || amplitude > PR_PINK_MAX_AMPLITUDE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_set_global_amplitude: validation failed");
         return false;
     }
 
@@ -1796,14 +1858,17 @@ NIMCP_EXPORT bool pr_pink_integrate_with_theta_gamma(
     float coupling_strength)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_integrate_with_theta_gamma: is_valid_bridge is NULL");
         return false;
     }
 
     if (theta_freq <= 0.0f || coupling_strength < 0.0f || coupling_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_integrate_with_theta_gamma: validation failed");
         return false;
     }
 
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_integrate_with_theta_gamma: bridge_lock is NULL");
         return false;
     }
 
@@ -1850,6 +1915,7 @@ NIMCP_EXPORT bool pr_pink_integrate_with_z_ladder(
     z_ladder_t ladder)
 {
     if (!is_valid_bridge(bridge) || ladder == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_integrate_with_z_ladder: is_valid_bridge is NULL");
         return false;
     }
 
@@ -1859,6 +1925,7 @@ NIMCP_EXPORT bool pr_pink_integrate_with_z_ladder(
 
     z_ladder_stats_t stats;
     if (z_ladder_get_stats(ladder, &stats) != Z_LADDER_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_integrate_with_z_ladder: validation failed");
         return false;
     }
 
@@ -1868,6 +1935,7 @@ NIMCP_EXPORT bool pr_pink_integrate_with_z_ladder(
 
     /* Higher load = lower noise (focus on existing items) */
     if (!bridge_lock(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_pink_integrate_with_z_ladder: bridge_lock is NULL");
         return false;
     }
 
@@ -1888,6 +1956,7 @@ NIMCP_EXPORT bool pr_pink_bridge_get_stats(
     pr_pink_bridge_stats_t* stats)
 {
     if (!is_valid_bridge(bridge) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_get_stats: is_valid_bridge is NULL");
         return false;
     }
 
@@ -2070,6 +2139,7 @@ NIMCP_EXPORT void pr_pink_bridge_print_diagnostics(pr_pink_bridge_t bridge) {
 
 NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
     if (max_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_history_create: max_samples is zero");
         return NULL;
     }
 
@@ -2092,6 +2162,7 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
         nimcp_free(history->resonance_samples);
         nimcp_free(history->decay_samples);
         nimcp_free(history);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_history_create: operation failed");
         return NULL;
     }
 
@@ -2117,6 +2188,7 @@ NIMCP_EXPORT const pr_pink_history_t* pr_pink_bridge_get_history(
     pr_pink_bridge_t bridge)
 {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_get_history: is_valid_bridge is NULL");
         return NULL;
     }
 
@@ -2152,6 +2224,7 @@ NIMCP_EXPORT const char* pr_pink_target_name(pr_pink_target_t target) {
 
 NIMCP_EXPORT const char* pr_pink_bridge_get_last_error(void) {
     if (pr_pink_bridge_error_buffer[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_bridge_get_last_error: validation failed");
         return NULL;
     }
     return pr_pink_bridge_error_buffer;
@@ -2163,6 +2236,7 @@ NIMCP_EXPORT uint64_t pr_pink_bridge_current_time_ms(void) {
 
 NIMCP_EXPORT bool pr_pink_bridge_validate(pr_pink_bridge_t bridge) {
     if (!is_valid_bridge(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: is_valid_bridge is NULL");
         return false;
     }
 
@@ -2176,18 +2250,21 @@ NIMCP_EXPORT bool pr_pink_bridge_validate(pr_pink_bridge_t bridge) {
 
         if (bridge->targets[i].initialized &&
             bridge->targets[i].generator == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
             return false;
         }
     }
 
     /* Check quaternion generator */
     if (bridge->quat_generators.quat_state == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
         return false;
     }
 
     /* Check fractal timers */
     if (bridge->consolidation_timer.timing == NULL ||
         bridge->promotion_timer.timing == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_bridge_validate: validation failed");
         return false;
     }
 

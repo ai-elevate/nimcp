@@ -1230,11 +1230,15 @@ float nimcp_ts_transfer_entropy(
 nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
     if (p > NIMCP_TS_MAX_ARIMA_ORDER || d > NIMCP_TS_MAX_ARIMA_ORDER ||
         q > NIMCP_TS_MAX_ARIMA_ORDER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_arima_create: operation failed");
         return NULL;
     }
 
     nimcp_arima_model_t* model = (nimcp_arima_model_t*)nimcp_calloc(1, sizeof(nimcp_arima_model_t));
-    if (!model) return NULL;
+    if (!model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_arima_create: model is NULL");
+        return NULL;
+    }
 
     model->p = p;
     model->d = d;
@@ -1244,6 +1248,7 @@ nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
         model->ar_coefs = (float*)nimcp_calloc(p, sizeof(float));
         if (!model->ar_coefs) {
             nimcp_free(model);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_arima_create: model->ar_coefs is NULL");
             return NULL;
         }
     }
@@ -1253,6 +1258,7 @@ nimcp_arima_model_t* nimcp_arima_create(uint32_t p, uint32_t d, uint32_t q) {
         if (!model->ma_coefs) {
             nimcp_free(model->ar_coefs);
             nimcp_free(model);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_arima_create: model->ma_coefs is NULL");
             return NULL;
         }
     }
@@ -1452,7 +1458,10 @@ nimcp_ts_result_t nimcp_arima_aic_bic(
 
 nimcp_kalman_state_t* nimcp_kalman_create(uint32_t state_dim, uint32_t obs_dim) {
     nimcp_kalman_state_t* state = (nimcp_kalman_state_t*)nimcp_calloc(1, sizeof(nimcp_kalman_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_kalman_create: state is NULL");
+        return NULL;
+    }
 
     state->state_dim = state_dim;
     state->obs_dim = obs_dim;
@@ -1467,6 +1476,7 @@ nimcp_kalman_state_t* nimcp_kalman_create(uint32_t state_dim, uint32_t obs_dim) 
     if (!state->state || !state->covariance || !state->F || !state->H ||
         !state->Q || !state->R) {
         nimcp_kalman_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_kalman_create: operation failed");
         return NULL;
     }
 
@@ -1534,7 +1544,10 @@ nimcp_ts_result_t nimcp_kalman_init_local_trend(
 
 nimcp_hw_params_t* nimcp_hw_create(uint32_t period, bool additive) {
     nimcp_hw_params_t* params = (nimcp_hw_params_t*)nimcp_calloc(1, sizeof(nimcp_hw_params_t));
-    if (!params) return NULL;
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hw_create: params is NULL");
+        return NULL;
+    }
 
     params->period = period;
     params->additive = additive;
@@ -1545,6 +1558,7 @@ nimcp_hw_params_t* nimcp_hw_create(uint32_t period, bool additive) {
     params->seasonal = (float*)nimcp_calloc(period, sizeof(float));
     if (!params->seasonal) {
         nimcp_free(params);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hw_create: params->seasonal is NULL");
         return NULL;
     }
 

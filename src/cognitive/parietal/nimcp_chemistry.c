@@ -175,6 +175,7 @@ static int find_element_by_symbol(const char* symbol) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_element_by_symbol: validation failed");
     return -1;
 }
 
@@ -194,7 +195,10 @@ static uint32_t parse_count(const char** ptr) {
  * @brief Parse element symbol from formula
  */
 static int parse_element_symbol(const char** ptr, char* symbol, size_t max_len) {
-    if (!isupper(**ptr)) return -1;
+    if (!isupper(**ptr)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_element_symbol: isupper is NULL");
+        return -1;
+    }
 
     size_t len = 0;
     symbol[len++] = **ptr;
@@ -234,6 +238,7 @@ chemistry_config_t chemistry_default_config(void) {
 bool chemistry_validate_config(const chemistry_config_t* config) {
     if (!config) {
         set_chemistry_error("Null config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_validate_config: config is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -242,10 +247,12 @@ bool chemistry_validate_config(const chemistry_config_t* config) {
 
     if (config->temperature_k <= 0.0f) {
         set_chemistry_error("Invalid temperature");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_validate_config: validation failed");
         return false;
     }
     if (config->pressure_atm <= 0.0f) {
         set_chemistry_error("Invalid pressure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_validate_config: validation failed");
         return false;
     }
     return true;
@@ -267,6 +274,7 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
     chemistry_config_t cfg = config ? *config : chemistry_default_config();
 
     if (!chemistry_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_create_custom: chemistry_validate_config is NULL");
         return NULL;
     }
 
@@ -287,6 +295,7 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
     if (!chem->lock) {
         set_chemistry_error("Failed to create mutex");
         nimcp_free(chem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemistry_create_custom: chem->lock is NULL");
         return NULL;
     }
 
@@ -315,13 +324,17 @@ int chemistry_get_element(
     uint8_t atomic_number,
     element_properties_t* props
 ) {
-    if (!chem || !props) return -1;
+    if (!chem || !props) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_get_element: required parameter is NULL (chem, props)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_get_element", 0.0f);
 
 
     if (atomic_number == 0 || atomic_number >= NUM_KNOWN_ELEMENTS) {
         set_chemistry_error("Invalid atomic number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_get_element: atomic_number is zero");
         return -1;
     }
 
@@ -335,7 +348,10 @@ int chemistry_get_element_by_symbol(
     const char* symbol,
     element_properties_t* props
 ) {
-    if (!chem || !symbol || !props) return -1;
+    if (!chem || !symbol || !props) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_get_element_by_symbol: required parameter is NULL (chem, symbol, props)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_get_element_by_symbo", 0.0f);
@@ -344,6 +360,7 @@ int chemistry_get_element_by_symbol(
     int idx = find_element_by_symbol(symbol);
     if (idx < 0) {
         set_chemistry_error("Unknown element symbol");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_get_element_by_symbol: validation failed");
         return -1;
     }
 
@@ -357,9 +374,18 @@ bool chemistry_can_form_ionic_bond(
     uint8_t element1,
     uint8_t element2
 ) {
-    if (!chem) return false;
-    if (element1 == 0 || element1 >= NUM_KNOWN_ELEMENTS) return false;
-    if (element2 == 0 || element2 >= NUM_KNOWN_ELEMENTS) return false;
+    if (!chem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_can_form_ionic_bond: chem is NULL");
+        return false;
+    }
+    if (element1 == 0 || element1 >= NUM_KNOWN_ELEMENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_can_form_ionic_bond: element1 is zero");
+        return false;
+    }
+    if (element2 == 0 || element2 >= NUM_KNOWN_ELEMENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_can_form_ionic_bond: element2 is zero");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_can_form_ionic_bond", 0.0f);
@@ -440,6 +466,7 @@ static int parse_molecule_unlocked(
         char symbol[CHEMISTRY_ELEMENT_SYMBOL_LEN];
         if (parse_element_symbol(&ptr, symbol, sizeof(symbol)) != 0) {
             set_chemistry_error("Invalid element symbol");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_molecule_unlocked: validation failed");
             return -1;
         }
 
@@ -447,6 +474,7 @@ static int parse_molecule_unlocked(
         int elem_idx = find_element_by_symbol(symbol);
         if (elem_idx < 0) {
             set_chemistry_error("Unknown element");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_molecule_unlocked: validation failed");
             return -1;
         }
 
@@ -478,6 +506,7 @@ int chemistry_parse_molecule(
 ) {
     if (!chem || !formula || !molecule) {
         set_chemistry_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_parse_molecule: required parameter is NULL (chem, formula, molecule)");
         return -1;
     }
 
@@ -581,7 +610,10 @@ int chemistry_molecule_to_string(
     char* buffer,
     size_t buffer_size
 ) {
-    if (!molecule || !buffer || buffer_size == 0) return -1;
+    if (!molecule || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_molecule_to_string: required parameter is NULL (molecule, buffer)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_molecule_to_string", 0.0f);
@@ -605,11 +637,17 @@ static const char* parse_species(
     const char* str,
     species_t* species
 ) {
-    if (!str || !species) return NULL;
+    if (!str || !species) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_species: required parameter is NULL (str, species)");
+        return NULL;
+    }
 
     /* Skip leading whitespace */
     while (isspace(*str)) str++;
-    if (!*str) return NULL;
+    if (!*str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_species: validation failed");
+        return NULL;
+    }
 
     /* Parse coefficient if present */
     uint32_t coeff = 1;
@@ -655,6 +693,7 @@ int chemistry_parse_reaction(
 ) {
     if (!chem || !equation || !reaction) {
         set_chemistry_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_parse_reaction: required parameter is NULL (chem, equation, reaction)");
         return -1;
     }
 
@@ -673,6 +712,7 @@ int chemistry_parse_reaction(
         if (!arrow) {
             set_chemistry_error("No arrow in reaction equation");
             nimcp_mutex_unlock(chem->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_parse_reaction: arrow is NULL");
             return -1;
         }
     }
@@ -709,7 +749,10 @@ int chemistry_parse_reaction(
 }
 
 bool chemistry_is_balanced(const reaction_t* reaction) {
-    if (!reaction) return false;
+    if (!reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_is_balanced: reaction is NULL");
+        return false;
+    }
 
     /* Count atoms on each side */
     /* Phase 8: Heartbeat at operation start */
@@ -761,6 +804,7 @@ bool chemistry_is_balanced(const reaction_t* reaction) {
 
     for (uint32_t i = 1; i <= CHEMISTRY_NUM_ELEMENTS; i++) {
         if (reactant_counts[i] != product_counts[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_is_balanced: validation failed");
             return false;
         }
     }
@@ -772,7 +816,10 @@ bool chemistry_balance_equation(
     chemistry_t* chem,
     reaction_t* reaction
 ) {
-    if (!chem || !reaction) return false;
+    if (!chem || !reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_balance_equation: required parameter is NULL (chem, reaction)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_balance_equation", 0.0f);
@@ -790,6 +837,7 @@ bool chemistry_balance_equation(
 
     if (total_species == 0 || total_species > 6) {
         nimcp_mutex_unlock(chem->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_balance_equation: total_species is zero");
         return false;
     }
 
@@ -820,6 +868,7 @@ bool chemistry_balance_equation(
     }
 
     nimcp_mutex_unlock(chem->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_balance_equation: operation failed");
     return false;
 }
 
@@ -879,7 +928,10 @@ int chemistry_calculate_thermodynamics(
     chemistry_t* chem,
     reaction_t* reaction
 ) {
-    if (!chem || !reaction) return -1;
+    if (!chem || !reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_calculate_thermodynamics: required parameter is NULL (chem, reaction)");
+        return -1;
+    }
 
     /* Placeholder - would need enthalpy of formation data */
     /* Phase 8: Heartbeat at operation start */
@@ -897,7 +949,10 @@ bool chemistry_is_spontaneous(
     const reaction_t* reaction,
     float temperature_k
 ) {
-    if (!reaction) return false;
+    if (!reaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_is_spontaneous: reaction is NULL");
+        return false;
+    }
 
     /* G = H - TS */
     /* Phase 8: Heartbeat at operation start */
@@ -921,10 +976,17 @@ int chemistry_calculate_stoichiometry(
     uint32_t limiting_reagent_idx,
     stoichiometry_result_t* result
 ) {
-    if (!chem || !reaction || !result) return -1;
-    if (limiting_reagent_idx >= reaction->num_reactants) return -1;
+    if (!chem || !reaction || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_calculate_stoichiometry: required parameter is NULL (chem, reaction, result)");
+        return -1;
+    }
+    if (limiting_reagent_idx >= reaction->num_reactants) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "chemistry_calculate_stoichiometry: capacity exceeded");
+        return -1;
+    }
     if (!reaction->is_balanced) {
         set_chemistry_error("Reaction not balanced");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_calculate_stoichiometry: reaction->is_balanced is NULL");
         return -1;
     }
 
@@ -1089,7 +1151,10 @@ int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
  * ============================================================================ */
 
 int chemistry_get_stats(const chemistry_t* chem, chemistry_stats_t* stats) {
-    if (!chem || !stats) return -1;
+    if (!chem || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemistry_get_stats: required parameter is NULL (chem, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     chemistry_heartbeat("chemistry_get_stats", 0.0f);

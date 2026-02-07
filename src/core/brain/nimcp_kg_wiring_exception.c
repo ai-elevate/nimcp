@@ -319,11 +319,15 @@ bool kg_wiring_default_exception_handler(
 ) {
     (void)user_data;
 
-    if (!ex) return false;
+    if (!ex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_wiring_default_exception_handler: ex is NULL");
+        return false;
+    }
 
     /* Only handle KG wiring errors */
     if (ex->code < NIMCP_ERROR_KG_WIRING_BASE ||
         ex->code > NIMCP_ERROR_KG_WIRING_DUPLICATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_wiring_default_exception_handler: ex is NULL");
         return false;  /* Not a KG wiring exception */
     }
 
@@ -346,6 +350,7 @@ bool kg_wiring_default_exception_handler(
     }
 
     /* Don't mark as handled - let other handlers process too */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_wiring_default_exception_handler: validation failed");
     return false;
 }
 
@@ -367,6 +372,7 @@ static bool kg_wiring_dispatch_to_custom_handlers(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_wiring_dispatch_to_custom_handlers: validation failed");
     return false;
 }
 
@@ -396,7 +402,10 @@ uint32_t kg_wiring_register_exception_handler(
 }
 
 int kg_wiring_unregister_exception_handler(uint32_t handler_id) {
-    if (handler_id == 0) return -1;
+    if (handler_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_wiring_unregister_exception_handler: handler_id is zero");
+        return -1;
+    }
 
     for (int i = 0; i < KG_WIRING_MAX_HANDLERS; i++) {
         if (g_handlers[i].active && g_handlers[i].id == handler_id) {
@@ -407,6 +416,7 @@ int kg_wiring_unregister_exception_handler(uint32_t handler_id) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_wiring_unregister_exception_handler: validation failed");
     return -1;  /* Not found */
 }
 

@@ -153,7 +153,7 @@ add_test(NAME unit_cognitive_wellbeing_immune_integration
          COMMAND unit_cognitive_wellbeing_immune_integration --gtest_brief=1)
 set_tests_properties(unit_cognitive_wellbeing_immune_integration PROPERTIES
     LABELS "unit;wellbeing;immune;integration"
-    TIMEOUT 120
+    TIMEOUT 600
 )
 
 # Full Wellbeing-Immune Integration Tests

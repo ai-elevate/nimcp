@@ -189,6 +189,7 @@ bool nimcp_brain_factory_init_broca_subsystem(brain_t brain) {
     brain->broca = broca_create(&broca_cfg);
     if (!brain->broca) {
         set_error("Failed to create Broca adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_broca_subsystem: brain->broca is NULL");
         return false;
     }
 
@@ -264,6 +265,7 @@ bool nimcp_brain_factory_init_broca_substrate_bridge(brain_t brain) {
 
     if (!brain->broca_substrate_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Broca substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_broca_substrate_bridge: brain->broca_substrate_bridge is NULL");
         return false;
     }
 
@@ -308,6 +310,7 @@ bool nimcp_brain_factory_init_broca_thalamic_bridge(brain_t brain) {
 
     if (!brain->broca_thalamic_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Broca thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_broca_thalamic_bridge: brain->broca_thalamic_bridge is NULL");
         return false;
     }
 
@@ -355,6 +358,7 @@ bool nimcp_brain_factory_init_broca_quantum_bridge(brain_t brain) {
 
     if (!brain->broca_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Broca quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_broca_quantum_bridge: brain->broca_quantum_bridge is NULL");
         return false;
     }
 

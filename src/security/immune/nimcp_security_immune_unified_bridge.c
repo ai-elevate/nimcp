@@ -242,7 +242,10 @@ static int allocate_tolerance_whitelist(
     sec_immune_unified_bridge_t* bridge,
     size_t capacity
 ) {
-    if (!bridge || capacity == 0) return -1;
+    if (!bridge || capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_tolerance_whitelist: bridge is NULL");
+        return -1;
+    }
 
     bridge->tolerance.whitelist = (sec_immune_tolerance_entry_t*)
         nimcp_malloc(sizeof(sec_immune_tolerance_entry_t) * capacity);
@@ -265,8 +268,14 @@ static sec_immune_tolerance_entry_t* find_tolerance_entry(
     const uint8_t* pattern,
     size_t pattern_len
 ) {
-    if (!bridge || !pattern || pattern_len == 0) return NULL;
-    if (!bridge->tolerance.whitelist) return NULL;
+    if (!bridge || !pattern || pattern_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance_entry: required parameter is NULL (bridge, pattern)");
+        return NULL;
+    }
+    if (!bridge->tolerance.whitelist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance_entry: bridge->tolerance is NULL");
+        return NULL;
+    }
 
     size_t compare_len = pattern_len;
     if (compare_len > BRAIN_IMMUNE_EPITOPE_SIZE) {
@@ -280,6 +289,7 @@ static sec_immune_tolerance_entry_t* find_tolerance_entry(
             return entry;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance_entry: operation failed");
     return NULL;
 }
 
@@ -291,13 +301,17 @@ static sec_immune_memory_cell_t* find_memory_cell_by_id(
     sec_immune_unified_bridge_t* bridge,
     uint32_t memory_id
 ) {
-    if (!bridge || !bridge->memory_cells) return NULL;
+    if (!bridge || !bridge->memory_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_cell_by_id: required parameter is NULL (bridge, bridge->memory_cells)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->memory_cell_count; i++) {
         if (bridge->memory_cells[i].memory_id == memory_id) {
             return &bridge->memory_cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -436,6 +450,7 @@ sec_immune_unified_bridge_t* sec_immune_unified_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for unified bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -852,7 +867,10 @@ int sec_immune_unified_present_bbb_threat(
     size_t data_len,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !antigen_id) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_present_bbb_threat: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bbb_antigen_presentation) return 0;
     if (severity < SEC_IMMUNE_BBB_MIN_SEVERITY_FOR_ANTIGEN) return 0;
 
@@ -923,7 +941,10 @@ int sec_immune_unified_present_anomaly(
     const nimcp_anomaly_result_t* result,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !result || !antigen_id) return -1;
+    if (!bridge || !result || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_present_anomaly: required parameter is NULL (bridge, result, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_anomaly_antigen_presentation) return 0;
     if (result->anomaly_score < SEC_IMMUNE_ANOMALY_MIN_SCORE_FOR_ANTIGEN) return 0;
 
@@ -975,7 +996,10 @@ int sec_immune_unified_present_pattern_match(
     const nimcp_pattern_match_result_t* match_result,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !match_result || !antigen_id) return -1;
+    if (!bridge || !match_result || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_present_pattern_match: required parameter is NULL (bridge, match_result, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_pattern_antigen_presentation) return 0;
     if (!match_result->matched) return 0;
     if (match_result->threat_score < SEC_IMMUNE_PATTERN_MIN_SCORE_FOR_ANTIGEN) return 0;
@@ -1024,7 +1048,10 @@ int sec_immune_unified_present_rate_violation(
     uint32_t violation_count,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !client_id || !antigen_id) return -1;
+    if (!bridge || !client_id || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_present_rate_violation: required parameter is NULL (bridge, client_id, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_rate_violation_antigen_presentation) return 0;
     if (violation_count < SEC_IMMUNE_RATE_MIN_VIOLATIONS_FOR_ANTIGEN) return 0;
 
@@ -1075,7 +1102,10 @@ int sec_immune_unified_present_policy_violation(
     const nimcp_policy_result_t* result,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !result || !antigen_id) return -1;
+    if (!bridge || !result || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_present_policy_violation: required parameter is NULL (bridge, result, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_policy_violation_antigen_presentation) return 0;
     if (result->action == NIMCP_POLICY_ACTION_ALLOW) return 0;
     if (result->severity < SEC_IMMUNE_POLICY_MIN_SEVERITY_FOR_ANTIGEN) return 0;
@@ -1220,7 +1250,10 @@ int sec_immune_unified_form_memory(
     uint32_t antibody_id,
     uint32_t* memory_id
 ) {
-    if (!bridge || !memory_id) return -1;
+    if (!bridge || !memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_form_memory: required parameter is NULL (bridge, memory_id)");
+        return -1;
+    }
     if (!bridge->config.enable_memory_cell_formation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1274,7 +1307,10 @@ int sec_immune_unified_sync_memory_to_pattern(
 
     }
     if (!bridge->config.enable_pattern_memory_sync) return 0;
-    if (!bridge->pattern_db) return -1;
+    if (!bridge->pattern_db) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_sync_memory_to_pattern: bridge->pattern_db is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1312,8 +1348,14 @@ int sec_immune_unified_check_memory(
     size_t epitope_len,
     uint32_t* memory_id
 ) {
-    if (!bridge || !epitope || !memory_id) return -1;
-    if (!bridge->memory_cells || epitope_len == 0) return -1;
+    if (!bridge || !epitope || !memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_check_memory: required parameter is NULL (bridge, epitope, memory_id)");
+        return -1;
+    }
+    if (!bridge->memory_cells || epitope_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_immune_unified_check_memory: bridge->memory_cells is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1352,6 +1394,7 @@ int sec_immune_unified_secondary_response(
     sec_immune_memory_cell_t* cell = find_memory_cell_by_id(bridge, memory_id);
     if (!cell) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_secondary_response: cell is NULL");
         return -1;
     }
 
@@ -1379,9 +1422,15 @@ int sec_immune_unified_add_tolerance(
     const char* description,
     bool is_permanent
 ) {
-    if (!bridge || !pattern || pattern_len == 0) return -1;
+    if (!bridge || !pattern || pattern_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_add_tolerance: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
     if (!bridge->config.enable_tolerance_system) return 0;
-    if (!bridge->tolerance.whitelist) return -1;
+    if (!bridge->tolerance.whitelist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_add_tolerance: bridge->tolerance is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1425,8 +1474,14 @@ int sec_immune_unified_remove_tolerance(
     const uint8_t* pattern,
     size_t pattern_len
 ) {
-    if (!bridge || !pattern || pattern_len == 0) return -1;
-    if (!bridge->tolerance.whitelist) return -1;
+    if (!bridge || !pattern || pattern_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_remove_tolerance: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
+    if (!bridge->tolerance.whitelist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_remove_tolerance: bridge->tolerance is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1451,6 +1506,7 @@ int sec_immune_unified_remove_tolerance(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_immune_unified_remove_tolerance: operation failed");
     return -1; /* Not found */
 }
 
@@ -1459,8 +1515,14 @@ bool sec_immune_unified_is_tolerated(
     const uint8_t* pattern,
     size_t pattern_len
 ) {
-    if (!bridge || !pattern || pattern_len == 0) return false;
-    if (!bridge->config.enable_tolerance_system) return false;
+    if (!bridge || !pattern || pattern_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_tolerated: required parameter is NULL (bridge, pattern)");
+        return false;
+    }
+    if (!bridge->config.enable_tolerance_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_tolerated: bridge->config is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bool result = (find_tolerance_entry(bridge, pattern, pattern_len) != NULL);
@@ -1474,7 +1536,10 @@ int sec_immune_unified_confirm_benign(
     const uint8_t* pattern,
     size_t pattern_len
 ) {
-    if (!bridge || !pattern || pattern_len == 0) return -1;
+    if (!bridge || !pattern || pattern_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_confirm_benign: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1624,7 +1689,10 @@ int sec_immune_unified_connect_bio_async(sec_immune_unified_bridge_t* bridge) {
 }
 
 int sec_immune_unified_disconnect_bio_async(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
@@ -1647,9 +1715,15 @@ int sec_immune_unified_broadcast_security_event(
     const void* data,
     size_t data_len
 ) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_broadcast_security_event: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
     if (!bridge->config.broadcast_security_events) return 0;
-    if (!bridge->base.bio_ctx) return -1;
+    if (!bridge->base.bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_broadcast_security_event: bridge->base is NULL");
+        return -1;
+    }
 
     /* Allocate and build broadcast message */
     size_t payload_size = data_len > 0 ? data_len : sizeof(uint32_t);
@@ -1726,7 +1800,10 @@ float sec_immune_unified_get_policy_strictness_factor(
 bool sec_immune_unified_is_emergency_mode(
     const sec_immune_unified_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_immune_unified_is_emergency_mode: bridge is NULL");
+        return false;
+    }
     return bridge->cytokine_effects.emergency_mode_active ||
            bridge->inflammation_state.emergency_lockdown;
 }

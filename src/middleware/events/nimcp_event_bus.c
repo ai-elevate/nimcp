@@ -140,6 +140,7 @@ static void* delivery_thread_fn(void* arg) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "delivery_thread_fn: count is zero");
     return NULL;
 }
 
@@ -177,6 +178,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
     bus->queue = event_queue_create(&queue_cfg);
     if (!bus->queue) {
         nimcp_free(bus);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_create: bus->queue is NULL");
         return NULL;
     }
 
@@ -185,6 +187,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
     if (!bus->subscribers) {
         event_queue_destroy(bus->queue);
         nimcp_free(bus);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_create: bus->subscribers is NULL");
         return NULL;
     }
 
@@ -192,6 +195,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
         subscriber_manager_destroy(bus->subscribers);
         event_queue_destroy(bus->queue);
         nimcp_free(bus);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "event_bus_create: validation failed");
         return NULL;
     }
 
@@ -229,6 +233,7 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
             event_queue_destroy(bus->queue);
             nimcp_free(bus);
             LOG_ERROR(LOG_MODULE, "Failed to create delivery thread");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_create: validation failed");
             return NULL;
         }
         LOG_INFO(LOG_MODULE, "Async delivery thread started");
@@ -278,6 +283,7 @@ bool event_bus_publish(event_bus_t bus, const event_t* event) {
 
     if (!bus || !event) {
         LOG_ERROR(LOG_MODULE, "Invalid bus or event");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish: required parameter is NULL (bus, event)");
         return false;
     }
 
@@ -307,7 +313,10 @@ subscription_handle_t event_bus_subscribe(event_bus_t bus,
 }
 
 bool event_bus_unsubscribe(event_bus_t bus, subscription_handle_t handle) {
-    if (!bus) return false;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_unsubscribe: bus is NULL");
+        return false;
+    }
     return subscriber_unsubscribe(bus->subscribers, handle);
 }
 
@@ -343,7 +352,10 @@ uint32_t event_bus_process_events(event_bus_t bus, uint32_t max_events) {
 //=============================================================================
 
 bool event_bus_get_stats(event_bus_t bus, event_bus_stats_t* stats) {
-    if (!bus || !stats) return false;
+    if (!bus || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_get_stats: required parameter is NULL (bus, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&bus->mutex);
     stats->events_published = bus->events_published;

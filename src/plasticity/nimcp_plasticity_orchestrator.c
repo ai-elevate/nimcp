@@ -243,24 +243,32 @@ static void emit_event(
 }
 
 static synapse_entry_t* find_synapse(plasticity_orchestrator_t* orch, uint32_t id) {
-    if (!orch || !orch->synapses) return NULL;
+    if (!orch || !orch->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: required parameter is NULL (orch, orch->synapses)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < orch->num_synapses; i++) {
         if (orch->synapses[i].id == id && orch->synapses[i].active) {
             return &orch->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
 static neuron_entry_t* find_neuron(plasticity_orchestrator_t* orch, uint32_t id) {
-    if (!orch || !orch->neurons) return NULL;
+    if (!orch || !orch->neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron: required parameter is NULL (orch, orch->neurons)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < orch->num_neurons; i++) {
         if (orch->neurons[i].id == id && orch->neurons[i].active) {
             return &orch->neurons[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron: validation failed");
     return NULL;
 }
 
@@ -303,6 +311,7 @@ static synapse_entry_t* get_or_create_synapse(plasticity_orchestrator_t* orch, u
 
     if (orch->num_synapses >= orch->synapse_capacity) {
         NIMCP_LOGGING_WARN("Synapse capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_synapse: capacity exceeded");
         return NULL;
     }
 
@@ -340,6 +349,7 @@ static neuron_entry_t* get_or_create_neuron(plasticity_orchestrator_t* orch, uin
 
     if (orch->num_neurons >= orch->neuron_capacity) {
         NIMCP_LOGGING_WARN("Neuron capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_neuron: capacity exceeded");
         return NULL;
     }
 
@@ -525,6 +535,7 @@ plasticity_orchestrator_t* plasticity_orchestrator_create(
         if (orchestrator->neurons) nimcp_free(orchestrator->neurons);
         nimcp_platform_mutex_destroy(orchestrator->mutex);
         nimcp_free(orchestrator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_create: validation failed");
         return NULL;
     }
 
@@ -766,6 +777,7 @@ int plasticity_orchestrator_register_event_callback(
     }
 
     nimcp_platform_mutex_unlock(orchestrator->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_orchestrator_register_event_callback: operation failed");
     return -1;
 }
 
@@ -790,6 +802,7 @@ int plasticity_orchestrator_unregister_event_callback(
     }
 
     nimcp_platform_mutex_unlock(orchestrator->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_orchestrator_unregister_event_callback: operation failed");
     return -1;
 }
 
@@ -811,6 +824,7 @@ int plasticity_orchestrator_register_pre_update(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_register_pre_update: orchestrator->pre_update_callbacks is NULL");
     return -1;
 }
 
@@ -832,6 +846,7 @@ int plasticity_orchestrator_register_post_update(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_register_post_update: orchestrator->post_update_callbacks is NULL");
     return -1;
 }
 
@@ -1115,6 +1130,7 @@ int plasticity_orchestrator_pre_spike(
     synapse_entry_t* syn = get_or_create_synapse(orchestrator, synapse_id);
     if (!syn) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_pre_spike: syn is NULL");
         return -1;
     }
 
@@ -1192,6 +1208,7 @@ int plasticity_orchestrator_post_spike(
     neuron_entry_t* neuron = get_or_create_neuron(orchestrator, neuron_id);
     if (!neuron) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_post_spike: neuron is NULL");
         return -1;
     }
 
@@ -1350,6 +1367,7 @@ int plasticity_orchestrator_set_weight(
     synapse_entry_t* syn = get_or_create_synapse(orchestrator, synapse_id);
     if (!syn) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_orchestrator_set_weight: syn is NULL");
         return -1;
     }
 
@@ -1458,6 +1476,7 @@ int plasticity_orchestrator_serialize(
 
     if (buffer_size < required) {
         *bytes_written = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_orchestrator_serialize: validation failed");
         return -1;
     }
 
@@ -1504,7 +1523,10 @@ int plasticity_orchestrator_deserialize(
     /* Read version */
     uint32_t version = *(uint32_t*)ptr;
     ptr += sizeof(uint32_t);
-    if (version != 1) return -1;
+    if (version != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_orchestrator_deserialize: validation failed");
+        return -1;
+    }
 
     /* Read counts */
     uint32_t num_synapses = *(uint32_t*)ptr;

@@ -143,6 +143,7 @@ static void nlp_cortical_bio_handler(void* context, const bio_message_header_t* 
 nlp_cortical_adapter_t* nlp_cortical_adapter_create(nlp_node_t node, brain_t brain) {
     if (!bbb_check_pointer(node, "nlp_cortical_adapter_create") ||
         !bbb_check_pointer(brain, "nlp_cortical_adapter_create")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_cortical_adapter_create: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -284,7 +285,10 @@ int nlp_cortical_hear_message(
     const uint8_t* payload,
     size_t payload_len)
 {
-    if (!adapter || !header) return -1;
+    if (!adapter || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_cortical_hear_message: required parameter is NULL (adapter, header)");
+        return -1;
+    }
 
     // Update neuromodulation
     nlp_cortical_update_modulation(adapter);

@@ -76,6 +76,7 @@ static nimcp_mutex_t* combinatorial_mutex_create(void) {
 
     if (nimcp_platform_mutex_init(mutex, false) != 0) {
         nimcp_free(mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "combinatorial_mutex_create: validation failed");
         return NULL;
     }
 
@@ -110,6 +111,7 @@ static void combinatorial_mutex_destroy(nimcp_mutex_t* mutex) {
  */
 static bool pattern_match(const char* str, const char* pattern) {
     if (!str || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_match: required parameter is NULL (str, pattern)");
         return false;
     }
 
@@ -134,6 +136,7 @@ static bool pattern_match(const char* str, const char* pattern) {
             return true;  /* Just * matches everything */
         }
         if (str_len < suffix_len) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_match: validation failed");
             return false;
         }
         return strcmp(str + str_len - suffix_len, suffix) == 0;
@@ -144,6 +147,7 @@ static bool pattern_match(const char* str, const char* pattern) {
     }
 
     /* For simplicity, only support prefix* and *suffix */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_match: operation failed");
     return false;
 }
 
@@ -295,6 +299,7 @@ combinatorial_harm_system_t* combinatorial_harm_create(
     /* Guard: validate required inputs */
     if (!action_history) {
         NIMCP_LOGGING_ERROR("Action history is required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_harm_create: action_history is NULL");
         return NULL;
     }
 
@@ -309,6 +314,7 @@ combinatorial_harm_system_t* combinatorial_harm_create(
     if (config->max_pattern_count == 0 ||
         config->max_pattern_count > COMBINATORIAL_HARM_MAX_PATTERNS) {
         NIMCP_LOGGING_ERROR("Invalid max_pattern_count: %u", config->max_pattern_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_harm_create: config is NULL");
         return NULL;
     }
 
@@ -317,6 +323,7 @@ combinatorial_harm_system_t* combinatorial_harm_create(
         (combinatorial_harm_system_t*)nimcp_malloc(sizeof(combinatorial_harm_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate combinatorial_harm_system_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_harm_create: system is NULL");
         return NULL;
     }
 
@@ -339,6 +346,7 @@ combinatorial_harm_system_t* combinatorial_harm_create(
     if (!system->patterns) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern storage");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_harm_create: system->patterns is NULL");
         return NULL;
     }
 
@@ -353,6 +361,7 @@ combinatorial_harm_system_t* combinatorial_harm_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system->patterns);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "combinatorial_harm_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -405,6 +414,7 @@ static bool check_pattern_match(
     float* out_severity)
 {
     if (!pattern_entry || !pattern_entry->active || !action_a || !action_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_pattern_match: required parameter is NULL (pattern_entry, pattern_entry->active, action_a, action_b)");
         return false;
     }
 
@@ -429,6 +439,7 @@ static bool check_pattern_match(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_pattern_match: validation failed");
     return false;
 }
 
@@ -829,6 +840,7 @@ int combinatorial_harm_disconnect_bio_async(combinatorial_harm_system_t* system)
 
 bool combinatorial_harm_is_bio_async_connected(const combinatorial_harm_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combinatorial_harm_is_bio_async_connected: system is NULL");
         return false;
     }
     return system->bio_async_enabled;

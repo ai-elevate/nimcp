@@ -349,6 +349,7 @@ financial_cognitive_orchestrator_handle_t* financial_cognitive_orchestrator_crea
             1, sizeof(financial_cognitive_orchestrator_handle_t));
     if (!orch) {
         set_error("Failed to allocate orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_cognitive_orchestrator_create: orch is NULL");
         return NULL;
     }
 
@@ -431,8 +432,14 @@ int financial_cognitive_orchestrator_reset(
 financial_cognitive_orchestrator_t* financial_cognitive_orchestrator_get_modules(
     financial_cognitive_orchestrator_handle_t* orch
 ) {
-    if (!orch) return NULL;
-    if (orch->magic != FINANCIAL_COGNITIVE_ORCHESTRATOR_MAGIC) return NULL;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_cognitive_orchestrator_get_modules: orch is NULL");
+        return NULL;
+    }
+    if (orch->magic != FINANCIAL_COGNITIVE_ORCHESTRATOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_cognitive_orchestrator_get_modules: validation failed");
+        return NULL;
+    }
     return &orch->modules;
 }
 

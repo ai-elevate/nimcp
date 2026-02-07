@@ -79,6 +79,7 @@ static nimcp_ast_node_t* create_node(nimcp_ast_type_t type) {
     nimcp_ast_node_t* node = nimcp_calloc(1, sizeof(nimcp_ast_node_t));
     if (!node) {
         LOG_ERROR("Failed to allocate AST node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_node: node is NULL");
         return NULL;
     }
     node->magic = NIMCP_AST_NODE_MAGIC;
@@ -461,8 +462,14 @@ void nimcp_ast_destroy(nimcp_ast_node_t* node) {
 }
 
 bool nimcp_ast_validate(const nimcp_ast_node_t* node) {
-    if (!node) return false;
-    if (node->magic != NIMCP_AST_NODE_MAGIC) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ast_validate: node is NULL");
+        return false;
+    }
+    if (node->magic != NIMCP_AST_NODE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ast_validate: validation failed");
+        return false;
+    }
 
     switch (node->type) {
         case NIMCP_AST_POLICY:
@@ -598,6 +605,7 @@ void nimcp_ast_print(const nimcp_ast_node_t* node, int indent) {
 
 nimcp_ast_node_t* nimcp_ast_clone(const nimcp_ast_node_t* node) {
     if (!node || node->magic != NIMCP_AST_NODE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ast_clone: node is NULL");
         return NULL;
     }
 

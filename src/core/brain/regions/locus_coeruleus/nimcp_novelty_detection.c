@@ -139,6 +139,7 @@ int nimcp_novelty_init(
         system->feature_stats = (nimcp_novelty_stats_t*)nimcp_calloc(
             cfg.input_dimension, sizeof(nimcp_novelty_stats_t));
         if (!system->feature_stats) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_novelty_init: system->feature_stats is NULL");
             return -1;
         }
 
@@ -208,6 +209,7 @@ int nimcp_novelty_shutdown(nimcp_novelty_system_t* system) {
 
 int nimcp_novelty_reset(nimcp_novelty_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_reset: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -249,10 +251,12 @@ int nimcp_novelty_detect(
     nimcp_novelty_result_t* result
 ) {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_detect: required parameter is NULL (system, result)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_detect: system->initialized is NULL");
         return -1;
     }
 
@@ -346,10 +350,12 @@ int nimcp_novelty_detect(
 
 int nimcp_novelty_update(nimcp_novelty_system_t* system, float dt) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_novelty_update: validation failed");
         return -1;
     }
 
@@ -519,6 +525,7 @@ int nimcp_novelty_habituate(
     uint32_t input_size
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_habituate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -573,6 +580,7 @@ int nimcp_novelty_habituate(
 
 int nimcp_novelty_dishabituate(nimcp_novelty_system_t* system, float strength) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_dishabituate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -589,6 +597,7 @@ int nimcp_novelty_dishabituate(nimcp_novelty_system_t* system, float strength) {
 
 int nimcp_novelty_clear_habituation(nimcp_novelty_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_clear_habituation: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -629,10 +638,12 @@ int nimcp_novelty_get_last_result(
     nimcp_novelty_result_t* result
 ) {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_get_last_result: required parameter is NULL (system, result)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_novelty_get_last_result: system->initialized is NULL");
         return -1;
     }
 

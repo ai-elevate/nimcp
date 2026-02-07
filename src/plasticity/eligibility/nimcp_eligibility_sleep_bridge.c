@@ -135,6 +135,7 @@ eligibility_sleep_bridge_t eligibility_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "eligibility_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 

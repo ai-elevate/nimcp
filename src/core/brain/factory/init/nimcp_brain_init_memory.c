@@ -185,6 +185,7 @@ bool nimcp_brain_factory_init_consolidation_subsystem(brain_t brain)
 
     if (!brain->consolidation) {
         set_error("Failed to start background consolidation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_consolidation_subsystem: brain->consolidation is NULL");
         return false;
     }
 
@@ -239,6 +240,7 @@ bool nimcp_brain_factory_init_curiosity_subsystem(brain_t brain)
     brain->curiosity = curiosity_engine_create(brain, "nimcp_brain");
     if (!brain->curiosity) {
         set_error("Failed to create curiosity engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_curiosity_subsystem: brain->curiosity is NULL");
         return false;
     }
 
@@ -300,6 +302,7 @@ bool nimcp_brain_factory_init_salience_subsystem(brain_t brain)
 
     if (!brain->salience) {
         set_error("Failed to create salience evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_salience_subsystem: brain->salience is NULL");
         return false;
     }
 
@@ -343,6 +346,7 @@ bool nimcp_brain_factory_init_autobiographical_memory_subsystem(brain_t brain)
 
     if (!brain->autobio) {
         set_error("Failed to create autobiographical memory system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_autobiographical_memory_subsystem: brain->autobio is NULL");
         return false;
     }
 
@@ -411,6 +415,7 @@ bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
     brain->global_workspace = global_workspace_create_custom(&gw_config);
     if (!brain->global_workspace) {
         set_error("Failed to create global workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_global_workspace_subsystem: brain->global_workspace is NULL");
         return false;
     }
 

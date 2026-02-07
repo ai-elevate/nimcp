@@ -107,6 +107,7 @@ static LouvainContext* louvain_context_create(const NimcpGraph* graph)
     if (!graph->vertices) return NULL;
 
     if (graph->vertex_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "louvain_context_create: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -136,6 +137,7 @@ static LouvainContext* louvain_context_create(const NimcpGraph* graph)
         nimcp_free(ctx->neighbor_communities);
         nimcp_free(ctx->neighbor_weights);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_context_create: operation failed");
         return NULL;
     }
 
@@ -185,9 +187,18 @@ static void louvain_context_destroy(LouvainContext* ctx)
 static bool louvain_optimization_phase(LouvainContext* ctx, const NimcpGraph* graph,
                                        double resolution, uint32_t* improvements)
 {
-    if (!ctx) return false;;
-    if (!graph) return false;;
-    if (!improvements) return false;;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_optimization_phase: ctx is NULL");
+        return false;
+    }
+    if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_optimization_phase: graph is NULL");
+        return false;
+    }
+    if (!improvements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_optimization_phase: improvements is NULL");
+        return false;
+    }
 
     *improvements = 0;
 
@@ -332,6 +343,7 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
     if (!graph->vertices) return NULL;
 
     if (graph->vertex_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_louvain_detect: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -366,6 +378,7 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
         (NimcpCommunityPartition*)nimcp_malloc(sizeof(NimcpCommunityPartition));
     if (!result) {
         louvain_context_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_louvain_detect: result is NULL");
         return NULL;
     }
 
@@ -373,6 +386,7 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
     if (!result->assignments) {
         nimcp_free(result);
         louvain_context_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_louvain_detect: result->assignments is NULL");
         return NULL;
     }
 
@@ -430,6 +444,7 @@ NimcpCommunityPartition* nimcp_louvain_refine(const NimcpGraph* graph,
                                               uint32_t additional_iterations)
 {
     if (!graph || !partition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_louvain_refine: required parameter is NULL (graph, partition)");
         return NULL;
     }
 
@@ -445,6 +460,7 @@ NimcpCommunityPartition* nimcp_louvain_refine(const NimcpGraph* graph,
     result->assignments = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * graph->vertex_count);
     if (!result->assignments) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_louvain_refine: result->assignments is NULL");
         return NULL;
     }
 
@@ -459,6 +475,7 @@ NimcpCommunityPartition* nimcp_louvain_refine(const NimcpGraph* graph,
     if (!ctx) {
         nimcp_free(result->assignments);
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_louvain_refine: ctx is NULL");
         return NULL;
     }
 

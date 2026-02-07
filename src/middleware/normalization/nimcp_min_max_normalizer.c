@@ -86,7 +86,10 @@ bool minmax_normalizer_fit(
     size_t channel,
     float value
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minmax_normalizer_fit: normalizer is NULL");
+        return false;
+    }
 
     channel_stats_t* stats = &normalizer->channels[channel];
 
@@ -141,7 +144,10 @@ bool minmax_normalizer_get_stats(
     size_t channel,
     minmax_stats_t* stats
 ) {
-    if (!normalizer || channel >= normalizer->num_channels || !stats) return false;
+    if (!normalizer || channel >= normalizer->num_channels || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minmax_normalizer_get_stats: required parameter is NULL (normalizer, stats)");
+        return false;
+    }
 
     const channel_stats_t* ch = &normalizer->channels[channel];
     stats->min_value = (ch->min_value == FLT_MAX) ? 0.0F : ch->min_value;
@@ -156,7 +162,10 @@ bool minmax_normalizer_reset_channel(
     min_max_normalizer_t* normalizer,
     size_t channel
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minmax_normalizer_reset_channel: normalizer is NULL");
+        return false;
+    }
 
     channel_stats_t* stats = &normalizer->channels[channel];
     stats->min_value = FLT_MAX;

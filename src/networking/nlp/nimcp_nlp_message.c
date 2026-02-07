@@ -652,6 +652,7 @@ nlp_message_t* nlp_message_create(
     if (payload_len > NLP_MAX_PAYLOAD) {
         LOG_MODULE_ERROR(MODULE_NAME, "Payload too large: %u > %u",
                         payload_len, NLP_MAX_PAYLOAD);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_message_create: validation failed");
         return NULL;
     }
 
@@ -675,6 +676,7 @@ nlp_message_t* nlp_message_create(
         if (!msg->payload) {
             nimcp_free(msg);
             LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate payload");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_message_create: msg->payload is NULL");
             return NULL;
         }
 

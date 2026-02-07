@@ -53,6 +53,7 @@ static inline bool validate_array(const config_array_full_t* arr) {
 static bool grow_array(config_array_t* arr, size_t min_capacity) {
     if (!validate_array(arr)) {
         LOG_ERROR("grow_array: invalid array handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "grow_array: validate_array is NULL");
         return false;
     }
 
@@ -65,6 +66,7 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
         new_capacity *= CONFIG_ARRAY_GROWTH_FACTOR;
         if (new_capacity > CONFIG_ARRAY_MAX_SIZE) {
             LOG_ERROR("grow_array: capacity exceeds maximum (%zu)", CONFIG_ARRAY_MAX_SIZE);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "grow_array: validation failed");
             return false;
         }
     }
@@ -78,7 +80,10 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
             elem_size = sizeof(int64_t);
             old_data = arr->data.int_vals;
             new_data = nimcp_realloc(old_data, new_capacity * elem_size);
-            if (!new_data) return false;
+            if (!new_data) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "grow_array: new_data is NULL");
+                return false;
+            }
             arr->data.int_vals = (int64_t*)new_data;
             break;
 
@@ -86,7 +91,10 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
             elem_size = sizeof(double);
             old_data = arr->data.float_vals;
             new_data = nimcp_realloc(old_data, new_capacity * elem_size);
-            if (!new_data) return false;
+            if (!new_data) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "grow_array: new_data is NULL");
+                return false;
+            }
             arr->data.float_vals = (double*)new_data;
             break;
 
@@ -94,7 +102,10 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
             elem_size = sizeof(bool);
             old_data = arr->data.bool_vals;
             new_data = nimcp_realloc(old_data, new_capacity * elem_size);
-            if (!new_data) return false;
+            if (!new_data) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "grow_array: new_data is NULL");
+                return false;
+            }
             arr->data.bool_vals = (bool*)new_data;
             break;
 
@@ -102,7 +113,10 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
             elem_size = sizeof(char*);
             old_data = arr->data.string_vals;
             new_data = nimcp_realloc(old_data, new_capacity * elem_size);
-            if (!new_data) return false;
+            if (!new_data) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "grow_array: new_data is NULL");
+                return false;
+            }
             arr->data.string_vals = (char**)new_data;
             // Zero out new string pointers
             memset(arr->data.string_vals + arr->capacity, 0,
@@ -111,6 +125,7 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
 
         default:
             LOG_ERROR("grow_array: unknown element type %d", arr->element_type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grow_array: new_data is NULL");
             return false;
     }
 
@@ -160,6 +175,7 @@ static char* trim_and_unquote(char* str) {
 config_array_t* config_array_create(config_value_type_t element_type, size_t capacity) {
     if (capacity > CONFIG_ARRAY_MAX_SIZE) {
         LOG_ERROR("config_array_create: capacity %zu exceeds maximum", capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_create: validation failed");
         return NULL;
     }
 
@@ -170,6 +186,7 @@ config_array_t* config_array_create(config_value_type_t element_type, size_t cap
     config_array_t* arr = (config_array_t*)nimcp_calloc(1, sizeof(config_array_t));
     if (!arr) {
         LOG_ERROR("config_array_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_create: arr is NULL");
         return NULL;
     }
 
@@ -184,6 +201,7 @@ config_array_t* config_array_create(config_value_type_t element_type, size_t cap
     if (!rwlock) {
         LOG_ERROR("config_array_create: rwlock allocation failed");
         nimcp_free(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_create: rwlock is NULL");
         return NULL;
     }
 
@@ -191,6 +209,7 @@ config_array_t* config_array_create(config_value_type_t element_type, size_t cap
         LOG_ERROR("config_array_create: rwlock init failed");
         nimcp_free(rwlock);
         nimcp_free(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_create: validation failed");
         return NULL;
     }
     arr->rwlock = rwlock;
@@ -236,6 +255,7 @@ alloc_error:
     nimcp_platform_rwlock_destroy((nimcp_platform_rwlock_t*)arr->rwlock);
     nimcp_free(arr->rwlock);
     nimcp_free(arr);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_create: operation failed");
     return NULL;
 }
 
@@ -278,6 +298,7 @@ void config_array_destroy(config_array_t* arr) {
 config_array_t* config_array_clone(const config_array_t* arr) {
     if (!validate_array(arr)) {
         LOG_ERROR("config_array_clone: invalid source array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_clone: validate_array is NULL");
         return NULL;
     }
 
@@ -286,6 +307,7 @@ config_array_t* config_array_clone(const config_array_t* arr) {
     config_array_t* clone = config_array_create(arr->element_type, arr->capacity);
     if (!clone) {
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_clone: clone is NULL");
         return NULL;
     }
 
@@ -313,6 +335,7 @@ config_array_t* config_array_clone(const config_array_t* arr) {
                         LOG_ERROR("config_array_clone: string duplication failed at index %zu", i);
                         config_array_destroy(clone);
                         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_clone: clone->data is NULL");
                         return NULL;
                     }
                 }
@@ -354,6 +377,7 @@ void config_array_clear(config_array_t* arr) {
 bool config_array_reserve(config_array_t* arr, size_t new_capacity) {
     if (!validate_array(arr)) {
         LOG_ERROR("config_array_reserve: invalid array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_reserve: validate_array is NULL");
         return false;
     }
 
@@ -399,6 +423,7 @@ bool config_array_is_empty(const config_array_t* arr) {
 bool config_array_append_int(config_array_t* arr, int64_t val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_INT) {
         LOG_ERROR("config_array_append_int: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_int: validate_array is NULL");
         return false;
     }
 
@@ -407,6 +432,7 @@ bool config_array_append_int(config_array_t* arr, int64_t val) {
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_int: grow_array is NULL");
             return false;
         }
     }
@@ -420,6 +446,7 @@ bool config_array_append_int(config_array_t* arr, int64_t val) {
 bool config_array_append_float(config_array_t* arr, double val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_FLOAT) {
         LOG_ERROR("config_array_append_float: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_float: validate_array is NULL");
         return false;
     }
 
@@ -428,6 +455,7 @@ bool config_array_append_float(config_array_t* arr, double val) {
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_float: grow_array is NULL");
             return false;
         }
     }
@@ -441,6 +469,7 @@ bool config_array_append_float(config_array_t* arr, double val) {
 bool config_array_append_bool(config_array_t* arr, bool val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_BOOL) {
         LOG_ERROR("config_array_append_bool: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_bool: validate_array is NULL");
         return false;
     }
 
@@ -449,6 +478,7 @@ bool config_array_append_bool(config_array_t* arr, bool val) {
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_bool: grow_array is NULL");
             return false;
         }
     }
@@ -462,11 +492,13 @@ bool config_array_append_bool(config_array_t* arr, bool val) {
 bool config_array_append_string(config_array_t* arr, const char* val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_STRING) {
         LOG_ERROR("config_array_append_string: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_string: validate_array is NULL");
         return false;
     }
 
     if (!val) {
         LOG_ERROR("config_array_append_string: NULL value");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_append_string: val is NULL");
         return false;
     }
 
@@ -475,6 +507,7 @@ bool config_array_append_string(config_array_t* arr, const char* val) {
     if (arr->count >= arr->capacity) {
         if (!grow_array(arr, arr->count + 1)) {
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_append_string: grow_array is NULL");
             return false;
         }
     }
@@ -483,6 +516,7 @@ bool config_array_append_string(config_array_t* arr, const char* val) {
     if (!arr->data.string_vals[arr->count]) {
         LOG_ERROR("config_array_append_string: string duplication failed");
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_append_string: arr->data is NULL");
         return false;
     }
 
@@ -568,6 +602,7 @@ const char* config_array_get_string(const config_array_t* arr, size_t idx,
 bool config_array_set_int(config_array_t* arr, size_t idx, int64_t val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_INT) {
         LOG_ERROR("config_array_set_int: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_set_int: validate_array is NULL");
         return false;
     }
 
@@ -588,6 +623,7 @@ bool config_array_set_int(config_array_t* arr, size_t idx, int64_t val) {
 bool config_array_set_float(config_array_t* arr, size_t idx, double val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_FLOAT) {
         LOG_ERROR("config_array_set_float: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_set_float: validate_array is NULL");
         return false;
     }
 
@@ -608,6 +644,7 @@ bool config_array_set_float(config_array_t* arr, size_t idx, double val) {
 bool config_array_set_bool(config_array_t* arr, size_t idx, bool val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_BOOL) {
         LOG_ERROR("config_array_set_bool: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_set_bool: validate_array is NULL");
         return false;
     }
 
@@ -628,11 +665,13 @@ bool config_array_set_bool(config_array_t* arr, size_t idx, bool val) {
 bool config_array_set_string(config_array_t* arr, size_t idx, const char* val) {
     if (!validate_array(arr) || arr->element_type != CONFIG_TYPE_STRING) {
         LOG_ERROR("config_array_set_string: invalid array or type mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_set_string: validate_array is NULL");
         return false;
     }
 
     if (!val) {
         LOG_ERROR("config_array_set_string: NULL value");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_set_string: val is NULL");
         return false;
     }
 
@@ -667,6 +706,7 @@ bool config_array_set_string(config_array_t* arr, size_t idx, const char* val) {
 bool config_array_remove(config_array_t* arr, size_t idx) {
     if (!validate_array(arr)) {
         LOG_ERROR("config_array_remove: invalid array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_remove: validate_array is NULL");
         return false;
     }
 
@@ -675,6 +715,7 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
     if (idx >= arr->count) {
         LOG_ERROR("config_array_remove: index %zu out of bounds (count=%zu)", idx, arr->count);
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_array_remove: capacity exceeded");
         return false;
     }
 
@@ -715,6 +756,7 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
 
         default:
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_remove: operation failed");
             return false;
     }
 
@@ -733,17 +775,20 @@ bool config_array_remove(config_array_t* arr, size_t idx) {
 bool config_array_resize(config_array_t* arr, size_t new_capacity) {
     if (!validate_array(arr)) {
         LOG_ERROR("config_array_resize: invalid array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_resize: validate_array is NULL");
         return false;
     }
 
     if (new_capacity < arr->count) {
         LOG_ERROR("config_array_resize: cannot shrink below count (new_capacity=%zu count=%zu)",
                   new_capacity, arr->count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_resize: validation failed");
         return false;
     }
 
     if (new_capacity > CONFIG_ARRAY_MAX_SIZE) {
         LOG_ERROR("config_array_resize: capacity %zu exceeds maximum", new_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_resize: validation failed");
         return false;
     }
 
@@ -789,6 +834,7 @@ config_array_t* config_parse_int_array(const char* str) {
     char* copy = (char*)nimcp_malloc(str_len);
     if (!copy) {
         config_array_destroy(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_parse_int_array: copy is NULL");
         return NULL;
     }
     memcpy(copy, str, str_len);
@@ -813,6 +859,7 @@ config_array_t* config_parse_int_array(const char* str) {
             LOG_ERROR("config_parse_int_array: failed to append value");
             config_array_destroy(arr);
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_parse_int_array: config_array_append_int is NULL");
             return NULL;
         }
         token = strtok(NULL, ",");
@@ -845,6 +892,7 @@ config_array_t* config_parse_float_array(const char* str) {
     char* copy = (char*)nimcp_malloc(str_len);
     if (!copy) {
         config_array_destroy(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_parse_float_array: copy is NULL");
         return NULL;
     }
     memcpy(copy, str, str_len);
@@ -874,6 +922,7 @@ config_array_t* config_parse_float_array(const char* str) {
             LOG_ERROR("config_parse_float_array: failed to append value");
             config_array_destroy(arr);
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_parse_float_array: config_array_append_float is NULL");
             return NULL;
         }
         token = strtok(NULL, ",");
@@ -906,6 +955,7 @@ config_array_t* config_parse_bool_array(const char* str) {
     char* copy = (char*)nimcp_malloc(str_len);
     if (!copy) {
         config_array_destroy(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_parse_bool_array: copy is NULL");
         return NULL;
     }
     memcpy(copy, str, str_len);
@@ -928,6 +978,7 @@ config_array_t* config_parse_bool_array(const char* str) {
             LOG_ERROR("config_parse_bool_array: failed to append value");
             config_array_destroy(arr);
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_parse_bool_array: config_array_append_bool is NULL");
             return NULL;
         }
         token = strtok(NULL, ",");
@@ -960,6 +1011,7 @@ config_array_t* config_parse_string_array(const char* str) {
     char* copy = (char*)nimcp_malloc(str_len);
     if (!copy) {
         config_array_destroy(arr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_parse_string_array: copy is NULL");
         return NULL;
     }
     memcpy(copy, str, str_len);
@@ -1002,6 +1054,7 @@ config_array_t* config_parse_string_array(const char* str) {
                 LOG_ERROR("config_parse_string_array: failed to append value");
                 config_array_destroy(arr);
                 nimcp_free(copy);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_parse_string_array: config_array_append_string is NULL");
                 return NULL;
             }
         }
@@ -1076,6 +1129,7 @@ config_array_t* config_parse_array_auto(const char* str) {
 char* config_array_to_string(const config_array_t* arr) {
     if (!validate_array(arr)) {
         LOG_ERROR("config_array_to_string: invalid array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_array_to_string: validate_array is NULL");
         return NULL;
     }
 
@@ -1086,6 +1140,7 @@ char* config_array_to_string(const config_array_t* arr) {
     char* buffer = (char*)nimcp_malloc(buf_size);
     if (!buffer) {
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_array_to_string: buffer is NULL");
         return NULL;
     }
 
@@ -1095,6 +1150,7 @@ char* config_array_to_string(const config_array_t* arr) {
     if (written < 0 || (size_t)written >= remaining) {
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_to_string: capacity exceeded");
         return NULL;
     }
     p += written;
@@ -1107,6 +1163,7 @@ char* config_array_to_string(const config_array_t* arr) {
                 LOG_ERROR("config_array_to_string: buffer overflow prevented");
                 nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
                 nimcp_free(buffer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_to_string: capacity exceeded");
                 return NULL;
             }
             p += written;
@@ -1143,6 +1200,7 @@ char* config_array_to_string(const config_array_t* arr) {
             LOG_ERROR("config_array_to_string: buffer overflow prevented");
             nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
             nimcp_free(buffer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_to_string: capacity exceeded");
             return NULL;
         }
         p += written;
@@ -1154,6 +1212,7 @@ char* config_array_to_string(const config_array_t* arr) {
         LOG_ERROR("config_array_to_string: buffer overflow prevented");
         nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_array_to_string: capacity exceeded");
         return NULL;
     }
     nimcp_platform_rwlock_unlock((nimcp_platform_rwlock_t*)arr->rwlock);
@@ -1171,23 +1230,27 @@ char* config_array_to_string(const config_array_t* arr) {
 bool config_set_array(const char* key, const config_array_t* arr) {
     if (!key || !validate_array(arr)) {
         LOG_ERROR("config_set_array: invalid key or array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_array: required parameter is NULL (key, validate_array)");
         return false;
     }
 
     // TODO: Implement integration with dynamic config system
     // This requires adding CONFIG_TYPE_ARRAY to config_value_type_t
     LOG_WARN("config_set_array: not yet integrated with dynamic config system");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_array: required parameter is NULL (key, validate_array)");
     return false;
 }
 
 const config_array_t* config_get_array(const char* key) {
     if (!key) {
         LOG_ERROR("config_get_array: NULL key");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_array: key is NULL");
         return NULL;
     }
 
     // TODO: Implement integration with dynamic config system
     LOG_WARN("config_get_array: not yet integrated with dynamic config system");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_array: key is NULL");
     return NULL;
 }
 

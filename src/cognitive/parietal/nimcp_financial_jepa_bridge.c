@@ -449,6 +449,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     if (!bridge->encoder_weights || !bridge->encoder_bias) {
         set_error("Failed to allocate encoder weights");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_bridge_create: required parameter is NULL (bridge->encoder_weights, bridge->encoder_bias)");
         return NULL;
     }
     init_xavier_weights(bridge->encoder_weights, num_factors, embed_dim, &bridge->rng_state);
@@ -460,6 +461,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     if (!bridge->target_encoder_weights || !bridge->target_encoder_bias) {
         set_error("Failed to allocate target encoder weights");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_bridge_create: required parameter is NULL (bridge->target_encoder_weights, bridge->target_encoder_bias)");
         return NULL;
     }
     memcpy(bridge->target_encoder_weights, bridge->encoder_weights,
@@ -476,6 +478,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
         !bridge->predictor_w2 || !bridge->predictor_b2) {
         set_error("Failed to allocate predictor weights");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_jepa_bridge_create: operation failed");
         return NULL;
     }
     init_xavier_weights(bridge->predictor_w1, embed_dim, hidden_dim, &bridge->rng_state);
@@ -489,6 +492,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     if (!bridge->decoder_weights || !bridge->decoder_bias) {
         set_error("Failed to allocate decoder weights");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_bridge_create: required parameter is NULL (bridge->decoder_weights, bridge->decoder_bias)");
         return NULL;
     }
     init_xavier_weights(bridge->decoder_weights, embed_dim, num_factors, &bridge->rng_state);
@@ -503,6 +507,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
         if (!bridge->cross_modal_proj[m]) {
             set_error("Failed to allocate cross-modal projection %d", m);
             financial_jepa_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_bridge_create: bridge->cross_modal_proj is NULL");
             return NULL;
         }
         init_xavier_weights(bridge->cross_modal_proj[m],
@@ -515,6 +520,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
     if (!bridge->factor_modalities) {
         set_error("Failed to allocate factor modalities");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_bridge_create: bridge->factor_modalities is NULL");
         return NULL;
     }
     /* Default assignment: distribute factors across modalities */
@@ -530,6 +536,7 @@ financial_jepa_bridge_t* financial_jepa_bridge_create(
         !bridge->hidden_buffer) {
         set_error("Failed to allocate working buffers");
         financial_jepa_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_jepa_bridge_create: operation failed");
         return NULL;
     }
 
@@ -1286,11 +1293,15 @@ int financial_jepa_bridge_generate_modality_mask(
 
 fin_jepa_input_t* financial_jepa_input_create(uint32_t num_factors) {
     if (num_factors == 0 || num_factors > FIN_JEPA_MAX_FACTORS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_input_create: num_factors is zero");
         return NULL;
     }
 
     fin_jepa_input_t* input = (fin_jepa_input_t*)nimcp_malloc(sizeof(fin_jepa_input_t));
-    if (!input) return NULL;
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_input_create: input is NULL");
+        return NULL;
+    }
 
     memset(input, 0, sizeof(*input));
     input->num_factors = num_factors;
@@ -1300,6 +1311,7 @@ fin_jepa_input_t* financial_jepa_input_create(uint32_t num_factors) {
 
     if (!input->visible_factors || !input->mask) {
         financial_jepa_input_destroy(input);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_input_create: required parameter is NULL (input->visible_factors, input->mask)");
         return NULL;
     }
 
@@ -1315,11 +1327,15 @@ void financial_jepa_input_destroy(fin_jepa_input_t* input) {
 
 fin_jepa_output_t* financial_jepa_output_create(uint32_t num_factors) {
     if (num_factors == 0 || num_factors > FIN_JEPA_MAX_FACTORS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_output_create: num_factors is zero");
         return NULL;
     }
 
     fin_jepa_output_t* output = (fin_jepa_output_t*)nimcp_malloc(sizeof(fin_jepa_output_t));
-    if (!output) return NULL;
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_output_create: output is NULL");
+        return NULL;
+    }
 
     memset(output, 0, sizeof(*output));
 
@@ -1328,6 +1344,7 @@ fin_jepa_output_t* financial_jepa_output_create(uint32_t num_factors) {
 
     if (!output->predicted_factors || !output->confidence) {
         financial_jepa_output_destroy(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_output_create: required parameter is NULL (output->predicted_factors, output->confidence)");
         return NULL;
     }
 
@@ -1343,12 +1360,16 @@ void financial_jepa_output_destroy(fin_jepa_output_t* output) {
 
 fin_cross_modal_output_t* financial_jepa_cross_modal_output_create(uint32_t num_factors) {
     if (num_factors == 0 || num_factors > FIN_JEPA_MAX_FACTORS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_cross_modal_output_create: num_factors is zero");
         return NULL;
     }
 
     fin_cross_modal_output_t* output =
         (fin_cross_modal_output_t*)nimcp_malloc(sizeof(fin_cross_modal_output_t));
-    if (!output) return NULL;
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_cross_modal_output_create: output is NULL");
+        return NULL;
+    }
 
     memset(output, 0, sizeof(*output));
 
@@ -1357,6 +1378,7 @@ fin_cross_modal_output_t* financial_jepa_cross_modal_output_create(uint32_t num_
 
     if (!output->predicted_factors || !output->confidence) {
         financial_jepa_cross_modal_output_destroy(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_jepa_cross_modal_output_create: required parameter is NULL (output->predicted_factors, output->confidence)");
         return NULL;
     }
 

@@ -103,6 +103,7 @@ static reticular_bridge_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -125,7 +126,10 @@ static int count_subscribers_for_type(
  * ============================================================================ */
 
 int reticular_bridge_default_config(reticular_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     config->arousal_broadcast_interval_ms = RETICULAR_BRIDGE_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -168,6 +172,7 @@ reticular_bridge_t* reticular_bridge_create(const reticular_bridge_config_t* con
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(*bridge->subscriptions));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -200,7 +205,10 @@ int reticular_bridge_connect(
     nimcp_reticular_t* reticular,
     bio_router_t router
 ) {
-    if (!bridge || !reticular) return -1;
+    if (!bridge || !reticular) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_connect: required parameter is NULL (bridge, reticular)");
+        return -1;
+    }
 
     bridge->reticular = reticular;
     bridge->router = router;
@@ -210,7 +218,10 @@ int reticular_bridge_connect(
 }
 
 int reticular_bridge_disconnect(reticular_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->reticular = NULL;
     bridge->router = NULL;
@@ -228,7 +239,10 @@ bool reticular_bridge_is_connected(const reticular_bridge_t* bridge) {
  * ============================================================================ */
 
 int reticular_bridge_process_inbox(reticular_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -238,7 +252,10 @@ int reticular_bridge_process_inbox(reticular_bridge_t* bridge, uint32_t max_mess
 }
 
 int reticular_bridge_update(reticular_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -255,7 +272,10 @@ int reticular_bridge_broadcast_arousal(
     reticular_arousal_state_t state,
     bool is_transition
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_arousal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_arousal_broadcast) return 0;
 
     reticular_bridge_arousal_msg_t msg = {0};
@@ -290,7 +310,10 @@ int reticular_bridge_broadcast_modulator(
     float concentration,
     bool is_burst
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_modulator: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_modulator_broadcast) return 0;
 
     reticular_bridge_modulator_msg_t msg = {0};
@@ -340,7 +363,10 @@ int reticular_bridge_broadcast_reflex(
     float stimulus,
     float response
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_reflex: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_reflex_broadcast) return 0;
 
     reticular_bridge_reflex_msg_t msg = {0};
@@ -370,7 +396,10 @@ int reticular_bridge_broadcast_autonomic(
     float sympathetic,
     float parasympathetic
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_autonomic: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_autonomic_broadcast) return 0;
 
     reticular_bridge_autonomic_msg_t msg = {0};
@@ -402,7 +431,10 @@ int reticular_bridge_broadcast_sleep_wake(
     reticular_arousal_state_t to_state,
     float progress
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_sleep_wake: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_sleep_wake_broadcast) return 0;
 
     reticular_bridge_sleep_wake_msg_t msg = {0};
@@ -440,7 +472,10 @@ int reticular_bridge_broadcast_motor_tone(
     float atonia,
     bool rem_active
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_broadcast_motor_tone: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_motor_tone_broadcast) return 0;
 
     reticular_bridge_motor_tone_msg_t msg = {0};
@@ -473,7 +508,10 @@ int reticular_bridge_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     reticular_bridge_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
@@ -483,6 +521,7 @@ int reticular_bridge_subscribe_module(
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reticular_bridge_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -503,14 +542,21 @@ int reticular_bridge_subscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reticular_bridge_subscribe_module: validation failed");
     return -1;
 }
 
 int reticular_bridge_unsubscribe_module(reticular_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     reticular_bridge_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask = 0;
@@ -536,13 +582,19 @@ int reticular_bridge_get_stats(
     const reticular_bridge_t* bridge,
     reticular_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int reticular_bridge_reset_stats(reticular_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

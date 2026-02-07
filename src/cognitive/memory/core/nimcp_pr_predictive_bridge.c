@@ -190,6 +190,7 @@ pr_predictive_bridge_config_t pr_predictive_bridge_config_default(void) {
 bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_predictive_bridge_config_validate: config is NULL");
         return false;
     }
 
@@ -200,14 +201,17 @@ bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* c
 
     if (config->pe_threshold_update <= 0.0f) {
         set_error("pe_threshold_update must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: validation failed");
         return false;
     }
     if (config->pe_threshold_new <= 0.0f) {
         set_error("pe_threshold_new must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: validation failed");
         return false;
     }
     if (config->pe_threshold_update >= config->pe_threshold_new) {
         set_error("pe_threshold_update must be < pe_threshold_new");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: capacity exceeded");
         return false;
     }
 
@@ -215,16 +219,19 @@ bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* c
     if (config->initial_visual_precision < PR_PRED_MIN_PRECISION ||
         config->initial_visual_precision > PR_PRED_MAX_PRECISION) {
         set_error("initial_visual_precision out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: capacity exceeded");
         return false;
     }
     if (config->initial_audio_precision < PR_PRED_MIN_PRECISION ||
         config->initial_audio_precision > PR_PRED_MAX_PRECISION) {
         set_error("initial_audio_precision out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: operation failed");
         return false;
     }
     if (config->initial_speech_precision < PR_PRED_MIN_PRECISION ||
         config->initial_speech_precision > PR_PRED_MAX_PRECISION) {
         set_error("initial_speech_precision out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: operation failed");
         return false;
     }
 
@@ -232,6 +239,7 @@ bool pr_predictive_bridge_config_validate(const pr_predictive_bridge_config_t* c
     if (config->resonance_prediction_weight < 0.0f ||
         config->resonance_prediction_weight > 1.0f) {
         set_error("resonance_prediction_weight must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_predictive_bridge_config_validate: operation failed");
         return false;
     }
 
@@ -260,6 +268,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     /* Validate configuration */
     if (!pr_predictive_bridge_config_validate(&cfg)) {
         NIMCP_LOGGING_ERROR("Invalid predictive bridge config: %s", s_last_error);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_predictive_bridge_create: pr_predictive_bridge_config_validate is NULL");
         return NULL;
     }
 
@@ -268,6 +277,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     if (!bridge) {
         set_error("Failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate predictive bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_predictive_bridge_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(pr_predictive_bridge_t));
@@ -276,6 +286,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
     if (bridge_base_init(&bridge->base, PR_PRED_MODULE_ID, PR_PRED_MODULE_NAME) != 0) {
         nimcp_free(bridge);
         set_error("Failed to initialize base bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_predictive_bridge_create: validation failed");
         return NULL;
     }
 
@@ -296,6 +307,7 @@ pr_predictive_bridge_t* pr_predictive_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error("Failed to allocate reconsolidation windows");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_predictive_bridge_create: bridge->reconsolidation_windows is NULL");
         return NULL;
     }
     memset(bridge->reconsolidation_windows, 0,
@@ -1446,6 +1458,7 @@ int pr_predictive_bridge_get_pending_actions(
     size_t max_actions
 ) {
     if (!bridge || !actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_predictive_bridge_get_pending_actions: required parameter is NULL (bridge, actions)");
         return -1;
         BRIDGE_BBB_VALIDATE(bridge, actions, sizeof(*actions));
     }
@@ -1671,6 +1684,7 @@ void pr_predictive_bridge_print_state(const pr_predictive_bridge_t* bridge) {
 
 bool pr_predictive_bridge_is_ready(const pr_predictive_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_predictive_bridge_is_ready: bridge is NULL");
         return false;
     }
 

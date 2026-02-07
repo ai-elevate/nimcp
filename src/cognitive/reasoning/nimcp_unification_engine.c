@@ -108,12 +108,14 @@ bool brain_unify_terms(
 {
     if (!nimcp_validate_pointer(brain, "brain") || !brain_has_symbolic_logic(brain)) {
         set_error("Brain is NULL or no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_unify_terms: required parameter is NULL (nimcp_validate_pointer, brain_has_symbolic_logic)");
         return false;
     }
 
     if (!nimcp_validate_pointer(term1, "term1") || !nimcp_validate_pointer(term2, "term2") ||
         !nimcp_validate_pointer(result, "result")) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_unify_terms: required parameter is NULL (nimcp_validate_pointer, nimcp_validate_pointer)");
         return false;
     }
 
@@ -155,12 +157,14 @@ bool brain_apply_substitution(
 {
     if (!nimcp_validate_pointer(brain, "brain") || !brain_has_symbolic_logic(brain)) {
         set_error("Brain is NULL or no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_substitution: required parameter is NULL (nimcp_validate_pointer, brain_has_symbolic_logic)");
         return false;
     }
 
     if (!nimcp_validate_pointer(term, "term") || !nimcp_validate_pointer(bindings, "bindings") ||
         !nimcp_validate_pointer(result, "result")) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_substitution: required parameter is NULL (nimcp_validate_pointer, nimcp_validate_pointer)");
         return false;
     }
 
@@ -175,6 +179,7 @@ bool brain_apply_substitution(
     logical_term_t* current = logic_term_create(term->type, term->name);
     if (!current) {
         set_error("Failed to copy term");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_apply_substitution: current is NULL");
         return false;
     }
 

@@ -175,6 +175,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     pool->integration_pool = memory_pool_create(&pool_config);
     if (!pool->integration_pool) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "buffer_pool_create: pool->integration_pool is NULL");
         return NULL;
     }
 
@@ -183,6 +184,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
     if (!pool->window_pool) {
         memory_pool_destroy(pool->integration_pool);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "buffer_pool_create: pool->window_pool is NULL");
         return NULL;
     }
 
@@ -192,6 +194,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
         memory_pool_destroy(pool->integration_pool);
         memory_pool_destroy(pool->window_pool);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "buffer_pool_create: pool->accumulator_pool is NULL");
         return NULL;
     }
 
@@ -210,6 +213,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
             memory_pool_destroy(pool->window_pool);
             memory_pool_destroy(pool->accumulator_pool);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_create: required parameter is NULL (integration_template, window_template, accumulator_template)");
             return NULL;
         }
 
@@ -233,6 +237,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
             memory_pool_destroy(pool->window_pool);
             memory_pool_destroy(pool->accumulator_pool);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_create: required parameter is NULL (pool->integration_cow, pool->window_cow, pool->accumulator_cow)");
             return NULL;
         }
     }
@@ -247,6 +252,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
         memory_pool_destroy(pool->window_pool);
         memory_pool_destroy(pool->accumulator_pool);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_create: pool->channels is NULL");
         return NULL;
     }
 
@@ -265,6 +271,7 @@ NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config
         memory_pool_destroy(pool->window_pool);
         memory_pool_destroy(pool->accumulator_pool);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "buffer_pool_create: validation failed");
         return NULL;
     }
 
@@ -318,7 +325,10 @@ NIMCP_EXPORT integration_buffer_t buffer_pool_acquire_integration_buffer(
     size_t channel_id,
     bool needs_private
 ) {
-    if (!pool || channel_id >= pool->config.max_channels) return NULL;
+    if (!pool || channel_id >= pool->config.max_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_integration_buffer: pool is NULL");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -337,6 +347,7 @@ NIMCP_EXPORT integration_buffer_t buffer_pool_acquire_integration_buffer(
             channel->integration_handle = cow_acquire(pool->integration_cow);
             if (!channel->integration_handle) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_integration_buffer: channel->integration_handle is NULL");
                 return NULL;
             }
         } else {
@@ -344,6 +355,7 @@ NIMCP_EXPORT integration_buffer_t buffer_pool_acquire_integration_buffer(
             void* buffer = memory_pool_acquire(pool->integration_pool);
             if (!buffer) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "buffer_pool_acquire_integration_buffer: buffer is NULL");
                 return NULL;
             }
             // Store as opaque handle (cast to cow_handle_t for consistency)
@@ -358,6 +370,7 @@ NIMCP_EXPORT integration_buffer_t buffer_pool_acquire_integration_buffer(
             void* private_data = cow_write(channel->integration_handle);
             if (!private_data) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_integration_buffer: private_data is NULL");
                 return NULL;
             }
             pool->cow_triggers++;
@@ -385,7 +398,10 @@ NIMCP_EXPORT sliding_window_t buffer_pool_acquire_sliding_window(
     size_t channel_id,
     bool needs_private
 ) {
-    if (!pool || channel_id >= pool->config.max_channels) return NULL;
+    if (!pool || channel_id >= pool->config.max_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_sliding_window: pool is NULL");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -402,12 +418,14 @@ NIMCP_EXPORT sliding_window_t buffer_pool_acquire_sliding_window(
             channel->window_handle = cow_acquire(pool->window_cow);
             if (!channel->window_handle) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_sliding_window: channel->window_handle is NULL");
                 return NULL;
             }
         } else {
             void* buffer = memory_pool_acquire(pool->window_pool);
             if (!buffer) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_sliding_window: buffer is NULL");
                 return NULL;
             }
             channel->window_handle = (cow_handle_t)buffer;
@@ -441,7 +459,10 @@ NIMCP_EXPORT temporal_accumulator_t buffer_pool_acquire_temporal_accumulator(
     size_t channel_id,
     bool needs_private
 ) {
-    if (!pool || channel_id >= pool->config.max_channels) return NULL;
+    if (!pool || channel_id >= pool->config.max_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "buffer_pool_acquire_temporal_accumulator: pool is NULL");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -458,12 +479,14 @@ NIMCP_EXPORT temporal_accumulator_t buffer_pool_acquire_temporal_accumulator(
             channel->accumulator_handle = cow_acquire(pool->accumulator_cow);
             if (!channel->accumulator_handle) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_temporal_accumulator: channel->accumulator_handle is NULL");
                 return NULL;
             }
         } else {
             void* buffer = memory_pool_acquire(pool->accumulator_pool);
             if (!buffer) {
                 nimcp_platform_mutex_unlock(&pool->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_acquire_temporal_accumulator: buffer is NULL");
                 return NULL;
             }
             channel->accumulator_handle = (cow_handle_t)buffer;
@@ -526,7 +549,10 @@ NIMCP_EXPORT bool buffer_pool_cow_make_private(
     buffer_pool_t pool,
     size_t channel_id
 ) {
-    if (!pool || channel_id >= pool->num_channels) return false;
+    if (!pool || channel_id >= pool->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_pool_cow_make_private: pool is NULL");
+        return false;
+    }
     if (!pool->config.enable_cow) return true;  // Already private
 
     nimcp_platform_mutex_lock(&pool->mutex);
@@ -534,6 +560,7 @@ NIMCP_EXPORT bool buffer_pool_cow_make_private(
     channel_info_t* channel = &pool->channels[channel_id];
     if (!channel->active) {
         nimcp_platform_mutex_unlock(&pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_cow_make_private: channel->active is NULL");
         return false;
     }
 
@@ -564,8 +591,14 @@ NIMCP_EXPORT bool buffer_pool_is_channel_shared(
     buffer_pool_t pool,
     size_t channel_id
 ) {
-    if (!pool || channel_id >= pool->num_channels) return false;
-    if (!pool->config.enable_cow) return false;  // No CoW = private
+    if (!pool || channel_id >= pool->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_pool_is_channel_shared: pool is NULL");
+        return false;
+    }
+    if (!pool->config.enable_cow) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_is_channel_shared: pool->config is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -624,7 +657,10 @@ NIMCP_EXPORT bool buffer_pool_get_stats(
     buffer_pool_t pool,
     buffer_pool_stats_t* stats
 ) {
-    if (!pool || !stats) return false;
+    if (!pool || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer_pool_get_stats: required parameter is NULL (pool, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pool->mutex);
 
@@ -674,11 +710,15 @@ NIMCP_EXPORT bool buffer_pool_expand(
     buffer_pool_t pool,
     size_t additional_capacity
 ) {
-    if (!pool || additional_capacity == 0) return false;
+    if (!pool || additional_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_pool_expand: pool is NULL");
+        return false;
+    }
 
     // Not implemented - pools are fixed size for Phase 0
     // Will be implemented in Phase 1 if needed
     (void)additional_capacity;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "buffer_pool_expand: pool is NULL");
     return false;
 }
 

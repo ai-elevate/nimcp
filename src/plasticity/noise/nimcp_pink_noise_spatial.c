@@ -73,6 +73,7 @@ static bool cholesky_decomposition(
                 }
                 float diag = matrix[i * n + j] - sum;
                 if (diag < 0.0f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decomposition: validation failed");
                     return false;
                 }
                 lower[i * n + j] = sqrtf(diag);
@@ -82,6 +83,7 @@ static bool cholesky_decomposition(
                 }
                 float d = lower[j * n + j];
                 if (fabsf(d) < 1e-10f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decomposition: validation failed");
                     return false;
                 }
                 lower[i * n + j] = (matrix[i * n + j] - sum) / d;
@@ -128,6 +130,7 @@ static bool cholesky_decomposition_strided(
                 }
                 float diag = matrix[i * stride + j] - sum;
                 if (diag < 0.0f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decomposition_strided: validation failed");
                     return false;
                 }
                 lower[i * stride + j] = sqrtf(diag);
@@ -137,6 +140,7 @@ static bool cholesky_decomposition_strided(
                 }
                 float d = lower[j * stride + j];
                 if (fabsf(d) < 1e-10f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decomposition_strided: validation failed");
                     return false;
                 }
                 lower[i * stride + j] = (matrix[i * stride + j] - sum) / d;
@@ -163,7 +167,10 @@ static bool cholesky_decomposition_strided(
  * @return 0 on success, -1 on failure
  */
 static int ensure_matrix_capacity(pink_spatial_t* spatial, uint32_t required_capacity) {
-    if (!spatial) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_matrix_capacity: spatial is NULL");
+        return -1;
+    }
 
     // Already have enough capacity
     if (required_capacity <= spatial->matrix_capacity) {
@@ -181,6 +188,7 @@ static int ensure_matrix_capacity(pink_spatial_t* spatial, uint32_t required_cap
     if (new_capacity < required_capacity) {
         NIMCP_LOGGING_ERROR("Cannot allocate %u regions, max is %u",
                            required_capacity, PINK_SPATIAL_MAX_REGIONS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_matrix_capacity: validation failed");
         return -1;
     }
 
@@ -230,6 +238,7 @@ static int ensure_matrix_capacity(pink_spatial_t* spatial, uint32_t required_cap
         if (new_correlation) nimcp_free(new_correlation);
         if (new_cholesky) nimcp_free(new_cholesky);
         NIMCP_LOGGING_ERROR("Failed to allocate matrices for %u regions", new_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_matrix_capacity: validation failed");
         return -1;
     }
 
@@ -392,6 +401,7 @@ pink_spatial_t* pink_spatial_create(const pink_spatial_config_t* config) {
         spatial->generators[i] = pink_noise_create(&gen_config);
         if (!spatial->generators[i]) {
             pink_spatial_destroy(spatial);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pink_spatial_create: spatial->generators is NULL");
             return NULL;
         }
     }
@@ -448,6 +458,7 @@ int pink_spatial_compute_correlations(pink_spatial_t* spatial) {
     // Ensure we have capacity
     if (n > stride) {
         if (ensure_matrix_capacity(spatial, n) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_spatial_compute_correlations: validation failed");
             return -1;
         }
         stride = spatial->matrix_capacity;
@@ -659,6 +670,7 @@ int pink_spatial_add_region(
     // Ensure we have capacity for the new region BEFORE adding it
     if (ensure_matrix_capacity(spatial, new_count) != 0) {
         NIMCP_LOGGING_ERROR("Failed to expand matrices for region %s", name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_spatial_add_region: validation failed");
         return -1;
     }
 
@@ -676,7 +688,10 @@ int pink_spatial_add_region(
     gen_config.seed = spatial->config.seed + idx;
 
     spatial->generators[idx] = pink_noise_create(&gen_config);
-    if (!spatial->generators[idx]) return -1;
+    if (!spatial->generators[idx]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_add_region: spatial->generators is NULL");
+        return -1;
+    }
 
     spatial->config.num_regions++;
 
@@ -769,6 +784,9 @@ int pink_spatial_connect_memory_manager(
 }
 
 bool pink_spatial_has_memory_manager(const pink_spatial_t* spatial) {
-    if (!spatial) return false;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_has_memory_manager: spatial is NULL");
+        return false;
+    }
     return spatial->mem_manager != NULL;
 }

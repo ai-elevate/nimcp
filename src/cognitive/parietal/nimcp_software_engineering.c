@@ -174,6 +174,7 @@ software_eng_config_t software_eng_default_config(void) {
 bool software_eng_validate_config(const software_eng_config_t* config) {
     if (!config) {
         set_sweng_error("Null config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_validate_config: config is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -182,10 +183,12 @@ bool software_eng_validate_config(const software_eng_config_t* config) {
 
     if (config->complexity_threshold <= 0.0f) {
         set_sweng_error("Invalid complexity threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_validate_config: validation failed");
         return false;
     }
     if (config->method_length_limit == 0) {
         set_sweng_error("Method length limit must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_validate_config: config->method_length_limit is zero");
         return false;
     }
     return true;
@@ -207,12 +210,14 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
     software_eng_config_t cfg = config ? *config : software_eng_default_config();
 
     if (!software_eng_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_create_custom: software_eng_validate_config is NULL");
         return NULL;
     }
 
     software_eng_t* se = nimcp_calloc(1, sizeof(software_eng_t));
     if (!se) {
         set_sweng_error("Failed to allocate software_eng struct");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_custom: se is NULL");
         return NULL;
     }
 
@@ -225,6 +230,7 @@ software_eng_t* software_eng_create_custom(const software_eng_config_t* config) 
     if (!se->lock) {
         set_sweng_error("Failed to create mutex");
         nimcp_free(se);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_custom: se->lock is NULL");
         return NULL;
     }
 
@@ -255,6 +261,7 @@ int software_eng_analyze_complexity(
 ) {
     if (!se || !traits || !result) {
         set_sweng_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_analyze_complexity: required parameter is NULL (se, traits, result)");
         return -1;
     }
 
@@ -355,7 +362,10 @@ const char* software_eng_complexity_to_string(complexity_class_t complexity) {
 
 int software_eng_compare_complexity(complexity_class_t a, complexity_class_t b) {
     /* Lower enum value = better complexity */
-    if ((int)a < (int)b) return -1;
+    if ((int)a < (int)b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_compare_complexity: validation failed");
+        return -1;
+    }
     if ((int)a > (int)b) return 1;
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_compare", 0.0f);
@@ -412,6 +422,7 @@ int software_eng_detect_pattern(
 ) {
     if (!se || !structure || !result) {
         set_sweng_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_detect_pattern: required parameter is NULL (se, structure, result)");
         return -1;
     }
 
@@ -712,8 +723,14 @@ void software_eng_init_graph(dep_graph_t* graph) {
 }
 
 int software_eng_add_node(dep_graph_t* graph, const char* name) {
-    if (!graph || !name) return -1;
-    if (graph->num_nodes >= SWENG_MAX_GRAPH_NODES) return -1;
+    if (!graph || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_add_node: required parameter is NULL (graph, name)");
+        return -1;
+    }
+    if (graph->num_nodes >= SWENG_MAX_GRAPH_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "software_eng_add_node: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_add_nod", 0.0f);
@@ -730,15 +747,24 @@ int software_eng_add_node(dep_graph_t* graph, const char* name) {
 }
 
 int software_eng_add_dependency(dep_graph_t* graph, uint32_t from_id, uint32_t to_id) {
-    if (!graph) return -1;
-    if (from_id >= graph->num_nodes || to_id >= graph->num_nodes) return -1;
+    if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_add_dependency: graph is NULL");
+        return -1;
+    }
+    if (from_id >= graph->num_nodes || to_id >= graph->num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_add_dependency: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_add_dep", 0.0f);
 
 
     dep_node_t* node = &graph->nodes[from_id];
-    if (node->num_dependencies >= SWENG_MAX_GRAPH_NODES) return -1;
+    if (node->num_dependencies >= SWENG_MAX_GRAPH_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "software_eng_add_dependency: capacity exceeded");
+        return -1;
+    }
 
     node->dependencies[node->num_dependencies++] = to_id;
     graph->nodes[to_id].dependents_count++;
@@ -760,12 +786,16 @@ static bool dfs_has_cycle(dep_graph_t* graph, uint32_t node, uint8_t* visited, u
     }
 
     rec_stack[node] = 0;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dfs_has_cycle: visited is NULL");
     return false;
 }
 
 /* Internal unlocked version of detect_cycles */
 static bool detect_cycles_unlocked(dep_graph_t* graph) {
-    if (!graph) return false;
+    if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_cycles_unlocked: graph is NULL");
+        return false;
+    }
 
     uint8_t visited[SWENG_MAX_GRAPH_NODES] = {0};
     uint8_t rec_stack[SWENG_MAX_GRAPH_NODES] = {0};
@@ -788,7 +818,10 @@ static bool detect_cycles_unlocked(dep_graph_t* graph) {
 }
 
 bool software_eng_detect_cycles(software_eng_t* se, dep_graph_t* graph) {
-    if (!se || !graph) return false;
+    if (!se || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_detect_cycles: required parameter is NULL (se, graph)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_detect_", 0.0f);
@@ -802,7 +835,10 @@ bool software_eng_detect_cycles(software_eng_t* se, dep_graph_t* graph) {
 }
 
 int software_eng_analyze_dependencies(software_eng_t* se, dep_graph_t* graph) {
-    if (!se || !graph) return -1;
+    if (!se || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_analyze_dependencies: required parameter is NULL (se, graph)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_analyze", 0.0f);
@@ -939,8 +975,14 @@ int software_eng_topological_sort(
     uint32_t* order,
     uint32_t max_order
 ) {
-    if (!se || !graph || !order) return -1;
-    if (graph->has_cycles) return -1;
+    if (!se || !graph || !order) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_topological_sort: required parameter is NULL (se, graph, order)");
+        return -1;
+    }
+    if (graph->has_cycles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_topological_sort: validation failed");
+        return -1;
+    }
     if (graph->num_nodes == 0) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -987,6 +1029,7 @@ int software_eng_topological_sort(
     nimcp_mutex_unlock(se->lock);
 
     if (result == NIMCP_SORT_ERROR_CYCLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "software_eng_topological_sort: validation failed");
         return -1;
     }
 
@@ -1049,7 +1092,10 @@ float software_eng_instability(float afferent_coupling, float efferent_coupling)
  * ============================================================================ */
 
 int software_eng_set_inflammation(software_eng_t* se, float level) {
-    if (!se) return -1;
+    if (!se) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_set_inflammation: se is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_set_inf", 0.0f);
@@ -1063,7 +1109,10 @@ int software_eng_set_inflammation(software_eng_t* se, float level) {
 }
 
 int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
-    if (!se) return -1;
+    if (!se) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_set_sleep_deprivation: se is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_set_sle", 0.0f);
@@ -1081,7 +1130,10 @@ int software_eng_set_sleep_deprivation(software_eng_t* se, float level) {
  * ============================================================================ */
 
 int software_eng_get_stats(const software_eng_t* se, software_eng_stats_t* stats) {
-    if (!se || !stats) return -1;
+    if (!se || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_get_stats: required parameter is NULL (se, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_get_sta", 0.0f);
@@ -1150,7 +1202,10 @@ se_intuition_config_t software_eng_intuition_default_config(void) {
 }
 
 int software_eng_enable_intuition(software_eng_t* se, const se_intuition_config_t* config) {
-    if (!se) return -1;
+    if (!se) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_enable_intuition: se is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_enable_", 0.0f);
 
@@ -1160,7 +1215,10 @@ int software_eng_enable_intuition(software_eng_t* se, const se_intuition_config_
 }
 
 int software_eng_disable_intuition(software_eng_t* se) {
-    if (!se) return -1;
+    if (!se) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_disable_intuition: se is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_disable", 0.0f);
 
@@ -1206,7 +1264,10 @@ const char* software_eng_trend_to_string(se_trend_t trend) {
 }
 
 se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t initial_capacity) {
-    if (!metric_name || initial_capacity == 0) return NULL;
+    if (!metric_name || initial_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_series: metric_name is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_create_", 0.0f);
@@ -1224,6 +1285,7 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
     series->points = nimcp_calloc(initial_capacity, sizeof(se_metric_point_t));
     if (!series->points) {
         nimcp_free(series);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_create_series: series->points is NULL");
         return NULL;
     }
 
@@ -1248,7 +1310,10 @@ int software_eng_add_data_point(
     float value,
     float confidence
 ) {
-    if (!series) return -1;
+    if (!series) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "software_eng_add_data_point: series is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     software_engineering_heartbeat("software_eng_software_eng_add_dat", 0.0f);
@@ -1257,7 +1322,10 @@ int software_eng_add_data_point(
     if (series->num_points >= series->capacity) {
         uint32_t new_cap = series->capacity * 2;
         se_metric_point_t* new_points = nimcp_realloc(series->points, new_cap * sizeof(se_metric_point_t));
-        if (!new_points) return -1;
+        if (!new_points) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "software_eng_add_data_point: new_points is NULL");
+            return -1;
+        }
         series->points = new_points;
         series->capacity = new_cap;
     }

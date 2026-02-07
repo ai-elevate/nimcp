@@ -221,6 +221,7 @@ hypo_ibus_t hypo_ibus_create(const hypo_ibus_config_t* config) {
     bus->mutex = nimcp_mutex_create(&attr);
     if (!bus->mutex) {
         nimcp_free(bus);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_ibus_create: bus->mutex is NULL");
         return NULL;
     }
 
@@ -305,6 +306,7 @@ int hypo_ibus_subscribe(
 
     if (slot < 0) {
         nimcp_mutex_unlock(bus->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe: validation failed");
         return -1;  /* No free slots */
     }
 
@@ -356,6 +358,7 @@ int hypo_ibus_subscribe_to_module(
 
     if (slot < 0) {
         nimcp_mutex_unlock(bus->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe_to_module: validation failed");
         return -1;
     }
 
@@ -399,6 +402,7 @@ int hypo_ibus_unsubscribe(hypo_ibus_t bus, int subscription_id) {
     }
 
     nimcp_mutex_unlock(bus->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_unsubscribe: validation failed");
     return -1;
 }
 
@@ -669,6 +673,7 @@ int hypo_ibus_register_modulation(
 
     if (slot < 0) {
         nimcp_mutex_unlock(bus->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_register_modulation: validation failed");
         return -1;
     }
 
@@ -794,7 +799,10 @@ int hypo_ibus_reset_stats(hypo_ibus_t bus) {
 }
 
 bool hypo_ibus_has_subscribers(hypo_ibus_t bus, hypo_internal_module_t module) {
-    if (!bus || module >= HYPO_IMOD_COUNT) return false;
+    if (!bus || module >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_ibus_has_subscribers: bus is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 

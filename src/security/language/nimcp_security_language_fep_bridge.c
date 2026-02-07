@@ -143,6 +143,7 @@ int sec_lang_fep_get_config(
     sec_lang_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -160,6 +161,7 @@ int sec_lang_fep_set_config(
     const sec_lang_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -187,6 +189,7 @@ sec_lang_fep_bridge_t* sec_lang_fep_create(
     /* Validate required parameters */
     if (!sec_lang || !fep_system) {
         NIMCP_LOGGING_ERROR("Security Language FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_create: required parameter is NULL (sec_lang, fep_system)");
         return NULL;
     }
 
@@ -196,6 +199,7 @@ sec_lang_fep_bridge_t* sec_lang_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security Language FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_lang_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -218,6 +222,7 @@ sec_lang_fep_bridge_t* sec_lang_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security Language FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -342,6 +347,7 @@ int sec_lang_fep_compute_effects(sec_lang_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -471,6 +477,7 @@ int sec_lang_fep_update_from_detection(
     const security_language_detection_result_t* detection
 ) {
     if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_update_from_detection: required parameter is NULL (bridge, detection)");
         return -1;
     }
 
@@ -611,6 +618,7 @@ int sec_lang_fep_update_from_output(
     const security_language_output_validation_t* validation
 ) {
     if (!bridge || !validation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_update_from_output: required parameter is NULL (bridge, validation)");
         return -1;
     }
 
@@ -719,6 +727,7 @@ int sec_lang_fep_select_action(
     sec_lang_fep_action_t* action
 ) {
     if (!bridge || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_select_action: required parameter is NULL (bridge, action)");
         return -1;
     }
 
@@ -748,6 +757,7 @@ int sec_lang_fep_get_action_efe(
     float* efe
 ) {
     if (!bridge || !efe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_action_efe: required parameter is NULL (bridge, efe)");
         return -1;
     }
 
@@ -1058,6 +1068,7 @@ int sec_lang_fep_get_fep_effects(
     fep_to_sec_lang_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->fep_effects;
@@ -1069,6 +1080,7 @@ int sec_lang_fep_get_sec_effects(
     sec_lang_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_sec_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->sec_effects;
@@ -1080,6 +1092,7 @@ int sec_lang_fep_get_state(
     sec_lang_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
     *state = bridge->state;
@@ -1091,6 +1104,7 @@ int sec_lang_fep_get_stats(
     sec_lang_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
     *stats = bridge->stats;
@@ -1228,10 +1242,12 @@ int sec_lang_fep_broadcast_threat(
     sec_lang_fep_threat_category_t category
 ) {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_broadcast_threat: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
     if (!bridge->base.bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_lang_fep_broadcast_threat: bridge->base is NULL");
         return -1;
     }
 

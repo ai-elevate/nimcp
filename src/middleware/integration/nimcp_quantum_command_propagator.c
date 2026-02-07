@@ -71,6 +71,7 @@ static int map_target_to_brain_region_type(command_target_region_t target) {
         case TARGET_MOTOR_CORTEX:
             return REGION_MOTOR_M1;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "map_target_to_brain_region_type: operation failed");
             return -1;  // Not mappable
     }
 }
@@ -102,11 +103,13 @@ static bool apply_command_to_neuron(
     const middleware_command_t* command
 ) {
     if (!network || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_command_to_neuron: required parameter is NULL (network, command)");
         return false;
     }
 
     neuron_t* neuron = neural_network_get_neuron(network, neuron_id);
     if (!neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_command_to_neuron: neuron is NULL");
         return false;
     }
 
@@ -176,6 +179,7 @@ static bool apply_command_to_neuron(
 
         default:
             LOG_DEBUG("Unknown command type %d for neuron %u", command->type, neuron_id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_command_to_neuron: operation failed");
             return false;
     }
 
@@ -427,6 +431,7 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     // Guard: NULL checks
     if (!brain || !config) {
         LOG_ERROR("quantum_command_propagator_create_custom: NULL brain or config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_command_propagator_create_custom: required parameter is NULL (brain, config)");
         return NULL;
     }
 
@@ -459,6 +464,7 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     if (!qcp->base_network) {
         LOG_ERROR("quantum_command_propagator_create_custom: Failed to get base network");
         nimcp_free(qcp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_command_propagator_create_custom: qcp->base_network is NULL");
         return NULL;
     }
 
@@ -467,6 +473,7 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     if (!qcp->probability_buffer) {
         LOG_ERROR("quantum_command_propagator_create_custom: Failed to allocate probability buffer");
         nimcp_free(qcp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_command_propagator_create_custom: qcp->probability_buffer is NULL");
         return NULL;
     }
 
@@ -867,6 +874,7 @@ bool quantum_command_propagator_get_metrics(
     command_propagation_metrics_t* metrics
 ) {
     if (!qcp || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_command_propagator_get_metrics: required parameter is NULL (qcp, metrics)");
         return false;
     }
 

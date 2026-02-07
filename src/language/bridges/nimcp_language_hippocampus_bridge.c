@@ -103,6 +103,7 @@ static int find_memory_slot(language_hippocampus_bridge_t* bridge)
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (!bridge->memories[i].is_valid) return (int)i;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_slot: bridge->memories is NULL");
     return -1;
 }
 
@@ -113,6 +114,7 @@ static word_memory_entry_t* find_memory_by_id(language_hippocampus_bridge_t* bri
             return &bridge->memories[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_by_id: validation failed");
     return NULL;
 }
 
@@ -124,6 +126,7 @@ static word_memory_entry_t* find_memory_by_word(language_hippocampus_bridge_t* b
             return &bridge->memories[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_by_word: operation failed");
     return NULL;
 }
 
@@ -195,6 +198,7 @@ language_hippocampus_bridge_t* language_hippocampus_bridge_create(
 
     if (!bridge->memories || !bridge->associations || !bridge->feature_buffer) {
         language_hippocampus_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_bridge_create: required parameter is NULL (bridge->memories, bridge->associations, bridge->feature_buffer)");
         return NULL;
     }
 
@@ -227,7 +231,10 @@ void language_hippocampus_bridge_destroy(language_hippocampus_bridge_t* bridge)
 
 int language_hippocampus_bridge_reset(language_hippocampus_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (bridge->memories[i].is_valid && bridge->memories[i].memory.semantic_features) {
@@ -251,21 +258,30 @@ int language_hippocampus_bridge_reset(language_hippocampus_bridge_t* bridge)
 
 int language_hippocampus_connect_broca(language_hippocampus_bridge_t* bridge, broca_adapter_t* broca)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_connect_broca: bridge is NULL");
+        return -1;
+    }
     bridge->broca = broca;
     return 0;
 }
 
 int language_hippocampus_connect_wernicke(language_hippocampus_bridge_t* bridge, wernicke_adapter_t* wernicke)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_connect_wernicke: bridge is NULL");
+        return -1;
+    }
     bridge->wernicke = wernicke;
     return 0;
 }
 
 int language_hippocampus_connect_bio_async(language_hippocampus_bridge_t* bridge, bio_router_t router)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->router = router;
     return 0;
 }
@@ -276,7 +292,10 @@ int language_hippocampus_connect_bio_async(language_hippocampus_bridge_t* bridge
 
 int language_hippocampus_bridge_update(language_hippocampus_bridge_t* bridge, uint64_t timestamp_ms)
 {
-    if (!bridge || !bridge->is_initialized) return -1;
+    if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
+        return -1;
+    }
 
     bridge->last_update_ms = timestamp_ms;
     apply_decay(bridge);
@@ -356,7 +375,10 @@ uint32_t language_hippocampus_encode_word(language_hippocampus_bridge_t* bridge,
 int language_hippocampus_encode_association(language_hippocampus_bridge_t* bridge,
     uint32_t word_a_id, uint32_t word_b_id, float strength, const char* relation_type)
 {
-    if (!bridge || bridge->association_count >= MAX_ASSOCIATIONS) return -1;
+    if (!bridge || bridge->association_count >= MAX_ASSOCIATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_hippocampus_encode_association: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->association_count; i++) {
         if (bridge->associations[i].is_valid &&
@@ -385,10 +407,16 @@ int language_hippocampus_encode_association(language_hippocampus_bridge_t* bridg
 int language_hippocampus_strengthen_memory(language_hippocampus_bridge_t* bridge,
     uint32_t memory_id, float strength_boost)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_strengthen_memory: bridge is NULL");
+        return -1;
+    }
 
     word_memory_entry_t* entry = find_memory_by_id(bridge, memory_id);
-    if (!entry) return -1;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_strengthen_memory: entry is NULL");
+        return -1;
+    }
 
     entry->memory.strength = fminf(1.0f, entry->memory.strength + strength_boost);
     entry->memory.last_access_ms = nimcp_time_now_us() / 1000;
@@ -404,7 +432,10 @@ int language_hippocampus_strengthen_memory(language_hippocampus_bridge_t* bridge
 int language_hippocampus_retrieve(language_hippocampus_bridge_t* bridge,
     const retrieval_request_t* request, lh_retrieval_result_t* result)
 {
-    if (!bridge || !request || !result) return -1;
+    if (!bridge || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve: required parameter is NULL (bridge, request, result)");
+        return -1;
+    }
 
     bridge->state = LH_STATE_RETRIEVING;
     bridge->stats.retrieval_attempts++;
@@ -416,6 +447,7 @@ int language_hippocampus_retrieve(language_hippocampus_bridge_t* bridge,
 
     if (!result->memories || !result->similarities) {
         bridge->state = LH_STATE_IDLE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve: required parameter is NULL (result->memories, result->similarities)");
         return -1;
     }
 
@@ -470,10 +502,16 @@ int language_hippocampus_retrieve(language_hippocampus_bridge_t* bridge,
 int language_hippocampus_retrieve_by_word(language_hippocampus_bridge_t* bridge,
     const char* word, word_memory_t* memory)
 {
-    if (!bridge || !word || !memory) return -1;
+    if (!bridge || !word || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_retrieve_by_word: required parameter is NULL (bridge, word, memory)");
+        return -1;
+    }
 
     word_memory_entry_t* entry = find_memory_by_word(bridge, word);
-    if (!entry) return -1;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve_by_word: entry is NULL");
+        return -1;
+    }
 
     *memory = entry->memory;
     entry->memory.last_access_ms = nimcp_time_now_us() / 1000;
@@ -485,7 +523,10 @@ int language_hippocampus_retrieve_by_word(language_hippocampus_bridge_t* bridge,
 int language_hippocampus_retrieve_associations(language_hippocampus_bridge_t* bridge,
     uint32_t word_id, semantic_association_t* associations, uint32_t max_associations)
 {
-    if (!bridge || !associations) return -1;
+    if (!bridge || !associations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_retrieve_associations: required parameter is NULL (bridge, associations)");
+        return -1;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < bridge->association_count && count < max_associations; i++) {
@@ -502,7 +543,10 @@ int language_hippocampus_retrieve_associations(language_hippocampus_bridge_t* br
 int language_hippocampus_pattern_complete(language_hippocampus_bridge_t* bridge,
     const char* partial_word, char* completed_words, uint32_t max_completions)
 {
-    if (!bridge || !partial_word || !completed_words) return -1;
+    if (!bridge || !partial_word || !completed_words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_pattern_complete: required parameter is NULL (bridge, partial_word, completed_words)");
+        return -1;
+    }
 
     uint32_t count = 0;
     size_t partial_len = strlen(partial_word);
@@ -525,7 +569,10 @@ int language_hippocampus_pattern_complete(language_hippocampus_bridge_t* bridge,
 
 int language_hippocampus_trigger_consolidation(language_hippocampus_bridge_t* bridge, float strength_threshold)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_trigger_consolidation: bridge is NULL");
+        return -1;
+    }
 
     bridge->state = LH_STATE_CONSOLIDATING;
     uint32_t consolidated = 0;
@@ -560,7 +607,10 @@ int language_hippocampus_trigger_consolidation(language_hippocampus_bridge_t* br
 int language_hippocampus_trigger_replay(language_hippocampus_bridge_t* bridge,
     uint32_t num_memories, bool reverse_order)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_trigger_replay: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->hippocampus) {
         hippocampus_trigger_replay(bridge->hippocampus, reverse_order, num_memories);
@@ -572,7 +622,10 @@ int language_hippocampus_trigger_replay(language_hippocampus_bridge_t* bridge,
 
 bool language_hippocampus_is_consolidated(const language_hippocampus_bridge_t* bridge, uint32_t memory_id)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_is_consolidated: bridge is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (bridge->memories[i].is_valid && bridge->memories[i].memory.memory_id == memory_id) {
@@ -589,7 +642,10 @@ bool language_hippocampus_is_consolidated(const language_hippocampus_bridge_t* b
 int language_hippocampus_get_memory(const language_hippocampus_bridge_t* bridge,
     uint32_t memory_id, word_memory_t* memory)
 {
-    if (!bridge || !memory) return -1;
+    if (!bridge || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_get_memory: required parameter is NULL (bridge, memory)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (bridge->memories[i].is_valid && bridge->memories[i].memory.memory_id == memory_id) {
@@ -597,12 +653,16 @@ int language_hippocampus_get_memory(const language_hippocampus_bridge_t* bridge,
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_get_memory: validation failed");
     return -1;
 }
 
 int language_hippocampus_delete_memory(language_hippocampus_bridge_t* bridge, uint32_t memory_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_delete_memory: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (bridge->memories[i].is_valid && bridge->memories[i].memory.memory_id == memory_id) {
@@ -614,6 +674,7 @@ int language_hippocampus_delete_memory(language_hippocampus_bridge_t* bridge, ui
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_delete_memory: validation failed");
     return -1;
 }
 
@@ -629,7 +690,10 @@ uint32_t language_hippocampus_get_memory_count(const language_hippocampus_bridge
 int language_hippocampus_set_encoding_callback(language_hippocampus_bridge_t* bridge,
     lh_encoding_callback_t callback, void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_set_encoding_callback: bridge is NULL");
+        return -1;
+    }
     bridge->encoding_callback = callback;
     bridge->encoding_callback_data = user_data;
     return 0;
@@ -638,7 +702,10 @@ int language_hippocampus_set_encoding_callback(language_hippocampus_bridge_t* br
 int language_hippocampus_set_retrieval_callback(language_hippocampus_bridge_t* bridge,
     lh_retrieval_callback_t callback, void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_set_retrieval_callback: bridge is NULL");
+        return -1;
+    }
     bridge->retrieval_callback = callback;
     bridge->retrieval_callback_data = user_data;
     return 0;
@@ -647,7 +714,10 @@ int language_hippocampus_set_retrieval_callback(language_hippocampus_bridge_t* b
 int language_hippocampus_set_consolidation_callback(language_hippocampus_bridge_t* bridge,
     lh_consolidation_callback_t callback, void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_set_consolidation_callback: bridge is NULL");
+        return -1;
+    }
     bridge->consolidation_callback = callback;
     bridge->consolidation_callback_data = user_data;
     return 0;
@@ -665,7 +735,10 @@ lh_bridge_state_t language_hippocampus_get_state(const language_hippocampus_brid
 int language_hippocampus_get_stats(const language_hippocampus_bridge_t* bridge,
     language_hippocampus_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -678,7 +751,10 @@ void language_hippocampus_reset_stats(language_hippocampus_bridge_t* bridge)
 int language_hippocampus_get_config(const language_hippocampus_bridge_t* bridge,
     language_hippocampus_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -686,7 +762,10 @@ int language_hippocampus_get_config(const language_hippocampus_bridge_t* bridge,
 int language_hippocampus_set_config(language_hippocampus_bridge_t* bridge,
     const language_hippocampus_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_hippocampus_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     bridge->config = *config;
     return 0;
 }

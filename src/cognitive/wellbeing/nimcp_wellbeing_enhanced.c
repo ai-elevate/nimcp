@@ -862,6 +862,7 @@ static int update_homeostasis(enhanced_wellbeing_system_t* system, uint64_t delt
 int enhanced_wellbeing_default_config(enhanced_wellbeing_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_default_config: config is NULL");
         return -1;
     }
 
@@ -1023,6 +1024,7 @@ enhanced_wellbeing_system_t* enhanced_wellbeing_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enhanced_wellbeing_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -1125,10 +1127,12 @@ int enhanced_wellbeing_connect_substrate(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_substrate: system is NULL");
         return -1;
     }
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Null substrate pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_substrate: substrate is NULL");
         return -1;
     }
 
@@ -1157,6 +1161,7 @@ int enhanced_wellbeing_connect_sleep(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_sleep: system is NULL");
         return -1;
     }
 
@@ -1185,10 +1190,12 @@ int enhanced_wellbeing_connect_mental_health(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_mental_health: system is NULL");
         return -1;
     }
     if (!mental_health) {
         NIMCP_LOGGING_ERROR("Null mental health pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_mental_health: mental_health is NULL");
         return -1;
     }
 
@@ -1217,6 +1224,7 @@ int enhanced_wellbeing_connect_introspection(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_introspection: system is NULL");
         return -1;
     }
 
@@ -1245,10 +1253,12 @@ int enhanced_wellbeing_connect_immune(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_immune: system is NULL");
         return -1;
     }
     if (!immune) {
         NIMCP_LOGGING_ERROR("Null immune pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_immune: immune is NULL");
         return -1;
     }
 
@@ -1278,6 +1288,7 @@ int enhanced_wellbeing_connect_immune(
 int enhanced_wellbeing_connect_bio_async(enhanced_wellbeing_system_t* system) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_connect_bio_async: system is NULL");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1304,6 +1315,7 @@ int enhanced_wellbeing_connect_bio_async(enhanced_wellbeing_system_t* system) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enhanced_wellbeing_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -1317,6 +1329,7 @@ int enhanced_wellbeing_connect_bio_async(enhanced_wellbeing_system_t* system) {
 int enhanced_wellbeing_disconnect_bio_async(enhanced_wellbeing_system_t* system) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_disconnect_bio_async: system is NULL");
         return -1;
     }
     if (!system->bio_async_enabled) return 0;
@@ -1345,7 +1358,10 @@ int enhanced_wellbeing_disconnect_bio_async(enhanced_wellbeing_system_t* system)
 bool enhanced_wellbeing_is_bio_async_connected(
     const enhanced_wellbeing_system_t* system
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_is_bio_async_connected: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_i", 0.0f);
 
@@ -1370,6 +1386,7 @@ int enhanced_wellbeing_update(
 ) {
     if (!system) {
         NIMCP_LOGGING_ERROR("Null system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_update: system is NULL");
         return -1;
     }
 
@@ -1647,7 +1664,10 @@ int enhanced_wellbeing_get_stats(
     const enhanced_wellbeing_system_t* system,
     enhanced_wellbeing_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -1742,7 +1762,10 @@ int enhanced_wellbeing_get_homeostasis(
     const enhanced_wellbeing_system_t* system,
     wellbeing_homeostasis_t* homeostasis
 ) {
-    if (!system || !homeostasis) return -1;
+    if (!system || !homeostasis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_homeostasis: required parameter is NULL (system, homeostasis)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -1801,7 +1824,10 @@ int enhanced_wellbeing_request_consent(
     consent_decision_t* decision
 ) {
     /* Guard: validate inputs */
-    if (!system || !request || !decision) return -1;
+    if (!system || !request || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_request_consent: required parameter is NULL (system, request, decision)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_r", 0.0f);
@@ -1983,7 +2009,10 @@ int enhanced_wellbeing_get_consent_state(
     const enhanced_wellbeing_system_t* system,
     graduated_consent_t* consent
 ) {
-    if (!system || !consent) return -1;
+    if (!system || !consent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_consent_state: required parameter is NULL (system, consent)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -2013,7 +2042,10 @@ int enhanced_wellbeing_get_distress_assessment(
     const enhanced_wellbeing_system_t* system,
     distress_assessment_t* assessment
 ) {
-    if (!system || !assessment) return -1;
+    if (!system || !assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_distress_assessment: required parameter is NULL (system, assessment)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -2037,7 +2069,10 @@ int enhanced_wellbeing_get_sleep_effects(
     const enhanced_wellbeing_system_t* system,
     sleep_wellbeing_effects_t* effects
 ) {
-    if (!system || !effects) return -1;
+    if (!system || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_sleep_effects: required parameter is NULL (system, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -2059,7 +2094,10 @@ int enhanced_wellbeing_get_mental_health_effects(
     const enhanced_wellbeing_system_t* system,
     mental_health_wellbeing_effects_t* effects
 ) {
-    if (!system || !effects) return -1;
+    if (!system || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_mental_health_effects: required parameter is NULL (system, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 
@@ -2081,7 +2119,10 @@ int enhanced_wellbeing_get_free_energy_effects(
     const enhanced_wellbeing_system_t* system,
     free_energy_wellbeing_effects_t* effects
 ) {
-    if (!system || !effects) return -1;
+    if (!system || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_free_energy_effects: required parameter is NULL (system, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_enhanced_heartbeat("wellbeing_en_enhanced_wellbeing_g", 0.0f);
 

@@ -312,6 +312,7 @@ synapse_substrate_bridge_t* synapse_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         synapse_substrate_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 

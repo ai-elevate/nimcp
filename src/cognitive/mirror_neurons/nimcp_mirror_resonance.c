@@ -273,6 +273,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
 
     if (max_channels == 0 || max_channels > NIMCP_RESONANCE_MAX_CHANNELS) {
         LOG_ERROR("Invalid max_channels: %u (max allowed: %u)", max_channels, NIMCP_RESONANCE_MAX_CHANNELS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_default_config: max_channels is zero");
         return NULL;
     }
 
@@ -296,6 +297,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     if (!resonance->channels) {
         LOG_ERROR("Failed to allocate channel storage");
         nimcp_free(resonance);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->channels is NULL");
         return NULL;
     }
     resonance->max_channels = max_channels;
@@ -308,6 +310,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
         LOG_ERROR("Failed to allocate action map");
         nimcp_free(resonance->channels);
         nimcp_free(resonance);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->action_map is NULL");
         return NULL;
     }
     for (uint32_t i = 0; i < resonance->action_map_size; i++) {
@@ -328,6 +331,7 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
         nimcp_free(resonance->action_map);
         nimcp_free(resonance->channels);
         nimcp_free(resonance);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_resonance_get_default_config: resonance->conflicts is NULL");
         return NULL;
     }
     resonance->num_conflicts = 0;

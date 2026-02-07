@@ -239,12 +239,14 @@ static bool read_sysfs_string(const char* dir, const char* file, char* buf, size
     FILE* fp = fopen(path, "r");
     if (!fp) {
         buf[0] = '\0';
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_sysfs_string: fp is NULL");
         return false;
     }
 
     if (fgets(buf, len, fp) == NULL) {
         buf[0] = '\0';
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_sysfs_string: validation failed");
         return false;
     }
 
@@ -265,6 +267,7 @@ static bool read_sysfs_string(const char* dir, const char* file, char* buf, size
 
 static bool cache_valid(portia_monitor_t monitor, uint64_t cache_time_us) {
     if (!monitor || !monitor->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_valid: required parameter is NULL (monitor, monitor->initialized)");
         return false;
     }
 
@@ -305,6 +308,7 @@ portia_monitor_t portia_monitor_init(const portia_monitor_config_t* config) {
         1, sizeof(portia_monitor_struct_t));
     if (!monitor) {
         LOG_ERROR("[%s] Failed to allocate monitor structure", MONITOR_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_monitor_init: monitor is NULL");
         return NULL;
     }
 
@@ -321,6 +325,7 @@ portia_monitor_t portia_monitor_init(const portia_monitor_config_t* config) {
     if (nimcp_platform_mutex_init(&monitor->mutex, false) != 0) {
         LOG_ERROR("[%s] Failed to initialize mutex", MONITOR_MODULE);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_monitor_init: validation failed");
         return NULL;
     }
     monitor->mutex_init = true;
@@ -503,6 +508,7 @@ static bool probe_thermal_zones(portia_monitor_t monitor) {
     DIR* dir = opendir(THERMAL_ZONE_PATH);
     if (!dir) {
         LOG_DEBUG("[%s] Cannot open thermal path: %s", MONITOR_MODULE, THERMAL_ZONE_PATH);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "probe_thermal_zones: dir is NULL");
         return false;
     }
 
@@ -551,6 +557,7 @@ static bool probe_thermal_zones(portia_monitor_t monitor) {
     closedir(dir);
 
     if (zone_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_thermal_zones: zone_count is zero");
         return false;
     }
 
@@ -595,6 +602,7 @@ static bool probe_battery(portia_monitor_t monitor) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_battery: capacity exceeded");
     return false;
 }
 
@@ -612,6 +620,7 @@ static bool probe_ac_adapter(portia_monitor_t monitor) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_ac_adapter: capacity exceeded");
     return false;
 }
 
@@ -635,6 +644,7 @@ static float read_thermal_zone(portia_monitor_t monitor, int zone_index) {
 static bool read_battery_info(portia_monitor_t monitor, portia_battery_status_t* status) {
     if (!monitor->has_battery) {
         status->available = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_battery_info: monitor->has_battery is NULL");
         return false;
     }
 
@@ -644,6 +654,7 @@ static bool read_battery_info(portia_monitor_t monitor, portia_battery_status_t*
     float cap = read_sysfs_float(monitor->battery_path, "capacity");
     if (cap < 0) {
         status->available = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_battery_info: validation failed");
         return false;
     }
     status->level_pct = cap;
@@ -735,6 +746,7 @@ static bool read_battery_info(portia_monitor_t monitor, portia_battery_status_t*
 static bool read_cpu_stats(portia_monitor_t monitor) {
     FILE* fp = fopen(PROC_STAT_PATH, "r");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_cpu_stats: fp is NULL");
         return false;
     }
 
@@ -746,6 +758,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
     // Read first line (total CPU)
     if (fgets(line, sizeof(line), fp) == NULL) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_cpu_stats: validation failed");
         return false;
     }
 
@@ -755,6 +768,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
                          &stats->iowait, &stats->irq, &stats->softirq, &stats->steal);
     if (matched < 4) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_cpu_stats: validation failed");
         return false;
     }
 
@@ -784,11 +798,14 @@ static bool probe_thermal_zones(portia_monitor_t monitor) {
 #ifdef __APPLE__
     // macOS: Could use IOKit SMC but requires more setup
     // For now, return false - thermal not easily available
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_thermal_zones: operation failed");
     return false;
 #elif defined(_WIN32)
     // Windows: Would need WMI
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_thermal_zones: operation failed");
     return false;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_thermal_zones: operation failed");
     return false;
 #endif
 }
@@ -797,6 +814,7 @@ static bool probe_battery(portia_monitor_t monitor) {
 #ifdef __APPLE__
     // macOS: IOPSCopyPowerSourcesInfo would work but requires CoreFoundation
     // Basic fallback using ioreg
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_battery: operation failed");
     return false;  // Would need IOKit linkage
 #elif defined(_WIN32)
     SYSTEM_POWER_STATUS sps;
@@ -808,6 +826,7 @@ static bool probe_battery(portia_monitor_t monitor) {
     }
     return false;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_battery: validation failed");
     return false;
 #endif
 }
@@ -817,6 +836,7 @@ static bool probe_ac_adapter(portia_monitor_t monitor) {
     monitor->has_ac = true;  // Windows always has AC check capability
     return true;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "probe_ac_adapter: operation failed");
     return false;
 #endif
 }
@@ -835,6 +855,7 @@ static bool read_battery_info(portia_monitor_t monitor, portia_battery_status_t*
     if (GetSystemPowerStatus(&sps)) {
         if (sps.BatteryFlag == 128) {
             status->available = false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_battery_info: validation failed");
             return false;
         }
 
@@ -861,6 +882,7 @@ static bool read_battery_info(portia_monitor_t monitor, portia_battery_status_t*
 #endif
 
     status->available = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_battery_info: operation failed");
     return false;
 }
 
@@ -877,6 +899,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
                                            &cpu_info,
                                            &num_cpu_info);
     if (kr != KERN_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_cpu_stats: validation failed");
         return false;
     }
 
@@ -904,6 +927,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
     // Windows: Use GetSystemTimes
     FILETIME idle, kernel, user;
     if (!GetSystemTimes(&idle, &kernel, &user)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_cpu_stats: GetSystemTimes is NULL");
         return false;
     }
 
@@ -925,6 +949,7 @@ static bool read_cpu_stats(portia_monitor_t monitor) {
 
 #else
     (void)monitor;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_cpu_stats: operation failed");
     return false;
 #endif
 }
@@ -997,6 +1022,7 @@ bool portia_monitor_cpu_temp_critical(
     }
 
     if (!portia_monitor_temp_valid(temp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_cpu_temp_critical: portia_monitor_temp_valid is NULL");
         return false;  // Can't determine, assume safe
     }
 
@@ -1080,6 +1106,7 @@ bool portia_monitor_get_battery_status(
 
     if (!(monitor->capabilities & PORTIA_MONITOR_CAP_BATTERY)) {
         status->available = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_get_battery_status: validation failed");
         return false;
     }
 
@@ -1109,11 +1136,13 @@ bool portia_monitor_get_battery_status(
 
 bool portia_monitor_on_battery(portia_monitor_t monitor) {
     if (!monitor || monitor->magic != MONITOR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_on_battery: monitor is NULL");
         return false;
     }
 
     portia_battery_status_t status;
     if (!portia_monitor_get_battery_status(monitor, &status)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_on_battery: portia_monitor_get_battery_status is NULL");
         return false;  // No battery or can't determine
     }
 
@@ -1132,6 +1161,7 @@ bool portia_monitor_battery_critical(
     }
 
     if (!portia_monitor_battery_valid(level)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_battery_critical: portia_monitor_battery_valid is NULL");
         return false;  // Can't determine, assume safe
     }
 
@@ -1191,6 +1221,7 @@ bool portia_monitor_get_cpu_load_detailed(
 
     if (!(monitor->capabilities & PORTIA_MONITOR_CAP_CPU_LOAD)) {
         load->available = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_get_cpu_load_detailed: validation failed");
         return false;
     }
 
@@ -1200,6 +1231,7 @@ bool portia_monitor_get_cpu_load_detailed(
     if (!read_cpu_stats(monitor)) {
         load->available = false;
         nimcp_platform_mutex_unlock(&monitor->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_get_cpu_load_detailed: read_cpu_stats is NULL");
         return false;
     }
 
@@ -1269,6 +1301,7 @@ bool portia_monitor_cpu_load_high(
     }
 
     if (!portia_monitor_load_valid(load)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_cpu_load_high: portia_monitor_load_valid is NULL");
         return false;  // Can't determine, assume safe
     }
 
@@ -1289,6 +1322,7 @@ bool portia_monitor_get_all(
         if (cpu_temp_c) *cpu_temp_c = PORTIA_MONITOR_TEMP_INVALID;
         if (battery_pct) *battery_pct = PORTIA_MONITOR_BATTERY_UNAVAILABLE;
         if (cpu_load_pct) *cpu_load_pct = PORTIA_MONITOR_LOAD_INVALID;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_monitor_get_all: validation failed");
         return false;
     }
 

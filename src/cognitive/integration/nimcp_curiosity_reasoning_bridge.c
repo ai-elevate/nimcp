@@ -156,6 +156,7 @@ static exploration_topic_t* find_topic_unlocked(
             return &bridge->topics[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_topic_unlocked: validation failed");
     return NULL;
 }
 
@@ -178,6 +179,7 @@ static exploration_topic_t* find_or_create_topic_unlocked(
 
     /* Check capacity */
     if (bridge->topic_count >= bridge->topic_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_topic_unlocked: capacity exceeded");
         return NULL;  /* At capacity */
     }
 
@@ -201,6 +203,7 @@ static exploration_topic_t* find_or_create_topic_unlocked(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_or_create_topic_unlocked: operation failed");
     return NULL;
 }
 
@@ -255,6 +258,7 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
         bridge->topic_capacity, sizeof(exploration_topic_t));
     if (!bridge->topics) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_reasoning_bridge_create: bridge->topics is NULL");
         return NULL;
     }
     bridge->topic_count = 0;
@@ -264,6 +268,7 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->topics);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_reasoning_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -310,6 +315,7 @@ int curiosity_reasoning_drive_exploration(
     float curiosity_level
 ) {
     if (!bridge || !bridge->initialized || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_drive_exploration: required parameter is NULL (bridge, bridge->initialized, context)");
         return -1;
     }
 
@@ -331,6 +337,7 @@ int curiosity_reasoning_drive_exploration(
     exploration_topic_t* topic = find_or_create_topic_unlocked(bridge, topic_id);
     if (!topic) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_drive_exploration: topic is NULL");
         return -1;  /* At capacity */
     }
 
@@ -364,6 +371,7 @@ int curiosity_reasoning_share_uncertainty(
     float uncertainty_level
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_share_uncertainty: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -383,6 +391,7 @@ int curiosity_reasoning_share_uncertainty(
     exploration_topic_t* topic = find_or_create_topic_unlocked(bridge, tid);
     if (!topic) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_share_uncertainty: topic is NULL");
         return -1;  /* At capacity */
     }
 
@@ -414,6 +423,7 @@ int curiosity_reasoning_on_novel_conclusion(
     float novelty_score
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_on_novel_conclusion: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -509,6 +519,7 @@ int curiosity_reasoning_bridge_get_stats(
     curiosity_reasoning_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 

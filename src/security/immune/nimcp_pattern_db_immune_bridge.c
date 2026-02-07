@@ -196,6 +196,7 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
     /* Guard clauses */
     if (!pattern_db || !immune_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for pattern DB immune bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_immune_create: required parameter is NULL (pattern_db, immune_system)");
         return NULL;
     }
 
@@ -229,6 +230,7 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
     if (!bridge->mappings) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern mappings");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_db_immune_create: bridge->mappings is NULL");
         return NULL;
     }
     memset(bridge->mappings, 0, sizeof(pattern_immune_mapping_t) * bridge->mapping_capacity);
@@ -239,6 +241,7 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex for pattern DB immune bridge");
         nimcp_free(bridge->mappings);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_db_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -277,7 +280,7 @@ int pattern_db_immune_update(pattern_db_immune_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
 
     }
 
@@ -306,7 +309,7 @@ int pattern_db_immune_apply_modulation(pattern_db_immune_bridge_t* bridge) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
 
     }
 
@@ -349,7 +352,10 @@ int pattern_db_immune_present_match(
     const nimcp_pattern_match_result_t* match_result,
     uint32_t* antigen_id
 ) {
-    if (!bridge || !match_result || !antigen_id) return -1;
+    if (!bridge || !match_result || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_immune_present_match: required parameter is NULL (bridge, match_result, antigen_id)");
+        return -1;
+    }
     if (!bridge->config.enable_pattern_match_antigen_presentation) return 0;
 
     /* Check if score is high enough */
@@ -465,7 +471,10 @@ int pattern_db_immune_connect_bio_async(pattern_db_immune_bridge_t* bridge) {
 }
 
 int pattern_db_immune_disconnect_bio_async(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_immune_disconnect_bio_async: required parameter is NULL (bridge, bridge->base)");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
@@ -496,7 +505,10 @@ int pattern_db_immune_get_mapping(
     nimcp_pattern_id_t pattern_id,
     pattern_immune_mapping_t* mapping
 ) {
-    if (!bridge || !mapping) return -1;
+    if (!bridge || !mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_immune_get_mapping: required parameter is NULL (bridge, mapping)");
+        return -1;
+    }
 
     /* Search mappings array for pattern ID */
     for (size_t i = 0; i < bridge->mapping_count; i++) {
@@ -506,5 +518,6 @@ int pattern_db_immune_get_mapping(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_db_immune_get_mapping: validation failed");
     return -1; /* Not found */
 }

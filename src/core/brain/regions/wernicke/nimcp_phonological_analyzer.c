@@ -221,7 +221,10 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
 {
     /* Compute autocorrelation */
     float* r = (float*)nimcp_calloc(order + 1, sizeof(float));
-    if (!r) return false;
+    if (!r) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_lpc: r is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i <= order; i++) {
         r[i] = 0.0f;
@@ -244,6 +247,7 @@ static bool compute_lpc(const float* signal, uint32_t length, float* coeffs, uin
         nimcp_free(r);
         if (a) nimcp_free(a);
         if (a_prev) nimcp_free(a_prev);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_lpc: validation failed");
         return false;
     }
 
@@ -405,6 +409,7 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
     if (!analyzer->window || !analyzer->fft_buffer ||
         !analyzer->power_spectrum || !analyzer->lpc_coeffs) {
         wernicke_phonological_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_phonological_create: operation failed");
         return NULL;
     }
 
@@ -431,7 +436,10 @@ void wernicke_phonological_destroy(phonological_analyzer_t* analyzer)
 
 bool wernicke_phonological_reset(phonological_analyzer_t* analyzer)
 {
-    if (!analyzer) return false;
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_phonological_reset: analyzer is NULL");
+        return false;
+    }
 
     analyzer->frames_processed = 0;
     analyzer->prev_spectral_energy = 0.0f;
@@ -448,11 +456,17 @@ bool phonological_extract_formants(
     uint32_t num_samples,
     formant_result_t* result)
 {
-    if (!analyzer || !audio || !result) return false;
+    if (!analyzer || !audio || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_extract_formants: required parameter is NULL (analyzer, audio, result)");
+        return false;
+    }
 
     /* Apply pre-emphasis */
     float* pre_emph = (float*)nimcp_calloc(num_samples, sizeof(float));
-    if (!pre_emph) return false;
+    if (!pre_emph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_extract_formants: pre_emph is NULL");
+        return false;
+    }
 
     pre_emph[0] = audio[0];
     for (uint32_t i = 1; i < num_samples; i++) {
@@ -476,7 +490,10 @@ bool phonological_extract_features(
     uint32_t num_samples,
     acoustic_features_t* features)
 {
-    if (!analyzer || !audio || !features) return false;
+    if (!analyzer || !audio || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_extract_features: required parameter is NULL (analyzer, audio, features)");
+        return false;
+    }
 
     memset(features, 0, sizeof(acoustic_features_t));
 
@@ -517,7 +534,10 @@ bool phonological_classify_phoneme(
     phoneme_t* phoneme,
     float* confidence)
 {
-    if (!analyzer || !features || !phoneme || !confidence) return false;
+    if (!analyzer || !features || !phoneme || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_classify_phoneme: required parameter is NULL (analyzer, features, phoneme, confidence)");
+        return false;
+    }
 
     /* Check for silence */
     if (features->rms_energy < 0.001f) {
@@ -553,7 +573,10 @@ bool phonological_classify_vowel(
     phoneme_t* phoneme,
     float* confidence)
 {
-    if (!phoneme || !confidence) return false;
+    if (!phoneme || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_classify_vowel: required parameter is NULL (phoneme, confidence)");
+        return false;
+    }
     (void)analyzer;
 
     float dist;
@@ -568,7 +591,10 @@ bool phonological_classify_consonant(
     phoneme_t* phoneme,
     float* confidence)
 {
-    if (!analyzer || !features || !phoneme || !confidence) return false;
+    if (!analyzer || !features || !phoneme || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_classify_consonant: required parameter is NULL (analyzer, features, phoneme, confidence)");
+        return false;
+    }
 
     /* Classify based on spectral centroid and ZCR */
     float sc = features->spectral_centroid;
@@ -631,14 +657,20 @@ bool phonological_analyze(
     uint32_t num_samples,
     phonological_result_t* result)
 {
-    if (!analyzer || !audio || !result) return false;
+    if (!analyzer || !audio || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_analyze: required parameter is NULL (analyzer, audio, result)");
+        return false;
+    }
 
     /* Detect phonemes */
     bool success = phonological_detect_phonemes(analyzer, audio, num_samples,
                                                  result->phonemes,
                                                  analyzer->config.max_phonemes,
                                                  &result->num_phonemes);
-    if (!success) return false;
+    if (!success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_analyze: success is NULL");
+        return false;
+    }
 
     /* Parse syllables */
     if (analyzer->config.enable_syllable_parsing && result->num_phonemes > 0) {
@@ -674,7 +706,10 @@ bool phonological_detect_phonemes(
     uint32_t max_phonemes,
     uint32_t* num_detected)
 {
-    if (!analyzer || !audio || !phonemes || !num_detected) return false;
+    if (!analyzer || !audio || !phonemes || !num_detected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_detect_phonemes: required parameter is NULL (analyzer, audio, phonemes, num_detected)");
+        return false;
+    }
 
     *num_detected = 0;
     uint32_t frame_size = analyzer->frame_size_samples;
@@ -745,7 +780,10 @@ bool phonological_parse_syllables(
     uint32_t max_syllables,
     uint32_t* num_syllables)
 {
-    if (!analyzer || !phonemes || !syllables || !num_syllables) return false;
+    if (!analyzer || !phonemes || !syllables || !num_syllables) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_parse_syllables: required parameter is NULL (analyzer, phonemes, syllables, num_syllables)");
+        return false;
+    }
 
     *num_syllables = 0;
 
@@ -822,7 +860,10 @@ bool phonological_detect_nuclei(
     uint32_t max_nuclei,
     uint32_t* num_nuclei)
 {
-    if (!phonemes || !nuclei_indices || !num_nuclei) return false;
+    if (!phonemes || !nuclei_indices || !num_nuclei) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_detect_nuclei: required parameter is NULL (phonemes, nuclei_indices, num_nuclei)");
+        return false;
+    }
     (void)analyzer;
 
     *num_nuclei = 0;
@@ -845,7 +886,10 @@ bool phonological_extract_prosody(
     uint32_t num_samples,
     prosodic_contour_t* prosody)
 {
-    if (!analyzer || !audio || !prosody) return false;
+    if (!analyzer || !audio || !prosody) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_extract_prosody: required parameter is NULL (analyzer, audio, prosody)");
+        return false;
+    }
 
     uint32_t frame_size = analyzer->frame_size_samples;
     uint32_t hop_size = analyzer->hop_size_samples;
@@ -859,6 +903,7 @@ bool phonological_extract_prosody(
         prosody->intensity_contour = (float*)nimcp_calloc(num_frames, sizeof(float));
     }
     if (!prosody->pitch_contour || !prosody->intensity_contour) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_extract_prosody: required parameter is NULL (prosody->pitch_contour, prosody->intensity_contour)");
         return false;
     }
 
@@ -904,7 +949,10 @@ bool phonological_detect_stress(
     uint32_t num_syllables,
     bool* stress_pattern)
 {
-    if (!analyzer || !syllables || !stress_pattern) return false;
+    if (!analyzer || !syllables || !stress_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_detect_stress: required parameter is NULL (analyzer, syllables, stress_pattern)");
+        return false;
+    }
 
     /* Stress detection based on:
      * 1. Duration (stressed syllables are longer)
@@ -939,7 +987,10 @@ bool phonological_apply_coarticulation(
     phoneme_event_t* phonemes,
     uint32_t num_phonemes)
 {
-    if (!analyzer || !phonemes) return false;
+    if (!analyzer || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_apply_coarticulation: required parameter is NULL (analyzer, phonemes)");
+        return false;
+    }
 
     /* Phase 2 will implement locus equations and transition modeling */
     /* For now, no-op */
@@ -973,6 +1024,7 @@ phonological_result_t* phonological_result_alloc(
     if (!result->phonemes || !result->syllables ||
         !result->prosody.pitch_contour || !result->prosody.intensity_contour) {
         phonological_result_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_result_alloc: operation failed");
         return NULL;
     }
 

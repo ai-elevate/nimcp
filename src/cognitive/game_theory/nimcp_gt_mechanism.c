@@ -214,6 +214,7 @@ static bool enumerate_type_profile(
     }
 
     if (profile_idx >= total_profiles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enumerate_type_profile: capacity exceeded");
         return false;
     }
 
@@ -287,6 +288,7 @@ nimcp_mechanism_config_t nimcp_mechanism_default_config(void) {
 nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config) {
     if (!config || config->num_players == 0 ||
         config->num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_mechanism_create: operation failed");
         return NULL;
     }
 
@@ -318,6 +320,7 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
     // Initialize mutex
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mechanism_create: validation failed");
         return NULL;
     }
 

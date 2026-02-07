@@ -228,7 +228,10 @@ static void generate_event(
 
 static nimcp_sec_module_info_t* find_module(nimcp_sec_integration_t* ctx, uint32_t module_id)
 {
-    if (!ctx || !ctx->shared) return NULL;
+    if (!ctx || !ctx->shared) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: required parameter is NULL (ctx, ctx->shared)");
+        return NULL;
+    }
     nimcp_sec_shared_data_t* shared = ctx->shared;
 
     for (uint32_t i = 0; i < shared->module_count; i++) {
@@ -236,12 +239,16 @@ static nimcp_sec_module_info_t* find_module(nimcp_sec_integration_t* ctx, uint32
             return &shared->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
     return NULL;
 }
 
 static nimcp_sec_region_info_t* find_region(nimcp_sec_integration_t* ctx, uint32_t region_id)
 {
-    if (!ctx || !ctx->shared) return NULL;
+    if (!ctx || !ctx->shared) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_region: required parameter is NULL (ctx, ctx->shared)");
+        return NULL;
+    }
     nimcp_sec_shared_data_t* shared = ctx->shared;
 
     for (uint32_t i = 0; i < shared->region_count; i++) {
@@ -249,6 +256,7 @@ static nimcp_sec_region_info_t* find_region(nimcp_sec_integration_t* ctx, uint32
             return &shared->regions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_region: validation failed");
     return NULL;
 }
 
@@ -348,6 +356,7 @@ static void* monitoring_thread_func(void* arg)
     }
 
     ctx->monitoring_running = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitoring_thread_func: operation failed");
     return NULL;
 }
 
@@ -370,6 +379,7 @@ nimcp_sec_integration_t* nimcp_sec_integration_create(void)
     ctx->shared = nimcp_calloc(1, sizeof(nimcp_sec_shared_data_t));
     if (!ctx->shared) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_sec_integration_create: ctx->shared is NULL");
         return NULL;
     }
 
@@ -1020,7 +1030,10 @@ bool nimcp_sec_is_module_trusted(
     nimcp_sec_integration_t* ctx,
     uint32_t module_id)
 {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_sec_is_module_trusted: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -1642,7 +1655,10 @@ static bool sec_shared_data_copy(void* dest, const void* src, size_t size, void*
     /* Deep copy arrays */
     if (s->modules && dst->module_capacity > 0) {
         dst->modules = nimcp_calloc(dst->module_capacity, sizeof(nimcp_sec_module_info_t));
-        if (!dst->modules) return false;
+        if (!dst->modules) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_shared_data_copy: dst->modules is NULL");
+            return false;
+        }
         memcpy(dst->modules, s->modules, dst->module_count * sizeof(nimcp_sec_module_info_t));
     }
 
@@ -1650,6 +1666,7 @@ static bool sec_shared_data_copy(void* dest, const void* src, size_t size, void*
         dst->regions = nimcp_calloc(dst->region_capacity, sizeof(nimcp_sec_region_info_t));
         if (!dst->regions) {
             nimcp_free(dst->modules);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_shared_data_copy: dst->regions is NULL");
             return false;
         }
         memcpy(dst->regions, s->regions, dst->region_count * sizeof(nimcp_sec_region_info_t));
@@ -1660,6 +1677,7 @@ static bool sec_shared_data_copy(void* dest, const void* src, size_t size, void*
         if (!dst->event_queue) {
             nimcp_free(dst->modules);
             nimcp_free(dst->regions);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_shared_data_copy: dst->event_queue is NULL");
             return false;
         }
         memcpy(dst->event_queue, s->event_queue, dst->event_capacity * sizeof(event_queue_entry_t));
@@ -1677,6 +1695,7 @@ static bool sec_shared_data_copy(void* dest, const void* src, size_t size, void*
 nimcp_sec_integration_t* nimcp_sec_integration_cow_clone(nimcp_sec_integration_t* source)
 {
     if (!source || !source->initialized || !source->shared) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_sec_integration_cow_clone: required parameter is NULL (source, source->initialized, source->shared)");
         return NULL;
     }
 
@@ -1737,7 +1756,10 @@ nimcp_sec_integration_t* nimcp_sec_integration_cow_clone(nimcp_sec_integration_t
 
 bool nimcp_sec_integration_is_cow_shared(nimcp_sec_integration_t* ctx)
 {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_sec_integration_is_cow_shared: ctx is NULL");
+        return false;
+    }
     return (ctx->cow_state == NIMCP_SEC_COW_SHARED);
 }
 

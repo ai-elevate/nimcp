@@ -76,6 +76,7 @@ static void* async_publish_worker(void* arg)
     async_publish_ctx_t* ctx = (async_publish_ctx_t*)arg;
     if (!ctx) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish worker: null context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_publish_worker: ctx is NULL");
         return NULL;
     }
 
@@ -91,6 +92,7 @@ static void* async_publish_worker(void* arg)
         nimcp_promise_fail(ctx->promise, NIMCP_ERROR_OPERATION_FAILED);
         event_free(&ctx->event);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_publish_worker: published is NULL");
         return NULL;
     }
 
@@ -112,6 +114,7 @@ static void* async_publish_worker(void* arg)
     event_free(&ctx->event);
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_publish_worker: operation failed");
     return NULL;
 }
 
@@ -122,6 +125,7 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
 {
     if (!bus || !event) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish_async: required parameter is NULL (bus, event)");
         return NULL;
     }
 
@@ -129,6 +133,7 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
     nimcp_promise_t promise = nimcp_promise_create(sizeof(uint32_t));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: failed to create promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_publish_async: promise is NULL");
         return NULL;
     }
 
@@ -136,6 +141,7 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
     if (!future) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish_async: future is NULL");
         return NULL;
     }
 
@@ -144,6 +150,7 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
     if (!ctx) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_publish_async: ctx is NULL");
         return NULL;
     }
 
@@ -158,6 +165,7 @@ nimcp_future_t event_bus_publish_async(event_bus_t bus, const event_t* event)
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async publish: failed to create worker thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_publish_async: validation failed");
         return NULL;
     }
 
@@ -233,6 +241,7 @@ static void* request_timeout_worker(void* arg)
     nimcp_platform_mutex_destroy(&ctx->mutex);
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "request_timeout_worker: operation failed");
     return NULL;
 }
 
@@ -246,6 +255,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
 {
     if (!bus || !request) {
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: required parameter is NULL (bus, request)");
         return NULL;
     }
 
@@ -253,6 +263,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     nimcp_promise_t promise = nimcp_promise_create(sizeof(event_t));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to create promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_request_async: promise is NULL");
         return NULL;
     }
 
@@ -260,6 +271,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     if (!future) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: future is NULL");
         return NULL;
     }
 
@@ -268,6 +280,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
     if (!ctx) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_request_async: ctx is NULL");
         return NULL;
     }
 
@@ -282,6 +295,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "event_bus_request_async: validation failed");
         return NULL;
     }
 
@@ -302,6 +316,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to subscribe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: validation failed");
         return NULL;
     }
 
@@ -314,6 +329,7 @@ nimcp_future_t event_bus_request_async(event_bus_t bus,
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Request-response: failed to publish request");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_async: event_bus_publish is NULL");
         return NULL;
     }
 
@@ -350,6 +366,7 @@ nimcp_bio_future_t event_bus_publish_bio_async(event_bus_t bus,
 {
     if (!bus || !event) {
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async publish: invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish_bio_async: required parameter is NULL (bus, event)");
         return NULL;
     }
 
@@ -357,6 +374,7 @@ nimcp_bio_future_t event_bus_publish_bio_async(event_bus_t bus,
     nimcp_bio_promise_t promise = nimcp_bio_promise_create(channel, sizeof(uint32_t));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async publish: failed to create bio-promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_publish_bio_async: promise is NULL");
         return NULL;
     }
 
@@ -364,6 +382,7 @@ nimcp_bio_future_t event_bus_publish_bio_async(event_bus_t bus,
     if (!future) {
         nimcp_bio_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async publish: failed to get bio-future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish_bio_async: future is NULL");
         return NULL;
     }
 
@@ -408,6 +427,7 @@ nimcp_bio_future_t event_bus_request_bio_async(event_bus_t bus,
 {
     if (!bus || !request) {
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async request: invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_bio_async: required parameter is NULL (bus, request)");
         return NULL;
     }
 
@@ -430,6 +450,7 @@ nimcp_bio_future_t event_bus_request_bio_async(event_bus_t bus,
     if (!promise) {
         if (model) nimcp_predictive_destroy(model);
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async request: failed to create bio-promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_request_bio_async: validation failed");
         return NULL;
     }
 
@@ -438,6 +459,7 @@ nimcp_bio_future_t event_bus_request_bio_async(event_bus_t bus,
         nimcp_bio_promise_destroy(promise);
         if (model) nimcp_predictive_destroy(model);
         LOG_MODULE_ERROR(MODULE_NAME, "Bio-async request: failed to get bio-future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_request_bio_async: validation failed");
         return NULL;
     }
 

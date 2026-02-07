@@ -102,6 +102,7 @@ static sec_async_anomaly_type_t identify_anomaly_type(
  */
 int sec_async_fep_default_config(sec_async_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_default_config: config is NULL");
         return -1;
     }
 
@@ -256,6 +257,7 @@ void sec_async_fep_destroy(sec_async_fep_bridge_t* bridge) {
  */
 int sec_async_fep_reset(sec_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_reset: bridge is NULL");
         return -1;
     }
 
@@ -310,6 +312,7 @@ int sec_async_fep_get_config(
     sec_async_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -327,6 +330,7 @@ int sec_async_fep_set_config(
     const sec_async_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -336,6 +340,7 @@ int sec_async_fep_set_config(
     if (config->free_energy_threshold <= 0.0f ||
         config->surprise_threshold <= 0.0f) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_async_fep_set_config: operation failed");
         return -1;
     }
 
@@ -356,10 +361,12 @@ int sec_async_fep_set_config(
  */
 int sec_async_fep_compute_effects(sec_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_compute_effects: bridge is NULL");
         return -1;
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -435,6 +442,7 @@ int sec_async_fep_process_message(
     uint64_t timestamp_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_process_message: bridge is NULL");
         return -1;
     }
 
@@ -466,6 +474,7 @@ int sec_async_fep_observe_queue(
     float drain_rate
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_observe_queue: bridge is NULL");
         return -1;
     }
 
@@ -512,6 +521,7 @@ int sec_async_fep_observe_queue(
  */
 int sec_async_fep_update(sec_async_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_update: bridge is NULL");
         return -1;
     }
 
@@ -618,6 +628,7 @@ int sec_async_fep_detect_threat(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_detect_threat: required parameter is NULL (bridge, threat_level_out, confidence_out)");
         return -1;
     }
 
@@ -694,6 +705,7 @@ int sec_async_fep_detect_anomaly(
     float* severity_out
 ) {
     if (!bridge || !anomaly_out || !severity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_detect_anomaly: required parameter is NULL (bridge, anomaly_out, severity_out)");
         return -1;
     }
 
@@ -765,6 +777,7 @@ int sec_async_fep_get_response(
     float* urgency_out
 ) {
     if (!bridge || !response_out || !urgency_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_response: required parameter is NULL (bridge, response_out, urgency_out)");
         return -1;
     }
 
@@ -800,6 +813,7 @@ int sec_async_fep_get_response(
  */
 int sec_async_fep_report_false_positive(sec_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_report_false_positive: bridge is NULL");
         return -1;
     }
 
@@ -844,6 +858,7 @@ int sec_async_fep_get_fep_effects(
     fep_to_async_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -861,6 +876,7 @@ int sec_async_fep_get_async_effects(
     async_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_async_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -878,6 +894,7 @@ int sec_async_fep_get_state(
     sec_async_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -895,6 +912,7 @@ int sec_async_fep_get_stats(
     sec_async_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -963,6 +981,7 @@ float sec_async_fep_get_message_rate(const sec_async_fep_bridge_t* bridge) {
  */
 int sec_async_fep_connect_bio_async(sec_async_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_connect_bio_async: bridge is NULL");
         return -1;
     }
 

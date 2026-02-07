@@ -15,6 +15,7 @@
 #include <math.h>
 #include <float.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Internal Constants
@@ -89,14 +90,21 @@ float qstats_complex_abs_squared(qstats_complex_t a) {
 //=============================================================================
 
 qstats_pure_state_t* qstats_pure_state_create(uint32_t dim) {
-    if (dim == 0) return NULL;
+    if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_pure_state_create: dim is zero");
+        return NULL;
+    }
 
     qstats_pure_state_t* state = nimcp_malloc(sizeof(qstats_pure_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_pure_state_create: state is NULL");
+        return NULL;
+    }
 
     state->amplitudes = nimcp_calloc(dim, sizeof(qstats_complex_t));
     if (!state->amplitudes) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_pure_state_create: state->amplitudes is NULL");
         return NULL;
     }
 
@@ -119,14 +127,21 @@ void qstats_pure_state_destroy(qstats_pure_state_t* state) {
 }
 
 qstats_density_matrix_t* qstats_density_matrix_create(uint32_t dim) {
-    if (dim == 0) return NULL;
+    if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_create: dim is zero");
+        return NULL;
+    }
 
     qstats_density_matrix_t* dm = nimcp_malloc(sizeof(qstats_density_matrix_t));
-    if (!dm) return NULL;
+    if (!dm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_create: dm is NULL");
+        return NULL;
+    }
 
     dm->elements = nimcp_calloc(dim * dim, sizeof(qstats_complex_t));
     if (!dm->elements) {
         nimcp_free(dm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_create: dm->elements is NULL");
         return NULL;
     }
 
@@ -149,10 +164,16 @@ void qstats_density_matrix_destroy(qstats_density_matrix_t* dm) {
 }
 
 qstats_density_matrix_t* qstats_density_matrix_from_pure(const qstats_pure_state_t* state) {
-    if (!state || !state->amplitudes) return NULL;
+    if (!state || !state->amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_density_matrix_from_pure: required parameter is NULL (state, state->amplitudes)");
+        return NULL;
+    }
 
     qstats_density_matrix_t* dm = qstats_density_matrix_create(state->dim);
-    if (!dm) return NULL;
+    if (!dm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_from_pure: dm is NULL");
+        return NULL;
+    }
 
     // ρ = |ψ><ψ|: ρᵢⱼ = αᵢ αⱼ*
     for (uint32_t i = 0; i < state->dim; i++) {
@@ -171,12 +192,21 @@ qstats_density_matrix_t* qstats_density_matrix_from_ensemble(
     const float* probabilities,
     uint32_t num_states
 ) {
-    if (!states || !probabilities || num_states == 0) return NULL;
-    if (!states[0]) return NULL;
+    if (!states || !probabilities || num_states == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_density_matrix_from_ensemble: required parameter is NULL (states, probabilities)");
+        return NULL;
+    }
+    if (!states[0]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_density_matrix_from_ensemble: states is NULL");
+        return NULL;
+    }
 
     uint32_t dim = states[0]->dim;
     qstats_density_matrix_t* dm = qstats_density_matrix_create(dim);
-    if (!dm) return NULL;
+    if (!dm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_from_ensemble: dm is NULL");
+        return NULL;
+    }
 
     // Zero out
     memset(dm->elements, 0, dim * dim * sizeof(qstats_complex_t));
@@ -201,10 +231,16 @@ qstats_density_matrix_t* qstats_density_matrix_from_ensemble(
 }
 
 qstats_density_matrix_t* qstats_density_matrix_maximally_mixed(uint32_t dim) {
-    if (dim == 0) return NULL;
+    if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_maximally_mixed: dim is zero");
+        return NULL;
+    }
 
     qstats_density_matrix_t* dm = qstats_density_matrix_create(dim);
-    if (!dm) return NULL;
+    if (!dm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_maximally_mixed: dm is NULL");
+        return NULL;
+    }
 
     // ρ = I/d
     memset(dm->elements, 0, dim * dim * sizeof(qstats_complex_t));
@@ -221,16 +257,23 @@ qstats_density_matrix_t* qstats_density_matrix_thermal(
     uint32_t dim,
     float beta
 ) {
-    if (!hamiltonian || dim == 0) return NULL;
+    if (!hamiltonian || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_thermal: hamiltonian is NULL");
+        return NULL;
+    }
 
     qstats_density_matrix_t* dm = qstats_density_matrix_create(dim);
-    if (!dm) return NULL;
+    if (!dm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_thermal: dm is NULL");
+        return NULL;
+    }
 
     // For diagonal Hamiltonian (simplified): ρᵢᵢ = exp(-β Hᵢᵢ) / Z
     float Z = 0.0f;
     float* boltzmann = nimcp_malloc(dim * sizeof(float));
     if (!boltzmann) {
         qstats_density_matrix_destroy(dm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_density_matrix_thermal: boltzmann is NULL");
         return NULL;
     }
 
@@ -272,11 +315,17 @@ qstats_result_t qstats_pure_state_normalize(qstats_pure_state_t* state) {
 }
 
 bool qstats_density_matrix_is_valid(const qstats_density_matrix_t* dm) {
-    if (!dm || !dm->elements) return false;
+    if (!dm || !dm->elements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_density_matrix_is_valid: required parameter is NULL (dm, dm->elements)");
+        return false;
+    }
 
     // Check trace = 1
     float trace = qstats_trace(dm);
-    if (fabsf(trace - 1.0f) > 1e-4f) return false;
+    if (fabsf(trace - 1.0f) > 1e-4f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_is_valid: validation failed");
+        return false;
+    }
 
     // Check Hermiticity: ρᵢⱼ = ρⱼᵢ*
     for (uint32_t i = 0; i < dm->dim; i++) {
@@ -285,6 +334,7 @@ bool qstats_density_matrix_is_valid(const qstats_density_matrix_t* dm) {
             qstats_complex_t rho_ji = dm->elements[j * dm->dim + i];
             if (fabsf(rho_ij.real - rho_ji.real) > 1e-6f ||
                 fabsf(rho_ij.imag + rho_ji.imag) > 1e-6f) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_density_matrix_is_valid: validation failed");
                 return false;
             }
         }
@@ -327,10 +377,16 @@ qstats_pure_state_t* qstats_amplitude_encode(
     const float* probabilities,
     uint32_t dim
 ) {
-    if (!probabilities || dim == 0) return NULL;
+    if (!probabilities || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_amplitude_encode: probabilities is NULL");
+        return NULL;
+    }
 
     qstats_pure_state_t* state = qstats_pure_state_create(dim);
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_amplitude_encode: state is NULL");
+        return NULL;
+    }
 
     // |ψ⟩ = Σᵢ √pᵢ|i⟩
     for (uint32_t i = 0; i < dim; i++) {
@@ -1174,10 +1230,16 @@ qstats_pure_state_t* qstats_from_quantum_walk(
     const float* amplitudes_imag,
     uint32_t num_nodes
 ) {
-    if (!amplitudes_real || !amplitudes_imag || num_nodes == 0) return NULL;
+    if (!amplitudes_real || !amplitudes_imag || num_nodes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qstats_from_quantum_walk: required parameter is NULL (amplitudes_real, amplitudes_imag)");
+        return NULL;
+    }
 
     qstats_pure_state_t* state = qstats_pure_state_create(num_nodes);
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_from_quantum_walk: state is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < num_nodes; i++) {
         state->amplitudes[i].real = amplitudes_real[i];
@@ -1589,10 +1651,16 @@ qstats_density_matrix_t* qstats_partial_trace_b(
     uint32_t dim_a,
     uint32_t dim_b
 ) {
-    if (!rho_ab || dim_a * dim_b != rho_ab->dim) return NULL;
+    if (!rho_ab || dim_a * dim_b != rho_ab->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_partial_trace_b: rho_ab is NULL");
+        return NULL;
+    }
 
     qstats_density_matrix_t* rho_a = qstats_density_matrix_create(dim_a);
-    if (!rho_a) return NULL;
+    if (!rho_a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_partial_trace_b: rho_a is NULL");
+        return NULL;
+    }
 
     // ρ_A(i,j) = Σₖ ρ_AB(i×d_B+k, j×d_B+k)
     for (uint32_t i = 0; i < dim_a; i++) {
@@ -1616,10 +1684,16 @@ qstats_density_matrix_t* qstats_partial_trace_a(
     uint32_t dim_a,
     uint32_t dim_b
 ) {
-    if (!rho_ab || dim_a * dim_b != rho_ab->dim) return NULL;
+    if (!rho_ab || dim_a * dim_b != rho_ab->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_partial_trace_a: rho_ab is NULL");
+        return NULL;
+    }
 
     qstats_density_matrix_t* rho_b = qstats_density_matrix_create(dim_b);
-    if (!rho_b) return NULL;
+    if (!rho_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_partial_trace_a: rho_b is NULL");
+        return NULL;
+    }
 
     // ρ_B(k,l) = Σᵢ ρ_AB(i×d_B+k, i×d_B+l)
     for (uint32_t k = 0; k < dim_b; k++) {
@@ -1643,11 +1717,17 @@ qstats_density_matrix_t* qstats_partial_transpose_a(
     uint32_t dim_a,
     uint32_t dim_b
 ) {
-    if (!rho_ab || dim_a * dim_b != rho_ab->dim) return NULL;
+    if (!rho_ab || dim_a * dim_b != rho_ab->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qstats_partial_transpose_a: rho_ab is NULL");
+        return NULL;
+    }
 
     uint32_t dim = dim_a * dim_b;
     qstats_density_matrix_t* rho_pt = qstats_density_matrix_create(dim);
-    if (!rho_pt) return NULL;
+    if (!rho_pt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qstats_partial_transpose_a: rho_pt is NULL");
+        return NULL;
+    }
 
     // ρ^(T_A)(i×d_B+k, j×d_B+l) = ρ(j×d_B+k, i×d_B+l)
     for (uint32_t i = 0; i < dim_a; i++) {

@@ -162,6 +162,7 @@ static float clamp_float(float value, float min, float max) {
  */
 static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -273,6 +274,7 @@ static int rcog_hub_query_handler(
     void* context
 ) {
     if (!query || !result || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_query_handler: required parameter is NULL (query, result, context)");
         return -1;
     }
 
@@ -443,6 +445,7 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "rcog_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_hub_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -503,6 +506,7 @@ int rcog_hub_bridge_connect(
     rcog_engine_t* engine
 ) {
     if (!bridge || !bridge->initialized || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_connect: required parameter is NULL (bridge, bridge->initialized, hub)");
         return -1;
     }
 
@@ -515,6 +519,7 @@ int rcog_hub_bridge_connect(
     /* Check if already connected */
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_hub_bridge_connect: validation failed");
         return -1;
     }
 
@@ -538,6 +543,7 @@ int rcog_hub_bridge_connect(
         bridge->hub = NULL;
         bridge->engine = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_hub_bridge_connect: validation failed");
         return -1;
     }
 
@@ -602,6 +608,7 @@ int rcog_hub_bridge_connect(
 
 int rcog_hub_bridge_disconnect(rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_disconnect: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -613,6 +620,7 @@ int rcog_hub_bridge_disconnect(rcog_hub_bridge_t* bridge) {
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_disconnect: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -649,6 +657,7 @@ int rcog_hub_bridge_set_engine(
     rcog_engine_t* engine
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_set_engine: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -665,6 +674,7 @@ int rcog_hub_bridge_set_engine(
 
 bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -692,6 +702,7 @@ int rcog_hub_bridge_set_input_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_set_input_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -713,6 +724,7 @@ int rcog_hub_bridge_set_attention_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_set_attention_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -734,6 +746,7 @@ int rcog_hub_bridge_set_memory_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_set_memory_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -761,6 +774,7 @@ int rcog_hub_publish_recursion_start(
     float priority
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_start: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -772,6 +786,7 @@ int rcog_hub_publish_recursion_start(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_start: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -822,6 +837,7 @@ int rcog_hub_publish_recursion_complete(
     uint64_t processing_time_ms
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_complete: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -833,6 +849,7 @@ int rcog_hub_publish_recursion_complete(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_complete: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -882,6 +899,7 @@ int rcog_hub_publish_subtask_spawned(
     float priority
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_subtask_spawned: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -900,6 +918,7 @@ int rcog_hub_publish_subtask_spawned(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_subtask_spawned: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -946,6 +965,7 @@ int rcog_hub_publish_recursion_event(
     size_t payload_size
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_event: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -954,6 +974,7 @@ int rcog_hub_publish_recursion_event(
 
 
     if (event_type >= RCOG_HUB_EVENT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_hub_publish_recursion_event: capacity exceeded");
         return -1;
     }
 
@@ -961,6 +982,7 @@ int rcog_hub_publish_recursion_event(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_publish_recursion_event: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -1026,6 +1048,7 @@ int rcog_hub_bridge_get_state(
     float* avg_confidence
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_get_state: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1053,6 +1076,7 @@ int rcog_hub_bridge_get_state(
     /* Get stats from engine */
     rcog_engine_stats_t stats;
     if (rcog_engine_get_stats(engine, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_hub_bridge_get_state: validation failed");
         return -1;
     }
 
@@ -1072,6 +1096,7 @@ int rcog_hub_bridge_get_stats(
     rcog_hub_bridge_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1091,6 +1116,7 @@ int rcog_hub_bridge_get_stats(
 
 int rcog_hub_bridge_reset_stats(rcog_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_hub_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

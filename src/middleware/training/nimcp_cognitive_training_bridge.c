@@ -581,6 +581,7 @@ cognitive_training_bridge_t* cognitive_training_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_training_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -592,6 +593,7 @@ cognitive_training_bridge_t* cognitive_training_create(
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_training_create: bridge->loss_history is NULL");
         return NULL;
     }
     memset(bridge->loss_history, 0, sizeof(float) * COGNITIVE_HISTORY_SIZE);
@@ -1122,6 +1124,7 @@ bool cognitive_training_is_bio_async_connected(
     const cognitive_training_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_training_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -1130,6 +1133,7 @@ bool cognitive_training_is_bio_async_connected(
 
 int cognitive_training_process_inbox(cognitive_training_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_training_process_inbox: bridge is NULL");
         return -1;  /* Return negative for null pointer */
     }
 
@@ -1315,6 +1319,7 @@ bool cognitive_training_should_checkpoint(
     const cognitive_training_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_training_should_checkpoint: bridge is NULL");
         return false;
     }
     return bridge->cognitive_effects.should_checkpoint;

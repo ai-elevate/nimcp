@@ -417,6 +417,7 @@ int enhanced_wellbeing_predict_distress(
     /* Guard: NULL inputs */
     if (!system || !prediction) {
         NIMCP_LOGGING_ERROR("wellbeing_prediction: NULL system or prediction");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_predict_distress: required parameter is NULL (system, prediction)");
         return -1;
     }
 

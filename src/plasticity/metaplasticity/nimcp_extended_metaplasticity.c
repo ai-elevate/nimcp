@@ -578,6 +578,7 @@ int metaplasticity_update(
 
     /* Update baseline threshold */
     if (metaplasticity_update_baseline(state, current_activity, dt, config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_update: validation failed");
         return -1;
     }
 
@@ -593,11 +594,13 @@ int metaplasticity_update(
 
     /* Apply neuromodulator shifts */
     if (metaplasticity_apply_neuromodulator_shifts(state, neuromod_levels, config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_update: validation failed");
         return -1;
     }
 
     /* Apply sleep reset */
     if (metaplasticity_apply_sleep_reset(state, state->current_sleep_state, config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_update: validation failed");
         return -1;
     }
 
@@ -646,7 +649,10 @@ bool metaplasticity_will_induce_ltp(
     const extended_metaplasticity_state_t* state,
     float activity
 ) {
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_will_induce_ltp: state is NULL");
+        return false;
+    }
     return activity > state->theta_effective;
 }
 
@@ -709,6 +715,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
             }
             nimcp_free(controller->states);
             nimcp_free(controller);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_create: controller->states is NULL");
             return NULL;
         }
     }
@@ -722,6 +729,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
         }
         nimcp_free(controller->states);
         nimcp_free(controller);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "metaplasticity_controller_create: validation failed");
         return NULL;
     }
 

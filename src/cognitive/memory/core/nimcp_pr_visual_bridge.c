@@ -217,15 +217,22 @@ static void unlock_bridge(pr_visual_bridge_t* bridge) {
  * @brief Allocate memory node from pool
  */
 static pr_memory_node_t* allocate_memory_node(pr_visual_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_memory_node: bridge is NULL");
+        return NULL;
+    }
 
     if (bridge->memory_pool_count >= bridge->memory_pool_size) {
         /* Pool is full */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_memory_node: capacity exceeded");
         return NULL;
     }
 
     pr_memory_node_t* node = nimcp_calloc(1, sizeof(pr_memory_node_t));
-    if (!node) return NULL;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_memory_node: node is NULL");
+        return NULL;
+    }
 
     bridge->memory_pool[bridge->memory_pool_count++] = node;
     return node;
@@ -238,7 +245,10 @@ static int compare_retrieval_results(const void* a, const void* b) {
     const pr_visual_retrieval_result_t* ra = (const pr_visual_retrieval_result_t*)a;
     const pr_visual_retrieval_result_t* rb = (const pr_visual_retrieval_result_t*)b;
 
-    if (ra->resonance_score > rb->resonance_score) return -1;
+    if (ra->resonance_score > rb->resonance_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_retrieval_results: validation failed");
+        return -1;
+    }
     if (ra->resonance_score < rb->resonance_score) return 1;
     return 0;
 }

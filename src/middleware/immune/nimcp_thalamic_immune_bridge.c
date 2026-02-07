@@ -159,6 +159,7 @@ thalamic_immune_bridge_t* thalamic_immune_bridge_create(
     if (!immune_system || !thalamic_router) {
         LOG_MODULE_ERROR("thalamic_immune_bridge",
                   "Cannot create bridge without immune and router systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_immune_bridge_create: required parameter is NULL (immune_system, thalamic_router)");
         return NULL;
     }
 
@@ -234,7 +235,10 @@ int thalamic_immune_apply_cytokine_effects(thalamic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_routing_modulation) return 0;
-    if (!bridge->immune_system || !bridge->thalamic_router) return -1;
+    if (!bridge->immune_system || !bridge->thalamic_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->thalamic_router)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -286,7 +290,10 @@ int thalamic_immune_apply_inflammation_effects(thalamic_immune_bridge_t* bridge)
 
     }
     if (!bridge->enable_inflammation_hypervigilance) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -333,7 +340,10 @@ int thalamic_immune_escalate_priority(
 
     }
     if (!bridge->enable_priority_escalation) return 0;
-    if (!bridge->thalamic_router) return -1;
+    if (!bridge->thalamic_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_escalate_priority: bridge->thalamic_router is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -407,7 +417,10 @@ int thalamic_immune_detect_anomalies(thalamic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_routing_anomaly_detection) return 0;
-    if (!bridge->thalamic_router) return -1;
+    if (!bridge->thalamic_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_detect_anomalies: bridge->thalamic_router is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -417,6 +430,7 @@ int thalamic_immune_detect_anomalies(thalamic_immune_bridge_t* bridge) {
     routing_stats_t router_stats;
     if (!thalamic_router_get_stats(bridge->thalamic_router, &router_stats)) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_immune_detect_anomalies: thalamic_router_get_stats is NULL");
         return -1;
     }
 
@@ -472,7 +486,10 @@ int thalamic_immune_trigger_from_anomaly(thalamic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_routing_anomaly_detection) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_trigger_from_anomaly: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -532,7 +549,10 @@ int thalamic_immune_boost_from_health(thalamic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_health_feedback) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_boost_from_health: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -614,7 +634,10 @@ int thalamic_immune_get_cytokine_effects(
     const thalamic_immune_bridge_t* bridge,
     cytokine_routing_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_routing_effects_t));
@@ -626,7 +649,10 @@ int thalamic_immune_get_inflammation_state(
     const thalamic_immune_bridge_t* bridge,
     inflammation_routing_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_routing_state_t));
@@ -638,7 +664,10 @@ int thalamic_immune_get_anomaly_state(
     const thalamic_immune_bridge_t* bridge,
     routing_anomaly_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_get_anomaly_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->anomaly_state, sizeof(routing_anomaly_state_t));
@@ -647,7 +676,10 @@ int thalamic_immune_get_anomaly_state(
 }
 
 bool thalamic_immune_is_hypervigilant(const thalamic_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_is_hypervigilant: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool hypervigilant = (bridge->inflammation_state.hypervigilance_level > 0.5f) &&
@@ -748,6 +780,9 @@ int thalamic_immune_disconnect_bio_async(thalamic_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool thalamic_immune_is_bio_async_connected(const thalamic_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

@@ -235,6 +235,7 @@ static rcog_variable_t* find_variable(
         var = var->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_variable: validation failed");
     return NULL;
 }
 
@@ -262,6 +263,7 @@ static rcog_variable_t* create_variable(
     var->data = nimcp_malloc(size);
     if (!var->data) {
         nimcp_free(var);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_variable: var->data is NULL");
         return NULL;
     }
 
@@ -502,6 +504,7 @@ rcog_context_store_t* rcog_context_store_create(
     store->mutex = nimcp_mutex_create(&attr);
     if (!store->mutex) {
         nimcp_free(store);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_context_store_create: store->mutex is NULL");
         return NULL;
     }
 
@@ -719,7 +722,10 @@ bool rcog_context_store_exists(
     const rcog_context_store_t* store,
     const char* name)
 {
-    if (!store || !name) return false;
+    if (!store || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_context_store_exists: required parameter is NULL (store, name)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     rcog_context_store_heartbeat("rcog_context_exists", 0.0f);

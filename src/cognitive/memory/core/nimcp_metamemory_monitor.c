@@ -205,18 +205,42 @@ metamem_config_t metamem_config_default(void) {
 }
 
 bool metamem_config_validate(const metamem_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_config_validate: config is NULL");
+        return false;
+    }
 
     // Validate intervals
-    if (config->monitor_interval_sec <= 0.0f) return false;
-    if (config->deep_scan_interval_sec <= 0.0f) return false;
+    if (config->monitor_interval_sec <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
+    if (config->deep_scan_interval_sec <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
 
     // Validate thresholds (must be increasing)
-    if (config->risk_threshold_low < 0.0f || config->risk_threshold_low > 1.0f) return false;
-    if (config->risk_threshold_medium <= config->risk_threshold_low) return false;
-    if (config->risk_threshold_high <= config->risk_threshold_medium) return false;
-    if (config->risk_threshold_critical <= config->risk_threshold_high) return false;
-    if (config->risk_threshold_critical > 1.0f) return false;
+    if (config->risk_threshold_low < 0.0f || config->risk_threshold_low > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
+    if (config->risk_threshold_medium <= config->risk_threshold_low) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
+    if (config->risk_threshold_high <= config->risk_threshold_medium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
+    if (config->risk_threshold_critical <= config->risk_threshold_high) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
+    if (config->risk_threshold_critical > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
 
     // Validate weights (should sum to ~1.0 but we normalize internally)
     /* Phase 8: Heartbeat at operation start */
@@ -228,12 +252,24 @@ bool metamem_config_validate(const metamem_config_t* config) {
                        config->risk_weight_tier +
                        config->risk_weight_entanglement +
                        config->risk_weight_salience;
-    if (weight_sum <= 0.0f) return false;
+    if (weight_sum <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: validation failed");
+        return false;
+    }
 
     // Validate limits
-    if (config->max_domains == 0 || config->max_domains > METAMEM_MAX_DOMAINS) return false;
-    if (config->history_length == 0) return false;
-    if (config->max_at_risk == 0) return false;
+    if (config->max_domains == 0 || config->max_domains > METAMEM_MAX_DOMAINS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: config->max_domains is zero");
+        return false;
+    }
+    if (config->history_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: config->history_length is zero");
+        return false;
+    }
+    if (config->max_at_risk == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_config_validate: config->max_at_risk is zero");
+        return false;
+    }
 
     return true;
 }
@@ -249,6 +285,7 @@ metamem_monitor_t metamem_monitor_create(
     const metamem_config_t* config
 ) {
     if (!entanglement || !node_manager || !z_ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_create: required parameter is NULL (entanglement, node_manager, z_ladder)");
         return NULL;
     }
 
@@ -259,6 +296,7 @@ metamem_monitor_t metamem_monitor_create(
 
     metamem_config_t cfg = config ? *config : metamem_config_default();
     if (!metamem_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_create: metamem_config_validate is NULL");
         return NULL;
     }
 
@@ -462,7 +500,10 @@ metamem_error_t metamem_monitor_full_scan(metamem_monitor_t monitor) {
 //=============================================================================
 
 int metamem_monitor_inventory_domains(metamem_monitor_t monitor) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_inventory_domains: monitor is NULL");
+        return -1;
+    }
 
     // Clear existing domain stats (keep domain definitions)
     /* Phase 8: Heartbeat at operation start */
@@ -764,7 +805,10 @@ uint64_t metamem_monitor_register_domain(
 //=============================================================================
 
 int metamem_monitor_detect_at_risk(metamem_monitor_t monitor) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_detect_at_risk: monitor is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     metamemory_monitor_heartbeat("metamemory_m_metamem_monitor_dete", 0.0f);
@@ -1453,10 +1497,14 @@ void metamem_print_domain_summary(const metamem_domain_summary_t* summary) {
 }
 
 bool metamem_monitor_validate(metamem_monitor_t monitor) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_validate: monitor is NULL");
+        return false;
+    }
 
     // Check external references
     if (!monitor->entanglement || !monitor->node_manager || !monitor->z_ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamem_monitor_validate: required parameter is NULL (monitor->entanglement, monitor->node_manager, monitor->z_ladder)");
         return false;
     }
 
@@ -1466,21 +1514,25 @@ bool metamem_monitor_validate(metamem_monitor_t monitor) {
 
 
     if (monitor->num_domains > monitor->max_domains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check at-risk array
     if (monitor->num_at_risk > monitor->max_at_risk) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check history bounds
     if (monitor->history_len > monitor->history_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
     // Check metric ranges
     if (monitor->overall_health < 0.0f || monitor->overall_health > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamem_monitor_validate: validation failed");
         return false;
     }
 
@@ -1763,7 +1815,10 @@ static int compare_at_risk(const void* a, const void* b) {
 
     // Sort by risk score descending
     if (mb->risk_score > ma->risk_score) return 1;
-    if (mb->risk_score < ma->risk_score) return -1;
+    if (mb->risk_score < ma->risk_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_at_risk: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -1773,7 +1828,10 @@ static int compare_review_priority(const void* a, const void* b) {
 
     // Sort by priority descending
     if (rb->priority > ra->priority) return 1;
-    if (rb->priority < ra->priority) return -1;
+    if (rb->priority < ra->priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_review_priority: validation failed");
+        return -1;
+    }
     return 0;
 }
 

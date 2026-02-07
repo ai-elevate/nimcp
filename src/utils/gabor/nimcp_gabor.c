@@ -91,22 +91,26 @@ void gabor_params_from_frequency(gabor_filter_params_t* params,
 bool gabor_validate_params(const gabor_filter_params_t* params) {
     if (!params) {
         NIMCP_LOGGING_ERROR("NULL params");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_validate_params: params is NULL");
         return false;
     }
 
     if (params->wavelength < MIN_WAVELENGTH) {
         NIMCP_LOGGING_ERROR("Invalid wavelength: %.4f (min: %.4f)",
                            params->wavelength, MIN_WAVELENGTH);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 
     if (params->aspect_ratio < EPSILON || params->aspect_ratio > 10.0f) {
         NIMCP_LOGGING_ERROR("Invalid aspect ratio: %.4f", params->aspect_ratio);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 
     if (params->bandwidth < EPSILON || params->bandwidth > MAX_BANDWIDTH) {
         NIMCP_LOGGING_ERROR("Invalid bandwidth: %.4f", params->bandwidth);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_validate_params: validation failed");
         return false;
     }
 
@@ -221,21 +225,25 @@ gabor_kernel_t* gabor_kernel_create(uint32_t size,
     /* Guard clauses */
     if (!params) {
         NIMCP_LOGGING_ERROR("NULL params");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_compute_energy: params is NULL");
         return NULL;
     }
 
     if (size < GABOR_MIN_KERNEL_SIZE || size > GABOR_MAX_KERNEL_SIZE) {
         NIMCP_LOGGING_ERROR("Invalid kernel size: %u (must be %d-%d)",
                            size, GABOR_MIN_KERNEL_SIZE, GABOR_MAX_KERNEL_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_compute_energy: validation failed");
         return NULL;
     }
 
     if (size % 2 == 0) {
         NIMCP_LOGGING_ERROR("Kernel size must be odd: %u", size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_compute_energy: 2 is zero");
         return NULL;
     }
 
     if (!gabor_validate_params(params)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_compute_energy: gabor_validate_params is NULL");
         return NULL;
     }
 
@@ -243,6 +251,7 @@ gabor_kernel_t* gabor_kernel_create(uint32_t size,
     gabor_kernel_t* kernel = (gabor_kernel_t*)nimcp_malloc(sizeof(gabor_kernel_t));
     if (!kernel) {
         NIMCP_LOGGING_ERROR("Failed to allocate kernel structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_compute_energy: kernel is NULL");
         return NULL;
     }
 
@@ -253,6 +262,7 @@ gabor_kernel_t* gabor_kernel_create(uint32_t size,
     if (!kernel->data) {
         NIMCP_LOGGING_ERROR("Failed to allocate kernel data");
         nimcp_free(kernel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_compute_energy: kernel->data is NULL");
         return NULL;
     }
 
@@ -320,6 +330,7 @@ void gabor_kernel_destroy(gabor_kernel_t* kernel) {
 float* gabor_create_kernel_data(int kernel_size, const gabor_filter_params_t* params) {
     if (!params || kernel_size <= 0 || kernel_size % 2 == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for gabor_create_kernel_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_create_kernel_data: params is NULL");
         return NULL;
     }
 
@@ -352,6 +363,7 @@ float gabor_kernel_get(const gabor_kernel_t* kernel, uint32_t x, uint32_t y) {
 
 bool gabor_kernel_normalize(gabor_kernel_t* kernel, float target_sum) {
     if (!kernel || !kernel->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_kernel_normalize: required parameter is NULL (kernel, kernel->data)");
         return false;
     }
 
@@ -365,6 +377,7 @@ bool gabor_kernel_normalize(gabor_kernel_t* kernel, float target_sum) {
 
     if (fabsf(current_sum) < EPSILON) {
         NIMCP_LOGGING_WARN("Cannot normalize kernel with near-zero sum");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_kernel_normalize: validation failed");
         return false;
     }
 
@@ -388,11 +401,13 @@ gabor_filter_bank_t* gabor_filter_bank_create(uint32_t num_orientations,
     /* Guard clauses */
     if (num_orientations == 0 || num_orientations > 64) {
         NIMCP_LOGGING_ERROR("Invalid num_orientations: %u", num_orientations);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_kernel_normalize: num_orientations is zero");
         return NULL;
     }
 
     if (kernel_size < GABOR_MIN_KERNEL_SIZE || kernel_size > GABOR_MAX_KERNEL_SIZE) {
         NIMCP_LOGGING_ERROR("Invalid kernel_size: %u", kernel_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gabor_kernel_normalize: validation failed");
         return NULL;
     }
 
@@ -401,6 +416,7 @@ gabor_filter_bank_t* gabor_filter_bank_create(uint32_t num_orientations,
         sizeof(gabor_filter_bank_t));
     if (!bank) {
         NIMCP_LOGGING_ERROR("Failed to allocate filter bank");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_kernel_normalize: bank is NULL");
         return NULL;
     }
 
@@ -418,6 +434,7 @@ gabor_filter_bank_t* gabor_filter_bank_create(uint32_t num_orientations,
     if (!bank->kernels) {
         NIMCP_LOGGING_ERROR("Failed to allocate kernel array");
         nimcp_free(bank);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_kernel_normalize: bank->kernels is NULL");
         return NULL;
     }
 
@@ -436,6 +453,7 @@ gabor_filter_bank_t* gabor_filter_bank_create(uint32_t num_orientations,
         if (!bank->kernels[i]) {
             NIMCP_LOGGING_ERROR("Failed to create even kernel %u", i);
             gabor_filter_bank_destroy(bank);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_kernel_normalize: bank->kernels is NULL");
             return NULL;
         }
 
@@ -447,6 +465,7 @@ gabor_filter_bank_t* gabor_filter_bank_create(uint32_t num_orientations,
             if (!bank->kernels[odd_idx]) {
                 NIMCP_LOGGING_ERROR("Failed to create odd kernel %u", i);
                 gabor_filter_bank_destroy(bank);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gabor_kernel_normalize: bank->kernels is NULL");
                 return NULL;
             }
         }
@@ -479,15 +498,18 @@ const gabor_kernel_t* gabor_filter_bank_get_kernel(const gabor_filter_bank_t* ba
                                                     uint32_t orientation_idx,
                                                     bool is_odd) {
     if (!bank || !bank->kernels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_filter_bank_destroy: required parameter is NULL (bank, bank->kernels)");
         return NULL;
     }
 
     if (orientation_idx >= bank->num_orientations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_filter_bank_destroy: capacity exceeded");
         return NULL;
     }
 
     if (is_odd && !bank->include_quadrature) {
         NIMCP_LOGGING_WARN("Quadrature not enabled for this filter bank");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_filter_bank_destroy: bank->include_quadrature is NULL");
         return NULL;
     }
 
@@ -583,6 +605,7 @@ bool gabor_filter_bank_apply(const gabor_filter_bank_t* bank,
     /* Guard clauses */
     if (!bank || !image || !responses) {
         NIMCP_LOGGING_ERROR("NULL parameter in gabor_filter_bank_apply");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gabor_filter_bank_destroy: required parameter is NULL (bank, image, responses)");
         return false;
     }
 

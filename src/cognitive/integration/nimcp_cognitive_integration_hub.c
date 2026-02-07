@@ -120,6 +120,7 @@ struct cognitive_integration_hub_struct {
  */
 static module_entry_t* find_module_unlocked(cognitive_integration_hub_t hub, uint32_t module_id) {
     if (!hub || !hub->modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_unlocked: required parameter is NULL (hub, hub->modules)");
         return NULL;
     }
 
@@ -135,6 +136,7 @@ static module_entry_t* find_module_unlocked(cognitive_integration_hub_t hub, uin
             return &hub->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_unlocked: operation failed");
     return NULL;
 }
 
@@ -144,6 +146,7 @@ static module_entry_t* find_module_unlocked(cognitive_integration_hub_t hub, uin
  */
 static module_entry_t* find_empty_slot_unlocked(cognitive_integration_hub_t hub) {
     if (!hub || !hub->modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->modules)");
         return NULL;
     }
 
@@ -158,6 +161,7 @@ static module_entry_t* find_empty_slot_unlocked(cognitive_integration_hub_t hub)
             return &hub->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: hub->modules is NULL");
     return NULL;
 }
 
@@ -169,10 +173,12 @@ static subscription_t* find_subscription_unlocked(cognitive_integration_hub_t hu
                                                    uint32_t subscriber_id,
                                                    cognitive_event_type_t event_type) {
     if (!hub || !hub->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: required parameter is NULL (hub, hub->subscriptions)");
         return NULL;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: COG_EVENT_TYPE_IS_VALID is NULL");
         return NULL;
     }
 
@@ -190,6 +196,7 @@ static subscription_t* find_subscription_unlocked(cognitive_integration_hub_t hu
             return &subs[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: validation failed");
     return NULL;
 }
 
@@ -267,10 +274,12 @@ static int deliver_event_unlocked(cognitive_integration_hub_t hub,
                                    cognitive_event_type_t event_type,
                                    const cognitive_event_data_t* data) {
     if (!hub || !hub->subscriptions || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unsubscribe_all_unlocked: required parameter is NULL (hub, hub->subscriptions, data)");
         return -1;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unsubscribe_all_unlocked: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -377,6 +386,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
 
     /* Validate configuration */
     if (cfg.max_modules == 0 || cfg.max_subscriptions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_create: cfg.max_modules is zero");
         return NULL;
     }
 
@@ -394,6 +404,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     hub->modules = nimcp_calloc(cfg.max_modules, sizeof(module_entry_t));
     if (!hub->modules) {
         nimcp_free(hub);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_hub_create: hub->modules is NULL");
         return NULL;
     }
 
@@ -402,6 +413,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     if (!hub->subscriptions) {
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_hub_create: hub->subscriptions is NULL");
         return NULL;
     }
 
@@ -427,6 +439,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
             nimcp_free(hub->subscriptions);
             nimcp_free(hub->modules);
             nimcp_free(hub);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
             return NULL;
         }
     }
@@ -446,6 +459,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
         nimcp_free(hub->subscriptions);
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
         return NULL;
     }
 
@@ -466,6 +480,7 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
         nimcp_free(hub->subscriptions);
         nimcp_free(hub->modules);
         nimcp_free(hub);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_create: operation failed");
         return NULL;
     }
 
@@ -535,10 +550,12 @@ int cognitive_hub_register_module(cognitive_integration_hub_t hub,
                                   const char* name,
                                   void* context) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_destroy: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
     if (!COG_CATEGORY_IS_VALID(category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_destroy: COG_CATEGORY_IS_VALID is NULL");
         return -1;
     }
 
@@ -551,6 +568,7 @@ int cognitive_hub_register_module(cognitive_integration_hub_t hub,
     /* Check if module_id already registered */
     if (find_module_unlocked(hub, module_id)) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "cognitive_hub_destroy: validation failed");
         return -1;
     }
 
@@ -558,6 +576,7 @@ int cognitive_hub_register_module(cognitive_integration_hub_t hub,
     module_entry_t* slot = find_empty_slot_unlocked(hub);
     if (!slot) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_destroy: slot is NULL");
         return -1;
     }
 
@@ -587,6 +606,7 @@ int cognitive_hub_register_module(cognitive_integration_hub_t hub,
 int cognitive_hub_unregister_module(cognitive_integration_hub_t hub,
                                     uint32_t module_id) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_destroy: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
@@ -599,6 +619,7 @@ int cognitive_hub_unregister_module(cognitive_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_destroy: mod is NULL");
         return -1;
     }
 
@@ -627,6 +648,7 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
                             cognitive_event_callback_t callback,
                             void* user_data) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_destroy: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
@@ -638,6 +660,7 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_destroy: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -650,6 +673,7 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     /* Check subscriber is registered */
     if (!find_module_unlocked(hub, subscriber_id)) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "cognitive_hub_destroy: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -685,6 +709,7 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     if (!slot) {
         if (count >= hub->config.max_subscriptions) {
             nimcp_mutex_unlock(hub->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
             return -1;
         }
         slot = &subs[count];
@@ -706,10 +731,12 @@ int cognitive_hub_unsubscribe(cognitive_integration_hub_t hub,
                               uint32_t subscriber_id,
                               cognitive_event_type_t event_type) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -722,6 +749,7 @@ int cognitive_hub_unsubscribe(cognitive_integration_hub_t hub,
     subscription_t* sub = find_subscription_unlocked(hub, subscriber_id, event_type);
     if (!sub) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: sub is NULL");
         return -1;
     }
 
@@ -741,10 +769,12 @@ int cognitive_hub_publish(cognitive_integration_hub_t hub,
                           cognitive_event_type_t event_type,
                           const cognitive_event_data_t* data) {
     if (!hub || !hub->initialized || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized, data)");
         return -1;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -757,6 +787,7 @@ int cognitive_hub_publish(cognitive_integration_hub_t hub,
     /* Check publisher is registered */
     if (!find_module_unlocked(hub, publisher_id)) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -791,6 +822,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
                                const cognitive_query_t* query,
                                cognitive_query_result_t* result) {
     if (!hub || !hub->initialized || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized, query, result)");
         return -1;
     }
 
@@ -804,6 +836,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     if (!find_module_unlocked(hub, requester_id)) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -812,6 +845,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     if (!target) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target is NULL");
         return -1;
     }
 
@@ -819,6 +853,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     if (!target->info.is_active) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target->info is NULL");
         return -1;
     }
 
@@ -826,6 +861,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     if (!target->query_handler) {
         nimcp_mutex_unlock(hub->mutex);
         hub->stats.queries_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: target->query_handler is NULL");
         return -1;
     }
 
@@ -840,6 +876,7 @@ int cognitive_hub_query_module(cognitive_integration_hub_t hub,
     int handler_result = handler(query, result, context);
     if (handler_result != 0) {
         hub->stats.queries_failed++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -850,6 +887,7 @@ int cognitive_hub_get_module_info(cognitive_integration_hub_t hub,
                                   uint32_t module_id,
                                   cognitive_module_info_t* info) {
     if (!hub || !hub->initialized || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized, info)");
         return -1;
     }
 
@@ -862,6 +900,7 @@ int cognitive_hub_get_module_info(cognitive_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -879,6 +918,7 @@ int cognitive_hub_register_query_handler(cognitive_integration_hub_t hub,
                                          uint32_t module_id,
                                          cognitive_query_handler_t handler) {
     if (!hub || !hub->initialized || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized, handler)");
         return -1;
     }
 
@@ -891,6 +931,7 @@ int cognitive_hub_register_query_handler(cognitive_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -908,6 +949,7 @@ int cognitive_hub_set_module_active(cognitive_integration_hub_t hub,
                                     uint32_t module_id,
                                     bool is_active) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
@@ -920,6 +962,7 @@ int cognitive_hub_set_module_active(cognitive_integration_hub_t hub,
     module_entry_t* mod = find_module_unlocked(hub, module_id);
     if (!mod) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: mod is NULL");
         return -1;
     }
 
@@ -936,6 +979,7 @@ int cognitive_hub_set_module_active(cognitive_integration_hub_t hub,
 int cognitive_hub_get_stats(cognitive_integration_hub_t hub,
                             cognitive_hub_stats_t* stats) {
     if (!hub || !hub->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (hub, hub->initialized, stats)");
         return -1;
     }
 
@@ -953,6 +997,7 @@ int cognitive_hub_get_stats(cognitive_integration_hub_t hub,
 
 int cognitive_hub_reset_stats(cognitive_integration_hub_t hub) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_reset_stats: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 
@@ -985,10 +1030,12 @@ int cognitive_hub_get_modules_by_category(cognitive_integration_hub_t hub,
                                           uint32_t max_modules,
                                           uint32_t* count) {
     if (!hub || !hub->initialized || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_reset_stats: required parameter is NULL (hub, hub->initialized, count)");
         return -1;
     }
 
     if (!COG_CATEGORY_IS_VALID(category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_reset_stats: COG_CATEGORY_IS_VALID is NULL");
         return -1;
     }
 
@@ -1020,14 +1067,17 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
                                       cognitive_event_type_t event_type,
                                       const cognitive_event_data_t* data) {
     if (!hub || !hub->initialized || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_reset_stats: required parameter is NULL (hub, hub->initialized, data)");
         return -1;
     }
 
     if (!COG_CATEGORY_IS_VALID(category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_reset_stats: COG_CATEGORY_IS_VALID is NULL");
         return -1;
     }
 
     if (!COG_EVENT_TYPE_IS_VALID(event_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_hub_reset_stats: COG_EVENT_TYPE_IS_VALID is NULL");
         return -1;
     }
 
@@ -1040,6 +1090,7 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
     /* Check publisher is registered */
     if (!find_module_unlocked(hub, publisher_id)) {
         nimcp_mutex_unlock(hub->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "cognitive_hub_reset_stats: find_module_unlocked is NULL");
         return -1;
     }
 
@@ -1077,6 +1128,7 @@ int cognitive_hub_publish_to_category(cognitive_integration_hub_t hub,
 int cognitive_hub_flush_async_queue(cognitive_integration_hub_t hub,
                                     uint32_t timeout_ms) {
     if (!hub || !hub->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_reset_stats: required parameter is NULL (hub, hub->initialized)");
         return -1;
     }
 

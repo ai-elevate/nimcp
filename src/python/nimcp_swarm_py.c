@@ -119,6 +119,7 @@ static PyObject* PerceptionData_new(PyTypeObject* type, PyObject* args, PyObject
         self->values = PyList_New(0);
         if (self->values == NULL) {
             Py_DECREF(self);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PerceptionData_new: validation failed");
             return NULL;
         }
         self->confidence = 1.0f;
@@ -135,6 +136,7 @@ static int PerceptionData_init(PerceptionDataObject* self, PyObject* args, PyObj
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO!f", kwlist,
                                       &sensor_type, &PyList_Type, &values, &confidence)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PerceptionData_init: operation failed");
         return -1;
     }
 
@@ -237,6 +239,7 @@ static int ThreatData_init(ThreatDataObject* self, PyObject* args, PyObject* kwd
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO!fs", kwlist,
                                       &threat_type, &PyList_Type, &position, &severity, &description)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ThreatData_init: operation failed");
         return -1;
     }
 
@@ -305,6 +308,7 @@ static PyObject* VoteProposal_new(PyTypeObject* type, PyObject* args, PyObject* 
         self->parameters = PyList_New(0);
         if (self->parameters == NULL) {
             Py_DECREF(self);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "VoteProposal_new: validation failed");
             return NULL;
         }
     }
@@ -319,6 +323,7 @@ static int VoteProposal_init(VoteProposalObject* self, PyObject* args, PyObject*
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|IO!", kwlist,
                                       &action_type, &PyList_Type, &parameters)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "VoteProposal_init: operation failed");
         return -1;
     }
 
@@ -387,6 +392,7 @@ static int NeuromodState_init(NeuromodStateObject* self, PyObject* args, PyObjec
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|ffff", kwlist,
                                       &dopamine, &serotonin, &norepinephrine, &acetylcholine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuromodState_init: operation failed");
         return -1;
     }
 
@@ -460,6 +466,7 @@ static int SwarmBrain_init(SwarmBrainObject* self, PyObject* args, PyObject* kwd
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|HsIf", kwlist,
                                       &drone_id, &swarm_name, &heartbeat_ms, &coherence_threshold)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "SwarmBrain_init: operation failed");
         return -1;
     }
 
@@ -475,6 +482,7 @@ static int SwarmBrain_init(SwarmBrainObject* self, PyObject* args, PyObject* kwd
     self->swarm = swarm_brain_create(&config);
     if (self->swarm == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create swarm brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "SwarmBrain_init: validation failed");
         return -1;
     }
 
@@ -531,6 +539,7 @@ static PyObject* SwarmBrain_broadcast_perception(SwarmBrainObject* self, PyObjec
     PyObject* perception_obj;
 
     if (!PyArg_ParseTuple(args, "O!", &PerceptionDataType, &perception_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "SwarmBrain_broadcast_perception: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -539,6 +548,7 @@ static PyObject* SwarmBrain_broadcast_perception(SwarmBrainObject* self, PyObjec
 
     if (!PerceptionData_ToC((PerceptionDataObject*)perception_obj, &perception)) {
         PyErr_SetString(PyExc_ValueError, "Invalid perception data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "SwarmBrain_broadcast_perception: PerceptionData_ToC is NULL");
         return NULL;
     }
 
@@ -559,6 +569,7 @@ static PyObject* SwarmBrain_broadcast_threat(SwarmBrainObject* self, PyObject* a
     PyObject* threat_obj;
 
     if (!PyArg_ParseTuple(args, "O!", &ThreatDataType, &threat_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "SwarmBrain_broadcast_threat: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -592,6 +603,7 @@ static PyObject* SwarmBrain_propose_action(SwarmBrainObject* self, PyObject* arg
     PyObject* proposal_obj;
 
     if (!PyArg_ParseTuple(args, "O!", &VoteProposalType, &proposal_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "SwarmBrain_propose_action: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -631,6 +643,7 @@ static PyObject* SwarmBrain_sync_neuromodulators(SwarmBrainObject* self, PyObjec
     PyObject* state_obj;
 
     if (!PyArg_ParseTuple(args, "O!", &NeuromodStateType, &state_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "SwarmBrain_sync_neuromodulators: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -784,53 +797,71 @@ int init_swarm_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.swarm", "Initializing swarm module");
 
     /* Ready types */
-    if (PyType_Ready(&SwarmStatsType) < 0)
+    if (PyType_Ready(&SwarmStatsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
-    if (PyType_Ready(&PerceptionDataType) < 0)
+    }
+    if (PyType_Ready(&PerceptionDataType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
-    if (PyType_Ready(&ThreatDataType) < 0)
+    }
+    if (PyType_Ready(&ThreatDataType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
-    if (PyType_Ready(&VoteProposalType) < 0)
+    }
+    if (PyType_Ready(&VoteProposalType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
-    if (PyType_Ready(&NeuromodStateType) < 0)
+    }
+    if (PyType_Ready(&NeuromodStateType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
-    if (PyType_Ready(&SwarmBrainType) < 0)
+    }
+    if (PyType_Ready(&SwarmBrainType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
+    }
 
     /* Add types */
     Py_INCREF(&SwarmStatsType);
     if (PyModule_AddObject(module, "SwarmStats", (PyObject*)&SwarmStatsType) < 0) {
         Py_DECREF(&SwarmStatsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&PerceptionDataType);
     if (PyModule_AddObject(module, "PerceptionData", (PyObject*)&PerceptionDataType) < 0) {
         Py_DECREF(&PerceptionDataType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&ThreatDataType);
     if (PyModule_AddObject(module, "ThreatData", (PyObject*)&ThreatDataType) < 0) {
         Py_DECREF(&ThreatDataType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&VoteProposalType);
     if (PyModule_AddObject(module, "VoteProposal", (PyObject*)&VoteProposalType) < 0) {
         Py_DECREF(&VoteProposalType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&NeuromodStateType);
     if (PyModule_AddObject(module, "NeuromodState", (PyObject*)&NeuromodStateType) < 0) {
         Py_DECREF(&NeuromodStateType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&SwarmBrainType);
     if (PyModule_AddObject(module, "SwarmBrain", (PyObject*)&SwarmBrainType) < 0) {
         Py_DECREF(&SwarmBrainType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_swarm_module: validation failed");
         return -1;
     }
 

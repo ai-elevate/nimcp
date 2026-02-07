@@ -96,6 +96,7 @@ static soma_bio_subscription_t* find_subscription(soma_bio_router_t* b, uint32_t
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -115,7 +116,10 @@ static int count_subscribers_for_type(const soma_bio_router_t* b, soma_bio_msg_t
  * ============================================================================ */
 
 int soma_bio_async_default_config(soma_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->touch_broadcast_interval_ms = SOMA_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->proprio_broadcast_interval_ms = 100;  /* Proprioception at 10Hz */
@@ -157,6 +161,7 @@ soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* c
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(soma_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -186,7 +191,10 @@ int soma_bio_async_connect(
     nimcp_somatosensory_t* soma,
     bio_router_t router
 ) {
-    if (!bridge || !soma) return -1;
+    if (!bridge || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_connect: required parameter is NULL (bridge, soma)");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->router = router;
@@ -196,7 +204,10 @@ int soma_bio_async_connect(
 }
 
 int soma_bio_async_disconnect(soma_bio_router_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->router = NULL;
@@ -214,7 +225,10 @@ bool soma_bio_async_is_connected(const soma_bio_router_t* bridge) {
  * ============================================================================ */
 
 int soma_bio_async_process_inbox(soma_bio_router_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -227,7 +241,10 @@ int soma_bio_async_process_inbox(soma_bio_router_t* bridge, uint32_t max_message
 }
 
 int soma_bio_async_update(soma_bio_router_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_touch_broadcast_ms += delta_ms;
     bridge->time_since_proprio_broadcast_ms += delta_ms;
@@ -254,8 +271,14 @@ int soma_bio_async_broadcast_touch(
     float intensity,
     touch_modality_t touch_type
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_touch: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_touch: position is NULL");
+        return -1;
+    }
 
     soma_bio_touch_event_msg_t msg = {0};
     msg.header.type = SOMA_BIO_MSG_TOUCH_EVENT;
@@ -290,7 +313,10 @@ int soma_bio_async_broadcast_texture(
     float roughness,
     float hardness
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_texture: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Create texture result message */
     bridge->stats.messages_sent++;
@@ -309,7 +335,10 @@ int soma_bio_async_broadcast_grip_force(
     float current_force,
     float recommended_force
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_grip_force: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->stats.messages_sent++;
     bridge->stats.broadcasts_sent++;
@@ -331,7 +360,10 @@ int soma_bio_async_broadcast_pain(
     pain_type_t pain_type,
     float intensity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_pain: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_pain_routing) return 0;
 
     soma_bio_pain_alert_msg_t msg = {0};
@@ -371,7 +403,10 @@ int soma_bio_async_broadcast_withdrawal(
     float urgency,
     uint32_t danger_type
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_withdrawal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     soma_bio_danger_withdrawal_msg_t msg = {0};
     msg.header.type = SOMA_BIO_MSG_DANGER_WITHDRAWAL;
@@ -404,7 +439,10 @@ int soma_bio_async_broadcast_proprio(
     float angular_velocity,
     float muscle_tension
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_proprio: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_proprio_routing) return 0;
 
     soma_bio_proprio_update_msg_t msg = {0};
@@ -434,7 +472,10 @@ int soma_bio_async_broadcast_body_map_change(
     uint32_t change_type,
     bool tool_extension
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_body_map_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     soma_bio_body_map_change_msg_t msg = {0};
     msg.header.type = SOMA_BIO_MSG_BODY_MAP_CHANGE;
@@ -465,7 +506,10 @@ int soma_bio_async_broadcast_temperature(
     float temperature_celsius,
     temp_sensation_t sensation
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_temperature: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_temperature_routing) return 0;
 
     soma_bio_temperature_msg_t msg = {0};
@@ -521,7 +565,10 @@ int soma_bio_async_broadcast_prediction_error(
     float prediction_error,
     uint32_t error_source
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_broadcast_prediction_error: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_prediction_error) return 0;
 
     soma_bio_prediction_error_msg_t msg = {0};
@@ -553,7 +600,10 @@ int soma_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check for existing subscription */
     soma_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -565,6 +615,7 @@ int soma_bio_async_subscribe_module(
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_bio_async_subscribe_module: capacity exceeded");
         return -1;  /* No space */
     }
 
@@ -586,6 +637,7 @@ int soma_bio_async_subscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_bio_async_subscribe_module: validation failed");
     return -1;
 }
 
@@ -593,10 +645,16 @@ int soma_bio_async_unsubscribe_module(
     soma_bio_router_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     soma_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask = 0;
@@ -611,10 +669,16 @@ int soma_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     soma_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -636,14 +700,20 @@ int soma_bio_async_get_stats(
     const soma_bio_router_t* bridge,
     soma_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int soma_bio_async_reset_stats(soma_bio_router_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

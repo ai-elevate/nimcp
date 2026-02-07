@@ -180,6 +180,7 @@ security_immune_fep_bridge_t* security_immune_fep_create(
 
     if (!unified_bridge || !immune_system || !fep_system) {
         NIMCP_LOGGING_ERROR("Security immune FEP: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_immune_fep_create: required parameter is NULL (unified_bridge, immune_system, fep_system)");
         return NULL;
     }
 
@@ -187,6 +188,7 @@ security_immune_fep_bridge_t* security_immune_fep_create(
         (security_immune_fep_bridge_t*)nimcp_malloc(sizeof(security_immune_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security immune FEP: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_immune_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -197,6 +199,7 @@ security_immune_fep_bridge_t* security_immune_fep_create(
                          "security_immune_fep") != 0) {
         NIMCP_LOGGING_ERROR("Security immune FEP: base init failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_immune_fep_create: operation failed");
         return NULL;
     }
 
@@ -979,6 +982,7 @@ bool security_immune_fep_is_emergency_mode(
     const security_immune_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_immune_fep_is_emergency_mode: bridge is NULL");
         return false;
     }
 
@@ -1101,6 +1105,7 @@ int security_immune_fep_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Security immune FEP: bio-async connection failed");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_immune_fep_connect_bio_async: validation failed");
     return -1;
 }
 

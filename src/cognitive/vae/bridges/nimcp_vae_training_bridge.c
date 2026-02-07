@@ -57,7 +57,10 @@ static inline float clampf(float val, float min_val, float max_val)
  */
 static bool check_nan_gradient(const float* grad, uint32_t size)
 {
-    if (!grad) return false;
+    if (!grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_nan_gradient: grad is NULL");
+        return false;
+    }
     for (uint32_t i = 0; i < size; i++) {
         if (isnan(grad[i]) || isinf(grad[i])) return true;
     }
@@ -271,10 +274,16 @@ int vae_training_bridge_default_config(vae_training_bridge_config_t* config)
 
 vae_training_bridge_t* vae_training_bridge_create(const vae_training_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_training_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_training_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_training_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_training_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_TRAIN_STATE_DISCONNECTED;
@@ -294,6 +303,7 @@ vae_training_bridge_t* vae_training_bridge_create(const vae_training_bridge_conf
     if (!bridge->vae_grad_buffer || !bridge->snn_grad_buffer ||
         !bridge->combined_grad_buffer) {
         vae_training_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_training_bridge_create: operation failed");
         return NULL;
     }
 
@@ -304,6 +314,7 @@ vae_training_bridge_t* vae_training_bridge_create(const vae_training_bridge_conf
 
     if (!bridge->vae_loss_history || !bridge->snn_loss_history) {
         vae_training_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_training_bridge_create: required parameter is NULL (bridge->vae_loss_history, bridge->snn_loss_history)");
         return NULL;
     }
 
@@ -395,7 +406,10 @@ int vae_training_bridge_disconnect(vae_training_bridge_t* bridge)
 
 bool vae_training_bridge_is_connected(const vae_training_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_training_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_TRAIN_STATE_READY;
 }
 
@@ -809,7 +823,10 @@ int vae_training_eprop_update(vae_training_bridge_t* bridge,
                                float reward_signal)
 {
     if (!bridge || !spike_data) return NIMCP_ERROR_VAE_TRAIN_NULL;
-    if (!bridge->eligibility_traces) return -1;
+    if (!bridge->eligibility_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_training_eprop_update: bridge->eligibility_traces is NULL");
+        return -1;
+    }
 
     /* E-prop update:
      * dW = eta * e * L

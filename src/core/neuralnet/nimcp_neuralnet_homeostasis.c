@@ -143,11 +143,13 @@ bool neural_network_apply_immune_inflammation(neural_network_t network,
 {
     if (!network) {
         LOG_ERROR(LOG_MODULE, "NULL network in apply_immune_inflammation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_immune_inflammation: network is NULL");
         return false;
     }
 
     if (inflammation_level < 0.0f || inflammation_level > 1.0f) {
         LOG_ERROR(LOG_MODULE, "Invalid inflammation_level %.3f (must be 0.0-1.0)", inflammation_level);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_immune_inflammation: validation failed");
         return false;
     }
 
@@ -183,11 +185,13 @@ bool neural_network_apply_anti_inflammatory(neural_network_t network,
 {
     if (!network) {
         LOG_ERROR(LOG_MODULE, "NULL network in apply_anti_inflammatory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_anti_inflammatory: network is NULL");
         return false;
     }
 
     if (il10_concentration < 0.0f || il10_concentration > 1.0f) {
         LOG_ERROR(LOG_MODULE, "Invalid il10_concentration %.3f", il10_concentration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_anti_inflammatory: validation failed");
         return false;
     }
 
@@ -225,11 +229,13 @@ bool neural_network_modulate_scaling_rate(neural_network_t network,
 {
     if (!network || neuron_id >= network->num_neurons) {
         LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_modulate_scaling_rate: network is NULL");
         return false;
     }
 
     if (cytokine_modulation < -1.0f || cytokine_modulation > 1.0f) {
         LOG_ERROR(LOG_MODULE, "Invalid cytokine_modulation %.3f", cytokine_modulation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_modulate_scaling_rate: validation failed");
         return false;
     }
 
@@ -253,11 +259,13 @@ bool neural_network_apply_immune_metabolic_load(neural_network_t network,
 {
     if (!network) {
         LOG_ERROR(LOG_MODULE, "NULL network in apply_immune_metabolic_load");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_apply_immune_metabolic_load: network is NULL");
         return false;
     }
 
     if (metabolic_load < 0.0f || metabolic_load > 1.0f) {
         LOG_ERROR(LOG_MODULE, "Invalid metabolic_load %.3f", metabolic_load);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_immune_metabolic_load: validation failed");
         return false;
     }
 
@@ -289,11 +297,13 @@ bool neural_network_accumulate_allostatic_load(neural_network_t network,
 {
     if (!network || neuron_id >= network->num_neurons) {
         LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_accumulate_allostatic_load: network is NULL");
         return false;
     }
 
     if (inflammation_level < 0.0f || inflammation_level > 1.0f) {
         LOG_ERROR(LOG_MODULE, "Invalid inflammation_level %.3f", inflammation_level);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_accumulate_allostatic_load: validation failed");
         return false;
     }
 
@@ -345,6 +355,7 @@ bool neural_network_connect_immune_system(neural_network_t network,
 {
     if (!network) {
         LOG_ERROR(LOG_MODULE, "NULL network in connect_immune_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_connect_immune_system: network is NULL");
         return false;
     }
 

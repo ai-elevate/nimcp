@@ -219,11 +219,15 @@ bool multimodal_lang_add_gesture(
 
     if (!plan->gestures) {
         plan->gestures = (gesture_spec_t*)nimcp_calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
-        if (!plan->gestures) return false;
+        if (!plan->gestures) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_lang_reset: plan->gestures is NULL");
+            return false;
+        }
     }
 
     if (plan->gesture_count >= processor->config.max_gestures) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 
@@ -252,11 +256,15 @@ bool multimodal_lang_add_expression(
 
     if (!plan->expressions) {
         plan->expressions = (expression_spec_t*)nimcp_calloc(processor->config.max_expressions, sizeof(expression_spec_t));
-        if (!plan->expressions) return false;
+        if (!plan->expressions) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_lang_reset: plan->expressions is NULL");
+            return false;
+        }
     }
 
     if (plan->expression_count >= processor->config.max_expressions) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 
@@ -285,11 +293,15 @@ bool multimodal_lang_add_gaze(
 
     if (!plan->gaze_events) {
         plan->gaze_events = (gaze_spec_t*)nimcp_calloc(16, sizeof(gaze_spec_t));
-        if (!plan->gaze_events) return false;
+        if (!plan->gaze_events) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_lang_reset: plan->gaze_events is NULL");
+            return false;
+        }
     }
 
     if (plan->gaze_count >= 16) {
         processor->last_error = MULTIMODAL_ERROR_BUFFER_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "multimodal_lang_reset: capacity exceeded");
         return false;
     }
 
@@ -366,7 +378,10 @@ bool multimodal_lang_get_events_at_time(
     expression_spec_t* expression,
     gaze_spec_t* gaze) {
 
-    if (!plan) return false;
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_lang_free_plan: plan is NULL");
+        return false;
+    }
 
     /* Find active gesture */
     if (gesture) {
@@ -425,7 +440,10 @@ static const char* DEICTIC_TRIGGERS[] = {
 };
 
 static bool contains_word(const char* text, const char* word) {
-    if (!text || !word) return false;
+    if (!text || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_word: required parameter is NULL (text, word)");
+        return false;
+    }
 
     const char* p = text;
     size_t word_len = strlen(word);

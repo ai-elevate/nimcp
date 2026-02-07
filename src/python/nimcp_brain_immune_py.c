@@ -219,12 +219,14 @@ static int BrainImmuneSystem_init(BrainImmuneSystemObject* self, PyObject* args,
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|ppp", kwlist,
                                       &enable_bbb, &enable_bft, &enable_swarm)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BrainImmuneSystem_init: operation failed");
         return -1;
     }
 
     brain_immune_config_t config;
     if (brain_immune_default_config(&config) != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get default config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BrainImmuneSystem_init: validation failed");
         return -1;
     }
 
@@ -237,6 +239,7 @@ static int BrainImmuneSystem_init(BrainImmuneSystemObject* self, PyObject* args,
     self->system = brain_immune_create(&config);
     if (self->system == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create brain immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BrainImmuneSystem_init: validation failed");
         return -1;
     }
 
@@ -279,6 +282,7 @@ static PyObject* BrainImmuneSystem_update(BrainImmuneSystemObject* self, PyObjec
     unsigned long long delta_ms;
 
     if (!PyArg_ParseTuple(args, "K", &delta_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_update: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -307,6 +311,7 @@ static PyObject* BrainImmuneSystem_get_stats(BrainImmuneSystemObject* self, PyOb
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_get_stats: validation failed");
         return NULL;
     }
 
@@ -326,12 +331,14 @@ static PyObject* BrainImmuneSystem_present_antigen(BrainImmuneSystemObject* self
     int source = ANTIGEN_SOURCE_MANUAL;
 
     if (!PyArg_ParseTuple(args, "y*II|i", &epitope, &severity, &source_node, &source)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_present_antigen: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (severity < 1 || severity > 10) {
         PyBuffer_Release(&epitope);
         PyErr_SetString(PyExc_ValueError, "severity must be 1-10");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_present_antigen: validation failed");
         return NULL;
     }
 
@@ -354,6 +361,7 @@ static PyObject* BrainImmuneSystem_present_antigen(BrainImmuneSystemObject* self
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to present antigen");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_present_antigen: validation failed");
         return NULL;
     }
 
@@ -368,6 +376,7 @@ static PyObject* BrainImmuneSystem_get_antigen(BrainImmuneSystemObject* self, Py
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_get_antigen: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -387,6 +396,7 @@ static PyObject* BrainImmuneSystem_activate_b_cell(BrainImmuneSystemObject* self
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_b_cell: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -399,6 +409,7 @@ static PyObject* BrainImmuneSystem_activate_b_cell(BrainImmuneSystemObject* self
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to activate B cell");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_b_cell: validation failed");
         return NULL;
     }
 
@@ -413,6 +424,7 @@ static PyObject* BrainImmuneSystem_activate_helper_t(BrainImmuneSystemObject* se
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_helper_t: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -425,6 +437,7 @@ static PyObject* BrainImmuneSystem_activate_helper_t(BrainImmuneSystemObject* se
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to activate helper T cell");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_helper_t: validation failed");
         return NULL;
     }
 
@@ -439,6 +452,7 @@ static PyObject* BrainImmuneSystem_activate_killer_t(BrainImmuneSystemObject* se
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_killer_t: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -451,6 +465,7 @@ static PyObject* BrainImmuneSystem_activate_killer_t(BrainImmuneSystemObject* se
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to activate killer T cell");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_activate_killer_t: validation failed");
         return NULL;
     }
 
@@ -466,6 +481,7 @@ static PyObject* BrainImmuneSystem_t_cell_kill(BrainImmuneSystemObject* self, Py
     unsigned int target_node;
 
     if (!PyArg_ParseTuple(args, "II", &t_cell_id, &target_node)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_t_cell_kill: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -487,6 +503,7 @@ static PyObject* BrainImmuneSystem_produce_antibody(BrainImmuneSystemObject* sel
     int ab_class = ANTIBODY_IGG;
 
     if (!PyArg_ParseTuple(args, "I|i", &b_cell_id, &ab_class)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_produce_antibody: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -500,6 +517,7 @@ static PyObject* BrainImmuneSystem_produce_antibody(BrainImmuneSystemObject* sel
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to produce antibody");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_produce_antibody: validation failed");
         return NULL;
     }
 
@@ -514,6 +532,7 @@ static PyObject* BrainImmuneSystem_execute_antibody(BrainImmuneSystemObject* sel
     unsigned int antibody_id;
 
     if (!PyArg_ParseTuple(args, "I", &antibody_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_execute_antibody: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -535,6 +554,7 @@ static PyObject* BrainImmuneSystem_neutralize(BrainImmuneSystemObject* self, PyO
     unsigned int antibody_id;
 
     if (!PyArg_ParseTuple(args, "II", &antigen_id, &antibody_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_neutralize: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -555,6 +575,7 @@ static PyObject* BrainImmuneSystem_is_neutralized(BrainImmuneSystemObject* self,
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_is_neutralized: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -573,11 +594,13 @@ static PyObject* BrainImmuneSystem_release_cytokine(BrainImmuneSystemObject* sel
     unsigned int target_region = 0;
 
     if (!PyArg_ParseTuple(args, "iIf|I", &type, &source_cell, &concentration, &target_region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_release_cytokine: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (concentration < 0.0f || concentration > 1.0f) {
         PyErr_SetString(PyExc_ValueError, "concentration must be 0.0-1.0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_release_cytokine: validation failed");
         return NULL;
     }
 
@@ -597,6 +620,7 @@ static PyObject* BrainImmuneSystem_release_cytokine(BrainImmuneSystemObject* sel
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to release cytokine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_release_cytokine: validation failed");
         return NULL;
     }
 
@@ -611,6 +635,7 @@ static PyObject* BrainImmuneSystem_get_cytokine_level(BrainImmuneSystemObject* s
     int type;
 
     if (!PyArg_ParseTuple(args, "i", &type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_get_cytokine_level: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -627,6 +652,7 @@ static PyObject* BrainImmuneSystem_initiate_inflammation(BrainImmuneSystemObject
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "II", &region_id, &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_initiate_inflammation: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -639,6 +665,7 @@ static PyObject* BrainImmuneSystem_initiate_inflammation(BrainImmuneSystemObject
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initiate inflammation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_initiate_inflammation: validation failed");
         return NULL;
     }
 
@@ -653,6 +680,7 @@ static PyObject* BrainImmuneSystem_escalate_inflammation(BrainImmuneSystemObject
     unsigned int site_id;
 
     if (!PyArg_ParseTuple(args, "I", &site_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_escalate_inflammation: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -673,6 +701,7 @@ static PyObject* BrainImmuneSystem_resolve_inflammation(BrainImmuneSystemObject*
     unsigned int site_id;
 
     if (!PyArg_ParseTuple(args, "I", &site_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_resolve_inflammation: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -702,6 +731,7 @@ static PyObject* BrainImmuneSystem_check_memory(BrainImmuneSystemObject* self, P
     unsigned int antigen_id;
 
     if (!PyArg_ParseTuple(args, "I", &antigen_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_check_memory: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -728,6 +758,7 @@ static PyObject* BrainImmuneSystem_secondary_response(BrainImmuneSystemObject* s
     unsigned int memory_b_cell_id;
 
     if (!PyArg_ParseTuple(args, "II", &antigen_id, &memory_b_cell_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "BrainImmuneSystem_secondary_response: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -748,6 +779,7 @@ static PyObject* BrainImmuneSystem_b_cell_to_memory(BrainImmuneSystemObject* sel
     unsigned int b_cell_id;
 
     if (!PyArg_ParseTuple(args, "I", &b_cell_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BrainImmuneSystem_b_cell_to_memory: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -862,29 +894,38 @@ int init_brain_immune_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.brain_immune", "Initializing brain immune module");
 
     /* Ready types */
-    if (PyType_Ready(&BrainAntigenType) < 0)
+    if (PyType_Ready(&BrainAntigenType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
-    if (PyType_Ready(&BrainImmuneStatsType) < 0)
+    }
+    if (PyType_Ready(&BrainImmuneStatsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
-    if (PyType_Ready(&BrainImmuneSystemType) < 0)
+    }
+    if (PyType_Ready(&BrainImmuneSystemType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
+    }
 
     /* Add types */
     Py_INCREF(&BrainAntigenType);
     if (PyModule_AddObject(module, "BrainAntigen", (PyObject*)&BrainAntigenType) < 0) {
         Py_DECREF(&BrainAntigenType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&BrainImmuneStatsType);
     if (PyModule_AddObject(module, "BrainImmuneStats", (PyObject*)&BrainImmuneStatsType) < 0) {
         Py_DECREF(&BrainImmuneStatsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&BrainImmuneSystemType);
     if (PyModule_AddObject(module, "BrainImmuneSystem", (PyObject*)&BrainImmuneSystemType) < 0) {
         Py_DECREF(&BrainImmuneSystemType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_brain_immune_module: validation failed");
         return -1;
     }
 

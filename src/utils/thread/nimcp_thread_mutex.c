@@ -110,6 +110,7 @@ nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr)
 
     if (nimcp_mutex_init(mutex, attr) != NIMCP_SUCCESS) {
         nimcp_free(mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mutex_create: validation failed");
         return NULL;
     }
 

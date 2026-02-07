@@ -118,12 +118,14 @@ bool brain_attach_symbolic_logic(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_attach_symbolic_logic: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_symbolic_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(logic_engine, "logic_engine")) {
         set_error("Logic engine is NULL");
         NIMCP_LOGGING_ERROR("brain_attach_symbolic_logic: logic_engine is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_symbolic_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -132,6 +134,7 @@ bool brain_attach_symbolic_logic(
         set_error("Symbolic logic engine already attached to this brain");
         NIMCP_LOGGING_WARN("brain_attach_symbolic_logic: brain %p already has logic engine",
                               (void*)brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_attach_symbolic_logic: validation failed");
         return false;
     }
 
@@ -164,6 +167,7 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_detach_symbolic_logic: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detach_symbolic_logic: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
@@ -178,6 +182,7 @@ symbolic_logic_t* brain_detach_symbolic_logic(brain_t brain)
     if (engine == NULL) {
         NIMCP_LOGGING_DEBUG("brain_detach_symbolic_logic: no engine attached to brain %p",
                            (void*)brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detach_symbolic_logic: validation failed");
         return NULL;
     }
 
@@ -215,6 +220,7 @@ bool brain_has_symbolic_logic(brain_t brain)
 {
     // Validate input
     if (!nimcp_validate_pointer(brain, "brain")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_has_symbolic_logic: nimcp_validate_pointer is NULL");
         return false;
     }
 

@@ -145,6 +145,7 @@ static agent_model_t* find_agent_unlocked(tom_social_bridge_t* bridge, uint32_t 
             return &bridge->agents[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_unlocked: validation failed");
     return NULL;
 }
 
@@ -162,6 +163,7 @@ static agent_model_t* find_or_create_agent_unlocked(tom_social_bridge_t* bridge,
 
     /* Check capacity */
     if (bridge->agent_count >= bridge->agent_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_agent_unlocked: capacity exceeded");
         return NULL;
     }
 
@@ -221,7 +223,10 @@ static uint64_t get_current_time_ms(void) {
  * ============================================================================ */
 
 int tom_social_default_config(tom_social_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_default_c", 0.0f);
@@ -276,6 +281,7 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
     bridge->agents = nimcp_calloc(bridge->agent_capacity, sizeof(agent_model_t));
     if (!bridge->agents) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_social_bridge_create: bridge->agents is NULL");
         return NULL;
     }
 
@@ -284,6 +290,7 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
     if (!bridge->base.mutex) {
         nimcp_free(bridge->agents);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_social_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -321,8 +328,14 @@ int tom_social_infer_for_response(
     uint32_t agent_id,
     tom_social_mental_state_t* mental_state_out
 ) {
-    if (!bridge || !mental_state_out) return -1;
-    if (!bridge->initialized) return -1;
+    if (!bridge || !mental_state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_infer_for_response: required parameter is NULL (bridge, mental_state_out)");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_infer_for_response: bridge->initialized is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_infer_for", 0.0f);
@@ -334,6 +347,7 @@ int tom_social_infer_for_response(
     if (!agent) {
         bridge->stats.inference_failures++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_infer_for_response: agent is NULL");
         return -1;
     }
 
@@ -410,8 +424,14 @@ int tom_social_on_social_cue(
     tom_social_cue_type_t cue_type,
     const void* cue_data
 ) {
-    if (!bridge) return -1;
-    if (!bridge->initialized) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_on_social_cue: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_on_social_cue: bridge->initialized is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_on_social", 0.0f);
@@ -428,6 +448,7 @@ int tom_social_on_social_cue(
     if (!agent) {
         bridge->stats.cue_failures++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_on_social_cue: agent is NULL");
         return -1;
     }
 
@@ -498,8 +519,14 @@ int tom_social_update_agent_model(
     uint32_t agent_id,
     const tom_social_belief_update_t* belief_update
 ) {
-    if (!bridge || !belief_update) return -1;
-    if (!bridge->initialized) return -1;
+    if (!bridge || !belief_update) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_update_agent_model: required parameter is NULL (bridge, belief_update)");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_update_agent_model: bridge->initialized is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_update_ag", 0.0f);
@@ -510,6 +537,7 @@ int tom_social_update_agent_model(
     agent_model_t* agent = find_or_create_agent_unlocked(bridge, agent_id);
     if (!agent) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_update_agent_model: agent is NULL");
         return -1;
     }
 
@@ -564,8 +592,14 @@ int tom_social_get_agent_state(
     uint32_t agent_id,
     tom_social_agent_state_t* state_out
 ) {
-    if (!bridge || !state_out) return -1;
-    if (!bridge->initialized) return -1;
+    if (!bridge || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_get_agent_state: required parameter is NULL (bridge, state_out)");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_get_agent_state: bridge->initialized is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_get_agent", 0.0f);
@@ -576,6 +610,7 @@ int tom_social_get_agent_state(
     agent_model_t* agent = find_agent_unlocked(bridge, agent_id);
     if (!agent) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_get_agent_state: agent is NULL");
         return -1;
     }
 
@@ -658,8 +693,14 @@ int tom_social_get_stats(
     const tom_social_bridge_t* bridge,
     tom_social_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
-    if (!bridge->initialized) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_get_stats: bridge->initialized is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     tom_social_bridge_heartbeat("tom_social_b_tom_social_get_stats", 0.0f);

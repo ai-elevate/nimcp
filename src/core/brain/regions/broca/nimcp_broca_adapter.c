@@ -325,6 +325,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     broca_adapter_t* adapter = (broca_adapter_t*)nimcp_calloc(1, sizeof(broca_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter is NULL");
         return NULL;
     }
 
@@ -346,6 +347,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     if (!adapter->syntax) {
         LOG_ERROR("[%s] Failed to create syntax processor", BROCA_LOG_MODULE);
         broca_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->syntax is NULL");
         return NULL;
     }
 
@@ -359,6 +361,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     if (!adapter->phonological) {
         LOG_ERROR("[%s] Failed to create phonological processor", BROCA_LOG_MODULE);
         broca_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->phonological is NULL");
         return NULL;
     }
 
@@ -372,6 +375,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     if (!adapter->motor) {
         LOG_ERROR("[%s] Failed to create speech motor planner", BROCA_LOG_MODULE);
         broca_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->motor is NULL");
         return NULL;
     }
 
@@ -385,6 +389,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
         if (!adapter->lexicon) {
             LOG_ERROR("[%s] Failed to allocate lexicon", BROCA_LOG_MODULE);
             broca_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->lexicon is NULL");
             return NULL;
         }
     }
@@ -398,6 +403,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
         if (!adapter->working_memory) {
             LOG_ERROR("[%s] Failed to allocate working memory", BROCA_LOG_MODULE);
             broca_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->working_memory is NULL");
             return NULL;
         }
     }
@@ -410,6 +416,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     if (!adapter->output_commands) {
         LOG_ERROR("[%s] Failed to allocate output buffer", BROCA_LOG_MODULE);
         broca_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->output_commands is NULL");
         return NULL;
     }
 
@@ -427,6 +434,7 @@ broca_adapter_t* broca_create(const broca_config_t* config) {
     if (!adapter->motor_command_pool) {
         LOG_ERROR("[%s] Failed to create motor command memory pool", BROCA_LOG_MODULE);
         broca_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_create: adapter->motor_command_pool is NULL");
         return NULL;
     }
 
@@ -563,7 +571,10 @@ void broca_destroy(broca_adapter_t* adapter) {
 }
 
 bool broca_reset(broca_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", BROCA_LOG_MODULE);
 
@@ -598,16 +609,23 @@ bool broca_reset(broca_adapter_t* adapter) {
 
 bool broca_add_lexical_entry(broca_adapter_t* adapter,
                               const broca_lexical_entry_t* entry) {
-    if (!adapter || !entry || !adapter->lexicon) return false;
+    if (!adapter || !entry || !adapter->lexicon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_reset: required parameter is NULL (adapter, entry, adapter->lexicon)");
+        return false;
+    }
 
     /* Check capacity */
     if (adapter->lexicon_count >= adapter->lexicon_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "broca_reset: capacity exceeded");
         return false;
     }
 
     /* Create new node */
     lexicon_node_t* node = (lexicon_node_t*)nimcp_calloc(1, sizeof(lexicon_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_reset: node is NULL");
+        return false;
+    }
 
     node->entry = *entry;
     node->next = NULL;
@@ -631,7 +649,10 @@ bool broca_lookup_word(const broca_adapter_t* adapter,
                         uint32_t word_id,
                         const char* word,
                         broca_lexical_entry_t* entry) {
-    if (!adapter || !entry) return false;
+    if (!adapter || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_reset: required parameter is NULL (adapter, entry)");
+        return false;
+    }
 
     /* Try internal lexicon first */
     if (adapter->lexicon) {
@@ -641,6 +662,7 @@ bool broca_lookup_word(const broca_adapter_t* adapter,
         } else if (word) {
             idx = hash_string(word, adapter->lexicon_capacity);
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_reset: validation failed");
             return false;
         }
 
@@ -664,13 +686,17 @@ bool broca_lookup_word(const broca_adapter_t* adapter,
                                          adapter->lexical_user_data);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_reset: validation failed");
     return false;
 }
 
 bool broca_set_lexical_callback(broca_adapter_t* adapter,
                                  broca_lexical_callback_t callback,
                                  void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_reset: adapter is NULL");
+        return false;
+    }
     adapter->lexical_callback = callback;
     adapter->lexical_user_data = user_data;
     return true;
@@ -681,7 +707,10 @@ bool broca_set_lexical_callback(broca_adapter_t* adapter,
  *===========================================================================*/
 
 bool broca_begin_utterance(broca_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_begin_utterance: adapter is NULL");
+        return false;
+    }
 
     /* Reset for new utterance */
     syntax_reset(adapter->syntax);
@@ -699,6 +728,7 @@ bool broca_begin_utterance(broca_adapter_t* adapter) {
 bool broca_add_word(broca_adapter_t* adapter, const broca_input_word_t* word) {
     if (!adapter || !word) {
         set_error(adapter, BROCA_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_add_word: required parameter is NULL (adapter, word)");
         return false;
     }
 
@@ -707,6 +737,7 @@ bool broca_add_word(broca_adapter_t* adapter, const broca_input_word_t* word) {
     if (!broca_lookup_word(adapter, word->word_id, word->word, &entry)) {
         set_error(adapter, BROCA_ERROR_LEXICON_MISS);
         adapter->stats.lexicon_misses++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_add_word: broca_lookup_word is NULL");
         return false;
     }
 
@@ -723,6 +754,7 @@ bool broca_add_word(broca_adapter_t* adapter, const broca_input_word_t* word) {
 
     if (!syntax_add_unit(adapter->syntax, &unit)) {
         set_error(adapter, BROCA_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_add_word: syntax_add_unit is NULL");
         return false;
     }
 
@@ -732,7 +764,10 @@ bool broca_add_word(broca_adapter_t* adapter, const broca_input_word_t* word) {
 
 bool broca_process_utterance(broca_adapter_t* adapter,
                               broca_utterance_result_t* result) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_add_word: adapter is NULL");
+        return false;
+    }
 
     /* Initialize result */
     broca_utterance_result_t local_result;
@@ -745,6 +780,7 @@ bool broca_process_utterance(broca_adapter_t* adapter,
         set_error(adapter, BROCA_ERROR_SYNTAX_FAILURE);
         adapter->stats.syntax_errors++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_add_word: validation failed");
         return false;
     }
 
@@ -790,6 +826,7 @@ bool broca_process_utterance(broca_adapter_t* adapter,
         set_error(adapter, BROCA_ERROR_PHONOLOGICAL_FAILURE);
         adapter->stats.phonological_errors++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_add_word: validation failed");
         return false;
     }
 
@@ -843,6 +880,7 @@ bool broca_process_utterance(broca_adapter_t* adapter,
     if (!temp_commands) {
         set_error(adapter, BROCA_ERROR_INTERNAL);
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_add_word: validation failed");
         return false;
     }
     memset(temp_commands, 0, max_commands * sizeof(motor_command_t));
@@ -882,9 +920,13 @@ bool broca_process_utterance(broca_adapter_t* adapter,
 
 bool broca_get_next_command(broca_adapter_t* adapter,
                              broca_output_command_t* command) {
-    if (!adapter || !command) return false;
+    if (!adapter || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_add_word: required parameter is NULL (adapter, command)");
+        return false;
+    }
 
     if (adapter->output_head >= adapter->output_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "broca_add_word: capacity exceeded");
         return false;  /* No more commands */
     }
 
@@ -902,7 +944,10 @@ bool broca_get_next_command(broca_adapter_t* adapter,
 bool broca_get_all_commands(broca_adapter_t* adapter,
                              broca_output_command_t* commands,
                              uint32_t* count) {
-    if (!adapter || !commands || !count) return false;
+    if (!adapter || !commands || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, commands, count)");
+        return false;
+    }
 
     uint32_t available = adapter->output_count - adapter->output_head;
     uint32_t to_copy = (*count < available) ? *count : available;
@@ -924,9 +969,15 @@ bool broca_produce_from_ids(broca_adapter_t* adapter,
                              const uint32_t* word_ids,
                              uint32_t num_words,
                              broca_utterance_result_t* result) {
-    if (!adapter || !word_ids || num_words == 0) return false;
+    if (!adapter || !word_ids || num_words == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, word_ids)");
+        return false;
+    }
 
-    if (!broca_begin_utterance(adapter)) return false;
+    if (!broca_begin_utterance(adapter)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: broca_begin_utterance is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_words; i++) {
         broca_input_word_t word;
@@ -934,6 +985,7 @@ bool broca_produce_from_ids(broca_adapter_t* adapter,
         word.word_id = word_ids[i];
 
         if (!broca_add_word(adapter, &word)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: broca_add_word is NULL");
             return false;
         }
     }
@@ -945,9 +997,15 @@ bool broca_produce_from_strings(broca_adapter_t* adapter,
                                  const char* const* words,
                                  uint32_t num_words,
                                  broca_utterance_result_t* result) {
-    if (!adapter || !words || num_words == 0) return false;
+    if (!adapter || !words || num_words == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, words)");
+        return false;
+    }
 
-    if (!broca_begin_utterance(adapter)) return false;
+    if (!broca_begin_utterance(adapter)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: broca_begin_utterance is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_words; i++) {
         broca_input_word_t word;
@@ -956,6 +1014,7 @@ bool broca_produce_from_strings(broca_adapter_t* adapter,
         strncpy(word.word, words[i], sizeof(word.word) - 1);
 
         if (!broca_add_word(adapter, &word)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: broca_add_word is NULL");
             return false;
         }
     }
@@ -968,7 +1027,10 @@ bool broca_produce_from_strings(broca_adapter_t* adapter,
  *===========================================================================*/
 
 bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
-    if (!adapter || !adapter->working_memory) return false;
+    if (!adapter || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_wm_push: required parameter is NULL (adapter, adapter->working_memory)");
+        return false;
+    }
 
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         /* WM full - overwrite oldest */
@@ -987,8 +1049,14 @@ bool broca_wm_push(broca_adapter_t* adapter, uint32_t word_id) {
 }
 
 bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
-    if (!adapter || !word_id || !adapter->working_memory) return false;
-    if (adapter->wm_count == 0) return false;
+    if (!adapter || !word_id || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_wm_pop: required parameter is NULL (adapter, word_id, adapter->working_memory)");
+        return false;
+    }
+    if (adapter->wm_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_wm_pop: adapter->wm_count is zero");
+        return false;
+    }
 
     *word_id = adapter->working_memory[adapter->wm_head].word_id;
     adapter->wm_head = (adapter->wm_head + 1) % adapter->config.working_memory_slots;
@@ -1000,7 +1068,10 @@ bool broca_wm_pop(broca_adapter_t* adapter, uint32_t* word_id) {
 bool broca_wm_get_contents(const broca_adapter_t* adapter,
                             uint32_t* word_ids,
                             uint32_t* count) {
-    if (!adapter || !word_ids || !count || !adapter->working_memory) return false;
+    if (!adapter || !word_ids || !count || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_wm_pop: required parameter is NULL (adapter, word_ids, count, adapter->working_memory)");
+        return false;
+    }
 
     uint32_t to_copy = (*count < adapter->wm_count) ? *count : adapter->wm_count;
 
@@ -1020,7 +1091,10 @@ bool broca_wm_get_contents(const broca_adapter_t* adapter,
 bool broca_set_event_callback(broca_adapter_t* adapter,
                                broca_event_callback_t callback,
                                void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_wm_pop: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -1034,8 +1108,14 @@ bool broca_train_phonemes(broca_adapter_t* adapter,
                            const uint8_t* target_phonemes,
                            uint32_t num_phonemes,
                            float learning_rate) {
-    if (!adapter || !target_phonemes || num_phonemes == 0) return false;
-    if (!adapter->config.enable_training) return false;
+    if (!adapter || !target_phonemes || num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_wm_pop: required parameter is NULL (adapter, target_phonemes)");
+        return false;
+    }
+    if (!adapter->config.enable_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_wm_pop: adapter->config is NULL");
+        return false;
+    }
 
     /* Simple training: compare output phonemes to target and adjust */
     /* This is a placeholder for more sophisticated learning */
@@ -1061,7 +1141,10 @@ bool broca_train_word(broca_adapter_t* adapter,
                        const char* word,
                        const uint8_t* phonemes,
                        uint32_t num_phonemes) {
-    if (!adapter || !word || !phonemes || num_phonemes == 0) return false;
+    if (!adapter || !word || !phonemes || num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_wm_pop: required parameter is NULL (adapter, word, phonemes)");
+        return false;
+    }
 
     /* Create lexical entry */
     broca_lexical_entry_t entry;
@@ -1123,13 +1206,19 @@ const char* broca_status_string(broca_status_t status) {
 }
 
 bool broca_get_stats(const broca_adapter_t* adapter, broca_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool broca_get_config(const broca_adapter_t* adapter, broca_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1204,6 +1293,7 @@ nimcp_bio_future_t broca_request_lexical_access_async(
     if (!adapter || !adapter->bio_ctx) {
         LOG_WARNING("[%s] Cannot request lexical access: bio-async not available",
                     BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx)");
         return NULL;
     }
 
@@ -1230,6 +1320,7 @@ nimcp_bio_future_t broca_request_lexical_access_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send lexical access request", BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: promise is NULL");
         return NULL;
     }
 
@@ -1243,6 +1334,7 @@ nimcp_bio_future_t broca_request_syntax_parse_async(
 
     if (!adapter || !adapter->bio_ctx || !word_ids || word_count == 0) {
         LOG_WARNING("[%s] Cannot request syntax parse: invalid arguments", BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx, word_ids)");
         return NULL;
     }
 
@@ -1267,6 +1359,7 @@ nimcp_bio_future_t broca_request_syntax_parse_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send syntax parse request", BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: promise is NULL");
         return NULL;
     }
 
@@ -1282,6 +1375,7 @@ nimcp_bio_future_t broca_request_motor_command_async(
     if (!adapter || !adapter->bio_ctx) {
         LOG_WARNING("[%s] Cannot request motor command: bio-async not available",
                     BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx)");
         return NULL;
     }
 
@@ -1306,6 +1400,7 @@ nimcp_bio_future_t broca_request_motor_command_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send motor command request", BROCA_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_process_bio_messages: promise is NULL");
         return NULL;
     }
 

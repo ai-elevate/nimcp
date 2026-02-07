@@ -80,7 +80,7 @@ struct circular_buffer {
 static void update_avg_utilization(circular_buffer_t* buf, size_t current_size) {
     if (!buf) return;
 
-    size_t total_ops = buf->stats.total_writes + buf->stats.total_reads;
+    size_t total_ops = atomic_load(&buf->atomic_total_writes) + atomic_load(&buf->atomic_total_reads);
     if (total_ops == 0) {
         buf->stats.avg_usage = 0.0F;
         return;
@@ -118,13 +118,17 @@ circular_buffer_t* circular_buffer_create(
     overflow_strategy_t strategy
 ) {
     // Guard: validate inputs
-    if (element_size == 0 || capacity == 0) return NULL;
+    if (element_size == 0 || capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_create: element_size is zero");
+        return NULL;
+    }
 
     // Guard: check for integer overflow in data_size calculation
     // We need to compute element_size * (capacity + 1) safely
     // First check capacity + 1 won't overflow
     if (capacity > SIZE_MAX - 1) {
         LOG_ERROR("circular_buffer_create: capacity overflow (capacity=%zu)", capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circular_buffer_create: validation failed");
         return NULL;
     }
 
@@ -135,6 +139,7 @@ circular_buffer_t* circular_buffer_create(
     if (element_size > SIZE_MAX / adjusted_capacity) {
         LOG_ERROR("circular_buffer_create: data_size overflow (element_size=%zu, capacity=%zu)",
                   element_size, capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circular_buffer_create: validation failed");
         return NULL;
     }
 
@@ -158,6 +163,7 @@ circular_buffer_t* circular_buffer_create(
     if (data_size > SIZE_MAX - (CACHE_LINE_SIZE - 1)) {
         LOG_ERROR("circular_buffer_create: aligned_size overflow");
         nimcp_free(buf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circular_buffer_create: validation failed");
         return NULL;
     }
     size_t aligned_size = ((data_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
@@ -165,6 +171,7 @@ circular_buffer_t* circular_buffer_create(
     buf->data = nimcp_aligned_alloc(CACHE_LINE_SIZE, aligned_size);
     if (!buf->data) {
         nimcp_free(buf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circular_buffer_create: buf->data is NULL");
         return NULL;
     }
 
@@ -211,7 +218,10 @@ void circular_buffer_destroy(circular_buffer_t* buffer) {
 
 bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
     // Guard: validate inputs
-    if (!buffer || !element) return false;
+    if (!buffer || !element) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_push: required parameter is NULL (buffer, element)");
+        return false;
+    }
 
     // Load current positions
     size_t write = atomic_load(&buffer->write_pos);
@@ -244,6 +254,7 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
                     spin_count++;
                     if (spin_count >= max_spins) {
                         atomic_fetch_add(&buffer->atomic_overflows, 1);  // THREAD SAFETY FIX
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "circular_buffer_push: capacity exceeded");
                         return false;  /* Timeout - prevent infinite loop */
                     }
                 }
@@ -252,6 +263,7 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
 
             case OVERFLOW_ERROR:
                 // Report error
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_push: operation failed");
                 return false;
         }
     }
@@ -274,12 +286,18 @@ bool circular_buffer_push(circular_buffer_t* buffer, const void* element) {
         }
     }
 
+    // Update average utilization tracking
+    update_avg_utilization(buffer, current_size);
+
     return true;
 }
 
 bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
     // Guard: validate inputs
-    if (!buffer || !element) return false;
+    if (!buffer || !element) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_pop: required parameter is NULL (buffer, element)");
+        return false;
+    }
 
     // Load current positions
     size_t read = atomic_load(&buffer->read_pos);
@@ -288,6 +306,7 @@ bool circular_buffer_pop(circular_buffer_t* buffer, void* element) {
     // Check if buffer empty
     if (read == write) {
         atomic_fetch_add(&buffer->atomic_underflows, 1);  // THREAD SAFETY FIX
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_pop: validation failed");
         return false;
     }
 
@@ -310,7 +329,10 @@ bool circular_buffer_peek(
     void* element
 ) {
     // Guard: validate inputs
-    if (!buffer || !element) return false;
+    if (!buffer || !element) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_peek: required parameter is NULL (buffer, element)");
+        return false;
+    }
 
     // Load current positions
     size_t read = atomic_load(&buffer->read_pos);
@@ -321,7 +343,10 @@ bool circular_buffer_peek(
         (write - read) : (buffer->capacity - read + write);
 
     // Check if offset valid
-    if (offset >= size) return false;
+    if (offset >= size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_peek: capacity exceeded");
+        return false;
+    }
 
     // Calculate peek position
     size_t peek_pos = (read + offset) % buffer->capacity;
@@ -416,7 +441,10 @@ bool circular_buffer_is_empty(const circular_buffer_t* buffer) {
 
 bool circular_buffer_is_full(const circular_buffer_t* buffer) {
     // Guard: validate input
-    if (!buffer) return false;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_is_full: buffer is NULL");
+        return false;
+    }
 
     size_t write = atomic_load(&buffer->write_pos);
     size_t read = atomic_load(&buffer->read_pos);
@@ -490,6 +518,7 @@ bool circular_buffer_set_pe_config(
     // Guard: validate inputs
     if (!buffer || !encoder) {
         LOG_ERROR("circular_buffer_set_pe_config: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_set_pe_config: required parameter is NULL (buffer, encoder)");
         return false;
     }
 
@@ -498,6 +527,7 @@ bool circular_buffer_set_pe_config(
     if (type != NIMCP_POS_SINUSOIDAL && type != NIMCP_POS_ALIBI) {
         LOG_ERROR("circular_buffer_set_pe_config: Invalid encoder type %d (expected SINUSOIDAL or ALIBI)",
                   type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_set_pe_config: validation failed");
         return false;
     }
 
@@ -520,12 +550,14 @@ bool circular_buffer_get_position_embedding(
     // Guard: validate inputs
     if (!buffer || !output) {
         LOG_ERROR("circular_buffer_get_position_embedding: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_get_position_embedding: required parameter is NULL (buffer, output)");
         return false;
     }
 
     // Guard: check PE configured
     if (!buffer->pe_encoder) {
         LOG_WARNING("circular_buffer_get_position_embedding: PE not configured");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_get_position_embedding: buffer->pe_encoder is NULL");
         return false;
     }
 
@@ -534,6 +566,7 @@ bool circular_buffer_get_position_embedding(
     if (index >= buffer_size) {
         LOG_ERROR("circular_buffer_get_position_embedding: index %zu out of range (size=%zu)",
                   index, buffer_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_get_position_embedding: capacity exceeded");
         return false;
     }
 
@@ -541,6 +574,7 @@ bool circular_buffer_get_position_embedding(
     int result = nimcp_pos_encode_position(buffer->pe_encoder, (uint32_t)index, output);
     if (result != NIMCP_POS_SUCCESS) {
         LOG_ERROR("circular_buffer_get_position_embedding: encoding failed with error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_get_position_embedding: validation failed");
         return false;
     }
 
@@ -555,12 +589,14 @@ bool circular_buffer_apply_alibi_bias(
     // Guard: validate inputs
     if (!buffer || !bias_out) {
         LOG_ERROR("circular_buffer_apply_alibi_bias: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_apply_alibi_bias: required parameter is NULL (buffer, bias_out)");
         return false;
     }
 
     // Guard: check PE configured
     if (!buffer->pe_encoder) {
         LOG_WARNING("circular_buffer_apply_alibi_bias: PE not configured");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_apply_alibi_bias: buffer->pe_encoder is NULL");
         return false;
     }
 
@@ -569,6 +605,7 @@ bool circular_buffer_apply_alibi_bias(
     if (type != NIMCP_POS_ALIBI) {
         LOG_ERROR("circular_buffer_apply_alibi_bias: encoder type is %s, expected ALIBI",
                   nimcp_pos_type_to_string(type));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_apply_alibi_bias: validation failed");
         return false;
     }
 
@@ -577,6 +614,7 @@ bool circular_buffer_apply_alibi_bias(
     if (seq_length > buffer_size) {
         LOG_ERROR("circular_buffer_apply_alibi_bias: seq_length %u exceeds buffer size %zu",
                   seq_length, buffer_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_apply_alibi_bias: validation failed");
         return false;
     }
 
@@ -584,6 +622,7 @@ bool circular_buffer_apply_alibi_bias(
     int result = nimcp_pos_alibi_get_bias(buffer->pe_encoder, seq_length, bias_out);
     if (result != NIMCP_POS_SUCCESS) {
         LOG_ERROR("circular_buffer_apply_alibi_bias: bias generation failed with error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circular_buffer_apply_alibi_bias: validation failed");
         return false;
     }
 

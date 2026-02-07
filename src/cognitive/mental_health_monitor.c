@@ -735,6 +735,7 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
             }
             nimcp_free(monitor);
             set_error("mental_health_create: Failed to allocate history buffers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_create: validation failed");
             return NULL;
         }
     }
@@ -915,6 +916,7 @@ bool mental_health_intervene(
     brain_t brain)
 {
     if (!monitor || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_intervene: required parameter is NULL (monitor, brain)");
         return false;
     }
 
@@ -941,6 +943,7 @@ bool mental_health_intervene(
 
     // No intervention needed
     if (max_severity < DISORDER_SEVERITY_MODERATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_intervene: validation failed");
         return false;
     }
 
@@ -1133,7 +1136,10 @@ bool mental_health_get_stats(
     mental_health_monitor_t* monitor,
     mental_health_stats_t* stats)
 {
-    if (!monitor || !stats) return false;
+    if (!monitor || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_get_stats: required parameter is NULL (monitor, stats)");
+        return false;
+    }
 
     *stats = monitor->stats;
     /* Phase 8: Heartbeat at operation start */

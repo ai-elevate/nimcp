@@ -32,6 +32,7 @@ glial_integration_fep_bridge_t* glial_integration_fep_create(
 {
     if (!config || !glial_integration || !fep_system) {
         NIMCP_LOGGING_ERROR("glial_integration_fep_create: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "glial_integration_fep_create: required parameter is NULL (config, glial_integration, fep_system)");
         return NULL;
     }
 
@@ -48,6 +49,7 @@ glial_integration_fep_bridge_t* glial_integration_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("glial_integration_fep_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "glial_integration_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -172,6 +174,7 @@ int glial_integration_fep_connect_bio_async(glial_integration_fep_bridge_t* brid
         return 0;
     }
     NIMCP_LOGGING_WARN("Bio-async router not available for glial integration-FEP bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_integration_fep_connect_bio_async: validation failed");
     return -1;
 }
 

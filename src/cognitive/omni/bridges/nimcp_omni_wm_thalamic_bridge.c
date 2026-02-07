@@ -667,6 +667,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
     omni_wm_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_thalamic_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_wm_to_thalamus_effects: bridge is NULL");
         return NULL;
     }
 
@@ -675,6 +676,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
                          "wm_thalamic_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_wm_to_thalamus_effects: operation failed");
         return NULL;
     }
 
@@ -691,6 +693,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -701,6 +704,7 @@ omni_wm_thalamic_bridge_t* omni_wm_thalamic_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate effects arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -894,7 +898,10 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_router(
 }
 
 bool omni_wm_thalamic_bridge_is_connected(const omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_thalamic_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_thalamic_bridge_heartbeat("omni_wm_thal_is_connected", 0.0f);
 

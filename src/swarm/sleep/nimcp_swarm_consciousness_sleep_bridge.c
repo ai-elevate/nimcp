@@ -80,6 +80,7 @@ swarm_consciousness_sleep_bridge_t swarm_consciousness_sleep_bridge_create(
 {
     if (!config || !sleep_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for swarm consciousness sleep bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_sleep_bridge_create: required parameter is NULL (config, sleep_system)");
         return NULL;
     }
 
@@ -100,6 +101,7 @@ swarm_consciousness_sleep_bridge_t swarm_consciousness_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm consciousness sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_consciousness_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -161,7 +163,10 @@ int swarm_consciousness_sleep_update(swarm_consciousness_sleep_bridge_t bridge)
 int swarm_consciousness_sleep_get_effects(const swarm_consciousness_sleep_bridge_t bridge,
                                            swarm_consciousness_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(swarm_consciousness_sleep_effects_t));
@@ -345,7 +350,10 @@ int swarm_consciousness_sleep_get_consciousness_modulation(
     const swarm_consciousness_sleep_bridge_t bridge,
     swarm_sleep_consciousness_modulation_t* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_sleep_get_consciousness_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(modulation, &bridge->consciousness_modulation,
@@ -374,7 +382,10 @@ float swarm_consciousness_sleep_get_pressure_modifier(uint32_t consciousness_sta
 bool swarm_consciousness_sleep_blocks_transition(
     const swarm_consciousness_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_sleep_blocks_transition: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool blocks = bridge->consciousness_modulation.suppress_sleep_transition;

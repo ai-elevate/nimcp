@@ -200,6 +200,7 @@ bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain)
     brain->homeostatic = homeostatic_controller_create(&config, num_neurons);
     if (!brain->homeostatic) {
         set_error("Failed to create homeostatic plasticity controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_homeostatic_plasticity_subsystem: brain->homeostatic is NULL");
         return false;
     }
 
@@ -257,6 +258,7 @@ bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain)
     brain->dendritic = dendritic_tree_create(&config);
     if (!brain->dendritic) {
         set_error("Failed to create dendritic computation tree");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_dendritic_computation_subsystem: brain->dendritic is NULL");
         return false;
     }
 
@@ -314,6 +316,7 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
     uint32_t* units = (uint32_t*)nimcp_malloc(num_levels * sizeof(uint32_t));
     if (!units) {
         set_error("Failed to allocate predictive coding units array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_biological_predictive_subsystem: units is NULL");
         return false;
     }
 
@@ -338,6 +341,7 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 
     if (!brain->predictive_coding) {
         set_error("Failed to create biological predictive coding hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_biological_predictive_subsystem: brain->predictive_coding is NULL");
         return false;
     }
 
@@ -408,6 +412,7 @@ bool nimcp_brain_factory_init_second_messenger_subsystem(brain_t brain)
     if (!brain->second_messengers) {
         set_error("Failed to create second messenger cascade system");
         brain->enable_second_messengers = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_second_messenger_subsystem: brain->second_messengers is NULL");
         return false;
     }
 
@@ -503,6 +508,7 @@ bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
     brain->training_ctx = nimcp_brain_training_create(&training_config);
     if (!brain->training_ctx) {
         set_error("Failed to create brain-training integration context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_training_subsystem: brain->training_ctx is NULL");
         return false;
     }
 

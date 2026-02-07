@@ -329,6 +329,7 @@ static bool sync_host_to_gpu_tensors(gpu_neural_network_t network)
         nimcp_free(float_buf);
         nimcp_free(int_buf);
         nimcp_free(syn_buf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_host_to_gpu_tensors: required parameter is NULL (float_buf, int_buf, syn_buf)");
         return false;
     }
 
@@ -419,6 +420,7 @@ static bool sync_gpu_to_host_tensors(gpu_neural_network_t network)
     if (!float_buf || !int_buf) {
         nimcp_free(float_buf);
         nimcp_free(int_buf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sync_gpu_to_host_tensors: required parameter is NULL (float_buf, int_buf)");
         return false;
     }
 
@@ -472,6 +474,7 @@ static bool sync_gpu_to_host_tensors(gpu_neural_network_t network)
 NIMCP_EXPORT bool gpu_get_device_name(uint32_t device_id, char* name, size_t max_len)
 {
     if (!name || max_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_get_device_name: name is NULL");
         return false;
     }
 
@@ -483,6 +486,7 @@ NIMCP_EXPORT bool gpu_get_device_name(uint32_t device_id, char* name, size_t max
     }
 
     snprintf(name, max_len, "CPU Fallback");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_get_device_name: validation failed");
     return false;
 }
 
@@ -531,6 +535,7 @@ NIMCP_EXPORT gpu_network_config_t gpu_get_optimal_config(uint32_t num_neurons)
 static bool create_gpu_tensors(gpu_neural_network_t network)
 {
     if (!network || !network->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_gpu_tensors: required parameter is NULL (network, network->gpu_ctx)");
         return false;
     }
 
@@ -542,6 +547,7 @@ static bool create_gpu_tensors(gpu_neural_network_t network)
         ctx, neuron_dims, 2, NIMCP_GPU_PRECISION_FP32);
     if (!network->neuron_states) {
         LOG_ERROR(LOG_MODULE, "Failed to create neuron_states tensor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_gpu_tensors: network->neuron_states is NULL");
         return false;
     }
 
@@ -553,6 +559,7 @@ static bool create_gpu_tensors(gpu_neural_network_t network)
         LOG_ERROR(LOG_MODULE, "Failed to create neuron_metadata tensor");
         nimcp_gpu_tensor_destroy(network->neuron_states);
         network->neuron_states = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_gpu_tensors: network->neuron_metadata is NULL");
         return false;
     }
 
@@ -566,6 +573,7 @@ static bool create_gpu_tensors(gpu_neural_network_t network)
         nimcp_gpu_tensor_destroy(network->neuron_metadata);
         network->neuron_states = NULL;
         network->neuron_metadata = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_gpu_tensors: network->synapse_data is NULL");
         return false;
     }
 
@@ -628,6 +636,7 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     const gpu_network_config_t* config)
 {
     if (!config || config->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_neural_network_create: config is NULL");
         return NULL;
     }
 
@@ -663,6 +672,7 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     network->neurons_host = (gpu_neuron_state_t*)nimcp_aligned_alloc(64, neurons_size);
     if (!network->neurons_host) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_neural_network_create: network->neurons_host is NULL");
         return NULL;
     }
     // Zero-initialize the aligned memory
@@ -678,6 +688,7 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     if (!network->synapses_host) {
         nimcp_aligned_free(network->neurons_host);  // BUGFIX: neurons_host uses aligned_alloc
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_neural_network_create: network->synapses_host is NULL");
         return NULL;
     }
     // Zero-initialize the aligned memory
@@ -817,14 +828,17 @@ NIMCP_EXPORT bool gpu_neural_network_add_synapse(
     float strength)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neural_network_add_synapse: network is NULL");
         return false;
     }
 
     if (source_id >= network->neurons_count || target_id >= network->neurons_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_neural_network_add_synapse: capacity exceeded");
         return false;
     }
 
     if (network->synapses_count >= network->synapses_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_neural_network_add_synapse: capacity exceeded");
         return false;
     }
 
@@ -1083,6 +1097,7 @@ NIMCP_EXPORT uint32_t gpu_neural_network_apply_stdp(
 NIMCP_EXPORT bool gpu_neural_network_synchronize(gpu_neural_network_t network)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neural_network_synchronize: network is NULL");
         return false;
     }
 
@@ -1104,6 +1119,7 @@ NIMCP_EXPORT bool gpu_neural_network_get_neuron_state(
     gpu_neuron_state_t* state)
 {
     if (!network || !state || neuron_id >= network->neurons_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neural_network_get_neuron_state: required parameter is NULL (network, state)");
         return false;
     }
 
@@ -1117,6 +1133,7 @@ NIMCP_EXPORT bool gpu_neural_network_set_neuron_state(
     const gpu_neuron_state_t* state)
 {
     if (!network || !state || neuron_id >= network->neurons_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neural_network_set_neuron_state: required parameter is NULL (network, state)");
         return false;
     }
 
@@ -1150,6 +1167,7 @@ NIMCP_EXPORT bool gpu_neural_network_get_stats(
     uint64_t* gpu_memory_used)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_neural_network_get_stats: network is NULL");
         return false;
     }
 

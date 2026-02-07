@@ -214,12 +214,14 @@ cortical_predictive_t* cortical_predictive_create(const predictive_config_t* con
     if (!pc->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(pc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_predictive_create: pc->mutex is NULL");
         return NULL;
     }
 
     if (nimcp_mutex_init(pc->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(pc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_predictive_create: validation failed");
         return NULL;
     }
 
@@ -767,6 +769,7 @@ int cortical_predictive_disconnect_bio_async(cortical_predictive_t* pc) {
 
 bool cortical_predictive_is_bio_async_connected(const cortical_predictive_t* pc) {
     if (!pc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_is_bio_async_connected: pc is NULL");
         return false;
     }
     return pc->bio_async_enabled;

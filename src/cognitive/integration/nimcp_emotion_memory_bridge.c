@@ -139,6 +139,7 @@ struct emotion_memory_bridge {
 static emotional_tag_t* find_tag_unlocked(emotion_memory_bridge_t* bridge,
                                           uint64_t memory_id) {
     if (!bridge || !bridge->tags) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_bridge_heartbeat_instance: required parameter is NULL (bridge, bridge->tags)");
         return NULL;
     }
 
@@ -153,6 +154,7 @@ static emotional_tag_t* find_tag_unlocked(emotion_memory_bridge_t* bridge,
             return &bridge->tags[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_bridge_heartbeat_instance: validation failed");
     return NULL;
 }
 
@@ -168,6 +170,7 @@ static emotional_tag_t* find_tag_unlocked(emotion_memory_bridge_t* bridge,
  */
 static emotional_tag_t* find_empty_slot_unlocked(emotion_memory_bridge_t* bridge) {
     if (!bridge || !bridge->tags) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: required parameter is NULL (bridge, bridge->tags)");
         return NULL;
     }
 
@@ -182,6 +185,7 @@ static emotional_tag_t* find_empty_slot_unlocked(emotion_memory_bridge_t* bridge
             return &bridge->tags[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot_unlocked: bridge->tags is NULL");
     return NULL;
 }
 
@@ -287,6 +291,7 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     bridge->tags = nimcp_calloc(INITIAL_TAG_CAPACITY, sizeof(emotional_tag_t));
     if (!bridge->tags) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_bridge_create: bridge->tags is NULL");
         return NULL;
     }
     bridge->tag_capacity = INITIAL_TAG_CAPACITY;
@@ -297,6 +302,7 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->tags);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -347,6 +353,7 @@ int emotion_memory_tag_memory(
     float arousal
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_tag_memory: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -376,6 +383,7 @@ int emotion_memory_tag_memory(
             /* Check capacity limit */
             if (bridge->tag_count >= EMOTION_MEMORY_MAX_MEMORIES) {
                 nimcp_platform_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_tag_memory: capacity exceeded");
                 return -1;
             }
 
@@ -391,6 +399,7 @@ int emotion_memory_tag_memory(
             );
             if (!new_tags) {
                 nimcp_platform_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_tag_memory: new_tags is NULL");
                 return -1;
             }
 
@@ -428,6 +437,7 @@ int emotion_memory_modulate_consolidation(
     float emotional_intensity
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_modulate_consolidation: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -473,6 +483,7 @@ int emotion_memory_on_retrieval(
     emotion_memory_emotion_out_t* emotion_out
 ) {
     if (!bridge || !bridge->initialized || !emotion_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_on_retrieval: required parameter is NULL (bridge, bridge->initialized, emotion_out)");
         return -1;
     }
 
@@ -532,6 +543,7 @@ int emotion_memory_get_emotional_memories(
     size_t max_count
 ) {
     if (!bridge || !bridge->initialized || !memory_ids || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_memory_get_emotional_memories: required parameter is NULL (bridge, bridge->initialized, memory_ids)");
         return -1;
     }
 
@@ -579,6 +591,7 @@ int emotion_memory_bridge_get_stats(
     emotion_memory_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 

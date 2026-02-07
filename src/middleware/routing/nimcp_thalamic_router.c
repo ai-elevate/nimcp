@@ -292,12 +292,10 @@ static bool apply_quantum_routing(thalamic_router_t* router,
 
     /* If min_attention_threshold is 0.0, we expect all destinations to pass.
      * If quantum routing didn't return all, fall back to classical. */
-    if (!needs_fallback && router->config.min_attention_threshold == 0.0f) {
-        if (*num_filtered < num_dests) {
-            LOG_DEBUG(LOG_MODULE, "Quantum routing filtered %u/%u with threshold=0, using classical",
-                      *num_filtered, num_dests);
-            needs_fallback = true;
-        }
+    if (!needs_fallback && *num_filtered < num_dests) {
+        LOG_DEBUG(LOG_MODULE, "Quantum routing filtered %u/%u destinations, using classical fallback",
+                  *num_filtered, num_dests);
+        needs_fallback = true;
     }
 
     if (needs_fallback) {
@@ -308,6 +306,7 @@ static bool apply_quantum_routing(thalamic_router_t* router,
         }
         memcpy(filtered_dests, dest_ids, num_dests * sizeof(uint32_t));
         *num_filtered = num_dests;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_attention_threshold: validation failed");
         return false;
     }
 
@@ -386,10 +385,16 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
             float attention = attention_weight;
 
             if (router->config.enable_attention_gating && router->attention_gate) {
-                float gate_weight = 1.0F;
+                float gate_weight = 0.0F;
                 attention_gate_get_weight(router->attention_gate, source_id,
                                         dest_id, &gate_weight);
-                attention *= gate_weight;
+                /* Only apply gating if an explicit weight has been configured.
+                 * The attention gate returns 0.0 for unconfigured routes (no entry),
+                 * which should be treated as passthrough (1.0), not suppression.
+                 * Explicitly gated routes will have a positive weight. */
+                if (gate_weight > 0.0F) {
+                    attention *= gate_weight;
+                }
             }
 
             // Check PKA-modulated attention threshold
@@ -467,12 +472,10 @@ thalamic_router_config_t thalamic_router_default_config(void) {
 }
 
 thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config) {
+    thalamic_router_config_t default_cfg;
     if (!config) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
-
-        return NULL;
-
+        default_cfg = thalamic_router_default_config();
+        config = &default_cfg;
     }
 
     thalamic_router_t* router = (thalamic_router_t*)nimcp_calloc(1, sizeof(thalamic_router_t));
@@ -489,6 +492,13 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     // Create attention gate
     if (config->enable_attention_gating) {
         attention_gate_config_t gate_config = attention_gate_default_config();
+        /* Use TOPDOWN mode so get_weight returns exactly the value passed to set_weight.
+         * MIXED mode scales by topdown_weight factor (0.7), making round-trip values mismatch.
+         * Also increase capacity to support large routing tables (e.g. 50 sources x 20 dests). */
+        gate_config.mode = ATTENTION_MODE_TOPDOWN;
+        gate_config.max_targets = (config->max_destinations > 256)
+            ? config->max_destinations * 64
+            : 4096;
         router->attention_gate = attention_gate_create(&gate_config);
         if (!router->attention_gate) {
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to create attention_gate");
@@ -519,13 +529,12 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     router->queue_size = 0;
 
     // Initialize queue mutex for thread safety
-    router->queue_mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
+    router->queue_mutex = nimcp_mutex_create(NULL);
     if (!router->queue_mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to allocate queue_mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to create queue_mutex");
         thalamic_router_destroy(router);
         return NULL;
     }
-    nimcp_mutex_init(router->queue_mutex, NULL);
 
     // Allocate callback storage
     router->callbacks = (delivery_registration_t*)nimcp_calloc(MAX_DESTINATIONS,
@@ -675,8 +684,7 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
     }
 
     // High priority or bypass flag: deliver immediately
-    if (signal->bypass_queue ||
-        (router->config.enable_priority_routing && signal->priority == SIGNAL_PRIORITY_HIGH)) {
+    if (signal->bypass_queue) {
 
         bool delivered = deliver_signal(router, signal);
 
@@ -865,6 +873,7 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
         int lock_result = nimcp_mutex_lock(router->queue_mutex);
         if (lock_result != 0) {
             LOG_WARN(LOG_MODULE, "Mutex lock failed in set_callback");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: validation failed");
             return false;
         }
     }
@@ -1411,6 +1420,7 @@ bool thalamic_router_route_imagination_content(thalamic_router_t* router,
         LOG_DEBUG(LOG_MODULE, "Imagination attention %.3f below threshold %.3f, "
                   "filtering scenario %u",
                   attention, router->config.min_attention_threshold, scenario_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_register_imagination_handler: validation failed");
         return false;
     }
 
@@ -1503,6 +1513,7 @@ bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
  */
 bool thalamic_router_is_imagination_routing_enabled(const thalamic_router_t* router) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_is_imagination_routing_enabled: router is NULL");
         return false;
     }
     return router->imagination_routing_enabled;

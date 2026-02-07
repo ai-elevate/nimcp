@@ -70,11 +70,15 @@ static inline void training_heartbeat(brain_t brain, const char* operation, floa
  * @brief Initialize SNN training context
  */
 static int init_snn_training(brain_t brain, const nimcp_training_config_t* config) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_snn_training: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     // Check if SNN network exists
     if (!brain->snn_network) {
         NIMCP_LOGGING_WARN("SNN training requested but no SNN network present");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_snn_training: brain->snn_network is NULL");
         return -1;
     }
 
@@ -131,11 +135,13 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
 
         default:
             NIMCP_LOGGING_ERROR("Unknown SNN training method: %d", config->snn_method);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_snn_training: operation failed");
             return -1;
     }
 
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to create SNN training context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_snn_training: ctx is NULL");
         return -1;
     }
 
@@ -148,11 +154,15 @@ static int init_snn_training(brain_t brain, const nimcp_training_config_t* confi
  * @brief Initialize LNN training context
  */
 static int init_lnn_training(brain_t brain, const nimcp_training_config_t* config) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_lnn_training: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     // Check if LNN network exists
     if (!brain->lnn_network) {
         NIMCP_LOGGING_WARN("LNN training requested but no LNN network present");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_lnn_training: brain->lnn_network is NULL");
         return -1;
     }
 
@@ -160,6 +170,7 @@ static int init_lnn_training(brain_t brain, const nimcp_training_config_t* confi
     lnn_training_config_t lnn_cfg;
     if (lnn_training_config_default(&lnn_cfg) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize LNN training config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_lnn_training: validation failed");
         return -1;
     }
 
@@ -190,6 +201,7 @@ static int init_lnn_training(brain_t brain, const nimcp_training_config_t* confi
     lnn_training_ctx_t* ctx = lnn_training_create(brain->lnn_network, &lnn_cfg);
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to create LNN training context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_lnn_training: ctx is NULL");
         return -1;
     }
 
@@ -202,11 +214,15 @@ static int init_lnn_training(brain_t brain, const nimcp_training_config_t* confi
  * @brief Initialize CNN training (already part of cnn_trainer)
  */
 static int init_cnn_training(brain_t brain, const nimcp_training_config_t* config) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_cnn_training: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     // CNN trainer is created with the network, training is built-in
     if (!brain->cnn_trainer) {
         NIMCP_LOGGING_WARN("CNN training requested but no CNN trainer present");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_cnn_training: brain->cnn_trainer is NULL");
         return -1;
     }
 
@@ -227,6 +243,7 @@ static int snn_train_step(
     training_dispatch_result_t* result)
 {
     if (!brain->snn_network || !brain->snn_training_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_train_step: required parameter is NULL (brain->snn_network, brain->snn_training_ctx)");
         return -1;
     }
 
@@ -241,6 +258,7 @@ static int snn_train_step(
     int rc = snn_network_step(snn, dt);
     if (rc < 0) {
         NIMCP_LOGGING_ERROR("SNN network step failed: %d", rc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_train_step: validation failed");
         return -1;
     }
 
@@ -310,6 +328,7 @@ static int lnn_train_step(
     training_dispatch_result_t* result)
 {
     if (!brain->lnn_network || !brain->lnn_training_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_train_step: required parameter is NULL (brain->lnn_network, brain->lnn_training_ctx)");
         return -1;
     }
 
@@ -327,6 +346,7 @@ static int lnn_train_step(
     if (!input_tensor || !target_tensor) {
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (target_tensor) nimcp_tensor_destroy(target_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_train_step: validation failed");
         return -1;
     }
 
@@ -347,6 +367,7 @@ static int lnn_train_step(
 
     if (rc < 0) {
         NIMCP_LOGGING_ERROR("LNN training step failed: %d", rc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_train_step: validation failed");
         return -1;
     }
 
@@ -371,6 +392,7 @@ static int cnn_train_step(
     training_dispatch_result_t* result)
 {
     if (!brain->cnn_trainer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cnn_train_step: brain->cnn_trainer is NULL");
         return -1;
     }
 
@@ -386,6 +408,7 @@ static int cnn_train_step(
     if (!input_tensor || !target_tensor) {
         if (input_tensor) nimcp_tensor_destroy(input_tensor);
         if (target_tensor) nimcp_tensor_destroy(target_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cnn_train_step: validation failed");
         return -1;
     }
 
@@ -405,6 +428,7 @@ static int cnn_train_step(
     if (err != NIMCP_OK) {
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(target_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cnn_train_step: validation failed");
         return -1;
     }
 
@@ -426,6 +450,7 @@ static int cnn_train_step(
     if (err != NIMCP_OK) {
         nimcp_tensor_destroy(input_tensor);
         nimcp_tensor_destroy(target_tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cnn_train_step: validation failed");
         return -1;
     }
 
@@ -448,6 +473,7 @@ static int cnn_train_step(
 
 int training_dispatch_init(brain_t brain, const nimcp_training_config_t* config) {
     if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_dispatch_init: required parameter is NULL (brain, config)");
         return -1;
     }
 
@@ -478,6 +504,7 @@ int training_dispatch_init(brain_t brain, const nimcp_training_config_t* config)
 
         default:
             NIMCP_LOGGING_ERROR("Unknown network type: %d", config->network_type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_dispatch_init: validation failed");
             return -1;
     }
 }
@@ -491,6 +518,7 @@ int training_dispatch_step(
     training_dispatch_result_t* result)
 {
     if (!brain || !inputs || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_dispatch_step: required parameter is NULL (brain, inputs, targets)");
         return -1;
     }
 
@@ -552,6 +580,7 @@ int training_dispatch_step(
             }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_step: validation failed");
             return -1;
     }
 }
@@ -570,6 +599,7 @@ int training_dispatch_set_reward(brain_t brain, float reward) {
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_set_reward: validation failed");
     return -1;  // Not SNN or no training context
 }
 
@@ -618,6 +648,7 @@ int training_dispatch_get_stats(
             break;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_get_stats: operation failed");
     return -1;
 }
 
@@ -687,6 +718,7 @@ bool training_dispatch_is_supported(uint8_t network_type) {
         case NIMCP_NETWORK_HYBRID:
             return true;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_dispatch_is_supported: operation failed");
             return false;
     }
 }

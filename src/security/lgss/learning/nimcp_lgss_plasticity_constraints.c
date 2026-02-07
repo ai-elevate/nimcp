@@ -171,12 +171,14 @@ static bool hashmap_insert(frozen_entry_t* map, uint32_t size,
         }
         if (map[idx].synapse_id == synapse_id) {
             /* Already exists */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_create: validation failed");
             return false;
         }
         idx = (idx + 1) % size;
     } while (idx != start);
 
     /* Hashmap full */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_create: validation failed");
     return false;
 }
 
@@ -184,13 +186,17 @@ static bool hashmap_insert(frozen_entry_t* map, uint32_t size,
  * Lookup in hashmap
  */
 static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synapse_id) {
-    if (!map) return false;
+    if (!map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hashmap_contains: map is NULL");
+        return false;
+    }
 
     uint32_t idx = hash_synapse_id(synapse_id, size);
     uint32_t start = idx;
 
     do {
         if (!map[idx].occupied) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: map is NULL");
             return false;
         }
         if (map[idx].synapse_id == synapse_id) {
@@ -199,6 +205,7 @@ static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synaps
         idx = (idx + 1) % size;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: validation failed");
     return false;
 }
 
@@ -207,13 +214,17 @@ static bool hashmap_contains(frozen_entry_t* map, uint32_t size, uint64_t synaps
  */
 static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
                            uint64_t synapse_id, uint32_t* count) {
-    if (!map) return false;
+    if (!map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hashmap_contains: map is NULL");
+        return false;
+    }
 
     uint32_t idx = hash_synapse_id(synapse_id, size);
     uint32_t start = idx;
 
     do {
         if (!map[idx].occupied) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: map is NULL");
             return false;
         }
         if (map[idx].synapse_id == synapse_id) {
@@ -224,6 +235,7 @@ static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
         idx = (idx + 1) % size;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hashmap_contains: validation failed");
     return false;
 }
 
@@ -233,6 +245,7 @@ static bool hashmap_remove(frozen_entry_t* map, uint32_t size,
 static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
     window->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!window->timestamps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sliding_window_init: window->timestamps is NULL");
         return false;
     }
     window->capacity = capacity;
@@ -331,6 +344,7 @@ plasticity_guard_t plasticity_guard_create(
     guard->frozen_synapses = hashmap_create(guard->frozen_hashmap_size);
     if (!guard->frozen_synapses) {
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_guard_create: guard->frozen_synapses is NULL");
         return NULL;
     }
 
@@ -348,6 +362,7 @@ plasticity_guard_t plasticity_guard_create(
     if (!guard->frozen_pathways) {
         nimcp_free(guard->frozen_synapses);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_guard_create: guard->frozen_pathways is NULL");
         return NULL;
     }
 
@@ -369,6 +384,7 @@ plasticity_guard_t plasticity_guard_create(
         nimcp_free(guard->frozen_pathways);
         nimcp_free(guard->frozen_synapses);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "plasticity_guard_create: sliding_window_init is NULL");
         return NULL;
     }
 
@@ -451,10 +467,16 @@ int plasticity_guard_unfreeze_synapse(plasticity_guard_t guard, uint64_t synapse
 }
 
 bool plasticity_guard_is_frozen(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return false;
+    if (!guard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_guard_is_frozen: guard is NULL");
+        return false;
+    }
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return false;
+    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_guard_is_frozen: validation failed");
+        return false;
+    }
 
     return hashmap_contains(g->frozen_synapses, g->frozen_hashmap_size, synapse_id);
 }

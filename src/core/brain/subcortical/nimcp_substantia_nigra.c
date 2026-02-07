@@ -118,6 +118,7 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
         if (!sn->da_neurons) {
             NIMCP_LOGGING_ERROR("Failed to allocate DA neurons");
             nimcp_free(sn);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substantia_nigra_create: sn->da_neurons is NULL");
             return NULL;
         }
 
@@ -137,6 +138,7 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
         if (!sn->snr_neurons) {
             NIMCP_LOGGING_ERROR("Failed to allocate SNr neurons");
             nimcp_free(sn);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substantia_nigra_create: sn->snr_neurons is NULL");
             return NULL;
         }
 
@@ -164,6 +166,7 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
             if (sn->stn_input) nimcp_free(sn->stn_input);
             nimcp_free(sn->snr_neurons);
             nimcp_free(sn);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substantia_nigra_create: validation failed");
             return NULL;
         }
 
@@ -184,6 +187,7 @@ substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* con
         if (sn->striatal_input) nimcp_free(sn->striatal_input);
         if (sn->stn_input) nimcp_free(sn->stn_input);
         nimcp_free(sn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substantia_nigra_create: validation failed");
         return NULL;
     }
     nimcp_mutex_init(sn->mutex, NULL);
@@ -261,7 +265,10 @@ int substantia_nigra_reset(substantia_nigra_t* sn) {
 //=============================================================================
 
 int snc_update_reward(substantia_nigra_t* sn, float reward, float expected) {
-    if (!sn || sn->part != SN_PART_COMPACTA) return -1;
+    if (!sn || sn->part != SN_PART_COMPACTA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snc_update_reward: sn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
 
@@ -350,7 +357,10 @@ da_firing_state_t snc_get_state(const substantia_nigra_t* sn) {
 }
 
 int snc_set_prediction(substantia_nigra_t* sn, float prediction) {
-    if (!sn || sn->part != SN_PART_COMPACTA) return -1;
+    if (!sn || sn->part != SN_PART_COMPACTA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snc_set_prediction: sn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
     sn->reward_prediction = prediction;
@@ -360,7 +370,10 @@ int snc_set_prediction(substantia_nigra_t* sn, float prediction) {
 }
 
 int snc_step(substantia_nigra_t* sn, float dt) {
-    if (!sn || sn->part != SN_PART_COMPACTA) return -1;
+    if (!sn || sn->part != SN_PART_COMPACTA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snc_step: sn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
 
@@ -399,7 +412,10 @@ int snc_step(substantia_nigra_t* sn, float dt) {
 //=============================================================================
 
 int snr_set_striatal_input(substantia_nigra_t* sn, const float* inhibition) {
-    if (!sn || !inhibition || sn->part != SN_PART_RETICULATA) return -1;
+    if (!sn || !inhibition || sn->part != SN_PART_RETICULATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snr_set_striatal_input: required parameter is NULL (sn, inhibition)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
     memcpy(sn->striatal_input, inhibition, sn->num_actions * sizeof(float));
@@ -409,7 +425,10 @@ int snr_set_striatal_input(substantia_nigra_t* sn, const float* inhibition) {
 }
 
 int snr_set_stn_input(substantia_nigra_t* sn, const float* excitation) {
-    if (!sn || !excitation || sn->part != SN_PART_RETICULATA) return -1;
+    if (!sn || !excitation || sn->part != SN_PART_RETICULATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snr_set_stn_input: required parameter is NULL (sn, excitation)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
     memcpy(sn->stn_input, excitation, sn->num_actions * sizeof(float));
@@ -419,7 +438,10 @@ int snr_set_stn_input(substantia_nigra_t* sn, const float* excitation) {
 }
 
 int snr_process(substantia_nigra_t* sn) {
-    if (!sn || sn->part != SN_PART_RETICULATA) return -1;
+    if (!sn || sn->part != SN_PART_RETICULATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snr_process: sn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sn->mutex);
 
@@ -447,7 +469,10 @@ int snr_process(substantia_nigra_t* sn) {
 }
 
 int snr_get_output(const substantia_nigra_t* sn, float* output) {
-    if (!sn || !output || sn->part != SN_PART_RETICULATA) return -1;
+    if (!sn || !output || sn->part != SN_PART_RETICULATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snr_get_output: required parameter is NULL (sn, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)sn->mutex);
     memcpy(output, sn->output, sn->num_actions * sizeof(float));
@@ -457,7 +482,10 @@ int snr_get_output(const substantia_nigra_t* sn, float* output) {
 }
 
 int snr_step(substantia_nigra_t* sn, float dt) {
-    if (!sn || sn->part != SN_PART_RETICULATA) return -1;
+    if (!sn || sn->part != SN_PART_RETICULATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snr_step: sn is NULL");
+        return -1;
+    }
     (void)dt;
     return snr_process(sn);
 }
@@ -467,7 +495,10 @@ int snr_step(substantia_nigra_t* sn, float dt) {
 //=============================================================================
 
 int substantia_nigra_get_stats(const substantia_nigra_t* sn, sn_stats_t* stats) {
-    if (!sn || !stats) return -1;
+    if (!sn || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substantia_nigra_get_stats: required parameter is NULL (sn, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)sn->mutex);
     *stats = sn->stats;

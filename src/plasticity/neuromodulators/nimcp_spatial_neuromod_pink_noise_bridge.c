@@ -129,6 +129,7 @@ spatial_pink_bridge_t* spatial_pink_bridge_create(
 {
     if (!config || num_neurons == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_create: config is NULL");
         return NULL;
     }
 
@@ -152,6 +153,7 @@ spatial_pink_bridge_t* spatial_pink_bridge_create(
     if (!bridge->pink_spatial) {
         NIMCP_LOGGING_ERROR("Failed to create pink spatial generator");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_pink_bridge_create: bridge->pink_spatial is NULL");
         return NULL;
     }
 
@@ -169,6 +171,7 @@ spatial_pink_bridge_t* spatial_pink_bridge_create(
         !bridge->neuron_region_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuron buffers");
         spatial_pink_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_create: operation failed");
         return NULL;
     }
 
@@ -246,12 +249,14 @@ int spatial_pink_bridge_connect_neuromod(
 {
     if (!bridge || !neuromod_field) {
         NIMCP_LOGGING_ERROR("NULL pointer in connect_neuromod");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_connect_neuromod: required parameter is NULL (bridge, neuromod_field)");
         return -1;
     }
 
     // Validate num_neurons matches
     if (neuromod_field->num_neurons == 0) {
         NIMCP_LOGGING_ERROR("Neuromod field has 0 neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_connect_neuromod: neuromod_field->num_neurons is zero");
         return -1;
     }
 
@@ -312,6 +317,7 @@ int spatial_pink_bridge_add_region(
     if (!bridge || !bridge->pink_spatial) {
     BRIDGE_BBB_VALIDATE(bridge, name, sizeof(*name));
         NIMCP_LOGGING_ERROR("Invalid bridge in add_region");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_add_region: required parameter is NULL (bridge, bridge->pink_spatial)");
         return -1;
     }
 
@@ -322,6 +328,7 @@ int spatial_pink_bridge_add_region(
 
     if (result < 0) {
         NIMCP_LOGGING_ERROR("Failed to add region to pink spatial");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_add_region: validation failed");
         return -1;
     }
 
@@ -351,6 +358,7 @@ int spatial_pink_bridge_map_neuron_to_region(
     // Validate region index
     if (region_index >= bridge->num_region_maps) {
         NIMCP_LOGGING_ERROR("Invalid region index in map_neuron");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "spatial_pink_bridge_map_neuron_to_region: capacity exceeded");
         return -1;
     }
 
@@ -380,11 +388,13 @@ int spatial_pink_bridge_auto_map_neurons(
 {
     if (!bridge || !network) {
         NIMCP_LOGGING_ERROR("Invalid parameters in auto_map_neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_auto_map_neurons: required parameter is NULL (bridge, network)");
         return -1;
     }
 
     if (!bridge->config.auto_map_regions_to_neurons) {
         NIMCP_LOGGING_WARN("Auto-mapping disabled in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_auto_map_neurons: bridge->config is NULL");
         return -1;
     }
 
@@ -392,12 +402,14 @@ int spatial_pink_bridge_auto_map_neurons(
     uint32_t num_regions = bridge->pink_spatial->config.num_regions;
     if (num_regions == 0) {
         NIMCP_LOGGING_ERROR("No regions defined for auto-mapping");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_auto_map_neurons: num_regions is zero");
         return -1;
     }
 
     // Get number of neurons from neuromod field
     if (!bridge->neuromod_field) {
         NIMCP_LOGGING_ERROR("Neuromod field not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_auto_map_neurons: bridge->neuromod_field is NULL");
         return -1;
     }
     uint32_t num_neurons = bridge->neuromod_field->num_neurons;
@@ -431,6 +443,7 @@ int spatial_pink_bridge_auto_map_neurons(
 int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -448,6 +461,7 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     // Check if connected
     if (!spatial_pink_bridge_is_connected(bridge)) {
         NIMCP_LOGGING_WARN("Bridge not connected in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_update: spatial_pink_bridge_is_connected is NULL");
         return -1;
     }
 
@@ -457,6 +471,7 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     int result = pink_spatial_step(bridge->pink_spatial);
     if (result < 0) {
         NIMCP_LOGGING_ERROR("Failed to step pink spatial");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_update: validation failed");
         return -1;
     }
 
@@ -489,6 +504,7 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
     result = spatial_pink_bridge_apply_modulation(bridge);
     if (result < 0) {
         NIMCP_LOGGING_ERROR("Failed to apply modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_update: validation failed");
         return -1;
     }
 
@@ -507,6 +523,7 @@ int spatial_pink_bridge_update(spatial_pink_bridge_t* bridge) {
 int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
     if (!bridge || !bridge->neuromod_field) {
         NIMCP_LOGGING_ERROR("Invalid bridge in apply_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_apply_modulation: required parameter is NULL (bridge, bridge->neuromod_field)");
         return -1;
     }
 
@@ -586,6 +603,7 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
 
         default:
             NIMCP_LOGGING_ERROR("Unknown modulation mode");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_apply_modulation: operation failed");
             return -1;
     }
 
@@ -724,11 +742,15 @@ int spatial_pink_bridge_get_stats(
  * HOW:  Forward to pink_spatial_reset
  */
 int spatial_pink_bridge_reset(spatial_pink_bridge_t* bridge, uint32_t new_seed) {
-    if (!bridge || !bridge->pink_spatial) return -1;
+    if (!bridge || !bridge->pink_spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_reset: required parameter is NULL (bridge, bridge->pink_spatial)");
+        return -1;
+    }
 
     int result = pink_spatial_reset(bridge->pink_spatial, new_seed);
     if (result < 0) {
         NIMCP_LOGGING_ERROR("Failed to reset pink spatial");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_reset: validation failed");
         return -1;
     }
 
@@ -747,21 +769,38 @@ int spatial_pink_bridge_reset(spatial_pink_bridge_t* bridge, uint32_t new_seed) 
  * HOW:  Check invariants
  */
 bool spatial_pink_bridge_validate(const spatial_pink_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge is NULL");
+        return false;
+    }
 
     // Check pointers
-    if (!bridge->pink_spatial) return false;
-    if (!bridge->current_noise_values) return false;
-    if (!bridge->diffusion_modulation) return false;
-    if (!bridge->decay_modulation) return false;
+    if (!bridge->pink_spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge->pink_spatial is NULL");
+        return false;
+    }
+    if (!bridge->current_noise_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge->current_noise_values is NULL");
+        return false;
+    }
+    if (!bridge->diffusion_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge->diffusion_modulation is NULL");
+        return false;
+    }
+    if (!bridge->decay_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge->decay_modulation is NULL");
+        return false;
+    }
 
     // Check if connected
     if (bridge->is_connected && !bridge->neuromod_field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_pink_bridge_validate: bridge->neuromod_field is NULL");
         return false;
     }
 
     // Check configuration
     if (bridge->config.noise_amplitude < 0.0f || bridge->config.noise_amplitude > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_validate: validation failed");
         return false;
     }
 
@@ -771,6 +810,7 @@ bool spatial_pink_bridge_validate(const spatial_pink_bridge_t* bridge) {
         for (uint32_t i = 0; i < num_neurons; i++) {
             if (isnan(bridge->current_noise_values[i]) ||
                 isinf(bridge->current_noise_values[i])) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_pink_bridge_validate: validation failed");
                 return false;
             }
         }

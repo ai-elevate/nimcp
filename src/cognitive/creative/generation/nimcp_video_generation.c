@@ -104,7 +104,10 @@ void video_generator_config_defaults(video_generator_config_t* config)
 video_generator_t* video_generator_create(const video_generator_config_t* config)
 {
     video_generator_t* gen = nimcp_calloc(1, sizeof(video_generator_t));
-    if (!gen) return NULL;
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_generator_create: gen is NULL");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -174,7 +177,10 @@ static int generate_frame(video_generator_t* gen,
     out_frame->height = height;
     out_frame->channels = 3;
     out_frame->pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
-    if (!out_frame->pixels) return -1;
+    if (!out_frame->pixels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_frame: out_frame->pixels is NULL");
+        return -1;
+    }
 
     /* Generate frame content (placeholder) */
     uint64_t state = seed + frame_num * 12345;
@@ -222,6 +228,7 @@ static int interpolate_between_frames(const visual_image_t* frame_a,
 {
     if (frame_a->width != frame_b->width ||
         frame_a->height != frame_b->height) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "interpolate_between_frames: operation failed");
         return -1;
     }
 
@@ -231,7 +238,10 @@ static int interpolate_between_frames(const visual_image_t* frame_a,
 
     size_t pixel_count = (size_t)frame_a->width * frame_a->height * frame_a->channels;
     out_frame->pixels = nimcp_calloc(pixel_count, sizeof(uint8_t));
-    if (!out_frame->pixels) return -1;
+    if (!out_frame->pixels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "interpolate_between_frames: out_frame->pixels is NULL");
+        return -1;
+    }
 
     /* Linear interpolation (would use optical flow in production) */
     for (size_t i = 0; i < pixel_count; i++) {
@@ -305,7 +315,10 @@ int video_generate(video_generator_t* gen,
                    const video_generation_request_t* request,
                    video_generation_result_t* result)
 {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_generate: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(video_generation_result_t));
 
@@ -330,6 +343,7 @@ int video_generate(video_generator_t* gen,
         result->success = false;
         strncpy(result->error_message, "Failed to allocate frames",
                 sizeof(result->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_generate: result->frames is NULL");
         return -1;
     }
 
@@ -363,6 +377,7 @@ int video_generate(video_generator_t* gen,
             result->success = false;
             strncpy(result->error_message, "Frame generation failed",
                     sizeof(result->error_message) - 1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "video_generate: validation failed");
             return -1;
         }
 
@@ -448,7 +463,10 @@ int video_generate_from_keyframes(video_generator_t* gen,
                                    const style_embedding_t* style,
                                    video_generation_result_t* result)
 {
-    if (!gen || !keyframes || num_keyframes < 2 || !result) return -1;
+    if (!gen || !keyframes || num_keyframes < 2 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_generate_from_keyframes: required parameter is NULL (gen, keyframes, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(video_generation_result_t));
 
@@ -467,6 +485,7 @@ int video_generate_from_keyframes(video_generator_t* gen,
     result->frames = nimcp_calloc(total_frames, sizeof(video_frame_t));
     if (!result->frames) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_generate_from_keyframes: result->frames is NULL");
         return -1;
     }
 
@@ -488,6 +507,7 @@ int video_generate_from_keyframes(video_generator_t* gen,
     if (!keyframe_images) {
         nimcp_free(result->frames);
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_generate_from_keyframes: keyframe_images is NULL");
         return -1;
     }
 
@@ -555,7 +575,10 @@ int video_animate_image(video_generator_t* gen,
                         float duration_seconds,
                         video_generation_result_t* result)
 {
-    if (!gen || !image || !result) return -1;
+    if (!gen || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_animate_image: required parameter is NULL (gen, image, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(video_generation_result_t));
 
@@ -571,6 +594,7 @@ int video_animate_image(video_generator_t* gen,
     result->frames = nimcp_calloc(num_frames, sizeof(video_frame_t));
     if (!result->frames) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_animate_image: result->frames is NULL");
         return -1;
     }
 
@@ -639,14 +663,20 @@ int video_interpolate_frames(video_generator_t* gen,
                               uint32_t num_frames,
                               visual_image_t* frames)
 {
-    if (!gen || !frame_a || !frame_b || !frames) return -1;
+    if (!gen || !frame_a || !frame_b || !frames) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_interpolate_frames: required parameter is NULL (gen, frame_a, frame_b, frames)");
+        return -1;
+    }
     if (frame_a->width != frame_b->width ||
         frame_a->height != frame_b->height) return -1;
 
     for (uint32_t i = 0; i < num_frames; i++) {
         float t = (float)(i + 1) / (float)(num_frames + 1);
         int rc = interpolate_between_frames(frame_a, frame_b, t, &frames[i]);
-        if (rc != 0) return -1;
+        if (rc != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "video_interpolate_frames: validation failed");
+            return -1;
+        }
     }
 
     return 0;
@@ -658,13 +688,17 @@ int video_apply_camera(video_generator_t* gen,
                         const camera_spec_t* camera,
                         video_generation_result_t* result)
 {
-    if (!gen || !frames || !camera || !result) return -1;
+    if (!gen || !frames || !camera || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_apply_camera: required parameter is NULL (gen, frames, camera, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(video_generation_result_t));
 
     result->frames = nimcp_calloc(num_frames, sizeof(video_frame_t));
     if (!result->frames) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_apply_camera: result->frames is NULL");
         return -1;
     }
 
@@ -704,7 +738,10 @@ int video_extend(video_generator_t* gen,
                  const char* continuation_prompt,
                  video_generation_result_t* result)
 {
-    if (!gen || !existing || !result) return -1;
+    if (!gen || !existing || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_extend: required parameter is NULL (gen, existing, result)");
+        return -1;
+    }
 
     /* Create request for continuation */
     video_generation_request_t request;
@@ -721,6 +758,7 @@ int video_extend(video_generator_t* gen,
     int rc = video_generate(gen, &request, &continuation);
     if (rc != 0) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "video_extend: validation failed");
         return -1;
     }
 
@@ -741,7 +779,10 @@ int video_concatenate(const video_generation_result_t* videos,
                       float transition_duration,
                       video_generation_result_t* result)
 {
-    if (!videos || num_videos == 0 || !result) return -1;
+    if (!videos || num_videos == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_concatenate: required parameter is NULL (videos, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(video_generation_result_t));
 
@@ -761,6 +802,7 @@ int video_concatenate(const video_generation_result_t* videos,
     result->frames = nimcp_calloc(total_frames, sizeof(video_frame_t));
     if (!result->frames) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "video_concatenate: result->frames is NULL");
         return -1;
     }
 
@@ -833,8 +875,14 @@ int video_export(const video_generation_result_t* result,
                  const char* path,
                  const char* format)
 {
-    if (!result || !path || !format) return -1;
-    if (!result->frames || result->num_frames == 0) return -1;
+    if (!result || !path || !format) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_export: required parameter is NULL (result, path, format)");
+        return -1;
+    }
+    if (!result->frames || result->num_frames == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_export: result->frames is NULL");
+        return -1;
+    }
 
     /* Placeholder: would use ffmpeg or similar in production */
     /* For now, export as image sequence */
@@ -849,7 +897,10 @@ int video_export_frames(const video_generation_result_t* result,
                         const char* format,
                         const char* name_pattern)
 {
-    if (!result || !dir || !format || !name_pattern) return -1;
+    if (!result || !dir || !format || !name_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "video_export_frames: required parameter is NULL (result, dir, format, name_pattern)");
+        return -1;
+    }
 
     /* Would create directory in production */
     (void)dir;

@@ -151,6 +151,7 @@ mesh_ordering_service_t* mesh_ordering_create(
 ) {
     mesh_ordering_service_t* service = nimcp_calloc(1, sizeof(mesh_ordering_service_t));
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create: service is NULL");
         return NULL;
     }
 
@@ -183,6 +184,7 @@ mesh_ordering_service_t* mesh_ordering_create(
     if (!service->raft.log) {
         nimcp_free(service->name);
         nimcp_free(service);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create: service->raft is NULL");
         return NULL;
     }
 
@@ -192,6 +194,7 @@ mesh_ordering_service_t* mesh_ordering_create(
         nimcp_free(service->raft.log);
         nimcp_free(service->name);
         nimcp_free(service);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create: service->current_batch is NULL");
         return NULL;
     }
     service->current_batch->capacity = service->config.batch_size;
@@ -355,6 +358,7 @@ bool mesh_ordering_is_pending(
     const mesh_tx_id_t* tx_id
 ) {
     if (!service || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_is_pending: required parameter is NULL (service, tx_id)");
         return false;
     }
 
@@ -366,6 +370,7 @@ bool mesh_ordering_is_pending(
         pending = pending->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_is_pending: validation failed");
     return false;
 }
 
@@ -470,15 +475,18 @@ mesh_ordered_block_t* mesh_ordering_create_block(
     mesh_ordering_service_t* service
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create_block: service is NULL");
         return NULL;
     }
 
     if (!service->current_batch || service->current_batch->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_create_block: service->current_batch is NULL");
         return NULL;
     }
 
     mesh_ordered_block_t* block = nimcp_calloc(1, sizeof(mesh_ordered_block_t));
     if (!block) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_ordering_create_block: block is NULL");
         return NULL;
     }
 
@@ -534,6 +542,7 @@ const mesh_ordered_block_t* mesh_ordering_get_block(
     uint64_t block_number
 ) {
     if (!service || !service->blocks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_get_block: required parameter is NULL (service, service->blocks)");
         return NULL;
     }
 
@@ -543,6 +552,7 @@ const mesh_ordered_block_t* mesh_ordering_get_block(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "mesh_ordering_get_block: validation failed");
     return NULL;
 }
 
@@ -780,6 +790,7 @@ bool mesh_ordering_is_leader(const mesh_ordering_service_t* service) {
 
 bool mesh_ordering_has_quorum(const mesh_ordering_service_t* service) {
     if (!service || !service->orderer_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_has_quorum: required parameter is NULL (service, service->orderer_pool)");
         return false;
     }
 
@@ -842,6 +853,7 @@ const raft_log_entry_t* mesh_ordering_log_get(
     uint64_t index
 ) {
     if (!service || index >= service->raft.log_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_log_get: service is NULL");
         return NULL;
     }
     return &service->raft.log[index];
@@ -976,6 +988,7 @@ bool mesh_ordering_has_channel(
     mesh_channel_id_t channel
 ) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_has_channel: service is NULL");
         return false;
     }
 
@@ -985,6 +998,7 @@ bool mesh_ordering_has_channel(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_ordering_has_channel: validation failed");
     return false;
 }
 
@@ -1093,6 +1107,7 @@ float mesh_ordering_get_utilization(const mesh_ordering_service_t* service) {
 
 bool mesh_ordering_is_backpressure_active(const mesh_ordering_service_t* service) {
     if (!service) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordering_is_backpressure_active: service is NULL");
         return false;
     }
     return mesh_ordering_get_utilization(service) > 0.8f;
@@ -1135,6 +1150,7 @@ nimcp_error_t mesh_ordered_block_compute_hash(mesh_ordered_block_t* block) {
 
 bool mesh_ordered_block_verify_hash(const mesh_ordered_block_t* block) {
     if (!block) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_ordered_block_verify_hash: block is NULL");
         return false;
     }
 

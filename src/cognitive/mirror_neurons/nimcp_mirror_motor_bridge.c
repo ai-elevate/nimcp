@@ -111,6 +111,7 @@ static int32_t find_program_by_action(const mirror_motor_bridge_t* bridge, uint3
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_program_by_action: validation failed");
     return -1;
 }
 
@@ -130,6 +131,7 @@ static int32_t find_execution_by_program(const mirror_motor_bridge_t* bridge, ui
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_execution_by_program: operation failed");
     return -1;
 }
 
@@ -141,6 +143,7 @@ static int32_t get_free_program_slot(mirror_motor_bridge_t* bridge) {
         return (int32_t)(bridge->num_programs++);
     }
     /* No free slots - could implement LRU eviction here */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_free_program_slot: validation failed");
     return -1;
 }
 
@@ -164,6 +167,7 @@ static int32_t get_free_execution_slot(mirror_motor_bridge_t* bridge) {
     if (bridge->num_executions < bridge->max_executions) {
         return (int32_t)(bridge->num_executions++);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_free_execution_slot: validation failed");
     return -1;
 }
 
@@ -222,6 +226,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
     mirror_motor_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_motor_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate mirror-motor bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_motor_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -229,6 +234,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_MOTOR_BRIDGE,
                          "mirror_motor_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -246,6 +252,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
         LOG_ERROR("Failed to allocate program storage");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_motor_bridge_create: bridge->programs is NULL");
         return NULL;
     }
     bridge->num_programs = 0;
@@ -258,6 +265,7 @@ mirror_motor_bridge_t* mirror_motor_bridge_create(
         nimcp_free(bridge->programs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_motor_bridge_create: bridge->executions is NULL");
         return NULL;
     }
     bridge->num_executions = 0;
@@ -476,6 +484,7 @@ int mirror_motor_get_program(
     extracted_motor_program_t* program
 ) {
     if (!bridge || !program || program_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_get_program: required parameter is NULL (bridge, program)");
         return -1;
     }
 
@@ -485,6 +494,7 @@ int mirror_motor_get_program(
 
     uint32_t index = program_id - 1; /* 1-indexed */
     if (index >= bridge->num_programs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_motor_get_program: capacity exceeded");
         return -1;
     }
 
@@ -501,6 +511,7 @@ int mirror_motor_execute_program(
     uint32_t program_id
 ) {
     if (!bridge || program_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_execute_program: bridge is NULL");
         return -1;
     }
 
@@ -512,6 +523,7 @@ int mirror_motor_execute_program(
     uint32_t prog_index = program_id - 1;
     if (prog_index >= bridge->num_programs) {
         LOG_WARN("Program %u not found", program_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "mirror_motor_execute_program: capacity exceeded");
         return -1;
     }
 
@@ -527,6 +539,7 @@ int mirror_motor_execute_program(
                 LOG_DEBUG("Execution suppressed for program %u (output=%.2f)",
                           program_id, output);
                 bridge->stats.suppressed_executions++;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_execute_program: bridge->learning_mode is NULL");
                 return -1;
             }
         }
@@ -535,6 +548,7 @@ int mirror_motor_execute_program(
     /* Check motor cortex connection */
     if (!bridge->motor) {
         LOG_WARN("Motor cortex not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_execute_program: bridge->motor is NULL");
         return -1;
     }
 
@@ -542,6 +556,7 @@ int mirror_motor_execute_program(
     int32_t exec_slot = get_free_execution_slot(bridge);
     if (exec_slot < 0) {
         LOG_WARN("No free execution slots");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_execute_program: validation failed");
         return -1;
     }
 
@@ -559,12 +574,14 @@ int mirror_motor_execute_program(
     /* Plan movement on motor cortex */
     if (!motor_plan_movement(bridge->motor, &goal)) {
         LOG_WARN("Failed to plan movement for program %u", program_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_execute_program: motor_plan_movement is NULL");
         return -1;
     }
 
     /* Begin execution */
     if (!motor_begin_execution(bridge->motor)) {
         LOG_WARN("Failed to begin execution for program %u", program_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_execute_program: motor_begin_execution is NULL");
         return -1;
     }
 
@@ -658,6 +675,7 @@ int mirror_motor_get_execution_state(
     imitation_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_get_execution_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -667,6 +685,7 @@ int mirror_motor_get_execution_state(
 
     int32_t exec_idx = find_execution_by_program(bridge, program_id);
     if (exec_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_get_execution_state: validation failed");
         return -1;
     }
 
@@ -690,6 +709,7 @@ int mirror_motor_stop_execution(
 
     int32_t exec_idx = find_execution_by_program(bridge, program_id);
     if (exec_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_motor_stop_execution: validation failed");
         return -1;
     }
 
@@ -912,6 +932,7 @@ int mirror_motor_bridge_get_state(
     mirror_motor_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_bridge_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -928,6 +949,7 @@ int mirror_motor_bridge_get_effects(
     mirror_motor_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_bridge_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -944,6 +966,7 @@ int mirror_motor_bridge_get_stats(
     mirror_motor_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_motor_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

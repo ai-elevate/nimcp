@@ -425,6 +425,7 @@ int32_t graph_theory_find_hubs(
     float* hub_scores)
 {
     if (!bridge || !graph || !hub_ids || !hub_scores || top_k == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph_theory_find_hubs: required parameter is NULL (bridge, graph, hub_ids, hub_scores)");
         return -1;
     }
 
@@ -432,6 +433,7 @@ int32_t graph_theory_find_hubs(
     graph_theory_error_t err = graph_theory_compute_centrality(bridge, graph,
                                                                 type, &result);
     if (err != GRAPH_THEORY_OK || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph_theory_find_hubs: result is NULL");
         return -1;
     }
 
@@ -442,6 +444,7 @@ int32_t graph_theory_find_hubs(
     uint32_t* indices = nimcp_calloc(n, sizeof(uint32_t));
     if (!indices) {
         graph_centrality_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "graph_theory_find_hubs: indices is NULL");
         return -1;
     }
 
@@ -1107,7 +1110,10 @@ static void report_exception(graph_theory_bridge_t bridge, const char* func,
 
 static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 {
-    if (!graph || !num_nodes) return NULL;
+    if (!graph || !num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_degree_centrality: required parameter is NULL (graph, num_nodes)");
+        return NULL;
+    }
 
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
@@ -1130,7 +1136,10 @@ static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 
 static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_nodes)
 {
-    if (!graph || !num_nodes) return NULL;
+    if (!graph || !num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_betweenness_centrality: required parameter is NULL (graph, num_nodes)");
+        return NULL;
+    }
 
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
@@ -1161,7 +1170,10 @@ static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_no
 static float* compute_pagerank(NimcpGraph* graph, float damping,
                                uint32_t max_iter, float tol, uint32_t* num_nodes)
 {
-    if (!graph || !num_nodes) return NULL;
+    if (!graph || !num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_pagerank: required parameter is NULL (graph, num_nodes)");
+        return NULL;
+    }
 
     uint32_t n = nimcp_graph_vertex_count(graph);
     *num_nodes = n;
@@ -1171,6 +1183,7 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
     if (!rank || !new_rank) {
         nimcp_free(rank);
         nimcp_free(new_rank);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_pagerank: required parameter is NULL (rank, new_rank)");
         return NULL;
     }
 
@@ -1214,7 +1227,10 @@ static float* compute_pagerank(NimcpGraph* graph, float damping,
 static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communities,
                                      float* modularity)
 {
-    if (!graph || !num_communities || !modularity) return NULL;
+    if (!graph || !num_communities || !modularity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "louvain_communities: required parameter is NULL (graph, num_communities, modularity)");
+        return NULL;
+    }
 
     uint32_t n = nimcp_graph_vertex_count(graph);
 

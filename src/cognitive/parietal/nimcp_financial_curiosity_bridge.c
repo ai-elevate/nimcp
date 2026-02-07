@@ -366,6 +366,7 @@ financial_curiosity_bridge_t* financial_curiosity_bridge_create(
         if (bridge->hypothesis_counts) nimcp_free(bridge->hypothesis_counts);
         if (bridge->hypothesis_success_rates) nimcp_free(bridge->hypothesis_success_rates);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "financial_curiosity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -1324,11 +1325,15 @@ int financial_curiosity_bridge_generate_correlation_hypothesis(
 
 fin_market_state_t* financial_curiosity_market_state_create(uint32_t num_assets) {
     if (num_assets == 0 || num_assets > FIN_CURIOSITY_MAX_ASSETS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_market_state_create: num_assets is zero");
         return NULL;
     }
 
     fin_market_state_t* state = (fin_market_state_t*)nimcp_malloc(sizeof(fin_market_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_market_state_create: state is NULL");
+        return NULL;
+    }
 
     memset(state, 0, sizeof(*state));
     state->num_assets = num_assets;
@@ -1338,6 +1343,7 @@ fin_market_state_t* financial_curiosity_market_state_create(uint32_t num_assets)
 
     if (!state->prices || !state->volumes) {
         financial_curiosity_market_state_destroy(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_market_state_create: required parameter is NULL (state->prices, state->volumes)");
         return NULL;
     }
 
@@ -1353,11 +1359,15 @@ void financial_curiosity_market_state_destroy(fin_market_state_t* state) {
 
 fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidates) {
     if (max_candidates == 0 || max_candidates > FIN_CURIOSITY_MAX_CANDIDATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_result_create: max_candidates is zero");
         return NULL;
     }
 
     fin_hypothesis_result_t* result = (fin_hypothesis_result_t*)nimcp_malloc(sizeof(fin_hypothesis_result_t));
-    if (!result) return NULL;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_result_create: result is NULL");
+        return NULL;
+    }
 
     memset(result, 0, sizeof(*result));
     result->max_candidates = max_candidates;
@@ -1366,6 +1376,7 @@ fin_hypothesis_result_t* financial_curiosity_result_create(uint32_t max_candidat
                                                             sizeof(fin_extended_candidate_t));
     if (!result->candidates) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_curiosity_result_create: result->candidates is NULL");
         return NULL;
     }
 

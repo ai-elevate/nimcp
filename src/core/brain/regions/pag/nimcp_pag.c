@@ -307,7 +307,10 @@ static void update_emotional_state(nimcp_pag_t* pag) {
  *===========================================================================*/
 
 int pag_default_config(pag_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -370,6 +373,7 @@ nimcp_pag_t* pag_create(const pag_config_t* config) {
     nimcp_pag_t* pag = (nimcp_pag_t*)nimcp_calloc(1, sizeof(nimcp_pag_t));
     if (!pag) {
         NIMCP_LOG_ERROR(PAG_LOG_TAG, "Failed to allocate PAG");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pag_create: pag is NULL");
         return NULL;
     }
 
@@ -381,6 +385,7 @@ nimcp_pag_t* pag_create(const pag_config_t* config) {
     if (!pag->mutex) {
         NIMCP_LOG_ERROR(PAG_LOG_TAG, "Failed to create mutex");
         nimcp_free(pag);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pag_create: pag->mutex is NULL");
         return NULL;
     }
 
@@ -421,7 +426,10 @@ void pag_destroy(nimcp_pag_t* pag) {
 }
 
 int pag_init(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -471,7 +479,10 @@ int pag_init(nimcp_pag_t* pag) {
 }
 
 int pag_reset(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_reset: pag is NULL");
+        return -1;
+    }
     return pag_init(pag);
 }
 
@@ -481,7 +492,10 @@ int pag_reset(nimcp_pag_t* pag) {
 
 int pag_process_threat(nimcp_pag_t* pag, pag_threat_level_t threat_level,
                        float intensity, float direction, float distance) {
-    if (!pag || !pag->initialized) return -1;
+    if (!pag || !pag->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_reset: required parameter is NULL (pag, pag->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -592,7 +606,10 @@ int pag_process_threat(nimcp_pag_t* pag, pag_threat_level_t threat_level,
 }
 
 int pag_get_defense_state(const nimcp_pag_t* pag, pag_defense_state_t* defense) {
-    if (!pag || !defense) return -1;
+    if (!pag || !defense) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_defense_state: required parameter is NULL (pag, defense)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(defense, &pag->defense, sizeof(pag_defense_state_t));
@@ -603,7 +620,10 @@ int pag_get_defense_state(const nimcp_pag_t* pag, pag_defense_state_t* defense) 
 
 int pag_set_defense_response(nimcp_pag_t* pag, pag_defense_type_t defense_type,
                              float intensity) {
-    if (!pag || defense_type >= PAG_DEFENSE_COUNT) return -1;
+    if (!pag || defense_type >= PAG_DEFENSE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_defense_state: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -627,7 +647,10 @@ int pag_set_defense_response(nimcp_pag_t* pag, pag_defense_type_t defense_type,
 }
 
 int pag_check_escape_route(nimcp_pag_t* pag, bool* available) {
-    if (!pag || !available) return -1;
+    if (!pag || !available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_check_escape_route: required parameter is NULL (pag, available)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
     *available = pag->defense.escape_route_available;
@@ -637,7 +660,10 @@ int pag_check_escape_route(nimcp_pag_t* pag, bool* available) {
 }
 
 int pag_set_escape_route(nimcp_pag_t* pag, bool available) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_set_escape_route: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
     pag->defense.escape_route_available = available;
@@ -647,7 +673,10 @@ int pag_set_escape_route(nimcp_pag_t* pag, bool available) {
 }
 
 int pag_clear_threat(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_clear_threat: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -682,7 +711,10 @@ pag_coping_strategy_t pag_get_coping_strategy(const nimcp_pag_t* pag) {
  *===========================================================================*/
 
 int pag_process_pain(nimcp_pag_t* pag, const pag_pain_input_t* pain) {
-    if (!pag || !pain) return -1;
+    if (!pag || !pain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_process_pain: required parameter is NULL (pag, pain)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -727,7 +759,10 @@ int pag_process_pain(nimcp_pag_t* pag, const pag_pain_input_t* pain) {
 }
 
 int pag_get_analgesia_state(const nimcp_pag_t* pag, pag_analgesia_state_t* analgesia) {
-    if (!pag || !analgesia) return -1;
+    if (!pag || !analgesia) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_analgesia_state: required parameter is NULL (pag, analgesia)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(analgesia, &pag->analgesia, sizeof(pag_analgesia_state_t));
@@ -738,7 +773,10 @@ int pag_get_analgesia_state(const nimcp_pag_t* pag, pag_analgesia_state_t* analg
 
 int pag_activate_pain_pathway(nimcp_pag_t* pag, pag_pain_pathway_t pathway,
                               float activation) {
-    if (!pag || pathway >= PAG_PAIN_PATHWAY_COUNT) return -1;
+    if (!pag || pathway >= PAG_PAIN_PATHWAY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_analgesia_state: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -767,7 +805,10 @@ float pag_get_descending_inhibition(const nimcp_pag_t* pag) {
 }
 
 int pag_trigger_stress_analgesia(nimcp_pag_t* pag, float stress_level) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_trigger_stress_analgesia: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -789,7 +830,10 @@ int pag_trigger_stress_analgesia(nimcp_pag_t* pag, float stress_level) {
 }
 
 bool pag_has_opioid_tolerance(const nimcp_pag_t* pag) {
-    if (!pag) return false;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_has_opioid_tolerance: pag is NULL");
+        return false;
+    }
     return pag->analgesia.opioid_tolerance;
 }
 
@@ -799,7 +843,10 @@ bool pag_has_opioid_tolerance(const nimcp_pag_t* pag) {
 
 int pag_trigger_vocalization(nimcp_pag_t* pag, pag_vocal_type_t type,
                              float intensity) {
-    if (!pag || type >= PAG_VOCAL_COUNT) return -1;
+    if (!pag || type >= PAG_VOCAL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_has_opioid_tolerance: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -828,7 +875,10 @@ int pag_trigger_vocalization(nimcp_pag_t* pag, pag_vocal_type_t type,
 }
 
 int pag_get_vocalization_state(const nimcp_pag_t* pag, pag_vocal_state_t* vocal) {
-    if (!pag || !vocal) return -1;
+    if (!pag || !vocal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_vocalization_state: required parameter is NULL (pag, vocal)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(vocal, &pag->vocal, sizeof(pag_vocal_state_t));
@@ -838,7 +888,10 @@ int pag_get_vocalization_state(const nimcp_pag_t* pag, pag_vocal_state_t* vocal)
 }
 
 int pag_stop_vocalization(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_stop_vocalization: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
     pag->vocal.active = false;
@@ -853,7 +906,10 @@ int pag_stop_vocalization(nimcp_pag_t* pag) {
  *===========================================================================*/
 
 int pag_get_autonomic_state(const nimcp_pag_t* pag, pag_autonomic_state_t* autonomic) {
-    if (!pag || !autonomic) return -1;
+    if (!pag || !autonomic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_autonomic_state: required parameter is NULL (pag, autonomic)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(autonomic, &pag->autonomic, sizeof(pag_autonomic_state_t));
@@ -864,7 +920,10 @@ int pag_get_autonomic_state(const nimcp_pag_t* pag, pag_autonomic_state_t* auton
 
 int pag_get_cardiovascular_output(const nimcp_pag_t* pag,
                                   float* heart_rate_mod, float* bp_mod) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_autonomic_state: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     if (heart_rate_mod) *heart_rate_mod = pag->autonomic.heart_rate_modulation;
@@ -876,7 +935,10 @@ int pag_get_cardiovascular_output(const nimcp_pag_t* pag,
 
 int pag_get_respiratory_output(const nimcp_pag_t* pag,
                                float* rate_mod, float* depth_mod) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_autonomic_state: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     if (rate_mod) *rate_mod = pag->autonomic.respiratory_rate_mod;
@@ -887,7 +949,10 @@ int pag_get_respiratory_output(const nimcp_pag_t* pag,
 }
 
 bool pag_is_tonic_immobility(const nimcp_pag_t* pag) {
-    if (!pag) return false;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_is_tonic_immobility: pag is NULL");
+        return false;
+    }
     return pag->autonomic.tonic_immobility;
 }
 
@@ -896,7 +961,10 @@ bool pag_is_tonic_immobility(const nimcp_pag_t* pag) {
  *===========================================================================*/
 
 int pag_get_emotional_state(const nimcp_pag_t* pag, pag_emotional_state_t* emotion) {
-    if (!pag || !emotion) return -1;
+    if (!pag || !emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_emotional_state: required parameter is NULL (pag, emotion)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(emotion, &pag->emotion, sizeof(pag_emotional_state_t));
@@ -907,7 +975,10 @@ int pag_get_emotional_state(const nimcp_pag_t* pag, pag_emotional_state_t* emoti
 
 int pag_set_emotion_input(nimcp_pag_t* pag, pag_emotion_type_t emotion_type,
                           float intensity) {
-    if (!pag || emotion_type >= PAG_EMOTION_COUNT) return -1;
+    if (!pag || emotion_type >= PAG_EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_emotional_state: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -953,7 +1024,10 @@ float pag_get_column_activity(const nimcp_pag_t* pag, pag_column_t column) {
 
 int pag_set_column_modulation(nimcp_pag_t* pag, pag_column_t column,
                               float modulation) {
-    if (!pag || column >= PAG_COLUMN_COUNT) return -1;
+    if (!pag || column >= PAG_COLUMN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pag_get_column_activity: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
     pag->columns[column].modulation = fmaxf(0.0f, fminf(2.0f, modulation));
@@ -964,7 +1038,10 @@ int pag_set_column_modulation(nimcp_pag_t* pag, pag_column_t column,
 
 int pag_get_column_state(const nimcp_pag_t* pag, pag_column_t column,
                          pag_column_state_t* state) {
-    if (!pag || !state || column >= PAG_COLUMN_COUNT) return -1;
+    if (!pag || !state || column >= PAG_COLUMN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_column_activity: required parameter is NULL (pag, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(state, &pag->columns[column], sizeof(pag_column_state_t));
@@ -995,7 +1072,10 @@ pag_column_t pag_get_dominant_column(const nimcp_pag_t* pag) {
 
 int pag_kg_register(nimcp_pag_t* pag, struct nimcp_brain_kg* kg,
                     uint64_t admin_token) {
-    if (!pag || !kg) return -1;
+    if (!pag || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_dominant_column: required parameter is NULL (pag, kg)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -1037,7 +1117,10 @@ int pag_kg_register(nimcp_pag_t* pag, struct nimcp_brain_kg* kg,
 }
 
 int pag_kg_unregister(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_unregister: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -1054,8 +1137,14 @@ int pag_kg_unregister(nimcp_pag_t* pag) {
 
 int pag_kg_query(nimcp_pag_t* pag, const char* query,
                  void* result, size_t result_size) {
-    if (!pag || !query || !result) return -1;
-    if (!pag->kg_state.registered) return -1;
+    if (!pag || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_unregister: required parameter is NULL (pag, query, result)");
+        return -1;
+    }
+    if (!pag->kg_state.registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_unregister: pag->kg_state is NULL");
+        return -1;
+    }
 
     /* Actual KG query implementation would go here */
     (void)result_size;
@@ -1071,7 +1160,10 @@ int pag_kg_query(nimcp_pag_t* pag, const char* query,
 
 int pag_bio_async_broadcast(nimcp_pag_t* pag, pag_bio_msg_type_t msg_type,
                             const void* payload, size_t payload_size) {
-    if (!pag || !pag->bio_router) return -1;
+    if (!pag || !pag->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_unregister: required parameter is NULL (pag, pag->bio_router)");
+        return -1;
+    }
 
     pag->stats.bio_msgs_sent++;
 
@@ -1084,7 +1176,10 @@ int pag_bio_async_broadcast(nimcp_pag_t* pag, pag_bio_msg_type_t msg_type,
 }
 
 int pag_bio_async_subscribe(nimcp_pag_t* pag, uint32_t subscription_mask) {
-    if (!pag || !pag->bio_router) return -1;
+    if (!pag || !pag->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bio_async_subscribe: required parameter is NULL (pag, pag->bio_router)");
+        return -1;
+    }
 
     /* Subscribe to messages */
     (void)subscription_mask;
@@ -1097,28 +1192,40 @@ int pag_bio_async_subscribe(nimcp_pag_t* pag, uint32_t subscription_mask) {
  *===========================================================================*/
 
 int pag_security_connect(nimcp_pag_t* pag, struct nimcp_security_context* security) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_connect: pag is NULL");
+        return -1;
+    }
     pag->security = security;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to security context");
     return 0;
 }
 
 int pag_bbb_register(nimcp_pag_t* pag) {
-    if (!pag || !pag->security) return -1;
+    if (!pag || !pag->security) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_bbb_register: required parameter is NULL (pag, pag->security)");
+        return -1;
+    }
     /* BBB registration implementation */
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Registered with BBB");
     return 0;
 }
 
 int pag_immune_connect(nimcp_pag_t* pag, struct nimcp_immune_system* immune) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_immune_connect: pag is NULL");
+        return -1;
+    }
     pag->immune = immune;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to immune system");
     return 0;
 }
 
 int pag_immune_alert(nimcp_pag_t* pag, uint32_t alert_type, float severity) {
-    if (!pag || !pag->immune) return -1;
+    if (!pag || !pag->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_immune_alert: required parameter is NULL (pag, pag->immune)");
+        return -1;
+    }
     pag->stats.immune_alerts++;
     /* Immune alert implementation */
     (void)alert_type;
@@ -1128,7 +1235,10 @@ int pag_immune_alert(nimcp_pag_t* pag, uint32_t alert_type, float severity) {
 
 int pag_snn_connect(nimcp_pag_t* pag, struct nimcp_snn_network* snn,
                     struct nimcp_plasticity_engine* plasticity) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_immune_alert: pag is NULL");
+        return -1;
+    }
     pag->snn = snn;
     pag->plasticity = plasticity;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to SNN/plasticity");
@@ -1136,14 +1246,20 @@ int pag_snn_connect(nimcp_pag_t* pag, struct nimcp_snn_network* snn,
 }
 
 int pag_update_plasticity(nimcp_pag_t* pag, float reward) {
-    if (!pag || !pag->plasticity) return -1;
+    if (!pag || !pag->plasticity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_update_plasticity: required parameter is NULL (pag, pag->plasticity)");
+        return -1;
+    }
     /* Plasticity update implementation */
     (void)reward;
     return 0;
 }
 
 int pag_hypothalamus_connect(nimcp_pag_t* pag, struct nimcp_hypothalamus* hypo) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_hypothalamus_connect: pag is NULL");
+        return -1;
+    }
     pag->hypothalamus = hypo;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to hypothalamus");
     return 0;
@@ -1151,7 +1267,10 @@ int pag_hypothalamus_connect(nimcp_pag_t* pag, struct nimcp_hypothalamus* hypo) 
 
 int pag_receive_drive_signal(nimcp_pag_t* pag, uint32_t drive_type,
                              float drive_level) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_hypothalamus_connect: pag is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -1170,7 +1289,10 @@ int pag_receive_drive_signal(nimcp_pag_t* pag, uint32_t drive_type,
 }
 
 int pag_send_to_hypothalamus(nimcp_pag_t* pag) {
-    if (!pag || !pag->hypothalamus) return -1;
+    if (!pag || !pag->hypothalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_send_to_hypothalamus: required parameter is NULL (pag, pag->hypothalamus)");
+        return -1;
+    }
 
     /* Send defensive state to hypothalamus */
     pag->stats.hypothalamus_exchanges++;
@@ -1184,105 +1306,150 @@ int pag_send_to_hypothalamus(nimcp_pag_t* pag) {
 }
 
 int pag_thalamus_connect(nimcp_pag_t* pag, struct nimcp_thalamus* thalamus) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_thalamus_connect: pag is NULL");
+        return -1;
+    }
     pag->thalamus = thalamus;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to thalamus");
     return 0;
 }
 
 int pag_amygdala_connect(nimcp_pag_t* pag, struct nimcp_amygdala* amygdala) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_amygdala_connect: pag is NULL");
+        return -1;
+    }
     pag->amygdala = amygdala;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to amygdala");
     return 0;
 }
 
 int pag_prefrontal_connect(nimcp_pag_t* pag, struct nimcp_prefrontal* prefrontal) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_prefrontal_connect: pag is NULL");
+        return -1;
+    }
     pag->prefrontal = prefrontal;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to prefrontal cortex");
     return 0;
 }
 
 int pag_brainstem_connect(nimcp_pag_t* pag, struct nimcp_brainstem* brainstem) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_brainstem_connect: pag is NULL");
+        return -1;
+    }
     pag->brainstem = brainstem;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to brainstem");
     return 0;
 }
 
 int pag_rvm_connect(nimcp_pag_t* pag, struct nimcp_rvm* rvm) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_rvm_connect: pag is NULL");
+        return -1;
+    }
     pag->rvm = rvm;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to RVM (descending pain modulation)");
     return 0;
 }
 
 int pag_cognitive_connect(nimcp_pag_t* pag, struct nimcp_cognitive_hub* hub) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_cognitive_connect: pag is NULL");
+        return -1;
+    }
     pag->cognitive_hub = hub;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to cognitive hub");
     return 0;
 }
 
 int pag_training_connect(nimcp_pag_t* pag, struct nimcp_training_context* training) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_training_connect: pag is NULL");
+        return -1;
+    }
     pag->training = training;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to training system");
     return 0;
 }
 
 int pag_perception_connect(nimcp_pag_t* pag, struct nimcp_perception_system* perception) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_perception_connect: pag is NULL");
+        return -1;
+    }
     pag->perception = perception;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to perception system");
     return 0;
 }
 
 int pag_symbolic_connect(nimcp_pag_t* pag, struct nimcp_symbolic_engine* symbolic) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_symbolic_connect: pag is NULL");
+        return -1;
+    }
     pag->symbolic = symbolic;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to symbolic engine");
     return 0;
 }
 
 int pag_swarm_connect(nimcp_pag_t* pag, struct nimcp_swarm_context* swarm) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_swarm_connect: pag is NULL");
+        return -1;
+    }
     pag->swarm = swarm;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to swarm system");
     return 0;
 }
 
 int pag_dragonfly_connect(nimcp_pag_t* pag, struct nimcp_dragonfly_context* dragonfly) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_dragonfly_connect: pag is NULL");
+        return -1;
+    }
     pag->dragonfly = dragonfly;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to dragonfly system");
     return 0;
 }
 
 int pag_portia_connect(nimcp_pag_t* pag, struct nimcp_portia_context* portia) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_portia_connect: pag is NULL");
+        return -1;
+    }
     pag->portia = portia;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to portia system");
     return 0;
 }
 
 int pag_qmc_connect(nimcp_pag_t* pag, struct nimcp_qmc_context* qmc) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_qmc_connect: pag is NULL");
+        return -1;
+    }
     pag->qmc = qmc;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to QMC system");
     return 0;
 }
 
 int pag_omni_connect(nimcp_pag_t* pag, struct nimcp_omni_predictor* omni) {
-    if (!pag) return -1;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_omni_connect: pag is NULL");
+        return -1;
+    }
     pag->omni = omni;
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "Connected to omnidirectional predictor");
     return 0;
 }
 
 int pag_qmc_optimize_defense(nimcp_pag_t* pag) {
-    if (!pag || !pag->qmc) return -1;
+    if (!pag || !pag->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_qmc_optimize_defense: required parameter is NULL (pag, pag->qmc)");
+        return -1;
+    }
 
     /* Use QMC for defense optimization */
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "QMC defense optimization requested");
@@ -1291,7 +1458,10 @@ int pag_qmc_optimize_defense(nimcp_pag_t* pag) {
 
 int pag_qmcts_threat_response(nimcp_pag_t* pag, uint32_t num_iterations,
                               pag_defense_type_t* best_response) {
-    if (!pag || !best_response || !pag->qmc) return -1;
+    if (!pag || !best_response || !pag->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_qmc_optimize_defense: required parameter is NULL (pag, best_response, pag->qmc)");
+        return -1;
+    }
 
     NIMCP_LOG_DEBUG(PAG_LOG_TAG, "QMCTS threat response: %u iterations", num_iterations);
 
@@ -1308,7 +1478,10 @@ int pag_qmcts_threat_response(nimcp_pag_t* pag, uint32_t num_iterations,
  *===========================================================================*/
 
 int pag_update(nimcp_pag_t* pag, float dt) {
-    if (!pag || !pag->initialized) return -1;
+    if (!pag || !pag->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_update: required parameter is NULL (pag, pag->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pag->mutex);
 
@@ -1394,7 +1567,10 @@ int pag_update(nimcp_pag_t* pag, float dt) {
 }
 
 int pag_get_stats(const nimcp_pag_t* pag, pag_stats_t* stats) {
-    if (!pag || !stats) return -1;
+    if (!pag || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_get_stats: required parameter is NULL (pag, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_pag_t*)pag)->mutex);
     memcpy(stats, &pag->stats, sizeof(pag_stats_t));

@@ -231,6 +231,7 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
     lnn_layer_t* layer = (lnn_layer_t*)nimcp_calloc(1, sizeof(lnn_layer_t));
     if (!layer) {
         NIMCP_LOGGING_ERROR("Failed to allocate layer structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_layer_create: layer is NULL");
         return NULL;
     }
 
@@ -247,6 +248,7 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
     if (!layer->neurons) {
         NIMCP_LOGGING_ERROR("Failed to allocate neurons");
         lnn_layer_destroy(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_layer_create: layer->neurons is NULL");
         return NULL;
     }
 
@@ -276,6 +278,7 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
         NIMCP_LOGGING_ERROR("Failed to allocate state tensors");
         /* lnn_layer_destroy() handles partial allocation - NULL-safe */
         lnn_layer_destroy(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_layer_create: operation failed");
         return NULL;
     }
 
@@ -294,6 +297,7 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
         NIMCP_LOGGING_ERROR("Failed to allocate weight tensors");
         /* lnn_layer_destroy() handles partial allocation - NULL-safe */
         lnn_layer_destroy(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_layer_create: required parameter is NULL (layer->W_in, layer->W_rec, layer->W_tau)");
         return NULL;
     }
 
@@ -312,6 +316,7 @@ lnn_layer_t* lnn_layer_create(const lnn_layer_config_t* config, uint32_t n_input
         NIMCP_LOGGING_ERROR("Failed to allocate gradient tensors");
         /* lnn_layer_destroy() handles partial allocation - NULL-safe */
         lnn_layer_destroy(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_layer_create: operation failed");
         return NULL;
     }
 

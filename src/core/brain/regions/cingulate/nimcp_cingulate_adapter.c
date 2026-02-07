@@ -278,6 +278,7 @@ cingulate_adapter_t* cingulate_create(const cingulate_config_t* config) {
     cingulate_adapter_t* adapter = (cingulate_adapter_t*)nimcp_calloc(1, sizeof(cingulate_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", CINGULATE_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_create: adapter is NULL");
         return NULL;
     }
 
@@ -296,6 +297,7 @@ cingulate_adapter_t* cingulate_create(const cingulate_config_t* config) {
     if (!adapter->response_options) {
         LOG_ERROR("[%s] Failed to allocate response options", CINGULATE_LOG_MODULE);
         cingulate_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_create: adapter->response_options is NULL");
         return NULL;
     }
 
@@ -428,6 +430,7 @@ bool cingulate_begin_monitoring(cingulate_adapter_t* adapter, uint32_t num_optio
 
     if (num_options > adapter->config.response_options) {
         set_error(adapter, CINGULATE_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_begin_monitoring: validation failed");
         return false;
     }
 
@@ -466,11 +469,13 @@ bool cingulate_update_response(cingulate_adapter_t* adapter,
 
     if (!adapter->monitoring_active) {
         set_error(adapter, CINGULATE_ERROR_NOT_INITIALIZED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_begin_monitoring: adapter->monitoring_active is NULL");
         return false;
     }
 
     if (option->option_id >= adapter->num_response_options) {
         set_error(adapter, CINGULATE_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_begin_monitoring: capacity exceeded");
         return false;
     }
 
@@ -509,6 +514,7 @@ bool cingulate_evaluate_conflict(cingulate_adapter_t* adapter,
 
     /* Check if above threshold */
     if (conflict_level < adapter->config.conflict_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_begin_monitoring: validation failed");
         return false;  /* No significant conflict */
     }
 
@@ -670,7 +676,10 @@ bool cingulate_report_response(cingulate_adapter_t* adapter,
 bool cingulate_report_outcome(cingulate_adapter_t* adapter,
                                float outcome,
                                float expected) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     float error_magnitude = fabsf(outcome - expected);
 
@@ -711,13 +720,20 @@ bool cingulate_report_outcome(cingulate_adapter_t* adapter,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;  /* No significant error */
 }
 
 bool cingulate_get_last_error(const cingulate_adapter_t* adapter,
                                cingulate_error_event_t* error) {
-    if (!adapter || !error) return false;
-    if (!adapter->has_pending_error) return false;
+    if (!adapter || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, error)");
+        return false;
+    }
+    if (!adapter->has_pending_error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->has_pending_error is NULL");
+        return false;
+    }
 
     *error = adapter->last_error;
     return true;
@@ -725,7 +741,10 @@ bool cingulate_get_last_error(const cingulate_adapter_t* adapter,
 
 bool cingulate_error_is_conscious(const cingulate_adapter_t* adapter,
                                    uint32_t error_id) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     /* Check last error first */
     if (adapter->last_error.error_id == error_id) {
@@ -741,6 +760,7 @@ bool cingulate_error_is_conscious(const cingulate_adapter_t* adapter,
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -750,7 +770,10 @@ bool cingulate_error_is_conscious(const cingulate_adapter_t* adapter,
 
 bool cingulate_generate_control_signal(cingulate_adapter_t* adapter,
                                         cingulate_control_signal_t* signal) {
-    if (!adapter || !signal) return false;
+    if (!adapter || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, signal)");
+        return false;
+    }
 
     memset(signal, 0, sizeof(cingulate_control_signal_t));
 
@@ -808,7 +831,10 @@ bool cingulate_generate_control_signal(cingulate_adapter_t* adapter,
 bool cingulate_set_control_callback(cingulate_adapter_t* adapter,
                                      cingulate_control_callback_t callback,
                                      void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->control_callback = callback;
     adapter->control_user_data = user_data;
     return true;
@@ -827,7 +853,10 @@ bool cingulate_evaluate_self_relevance(cingulate_adapter_t* adapter,
                                         const float* features,
                                         uint32_t num_features,
                                         cingulate_self_reference_t* result) {
-    if (!adapter || !features || !result) return false;
+    if (!adapter || !features || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_control_level: required parameter is NULL (adapter, features, result)");
+        return false;
+    }
 
     memset(result, 0, sizeof(cingulate_self_reference_t));
 
@@ -868,7 +897,10 @@ bool cingulate_evaluate_self_relevance(cingulate_adapter_t* adapter,
 }
 
 bool cingulate_is_default_mode(const cingulate_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_is_default_mode: adapter is NULL");
+        return false;
+    }
     return adapter->dmn_active;
 }
 
@@ -876,7 +908,10 @@ bool cingulate_request_autobio_memory(cingulate_adapter_t* adapter,
                                        const float* query_features,
                                        uint32_t num_features,
                                        uint32_t* memory_id) {
-    if (!adapter || !memory_id) return false;
+    if (!adapter || !memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_is_default_mode: required parameter is NULL (adapter, memory_id)");
+        return false;
+    }
 
     /* This would integrate with autobiographical memory system */
     /* For now, return placeholder */
@@ -885,6 +920,7 @@ bool cingulate_request_autobio_memory(cingulate_adapter_t* adapter,
     LOG_DEBUG("[%s] Autobiographical memory request (not yet implemented)",
               CINGULATE_LOG_MODULE);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_is_default_mode: required parameter is NULL (adapter, memory_id)");
     return false;  /* No memory found in stub implementation */
 }
 
@@ -895,7 +931,10 @@ bool cingulate_request_autobio_memory(cingulate_adapter_t* adapter,
 bool cingulate_integrate_emotion(cingulate_adapter_t* adapter,
                                   float valence,
                                   float arousal) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_is_default_mode: adapter is NULL");
+        return false;
+    }
 
     /* Clamp values */
     if (valence < -1.0f) valence = -1.0f;
@@ -925,7 +964,10 @@ bool cingulate_integrate_emotion(cingulate_adapter_t* adapter,
 bool cingulate_report_pain(cingulate_adapter_t* adapter,
                             float pain_level,
                             bool is_physical) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_is_default_mode: adapter is NULL");
+        return false;
+    }
 
     /* Clamp pain level */
     if (pain_level < 0.0f) pain_level = 0.0f;
@@ -991,13 +1033,19 @@ const char* cingulate_status_string(cingulate_status_t status) {
 }
 
 bool cingulate_get_stats(const cingulate_adapter_t* adapter, cingulate_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool cingulate_get_config(const cingulate_adapter_t* adapter, cingulate_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1009,7 +1057,10 @@ bool cingulate_get_config(const cingulate_adapter_t* adapter, cingulate_config_t
 bool cingulate_set_conflict_callback(cingulate_adapter_t* adapter,
                                       cingulate_conflict_callback_t callback,
                                       void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_config: adapter is NULL");
+        return false;
+    }
     adapter->conflict_callback = callback;
     adapter->conflict_user_data = user_data;
     return true;
@@ -1018,7 +1069,10 @@ bool cingulate_set_conflict_callback(cingulate_adapter_t* adapter,
 bool cingulate_set_error_callback(cingulate_adapter_t* adapter,
                                    cingulate_error_callback_t callback,
                                    void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_config: adapter is NULL");
+        return false;
+    }
     adapter->error_callback = callback;
     adapter->error_user_data = user_data;
     return true;
@@ -1027,7 +1081,10 @@ bool cingulate_set_error_callback(cingulate_adapter_t* adapter,
 bool cingulate_set_event_callback(cingulate_adapter_t* adapter,
                                    cingulate_event_callback_t callback,
                                    void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_config: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -1038,7 +1095,10 @@ bool cingulate_set_event_callback(cingulate_adapter_t* adapter,
  *===========================================================================*/
 
 bio_module_context_t cingulate_get_bio_context(cingulate_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_get_bio_context: adapter is NULL");
+        return NULL;
+    }
     return adapter->bio_ctx;
 }
 

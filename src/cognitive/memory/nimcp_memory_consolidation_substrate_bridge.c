@@ -347,6 +347,7 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
 ) {
     if (!config || !consolidation || !substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge with NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: required parameter is NULL (config, consolidation, substrate)");
         return NULL;
     }
 
@@ -400,12 +401,14 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for consolidation substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for consolidation substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -451,6 +454,7 @@ void consolidation_substrate_bridge_destroy(consolidation_substrate_bridge_t* br
 int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot connect NULL bridge to bio-async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -489,6 +493,7 @@ int consolidation_substrate_connect_bio_async(consolidation_substrate_bridge_t* 
 int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot disconnect NULL bridge from bio-async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -511,6 +516,7 @@ int consolidation_substrate_disconnect_bio_async(consolidation_substrate_bridge_
 
 bool consolidation_substrate_is_bio_async_connected(const consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -527,11 +533,13 @@ bool consolidation_substrate_is_bio_async_connected(const consolidation_substrat
 int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot update NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_update: bridge is NULL");
         return -1;
     }
 
     if (!bridge->substrate) {
         NIMCP_LOGGING_ERROR("Bridge has NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_update: bridge->substrate is NULL");
         return -1;
     }
 
@@ -546,6 +554,7 @@ int consolidation_substrate_update(consolidation_substrate_bridge_t* bridge) {
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_substrate_update: validation failed");
         return -1;
     }
 
@@ -703,6 +712,7 @@ consolidation_substrate_effects_t consolidation_substrate_get_effects(
 bool consolidation_substrate_is_impaired(const consolidation_substrate_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot check impairment on NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

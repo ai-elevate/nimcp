@@ -1433,6 +1433,7 @@ nimcp_cond_t* nimcp_cond_create(void)
 
     if (nimcp_cond_init(cond) != NIMCP_SUCCESS) {
         nimcp_free(cond);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_cond_create: validation failed");
         return NULL;
     }
 

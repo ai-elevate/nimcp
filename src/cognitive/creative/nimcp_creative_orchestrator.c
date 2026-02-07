@@ -83,6 +83,7 @@ creative_orchestrator_t* creative_orchestrator_create(
     creative_orchestrator_t* orch = nimcp_calloc(1, sizeof(creative_orchestrator_t));
     if (!orch) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_orchestrator_heartbeat_instance: orch is NULL");
         return NULL;
     }
 
@@ -120,7 +121,10 @@ void creative_orchestrator_destroy(creative_orchestrator_t* orch) {
 }
 
 int creative_orchestrator_init_subsystems(creative_orchestrator_t* orch) {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_init_subsystems: orch is NULL");
+        return -1;
+    }
 
     creative_orchestrator_heartbeat("init_subsystems", 0.0f);
 
@@ -143,7 +147,10 @@ void creative_orchestrator_shutdown(creative_orchestrator_t* orch) {
 //=============================================================================
 
 int creative_orchestrator_update(creative_orchestrator_t* orch, uint64_t dt_us) {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_update: orch is NULL");
+        return -1;
+    }
 
     creative_orchestrator_heartbeat("orchestrator_update", 0.0f);
 
@@ -164,7 +171,10 @@ creative_orchestrator_state_t creative_orchestrator_get_state(
 
 int creative_orchestrator_get_stats(const creative_orchestrator_t* orch,
                                      creative_orchestrator_stats_t* out) {
-    if (!orch || !out) return -1;
+    if (!orch || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_orchestrator_update: required parameter is NULL (orch, out)");
+        return -1;
+    }
     *out = orch->stats;
     return 0;
 }

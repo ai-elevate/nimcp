@@ -215,6 +215,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_create_with_config(
             nimcp_free(hg->edges);
             nimcp_free(hg->vertices);
             nimcp_free(hg);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_create_with_config: validation failed");
             return NULL;
         }
         hg->thread_safe = true;
@@ -586,11 +587,13 @@ NIMCP_API const nimcp_hypervertex_t* nimcp_hypergraph_get_vertex(
     uint32_t vertex_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_get_vertex: hg is NULL");
         return NULL;
     }
 
     int idx = find_vertex_index(hg, vertex_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_get_vertex: validation failed");
         return NULL;
     }
 
@@ -932,11 +935,13 @@ NIMCP_API const nimcp_hyperedge_t* nimcp_hypergraph_get_edge(
     uint32_t edge_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_get_edge: hg is NULL");
         return NULL;
     }
 
     int idx = find_edge_index(hg, edge_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_get_edge: validation failed");
         return NULL;
     }
 
@@ -1327,12 +1332,14 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
     const nimcp_hypergraph_t* hg)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_compute_dual: hg is NULL");
         return NULL;
     }
 
     nimcp_hypergraph_dual_t* dual_result =
         (nimcp_hypergraph_dual_t*)nimcp_calloc(1, sizeof(nimcp_hypergraph_dual_t));
     if (!dual_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_compute_dual: dual_result is NULL");
         return NULL;
     }
 
@@ -1340,6 +1347,7 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
     dual_result->dual = nimcp_hypergraph_create();
     if (!dual_result->dual) {
         nimcp_free(dual_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_compute_dual: dual_result->dual is NULL");
         return NULL;
     }
 
@@ -1351,6 +1359,7 @@ NIMCP_API nimcp_hypergraph_dual_t* nimcp_hypergraph_compute_dual(
 
     if (!dual_result->vertex_to_edge_map || !dual_result->edge_to_vertex_map) {
         nimcp_hypergraph_dual_destroy(dual_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_compute_dual: required parameter is NULL (dual_result->vertex_to_edge_map, dual_result->edge_to_vertex_map)");
         return NULL;
     }
 
@@ -1686,11 +1695,13 @@ NIMCP_API bool nimcp_hypergraph_are_connected(
     uint32_t vertex_b)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_are_connected: hg is NULL");
         return false;
     }
 
     int vidx_a = find_vertex_index(hg, vertex_a);
     if (vidx_a < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_hypergraph_are_connected: validation failed");
         return false;
     }
 
@@ -1721,6 +1732,7 @@ NIMCP_API bool nimcp_hypergraph_are_connected(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_hypergraph_are_connected: validation failed");
     return false;
 }
 
@@ -1747,6 +1759,7 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_from_knowledge_base(
     const void* logic)
 {
     if (!logic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_from_knowledge_base: logic is NULL");
         return NULL;
     }
 
@@ -1758,11 +1771,13 @@ NIMCP_API nimcp_hypergraph_t* nimcp_hypergraph_from_ternary(
     const NimcpTernaryGraph* ternary)
 {
     if (!ternary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_from_ternary: ternary is NULL");
         return NULL;
     }
 
     nimcp_hypergraph_t* hg = nimcp_hypergraph_create();
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_from_ternary: hg is NULL");
         return NULL;
     }
 
@@ -1806,11 +1821,13 @@ NIMCP_API NimcpTernaryGraph* nimcp_hypergraph_to_ternary(
     const nimcp_hypergraph_t* hg)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hypergraph_to_ternary: hg is NULL");
         return NULL;
     }
 
     NimcpTernaryGraph* ternary = nimcp_ternary_graph_create();
     if (!ternary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_to_ternary: ternary is NULL");
         return NULL;
     }
 
@@ -2018,6 +2035,7 @@ NIMCP_API bool nimcp_hypergraph_is_connected(const nimcp_hypergraph_t* hg)
     uint32_t* components = (uint32_t*)nimcp_malloc(
         hg->vertex_count * sizeof(uint32_t));
     if (!components) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hypergraph_is_connected: components is NULL");
         return false;
     }
 
@@ -2319,6 +2337,7 @@ static int find_vertex_index(const nimcp_hypergraph_t* hg, uint32_t vertex_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_vertex_index: validation failed");
     return -1;
 }
 
@@ -2335,6 +2354,7 @@ static int find_edge_index(const nimcp_hypergraph_t* hg, uint32_t edge_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_edge_index: validation failed");
     return -1;
 }
 

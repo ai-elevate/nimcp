@@ -712,16 +712,19 @@ int multigpu_get_layer_assignment(multigpu_context_t ctx, uint32_t layer_index)
 {
     // Guard: NULL context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multigpu_get_layer_assignment: ctx is NULL");
         return -1;
     }
 
     // Guard: Not partitioned yet
     if (!ctx->layer_to_device) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multigpu_get_layer_assignment: ctx->layer_to_device is NULL");
         return -1;
     }
 
     // Guard: Invalid layer index
     if (layer_index >= ctx->num_layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "multigpu_get_layer_assignment: capacity exceeded");
         return -1;
     }
 
@@ -739,6 +742,7 @@ bool multigpu_rebalance_work(multigpu_context_t ctx)
     // Guard: Not enough devices to rebalance
     if (ctx->num_devices < 2) {
         // Not an error - just nothing to rebalance
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multigpu_rebalance_work: validation failed");
         return false;
     }
 
@@ -762,6 +766,7 @@ bool multigpu_rebalance_work(multigpu_context_t ctx)
 
     // Guard: Already balanced
     if (imbalance < ctx->config.imbalance_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multigpu_rebalance_work: validation failed");
         return false;
     }
 
@@ -824,6 +829,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
                     cudaFree(device_ptrs[j]);
                 }
                 nimcp_free(device_ptrs);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multigpu_alloc: validation failed");
                 return NULL;
             }
         } else {
@@ -835,6 +841,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
                     nimcp_free(device_ptrs[j]);
                 }
                 nimcp_free(device_ptrs);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multigpu_alloc: device_ptrs is NULL");
                 return NULL;
             }
         }
@@ -847,6 +854,7 @@ void** multigpu_alloc(multigpu_context_t ctx, size_t total_size)
                 nimcp_free(device_ptrs[j]);
             }
             nimcp_free(device_ptrs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multigpu_alloc: device_ptrs is NULL");
             return NULL;
         }
 #endif
@@ -1094,6 +1102,7 @@ bool multigpu_is_idle(multigpu_context_t ctx)
                 for (uint32_t s = 0; s < ctx->devices[i].num_streams; s++) {
                     cudaError_t err = cudaStreamQuery((cudaStream_t)ctx->devices[i].streams[s]);
                     if (err == cudaErrorNotReady) {
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multigpu_is_idle: validation failed");
                         return false;  // Stream still busy
                     }
                 }

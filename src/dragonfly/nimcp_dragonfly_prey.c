@@ -353,14 +353,23 @@ prey_classifier_config_t prey_classifier_default_config(void) {
 }
 
 bool prey_classifier_validate_config(const prey_classifier_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prey_classifier_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->min_confidence_threshold < 0.0f ||
         config->min_confidence_threshold > 1.0f) return false;
-    if (config->reclassification_interval_ms < 0.0f) return false;
+    if (config->reclassification_interval_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
+        return false;
+    }
 
     float weight_sum = config->size_weight + config->motion_weight + config->visual_weight;
-    if (weight_sum < 0.5f || weight_sum > 1.5f) return false;
+    if (weight_sum < 0.5f || weight_sum > 1.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
+        return false;
+    }
 
     if (config->history_window == 0 ||
         config->history_window > PREY_HISTORY_SIZE) return false;
@@ -368,7 +377,10 @@ bool prey_classifier_validate_config(const prey_classifier_config_t* config) {
     if (config->abort_success_threshold < 0.0f ||
         config->abort_success_threshold > 1.0f) return false;
 
-    if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) return false;
+    if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prey_classifier_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -420,7 +432,10 @@ void dragonfly_prey_classifier_destroy(dragonfly_prey_classifier_t classifier) {
 }
 
 int dragonfly_prey_classifier_reset(dragonfly_prey_classifier_t classifier) {
-    if (!classifier) return -1;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_classifier_reset: classifier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
 
@@ -484,7 +499,10 @@ int dragonfly_prey_observe(
     float angular_size,
     float contrast
 ) {
-    if (!classifier || !position || !velocity) return -1;
+    if (!classifier || !position || !velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_observe: required parameter is NULL (classifier, position, velocity)");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
 
@@ -529,7 +547,10 @@ int dragonfly_prey_classify(
     uint32_t target_id,
     prey_classification_t* classification
 ) {
-    if (!classifier || !classification) return -1;
+    if (!classifier || !classification) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_classify: required parameter is NULL (classifier, classification)");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
 
@@ -544,6 +565,7 @@ int dragonfly_prey_classify(
 
     if (!prey) {
         nimcp_mutex_unlock(classifier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_classify: prey is NULL");
         return -1;
     }
 
@@ -575,7 +597,10 @@ int dragonfly_prey_predict(
     float horizon_s,
     prey_prediction_t* prediction
 ) {
-    if (!classifier || !prediction || horizon_s <= 0.0f) return -1;
+    if (!classifier || !prediction || horizon_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_predict: required parameter is NULL (classifier, prediction)");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
 
@@ -590,6 +615,7 @@ int dragonfly_prey_predict(
 
     if (!prey || prey->history_count < 2) {
         nimcp_mutex_unlock(classifier->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_prey_predict: prey is NULL");
         return -1;
     }
 
@@ -634,7 +660,10 @@ int dragonfly_prey_get_strategy(
     float self_accel,
     prey_classification_t* classification
 ) {
-    if (!classifier || !classification) return -1;
+    if (!classifier || !classification) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_get_strategy: required parameter is NULL (classifier, classification)");
+        return -1;
+    }
 
     int result = dragonfly_prey_classify(classifier, target_id, classification);
     if (result != 0) return result;
@@ -657,7 +686,10 @@ int dragonfly_prey_report_outcome(
     uint32_t target_id,
     bool success
 ) {
-    if (!classifier) return -1;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_report_outcome: classifier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
 
@@ -687,7 +719,10 @@ int dragonfly_prey_classifier_get_stats(
     const dragonfly_prey_classifier_t classifier,
     prey_classifier_stats_t* stats
 ) {
-    if (!classifier || !stats) return -1;
+    if (!classifier || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_classifier_get_stats: required parameter is NULL (classifier, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)classifier->mutex);
     *stats = classifier->stats;
@@ -697,7 +732,10 @@ int dragonfly_prey_classifier_get_stats(
 }
 
 int dragonfly_prey_classifier_reset_stats(dragonfly_prey_classifier_t classifier) {
-    if (!classifier) return -1;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_prey_classifier_reset_stats: classifier is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(classifier->mutex);
     memset(&classifier->stats, 0, sizeof(classifier->stats));

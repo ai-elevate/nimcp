@@ -447,6 +447,7 @@ const char* working_memory_get_last_error(void) {
 static int find_lowest_salience_index(const working_memory_t* wm) {
     // Guard: Empty buffer
     if (wm->current_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_lowest_salience_index: wm->current_size is zero");
         return -1;
     }
 
@@ -814,6 +815,7 @@ working_memory_t* working_memory_create_custom(
         if (!wm->pos_encoder) {
             LOG_ERROR("Failed to create positional encoder");
             working_memory_destroy(wm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: wm->pos_encoder is NULL");
             return NULL;
         }
 
@@ -822,6 +824,7 @@ working_memory_t* working_memory_create_custom(
         if (!wm->pe_buffer) {
             LOG_ERROR("Failed to allocate PE buffer");
             working_memory_destroy(wm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: wm->pe_buffer is NULL");
             return NULL;
         }
 
@@ -842,6 +845,7 @@ working_memory_t* working_memory_create_custom(
         if (!wm->quantum_bridge) {
             LOG_ERROR("Failed to create quantum bridge");
             working_memory_destroy(wm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: wm->quantum_bridge is NULL");
             return NULL;
         }
 
@@ -984,30 +988,35 @@ bool working_memory_add(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_add: wm is NULL");
         return false;
     }
 
     // Guard: NULL item
     if (!item) {
         set_error("NULL item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_add: item is NULL");
         return false;
     }
 
     // Guard: Invalid size
     if (item_size == 0) {
         set_error("item_size must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add: item_size is zero");
         return false;
     }
 
     // Guard: Size overflow check
     if (item_size > (MAX_ITEM_SIZE_BYTES / sizeof(float))) {
         set_error("item_size exceeds maximum");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add: validation failed");
         return false;
     }
 
     // Guard: Invalid salience
     if (salience < 0.0F || salience > 1.0F) {
         set_error("salience must be in [0.0, 1.0]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add: validation failed");
         return false;
     }
 
@@ -1018,6 +1027,7 @@ bool working_memory_add(
     float* item_copy = nimcp_malloc(item_size * sizeof(float));
     if (!item_copy) {
         set_error("Failed to allocate item memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_add: item_copy is NULL");
         return false;
     }
     memcpy(item_copy, item, item_size * sizeof(float));
@@ -1036,6 +1046,7 @@ bool working_memory_add(
             nimcp_platform_mutex_unlock(&wm->mutex);
             nimcp_free(item_copy);
             set_error("Working memory full and eviction failed");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_add: capacity exceeded");
             return false;
         }
     }
@@ -1108,18 +1119,21 @@ bool working_memory_add_with_emotion(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_add_with_emotion: wm is NULL");
         return false;
     }
 
     // Guard: NULL emotion
     if (!emotion) {
         set_error("NULL emotional_tag_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_add_with_emotion: emotion is NULL");
         return false;
     }
 
     // Guard: Invalid emotion
     if (!emotional_tag_is_valid(emotion)) {
         set_error("Invalid emotional tag");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_add_with_emotion: emotional_tag_is_valid is NULL");
         return false;
     }
 
@@ -1134,6 +1148,7 @@ bool working_memory_add_with_emotion(
 
     // Add item with boosted salience (this will acquire the lock)
     if (!working_memory_add(wm, item, item_size, total_salience)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_add_with_emotion: working_memory_add is NULL");
         return false;
     }
 
@@ -1173,6 +1188,7 @@ const float* working_memory_get(
     if (!wm) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: wm");
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get: wm is NULL");
         return NULL;
     }
 
@@ -1187,6 +1203,7 @@ const float* working_memory_get(
                        index, wm->current_size);
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get: capacity exceeded");
         return NULL;
     }
 
@@ -1218,6 +1235,7 @@ bool working_memory_remove(working_memory_t* wm, uint32_t index) {
     if (!wm) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: wm");
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_remove: wm is NULL");
         return false;
     }
 
@@ -1230,6 +1248,7 @@ bool working_memory_remove(working_memory_t* wm, uint32_t index) {
                        index, wm->current_size);
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock(&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_remove: capacity exceeded");
         return false;
     }
 
@@ -1297,12 +1316,14 @@ bool working_memory_get_emotion(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_emotion: wm is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!emotion) {
         set_error("NULL emotion output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_emotion: emotion is NULL");
         return false;
     }
 
@@ -1313,6 +1334,7 @@ bool working_memory_get_emotion(
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get_emotion: capacity exceeded");
         return false;
     }
 
@@ -1356,12 +1378,14 @@ bool working_memory_get_total_salience(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_total_salience: wm is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!total_salience) {
         set_error("NULL total_salience output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_total_salience: total_salience is NULL");
         return false;
     }
 
@@ -1372,6 +1396,7 @@ bool working_memory_get_total_salience(
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get_total_salience: capacity exceeded");
         return false;
     }
 
@@ -1403,12 +1428,14 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_refresh: wm is NULL");
         return false;
     }
 
     // Guard: Feature disabled (check before locking)
     if (!wm->enable_attention_refresh) {
         set_error("Attention refresh disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_refresh: wm->enable_attention_refresh is NULL");
         return false;
     }
 
@@ -1419,6 +1446,7 @@ bool working_memory_refresh(working_memory_t* wm, uint32_t index) {
     if (index >= wm->current_size) {
         set_error("Index out of bounds");
         nimcp_platform_mutex_unlock(&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_refresh: capacity exceeded");
         return false;
     }
 
@@ -1642,6 +1670,7 @@ uint32_t working_memory_get_capacity(const working_memory_t* wm) {
 bool working_memory_is_full(const working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_is_full: wm is NULL");
         return false;
     }
 
@@ -1674,6 +1703,7 @@ int working_memory_find_highest_salience(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_find_highest_salience: wm is NULL");
         return -1;
     }
 
@@ -1683,6 +1713,7 @@ int working_memory_find_highest_salience(
     // Guard: Empty buffer
     if (wm->current_size == 0) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_find_highest_salience: wm->current_size is zero");
         return -1;
     }
 
@@ -1725,6 +1756,7 @@ int working_memory_find_lowest_salience(
 {
     /* Guard: NULL working memory */
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_find_lowest_salience: wm is NULL");
         return -1;
     }
 
@@ -1734,6 +1766,7 @@ int working_memory_find_lowest_salience(
     /* Guard: Empty buffer */
     if (wm->current_size == 0) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_find_lowest_salience: wm->current_size is zero");
         return -1;
     }
 
@@ -1845,11 +1878,13 @@ bool working_memory_encode_positions(working_memory_t* wm) {
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_encode_positions: wm is NULL");
         return false;
     }
 
     // Guard: Positional encoding disabled
     if (!wm->enable_positional_encoding || !wm->pos_encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_encode_positions: required parameter is NULL (wm->enable_positional_encoding, wm->pos_encoder)");
         return false;
     }
 
@@ -1915,24 +1950,28 @@ bool working_memory_get_position_embedding(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_position_embedding: wm is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!output) {
         set_error("NULL output buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_position_embedding: output is NULL");
         return false;
     }
 
     // Guard: Positional encoding disabled
     if (!wm->enable_positional_encoding || !wm->pos_encoder) {
         set_error("Positional encoding disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_position_embedding: required parameter is NULL (wm->enable_positional_encoding, wm->pos_encoder)");
         return false;
     }
 
     // Guard: Invalid slot index
     if (slot_index >= wm->capacity) {
         set_error("Slot index out of bounds");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_get_position_embedding: capacity exceeded");
         return false;
     }
 
@@ -1941,6 +1980,7 @@ bool working_memory_get_position_embedding(
     if (result != NIMCP_POS_SUCCESS) {
         set_error("Failed to encode position");
         LOG_ERROR("Position encoding failed for slot %u: error %d", slot_index, result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get_position_embedding: validation failed");
         return false;
     }
 
@@ -1976,18 +2016,21 @@ bool working_memory_set_pe_type(
     // Guard: NULL working memory
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_set_pe_type: wm is NULL");
         return false;
     }
 
     // Guard: Positional encoding disabled
     if (!wm->enable_positional_encoding) {
         set_error("Positional encoding disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_set_pe_type: wm->enable_positional_encoding is NULL");
         return false;
     }
 
     // Guard: Invalid PE type
     if (pe_type >= NIMCP_POS_TYPE_COUNT) {
         set_error("Invalid positional encoding type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "working_memory_set_pe_type: capacity exceeded");
         return false;
     }
 
@@ -2057,6 +2100,7 @@ bool working_memory_set_pe_type(
         LOG_ERROR("Failed to create PE encoder for type %d", pe_type);
         wm->enable_positional_encoding = false;
         nimcp_platform_mutex_unlock(&wm->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_set_pe_type: wm->pos_encoder is NULL");
         return false;
     }
 
@@ -2158,11 +2202,13 @@ bool working_memory_connect_immune(
 
     if (!wm) {
         set_error("NULL working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_connect_immune: wm is NULL");
         return false;
     }
 
     if (!immune) {
         set_error("NULL immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_connect_immune: immune is NULL");
         return false;
     }
 
@@ -2246,6 +2292,7 @@ bool working_memory_is_immune_impaired(const working_memory_t* wm)
     // HOW:  Compare effective to base capacity
 
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_is_immune_impaired: wm is NULL");
         return false;
     }
 
@@ -2261,10 +2308,12 @@ bool working_memory_signal_stress(
     // HOW:  Release IL-6 cytokine via brain immune system
 
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_signal_stress: wm is NULL");
         return false;
     }
 
     if (!wm->immune_integration_enabled || !wm->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_signal_stress: required parameter is NULL (wm->immune_integration_enabled, wm->immune)");
         return false;
     }
 
@@ -2320,6 +2369,7 @@ bool working_memory_set_sleep_state(working_memory_t* wm, sleep_state_t state)
 {
     if (!wm) {
         set_error("NULL working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_set_sleep_state: wm is NULL");
         return false;
     }
 
@@ -2397,16 +2447,19 @@ bool working_memory_get_salience(
 {
     // Guard: NULL working memory
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_salience: wm is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_get_salience: salience is NULL");
         return false;
     }
 
     // Guard: Invalid index
     if (index >= wm->current_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_get_salience: capacity exceeded");
         return false;
     }
 
@@ -2438,11 +2491,13 @@ bool working_memory_set_salience(
 {
     // Guard: NULL working memory
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_set_salience: wm is NULL");
         return false;
     }
 
     // Guard: Invalid index
     if (index >= wm->current_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_set_salience: capacity exceeded");
         return false;
     }
 
@@ -2479,6 +2534,7 @@ bool working_memory_set_salience(
 bool working_memory_connect_kg(working_memory_t* wm, brain_t brain)
 {
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_connect_kg: wm is NULL");
         return false;
     }
 
@@ -2486,6 +2542,7 @@ bool working_memory_connect_kg(working_memory_t* wm, brain_t brain)
 
     if (result != 0) {
         LOG_ERROR("Failed to initialize KG context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_connect_kg: validation failed");
         return false;
     }
 
@@ -2547,10 +2604,12 @@ int working_memory_query_integrations(working_memory_t* wm)
 bool working_memory_query_self_knowledge(working_memory_t* wm)
 {
     if (!wm || !wm->kg_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_query_self_knowledge: required parameter is NULL (wm, wm->kg_connected)");
         return false;
     }
 
     if (!kg_has_node(&wm->kg_context)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_query_self_knowledge: kg_has_node is NULL");
         return false;
     }
 
@@ -2565,6 +2624,7 @@ bool working_memory_query_self_knowledge(working_memory_t* wm)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_query_self_knowledge: validation failed");
     return false;
 }
 

@@ -252,7 +252,10 @@ int language_substrate_bridge_get_modulation(
     const language_substrate_bridge_t* bridge,
     language_modulation_t* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     memcpy(modulation, &bridge->current_modulation, sizeof(language_modulation_t));
     return 0;
 }
@@ -286,7 +289,10 @@ int language_substrate_bridge_get_metabolic_state(
     const language_substrate_bridge_t* bridge,
     language_metabolic_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_get_metabolic_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     memcpy(state, &bridge->current_state, sizeof(language_metabolic_state_t));
     return 0;
 }
@@ -294,7 +300,10 @@ int language_substrate_bridge_get_metabolic_state(
 bool language_substrate_bridge_is_impaired(
     const language_substrate_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_is_impaired: bridge is NULL");
+        return false;
+    }
 
     return (bridge->current_state.atp_level < bridge->config.critical_atp_threshold ||
             bridge->current_state.fatigue_level > bridge->config.high_fatigue_threshold ||
@@ -326,7 +335,10 @@ int language_substrate_bridge_get_stats(
     const language_substrate_bridge_t* bridge,
     language_substrate_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_substrate_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_substrate_stats_t));
     return 0;
 }

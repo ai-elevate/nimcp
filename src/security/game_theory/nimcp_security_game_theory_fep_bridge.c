@@ -161,6 +161,7 @@ sgt_fep_bridge_t* sgt_fep_create(
     /* Validate required parameters */
     if (!fep_system) {
         NIMCP_LOGGING_ERROR("SGT FEP bridge: FEP system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_create: fep_system is NULL");
         return NULL;
     }
 
@@ -168,6 +169,7 @@ sgt_fep_bridge_t* sgt_fep_create(
     sgt_fep_bridge_t* bridge = (sgt_fep_bridge_t*)nimcp_malloc(sizeof(sgt_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("SGT FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sgt_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -189,6 +191,7 @@ sgt_fep_bridge_t* sgt_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("SGT FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sgt_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -204,6 +207,7 @@ sgt_fep_bridge_t* sgt_fep_create(
         !bridge->coalition_features) {
         NIMCP_LOGGING_ERROR("SGT FEP bridge: feature buffer allocation failed");
         sgt_fep_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_create: operation failed");
         return NULL;
     }
 
@@ -295,6 +299,7 @@ int sgt_fep_get_config(
     sgt_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -307,6 +312,7 @@ int sgt_fep_set_config(
     const sgt_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -411,6 +417,7 @@ int sgt_fep_compute_effects(
     fep_to_sgt_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_compute_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -519,6 +526,7 @@ int sgt_fep_analyze_strategy(
     sgt_fep_detection_result_t* result
 ) {
     if (!bridge || !strategy || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_analyze_strategy: required parameter is NULL (bridge, strategy, result)");
         return -1;
     }
 
@@ -594,6 +602,7 @@ int sgt_fep_analyze_payoff(
     sgt_fep_detection_result_t* result
 ) {
     if (!bridge || !payoffs || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_analyze_payoff: required parameter is NULL (bridge, payoffs, result)");
         return -1;
     }
 
@@ -683,6 +692,7 @@ int sgt_fep_analyze_coalition(
     sgt_fep_detection_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_analyze_coalition: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -785,6 +795,7 @@ int sgt_fep_full_analysis(
     sgt_fep_detection_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_full_analysis: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -1020,6 +1031,7 @@ int sgt_fep_get_fep_effects(
     fep_to_sgt_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1032,6 +1044,7 @@ int sgt_fep_get_sgt_effects(
     sgt_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_get_sgt_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1044,6 +1057,7 @@ int sgt_fep_get_state(
     sgt_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -1056,6 +1070,7 @@ int sgt_fep_get_stats(
     sgt_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sgt_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

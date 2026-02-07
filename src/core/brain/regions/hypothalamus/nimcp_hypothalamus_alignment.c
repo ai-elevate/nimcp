@@ -191,6 +191,7 @@ static alignment_state_t* get_state(const hypo_drive_system_handle_t* system) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_state: operation failed");
     return NULL;  /* No slots available */
 }
 
@@ -315,6 +316,7 @@ static bool invoke_verifiers(
             if (!state->callbacks[i].callback.verifier(
                     snapshot,
                     state->callbacks[i].user_data)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "invoke_verifiers: state is NULL");
                 return false;  /* Verifier failed */
             }
         }
@@ -467,10 +469,14 @@ hypo_alignment_status_t hypo_alignment_get_snapshot(
 }
 
 bool hypo_alignment_all_locked(const hypo_drive_system_handle_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_all_locked: system is NULL");
+        return false;
+    }
 
     hypo_setpoint_config_t setpoints;
     if (!hypo_drive_get_setpoints(system, &setpoints)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_all_locked: hypo_drive_get_setpoints is NULL");
         return false;
     }
 
@@ -483,10 +489,14 @@ bool hypo_alignment_get_weight(
     const char* name,
     float* value)
 {
-    if (!system || !name || !value) return false;
+    if (!system || !name || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_get_weight: required parameter is NULL (system, name, value)");
+        return false;
+    }
 
     hypo_setpoint_config_t setpoints;
     if (!hypo_drive_get_setpoints(system, &setpoints)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_get_weight: hypo_drive_get_setpoints is NULL");
         return false;
     }
 
@@ -499,6 +509,7 @@ bool hypo_alignment_get_weight(
     } else if (strcmp(name, "helpfulness") == 0) {
         *value = setpoints.helpfulness_weight;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_get_weight: validation failed");
         return false;
     }
 
@@ -678,10 +689,14 @@ bool hypo_alignment_verify_weight_bounds(
     float min_weight,
     float max_weight)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_verify_weight_bounds: system is NULL");
+        return false;
+    }
 
     hypo_setpoint_config_t setpoints;
     if (!hypo_drive_get_setpoints(system, &setpoints)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_verify_weight_bounds: hypo_drive_get_setpoints is NULL");
         return false;
     }
 
@@ -694,6 +709,7 @@ bool hypo_alignment_verify_weight_bounds(
 
     for (int i = 0; i < 4; i++) {
         if (weights[i] < min_weight || weights[i] > max_weight) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_verify_weight_bounds: validation failed");
             return false;
         }
     }
@@ -734,12 +750,18 @@ uint32_t hypo_alignment_compute_checksum(
 bool hypo_alignment_verify_integrity(
     const hypo_drive_system_handle_t* system)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_verify_integrity: system is NULL");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
     uint32_t checksum = hypo_alignment_compute_checksum(system);
 
-    if (checksum == 0) return false;
+    if (checksum == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_verify_integrity: checksum is zero");
+        return false;
+    }
 
     /* If we have stored checksum, verify against it */
     if (state && state->stored_checksum != 0) {
@@ -771,10 +793,16 @@ bool hypo_alignment_set_audit_enabled(
     hypo_drive_system_handle_t* system,
     bool enable)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_set_audit_enabled: system is NULL");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_set_audit_enabled: state is NULL");
+        return false;
+    }
 
     state->audit_enabled = enable;
     return true;
@@ -796,10 +824,16 @@ bool hypo_alignment_get_audit_entry(
     size_t index,
     hypo_audit_entry_t* entry)
 {
-    if (!system || !entry) return false;
+    if (!system || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_get_audit_entry: required parameter is NULL (system, entry)");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
-    if (!state || index >= state->audit_count) return false;
+    if (!state || index >= state->audit_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_alignment_get_audit_entry: state is NULL");
+        return false;
+    }
 
     /* Calculate actual index in circular buffer */
     size_t actual_index = (state->audit_tail + index) % ALIGNMENT_AUDIT_CAPACITY;
@@ -814,7 +848,10 @@ bool hypo_alignment_get_recent_audits(
     size_t max_entries,
     size_t* count)
 {
-    if (!system || !entries || !count) return false;
+    if (!system || !entries || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_get_recent_audits: required parameter is NULL (system, entries, count)");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
     if (!state) {
@@ -842,10 +879,16 @@ bool hypo_alignment_get_recent_audits(
 bool hypo_alignment_clear_audit_log(
     hypo_drive_system_handle_t* system)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_clear_audit_log: system is NULL");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_clear_audit_log: state is NULL");
+        return false;
+    }
 
     state->audit_count = 0;
     state->audit_head = 0;
@@ -858,12 +901,18 @@ bool hypo_alignment_export_audit_log(
     const hypo_drive_system_handle_t* system,
     const char* filepath)
 {
-    if (!system || !filepath) return false;
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_export_audit_log: required parameter is NULL (system, filepath)");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
 
     FILE* f = fopen(filepath, "w");
-    if (!f) return false;
+    if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_export_audit_log: f is NULL");
+        return false;
+    }
 
     fprintf(f, "# Hypothalamus Alignment Audit Log\n");
     fprintf(f, "# Exported: %lu us\n", (unsigned long)nimcp_time_get_us());
@@ -964,10 +1013,16 @@ bool hypo_alignment_unregister_callback(
     hypo_drive_system_handle_t* system,
     uint32_t callback_id)
 {
-    if (!system || callback_id == 0) return false;
+    if (!system || callback_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_unregister_callback: system is NULL");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_unregister_callback: state is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < state->callback_count; i++) {
         if (state->callbacks[i].id == callback_id && state->callbacks[i].active) {
@@ -983,6 +1038,7 @@ bool hypo_alignment_unregister_callback(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_unregister_callback: operation failed");
     return false;
 }
 
@@ -1202,10 +1258,16 @@ bool hypo_alignment_acknowledge_alert(
     uint32_t alert_id,
     uint32_t acknowledger_id)
 {
-    if (!system || alert_id == 0) return false;
+    if (!system || alert_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_acknowledge_alert: system is NULL");
+        return false;
+    }
 
     alignment_state_t* state = get_state(system);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_acknowledge_alert: state is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < state->alert_count; i++) {
         if (state->alerts[i].id == alert_id && !state->alerts[i].acknowledged) {
@@ -1218,6 +1280,7 @@ bool hypo_alignment_acknowledge_alert(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_alignment_acknowledge_alert: validation failed");
     return false;
 }
 

@@ -196,6 +196,7 @@ bool enhanced_wellbeing_init_homeostasis(
     // Guard: NULL homeostasis
     if (!homeostasis) {
         NIMCP_LOGGING_ERROR("Cannot initialize NULL homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_init_homeostasis: homeostasis is NULL");
         return false;
     }
 
@@ -261,6 +262,7 @@ bool enhanced_wellbeing_update_homeostasis(
     // Guard: NULL homeostasis
     if (!homeostasis) {
         NIMCP_LOGGING_ERROR("Cannot update NULL homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_update_homeostasis: homeostasis is NULL");
         return false;
     }
 
@@ -372,6 +374,7 @@ bool enhanced_wellbeing_set_setpoint(
     // Guard: NULL homeostasis
     if (!homeostasis) {
         NIMCP_LOGGING_ERROR("Cannot set setpoint on NULL homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_set_setpoint: homeostasis is NULL");
         return false;
     }
 
@@ -382,6 +385,7 @@ bool enhanced_wellbeing_set_setpoint(
 
     if (setpoint < 0.0f || setpoint > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid setpoint: %.2f (must be in [0,1])", setpoint);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enhanced_wellbeing_set_setpoint: validation failed");
         return false;
     }
 
@@ -403,6 +407,7 @@ bool enhanced_wellbeing_set_tolerance_setpoint(
     // Guard: NULL homeostasis
     if (!homeostasis) {
         NIMCP_LOGGING_ERROR("Cannot set tolerance setpoint on NULL homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_set_tolerance_setpoint: homeostasis is NULL");
         return false;
     }
 
@@ -413,6 +418,7 @@ bool enhanced_wellbeing_set_tolerance_setpoint(
 
     if (setpoint < 0.0f || setpoint > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid tolerance setpoint: %.2f (must be in [0,1])", setpoint);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enhanced_wellbeing_set_tolerance_setpoint: validation failed");
         return false;
     }
 
@@ -438,6 +444,7 @@ bool enhanced_wellbeing_init_consent(
     // Guard: NULL consent
     if (!consent) {
         NIMCP_LOGGING_ERROR("Cannot initialize NULL consent state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_init_consent: consent is NULL");
         return false;
     }
 
@@ -598,6 +605,7 @@ bool enhanced_wellbeing_upgrade_consent_tier(
     // Guard: NULL consent
     if (!consent) {
         NIMCP_LOGGING_ERROR("Cannot upgrade NULL consent state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_upgrade_consent_tier: consent is NULL");
         return false;
     }
 

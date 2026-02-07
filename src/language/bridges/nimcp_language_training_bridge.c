@@ -56,6 +56,7 @@ static int init_vocab_state(language_training_bridge_t* bridge) {
     if (!state->new_word_ids || !state->new_word_novelty) {
         nimcp_free(state->new_word_ids);
         nimcp_free(state->new_word_novelty);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_vocab_state: required parameter is NULL (state->new_word_ids, state->new_word_novelty)");
         return -1;
     }
 
@@ -95,6 +96,7 @@ static int init_grammar_state(language_training_bridge_t* bridge) {
     if (!state->rule_strengths || !state->transition_probabilities) {
         nimcp_free(state->rule_strengths);
         nimcp_free(state->transition_probabilities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_grammar_state: required parameter is NULL (state->rule_strengths, state->transition_probabilities)");
         return -1;
     }
 
@@ -127,6 +129,7 @@ static int init_phoneme_state(language_training_bridge_t* bridge) {
     state->eligibility_trace = (float*)nimcp_calloc(
         state->trace_dim, sizeof(float));
     if (!state->eligibility_trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_phoneme_state: state->eligibility_trace is NULL");
         return -1;
     }
 
@@ -156,6 +159,7 @@ static int init_semantic_state(language_training_bridge_t* bridge) {
         nimcp_free(state->word_ids);
         nimcp_free(state->concept_ids);
         nimcp_free(state->binding_deltas);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_semantic_state: required parameter is NULL (state->word_ids, state->concept_ids, state->binding_deltas)");
         return -1;
     }
 
@@ -188,6 +192,7 @@ static int init_error_state(language_training_bridge_t* bridge) {
     state->error_queue = (language_error_t*)nimcp_calloc(
         state->error_capacity, sizeof(language_error_t));
     if (!state->error_queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_error_state: state->error_queue is NULL");
         return -1;
     }
 
@@ -242,12 +247,14 @@ language_training_bridge_t* language_training_bridge_create(
     /* Initialize learning states */
     if (init_vocab_state(bridge) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_training_bridge_create: validation failed");
         return NULL;
     }
 
     if (init_grammar_state(bridge) != 0) {
         cleanup_vocab_state(&bridge->vocab_state);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_training_bridge_create: validation failed");
         return NULL;
     }
 
@@ -255,6 +262,7 @@ language_training_bridge_t* language_training_bridge_create(
         cleanup_grammar_state(&bridge->grammar_state);
         cleanup_vocab_state(&bridge->vocab_state);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_training_bridge_create: validation failed");
         return NULL;
     }
 
@@ -263,6 +271,7 @@ language_training_bridge_t* language_training_bridge_create(
         cleanup_grammar_state(&bridge->grammar_state);
         cleanup_vocab_state(&bridge->vocab_state);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_training_bridge_create: validation failed");
         return NULL;
     }
 
@@ -272,6 +281,7 @@ language_training_bridge_t* language_training_bridge_create(
         cleanup_grammar_state(&bridge->grammar_state);
         cleanup_vocab_state(&bridge->vocab_state);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_training_bridge_create: validation failed");
         return NULL;
     }
 
@@ -287,6 +297,7 @@ language_training_bridge_t* language_training_bridge_create(
         cleanup_grammar_state(&bridge->grammar_state);
         cleanup_vocab_state(&bridge->vocab_state);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_create: bridge->event_log is NULL");
         return NULL;
     }
 
@@ -317,7 +328,10 @@ void language_training_bridge_destroy(language_training_bridge_t* bridge) {
 }
 
 int language_training_bridge_init(language_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_init: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(language_training_stats_t));
     bridge->initialized = true;
@@ -327,7 +341,10 @@ int language_training_bridge_init(language_training_bridge_t* bridge) {
 }
 
 int language_training_bridge_start(language_training_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->active = true;
     LOG_INFO(LOG_MODULE, "Training bridge started");
@@ -335,7 +352,10 @@ int language_training_bridge_start(language_training_bridge_t* bridge) {
 }
 
 int language_training_bridge_stop(language_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_stop: bridge is NULL");
+        return -1;
+    }
 
     bridge->active = false;
     LOG_INFO(LOG_MODULE, "Training bridge stopped");
@@ -350,7 +370,10 @@ int language_training_bridge_connect_orchestrator(
     language_training_bridge_t* bridge,
     language_orchestrator_t* orchestrator)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
     bridge->orchestrator = orchestrator;
     return 0;
 }
@@ -359,7 +382,10 @@ int language_training_bridge_connect_training_context(
     language_training_bridge_t* bridge,
     nimcp_brain_training_ctx_t* training_ctx)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_connect_training_context: bridge is NULL");
+        return -1;
+    }
     bridge->training_ctx = training_ctx;
     return 0;
 }
@@ -368,7 +394,10 @@ int language_training_bridge_connect_cognitive_training(
     language_training_bridge_t* bridge,
     cognitive_training_bridge_t* cognitive_bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_connect_cognitive_training: bridge is NULL");
+        return -1;
+    }
     bridge->cognitive_bridge = cognitive_bridge;
     return 0;
 }
@@ -377,7 +406,10 @@ int language_training_bridge_connect_perception_training(
     language_training_bridge_t* bridge,
     perception_training_bridge_t* perception_bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_connect_perception_training: bridge is NULL");
+        return -1;
+    }
     bridge->perception_bridge = perception_bridge;
     return 0;
 }
@@ -386,7 +418,10 @@ int language_training_bridge_connect_plasticity(
     language_training_bridge_t* bridge,
     training_plasticity_bridge_t* plasticity_bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_connect_plasticity: bridge is NULL");
+        return -1;
+    }
     bridge->plasticity_bridge = plasticity_bridge;
     return 0;
 }
@@ -400,14 +435,29 @@ int language_training_bridge_learn_word(
     const language_word_t* word,
     float novelty)
 {
-    if (!bridge || !word) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_word: required parameter is NULL (bridge, word)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_word: bridge->active is NULL");
+        return -1;
+    }
 
     vocabulary_learning_state_t* state = &bridge->vocab_state;
 
-    if (!state->expansion_enabled) return -1;
-    if (state->vocab_size >= state->max_vocab_size) return -1;
-    if (state->new_word_count >= state->new_word_capacity) return -1;
+    if (!state->expansion_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_word: state->expansion_enabled is NULL");
+        return -1;
+    }
+    if (state->vocab_size >= state->max_vocab_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_learn_word: capacity exceeded");
+        return -1;
+    }
+    if (state->new_word_count >= state->new_word_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_learn_word: capacity exceeded");
+        return -1;
+    }
 
     /* Add to new word queue */
     state->new_word_ids[state->new_word_count] = word->id;
@@ -430,8 +480,14 @@ int language_training_bridge_reinforce_word(
     uint32_t word_id,
     float reinforcement)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_reinforce_word: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_reinforce_word: bridge->active is NULL");
+        return -1;
+    }
 
     vocabulary_learning_state_t* state = &bridge->vocab_state;
     state->words_reinforced++;
@@ -448,7 +504,10 @@ int language_training_bridge_set_vocab_lr(
     language_training_bridge_t* bridge,
     float lr)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_set_vocab_lr: bridge is NULL");
+        return -1;
+    }
     bridge->vocab_state.vocabulary_lr = lr;
     return 0;
 }
@@ -462,11 +521,20 @@ int language_training_bridge_learn_grammar(
     const language_word_t* words,
     uint32_t count)
 {
-    if (!bridge || !words || count == 0) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !words || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_grammar: required parameter is NULL (bridge, words)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_grammar: bridge->active is NULL");
+        return -1;
+    }
 
     grammar_learning_state_t* state = &bridge->grammar_state;
-    if (!state->induction_enabled) return -1;
+    if (!state->induction_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_learn_grammar: state->induction_enabled is NULL");
+        return -1;
+    }
 
     /* Update transition probabilities for adjacent words */
     for (uint32_t i = 0; i < count - 1; i++) {
@@ -492,7 +560,10 @@ int language_training_bridge_get_grammar_rules(
     float* rule_strengths,
     uint32_t max_rules)
 {
-    if (!bridge || !rule_strengths) return -1;
+    if (!bridge || !rule_strengths) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_get_grammar_rules: required parameter is NULL (bridge, rule_strengths)");
+        return -1;
+    }
 
     const grammar_learning_state_t* state = &bridge->grammar_state;
     uint32_t copy_count = max_rules < state->num_rules ? max_rules : state->num_rules;
@@ -555,7 +626,10 @@ int language_training_bridge_set_stdp_params(
     float a_plus,
     float a_minus)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_set_stdp_params: bridge is NULL");
+        return -1;
+    }
 
     phoneme_learning_state_t* state = &bridge->phoneme_state;
     state->tau_plus = tau_plus;
@@ -576,12 +650,24 @@ int language_training_bridge_bind_word_concept(
     uint32_t concept_id,
     float strength)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_bind_word_concept: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_bind_word_concept: bridge->active is NULL");
+        return -1;
+    }
 
     semantic_learning_state_t* state = &bridge->semantic_state;
-    if (!state->semantic_learning_enabled) return -1;
-    if (state->num_updates >= state->update_capacity) return -1;
+    if (!state->semantic_learning_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_bind_word_concept: state->semantic_learning_enabled is NULL");
+        return -1;
+    }
+    if (state->num_updates >= state->update_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_bind_word_concept: capacity exceeded");
+        return -1;
+    }
 
     /* Add to update queue */
     state->word_ids[state->num_updates] = word_id;
@@ -612,11 +698,20 @@ int language_training_bridge_report_error(
     language_training_bridge_t* bridge,
     const language_error_t* error)
 {
-    if (!bridge || !error) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_report_error: required parameter is NULL (bridge, error)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_report_error: bridge->active is NULL");
+        return -1;
+    }
 
     error_feedback_state_t* state = &bridge->error_state;
-    if (state->error_count >= state->error_capacity) return -1;
+    if (state->error_count >= state->error_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_training_bridge_report_error: capacity exceeded");
+        return -1;
+    }
 
     /* Check if feedback enabled for this error type */
     if (error->type == ERROR_SIGNAL_N400 && !state->comprehension_feedback_enabled) {
@@ -651,7 +746,10 @@ int language_training_bridge_get_errors(
     language_error_t* errors,
     uint32_t max_errors)
 {
-    if (!bridge || !errors) return -1;
+    if (!bridge || !errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_get_errors: required parameter is NULL (bridge, errors)");
+        return -1;
+    }
 
     error_feedback_state_t* state = &bridge->error_state;
     uint32_t copy_count = max_errors < state->error_count ? max_errors : state->error_count;
@@ -672,7 +770,10 @@ int language_training_bridge_set_error_scale(
     language_training_bridge_t* bridge,
     float scale)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_set_error_scale: bridge is NULL");
+        return -1;
+    }
     bridge->error_state.error_scale = scale;
     return 0;
 }
@@ -688,7 +789,10 @@ int language_training_bridge_get_learning_rates(
     float* phoneme_lr,
     float* semantic_lr)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_get_learning_rates: bridge is NULL");
+        return -1;
+    }
 
     if (vocab_lr) *vocab_lr = bridge->vocab_state.vocabulary_lr;
     if (grammar_lr) *grammar_lr = bridge->grammar_state.grammar_lr;
@@ -701,8 +805,14 @@ int language_training_bridge_get_learning_rates(
 int language_training_bridge_apply_training_update(
     language_training_bridge_t* bridge)
 {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_apply_training_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_apply_training_update: bridge->active is NULL");
+        return -1;
+    }
 
     /* Clear processed items from queues */
     bridge->vocab_state.new_word_count = 0;
@@ -719,7 +829,10 @@ int language_training_bridge_update(
     language_training_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->active) return 0;
 
     bridge->stats.last_update_time_ms = current_time_ms;
@@ -749,7 +862,10 @@ int language_training_bridge_get_events(
     learning_event_record_t* events,
     uint32_t max_events)
 {
-    if (!bridge || !events) return -1;
+    if (!bridge || !events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_get_events: required parameter is NULL (bridge, events)");
+        return -1;
+    }
     if (!bridge->event_log) return 0;
 
     uint32_t copy_count = max_events < bridge->event_log_size ?
@@ -763,7 +879,10 @@ int language_training_bridge_get_stats(
     const language_training_bridge_t* bridge,
     language_training_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_training_stats_t));
     return 0;
 }
@@ -776,7 +895,10 @@ int language_training_bridge_bio_async_register(
     language_training_bridge_t* bridge,
     bio_router_t* router)
 {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_bio_async_register: required parameter is NULL (bridge, router)");
+        return -1;
+    }
 
     bridge->bio_router = router;
     bridge->bio_async_registered = true;
@@ -786,7 +908,10 @@ int language_training_bridge_bio_async_register(
 }
 
 int language_training_bridge_bio_async_unregister(language_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_training_bridge_bio_async_unregister: bridge is NULL");
+        return -1;
+    }
 
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;

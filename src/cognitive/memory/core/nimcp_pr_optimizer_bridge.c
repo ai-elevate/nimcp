@@ -246,6 +246,7 @@ pr_optimizer_config_t pr_optimizer_config_conservative(void) {
 
 bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_optimizer_config_validate: config is NULL");
         return false;
     }
 
@@ -256,23 +257,27 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
 
     if (config->base_lr <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid base_lr: %f (must be > 0)", config->base_lr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
     // Check Adam betas
     if (config->beta1 < 0.0f || config->beta1 >= 1.0f) {
         NIMCP_LOGGING_WARN("Invalid beta1: %f (must be in [0, 1))", config->beta1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: capacity exceeded");
         return false;
     }
 
     if (config->beta2 < 0.0f || config->beta2 >= 1.0f) {
         NIMCP_LOGGING_WARN("Invalid beta2: %f (must be in [0, 1))", config->beta2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: capacity exceeded");
         return false;
     }
 
     // Check epsilon
     if (config->epsilon <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid epsilon: %f (must be > 0)", config->epsilon);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -280,6 +285,7 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->resonance_scale < 0.0f || config->resonance_scale > 10.0f) {
         NIMCP_LOGGING_WARN("Invalid resonance_scale: %f (should be in [0, 10])",
                           config->resonance_scale);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -287,6 +293,7 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->consolidation_gate < 0.0f || config->consolidation_gate > 1.0f) {
         NIMCP_LOGGING_WARN("Invalid consolidation_gate: %f (must be in [0, 1])",
                           config->consolidation_gate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -301,6 +308,7 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
         if (config->tier_lr_scale[i] < 0.0f) {
             NIMCP_LOGGING_WARN("Invalid tier_lr_scale[%d]: %f (must be >= 0)",
                               i, config->tier_lr_scale[i]);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
             return false;
         }
     }
@@ -309,6 +317,7 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->quat_momentum < 0.0f || config->quat_momentum >= 1.0f) {
         NIMCP_LOGGING_WARN("Invalid quat_momentum: %f (must be in [0, 1))",
                           config->quat_momentum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: capacity exceeded");
         return false;
     }
 
@@ -316,6 +325,7 @@ bool pr_optimizer_config_validate(const pr_optimizer_config_t* config) {
     if (config->max_grad_norm <= 0.0f) {
         NIMCP_LOGGING_WARN("Invalid max_grad_norm: %f (must be > 0)",
                           config->max_grad_norm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_optimizer_config_validate: validation failed");
         return false;
     }
 
@@ -337,6 +347,7 @@ pr_optimizer_bridge_t pr_optimizer_bridge_create(
     pr_optimizer_bridge_t bridge = nimcp_malloc(sizeof(struct pr_optimizer_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate optimizer bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_optimizer_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -347,6 +358,7 @@ pr_optimizer_bridge_t pr_optimizer_bridge_create(
     if (bridge_base_init(&bridge->base, PR_OPT_MODULE_ID, PR_OPT_MODULE_NAME) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize base bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_optimizer_bridge_create: validation failed");
         return NULL;
     }
 
@@ -1545,6 +1557,7 @@ pr_optimizer_error_t pr_optimizer_disconnect_bio_async(
 
 bool pr_optimizer_is_bio_async_connected(pr_optimizer_bridge_t bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_optimizer_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

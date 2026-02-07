@@ -268,6 +268,7 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
     if (config->num_hypercolumns == 0 ||
         config->num_hypercolumns > SPEECH_CORTICAL_MAX_HYPERCOLUMNS) {
         NIMCP_LOGGING_ERROR("Invalid num_hypercolumns: %u", config->num_hypercolumns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortical_bridge_create: config is NULL");
         return NULL;
     }
 
@@ -277,6 +278,7 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate speech-cortical bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_cortical_bridge_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(speech_cortical_bridge_t));
@@ -302,6 +304,7 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
     if (!bridge->hypercolumns) {
         NIMCP_LOGGING_ERROR("Failed to allocate hypercolumns array");
         speech_cortical_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_cortical_bridge_create: bridge->hypercolumns is NULL");
         return NULL;
     }
     memset(bridge->hypercolumns, 0,
@@ -326,6 +329,7 @@ speech_cortical_bridge_t* speech_cortical_bridge_create(
         if (!bridge->hypercolumns[i]) {
             NIMCP_LOGGING_ERROR("Failed to create hypercolumn %u", i);
             speech_cortical_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "speech_cortical_bridge_create: bridge->hypercolumns is NULL");
             return NULL;
         }
 
@@ -858,7 +862,10 @@ const feature_hypercolumn_t* speech_cortical_get_hypercolumn(
     }
 
     uint32_t idx = compute_hypercolumn_index(bridge, tono_x, tono_y);
-    if (idx >= bridge->num_hypercolumns) return NULL;
+    if (idx >= bridge->num_hypercolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortical_get_hypercolumn: capacity exceeded");
+        return NULL;
+    }
 
     return bridge->hypercolumns[idx];
 }
@@ -867,7 +874,10 @@ const feature_hypercolumn_t* speech_cortical_get_hypercolumn_by_index(
     const speech_cortical_bridge_t* bridge,
     uint32_t index)
 {
-    if (!bridge || index >= bridge->num_hypercolumns) return NULL;
+    if (!bridge || index >= bridge->num_hypercolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortical_get_hypercolumn_by_index: bridge is NULL");
+        return NULL;
+    }
     return bridge->hypercolumns[index];
 }
 

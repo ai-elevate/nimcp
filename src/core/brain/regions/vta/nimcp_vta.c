@@ -679,6 +679,7 @@ nimcp_vta_projection_t* nimcp_vta_get_projection_by_target(
             return &vta->projections[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_get_projection_by_target: validation failed");
     return NULL;
 }
 

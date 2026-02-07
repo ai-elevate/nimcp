@@ -119,7 +119,10 @@ static inline uint64_t get_time_ns(void) {
  */
 static bool default_copy_fn(void* dest, const void* src, size_t size, void* user_data) {
     (void)user_data;
-    if (!dest || !src) return false;
+    if (!dest || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "default_copy_fn: required parameter is NULL (dest, src)");
+        return false;
+    }
     memcpy(dest, src, size);
     return true;
 }
@@ -162,7 +165,10 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     const cow_manager_config_t* config,
     const void* template_data
 ) {
-    if (!config || config->data_size == 0) return NULL;
+    if (!config || config->data_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_manager_create: config is NULL");
+        return NULL;
+    }
 
     // Allocate manager (use nimcp_calloc for tracking)
     cow_manager_t manager = nimcp_calloc(1, sizeof(struct cow_manager_struct));
@@ -186,6 +192,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     manager->template_data = nimcp_malloc(config->data_size);
     if (!manager->template_data) {
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cow_manager_create: manager->template_data is NULL");
         return NULL;
     }
 
@@ -209,6 +216,7 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
     if (nimcp_platform_mutex_init(&manager->mutex, false) != 0) {
         nimcp_free(manager->template_data);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cow_manager_create: validation failed");
         return NULL;
     }
 
@@ -332,12 +340,18 @@ NIMCP_EXPORT void cow_release(cow_handle_t handle) {
 }
 
 NIMCP_EXPORT const void* cow_read(cow_handle_t handle) {
-    if (!handle || handle->state == COW_STATE_INVALID) return NULL;
+    if (!handle || handle->state == COW_STATE_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_read: handle is NULL");
+        return NULL;
+    }
     return handle->data;  // Lock-free read
 }
 
 NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
-    if (!handle || handle->state == COW_STATE_INVALID) return NULL;
+    if (!handle || handle->state == COW_STATE_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: handle is NULL");
+        return NULL;
+    }
 
     // If already private, return immediately
     if (handle->state == COW_STATE_PRIVATE) {
@@ -379,6 +393,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
             manager->stats.failed_copies++;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: validation failed");
         return NULL;
     }
 
@@ -401,6 +416,7 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
             manager->stats.failed_copies++;
         }
         nimcp_platform_mutex_unlock(&manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_write: validation failed");
         return NULL;
     }
 
@@ -426,7 +442,10 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
 }
 
 NIMCP_EXPORT bool cow_is_shared(cow_handle_t handle) {
-    if (!handle) return false;
+    if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_is_shared: handle is NULL");
+        return false;
+    }
     return handle->state == COW_STATE_SHARED;
 }
 
@@ -454,7 +473,10 @@ NIMCP_EXPORT size_t cow_get_handle_count(cow_manager_t manager) {
 }
 
 NIMCP_EXPORT bool cow_get_stats(cow_manager_t manager, cow_stats_t* stats) {
-    if (!manager || !stats) return false;
+    if (!manager || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_get_stats: required parameter is NULL (manager, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 
@@ -491,7 +513,10 @@ NIMCP_EXPORT bool cow_calculate_memory_usage(
     size_t* private_bytes,
     size_t* overhead_bytes
 ) {
-    if (!manager) return false;
+    if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_calculate_memory_usage: manager is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 

@@ -104,6 +104,7 @@ predictive_regions_fep_bridge_t* predictive_regions_fep_bridge_create(
         PREDICTIVE_FEP_MAX_REGIONS, sizeof(predictive_fep_level_mapping_t));
     if (!bridge->level_mappings) {
         predictive_regions_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_regions_fep_bridge_create: bridge->level_mappings is NULL");
         return NULL;
     }
 
@@ -116,6 +117,7 @@ predictive_regions_fep_bridge_t* predictive_regions_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "predictive_regions_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         predictive_regions_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_regions_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -155,7 +157,10 @@ int predictive_regions_fep_bridge_connect_fep(
     predictive_regions_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -170,8 +175,14 @@ int predictive_regions_fep_bridge_map_region(
     brain_region_t* region,
     uint32_t fep_level
 ) {
-    if (!bridge || !region) return -1;
-    if (bridge->num_mappings >= PREDICTIVE_FEP_MAX_REGIONS) return -1;
+    if (!bridge || !region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_bridge_map_region: required parameter is NULL (bridge, region)");
+        return -1;
+    }
+    if (bridge->num_mappings >= PREDICTIVE_FEP_MAX_REGIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "predictive_regions_fep_bridge_map_region: capacity exceeded");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -195,6 +206,7 @@ int predictive_regions_fep_bridge_map_region(
         !mapping->error_buffer) {
         free_level_mapping(mapping);
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_regions_fep_bridge_map_region: operation failed");
         return -1;
     }
 
@@ -236,7 +248,10 @@ int predictive_regions_fep_bridge_disconnect(
 int predictive_regions_fep_sync_beliefs_to_regions(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_sync_beliefs_to_regions: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_belief_sync) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -266,7 +281,10 @@ int predictive_regions_fep_sync_beliefs_to_regions(
 int predictive_regions_fep_apply_precision_modulation(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_apply_precision_modulation: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -300,7 +318,10 @@ int predictive_regions_fep_apply_precision_modulation(
 int predictive_regions_fep_generate_predictions(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_generate_predictions: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -335,7 +356,10 @@ int predictive_regions_fep_generate_predictions(
 int predictive_regions_fep_propagate_errors_to_fep(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_propagate_errors_to_fep: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_error_propagation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -353,8 +377,14 @@ int predictive_regions_fep_compute_free_energy(
     predictive_regions_fep_bridge_t* bridge,
     float* free_energy
 ) {
-    if (!bridge || !free_energy) return -1;
-    if (!bridge->fep_system) return -1;
+    if (!bridge || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_compute_free_energy: required parameter is NULL (bridge, free_energy)");
+        return -1;
+    }
+    if (!bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_compute_free_energy: bridge->fep_system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -369,7 +399,10 @@ int predictive_regions_fep_compute_free_energy(
 int predictive_regions_fep_adapt_precision(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_adapt_precision: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_precision_adaptation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -414,8 +447,14 @@ int predictive_regions_fep_active_inference_select(
     predictive_regions_fep_bridge_t* bridge,
     uint32_t* selected_region
 ) {
-    if (!bridge || !selected_region) return -1;
-    if (!bridge->config.enable_active_inference) return -1;
+    if (!bridge || !selected_region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_active_inference_select: required parameter is NULL (bridge, selected_region)");
+        return -1;
+    }
+    if (!bridge->config.enable_active_inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_active_inference_select: bridge->config is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -447,8 +486,14 @@ int predictive_regions_fep_compute_efe(
     uint32_t region_index,
     float* efe
 ) {
-    if (!bridge || !efe) return -1;
-    if (region_index >= bridge->num_mappings) return -1;
+    if (!bridge || !efe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_compute_efe: required parameter is NULL (bridge, efe)");
+        return -1;
+    }
+    if (region_index >= bridge->num_mappings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "predictive_regions_fep_compute_efe: capacity exceeded");
+        return -1;
+    }
 
     /* Simplified EFE computation */
     /* EFE = Risk + Ambiguity */
@@ -561,7 +606,10 @@ int predictive_regions_fep_bridge_get_state(
     const predictive_regions_fep_bridge_t* bridge,
     predictive_regions_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -570,7 +618,10 @@ int predictive_regions_fep_bridge_get_stats(
     const predictive_regions_fep_bridge_t* bridge,
     predictive_regions_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_regions_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

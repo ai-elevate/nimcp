@@ -183,6 +183,7 @@ lnn_training_ctx_t* lnn_training_create(
     /* Validate config */
     if (lnn_training_validate_config(config) != LNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("Invalid training configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_training_create: validation failed");
         return NULL;
     }
 
@@ -1212,6 +1213,7 @@ int lnn_training_validate_config(const lnn_training_config_t* config) {
 int lnn_training_connect_optimizer(lnn_network_t* network, void* optimizer) {
     if (!network) {
         NIMCP_LOGGING_ERROR("Null network in lnn_training_connect_optimizer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_training_connect_optimizer: network is NULL");
         return -1;
     }
 

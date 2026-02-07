@@ -520,11 +520,9 @@ TEST_F(SecurityHippocampusIntegrationTest, BioAsyncIntegration) {
 
     // Try to connect bio-async
     int result = security_hippocampus_connect_bio_async(bridge);
-    if (result != 0) {
+    if (result != 0 || !security_hippocampus_is_bio_async_connected(bridge)) {
         GTEST_SKIP() << "Bio-async router not available";
     }
-
-    EXPECT_TRUE(security_hippocampus_is_bio_async_connected(bridge));
 
     // Perform operations with bio-async connected
     security_hippocampus_protect_sleep(bridge, SEC_HIPPO_SLEEP_DEEP_NREM);

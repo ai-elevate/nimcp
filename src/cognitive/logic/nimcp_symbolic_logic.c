@@ -166,16 +166,23 @@ void logic_term_destroy(logical_term_t* term)
 
 static logical_term_t* logic_term_copy(const logical_term_t* term)
 {
-    if (!term) return NULL;
+    if (!term) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_term_copy: term is NULL");
+        return NULL;
+    }
 
     logical_term_t* copy = logic_term_create(term->type, term->name);
-    if (!copy) return NULL;
+    if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_term_copy: copy is NULL");
+        return NULL;
+    }
 
     if (term->arity > 0 && term->args) {
         copy->arity = term->arity;
         copy->args = (logical_term_t**)nimcp_calloc(term->arity, sizeof(logical_term_t*));
         if (!copy->args) {
             nimcp_free(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_term_copy: copy->args is NULL");
             return NULL;
         }
 
@@ -183,6 +190,7 @@ static logical_term_t* logic_term_copy(const logical_term_t* term)
             copy->args[i] = logic_term_copy(term->args[i]);
             if (!copy->args[i]) {
                 logic_term_destroy(copy);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_term_copy: copy->args is NULL");
                 return NULL;
             }
         }
@@ -193,13 +201,26 @@ static logical_term_t* logic_term_copy(const logical_term_t* term)
 
 static bool terms_equal(const logical_term_t* t1, const logical_term_t* t2)
 {
-    if (!t1 || !t2) return false;
-    if (t1->type != t2->type) return false;
-    if (strcmp(t1->name, t2->name) != 0) return false;
-    if (t1->arity != t2->arity) return false;
+    if (!t1 || !t2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "terms_equal: required parameter is NULL (t1, t2)");
+        return false;
+    }
+    if (t1->type != t2->type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
+        return false;
+    }
+    if (strcmp(t1->name, t2->name) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
+        return false;
+    }
+    if (t1->arity != t2->arity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: validation failed");
+        return false;
+    }
 
     for (uint8_t i = 0; i < t1->arity; i++) {
         if (!terms_equal(t1->args[i], t2->args[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "terms_equal: terms_equal is NULL");
             return false;
         }
     }
@@ -238,6 +259,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
         atom->terms = (logical_term_t**)nimcp_calloc(arity, sizeof(logical_term_t*));
         if (!atom->terms) {
             nimcp_free(atom);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_atom_create: atom->terms is NULL");
             return NULL;
         }
 
@@ -245,6 +267,7 @@ atomic_formula_t* logic_atom_create(const char* name, logical_term_t** terms, ui
             atom->terms[i] = logic_term_copy(terms[i]);
             if (!atom->terms[i]) {
                 logic_atom_destroy(atom);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_atom_create: atom->terms is NULL");
                 return NULL;
             }
         }
@@ -287,7 +310,10 @@ logical_formula_t* logic_formula_create(
 
     LOG_DEBUG("Creating formula");
     logical_formula_t* formula = (logical_formula_t*)nimcp_calloc(1, sizeof(logical_formula_t));
-    if (!formula) return NULL;
+    if (!formula) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_formula_create: formula is NULL");
+        return NULL;
+    }
 
     formula->op = op;
     formula->atom = NULL;
@@ -330,12 +356,18 @@ logical_formula_t* symbolic_logic_parse(const char* str)
 
 
     LOG_DEBUG("Parsing formula: %s", str ? str : "(null)");
-    if (!str || strlen(str) == 0) return NULL;
+    if (!str || strlen(str) == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_parse: str is NULL");
+        return NULL;
+    }
 
     // Simple parser: handle basic predicates like "P(x)" or "Bird(tweety)"
     // For complex formulas, this is a simplified implementation
     logical_formula_t* formula = (logical_formula_t*)nimcp_calloc(1, sizeof(logical_formula_t));
-    if (!formula) return NULL;
+    if (!formula) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_parse: formula is NULL");
+        return NULL;
+    }
 
     // Check for negation
     bool negated = false;
@@ -360,6 +392,7 @@ logical_formula_t* symbolic_logic_parse(const char* str)
     atomic_formula_t* atom = logic_atom_create(pred_name, NULL, 0);
     if (!atom) {
         nimcp_free(formula);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_parse: atom is NULL");
         return NULL;
     }
     atom->negated = negated;
@@ -382,16 +415,23 @@ bool symbolic_logic_to_cnf(
 
 
     LOG_DEBUG("Converting to CNF");
-    if (!formula || !clauses || !num_clauses) return false;
+    if (!formula || !clauses || !num_clauses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_to_cnf: required parameter is NULL (formula, clauses, num_clauses)");
+        return false;
+    }
 
     // Simple implementation: convert single atomic formula to single clause
     *num_clauses = 1;
     *clauses = (logic_clause_t**)nimcp_calloc(1, sizeof(logic_clause_t*));
-    if (!*clauses) return false;
+    if (!*clauses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_to_cnf: validation failed");
+        return false;
+    }
 
     logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
     if (!clause) {
         nimcp_free(*clauses);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_to_cnf: clause is NULL");
         return false;
     }
 
@@ -426,7 +466,10 @@ bool symbolic_logic_backward_chain(
 
 
     LOG_DEBUG("Backward chaining");
-    if (!logic || !goal || !proof_trace || !num_steps) return false;
+    if (!logic || !goal || !proof_trace || !num_steps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_backward_chain: required parameter is NULL (logic, goal, proof_trace, num_steps)");
+        return false;
+    }
 
     // Simple implementation: check if goal matches any fact
     *proof_trace = NULL;
@@ -455,6 +498,7 @@ bool symbolic_logic_backward_chain(
     }
 
     LOG_DEBUG("Goal could not be proven");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_backward_chain: operation failed");
     return false;
 }
 
@@ -468,11 +512,15 @@ bool symbolic_logic_resolve(
 
 
     LOG_DEBUG("Resolution proving");
-    if (!logic || !negated_goal || !derived_empty) return false;
+    if (!logic || !negated_goal || !derived_empty) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_resolve: required parameter is NULL (logic, negated_goal, derived_empty)");
+        return false;
+    }
 
     *derived_empty = false;
 
     // Simple stub - resolution is complex, return false for now
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_resolve: required parameter is NULL (logic, negated_goal, derived_empty)");
     return false;
 }
 
@@ -491,11 +539,17 @@ bool symbolic_logic_evaluate(
     }
 
     LOG_DEBUG("Evaluating formula");
-    if (!logic || !formula || !result) return false;
+    if (!logic || !formula || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_evaluate: required parameter is NULL (logic, formula, result)");
+        return false;
+    }
 
     *result = false;
 
-    if (!formula->atom) return false;
+    if (!formula->atom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_evaluate: formula->atom is NULL");
+        return false;
+    }
 
     // WHAT: Try quantum-accelerated evaluation first if available
     // WHY:  O(√N) speedup for SAT solving, handles uncertainty with ternary logic
@@ -555,7 +609,10 @@ bool symbolic_logic_evaluate(
 
 static atomic_formula_t* logic_atom_copy(const atomic_formula_t* atom)
 {
-    if (!atom) return NULL;
+    if (!atom) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_atom_copy: atom is NULL");
+        return NULL;
+    }
 
     atomic_formula_t* copy = logic_atom_create(atom->name, atom->terms, atom->arity);
     if (copy) {
@@ -567,13 +624,26 @@ static atomic_formula_t* logic_atom_copy(const atomic_formula_t* atom)
 
 static bool atoms_equal(const atomic_formula_t* a1, const atomic_formula_t* a2)
 {
-    if (!a1 || !a2) return false;
-    if (strcmp(a1->name, a2->name) != 0) return false;
-    if (a1->arity != a2->arity) return false;
-    if (a1->negated != a2->negated) return false;
+    if (!a1 || !a2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "atoms_equal: required parameter is NULL (a1, a2)");
+        return false;
+    }
+    if (strcmp(a1->name, a2->name) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
+        return false;
+    }
+    if (a1->arity != a2->arity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
+        return false;
+    }
+    if (a1->negated != a2->negated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: validation failed");
+        return false;
+    }
 
     for (uint8_t i = 0; i < a1->arity; i++) {
         if (!terms_equal(a1->terms[i], a2->terms[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "atoms_equal: terms_equal is NULL");
             return false;
         }
     }
@@ -589,12 +659,16 @@ static logic_clause_t* logic_clause_create(uint32_t num_literals)
 {
     LOG_DEBUG("Creating module");
     logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
-    if (!clause) return NULL;
+    if (!clause) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_clause_create: clause is NULL");
+        return NULL;
+    }
 
     if (num_literals > 0) {
         clause->literals = (atomic_formula_t**)nimcp_calloc(num_literals, sizeof(atomic_formula_t*));
         if (!clause->literals) {
             nimcp_free(clause);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_clause_create: clause->literals is NULL");
             return NULL;
         }
     }
@@ -628,10 +702,16 @@ static void logic_clause_destroy(logic_clause_t* clause)
 
 static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
 {
-    if (!clause) return NULL;
+    if (!clause) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_clause_copy: clause is NULL");
+        return NULL;
+    }
 
     logic_clause_t* copy = logic_clause_create(clause->num_literals);
-    if (!copy) return NULL;
+    if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_clause_copy: copy is NULL");
+        return NULL;
+    }
 
     copy->confidence = clause->confidence;
 
@@ -645,6 +725,7 @@ static logic_clause_t* logic_clause_copy(const logic_clause_t* clause)
         copy->literals[i] = logic_atom_copy(clause->literals[i]);
         if (!copy->literals[i]) {
             logic_clause_destroy(copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_clause_copy: copy->literals is NULL");
             return NULL;
         }
     }
@@ -681,6 +762,7 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
     logic->kb = (kb_entry_t**)nimcp_calloc(logic->kb_capacity, sizeof(kb_entry_t*));
     if (!logic->kb) {
         symbolic_logic_destroy(logic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_create: logic->kb is NULL");
         return NULL;
     }
 
@@ -689,6 +771,7 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
     logic->rules = (inference_rule_t**)nimcp_calloc(logic->rules_capacity, sizeof(inference_rule_t*));
     if (!logic->rules) {
         symbolic_logic_destroy(logic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_create: logic->rules is NULL");
         return NULL;
     }
 
@@ -696,6 +779,7 @@ symbolic_logic_t* symbolic_logic_create(const logic_config_t* config)
     logic->working_memory = (logic_clause_t**)nimcp_calloc(LOGIC_MAX_PREDICATES, sizeof(logic_clause_t*));
     if (!logic->working_memory) {
         symbolic_logic_destroy(logic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_create: logic->working_memory is NULL");
         return NULL;
     }
 
@@ -828,6 +912,7 @@ bool symbolic_logic_get_stats(const symbolic_logic_t* logic, logic_stats_t* stat
 
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(stats, "stats")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_get_stats: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -846,27 +931,32 @@ bool symbolic_logic_add_fact(symbolic_logic_t* logic, logic_clause_t* clause, fl
 
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(clause, "clause")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_add_fact: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (salience < 0.0F || salience > 1.0F) {
         LOG_ERROR("Invalid salience value: %f (must be [0,1])", salience);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_add_fact: validation failed");
         return false;
     }
 
     if (logic->num_facts >= logic->kb_capacity) {
         LOG_ERROR("Knowledge base full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "symbolic_logic_add_fact: capacity exceeded");
         return false;
     }
 
     kb_entry_t* entry = (kb_entry_t*)nimcp_calloc(1, sizeof(kb_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_add_fact: entry is NULL");
         return false;
     }
 
     entry->clause = logic_clause_copy(clause);
     if (!entry->clause) {
         nimcp_free(entry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_add_fact: entry->clause is NULL");
         return false;
     }
 
@@ -887,11 +977,13 @@ bool symbolic_logic_add_rule(symbolic_logic_t* logic, inference_rule_t* rule)
 
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(rule, "rule")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_add_rule: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (logic->num_rules >= logic->rules_capacity) {
         LOG_ERROR("Rules capacity full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "symbolic_logic_add_rule: capacity exceeded");
         return false;
     }
 
@@ -910,6 +1002,7 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
         !nimcp_validate_pointer(query, "query") ||
         !nimcp_validate_pointer(results, "results") ||
         !nimcp_validate_pointer(num_results, "num_results")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_query: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -945,6 +1038,7 @@ bool symbolic_logic_query(symbolic_logic_t* logic, logic_clause_t* query,
     // Allocate results
     *results = (kb_entry_t**)nimcp_calloc(match_count, sizeof(kb_entry_t*));
     if (!*results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_query: validation failed");
         return false;
     }
 
@@ -998,6 +1092,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         substitution_t* binding = (substitution_t*)nimcp_calloc(1, sizeof(substitution_t));
         if (!binding) {
             unification_destroy(unif);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: binding is NULL");
             return NULL;
         }
 
@@ -1008,6 +1103,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         if (!unif->bindings) {
             nimcp_free(binding);
             unification_destroy(unif);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: unif->bindings is NULL");
             return NULL;
         }
 
@@ -1021,6 +1117,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         substitution_t* binding = (substitution_t*)nimcp_calloc(1, sizeof(substitution_t));
         if (!binding) {
             unification_destroy(unif);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: binding is NULL");
             return NULL;
         }
 
@@ -1031,6 +1128,7 @@ unification_t* symbolic_logic_unify(logical_term_t* term1, logical_term_t* term2
         if (!unif->bindings) {
             nimcp_free(binding);
             unification_destroy(unif);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_unify: unif->bindings is NULL");
             return NULL;
         }
 
@@ -1083,6 +1181,7 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
     logical_term_t* result = logic_term_create(term->type, term->name);
     if (!result) {
         LOG_ERROR("NULL parameter or allocation failure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_substitute: result is NULL");
         return NULL;
     }
 
@@ -1091,6 +1190,7 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
         result->args = (logical_term_t**)nimcp_calloc(term->arity, sizeof(logical_term_t*));
         if (!result->args) {
             logic_term_destroy(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_substitute: result->args is NULL");
             return NULL;
         }
 
@@ -1098,6 +1198,7 @@ logical_term_t* symbolic_logic_substitute(logical_term_t* term, const substituti
             result->args[i] = symbolic_logic_substitute(term->args[i], subst);
             if (!result->args[i]) {
                 logic_term_destroy(result);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_substitute: result->args is NULL");
                 return NULL;
             }
         }
@@ -1148,11 +1249,13 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(new_facts, "new_facts") ||
         !nimcp_validate_pointer(num_new_facts, "num_new_facts")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_forward_chain: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!logic->config.enable_forward_chaining) {
         LOG_ERROR("Forward chaining not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_forward_chain: logic->config is NULL");
         return false;
     }
 
@@ -1166,6 +1269,7 @@ bool symbolic_logic_forward_chain(symbolic_logic_t* logic, uint32_t max_iteratio
     // Allocate array for new facts
     logic_clause_t** derived = (logic_clause_t**)nimcp_calloc(LOGIC_MAX_PREDICATES, sizeof(logic_clause_t*));
     if (!derived) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_forward_chain: derived is NULL");
         return false;
     }
 
@@ -1322,10 +1426,12 @@ bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(salient_facts, "salient_facts") ||
         !nimcp_validate_pointer(num_facts, "num_facts")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_get_salient_facts: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (top_k <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_get_salient_facts: validation failed");
         return false;
     }
 
@@ -1337,6 +1443,7 @@ bool symbolic_logic_get_salient_facts(symbolic_logic_t* logic, int top_k,
     // Allocate results array
     *salient_facts = (kb_entry_t**)nimcp_calloc(k, sizeof(kb_entry_t*));
     if (!*salient_facts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_get_salient_facts: validation failed");
         return false;
     }
 
@@ -1380,15 +1487,18 @@ bool symbolic_logic_consolidate_memory(symbolic_logic_t* logic, logic_clause_t* 
 
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(clause, "clause")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_consolidate_memory: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!logic->config.enable_memory_consolidation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_consolidate_memory: logic->config is NULL");
         return false;
     }
 
     // Add fact with context
     if (!symbolic_logic_add_fact(logic, clause, salience)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_consolidate_memory: symbolic_logic_add_fact is NULL");
         return false;
     }
 
@@ -1411,6 +1521,7 @@ bool symbolic_logic_explore(symbolic_logic_t* logic, uint32_t exploration_depth,
     if (!nimcp_validate_pointer(logic, "logic") ||
         !nimcp_validate_pointer(interesting_facts, "interesting_facts") ||
         !nimcp_validate_pointer(num_facts, "num_facts")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_explore: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -1426,6 +1537,7 @@ bool symbolic_logic_explore(symbolic_logic_t* logic, uint32_t exploration_depth,
 bool symbolic_logic_to_string(const logical_formula_t* formula, char* buffer, size_t buffer_size)
 {
     if (!formula || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_to_string: required parameter is NULL (formula, buffer)");
         return false;
     }
 

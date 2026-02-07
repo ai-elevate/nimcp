@@ -175,33 +175,51 @@ bool nimcp_ring_buffer_is_full(const nimcp_ring_buffer_t* rb) {
  *============================================================================*/
 
 void* nimcp_ring_buffer_at(nimcp_ring_buffer_t* rb, size_t index) {
-    if (!rb || index >= rb->size) return NULL;
+    if (!rb || index >= rb->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_at: rb is NULL");
+        return NULL;
+    }
     return get_element_ptr(rb, logical_to_physical(rb, index));
 }
 
 const void* nimcp_ring_buffer_at_const(const nimcp_ring_buffer_t* rb, size_t index) {
-    if (!rb || index >= rb->size) return NULL;
+    if (!rb || index >= rb->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_at_const: rb is NULL");
+        return NULL;
+    }
     return get_element_ptr_const(rb, logical_to_physical(rb, index));
 }
 
 void* nimcp_ring_buffer_front(nimcp_ring_buffer_t* rb) {
-    if (!rb || rb->size == 0) return NULL;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_front: rb is NULL");
+        return NULL;
+    }
     return get_element_ptr(rb, rb->head);
 }
 
 void* nimcp_ring_buffer_back(nimcp_ring_buffer_t* rb) {
-    if (!rb || rb->size == 0) return NULL;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_back: rb is NULL");
+        return NULL;
+    }
     size_t back_idx = (rb->tail + rb->capacity - 1) % rb->capacity;
     return get_element_ptr(rb, back_idx);
 }
 
 const void* nimcp_ring_buffer_front_const(const nimcp_ring_buffer_t* rb) {
-    if (!rb || rb->size == 0) return NULL;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_front_const: rb is NULL");
+        return NULL;
+    }
     return get_element_ptr_const(rb, rb->head);
 }
 
 const void* nimcp_ring_buffer_back_const(const nimcp_ring_buffer_t* rb) {
-    if (!rb || rb->size == 0) return NULL;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_back_const: rb is NULL");
+        return NULL;
+    }
     size_t back_idx = (rb->tail + rb->capacity - 1) % rb->capacity;
     return get_element_ptr_const(rb, back_idx);
 }
@@ -211,7 +229,10 @@ const void* nimcp_ring_buffer_back_const(const nimcp_ring_buffer_t* rb) {
  *============================================================================*/
 
 bool nimcp_ring_buffer_push(nimcp_ring_buffer_t* rb, const void* element) {
-    if (!rb || !element) return false;
+    if (!rb || !element) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ring_buffer_push: required parameter is NULL (rb, element)");
+        return false;
+    }
 
     /* If full, overwrite oldest element */
     if (rb->size == rb->capacity) {
@@ -232,7 +253,10 @@ bool nimcp_ring_buffer_push(nimcp_ring_buffer_t* rb, const void* element) {
 }
 
 bool nimcp_ring_buffer_pop_front(nimcp_ring_buffer_t* rb, void* out_element) {
-    if (!rb || rb->size == 0) return false;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_pop_front: rb is NULL");
+        return false;
+    }
 
     /* Copy element if output provided */
     if (out_element) {
@@ -246,7 +270,10 @@ bool nimcp_ring_buffer_pop_front(nimcp_ring_buffer_t* rb, void* out_element) {
 }
 
 bool nimcp_ring_buffer_pop_back(nimcp_ring_buffer_t* rb, void* out_element) {
-    if (!rb || rb->size == 0) return false;
+    if (!rb || rb->size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_pop_back: rb is NULL");
+        return false;
+    }
 
     rb->tail = (rb->tail + rb->capacity - 1) % rb->capacity;
     rb->size--;
@@ -260,7 +287,10 @@ bool nimcp_ring_buffer_pop_back(nimcp_ring_buffer_t* rb, void* out_element) {
 }
 
 void* nimcp_ring_buffer_peek_from_back(nimcp_ring_buffer_t* rb, size_t n_from_back) {
-    if (!rb || n_from_back >= rb->size) return NULL;
+    if (!rb || n_from_back >= rb->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ring_buffer_peek_from_back: rb is NULL");
+        return NULL;
+    }
 
     /* Convert to logical index (0 = oldest, size-1 = newest) */
     size_t logical_idx = rb->size - 1 - n_from_back;

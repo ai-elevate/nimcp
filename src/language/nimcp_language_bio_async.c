@@ -168,6 +168,7 @@ int language_bio_async_unregister(language_orchestrator_t* orchestrator)
 bool language_bio_async_is_registered(const language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !g_bio_async_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_is_registered: required parameter is NULL (orchestrator, g_bio_async_ctx)");
         return false;
     }
     return g_bio_async_ctx->registered &&
@@ -178,9 +179,11 @@ bio_module_context_t language_bio_async_get_context(
     const language_orchestrator_t* orchestrator)
 {
     if (!orchestrator || !g_bio_async_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_get_context: required parameter is NULL (orchestrator, g_bio_async_ctx)");
         return NULL;
     }
     if (g_bio_async_ctx->orchestrator != orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_async_get_context: validation failed");
         return NULL;
     }
     return g_bio_async_ctx->module_ctx;

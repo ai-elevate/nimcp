@@ -116,7 +116,10 @@ static uint64_t get_timestamp_us(void) {
 static security_bio_subscription_t* find_subscription(
     security_bio_bridge_t* b, uint32_t module_id
 ) {
-    if (!b || !b->subscriptions) return NULL;
+    if (!b || !b->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < b->subscription_count; i++) {
         if (b->subscriptions[i].module_id == module_id &&
@@ -124,6 +127,7 @@ static security_bio_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
     return NULL;
 }
 
@@ -160,7 +164,10 @@ static void safe_strncpy(char* dest, const char* src, size_t dest_size) {
  * ============================================================================ */
 
 int security_bio_bridge_default_config(security_bio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     config->heartbeat_interval_ms = 1000;  /* 1 second */
     config->metrics_interval_ms = 5000;    /* 5 seconds */
@@ -237,8 +244,14 @@ int security_bio_bridge_connect(
     security_bio_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
-    if (bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_connect: bridge is NULL");
+        return -1;
+    }
+    if (bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_bio_bridge_connect: validation failed");
+        return -1;
+    }
 
     bridge->router = router;
     bridge->connected = true;
@@ -247,7 +260,10 @@ int security_bio_bridge_connect(
 }
 
 int security_bio_bridge_disconnect(security_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->router = NULL;
     bridge->connected = false;
@@ -267,7 +283,10 @@ int security_bio_bridge_process_inbox(
     security_bio_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;  /* Placeholder for actual message processing */
@@ -280,7 +299,10 @@ int security_bio_bridge_update(
     security_bio_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_heartbeat_ms += delta_ms;
     bridge->time_since_metrics_ms += delta_ms;
@@ -314,7 +336,10 @@ int security_bio_bridge_broadcast_threat(
     float confidence,
     const char* details
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_threat: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_threat_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_THREAT_DETECTED;
@@ -362,7 +387,10 @@ int security_bio_bridge_broadcast_anomaly(
     float timing_score,
     uint32_t source_module
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_anomaly: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_anomaly_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_ALERT;
@@ -401,8 +429,14 @@ int security_bio_bridge_initiate_lockdown(
     security_threat_type_t trigger_threat,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (bridge->internal.lockdown_active) return -1;  /* Already in lockdown */
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_initiate_lockdown: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (bridge->internal.lockdown_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_bio_bridge_initiate_lockdown: validation failed");
+        return -1;
+    }
 
     security_bio_lockdown_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_ALERT;
@@ -437,8 +471,14 @@ int security_bio_bridge_end_lockdown(
     security_bio_bridge_t* bridge,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!bridge->internal.lockdown_active) return -1;  /* Not in lockdown */
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_end_lockdown: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!bridge->internal.lockdown_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_end_lockdown: bridge->internal is NULL");
+        return -1;
+    }
 
     security_bio_lockdown_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_ALERT;
@@ -476,7 +516,10 @@ int security_bio_bridge_request_access(
     security_access_type_t access_type,
     uint32_t* request_id
 ) {
-    if (!bridge || !bridge->connected || !request_id) return -1;
+    if (!bridge || !bridge->connected || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_request_access: required parameter is NULL (bridge, bridge->connected, request_id)");
+        return -1;
+    }
 
     security_bio_access_request_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_EVENT;
@@ -505,7 +548,10 @@ int security_bio_bridge_respond_access(
     security_decision_t decision,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_respond_access: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_access_response_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_EVENT;
@@ -543,7 +589,10 @@ int security_bio_bridge_broadcast_level_change(
     security_threat_type_t trigger_threat,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_level_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_level_change_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_LEVEL_CHANGE;
@@ -584,8 +633,14 @@ int security_bio_bridge_propose_consensus(
     uint32_t proposal_id,
     const char* description
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!bridge->config.enable_consensus) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_propose_consensus: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!bridge->config.enable_consensus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_propose_consensus: bridge->config is NULL");
+        return -1;
+    }
 
     (void)description;  /* Would be included in actual message */
 
@@ -619,7 +674,10 @@ int security_bio_bridge_broadcast_consensus_update(
     bool is_complete,
     bool result
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_consensus_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_consensus_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_CONSENSUS_RESPONSE;
@@ -651,7 +709,10 @@ int security_bio_bridge_broadcast_consensus_update(
  * ============================================================================ */
 
 int security_bio_bridge_broadcast_heartbeat(security_bio_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_heartbeat: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_heartbeat_msg_t msg = {0};
     msg.header.type = BIO_MSG_HEALTH_CHECK;
@@ -675,7 +736,10 @@ int security_bio_bridge_broadcast_heartbeat(security_bio_bridge_t* bridge) {
 }
 
 int security_bio_bridge_broadcast_metrics(security_bio_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_broadcast_metrics: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     security_bio_metrics_msg_t msg = {0};
     msg.header.type = BIO_MSG_SECURITY_AUDIT_EVENT;
@@ -711,7 +775,10 @@ int security_bio_bridge_subscribe_module(
     uint64_t msg_types,
     uint32_t trust_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     security_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -723,6 +790,7 @@ int security_bio_bridge_subscribe_module(
 
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "security_bio_bridge_subscribe_module: capacity exceeded");
         return -1;  /* Full */
     }
 
@@ -748,10 +816,16 @@ int security_bio_bridge_unsubscribe_module(
     security_bio_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     security_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     bridge->stats.active_subscriptions--;
@@ -764,10 +838,16 @@ int security_bio_bridge_update_trust_level(
     uint32_t module_id,
     uint32_t trust_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_update_trust_level: bridge is NULL");
+        return -1;
+    }
 
     security_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_update_trust_level: sub is NULL");
+        return -1;
+    }
 
     sub->trust_level = trust_level;
     return 0;
@@ -788,14 +868,20 @@ int security_bio_bridge_get_stats(
     const security_bio_bridge_t* bridge,
     security_bio_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int security_bio_bridge_reset_stats(security_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_bio_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.active_subscriptions = bridge->subscription_count;

@@ -157,6 +157,7 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     /* Guard: require immune system */
     if (!immune_system) {
         LOG_ERROR("attention_immune_bridge_create: immune_system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_immune_bridge_create: immune_system is NULL");
         return NULL;
     }
 
@@ -168,6 +169,7 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     attention_immune_bridge_t* bridge = nimcp_malloc(sizeof(attention_immune_bridge_t));
     if (!bridge) {
         LOG_ERROR("attention_immune_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_immune_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -230,6 +232,7 @@ void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
 int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -285,6 +288,7 @@ int attention_immune_apply_cytokine_effects(attention_immune_bridge_t* bridge) {
 int attention_immune_apply_inflammation_effects(attention_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -380,6 +384,7 @@ float attention_immune_compute_narrowing(const attention_immune_bridge_t* bridge
 int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_boost_from_threat_focus: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -422,6 +427,7 @@ int attention_immune_boost_from_threat_focus(attention_immune_bridge_t* bridge) 
 int attention_immune_trigger_hypervigilance_inflammation(attention_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_trigger_hypervigilance_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -463,6 +469,7 @@ int attention_immune_trigger_hypervigilance_inflammation(attention_immune_bridge
 int attention_immune_release_il10_from_mindfulness(attention_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_release_il10_from_mindfulness: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -566,6 +573,7 @@ int attention_immune_get_cytokine_effects(
     cytokine_attention_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -585,6 +593,7 @@ int attention_immune_get_inflammation_state(
     inflammation_attention_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -601,6 +610,7 @@ int attention_immune_get_inflammation_state(
 
 bool attention_immune_has_attention_deficit(const attention_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_has_attention_deficit: bridge is NULL");
         return false;
     }
 
@@ -645,6 +655,7 @@ int attention_immune_connect_bio_async(attention_immune_bridge_t* bridge) {
     /* Guard: null check */
     if (!bridge) {
         LOG_ERROR("attention_immune_connect_bio_async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -725,6 +736,7 @@ bool attention_immune_is_bio_async_connected(const attention_immune_bridge_t* br
      * HOW:  Return internal flag
      */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

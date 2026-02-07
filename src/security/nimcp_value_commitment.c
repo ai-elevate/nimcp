@@ -120,7 +120,10 @@ value_commitment_system_t* value_commitment_system_create(
     const value_commitment_config_t* config)
 {
     value_commitment_system_t* system = nimcp_calloc(1, sizeof(value_commitment_system_t));
-    if (system == NULL) return NULL;
+    if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "value_commitment_system_create: validation failed");
+        return NULL;
+    }
 
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) { nimcp_free(system); return NULL; }

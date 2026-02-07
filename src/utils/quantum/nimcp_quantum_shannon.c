@@ -143,10 +143,16 @@ static bool sample_synapses(neural_network_t network,
     // COMPLEXITY: O(S) where S = sample_size
 
     // Guard: NULL checks
-    if (!network || !sampled_indices) return false;
+    if (!network || !sampled_indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_num_synapses: required parameter is NULL (network, sampled_indices)");
+        return false;
+    }
 
     uint32_t total_synapses = get_num_synapses(network);
-    if (total_synapses == 0) return false;
+    if (total_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_num_synapses: total_synapses is zero");
+        return false;
+    }
 
     // Guard: Sample size too large
     if (sample_size > total_synapses) {
@@ -277,12 +283,18 @@ quantum_shannon_diffusion_t* quantum_shannon_create(
     // COMPLEXITY: O(N + E) where N=nodes, E=edges
 
     // Guard: NULL check
-    if (!network || !config) return NULL;
+    if (!network || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_shannon_create: required parameter is NULL (network, config)");
+        return NULL;
+    }
 
     uint32_t num_neurons = get_num_neurons(network);
 
     // Guard: Invalid source node
-    if (source_node >= num_neurons) return NULL;
+    if (source_node >= num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_create: capacity exceeded");
+        return NULL;
+    }
 
     // Allocate structure (zero-initialized to ensure all pointers are NULL)
     quantum_shannon_diffusion_t* qsd =
@@ -299,6 +311,7 @@ quantum_shannon_diffusion_t* quantum_shannon_create(
     qsd->walker = quantum_walk_create(network, &config->quantum_config);
     if (!qsd->walker) {
         nimcp_free(qsd);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_shannon_create: qsd->walker is NULL");
         return NULL;
     }
 
@@ -307,6 +320,7 @@ quantum_shannon_diffusion_t* quantum_shannon_create(
         quantum_walk_destroy(qsd->walker);
         qsd->walker = NULL;
         nimcp_free(qsd);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "quantum_shannon_create: quantum_walk_initialize is NULL");
         return NULL;
     }
 
@@ -322,6 +336,7 @@ quantum_shannon_diffusion_t* quantum_shannon_create(
     if (!qsd->information_content || !qsd->sampled_synapses ||
         !qsd->channel_capacities) {
         quantum_shannon_destroy(qsd);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_create: operation failed");
         return NULL;
     }
 
@@ -394,15 +409,20 @@ bool quantum_shannon_reset(quantum_shannon_diffusion_t* qsd) {
     // COMPLEXITY: O(N) where N = nodes
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_reset: qsd is NULL");
+        return false;
+    }
 
     // Reset quantum walker
     if (!quantum_walk_reset(qsd->walker)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_reset: quantum_walk_reset is NULL");
         return false;
     }
 
     // Re-initialize at source
     if (!quantum_walk_initialize(qsd->walker, qsd->source_node)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "quantum_shannon_reset: quantum_walk_initialize is NULL");
         return false;
     }
 
@@ -441,16 +461,23 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
     // - Metabolic constraint: Limited energy for signaling
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_shannon_metrics: qsd is NULL");
+        return false;
+    }
 
     uint32_t num_neurons = get_num_neurons(qsd->walker->network);
 
     // STEP 1: Get probability distribution from quantum walker
     float* probabilities = (float*)nimcp_malloc(num_neurons * sizeof(float));
-    if (!probabilities) return false;
+    if (!probabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_shannon_metrics: probabilities is NULL");
+        return false;
+    }
 
     if (!quantum_walk_get_distribution(qsd->walker, probabilities)) {
         nimcp_free(probabilities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_shannon_metrics: quantum_walk_get_distribution is NULL");
         return false;
     }
 
@@ -492,10 +519,14 @@ static bool update_shannon_metrics(quantum_shannon_diffusion_t* qsd) {
     // STEP 5: Compute spreading distance (average distance from source)
     // Need probabilities again for weighted distance
     float* probs = (float*)nimcp_malloc(num_neurons * sizeof(float));
-    if (!probs) return false;
+    if (!probs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_shannon_metrics: probs is NULL");
+        return false;
+    }
 
     if (!quantum_walk_get_distribution(qsd->walker, probs)) {
         nimcp_free(probs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_shannon_metrics: quantum_walk_get_distribution is NULL");
         return false;
     }
 
@@ -605,13 +636,17 @@ static bool update_channel_capacities(quantum_shannon_diffusion_t* qsd) {
     // COMPLEXITY: O(S) where S = synapse_sample_size
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_channel_capacities: qsd is NULL");
+        return false;
+    }
 
     neural_network_t network = qsd->walker->network;
 
     // Sample synapses
     if (!sample_synapses(network, qsd->config.synapse_sample_size,
                         qsd->sampled_synapses)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_channel_capacities: qsd is NULL");
         return false;
     }
 
@@ -656,10 +691,14 @@ bool quantum_shannon_step(quantum_shannon_diffusion_t* qsd) {
     // COMPLEXITY: O(E + N + S) where E=edges, N=nodes, S=samples
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_step: qsd is NULL");
+        return false;
+    }
 
     // STEP 1: Quantum walk step
     if (!quantum_walk_step(qsd->walker)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: quantum_walk_step is NULL");
         return false;
     }
 
@@ -668,10 +707,12 @@ bool quantum_shannon_step(quantum_shannon_diffusion_t* qsd) {
     // STEP 2: Update Shannon metrics if interval reached
     if (qsd->current_step % qsd->config.shannon_update_interval == 0) {
         if (!update_shannon_metrics(qsd)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: update_shannon_metrics is NULL");
             return false;
         }
 
         if (!update_channel_capacities(qsd)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: update_channel_capacities is NULL");
             return false;
         }
     }
@@ -687,20 +728,26 @@ bool quantum_shannon_evolve(quantum_shannon_diffusion_t* qsd,
     // COMPLEXITY: O(N_steps × (E + N + S))
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_step: qsd is NULL");
+        return false;
+    }
 
     for (uint32_t step = 0; step < num_steps; step++) {
         if (!quantum_shannon_step(qsd)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: quantum_shannon_step is NULL");
             return false;
         }
     }
 
     // Final metrics update
     if (!update_shannon_metrics(qsd)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: update_shannon_metrics is NULL");
         return false;
     }
 
     if (!update_channel_capacities(qsd)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_step: update_channel_capacities is NULL");
         return false;
     }
 
@@ -719,7 +766,10 @@ bool quantum_shannon_get_distribution(const quantum_shannon_diffusion_t* qsd,
     // COMPLEXITY: O(N)
 
     // Guard: NULL checks
-    if (!qsd || !probabilities) return false;
+    if (!qsd || !probabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_step: required parameter is NULL (qsd, probabilities)");
+        return false;
+    }
 
     return quantum_walk_get_distribution(qsd->walker, probabilities);
 }
@@ -732,7 +782,10 @@ bool quantum_shannon_get_information(const quantum_shannon_diffusion_t* qsd,
     // COMPLEXITY: O(N)
 
     // Guard: NULL checks
-    if (!qsd || !information) return false;
+    if (!qsd || !information) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_step: required parameter is NULL (qsd, information)");
+        return false;
+    }
 
     uint32_t num_neurons = get_num_neurons(qsd->walker->network);
     memcpy(information, qsd->information_content,
@@ -749,7 +802,10 @@ bool quantum_shannon_get_metrics(const quantum_shannon_diffusion_t* qsd,
     // COMPLEXITY: O(1)
 
     // Guard: NULL checks
-    if (!qsd || !metrics) return false;
+    if (!qsd || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_step: required parameter is NULL (qsd, metrics)");
+        return false;
+    }
 
     *metrics = qsd->metrics;
     return true;
@@ -793,7 +849,10 @@ static bool detect_bottlenecks(quantum_shannon_diffusion_t* qsd) {
     // - Information bottlenecks limit learning capacity
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_bottlenecks: qsd is NULL");
+        return false;
+    }
 
     qsd->num_bottlenecks = 0;
     float total_deficit = 0.0F;
@@ -877,7 +936,10 @@ bool quantum_shannon_optimize(quantum_shannon_diffusion_t* qsd) {
     // COMPLEXITY: O(S) where S = synapse_sample_size
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_optimize: qsd is NULL");
+        return false;
+    }
 
     // Guard: Adaptive coin disabled
     if (!qsd->config.enable_adaptive_coin) {
@@ -886,6 +948,7 @@ bool quantum_shannon_optimize(quantum_shannon_diffusion_t* qsd) {
 
     // Detect bottlenecks
     if (!detect_bottlenecks(qsd)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_optimize: detect_bottlenecks is NULL");
         return false;
     }
 
@@ -924,7 +987,10 @@ bool quantum_shannon_route_around_bottlenecks(quantum_shannon_diffusion_t* qsd) 
     // PERFORMANCE: Minimal overhead, ~5-10% of walk step time
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_route_around_bottlenecks: qsd is NULL");
+        return false;
+    }
 
     // Guard: No bottlenecks
     if (qsd->num_bottlenecks == 0) {
@@ -933,6 +999,7 @@ bool quantum_shannon_route_around_bottlenecks(quantum_shannon_diffusion_t* qsd) 
 
     // Guard: No walker
     if (!qsd->walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_route_around_bottlenecks: qsd->walker is NULL");
         return false;
     }
 
@@ -1157,22 +1224,37 @@ bool quantum_shannon_verify(const quantum_shannon_diffusion_t* qsd) {
     // COMPLEXITY: O(1) - just check cached values
 
     // Guard: NULL check
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_verify: qsd is NULL");
+        return false;
+    }
 
     // Verify quantum walker
     if (!quantum_walk_verify(qsd->walker)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: quantum_walk_verify is NULL");
         return false;
     }
 
     // Verify Shannon metrics
-    if (qsd->metrics.source_entropy < 0.0F) return false;
-    if (qsd->metrics.total_entropy < 0.0F) return false;
-    if (qsd->metrics.mutual_information < 0.0F) return false;
+    if (qsd->metrics.source_entropy < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
+        return false;
+    }
+    if (qsd->metrics.total_entropy < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
+        return false;
+    }
+    if (qsd->metrics.mutual_information < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
+        return false;
+    }
     if (qsd->metrics.mutual_information > qsd->metrics.source_entropy + 0.1F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;  // MI cannot exceed source entropy
     }
     if (qsd->metrics.propagation_efficiency < 0.0F ||
         qsd->metrics.propagation_efficiency > 1.1F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_verify: validation failed");
         return false;
     }
 
@@ -1213,7 +1295,10 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     // COMPLEXITY: O(N + H + C) where N=nodes, H=hubs, C=communities
 
     // Guard: NULL checks
-    if (!qsd) return false;
+    if (!qsd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_adaptive_routing: qsd is NULL");
+        return false;
+    }
     if (!network_analyzer) {
         // Adaptive routing requires network analyzer
         // Fall back to standard quantum-Shannon diffusion
@@ -1221,7 +1306,10 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     }
 
     // Guard: Require walker
-    if (!qsd->walker) return false;
+    if (!qsd->walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_adaptive_routing: qsd->walker is NULL");
+        return false;
+    }
 
     network_analyzer_t* analyzer = (network_analyzer_t*)network_analyzer;
     quantum_walker_t* walker = qsd->walker;
@@ -1252,6 +1340,7 @@ bool quantum_adaptive_routing(quantum_shannon_diffusion_t* qsd, void* network_an
     // Allocate routing weight array (per-node routing bias)
     routing_weights = (float*)nimcp_calloc(walker->num_nodes, sizeof(float));
     if (!routing_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_adaptive_routing: routing_weights is NULL");
         return false; // Allocation failure
     }
 
@@ -1434,7 +1523,10 @@ bool quantum_shannon_estimate_entropy_mc(
     uint32_t num_samples,
     qmc_entropy_result_t* result
 ) {
-    if (!qsd || !result || !qsd->walker) return false;
+    if (!qsd || !result || !qsd->walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_estimate_entropy_mc: required parameter is NULL (qsd, result, qsd->walker)");
+        return false;
+    }
 
     qmc_entropy_config_t config = {
         .num_samples = num_samples > 0 ? num_samples : 10000,
@@ -1476,8 +1568,14 @@ bool quantum_shannon_detect_bottlenecks_mc(
     uint32_t* bottleneck_indices,
     uint32_t* num_found
 ) {
-    if (!qsd || !bottleneck_indices || !num_found) return false;
-    if (!qsd->walker || !qsd->walker->network) return false;
+    if (!qsd || !bottleneck_indices || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_detect_bottlenecks_mc: required parameter is NULL (qsd, bottleneck_indices, num_found)");
+        return false;
+    }
+    if (!qsd->walker || !qsd->walker->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_shannon_detect_bottlenecks_mc: required parameter is NULL (qsd->walker, qsd->walker->network)");
+        return false;
+    }
 
     *num_found = 0;
 
@@ -1487,7 +1585,10 @@ bool quantum_shannon_detect_bottlenecks_mc(
 
     neural_network_t network = qsd->walker->network;
     uint32_t total_synapses = get_num_synapses(network);
-    if (total_synapses == 0) return false;
+    if (total_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_shannon_detect_bottlenecks_mc: total_synapses is zero");
+        return false;
+    }
 
     /* MCMC sampling with early stopping */
     uint32_t max_samples = total_synapses;

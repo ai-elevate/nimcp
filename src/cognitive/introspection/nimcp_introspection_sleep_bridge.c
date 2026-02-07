@@ -139,7 +139,10 @@ static void introspection_on_sleep_state_change(sleep_state_t new_state, void* u
 }
 
 int introspection_sleep_default_config(introspection_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
 
@@ -235,7 +238,10 @@ void introspection_sleep_bridge_destroy(introspection_sleep_bridge_t bridge) {
 }
 
 int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
@@ -287,7 +293,10 @@ int introspection_sleep_update(introspection_sleep_bridge_t bridge) {
 }
 
 int introspection_sleep_get_effects(const introspection_sleep_bridge_t bridge, introspection_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
 
@@ -311,7 +320,10 @@ float introspection_sleep_get_metacognitive_accuracy(const introspection_sleep_b
 }
 
 bool introspection_sleep_is_offline(const introspection_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_sleep_bridge_heartbeat("introspectio_introspection_sleep_", 0.0f);
 

@@ -166,6 +166,7 @@ static registered_instance_t* find_instance(
             return &cc->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
     return NULL;
 }
 
@@ -181,6 +182,7 @@ static registered_instance_t* find_free_slot(collective_cognition_t* cc) {
             return &cc->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: cc->instances is NULL");
     return NULL;
 }
 
@@ -199,6 +201,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
     return -1;
 }
 
@@ -665,6 +668,7 @@ collective_cognition_t* collective_cognition_create(
         if (cc->phi_system) collective_phi_destroy(cc->phi_system);
         if (cc->intentionality) shared_intentionality_destroy(cc->intentionality);
         nimcp_free(cc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_create: validation failed");
         return NULL;
     }
 
@@ -696,7 +700,10 @@ void collective_cognition_destroy(collective_cognition_t* cc) {
 }
 
 int collective_cognition_reset(collective_cognition_t* cc) {
-    if (!cc) return -1;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_reset: cc is NULL");
+        return -1;
+    }
 
     /* Reset all instances */
     /* Phase 8: Heartbeat at operation start */
@@ -733,7 +740,10 @@ int collective_cognition_register_instance(
     uint32_t instance_id,
     brain_t* brain
 ) {
-    if (!cc) return -1;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_register_instance: cc is NULL");
+        return -1;
+    }
 
     /* Check if already registered */
     /* Phase 8: Heartbeat at operation start */
@@ -741,12 +751,14 @@ int collective_cognition_register_instance(
 
 
     if (find_instance(cc, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_cognition_register_instance: validation failed");
         return -1;  /* Already exists */
     }
 
     /* Find free slot */
     registered_instance_t* slot = find_free_slot(cc);
     if (!slot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_register_instance: slot is NULL");
         return -1;  /* No free slots */
     }
 
@@ -802,7 +814,10 @@ int collective_cognition_unregister_instance(
     collective_cognition_t* cc,
     uint32_t instance_id
 ) {
-    if (!cc) return -1;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_unregister_instance: cc is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_unregister_instance", 0.0f);
@@ -810,6 +825,7 @@ int collective_cognition_unregister_instance(
 
     registered_instance_t* inst = find_instance(cc, instance_id);
     if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_unregister_instance: inst is NULL");
         return -1;  /* Not found */
     }
 
@@ -848,7 +864,10 @@ bool collective_cognition_has_instance(
     const collective_cognition_t* cc,
     uint32_t instance_id
 ) {
-    if (!cc) return false;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_has_instance: cc is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_has_instance", 0.0f);
@@ -873,7 +892,10 @@ bool collective_cognition_has_instance(
  *===========================================================================*/
 
 int collective_cognition_update(collective_cognition_t* cc) {
-    if (!cc || !cc->initialized) return -1;
+    if (!cc || !cc->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_update: required parameter is NULL (cc, cc->initialized)");
+        return -1;
+    }
 
     /* Update all subsystem states */
     /* Phase 8: Heartbeat at operation start */
@@ -929,7 +951,10 @@ int collective_cognition_get_state(
     const collective_cognition_t* cc,
     collective_cognition_state_t* state
 ) {
-    if (!cc || !state) return -1;
+    if (!cc || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_state: required parameter is NULL (cc, state)");
+        return -1;
+    }
 
     *state = cc->state;
     /* Phase 8: Heartbeat at operation start */
@@ -955,7 +980,10 @@ int collective_cognition_get_hyperscan_state(
     const collective_cognition_t* cc,
     hyperscan_state_t* state
 ) {
-    if (!cc || !state) return -1;
+    if (!cc || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_hyperscan_state: required parameter is NULL (cc, state)");
+        return -1;
+    }
 
     *state = cc->state.hyperscanning;
     /* Phase 8: Heartbeat at operation start */
@@ -969,7 +997,10 @@ int collective_cognition_get_extended_mind_state(
     const collective_cognition_t* cc,
     extended_mind_state_t* state
 ) {
-    if (!cc || !state) return -1;
+    if (!cc || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_extended_mind_state: required parameter is NULL (cc, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_get_extended_mind_st", 0.0f);
@@ -988,7 +1019,10 @@ int collective_cognition_get_phi(
     const collective_cognition_t* cc,
     collective_phi_t* phi
 ) {
-    if (!cc || !phi) return -1;
+    if (!cc || !phi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_phi: required parameter is NULL (cc, phi)");
+        return -1;
+    }
 
     *phi = cc->state.phi;
     /* Phase 8: Heartbeat at operation start */
@@ -1002,7 +1036,10 @@ int collective_cognition_get_we_mode(
     const collective_cognition_t* cc,
     we_mode_state_t* state
 ) {
-    if (!cc || !state) return -1;
+    if (!cc || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_we_mode: required parameter is NULL (cc, state)");
+        return -1;
+    }
 
     *state = cc->state.we_mode;
     /* Phase 8: Heartbeat at operation start */
@@ -1056,7 +1093,10 @@ int collective_cognition_connect_bio_async(
     collective_cognition_t* cc,
     bio_router_t* router
 ) {
-    if (!cc || !router) return -1;
+    if (!cc || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_connect_bio_async: required parameter is NULL (cc, router)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_connect_bio_async", 0.0f);
@@ -1071,7 +1111,10 @@ int collective_cognition_connect_bio_async(
 }
 
 int collective_cognition_disconnect_bio_async(collective_cognition_t* cc) {
-    if (!cc) return -1;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_disconnect_bio_async: cc is NULL");
+        return -1;
+    }
 
     /* TODO: Unregister message handlers */
 
@@ -1098,7 +1141,10 @@ bool collective_cognition_is_bio_async_connected(const collective_cognition_t* c
  *===========================================================================*/
 
 int collective_cognition_balance_load(collective_cognition_t* cc) {
-    if (!cc) return -1;
+    if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_balance_load: cc is NULL");
+        return -1;
+    }
 
     /* Find overloaded and underloaded instances */
     /* Phase 8: Heartbeat at operation start */
@@ -1150,7 +1196,10 @@ int collective_cognition_offload_task(
     const void* task_data,
     size_t task_size
 ) {
-    if (!cc || !task_data) return -1;
+    if (!cc || !task_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_offload_task: required parameter is NULL (cc, task_data)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_cognition_heartbeat("collective_c_offload_task", 0.0f);
@@ -1159,7 +1208,10 @@ int collective_cognition_offload_task(
     registered_instance_t* from = find_instance(cc, from_instance);
     registered_instance_t* to = find_instance(cc, to_instance);
 
-    if (!from || !to) return -1;
+    if (!from || !to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_offload_task: required parameter is NULL (from, to)");
+        return -1;
+    }
 
     /* Update load estimates */
     float task_load = task_size * 0.0001f;  /* Estimate load from size */
@@ -1182,7 +1234,10 @@ int collective_cognition_get_stats(
     const collective_cognition_t* cc,
     collective_cognition_stats_t* stats
 ) {
-    if (!cc || !stats) return -1;
+    if (!cc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_get_stats: required parameter is NULL (cc, stats)");
+        return -1;
+    }
 
     *stats = cc->stats;
     /* Phase 8: Heartbeat at operation start */

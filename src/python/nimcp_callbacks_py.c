@@ -83,6 +83,7 @@ static int CallbackConfig_init(CallbackConfigObject* self, PyObject* args, PyObj
                                      &enable_auto_checkpoint, &checkpoint_interval,
                                      &enable_early_stopping, &patience, &min_delta,
                                      &divergence_threshold, &log_interval)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_init: operation failed");
         return -1;
     }
 
@@ -115,6 +116,7 @@ static int CallbackConfig_set_enable_auto_checkpoint(CallbackConfigObject* self,
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_enable_auto_checkpoint: validation failed");
         return -1;
     }
     self->config.enable_auto_checkpoint = PyObject_IsTrue(value);
@@ -130,10 +132,12 @@ static int CallbackConfig_set_checkpoint_interval(CallbackConfigObject* self, Py
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_checkpoint_interval: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "checkpoint_interval must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_checkpoint_interval: PyLong_Check is NULL");
         return -1;
     }
     self->config.checkpoint_interval = (uint32_t)PyLong_AsUnsignedLong(value);
@@ -149,6 +153,7 @@ static int CallbackConfig_set_enable_early_stopping(CallbackConfigObject* self, 
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_enable_early_stopping: validation failed");
         return -1;
     }
     self->config.enable_early_stopping = PyObject_IsTrue(value);
@@ -164,10 +169,12 @@ static int CallbackConfig_set_patience(CallbackConfigObject* self, PyObject* val
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_patience: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "patience must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_patience: PyLong_Check is NULL");
         return -1;
     }
     self->config.patience = (uint32_t)PyLong_AsUnsignedLong(value);
@@ -183,10 +190,12 @@ static int CallbackConfig_set_min_delta(CallbackConfigObject* self, PyObject* va
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_min_delta: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "min_delta must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_min_delta: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.min_delta = (float)PyFloat_AsDouble(value);
@@ -202,10 +211,12 @@ static int CallbackConfig_set_divergence_threshold(CallbackConfigObject* self, P
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_divergence_threshold: validation failed");
         return -1;
     }
     if (!PyFloat_Check(value) && !PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "divergence_threshold must be a number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_divergence_threshold: required parameter is NULL (PyFloat_Check, PyLong_Check)");
         return -1;
     }
     self->config.divergence_threshold = (float)PyFloat_AsDouble(value);
@@ -221,10 +232,12 @@ static int CallbackConfig_set_log_interval(CallbackConfigObject* self, PyObject*
 {
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_log_interval: validation failed");
         return -1;
     }
     if (!PyLong_Check(value)) {
         PyErr_SetString(PyExc_TypeError, "log_interval must be an integer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "CallbackConfig_set_log_interval: PyLong_Check is NULL");
         return -1;
     }
     self->config.log_interval = (uint32_t)PyLong_AsUnsignedLong(value);
@@ -496,6 +509,7 @@ nimcp_callback_action_t python_callback_wrapper(
 PyCallbackContext* allocate_callback_context(void)
 {
     if (g_context_count >= MAX_PYTHON_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_callback_context: capacity exceeded");
         return NULL;
     }
     return &g_callback_contexts[g_context_count++];
@@ -511,6 +525,7 @@ static PyCallbackContext* find_callback_context(uint32_t callback_id)
             return &g_callback_contexts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_callback_context: validation failed");
     return NULL;
 }
 
@@ -540,55 +555,89 @@ int init_callbacks_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.callbacks", "Initializing callbacks module");
 
     /* Initialize types */
-    if (PyType_Ready(&CallbackConfigType) < 0)
+    if (PyType_Ready(&CallbackConfigType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyType_Ready(&CallbackMetricsType) < 0)
+    }
+    if (PyType_Ready(&CallbackMetricsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
+    }
 
     /* Add types to module */
     Py_INCREF(&CallbackConfigType);
     if (PyModule_AddObject(module, "CallbackConfig", (PyObject*)&CallbackConfigType) < 0) {
         Py_DECREF(&CallbackConfigType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&CallbackMetricsType);
     if (PyModule_AddObject(module, "CallbackMetrics", (PyObject*)&CallbackMetricsType) < 0) {
         Py_DECREF(&CallbackMetricsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
     }
 
     /* Add callback event constants */
-    if (PyModule_AddIntConstant(module, "CB_STEP_COMPLETE", NIMCP_CB_STEP_COMPLETE) < 0)
+    if (PyModule_AddIntConstant(module, "CB_STEP_COMPLETE", NIMCP_CB_STEP_COMPLETE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_EPOCH_COMPLETE", NIMCP_CB_EPOCH_COMPLETE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_EPOCH_COMPLETE", NIMCP_CB_EPOCH_COMPLETE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_LOSS_COMPUTED", NIMCP_CB_LOSS_COMPUTED) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_LOSS_COMPUTED", NIMCP_CB_LOSS_COMPUTED) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_WEIGHTS_UPDATED", NIMCP_CB_WEIGHTS_UPDATED) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_WEIGHTS_UPDATED", NIMCP_CB_WEIGHTS_UPDATED) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_LR_CHANGED", NIMCP_CB_LR_CHANGED) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_LR_CHANGED", NIMCP_CB_LR_CHANGED) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_CONVERGENCE", NIMCP_CB_CONVERGENCE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_CONVERGENCE", NIMCP_CB_CONVERGENCE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_DIVERGENCE", NIMCP_CB_DIVERGENCE) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_DIVERGENCE", NIMCP_CB_DIVERGENCE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_CHECKPOINT", NIMCP_CB_CHECKPOINT) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_CHECKPOINT", NIMCP_CB_CHECKPOINT) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
+    }
 
     /* Add callback action constants */
-    if (PyModule_AddIntConstant(module, "CB_ACTION_CONTINUE", NIMCP_CB_ACTION_CONTINUE) < 0)
+    if (PyModule_AddIntConstant(module, "CB_ACTION_CONTINUE", NIMCP_CB_ACTION_CONTINUE) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_ACTION_STOP", NIMCP_CB_ACTION_STOP) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_ACTION_STOP", NIMCP_CB_ACTION_STOP) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_ACTION_SKIP", NIMCP_CB_ACTION_SKIP) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_ACTION_SKIP", NIMCP_CB_ACTION_SKIP) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_ACTION_ROLLBACK", NIMCP_CB_ACTION_ROLLBACK) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_ACTION_ROLLBACK", NIMCP_CB_ACTION_ROLLBACK) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_ACTION_REDUCE_LR", NIMCP_CB_ACTION_REDUCE_LR) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_ACTION_REDUCE_LR", NIMCP_CB_ACTION_REDUCE_LR) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
-    if (PyModule_AddIntConstant(module, "CB_ACTION_INCREASE_LR", NIMCP_CB_ACTION_INCREASE_LR) < 0)
+    }
+    if (PyModule_AddIntConstant(module, "CB_ACTION_INCREASE_LR", NIMCP_CB_ACTION_INCREASE_LR) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_callbacks_module: validation failed");
         return -1;
+    }
 
     /* Initialize callback context storage */
     memset(g_callback_contexts, 0, sizeof(g_callback_contexts));

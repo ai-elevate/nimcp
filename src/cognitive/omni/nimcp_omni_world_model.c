@@ -314,7 +314,10 @@ static float randn(unsigned int* seed) {
 static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
                                             uint32_t obs_dim, uint32_t action_dim) {
     omni_wm_dynamics_t* dyn = nimcp_calloc(1, sizeof(omni_wm_dynamics_t));
-    if (!dyn) return NULL;
+    if (!dyn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "randn: dyn is NULL");
+        return NULL;
+    }
 
     dyn->h_dim = h_dim;
     dyn->z_dim = z_dim;
@@ -340,6 +343,7 @@ static omni_wm_dynamics_t* dynamics_create(uint32_t h_dim, uint32_t z_dim,
         nimcp_free(dyn->b_z);
         nimcp_free(dyn->b_obs);
         nimcp_free(dyn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "randn: operation failed");
         return NULL;
     }
 
@@ -371,7 +375,10 @@ static void dynamics_destroy(omni_wm_dynamics_t* dyn) {
 
 static omni_wm_replay_buffer_t* replay_buffer_create(uint32_t capacity) {
     omni_wm_replay_buffer_t* buf = nimcp_calloc(1, sizeof(omni_wm_replay_buffer_t));
-    if (!buf) return NULL;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "replay_buffer_create: buf is NULL");
+        return NULL;
+    }
 
     buf->experiences = nimcp_calloc(capacity, sizeof(omni_wm_experience_t*));
     buf->priorities = nimcp_calloc(capacity, sizeof(float));
@@ -379,6 +386,7 @@ static omni_wm_replay_buffer_t* replay_buffer_create(uint32_t capacity) {
         nimcp_free(buf->experiences);
         nimcp_free(buf->priorities);
         nimcp_free(buf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "replay_buffer_create: required parameter is NULL (buf->experiences, buf->priorities)");
         return NULL;
     }
 
@@ -543,6 +551,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
 
     if (!wm->encoder_W || !wm->encoder_b || !wm->decoder_W || !wm->decoder_b) {
         omni_wm_destroy(wm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: required parameter is NULL (wm->encoder_W, wm->encoder_b, wm->decoder_W, wm->decoder_b)");
         return NULL;
     }
 
@@ -562,6 +571,7 @@ omni_world_model_t* omni_wm_create(const omni_wm_config_t* config) {
     wm->replay_buffer = replay_buffer_create(wm->config.replay_buffer_size);
     if (!wm->replay_buffer) {
         omni_wm_destroy(wm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_create: wm->replay_buffer is NULL");
         return NULL;
     }
 
@@ -635,18 +645,25 @@ void omni_wm_destroy(omni_world_model_t* wm) {
  * ============================================================================ */
 
 omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
-    if (dim == 0 || dim > OMNI_WM_MAX_STATE_DIM) return NULL;
+    if (dim == 0 || dim > OMNI_WM_MAX_STATE_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_create: dim is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_state_create", 0.0f);
 
 
     omni_wm_state_t* state = nimcp_calloc(1, sizeof(omni_wm_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_create: state is NULL");
+        return NULL;
+    }
 
     state->values = nimcp_calloc(dim, sizeof(float));
     if (!state->values) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_create: state->values is NULL");
         return NULL;
     }
 
@@ -659,28 +676,40 @@ omni_wm_state_t* omni_wm_state_create(uint32_t dim) {
 }
 
 omni_wm_state_t* omni_wm_state_from_values(const float* values, uint32_t dim) {
-    if (!values || dim == 0) return NULL;
+    if (!values || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wm_state_from_values: values is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_state_from_v", 0.0f);
 
 
     omni_wm_state_t* state = omni_wm_state_create(dim);
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_from_values: state is NULL");
+        return NULL;
+    }
 
     memcpy(state->values, values, dim * sizeof(float));
     return state;
 }
 
 omni_wm_state_t* omni_wm_state_clone(const omni_wm_state_t* state) {
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_state_clone: state is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_state_clone", 0.0f);
 
 
     omni_wm_state_t* clone = omni_wm_state_create(state->dim);
-    if (!clone) return NULL;
+    if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_state_clone: clone is NULL");
+        return NULL;
+    }
 
     memcpy(clone->values, state->values, state->dim * sizeof(float));
     clone->uncertainty = state->uncertainty;
@@ -730,14 +759,20 @@ const omni_wm_state_t* omni_wm_get_state(const omni_world_model_t* wm) {
  * ============================================================================ */
 
 omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) {
-    if (h_dim == 0 || z_dim == 0) return NULL;
+    if (h_dim == 0 || z_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_rssm_state_create: h_dim is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_state_c", 0.0f);
 
 
     omni_wm_rssm_state_t* state = nimcp_calloc(1, sizeof(omni_wm_rssm_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_rssm_state_create: state is NULL");
+        return NULL;
+    }
 
     state->h = nimcp_calloc(h_dim, sizeof(float));
     state->z = nimcp_calloc(z_dim, sizeof(float));
@@ -746,6 +781,7 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
 
     if (!state->h || !state->z || !state->z_mean || !state->z_std) {
         omni_wm_rssm_state_destroy(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_rssm_state_create: required parameter is NULL (state->h, state->z, state->z_mean, state->z_std)");
         return NULL;
     }
 
@@ -767,14 +803,20 @@ omni_wm_rssm_state_t* omni_wm_rssm_state_create(uint32_t h_dim, uint32_t z_dim) 
 }
 
 omni_wm_rssm_state_t* omni_wm_rssm_state_clone(const omni_wm_rssm_state_t* state) {
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_rssm_state_clone: state is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_rssm_state_c", 0.0f);
 
 
     omni_wm_rssm_state_t* clone = omni_wm_rssm_state_create(state->h_dim, state->z_dim);
-    if (!clone) return NULL;
+    if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_rssm_state_clone: clone is NULL");
+        return NULL;
+    }
 
     memcpy(clone->h, state->h, state->h_dim * sizeof(float));
     memcpy(clone->z, state->z, state->z_dim * sizeof(float));
@@ -1175,18 +1217,25 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
  * ============================================================================ */
 
 omni_wm_latent_t* omni_wm_latent_create(uint32_t dim) {
-    if (dim == 0 || dim > OMNI_WM_MAX_LATENT_DIM) return NULL;
+    if (dim == 0 || dim > OMNI_WM_MAX_LATENT_DIM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_latent_create: dim is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_latent_creat", 0.0f);
 
 
     omni_wm_latent_t* latent = nimcp_calloc(1, sizeof(omni_wm_latent_t));
-    if (!latent) return NULL;
+    if (!latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_latent_create: latent is NULL");
+        return NULL;
+    }
 
     latent->embedding = nimcp_calloc(dim, sizeof(float));
     if (!latent->embedding) {
         nimcp_free(latent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_latent_create: latent->embedding is NULL");
         return NULL;
     }
 
@@ -1305,19 +1354,29 @@ nimcp_error_t omni_wm_predict_latent(omni_world_model_t* wm,
  * ============================================================================ */
 
 omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t dim) {
-    if (num_components == 0 || dim == 0) return NULL;
-    if (num_components > OMNI_WM_MAX_MDN_COMPONENTS) return NULL;
+    if (num_components == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: num_components is zero");
+        return NULL;
+    }
+    if (num_components > OMNI_WM_MAX_MDN_COMPONENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: validation failed");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_mdn_create", 0.0f);
 
 
     omni_wm_mdn_prediction_t* pred = nimcp_calloc(1, sizeof(omni_wm_mdn_prediction_t));
-    if (!pred) return NULL;
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: pred is NULL");
+        return NULL;
+    }
 
     pred->components = nimcp_calloc(num_components, sizeof(omni_wm_mdn_component_t));
     if (!pred->components) {
         nimcp_free(pred);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_mdn_create: pred->components is NULL");
         return NULL;
     }
 
@@ -1335,6 +1394,7 @@ omni_wm_mdn_prediction_t* omni_wm_mdn_create(uint32_t num_components, uint32_t d
 
         if (!pred->components[k].mean || !pred->components[k].std) {
             omni_wm_mdn_destroy(pred);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_mdn_create: required parameter is NULL (pred->components, pred->components)");
             return NULL;
         }
 
@@ -1569,6 +1629,7 @@ omni_wm_experience_t* omni_wm_experience_create(uint32_t state_dim,
 
     if (!exp->state || !exp->next_state || !exp->action || !exp->observation) {
         omni_wm_experience_destroy(exp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (exp->state, exp->next_state, exp->action, exp->observation)");
         return NULL;
     }
 
@@ -1893,15 +1954,24 @@ omni_wm_counterfactual_query_t* omni_wm_cf_query_create(
     uint32_t action_dim,
     uint32_t horizon) {
 
-    if (!initial_state || !hypothetical_action) return NULL;
-    if (horizon == 0) return NULL;
+    if (!initial_state || !hypothetical_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_set_learning_rate: required parameter is NULL (initial_state, hypothetical_action)");
+        return NULL;
+    }
+    if (horizon == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wm_set_learning_rate: horizon is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_cf_query_cre", 0.0f);
 
 
     omni_wm_counterfactual_query_t* query = nimcp_calloc(1, sizeof(omni_wm_counterfactual_query_t));
-    if (!query) return NULL;
+    if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_set_learning_rate: query is NULL");
+        return NULL;
+    }
 
     query->type = type;
     query->initial_state = omni_wm_state_clone(initial_state);
@@ -1909,6 +1979,7 @@ omni_wm_counterfactual_query_t* omni_wm_cf_query_create(
 
     if (!query->initial_state || !query->hypothetical_action) {
         omni_wm_cf_query_destroy(query);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_set_learning_rate: required parameter is NULL (query->initial_state, query->hypothetical_action)");
         return NULL;
     }
 
@@ -2070,14 +2141,20 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
                                            uint32_t state_dim,
                                            uint32_t action_dim,
                                            uint32_t obs_dim) {
-    if (max_length == 0 || max_length > OMNI_WM_MAX_HORIZON) return NULL;
+    if (max_length == 0 || max_length > OMNI_WM_MAX_HORIZON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_cf_result_destroy: max_length is zero");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_rollout_crea", 0.0f);
 
 
     omni_wm_rollout_t* rollout = nimcp_calloc(1, sizeof(omni_wm_rollout_t));
-    if (!rollout) return NULL;
+    if (!rollout) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_cf_result_destroy: rollout is NULL");
+        return NULL;
+    }
 
     rollout->states = nimcp_calloc(max_length, sizeof(omni_wm_state_t*));
     rollout->actions = nimcp_calloc(max_length, sizeof(float*));
@@ -2087,6 +2164,7 @@ omni_wm_rollout_t* omni_wm_rollout_create(uint32_t max_length,
     if (!rollout->states || !rollout->actions ||
         !rollout->observations || !rollout->rewards) {
         omni_wm_rollout_destroy(rollout);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_cf_result_destroy: operation failed");
         return NULL;
     }
 
@@ -3306,11 +3384,17 @@ static size_t serialize_state(uint8_t* buf, size_t pos, const omni_wm_state_t* s
  */
 static omni_wm_state_t* deserialize_state_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
-    if (!present) return NULL;
+    if (!present) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_state_from_buf: present is NULL");
+        return NULL;
+    }
 
     uint32_t dim = read_u32(buf, pos);
     omni_wm_state_t* state = omni_wm_state_create(dim);
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_state_from_buf: state is NULL");
+        return NULL;
+    }
 
     state->uncertainty = read_float_be(buf, pos);
     state->timestamp = read_double_be(buf, pos);
@@ -3395,13 +3479,19 @@ static size_t serialize_rssm_state(uint8_t* buf, size_t pos, const omni_wm_rssm_
  */
 static omni_wm_rssm_state_t* deserialize_rssm_state_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
-    if (!present) return NULL;
+    if (!present) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_rssm_state_from_buf: present is NULL");
+        return NULL;
+    }
 
     uint32_t h_dim = read_u32(buf, pos);
     uint32_t z_dim = read_u32(buf, pos);
 
     omni_wm_rssm_state_t* state = omni_wm_rssm_state_create(h_dim, z_dim);
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_rssm_state_from_buf: state is NULL");
+        return NULL;
+    }
 
     state->timestamp = read_double_be(buf, pos);
 
@@ -3511,7 +3601,10 @@ static size_t serialize_dynamics_weights(uint8_t* buf, size_t pos, const omni_wm
  */
 static omni_wm_dynamics_t* deserialize_dynamics_from_buf(const uint8_t* buf, size_t* pos) {
     uint8_t present = read_u8(buf, pos);
-    if (!present) return NULL;
+    if (!present) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_dynamics_from_buf: present is NULL");
+        return NULL;
+    }
 
     uint32_t h_dim = read_u32(buf, pos);
     uint32_t z_dim = read_u32(buf, pos);
@@ -3519,7 +3612,10 @@ static omni_wm_dynamics_t* deserialize_dynamics_from_buf(const uint8_t* buf, siz
     uint32_t action_dim = read_u32(buf, pos);
 
     omni_wm_dynamics_t* dyn = dynamics_create(h_dim, z_dim, obs_dim, action_dim);
-    if (!dyn) return NULL;
+    if (!dyn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_dynamics_from_buf: dyn is NULL");
+        return NULL;
+    }
 
     uint32_t input_dim = h_dim + z_dim + action_dim;
 
@@ -3707,7 +3803,10 @@ size_t omni_wm_serialize(const omni_world_model_t* wm,
 
 omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
                                          size_t buffer_size) {
-    if (!buffer || buffer_size < 10) return NULL;
+    if (!buffer || buffer_size < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_wm_stats: buffer is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     omni_world_model_heartbeat("omni_world_m_omni_wm_deserialize", 0.0f);
@@ -3717,11 +3816,17 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
 
     /* Verify magic */
     uint32_t magic = read_u32(buffer, &pos);
-    if (magic != OMNI_WM_SERIAL_MAGIC) return NULL;
+    if (magic != OMNI_WM_SERIAL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_wm_stats: validation failed");
+        return NULL;
+    }
 
     /* Verify version */
     uint8_t version = read_u8(buffer, &pos);
-    if (version > OMNI_WM_SERIAL_VERSION) return NULL;
+    if (version > OMNI_WM_SERIAL_VERSION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_wm_stats: validation failed");
+        return NULL;
+    }
 
     /* Read flags */
     uint8_t flags = read_u8(buffer, &pos);
@@ -3732,7 +3837,10 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
 
     /* Create world model with config */
     omni_world_model_t* wm = omni_wm_create(&config);
-    if (!wm) return NULL;
+    if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_wm_stats: wm is NULL");
+        return NULL;
+    }
 
     /* Read current state */
     omni_wm_state_t* state = deserialize_state_from_buf(buffer, &pos);
@@ -3841,6 +3949,7 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
         uint32_t computed_checksum = crc32_compute(buffer, pos - 4);
         if (stored_checksum != computed_checksum) {
             omni_wm_destroy(wm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
             return NULL;
         }
     }
@@ -3891,7 +4000,10 @@ nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
 }
 
 omni_world_model_t* omni_wm_load(const char* filepath) {
-    if (!filepath) return NULL;
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_load: filepath is NULL");
+        return NULL;
+    }
 
     /* Open file */
     /* Phase 8: Heartbeat at operation start */
@@ -3899,7 +4011,10 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
 
 
     FILE* fp = fopen(filepath, "rb");
-    if (!fp) return NULL;
+    if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_load: fp is NULL");
+        return NULL;
+    }
 
     /* Get file size */
     fseek(fp, 0, SEEK_END);
@@ -3908,6 +4023,7 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
 
     if (file_size <= 0) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wm_load: validation failed");
         return NULL;
     }
 
@@ -3915,6 +4031,7 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
     uint8_t* buffer = nimcp_malloc((size_t)file_size);
     if (!buffer) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_load: buffer is NULL");
         return NULL;
     }
 
@@ -3924,6 +4041,7 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
 
     if (bytes_read != (size_t)file_size) {
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "omni_wm_load: validation failed");
         return NULL;
     }
 
@@ -3943,7 +4061,10 @@ omni_world_model_t* omni_wm_load(const char* filepath) {
  */
 static omni_wm_checkpoint_store_t* checkpoint_store_create(void) {
     omni_wm_checkpoint_store_t* store = nimcp_calloc(1, sizeof(omni_wm_checkpoint_store_t));
-    if (!store) return NULL;
+    if (!store) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_store_create: store is NULL");
+        return NULL;
+    }
     store->next_id = 1;
     return store;
 }

@@ -211,6 +211,7 @@ sliding_window_t* sliding_window_create(
     if (!window->temp_buffer_pool) {
         circular_buffer_destroy(window->buffer);
         nimcp_free(window);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sliding_window_create: window->temp_buffer_pool is NULL");
         return NULL;
     }
 
@@ -237,7 +238,10 @@ void sliding_window_destroy(sliding_window_t* window) {
 
 bool sliding_window_add(sliding_window_t* window, float value) {
     // Guard: validate input
-    if (!window) return false;
+    if (!window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sliding_window_add: window is NULL");
+        return false;
+    }
 
     // If window is full, remove oldest sample
     float old_value = 0.0F;
@@ -250,6 +254,7 @@ bool sliding_window_add(sliding_window_t* window, float value) {
 
     // Add new sample
     if (!circular_buffer_push(window->buffer, &value)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sliding_window_add: circular_buffer_push is NULL");
         return false;
     }
 
@@ -287,7 +292,10 @@ bool sliding_window_get_stats(
     window_stats_t* stats
 ) {
     // Guard: validate inputs
-    if (!window || !stats) return false;
+    if (!window || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sliding_window_get_stats: required parameter is NULL (window, stats)");
+        return false;
+    }
 
     // Copy statistics
     memcpy(stats, &window->stats, sizeof(window_stats_t));
@@ -378,7 +386,10 @@ size_t sliding_window_count(const sliding_window_t* window) {
 
 bool sliding_window_is_full(const sliding_window_t* window) {
     // Guard: validate input
-    if (!window) return false;
+    if (!window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sliding_window_is_full: window is NULL");
+        return false;
+    }
     return window->stats.count >= window->window_size;
 }
 

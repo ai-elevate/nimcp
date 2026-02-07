@@ -427,7 +427,10 @@ NIMCP_EXPORT metamemory_config_t metamemory_config_default(void) {
 }
 
 NIMCP_EXPORT bool metamemory_config_validate(const metamemory_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_config_validate: config is NULL");
+        return false;
+    }
 
     // Validate thresholds in [0, 1]
     if (config->fok_familiarity_threshold < 0.0f ||
@@ -442,12 +445,24 @@ NIMCP_EXPORT bool metamemory_config_validate(const metamemory_config_t* config) 
         config->related_threshold > 1.0f) return false;
 
     // Validate sizes
-    if (config->history_size == 0) return false;
-    if (config->tot_min_related == 0) return false;
+    if (config->history_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: config->history_size is zero");
+        return false;
+    }
+    if (config->tot_min_related == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: config->tot_min_related is zero");
+        return false;
+    }
 
     // Validate weights
-    if (config->jol_encoding_weight < 0.0f) return false;
-    if (config->jol_accessibility_weight < 0.0f) return false;
+    if (config->jol_encoding_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: validation failed");
+        return false;
+    }
+    if (config->jol_accessibility_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -480,6 +495,7 @@ NIMCP_EXPORT metamemory_t metamemory_create(
     metamemory_config_t cfg = config ? *config : metamemory_config_default();
     if (!metamemory_config_validate(&cfg)) {
         set_error("invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metamemory_create: metamemory_config_validate is NULL");
         return NULL;
     }
 
@@ -508,6 +524,7 @@ NIMCP_EXPORT metamemory_t metamemory_create(
     if (!meta->confidence_history) {
         set_error("memory allocation failed for history buffer");
         nimcp_free(meta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metamemory_create: meta->confidence_history is NULL");
         return NULL;
     }
     meta->history_capacity = cfg.history_size;
@@ -566,6 +583,7 @@ NIMCP_EXPORT bool metamemory_evaluate_query(
 ) {
     if (!meta || !query_signature || !state) {
         set_error("NULL parameter in evaluate_query");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_evaluate_query: required parameter is NULL (meta, query_signature, state)");
         return false;
     }
 
@@ -586,6 +604,7 @@ NIMCP_EXPORT bool metamemory_evaluate_query(
     entangle_stats_t graph_stats;
     if (!entangle_get_stats(meta->entanglement, &graph_stats)) {
         set_error("failed to get graph statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_evaluate_query: entangle_get_stats is NULL");
         return false;
     }
 
@@ -707,6 +726,7 @@ NIMCP_EXPORT bool metamemory_check_familiarity(
 ) {
     if (!meta || !query_signature || !familiarity_out) {
         set_error("NULL parameter in check_familiarity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_check_familiarity: required parameter is NULL (meta, query_signature, familiarity_out)");
         return false;
     }
 
@@ -730,6 +750,7 @@ NIMCP_EXPORT bool metamemory_compute_fok(
 ) {
     if (!meta || !query_signature || !fok_strength) {
         set_error("NULL parameter in compute_fok");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_compute_fok: required parameter is NULL (meta, query_signature, fok_strength)");
         return false;
     }
 
@@ -745,6 +766,7 @@ NIMCP_EXPORT bool metamemory_compute_fok(
     }
 
     *fok_strength = 0.0f;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_compute_fok: operation failed");
     return false;
 }
 
@@ -757,6 +779,7 @@ NIMCP_EXPORT bool metamemory_get_fok_contributors(
 ) {
     if (!meta || !query_signature || !memories || !count) {
         set_error("NULL parameter in get_fok_contributors");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_get_fok_contributors: required parameter is NULL (meta, query_signature, memories, count)");
         return false;
     }
 
@@ -777,6 +800,7 @@ NIMCP_EXPORT bool metamemory_detect_tot(
 ) {
     if (!meta || !query_signature || !partial_info) {
         set_error("NULL parameter in detect_tot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_detect_tot: required parameter is NULL (meta, query_signature, partial_info)");
         return false;
     }
 
@@ -790,6 +814,7 @@ NIMCP_EXPORT bool metamemory_detect_tot(
     // TOT requires moderate familiarity (not too high, not too low)
     if (familiarity < meta->config.tot_partial_match_threshold ||
         familiarity > 0.9f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_detect_tot: operation failed");
         return false;
     }
 
@@ -837,6 +862,7 @@ NIMCP_EXPORT bool metamemory_search_related(
 ) {
     if (!meta || !query_signature || !related || !count) {
         set_error("NULL parameter in search_related");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_search_related: required parameter is NULL (meta, query_signature, related, count)");
         return false;
     }
 
@@ -868,6 +894,7 @@ NIMCP_EXPORT bool metamemory_resolve_tot(
 ) {
     if (!meta || !query_signature || !candidates || !count) {
         set_error("NULL parameter in resolve_tot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_resolve_tot: required parameter is NULL (meta, query_signature, candidates, count)");
         return false;
     }
 
@@ -913,11 +940,13 @@ NIMCP_EXPORT bool metamemory_judge_learning(
 ) {
     if (!meta || !jol_out) {
         set_error("NULL parameter in judge_learning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_judge_learning: required parameter is NULL (meta, jol_out)");
         return false;
     }
 
     if (prediction_hours < 0) {
         set_error("prediction_hours must be non-negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metamemory_judge_learning: validation failed");
         return false;
     }
 
@@ -1062,6 +1091,7 @@ NIMCP_EXPORT bool metamemory_get_calibration_curve(
 ) {
     if (!meta || !curve_out) {
         set_error("NULL parameter in get_calibration_curve");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_get_calibration_curve: required parameter is NULL (meta, curve_out)");
         return false;
     }
 
@@ -1135,11 +1165,13 @@ NIMCP_EXPORT bool metamemory_get_current_state(
 ) {
     if (!meta || !state) {
         set_error("NULL parameter in get_current_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_get_current_state: required parameter is NULL (meta, state)");
         return false;
     }
 
     if (!meta->has_current_state) {
         set_error("no evaluation performed yet");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_get_current_state: meta->has_current_state is NULL");
         return false;
     }
 
@@ -1161,6 +1193,7 @@ NIMCP_EXPORT bool metamemory_get_stats(
 ) {
     if (!meta || !stats) {
         set_error("NULL parameter in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metamemory_get_stats: required parameter is NULL (meta, stats)");
         return false;
     }
 

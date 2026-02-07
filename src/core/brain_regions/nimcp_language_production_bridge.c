@@ -13,7 +13,10 @@
 #define LOG_MODULE "language_bridge"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(language_production_bridge)
+// Use weak attribute to avoid duplicate symbol with broca version
+static struct nimcp_health_agent* g_language_production_bridge_health_agent = NULL;
+static inline void language_production_bridge_heartbeat(const char* op, float progress) { (void)op; (void)progress; }
+__attribute__((weak)) void language_production_bridge_set_health_agent(struct nimcp_health_agent* agent) { g_language_production_bridge_health_agent = agent; }
 
 #include "core/brain_regions/nimcp_language_production_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
@@ -387,6 +390,7 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
     language_production_bridge_t* bridge = nimcp_calloc(1, sizeof(language_production_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate language production bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -398,6 +402,7 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
     if (!bridge->message_queue) {
         LOG_ERROR("Failed to allocate message queue");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_create: bridge->message_queue is NULL");
         return NULL;
     }
 
@@ -408,6 +413,7 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
         LOG_ERROR("Failed to allocate semantic workspace");
         nimcp_free(bridge->message_queue);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_create: bridge->semantic_workspace is NULL");
         return NULL;
     }
 
@@ -417,6 +423,7 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
         nimcp_free(bridge->semantic_workspace);
         nimcp_free(bridge->message_queue);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bridge_create: validation failed");
         return NULL;
     }
 
@@ -426,6 +433,7 @@ language_production_bridge_t* language_bridge_create(const language_bridge_confi
         nimcp_free(bridge->semantic_workspace);
         nimcp_free(bridge->message_queue);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_bridge_create: validation failed");
         return NULL;
     }
 
@@ -527,6 +535,7 @@ language_message_t* language_message_create(const char* semantic_content,
                                              uint32_t semantic_size,
                                              uint32_t encoding_size) {
     if (!semantic_content || semantic_size == 0 || encoding_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_destroy: semantic_content is NULL");
         return NULL;
     }
 
@@ -541,6 +550,7 @@ language_message_t* language_message_create(const char* semantic_content,
     message->semantic_content = nimcp_malloc(semantic_size + 1);
     if (!message->semantic_content) {
         nimcp_free(message);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_destroy: message->semantic_content is NULL");
         return NULL;
     }
     memcpy(message->semantic_content, semantic_content, semantic_size);
@@ -552,6 +562,7 @@ language_message_t* language_message_create(const char* semantic_content,
     if (!message->neural_encoding) {
         nimcp_free(message->semantic_content);
         nimcp_free(message);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_bridge_destroy: message->neural_encoding is NULL");
         return NULL;
     }
     message->encoding_size = encoding_size;

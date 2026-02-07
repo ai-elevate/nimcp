@@ -247,6 +247,7 @@ gpu_health_monitor_t* gpu_health_monitor_create(const gpu_health_config_t* confi
     if (!monitor->callbacks_mutex || !monitor->checkpoints_mutex || !monitor->state_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create GPU health monitor mutexes");
         gpu_health_monitor_destroy(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_health_monitor_create: required parameter is NULL (monitor->callbacks_mutex, monitor->checkpoints_mutex, monitor->state_mutex)");
         return NULL;
     }
 
@@ -333,7 +334,10 @@ void gpu_health_monitor_destroy(gpu_health_monitor_t* monitor) {
 }
 
 int gpu_health_monitor_start(gpu_health_monitor_t* monitor) {
-    if (!validate_monitor(monitor)) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_monitor_start: validate_monitor is NULL");
+        return -1;
+    }
 
     if (atomic_load(&monitor->running)) {
         nimcp_log(LOG_LEVEL_WARN, "GPU health monitor already running");
@@ -361,6 +365,7 @@ int gpu_health_monitor_start(gpu_health_monitor_t* monitor) {
                                      &thread_attr);
     if (result != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create GPU monitor thread: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_monitor_start: validation failed");
         return -1;
     }
 
@@ -371,7 +376,10 @@ int gpu_health_monitor_start(gpu_health_monitor_t* monitor) {
 }
 
 int gpu_health_monitor_stop(gpu_health_monitor_t* monitor) {
-    if (!validate_monitor(monitor)) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_monitor_stop: validate_monitor is NULL");
+        return -1;
+    }
 
     if (!atomic_load(&monitor->running)) {
         return 0;
@@ -391,7 +399,10 @@ int gpu_health_monitor_stop(gpu_health_monitor_t* monitor) {
 }
 
 bool gpu_health_monitor_is_running(const gpu_health_monitor_t* monitor) {
-    if (!validate_monitor(monitor)) return false;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_monitor_is_running: validate_monitor is NULL");
+        return false;
+    }
     return atomic_load((volatile _Atomic bool*)&monitor->running);
 }
 
@@ -437,6 +448,7 @@ static void* gpu_monitor_thread_func(void* arg) {
         nimcp_platform_sleep_ms(monitor->config.poll_interval_ms);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_monitor_thread_func: operation failed");
     return NULL;
 }
 
@@ -654,8 +666,14 @@ int gpu_health_get_metrics(
     int device_id,
     gpu_health_metrics_t* metrics
 ) {
-    if (!validate_monitor(monitor) || !metrics) return -1;
-    if (device_id < 0 || device_id >= monitor->num_devices) return -1;
+    if (!validate_monitor(monitor) || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_health_get_metrics: required parameter is NULL (validate_monitor, metrics)");
+        return -1;
+    }
+    if (device_id < 0 || device_id >= monitor->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_get_metrics: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(monitor->state_mutex);
     *metrics = monitor->devices[device_id].current_metrics;
@@ -669,7 +687,10 @@ int gpu_health_get_all_metrics(
     gpu_health_metrics_t* metrics_array,
     int* num_devices
 ) {
-    if (!validate_monitor(monitor) || !metrics_array || !num_devices) return -1;
+    if (!validate_monitor(monitor) || !metrics_array || !num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_health_get_all_metrics: required parameter is NULL (validate_monitor, metrics_array, num_devices)");
+        return -1;
+    }
 
     int count = (*num_devices < monitor->num_devices) ? *num_devices : monitor->num_devices;
 
@@ -773,7 +794,10 @@ float gpu_health_predict_failure_probability(
 }
 
 int gpu_health_get_device_count(gpu_health_monitor_t* monitor) {
-    if (!validate_monitor(monitor)) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_health_get_device_count: validate_monitor is NULL");
+        return -1;
+    }
     return monitor->num_devices;
 }
 
@@ -786,7 +810,10 @@ int gpu_error_register_callback(
     gpu_error_callback_t callback,
     void* user_data
 ) {
-    if (!validate_monitor(monitor) || !callback) return -1;
+    if (!validate_monitor(monitor) || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_error_register_callback: required parameter is NULL (validate_monitor, callback)");
+        return -1;
+    }
 
     int callback_id = -1;
 
@@ -809,8 +836,14 @@ int gpu_error_unregister_callback(
     gpu_health_monitor_t* monitor,
     int callback_id
 ) {
-    if (!validate_monitor(monitor)) return -1;
-    if (callback_id < 0 || callback_id >= MAX_ERROR_CALLBACKS) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_error_unregister_callback: validate_monitor is NULL");
+        return -1;
+    }
+    if (callback_id < 0 || callback_id >= MAX_ERROR_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_error_unregister_callback: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(monitor->callbacks_mutex);
     monitor->error_callbacks[callback_id].active = false;
@@ -826,8 +859,14 @@ int gpu_error_check_async(
     int device_id,
     gpu_error_event_t* error
 ) {
-    if (!validate_monitor(monitor) || !error) return -1;
-    if (device_id < 0 || device_id >= monitor->num_devices) return -1;
+    if (!validate_monitor(monitor) || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_error_check_async: required parameter is NULL (validate_monitor, error)");
+        return -1;
+    }
+    if (device_id < 0 || device_id >= monitor->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_error_check_async: capacity exceeded");
+        return -1;
+    }
 
     memset(error, 0, sizeof(*error));
 
@@ -908,9 +947,18 @@ int gpu_tensor_validate(
     uint32_t* nan_count,
     uint32_t* inf_count
 ) {
-    if (!validate_monitor(monitor)) return -1;
-    if (!device_ptr || num_elements == 0) return -1;
-    if (!nan_count || !inf_count) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_validate: validate_monitor is NULL");
+        return -1;
+    }
+    if (!device_ptr || num_elements == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_validate: device_ptr is NULL");
+        return -1;
+    }
+    if (!nan_count || !inf_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_tensor_validate: required parameter is NULL (nan_count, inf_count)");
+        return -1;
+    }
 
     *nan_count = 0;
     *inf_count = 0;
@@ -931,6 +979,7 @@ int gpu_tensor_validate(
                                   cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
         nimcp_free(host_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_validate: validation failed");
         return -1;
     }
 
@@ -953,6 +1002,7 @@ int gpu_tensor_validate(
     return 0;
 #else
     /* No CUDA - can't validate GPU tensors */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_validate: validation failed");
     return -1;
 #endif
 }
@@ -965,8 +1015,14 @@ int gpu_tensor_sanitize(
     float nan_replacement,
     float inf_replacement
 ) {
-    if (!validate_monitor(monitor)) return -1;
-    if (!device_ptr || num_elements == 0) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_sanitize: validate_monitor is NULL");
+        return -1;
+    }
+    if (!device_ptr || num_elements == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_sanitize: device_ptr is NULL");
+        return -1;
+    }
 
     int replaced = 0;
 
@@ -986,6 +1042,7 @@ int gpu_tensor_sanitize(
                                   cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
         nimcp_free(host_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_sanitize: validation failed");
         return -1;
     }
 
@@ -1021,6 +1078,7 @@ int gpu_tensor_sanitize(
                         cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             nimcp_free(host_buffer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_sanitize: validation failed");
             return -1;
         }
     }
@@ -1028,6 +1086,7 @@ int gpu_tensor_sanitize(
     nimcp_free(host_buffer);
     return replaced;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_tensor_sanitize: validation failed");
     return -1;
 #endif
 }
@@ -1079,7 +1138,10 @@ int gpu_immune_get_response(
     const gpu_error_event_t* error,
     gpu_immune_response_t* response
 ) {
-    if (!validate_monitor(monitor) || !error || !response) return -1;
+    if (!validate_monitor(monitor) || !error || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_immune_get_response: required parameter is NULL (validate_monitor, error, response)");
+        return -1;
+    }
 
     memset(response, 0, sizeof(*response));
     response->antigen_type = gpu_error_to_antigen(error->type);
@@ -1161,8 +1223,14 @@ int gpu_immune_execute_recovery(
     int device_id,
     gpu_recovery_action_t action
 ) {
-    if (!validate_monitor(monitor)) return -1;
-    if (device_id < 0 || device_id >= monitor->num_devices) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_immune_execute_recovery: validate_monitor is NULL");
+        return -1;
+    }
+    if (device_id < 0 || device_id >= monitor->num_devices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_immune_execute_recovery: capacity exceeded");
+        return -1;
+    }
 
     gpu_device_state_t* device = &monitor->devices[device_id];
 
@@ -1222,6 +1290,7 @@ int gpu_immune_execute_recovery(
                 }
             }
             nimcp_log(LOG_LEVEL_WARN, "Recovery: No healthy GPU available for migration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_immune_execute_recovery: operation failed");
             return -1;
 
         case GPU_RECOVERY_FALLBACK_CPU:
@@ -1234,6 +1303,7 @@ int gpu_immune_execute_recovery(
             return 0;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_immune_execute_recovery: operation failed");
             return -1;
     }
 
@@ -1310,6 +1380,7 @@ gpu_memory_pool_t* gpu_memory_pool_create(
     if (!pool->pool_mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to create GPU memory pool mutex");
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_memory_pool_create: pool->pool_mutex is NULL");
         return NULL;
     }
 
@@ -1339,7 +1410,10 @@ void gpu_memory_pool_destroy(gpu_memory_pool_t* pool) {
 }
 
 void* gpu_memory_pool_alloc(gpu_memory_pool_t* pool, size_t size) {
-    if (!validate_pool(pool) || size == 0) return NULL;
+    if (!validate_pool(pool) || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_memory_pool_alloc: validate_pool is NULL");
+        return NULL;
+    }
 
     void* ptr = NULL;
 
@@ -1350,6 +1424,7 @@ void* gpu_memory_pool_alloc(gpu_memory_pool_t* pool, size_t size) {
         nimcp_log(LOG_LEVEL_WARN, "GPU memory allocation failed: %s",
                   cudaGetErrorString(err));
         pool->stats.alloc_failures++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_memory_pool_alloc: validation failed");
         return NULL;
     }
 #else
@@ -1394,7 +1469,10 @@ void gpu_memory_pool_free(gpu_memory_pool_t* pool, void* ptr) {
 }
 
 int gpu_memory_pool_get_stats(gpu_memory_pool_t* pool, gpu_memory_pool_stats_t* stats) {
-    if (!validate_pool(pool) || !stats) return -1;
+    if (!validate_pool(pool) || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_memory_pool_get_stats: required parameter is NULL (validate_pool, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(pool->pool_mutex);
     *stats = pool->stats;
@@ -1404,7 +1482,10 @@ int gpu_memory_pool_get_stats(gpu_memory_pool_t* pool, gpu_memory_pool_stats_t* 
 }
 
 int gpu_memory_pool_defrag(gpu_memory_pool_t* pool) {
-    if (!validate_pool(pool)) return -1;
+    if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_memory_pool_defrag: validate_pool is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pool->pool_mutex);
     pool->stats.defrag_count++;
@@ -1417,7 +1498,10 @@ int gpu_memory_pool_defrag(gpu_memory_pool_t* pool) {
 }
 
 int gpu_memory_pool_clear(gpu_memory_pool_t* pool) {
-    if (!validate_pool(pool)) return -1;
+    if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gpu_memory_pool_clear: validate_pool is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pool->pool_mutex);
     pool->allocated_size = 0;
@@ -1444,8 +1528,14 @@ int gpu_checkpoint_create(
     size_t num_tensors,
     uint64_t* checkpoint_id
 ) {
-    if (!validate_monitor(monitor) || !tensors || !sizes || !checkpoint_id) return -1;
-    if (num_tensors == 0) return -1;
+    if (!validate_monitor(monitor) || !tensors || !sizes || !checkpoint_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_create: required parameter is NULL (validate_monitor, tensors, sizes, checkpoint_id)");
+        return -1;
+    }
+    if (num_tensors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_checkpoint_create: num_tensors is zero");
+        return -1;
+    }
 
     /* Find free checkpoint slot */
     nimcp_mutex_lock(monitor->checkpoints_mutex);
@@ -1461,6 +1551,7 @@ int gpu_checkpoint_create(
     if (slot < 0) {
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
         nimcp_log(LOG_LEVEL_WARN, "No free checkpoint slots available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_checkpoint_create: validation failed");
         return -1;
     }
 
@@ -1478,6 +1569,7 @@ int gpu_checkpoint_create(
         nimcp_free(cp->host_copies);
         nimcp_free(cp->sizes);
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_create: required parameter is NULL (cp->host_copies, cp->sizes)");
         return -1;
     }
 
@@ -1512,6 +1604,7 @@ int gpu_checkpoint_create(
         nimcp_free(cp->host_copies);
         nimcp_free(cp->sizes);
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_create: success is NULL");
         return -1;
     }
 
@@ -1531,7 +1624,10 @@ int gpu_checkpoint_restore(
     uint64_t checkpoint_id,
     void** tensors
 ) {
-    if (!validate_monitor(monitor) || !tensors) return -1;
+    if (!validate_monitor(monitor) || !tensors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_restore: required parameter is NULL (validate_monitor, tensors)");
+        return -1;
+    }
 
     nimcp_mutex_lock(monitor->checkpoints_mutex);
 
@@ -1548,6 +1644,7 @@ int gpu_checkpoint_restore(
     if (!cp) {
         nimcp_mutex_unlock(monitor->checkpoints_mutex);
         nimcp_log(LOG_LEVEL_WARN, "Checkpoint %lu not found", checkpoint_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_restore: cp is NULL");
         return -1;
     }
 
@@ -1570,6 +1667,7 @@ int gpu_checkpoint_restore(
 
     if (!success) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to restore checkpoint %lu", checkpoint_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_checkpoint_restore: success is NULL");
         return -1;
     }
 
@@ -1581,7 +1679,10 @@ int gpu_checkpoint_delete(
     gpu_health_monitor_t* monitor,
     uint64_t checkpoint_id
 ) {
-    if (!validate_monitor(monitor)) return -1;
+    if (!validate_monitor(monitor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_checkpoint_delete: validate_monitor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(monitor->checkpoints_mutex);
 
@@ -1608,5 +1709,6 @@ int gpu_checkpoint_delete(
     }
 
     nimcp_mutex_unlock(monitor->checkpoints_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gpu_checkpoint_delete: operation failed");
     return -1;
 }

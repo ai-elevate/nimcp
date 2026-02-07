@@ -606,14 +606,17 @@ bool emotional_tag_is_valid(const emotional_tag_t* tag)
 
 
     if (tag->valence < -1.0f || tag->valence > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
 
     if (tag->arousal < 0.0f || tag->arousal > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
 
     if (tag->intensity < 0.0f || tag->intensity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotional_tag_is_valid: validation failed");
         return false;
     }
 
@@ -795,19 +798,28 @@ void emotional_tagging_set_instance_health_agent(nimcp_health_agent_t* agent) {
 }
 
 int emotional_tagging_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_training_begin: ctx is NULL");
+        return -1;
+    }
     emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_begin", 0.0f);
     return 0;
 }
 
 int emotional_tagging_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_training_end: ctx is NULL");
+        return -1;
+    }
     emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_end", 1.0f);
     return 0;
 }
 
 int emotional_tagging_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotional_tagging_training_step: ctx is NULL");
+        return -1;
+    }
     emotional_tagging_heartbeat_instance(g_emotional_tagging_instance_health_agent, "etag_training_step", progress);
     return 0;
 }

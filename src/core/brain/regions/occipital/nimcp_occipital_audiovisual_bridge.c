@@ -866,7 +866,10 @@ int occipital_av_predict_audio_timing(
 
 
     }
-    if (!bridge->config.enable_temporal_prediction) return -1;
+    if (!bridge->config.enable_temporal_prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_av_bridge_apply_effects: bridge->config is NULL");
+        return -1;
+    }
 
     /* Use lip velocity to predict timing */
     float velocity_mag = sqrtf(

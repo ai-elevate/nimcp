@@ -304,6 +304,7 @@ static bool fft_init(pink_noise_generator_t gen) {
     // Guard: NULL generator
     if (!gen) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fft_init: gen is NULL");
         return false;
     }
 
@@ -325,6 +326,7 @@ static bool fft_init(pink_noise_generator_t gen) {
     // Guard: Allocation failed
     if (!gen->fft_buffer) {
         set_error("Failed to allocate FFT buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fft_init: gen->fft_buffer is NULL");
         return false;
     }
 
@@ -441,30 +443,35 @@ bool pink_noise_validate_config(const pink_noise_config_t* config) {
     // Guard: Invalid alpha
     if (config->alpha < 0.0F || config->alpha > 3.0F) {
         set_error("Alpha must be in [0, 3] range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid amplitude
     if (config->amplitude <= 0.0F) {
         set_error("Amplitude must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid frequency range
     if (config->min_frequency <= 0.0F || config->min_frequency >= config->max_frequency) {
         set_error("Frequency range invalid: 0 < min_freq < max_freq");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pink_noise_validate_config: capacity exceeded");
         return false;
     }
 
     // Guard: Nyquist violation
     if (config->sample_rate < 2.0F * config->max_frequency) {
         set_error("Sample rate must be >= 2*max_frequency (Nyquist)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
     // Guard: Invalid method
     if (config->method < PINK_NOISE_FFT || config->method > PINK_NOISE_WHITE) {
         set_error("Invalid noise generation method");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate_config: validation failed");
         return false;
     }
 
@@ -484,6 +491,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: Invalid config
     if (!pink_noise_validate_config(config)) {
         // Error already set by validate
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_create: pink_noise_validate_config is NULL");
         return NULL;
     }
 
@@ -527,6 +535,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
             if (!fft_init(gen)) {
                 // Error already set by fft_init
                 nimcp_free(gen);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pink_noise_create: fft_init is NULL");
                 return NULL;
             }
             break;
@@ -615,6 +624,7 @@ bool pink_noise_generate(pink_noise_generator_t generator, float* samples, uint3
     // Guard: Zero samples requested
     if (num_samples == 0) {
         set_error("Number of samples must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_generate: num_samples is zero");
         return false;
     }
 
@@ -625,6 +635,7 @@ bool pink_noise_generate(pink_noise_generator_t generator, float* samples, uint3
         // Guard: Generation failed
         if (!success) {
             // Error already set by generate_sample
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate: success is NULL");
             return false;
         }
     }
@@ -706,11 +717,13 @@ static bool compute_spectral_slope(
 {
     // Guard: Invalid inputs
     if (!samples || !alpha || !r_squared) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_spectral_slope: required parameter is NULL (samples, alpha, r_squared)");
         return false;
     }
 
     // Guard: Too few samples
     if (num_samples < 64) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_spectral_slope: validation failed");
         return false;
     }
 
@@ -840,6 +853,7 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
     // Guard: Too few samples
     if (num_samples < MIN_SAMPLES_FOR_STATS) {
         set_error("Too few samples for statistics (minimum 64)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_compute_stats: validation failed");
         return false;
     }
 
@@ -901,6 +915,7 @@ bool pink_noise_validate(const float* samples, uint32_t num_samples, float sampl
     // Guard: Invalid tolerance
     if (tolerance <= 0.0F) {
         set_error("Tolerance must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate: validation failed");
         return false;
     }
 
@@ -911,6 +926,7 @@ bool pink_noise_validate(const float* samples, uint32_t num_samples, float sampl
     // Guard: Stats computation failed
     if (!success) {
         // Error already set by compute_stats
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_validate: success is NULL");
         return false;
     }
 
@@ -920,6 +936,7 @@ bool pink_noise_validate(const float* samples, uint32_t num_samples, float sampl
     // Guard: Alpha out of tolerance
     if (alpha_diff > tolerance) {
         set_error("Spectral exponent outside tolerance");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_validate: validation failed");
         return false;
     }
 
@@ -949,6 +966,7 @@ bool pink_noise_modulate(pink_noise_generator_t generator, float base_level, flo
     // Guard: Generation failed
     if (!success) {
         // Error already set by generate_sample
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate: success is NULL");
         return false;
     }
 
@@ -977,6 +995,7 @@ bool pink_noise_modulate_multiplicative(pink_noise_generator_t generator, float 
     // Guard: Invalid modulation strength
     if (modulation_strength < 0.0F || modulation_strength > 1.0F) {
         set_error("Modulation strength must be in [0, 1] range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_modulate_multiplicative: validation failed");
         return false;
     }
 
@@ -987,6 +1006,7 @@ bool pink_noise_modulate_multiplicative(pink_noise_generator_t generator, float 
     // Guard: Generation failed
     if (!success) {
         // Error already set by generate_sample
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate_multiplicative: success is NULL");
         return false;
     }
 
@@ -1017,6 +1037,7 @@ const char* pink_noise_method_name(pink_noise_method_t method) {
 const char* pink_noise_get_last_error(void) {
     // Guard: No error set
     if (last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_get_last_error: validation failed");
         return NULL;
     }
 
@@ -1053,6 +1074,7 @@ bool pink_noise_save(pink_noise_generator_t generator, FILE* file) {
 
     if (written != 1) {
         set_error("Failed to write marker");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_save: validation failed");
         return false;
     }
 
@@ -1078,6 +1100,7 @@ pink_noise_generator_t pink_noise_load(FILE* file) {
 
     if (read_count != 1 || marker != 0x50494E4B) {  // "PINK" in ASCII
         set_error("Failed to read marker or invalid format");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_load: validation failed");
         return NULL;
     }
 

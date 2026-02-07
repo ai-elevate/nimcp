@@ -220,6 +220,7 @@ gt_hemi_bargaining_ctx_t gt_hemi_create(
     ctx->bargaining = nimcp_bargaining_create(&bargain_config);
     if (!ctx->bargaining) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gt_hemi_create: ctx->bargaining is NULL");
         return NULL;
     }
 
@@ -231,6 +232,7 @@ gt_hemi_bargaining_ctx_t gt_hemi_create(
     if (!ctx->credit_ctx) {
         nimcp_bargaining_destroy(ctx->bargaining);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gt_hemi_create: ctx->credit_ctx is NULL");
         return NULL;
     }
 

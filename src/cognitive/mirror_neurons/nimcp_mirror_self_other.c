@@ -167,6 +167,7 @@ static efference_copy_t* find_efference_for_action(
 
         return ec;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_efference_for_action: validation failed");
     return NULL;
 }
 
@@ -235,6 +236,7 @@ self_other_system_t* self_other_create(const self_other_config_t* config) {
     self_other_system_t* system = nimcp_calloc(1, sizeof(self_other_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Self-Other: Failed to allocate system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_other_create: system is NULL");
         return NULL;
     }
 
@@ -274,6 +276,7 @@ self_other_system_t* self_other_create(const self_other_config_t* config) {
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Self-Other: Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_other_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -378,6 +381,7 @@ efference_copy_t* self_other_get_efference(
             return &system->efference_buffer[idx];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_other_get_efference: validation failed");
     return NULL;
 }
 
@@ -935,7 +939,10 @@ void self_other_simd_compare_poses(
 //=============================================================================
 
 bool self_other_register_bio_async(self_other_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_other_register_bio_async: system is NULL");
+        return false;
+    }
 
     /* Bio-async registration would go here */
     /* Phase 8: Heartbeat at operation start */

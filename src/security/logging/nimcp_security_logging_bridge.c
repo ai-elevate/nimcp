@@ -207,11 +207,17 @@ static const security_logging_internal_t* get_internal_const(const security_logg
  * @brief Initialize ring buffer
  */
 static int ring_buffer_init(log_entry_ring_buffer_t* rb, size_t capacity) {
-    if (!rb || capacity == 0) return -1;
+    if (!rb || capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_init: rb is NULL");
+        return -1;
+    }
 
     rb->entries = (security_log_entry_t*)nimcp_malloc(
         sizeof(security_log_entry_t) * capacity);
-    if (!rb->entries) return -1;
+    if (!rb->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ring_buffer_init: rb->entries is NULL");
+        return -1;
+    }
 
     memset(rb->entries, 0, sizeof(security_log_entry_t) * capacity);
     rb->capacity = capacity;
@@ -238,7 +244,10 @@ static void ring_buffer_cleanup(log_entry_ring_buffer_t* rb) {
 static int ring_buffer_push(log_entry_ring_buffer_t* rb,
                             const security_log_entry_t* entry,
                             bool overwrite_on_full) {
-    if (!rb || !entry || !rb->entries) return -1;
+    if (!rb || !entry || !rb->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_buffer_cleanup: required parameter is NULL (rb, entry, rb->entries)");
+        return -1;
+    }
 
     if (rb->count >= rb->capacity) {
         if (!overwrite_on_full) {
@@ -264,7 +273,10 @@ static int ring_buffer_push(log_entry_ring_buffer_t* rb,
  * @brief Get entry at index (0 = oldest)
  */
 static security_log_entry_t* ring_buffer_get(log_entry_ring_buffer_t* rb, size_t index) {
-    if (!rb || !rb->entries || index >= rb->count) return NULL;
+    if (!rb || !rb->entries || index >= rb->count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ring_buffer_get: required parameter is NULL (rb, rb->entries)");
+        return NULL;
+    }
     size_t actual_index = (rb->tail + index) % rb->capacity;
     return &rb->entries[actual_index];
 }
@@ -358,8 +370,8 @@ const char* security_log_format_name(security_log_format_t format) {
 
 security_log_severity_t security_threat_to_severity(nimcp_threat_level_t threat) {
     switch (threat) {
-        case NIMCP_THREAT_NONE:     return SECURITY_LOG_SEV_INFO;
-        case NIMCP_THREAT_LOW:      return SECURITY_LOG_SEV_NOTICE;
+        case NIMCP_THREAT_NONE:     return SECURITY_LOG_SEV_DEBUG;
+        case NIMCP_THREAT_LOW:      return SECURITY_LOG_SEV_INFO;
         case NIMCP_THREAT_MEDIUM:   return SECURITY_LOG_SEV_WARNING;
         case NIMCP_THREAT_HIGH:     return SECURITY_LOG_SEV_ERROR;
         case NIMCP_THREAT_CRITICAL: return SECURITY_LOG_SEV_CRITICAL;
@@ -544,6 +556,7 @@ security_logging_bridge_t* security_logging_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_LOGGING,
                          SECURITY_LOGGING_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_bridge_create: operation failed");
         return NULL;
     }
 
@@ -555,6 +568,7 @@ security_logging_bridge_t* security_logging_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         LOG_MODULE_ERROR(SECURITY_LOGGING_MODULE_NAME, "Failed to allocate ring buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "security_logging_bridge_create: validation failed");
         return NULL;
     }
 
@@ -567,6 +581,7 @@ security_logging_bridge_t* security_logging_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         LOG_MODULE_ERROR(SECURITY_LOGGING_MODULE_NAME, "Failed to allocate pattern storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_logging_bridge_create: internal->detected_patterns is NULL");
         return NULL;
     }
     memset(internal->detected_patterns, 0,
@@ -669,8 +684,8 @@ int security_logging_bridge_reset(security_logging_bridge_t* bridge) {
     bridge->state.last_analysis_time_ns = 0;
     bridge->state.pending_entries = 0;
 
-    /* Reset base */
-    bridge_base_reset(&bridge->base);
+    /* Reset base (already holding BRIDGE_LOCK, use unlocked variant) */
+    bridge_base_reset_unlocked(&bridge->base);
 
     BRIDGE_UNLOCK(bridge);
 
@@ -810,7 +825,10 @@ int security_logging_disconnect_all(security_logging_bridge_t* bridge) {
 }
 
 bool security_logging_is_connected(const security_logging_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_is_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->config.enable_nimcp_logging ||
            bridge->config.enable_encrypted_audit ||
@@ -829,7 +847,10 @@ static int log_entry_internal(
     security_logging_bridge_t* bridge,
     security_log_entry_t* entry
 ) {
-    if (!bridge || !entry) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "log_entry_internal: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
 
     security_logging_internal_t* internal = get_internal(bridge);
     uint64_t start_time = security_log_current_time_ns();
@@ -960,7 +981,10 @@ int security_logging_log_entry(
     security_logging_bridge_t* bridge,
     const security_log_entry_t* entry
 ) {
-    if (!bridge || !entry) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_log_entry: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     BRIDGE_LOCK(bridge);
@@ -981,7 +1005,10 @@ int security_logging_log_threat(
     const char* message,
     security_log_action_t action
 ) {
-    if (!bridge || !message) return -1;
+    if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_log_threat: required parameter is NULL (bridge, message)");
+        return -1;
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     security_log_entry_t entry;
@@ -1273,7 +1300,10 @@ int security_logging_log_audit(
     const char* message,
     const char* details
 ) {
-    if (!bridge || !message) return -1;
+    if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_log_audit: required parameter is NULL (bridge, message)");
+        return -1;
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     security_log_entry_t entry;
@@ -1303,7 +1333,10 @@ int security_logging_register_stream(
     void* user_data,
     uint32_t filter
 ) {
-    if (!bridge || !callback) return -1;
+    if (!bridge || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_register_stream: required parameter is NULL (bridge, callback)");
+        return -1;
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1324,6 +1357,7 @@ int security_logging_register_stream(
     }
 
     BRIDGE_UNLOCK(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_logging_register_stream: operation failed");
     return -1;  /* No free slots */
 }
 
@@ -1560,7 +1594,10 @@ int security_logging_get_patterns(
     size_t max_count,
     size_t* actual_count
 ) {
-    if (!bridge || !patterns || !actual_count) return -1;
+    if (!bridge || !patterns || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_get_patterns: required parameter is NULL (bridge, patterns, actual_count)");
+        return -1;
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
 
@@ -1602,8 +1639,14 @@ int security_logging_feed_pattern_to_detector(
     security_logging_bridge_t* bridge,
     const security_threat_pattern_t* pattern
 ) {
-    if (!bridge || !pattern) return -1;
-    if (!bridge->anomaly_detector) return -1;
+    if (!bridge || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_feed_pattern_to_detector: required parameter is NULL (bridge, pattern)");
+        return -1;
+    }
+    if (!bridge->anomaly_detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_feed_pattern_to_detector: bridge->anomaly_detector is NULL");
+        return -1;
+    }
 
     /* Feed pattern as training sample to anomaly detector */
     /* The pattern signature can be used as a feature for future detection */
@@ -1633,7 +1676,10 @@ int security_logging_query_entries(
     size_t max_count,
     size_t* actual_count
 ) {
-    if (!bridge || !entries || !actual_count) return -1;
+    if (!bridge || !entries || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_query_entries: required parameter is NULL (bridge, entries, actual_count)");
+        return -1;
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
 
@@ -1672,7 +1718,10 @@ int security_logging_get_recent(
     security_log_entry_t* entries,
     size_t* actual_count
 ) {
-    if (!bridge || !entries || !actual_count) return -1;
+    if (!bridge || !entries || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_get_recent: required parameter is NULL (bridge, entries, actual_count)");
+        return -1;
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
 
@@ -1704,7 +1753,10 @@ int security_logging_search(
     size_t max_count,
     size_t* actual_count
 ) {
-    if (!bridge || !search_term || !entries || !actual_count) return -1;
+    if (!bridge || !search_term || !entries || !actual_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_search: required parameter is NULL (bridge, search_term, entries, actual_count)");
+        return -1;
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
 
@@ -1780,7 +1832,10 @@ int security_logging_export_to_file(
     uint64_t start_time,
     uint64_t end_time
 ) {
-    if (!bridge || !file_path) return -1;
+    if (!bridge || !file_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_export_to_file: required parameter is NULL (bridge, file_path)");
+        return -1;
+    }
 
     FILE* fp = fopen(file_path, "w");
     if (!fp) {
@@ -1849,7 +1904,10 @@ int security_logging_entry_to_json(
     char* buffer,
     size_t buffer_size
 ) {
-    if (!entry || !buffer || buffer_size == 0) return -1;
+    if (!entry || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_entry_to_json: required parameter is NULL (entry, buffer)");
+        return -1;
+    }
 
     int written = snprintf(buffer, buffer_size,
         "{"
@@ -1956,7 +2014,10 @@ int security_logging_get_stats(
     const security_logging_bridge_t* bridge,
     security_logging_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
     *stats = bridge->stats;
@@ -2108,7 +2169,10 @@ int security_logging_disconnect_bio_async(security_logging_bridge_t* bridge) {
 }
 
 bool security_logging_is_bio_async_connected(const security_logging_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge_base_is_bio_async_connected(&bridge->base);
 }
 
@@ -2130,8 +2194,14 @@ int security_logging_broadcast_event(
     security_logging_bridge_t* bridge,
     const security_log_entry_t* entry
 ) {
-    if (!bridge || !entry) return -1;
-    if (!bridge->base.bio_async_enabled) return -1;
+    if (!bridge || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_broadcast_event: required parameter is NULL (bridge, entry)");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_logging_broadcast_event: bridge->base is NULL");
+        return -1;
+    }
 
     /* Broadcast high-severity events via bio-async */
     if (entry->severity >= SECURITY_LOG_SEV_ERROR) {

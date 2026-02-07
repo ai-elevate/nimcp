@@ -388,6 +388,7 @@ const char* financial_bg_bridge_version(void) {
 
 fin_bg_action_value_t* financial_bg_alloc_actions(uint32_t num_actions) {
     if (num_actions == 0 || num_actions > FIN_BG_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "financial_bg_alloc_actions: num_actions is zero");
         return NULL;
     }
     fin_bg_action_value_t* actions = (fin_bg_action_value_t*)

@@ -625,7 +625,10 @@ int electrical_eng_set_fatigue(electrical_eng_t* ee, float level) {
  * ============================================================================ */
 
 int electrical_eng_get_stats(const electrical_eng_t* ee, ee_stats_t* stats) {
-    if (!ee || !stats) return -1;
+    if (!ee || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "electrical_eng_get_stats: required parameter is NULL (ee, stats)");
+        return -1;
+    }
     *stats = ee->stats;
     /* Phase 8: Heartbeat at operation start */
     electrical_engineering_heartbeat("electrical_e_electrical_eng_get_s", 0.0f);

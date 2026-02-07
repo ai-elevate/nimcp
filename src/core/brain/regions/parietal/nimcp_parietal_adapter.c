@@ -298,6 +298,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     parietal_adapter_t* adapter = (parietal_adapter_t*)nimcp_calloc(1, sizeof(parietal_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", PARIETAL_CORTEX_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter is NULL");
         return NULL;
     }
 
@@ -316,6 +317,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->somatosensory) {
         LOG_ERROR("[%s] Failed to create somatosensory processor", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->somatosensory is NULL");
         return NULL;
     }
 
@@ -331,6 +333,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->somatosensory->somatotopic_map || !adapter->somatosensory->input_buffer) {
         LOG_ERROR("[%s] Failed to allocate somatosensory buffers", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: required parameter is NULL (adapter->somatosensory->somatotopic_map, adapter->somatosensory->input_buffer)");
         return NULL;
     }
 
@@ -340,6 +343,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->spatial_attention) {
         LOG_ERROR("[%s] Failed to create spatial attention processor", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->spatial_attention is NULL");
         return NULL;
     }
 
@@ -353,6 +357,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->spatial_attention->targets) {
         LOG_ERROR("[%s] Failed to allocate spatial target buffer", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->spatial_attention->targets is NULL");
         return NULL;
     }
 
@@ -369,6 +374,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->sensorimotor) {
         LOG_ERROR("[%s] Failed to create sensorimotor integrator", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->sensorimotor is NULL");
         return NULL;
     }
 
@@ -381,6 +387,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->sensorimotor->plan_queue) {
         LOG_ERROR("[%s] Failed to allocate motor plan buffer", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->sensorimotor->plan_queue is NULL");
         return NULL;
     }
 
@@ -399,6 +406,7 @@ parietal_adapter_t* parietal_cortex_adapter_create(const parietal_cortex_config_
     if (!adapter->motor_plan_pool) {
         LOG_ERROR("[%s] Failed to create motor plan memory pool", PARIETAL_CORTEX_LOG_MODULE);
         parietal_cortex_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_adapter_create: adapter->motor_plan_pool is NULL");
         return NULL;
     }
 
@@ -482,7 +490,10 @@ void parietal_cortex_adapter_destroy(parietal_adapter_t* adapter) {
 }
 
 bool parietal_cortex_adapter_reset(parietal_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_adapter_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", PARIETAL_CORTEX_LOG_MODULE);
 
@@ -529,6 +540,7 @@ bool parietal_cortex_add_somatosensory_input(parietal_adapter_t* adapter,
                                               const parietal_cortex_somatosensory_input_t* input) {
     if (!adapter || !input) {
         if (adapter) set_error(adapter, PARIETAL_CORTEX_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_cortex_adapter_reset: validation failed");
         return false;
     }
 
@@ -537,6 +549,7 @@ bool parietal_cortex_add_somatosensory_input(parietal_adapter_t* adapter,
     /* Add to input buffer */
     if (soma->input_count >= soma->input_capacity) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_cortex_adapter_reset: capacity exceeded");
         return false;
     }
 
@@ -586,8 +599,14 @@ float parietal_cortex_get_body_region_activation(const parietal_adapter_t* adapt
 bool parietal_cortex_two_point_discrimination(const parietal_adapter_t* adapter,
                                                uint32_t region_id,
                                                float separation_mm) {
-    if (!adapter || !adapter->somatosensory) return false;
-    if (!adapter->somatosensory->enable_two_point_disc) return false;
+    if (!adapter || !adapter->somatosensory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_adapter_reset: required parameter is NULL (adapter, adapter->somatosensory)");
+        return false;
+    }
+    if (!adapter->somatosensory->enable_two_point_disc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_adapter_reset: adapter->somatosensory->enable_two_point_disc is NULL");
+        return false;
+    }
 
     /* Find region and check if separation exceeds minimum */
     for (uint32_t i = 0; i < adapter->somatosensory->map_count; i++) {
@@ -599,6 +618,7 @@ bool parietal_cortex_two_point_discrimination(const parietal_adapter_t* adapter,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_cortex_adapter_reset: validation failed");
     return false;
 }
 
@@ -610,6 +630,7 @@ bool parietal_cortex_add_spatial_target(parietal_adapter_t* adapter,
                                          const parietal_cortex_spatial_target_t* target) {
     if (!adapter || !target) {
         if (adapter) set_error(adapter, PARIETAL_CORTEX_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_cortex_adapter_reset: validation failed");
         return false;
     }
 
@@ -617,6 +638,7 @@ bool parietal_cortex_add_spatial_target(parietal_adapter_t* adapter,
 
     if (spatial->target_count >= spatial->target_capacity) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_cortex_adapter_reset: capacity exceeded");
         return false;
     }
 
@@ -629,7 +651,10 @@ bool parietal_cortex_add_spatial_target(parietal_adapter_t* adapter,
 bool parietal_cortex_update_target_position(parietal_adapter_t* adapter,
                                              uint32_t target_id,
                                              const parietal_cortex_position_t* new_position) {
-    if (!adapter || !new_position) return false;
+    if (!adapter || !new_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_adapter_reset: required parameter is NULL (adapter, new_position)");
+        return false;
+    }
 
     parietal_cortex_spatial_attention_processor_t* spatial = adapter->spatial_attention;
 
@@ -640,13 +665,17 @@ bool parietal_cortex_update_target_position(parietal_adapter_t* adapter,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_cortex_adapter_reset: validation failed");
     return false;  /* Target not found */
 }
 
 bool parietal_cortex_attend_to_location(parietal_adapter_t* adapter,
                                          uint32_t target_id,
                                          const parietal_cortex_position_t* position) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_adapter_reset: adapter is NULL");
+        return false;
+    }
 
     parietal_cortex_spatial_attention_processor_t* spatial = adapter->spatial_attention;
 
@@ -662,6 +691,7 @@ bool parietal_cortex_attend_to_location(parietal_adapter_t* adapter,
     } else if (position) {
         spatial->focus_center = *position;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_cortex_adapter_reset: validation failed");
         return false;
     }
 
@@ -682,8 +712,14 @@ bool parietal_cortex_attend_to_location(parietal_adapter_t* adapter,
 bool parietal_cortex_covert_attention_shift(parietal_adapter_t* adapter,
                                              const parietal_cortex_position_t* new_focus,
                                              float transition_ms) {
-    if (!adapter || !new_focus) return false;
-    if (!adapter->config.enable_covert_attention) return false;
+    if (!adapter || !new_focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, new_focus)");
+        return false;
+    }
+    if (!adapter->config.enable_covert_attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
 
     parietal_cortex_spatial_attention_processor_t* spatial = adapter->spatial_attention;
 
@@ -702,7 +738,10 @@ bool parietal_cortex_covert_attention_shift(parietal_adapter_t* adapter,
 
 bool parietal_cortex_get_attention_map(const parietal_adapter_t* adapter,
                                         parietal_cortex_attention_result_t* result) {
-    if (!adapter || !result) return false;
+    if (!adapter || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, result)");
+        return false;
+    }
 
     const parietal_cortex_spatial_attention_processor_t* spatial = adapter->spatial_attention;
 
@@ -729,9 +768,13 @@ bool parietal_cortex_transform_coordinates(parietal_adapter_t* adapter,
                                             parietal_cortex_spatial_frame_t from_frame,
                                             parietal_cortex_spatial_frame_t to_frame,
                                             parietal_cortex_position_t* result) {
-    if (!adapter || !position || !result) return false;
+    if (!adapter || !position || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, position, result)");
+        return false;
+    }
     if (from_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT || to_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
         set_error(adapter, PARIETAL_CORTEX_ERROR_COORDINATE_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return false;
     }
 
@@ -764,10 +807,14 @@ bool parietal_cortex_plan_reach(parietal_adapter_t* adapter,
                                  parietal_cortex_motor_plan_t* plan) {
     if (!adapter || !target_pos || !plan) {
         if (adapter) set_error(adapter, PARIETAL_CORTEX_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
-    if (!adapter->config.enable_reaching) return false;
+    if (!adapter->config.enable_reaching) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
 
     parietal_cortex_sensorimotor_integrator_t* motor = adapter->sensorimotor;
 
@@ -807,13 +854,18 @@ bool parietal_cortex_plan_grasp(parietal_adapter_t* adapter,
                                  parietal_cortex_motor_plan_t* plan) {
     if (!adapter || !target_pos || !plan) {
         if (adapter) set_error(adapter, PARIETAL_CORTEX_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
-    if (!adapter->config.enable_grasping) return false;
+    if (!adapter->config.enable_grasping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
 
     /* First plan reach to target */
     if (!parietal_cortex_plan_reach(adapter, target_pos, 1 /* right hand */, plan)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: parietal_cortex_plan_reach is NULL");
         return false;
     }
 
@@ -835,7 +887,10 @@ bool parietal_cortex_plan_grasp(parietal_adapter_t* adapter,
 
 bool parietal_cortex_process_integration(parietal_adapter_t* adapter,
                                           parietal_cortex_integration_result_t* result) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     parietal_cortex_integration_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -880,11 +935,15 @@ bool parietal_cortex_process_integration(parietal_adapter_t* adapter,
 
 bool parietal_cortex_get_next_motor_plan(parietal_adapter_t* adapter,
                                           parietal_cortex_motor_plan_t* plan) {
-    if (!adapter || !plan) return false;
+    if (!adapter || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, plan)");
+        return false;
+    }
 
     parietal_cortex_sensorimotor_integrator_t* motor = adapter->sensorimotor;
 
     if (motor->plan_head >= motor->plan_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return false;  /* No more plans */
     }
 
@@ -899,7 +958,10 @@ bool parietal_cortex_get_next_motor_plan(parietal_adapter_t* adapter,
 bool parietal_cortex_set_motor_callback(parietal_adapter_t* adapter,
                                          parietal_cortex_motor_callback_t callback,
                                          void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->motor_callback = callback;
     adapter->motor_user_data = user_data;
     return true;
@@ -908,7 +970,10 @@ bool parietal_cortex_set_motor_callback(parietal_adapter_t* adapter,
 bool parietal_cortex_set_attention_callback(parietal_adapter_t* adapter,
                                              parietal_cortex_attention_callback_t callback,
                                              void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->attention_callback = callback;
     adapter->attention_user_data = user_data;
     return true;
@@ -917,7 +982,10 @@ bool parietal_cortex_set_attention_callback(parietal_adapter_t* adapter,
 bool parietal_cortex_set_event_callback(parietal_adapter_t* adapter,
                                          parietal_cortex_event_callback_t callback,
                                          void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -933,9 +1001,18 @@ bool parietal_cortex_train_transform(parietal_adapter_t* adapter,
                                       const parietal_cortex_position_t* input_pos,
                                       const parietal_cortex_position_t* target_pos,
                                       float learning_rate) {
-    if (!adapter || !input_pos || !target_pos) return false;
-    if (!adapter->config.enable_training) return false;
-    if (from_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT || to_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) return false;
+    if (!adapter || !input_pos || !target_pos) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, input_pos, target_pos)");
+        return false;
+    }
+    if (!adapter->config.enable_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
+    if (from_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT || to_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        return false;
+    }
 
     if (learning_rate <= 0.0f) {
         learning_rate = adapter->config.learning_rate;
@@ -973,8 +1050,14 @@ bool parietal_cortex_train_reaching(parietal_adapter_t* adapter,
                                      const parietal_cortex_motor_plan_t* plan,
                                      const parietal_cortex_position_t* actual_endpoint,
                                      float learning_rate) {
-    if (!adapter || !plan || !actual_endpoint) return false;
-    if (!adapter->config.enable_training) return false;
+    if (!adapter || !plan || !actual_endpoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, plan, actual_endpoint)");
+        return false;
+    }
+    if (!adapter->config.enable_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
 
     (void)learning_rate;  /* Would use for actual weight updates */
 
@@ -1036,13 +1119,19 @@ const char* parietal_cortex_status_string(parietal_cortex_status_t status) {
 }
 
 bool parietal_cortex_get_stats(const parietal_adapter_t* adapter, parietal_cortex_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool parietal_cortex_get_config(const parietal_adapter_t* adapter, parietal_cortex_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1116,6 +1205,7 @@ nimcp_bio_future_t parietal_cortex_request_transform_async(
     parietal_cortex_spatial_frame_t to_frame) {
 
     if (!adapter || !adapter->bio_ctx || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx, position)");
         return NULL;
     }
 
@@ -1124,6 +1214,7 @@ nimcp_bio_future_t parietal_cortex_request_transform_async(
     parietal_cortex_transform_coordinates(adapter, position, from_frame, to_frame, &result);
 
     /* Would create async message in full implementation */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx, position)");
     return NULL;
 }
 
@@ -1133,6 +1224,7 @@ nimcp_bio_future_t parietal_cortex_request_motor_plan_async(
     uint8_t action_type) {
 
     if (!adapter || !adapter->bio_ctx || !target_pos) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_cortex_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx, target_pos)");
         return NULL;
     }
 
@@ -1145,6 +1237,7 @@ nimcp_bio_future_t parietal_cortex_request_motor_plan_async(
     }
 
     /* Would create async message in full implementation */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_cortex_process_bio_messages: action_type is zero");
     return NULL;
 }
 

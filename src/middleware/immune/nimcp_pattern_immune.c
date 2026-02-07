@@ -216,6 +216,7 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
         nimcp_malloc(sizeof(pattern_anomaly_t) * bridge->anomaly_capacity);
     if (!bridge->anomalies) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_immune_bridge_create: bridge->anomalies is NULL");
         return NULL;
     }
     memset(bridge->anomalies, 0, sizeof(pattern_anomaly_t) * bridge->anomaly_capacity);
@@ -300,7 +301,10 @@ int pattern_immune_apply_inflammation_effects(pattern_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_degradation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -341,7 +345,10 @@ int pattern_immune_apply_inflammation_effects(pattern_immune_bridge_t* bridge) {
 }
 
 int pattern_immune_degrade_oscillation(pattern_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->oscillation_detector) return -1;
+    if (!bridge || !bridge->oscillation_detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_degrade_oscillation: required parameter is NULL (bridge, bridge->oscillation_detector)");
+        return -1;
+    }
 
     /* Oscillation degradation happens via accuracy factor */
     /* Actual detector would need to expose sensitivity settings */
@@ -357,7 +364,10 @@ int pattern_immune_degrade_oscillation(pattern_immune_bridge_t* bridge) {
 }
 
 int pattern_immune_degrade_synchrony(pattern_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->synchrony_detector) return -1;
+    if (!bridge || !bridge->synchrony_detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_degrade_synchrony: required parameter is NULL (bridge, bridge->synchrony_detector)");
+        return -1;
+    }
 
     float factor = bridge->inflammation_effects.synchrony_accuracy_factor;
 
@@ -370,7 +380,10 @@ int pattern_immune_degrade_synchrony(pattern_immune_bridge_t* bridge) {
 }
 
 int pattern_immune_degrade_sequence(pattern_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->sequence_detector) return -1;
+    if (!bridge || !bridge->sequence_detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_degrade_sequence: required parameter is NULL (bridge, bridge->sequence_detector)");
+        return -1;
+    }
 
     float factor = bridge->inflammation_effects.sequence_accuracy_factor;
 
@@ -383,7 +396,10 @@ int pattern_immune_degrade_sequence(pattern_immune_bridge_t* bridge) {
 }
 
 int pattern_immune_degrade_pattern_library(pattern_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->pattern_library) return -1;
+    if (!bridge || !bridge->pattern_library) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_degrade_pattern_library: required parameter is NULL (bridge, bridge->pattern_library)");
+        return -1;
+    }
 
     float factor = bridge->inflammation_effects.pattern_match_accuracy_factor;
 
@@ -404,7 +420,10 @@ int pattern_immune_detect_pathological_oscillation(
     const oscillation_result_t* oscillation_result
 ) {
     /* Guard clauses */
-    if (!bridge || !oscillation_result) return -1;
+    if (!bridge || !oscillation_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_detect_pathological_oscillation: required parameter is NULL (bridge, oscillation_result)");
+        return -1;
+    }
     if (!bridge->enable_oscillation_monitoring) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -466,7 +485,10 @@ int pattern_immune_detect_pathological_synchrony(
     const synchrony_result_t* synchrony_result
 ) {
     /* Guard clauses */
-    if (!bridge || !synchrony_result) return -1;
+    if (!bridge || !synchrony_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_detect_pathological_synchrony: required parameter is NULL (bridge, synchrony_result)");
+        return -1;
+    }
     if (!bridge->enable_synchrony_monitoring) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -522,7 +544,10 @@ int pattern_immune_detect_pathological_sequence(
     uint32_t num_detections
 ) {
     /* Guard clauses */
-    if (!bridge || !detections) return -1;
+    if (!bridge || !detections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_detect_pathological_sequence: required parameter is NULL (bridge, detections)");
+        return -1;
+    }
     if (!bridge->enable_sequence_monitoring) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
@@ -566,8 +591,14 @@ int pattern_immune_present_anomaly(
     pattern_anomaly_t* anomaly
 ) {
     /* Guard clauses */
-    if (!bridge || !anomaly) return -1;
-    if (!bridge->immune_system) return -1;
+    if (!bridge || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_present_anomaly: required parameter is NULL (bridge, anomaly)");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_present_anomaly: bridge->immune_system is NULL");
+        return -1;
+    }
     if (anomaly->immune_alerted) return 0;  /* Already presented */
 
     /* Determine severity based on anomaly type */
@@ -622,7 +653,10 @@ int pattern_immune_create_signature(
     uint8_t* signature,
     size_t* signature_len
 ) {
-    if (!pattern_features || !signature || !signature_len) return -1;
+    if (!pattern_features || !signature || !signature_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_create_signature: required parameter is NULL (pattern_features, signature, signature_len)");
+        return -1;
+    }
 
     /* Include anomaly type in signature */
     signature[0] = (uint8_t)anomaly_type;
@@ -680,7 +714,10 @@ int pattern_immune_get_inflammation_effects(
     const pattern_immune_bridge_t* bridge,
     inflammation_pattern_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_get_inflammation_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->inflammation_effects, sizeof(inflammation_pattern_effects_t));
@@ -693,7 +730,10 @@ int pattern_immune_get_pathological_oscillation_state(
     const pattern_immune_bridge_t* bridge,
     pathological_oscillation_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_get_pathological_oscillation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_oscillation, sizeof(pathological_oscillation_state_t));
@@ -706,7 +746,10 @@ int pattern_immune_get_pathological_synchrony_state(
     const pattern_immune_bridge_t* bridge,
     pathological_synchrony_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_get_pathological_synchrony_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_synchrony, sizeof(pathological_synchrony_state_t));
@@ -719,7 +762,10 @@ int pattern_immune_get_pathological_sequence_state(
     const pattern_immune_bridge_t* bridge,
     pathological_sequence_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_get_pathological_sequence_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->pathological_sequence, sizeof(pathological_sequence_state_t));
@@ -734,7 +780,10 @@ int pattern_immune_get_anomalies(
     uint32_t max_anomalies,
     uint32_t* num_anomalies
 ) {
-    if (!bridge || !anomalies || !num_anomalies) return -1;
+    if (!bridge || !anomalies || !num_anomalies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_get_anomalies: required parameter is NULL (bridge, anomalies, num_anomalies)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -750,7 +799,10 @@ int pattern_immune_get_anomalies(
 }
 
 bool pattern_immune_is_degraded(const pattern_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_immune_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Check if any accuracy factor is below 1.0 */
     return (bridge->inflammation_effects.oscillation_accuracy_factor < 1.0f ||

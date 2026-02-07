@@ -309,6 +309,7 @@ static rcog_answer_history_t* create_history(size_t initial_capacity)
         history->entries = nimcp_calloc(initial_capacity, sizeof(rcog_answer_history_entry_t));
         if (!history->entries) {
             nimcp_free(history);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_history: history->entries is NULL");
             return NULL;
         }
         history->capacity = initial_capacity;
@@ -459,6 +460,7 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     refiner->velocity = create_latent(refiner->config.latent_dim);
     if (!refiner->velocity) {
         nimcp_free(refiner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_answer_refiner_create: refiner->velocity is NULL");
         return NULL;
     }
     refiner->velocity_dim = refiner->config.latent_dim;
@@ -469,6 +471,7 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     if (!refiner->mutex) {
         nimcp_free(refiner->velocity);
         nimcp_free(refiner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_answer_refiner_create: refiner->mutex is NULL");
         return NULL;
     }
 
@@ -581,6 +584,7 @@ rcog_answer_state_t* rcog_answer_state_create(
     rcog_error_t err = rcog_answer_init(refiner, goal, state);
     if (err != RCOG_OK) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_state_create: validation failed");
         return NULL;
     }
 
@@ -802,7 +806,10 @@ bool rcog_answer_is_ready(
     const rcog_answer_refiner_t* refiner,
     const rcog_answer_state_t* state)
 {
-    if (!refiner || !state) return false;
+    if (!refiner || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_is_ready: required parameter is NULL (refiner, state)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     rcog_answer_heartbeat("rcog_answer_is_ready", 0.0f);
 
@@ -814,7 +821,10 @@ bool rcog_answer_has_converged(
     const rcog_answer_refiner_t* refiner,
     const rcog_answer_state_t* state)
 {
-    if (!refiner || !state) return false;
+    if (!refiner || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_has_converged: required parameter is NULL (refiner, state)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     rcog_answer_heartbeat("rcog_answer_has_converged", 0.0f);
 
@@ -827,7 +837,10 @@ bool rcog_answer_is_stalled(
     const rcog_answer_state_t* state,
     uint32_t window)
 {
-    if (!refiner || !state) return false;
+    if (!refiner || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_answer_is_stalled: required parameter is NULL (refiner, state)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     rcog_answer_heartbeat("rcog_answer_is_stalled", 0.0f);
 

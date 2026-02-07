@@ -59,7 +59,10 @@ static void cortical_temporal_on_sleep_state_change(sleep_state_t new_state, voi
 
 int cortical_temporal_sleep_default_config(cortical_temporal_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_timescale_modulation = true;
     config->modulation_strength = 1.0f;
     return 0;
@@ -70,7 +73,10 @@ cortical_temporal_sleep_bridge_t cortical_temporal_sleep_bridge_create(
     void* temporal_module,
     sleep_system_t sleep)
 {
-    if (!temporal_module || !sleep) return NULL;
+    if (!temporal_module || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_temporal_sleep_bridge_create: required parameter is NULL (temporal_module, sleep)");
+        return NULL;
+    }
 
     struct cortical_temporal_sleep_bridge_struct* bridge =
         (struct cortical_temporal_sleep_bridge_struct*)nimcp_malloc(
@@ -94,6 +100,7 @@ cortical_temporal_sleep_bridge_t cortical_temporal_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "cortical_temporal_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -120,7 +127,10 @@ void cortical_temporal_sleep_bridge_destroy(cortical_temporal_sleep_bridge_t bri
 
 int cortical_temporal_sleep_update(cortical_temporal_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_temporal_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 

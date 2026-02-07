@@ -121,7 +121,10 @@ static void lowercase_string(char* str) {
  * HOW:  strstr() after lowercasing
  */
 static bool contains_keyword(const char* text, const char* keyword) {
-    if (!text || !keyword) return false;
+    if (!text || !keyword) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_keyword: required parameter is NULL (text, keyword)");
+        return false;
+    }
 
     /* Create lowercase copies */
     char text_lower[HARM_CLASSIFIER_MAX_ACTION_DESC];
@@ -219,6 +222,7 @@ int harm_classifier_default_config(harm_classifier_config_t* config) {
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_default_config: config is NULL");
         return -1;
     }
 
@@ -258,6 +262,7 @@ harm_classifier_t* harm_classifier_create(const harm_classifier_config_t* config
     if (!classifier->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(classifier);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "harm_classifier_create: classifier->mutex is NULL");
         return NULL;
     }
 
@@ -309,14 +314,17 @@ int harm_classifier_classify(
     /* Guard clauses */
     if (!classifier) {
         NIMCP_LOGGING_ERROR("NULL classifier");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_classify: classifier is NULL");
         return -1;
     }
     if (!action_description) {
         NIMCP_LOGGING_ERROR("NULL action_description");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_classify: action_description is NULL");
         return -1;
     }
     if (!result) {
         NIMCP_LOGGING_ERROR("NULL result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_classify: result is NULL");
         return -1;
     }
 
@@ -466,7 +474,10 @@ int harm_classifier_set_severity_weight(
 
     }
     if (harm_type >= HARM_TYPE_COUNT) return -1;
-    if (weight < 0.0f || weight > 2.0f) return -1;
+    if (weight < 0.0f || weight > 2.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "harm_classifier_set_severity_weight: validation failed");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(classifier->mutex);
     classifier->config.severity_weights[harm_type] = weight;
@@ -605,6 +616,7 @@ int harm_classifier_connect_bio_async(harm_classifier_t* classifier) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "harm_classifier_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -637,7 +649,10 @@ int harm_classifier_disconnect_bio_async(harm_classifier_t* classifier) {
 
 bool harm_classifier_is_bio_async_connected(const harm_classifier_t* classifier) {
     /* Guard clause */
-    if (!classifier) return false;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_classifier_is_bio_async_connected: classifier is NULL");
+        return false;
+    }
 
     return classifier->bio_async_enabled;
 }

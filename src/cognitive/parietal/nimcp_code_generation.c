@@ -228,6 +228,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     engine->mutex = nimcp_mutex_create(&attr);
     if (!engine->mutex) {
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->mutex is NULL");
         return NULL;
     }
 
@@ -237,6 +238,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     if (!engine->fix_history) {
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->fix_history is NULL");
         return NULL;
     }
 
@@ -247,6 +249,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_gen_create: engine->learning_history is NULL");
         return NULL;
     }
 
@@ -258,6 +261,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_create: engine->custom_templates is NULL");
         return NULL;
     }
 
@@ -268,6 +272,7 @@ code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
         nimcp_free(engine->fix_history);
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "code_gen_create: validation failed");
         return NULL;
     }
 
@@ -333,6 +338,7 @@ void code_gen_destroy(code_gen_engine_t* engine) {
 
 bool code_gen_is_ready(const code_gen_engine_t* engine) {
     if (!engine || engine->magic != CODE_GEN_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_is_ready: engine is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -352,9 +358,11 @@ int code_gen_generate_candidates(
     code_gen_result_t* result
 ) {
     if (!engine || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_generate_candidates: required parameter is NULL (engine, request, result)");
         return -1;
     }
     if (!code_gen_is_ready(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_generate_candidates: code_gen_is_ready is NULL");
         return -1;
     }
 
@@ -376,6 +384,7 @@ int code_gen_generate_candidates(
         snprintf(result->error_message, sizeof(result->error_message),
                  "No compatible strategies for error type 0x%04X", error_type);
         nimcp_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_generate_candidates: validation failed");
         return -1;
     }
 
@@ -456,6 +465,7 @@ int code_gen_select_best_fix(
     generated_fix_t* selected
 ) {
     if (!engine || !candidates || !selected || candidates->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_select_best_fix: required parameter is NULL (engine, candidates, selected)");
         return -1;
     }
 
@@ -504,9 +514,11 @@ int code_gen_generate_with_strategy(
     generated_fix_t* fix
 ) {
     if (!engine || !location || !source_code || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_generate_with_strategy: required parameter is NULL (engine, location, source_code, fix)");
         return -1;
     }
     if (!code_gen_is_ready(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_generate_with_strategy: code_gen_is_ready is NULL");
         return -1;
     }
 
@@ -545,6 +557,7 @@ int code_gen_select_strategy(
     float* confidence
 ) {
     if (!engine || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_select_strategy: required parameter is NULL (engine, strategy)");
         return -1;
     }
 
@@ -585,6 +598,7 @@ int code_gen_select_strategy(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_select_strategy: validation failed");
     return -1;
 }
 
@@ -634,6 +648,7 @@ int code_gen_match_historical_pattern(
     float* similarity
 ) {
     if (!engine || !request || !pattern_id || !similarity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_match_historical_pattern: required parameter is NULL (engine, request, pattern_id, similarity)");
         return -1;
     }
 
@@ -641,6 +656,7 @@ int code_gen_match_historical_pattern(
     *similarity = 0.0f;
 
     if (!engine->config.enable_pattern_matching) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_match_historical_pattern: engine->config is NULL");
         return -1;
     }
 
@@ -689,6 +705,7 @@ int code_gen_match_historical_pattern(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_match_historical_pattern: validation failed");
     return -1;
 }
 
@@ -698,6 +715,7 @@ int code_gen_learn_from_outcome(
     bool success
 ) {
     if (!engine || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_learn_from_outcome: required parameter is NULL (engine, fix)");
         return -1;
     }
 
@@ -877,6 +895,7 @@ int code_gen_load_templates(
     const char* directory
 ) {
     if (!engine || !directory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_load_templates: required parameter is NULL (engine, directory)");
         return -1;
     }
 
@@ -897,6 +916,7 @@ int code_gen_register_template(
     const char* description
 ) {
     if (!engine || !template_code) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_register_template: required parameter is NULL (engine, template_code)");
         return -1;
     }
 
@@ -908,6 +928,7 @@ int code_gen_register_template(
 
     if (engine->custom_template_count >= engine->custom_template_capacity) {
         nimcp_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_gen_register_template: capacity exceeded");
         return -1;
     }
 
@@ -979,6 +1000,7 @@ int code_gen_update_status(
     }
 
     nimcp_mutex_unlock(engine->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_gen_update_status: operation failed");
     return -1;
 }
 
@@ -1012,6 +1034,7 @@ const generated_fix_t* code_gen_get_fix(
     }
 
     nimcp_mutex_unlock(engine->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_get_fix: validation failed");
     return NULL;
 }
 
@@ -1024,6 +1047,7 @@ int code_gen_get_stats(
     code_gen_stats_t* stats
 ) {
     if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_get_stats: required parameter is NULL (engine, stats)");
         return -1;
     }
 
@@ -1291,6 +1315,7 @@ static int generate_fix_for_strategy(
                 "No template available for strategy %s", code_gen_strategy_name(strategy));
             fix->confidence = 0.0f;
             fix->risk_score = 1.0f;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_fix_for_strategy: operation failed");
             return -1;
     }
 
@@ -1374,6 +1399,7 @@ static nimcp_error_t code_gen_handle_bio_message(
  */
 static int register_code_gen_bio_handlers(code_gen_engine_t* engine) {
     if (!engine || !engine->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "register_code_gen_bio_handlers: required parameter is NULL (engine, engine->bio_ctx)");
         return -1;
     }
 
@@ -1398,6 +1424,7 @@ int code_gen_broadcast_result(
     float confidence
 ) {
     if (!engine || !engine->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_gen_broadcast_result: required parameter is NULL (engine, engine->bio_ctx)");
         return -1;
     }
 

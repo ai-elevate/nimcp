@@ -305,7 +305,10 @@ static float norm_pdf(float x) {
 static int float_compare_asc(const void* a, const void* b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    if (fa < fb) return -1;
+    if (fa < fb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "float_compare_asc: validation failed");
+        return -1;
+    }
     if (fa > fb) return 1;
     return 0;
 }

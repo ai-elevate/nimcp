@@ -142,6 +142,7 @@ creative_onnx_runtime_t* onnx_runtime_create(const onnx_runtime_config_t* config
     creative_onnx_runtime_t* runtime = nimcp_calloc(1, sizeof(creative_onnx_runtime_t));
     if (!runtime) {
         set_error("Failed to allocate runtime");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_runtime_create: runtime is NULL");
         return NULL;
     }
 
@@ -202,16 +203,19 @@ bool onnx_device_available(onnx_device_t device)
 
         case ONNX_DEVICE_CUDA:
             /* In production: check CUDA availability */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;  /* Placeholder */
 
         case ONNX_DEVICE_TENSORRT:
             /* In production: check TensorRT availability */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 
         case ONNX_DEVICE_DIRECTML:
 #ifdef _WIN32
             return true;  /* Available on Windows */
 #else
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 #endif
 
@@ -219,10 +223,12 @@ bool onnx_device_available(onnx_device_t device)
 #ifdef __APPLE__
             return true;  /* Available on macOS/iOS */
 #else
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
 #endif
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_device_available: operation failed");
             return false;
     }
 }
@@ -237,6 +243,7 @@ onnx_session_t* onnx_load_model(creative_onnx_runtime_t* runtime,
 {
     if (!runtime || !model_path) {
         set_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_load_model: required parameter is NULL (runtime, model_path)");
         return NULL;
     }
 
@@ -245,6 +252,7 @@ onnx_session_t* onnx_load_model(creative_onnx_runtime_t* runtime,
     onnx_session_t* session = nimcp_calloc(1, sizeof(onnx_session_t));
     if (!session) {
         set_error("Failed to allocate session");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_load_model: session is NULL");
         return NULL;
     }
 
@@ -282,6 +290,7 @@ onnx_session_t* onnx_load_model(creative_onnx_runtime_t* runtime,
             nimcp_free(session->inputs);
             nimcp_free(session->outputs);
             nimcp_free(session);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_load_model: new_sessions is NULL");
             return NULL;
         }
         memcpy(new_sessions, runtime->sessions,
@@ -303,6 +312,7 @@ onnx_session_t* onnx_load_model_from_memory(creative_onnx_runtime_t* runtime,
 {
     if (!runtime || !model_data || model_size == 0) {
         set_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_load_model_from_memory: required parameter is NULL (runtime, model_data)");
         return NULL;
     }
 
@@ -313,6 +323,7 @@ onnx_session_t* onnx_load_model_from_memory(creative_onnx_runtime_t* runtime,
     onnx_session_t* session = nimcp_calloc(1, sizeof(onnx_session_t));
     if (!session) {
         set_error("Failed to allocate session");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_load_model_from_memory: session is NULL");
         return NULL;
     }
 
@@ -385,7 +396,10 @@ int onnx_session_input_info(const onnx_session_t* session,
                             uint32_t index,
                             onnx_io_info_t* info)
 {
-    if (!session || !info || index >= session->num_inputs) return -1;
+    if (!session || !info || index >= session->num_inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_session_input_info: required parameter is NULL (session, info)");
+        return -1;
+    }
     *info = session->inputs[index];
     return 0;
 }
@@ -394,14 +408,20 @@ int onnx_session_output_info(const onnx_session_t* session,
                              uint32_t index,
                              onnx_io_info_t* info)
 {
-    if (!session || !info || index >= session->num_outputs) return -1;
+    if (!session || !info || index >= session->num_outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_session_output_info: required parameter is NULL (session, info)");
+        return -1;
+    }
     *info = session->outputs[index];
     return 0;
 }
 
 int32_t onnx_session_input_index(const onnx_session_t* session, const char* name)
 {
-    if (!session || !name) return -1;
+    if (!session || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_session_input_index: required parameter is NULL (session, name)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < session->num_inputs; i++) {
         if (strcmp(session->inputs[i].name, name) == 0) {
@@ -409,12 +429,16 @@ int32_t onnx_session_input_index(const onnx_session_t* session, const char* name
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_session_input_index: validation failed");
     return -1;
 }
 
 int32_t onnx_session_output_index(const onnx_session_t* session, const char* name)
 {
-    if (!session || !name) return -1;
+    if (!session || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_session_output_index: required parameter is NULL (session, name)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < session->num_outputs; i++) {
         if (strcmp(session->outputs[i].name, name) == 0) {
@@ -422,6 +446,7 @@ int32_t onnx_session_output_index(const onnx_session_t* session, const char* nam
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "onnx_session_output_index: validation failed");
     return -1;
 }
 
@@ -435,6 +460,7 @@ int onnx_run(onnx_session_t* session,
 {
     if (!session || !inputs || !outputs) {
         set_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_run: required parameter is NULL (session, inputs, outputs)");
         return -1;
     }
 
@@ -485,12 +511,14 @@ int onnx_run_named(onnx_session_t* session,
     /* Verify names match session I/O */
     if (!session || !input_names || !output_names) {
         set_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_run_named: required parameter is NULL (session, input_names, output_names)");
         return -1;
     }
 
     for (uint32_t i = 0; i < num_inputs; i++) {
         if (onnx_session_input_index(session, input_names[i]) < 0) {
             set_error("Unknown input name");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "onnx_run_named: validation failed");
             return -1;
         }
     }
@@ -498,6 +526,7 @@ int onnx_run_named(onnx_session_t* session,
     for (uint32_t i = 0; i < num_outputs; i++) {
         if (onnx_session_output_index(session, output_names[i]) < 0) {
             set_error("Unknown output name");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "onnx_run_named: validation failed");
             return -1;
         }
     }
@@ -512,6 +541,7 @@ int onnx_run_async(onnx_session_t* session,
 {
     if (!session || !callback) {
         set_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_run_async: required parameter is NULL (session, callback)");
         return -1;
     }
 
@@ -519,6 +549,7 @@ int onnx_run_async(onnx_session_t* session,
     onnx_tensor_t** outputs = nimcp_calloc(session->num_outputs, sizeof(onnx_tensor_t*));
     if (!outputs) {
         callback(NULL, 0, -1, user_data);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_run_async: outputs is NULL");
         return -1;
     }
 
@@ -540,10 +571,16 @@ onnx_tensor_t* onnx_tensor_create(creative_onnx_runtime_t* runtime,
 {
     (void)runtime;  /* Would use runtime's allocator */
 
-    if (!shape) return NULL;
+    if (!shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_create: shape is NULL");
+        return NULL;
+    }
 
     onnx_tensor_t* tensor = nimcp_calloc(1, sizeof(onnx_tensor_t));
-    if (!tensor) return NULL;
+    if (!tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_create: tensor is NULL");
+        return NULL;
+    }
 
     tensor->shape = onnx_shape_create(shape->dims, shape->rank);
     tensor->dtype = dtype;
@@ -556,6 +593,7 @@ onnx_tensor_t* onnx_tensor_create(creative_onnx_runtime_t* runtime,
     if (!tensor->data) {
         onnx_shape_free(&tensor->shape);
         nimcp_free(tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_create: tensor->data is NULL");
         return NULL;
     }
 
@@ -566,10 +604,16 @@ onnx_tensor_t* onnx_tensor_from_data(const void* data,
                                       const onnx_shape_t* shape,
                                       onnx_dtype_t dtype)
 {
-    if (!data || !shape) return NULL;
+    if (!data || !shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_tensor_from_data: required parameter is NULL (data, shape)");
+        return NULL;
+    }
 
     onnx_tensor_t* tensor = nimcp_calloc(1, sizeof(onnx_tensor_t));
-    if (!tensor) return NULL;
+    if (!tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_from_data: tensor is NULL");
+        return NULL;
+    }
 
     tensor->shape = onnx_shape_create(shape->dims, shape->rank);
     tensor->dtype = dtype;
@@ -582,6 +626,7 @@ onnx_tensor_t* onnx_tensor_from_data(const void* data,
     if (!tensor->data) {
         onnx_shape_free(&tensor->shape);
         nimcp_free(tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_from_data: tensor->data is NULL");
         return NULL;
     }
 
@@ -594,10 +639,16 @@ onnx_tensor_t* onnx_tensor_wrap(void* data,
                                  const onnx_shape_t* shape,
                                  onnx_dtype_t dtype)
 {
-    if (!data || !shape) return NULL;
+    if (!data || !shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_tensor_wrap: required parameter is NULL (data, shape)");
+        return NULL;
+    }
 
     onnx_tensor_t* tensor = nimcp_calloc(1, sizeof(onnx_tensor_t));
-    if (!tensor) return NULL;
+    if (!tensor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "onnx_tensor_wrap: tensor is NULL");
+        return NULL;
+    }
 
     tensor->shape = onnx_shape_create(shape->dims, shape->rank);
     tensor->dtype = dtype;
@@ -635,7 +686,10 @@ void* onnx_tensor_data(onnx_tensor_t* tensor)
 
 int onnx_tensor_copy_to(const onnx_tensor_t* tensor, void* dst, size_t dst_size)
 {
-    if (!tensor || !dst || dst_size == 0) return -1;
+    if (!tensor || !dst || dst_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "onnx_tensor_copy_to: required parameter is NULL (tensor, dst)");
+        return -1;
+    }
 
     size_t copy_size = tensor->size_bytes < dst_size ?
                        tensor->size_bytes : dst_size;

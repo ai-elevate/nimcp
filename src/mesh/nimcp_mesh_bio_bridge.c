@@ -248,6 +248,7 @@ mesh_bio_bridge_t* mesh_bio_bridge_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create bio bridge without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_bridge_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -260,6 +261,7 @@ mesh_bio_bridge_t* mesh_bio_bridge_create(
     mesh_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate bio bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -274,6 +276,7 @@ mesh_bio_bridge_t* mesh_bio_bridge_create(
     if (!bridge->mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -371,7 +374,10 @@ nimcp_error_t mesh_bio_bridge_disconnect_router(mesh_bio_bridge_t* bridge) {
 }
 
 bool mesh_bio_bridge_is_connected(const mesh_bio_bridge_t* bridge) {
-    if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != BIO_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 

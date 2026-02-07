@@ -90,6 +90,7 @@ static float sigmoid(float x);
 int sleep_wellbeing_default_config(sleep_wellbeing_bridge_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("sleep_wellbeing_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wellbeing_default_config: config is NULL");
         return -1;
     }
 
@@ -156,6 +157,7 @@ sleep_wellbeing_bridge_t* sleep_wellbeing_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("sleep_wellbeing_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_wellbeing_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -207,6 +209,7 @@ void sleep_wellbeing_bridge_destroy(sleep_wellbeing_bridge_t* bridge) {
 int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
     if (!system) {
         NIMCP_LOGGING_ERROR("enhanced_wellbeing_update_sleep: NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_update_sleep: system is NULL");
         return -1;
     }
 
@@ -226,6 +229,7 @@ int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
     sleep_stats_t stats;
     if (!sleep_get_statistics(system->sleep_system, &stats)) {
         NIMCP_LOGGING_WARN("enhanced_wellbeing_update_sleep: failed to get sleep stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enhanced_wellbeing_update_sleep: sleep_get_statistics is NULL");
         return -1;
     }
 
@@ -459,11 +463,13 @@ int enhanced_wellbeing_get_sleep_effects(
 {
     if (!system) {
         NIMCP_LOGGING_ERROR("enhanced_wellbeing_get_sleep_effects: NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_sleep_effects: system is NULL");
         return -1;
     }
 
     if (!effects) {
         NIMCP_LOGGING_ERROR("enhanced_wellbeing_get_sleep_effects: NULL effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_sleep_effects: effects is NULL");
         return -1;
     }
 

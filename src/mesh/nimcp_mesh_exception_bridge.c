@@ -109,6 +109,7 @@ mesh_exception_bridge_t* mesh_exception_bridge_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create exception bridge without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_exception_bridge_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -121,6 +122,7 @@ mesh_exception_bridge_t* mesh_exception_bridge_create(
     mesh_exception_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate exception bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_exception_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -137,6 +139,7 @@ mesh_exception_bridge_t* mesh_exception_bridge_create(
     if (!bridge->mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_exception_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -207,6 +210,7 @@ static debounce_entry_t* find_debounce_entry(
         return entry;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_debounce_entry: operation failed");
     return NULL;
 }
 
@@ -224,6 +228,7 @@ static bool should_escalate(
         return entry->occurrence_count >= bridge->config.max_per_window;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_escalate: validation failed");
     return false;
 }
 

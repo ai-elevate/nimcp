@@ -359,12 +359,27 @@ NIMCP_EXPORT pr_hypo_config_t pr_hypo_config_default(void) {
 }
 
 NIMCP_EXPORT bool pr_hypo_config_validate(const pr_hypo_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->history_buffer_size == 0 && config->track_history) return false;
-    if (config->optimal_stress_level < 0.0f || config->optimal_stress_level > 1.0f) return false;
-    if (config->stress_impairment_threshold < 0.0f || config->stress_impairment_threshold > 1.0f) return false;
-    if (config->reward_decay_rate < 0.0f) return false;
+    if (config->history_buffer_size == 0 && config->track_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: config->history_buffer_size is zero");
+        return false;
+    }
+    if (config->optimal_stress_level < 0.0f || config->optimal_stress_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
+        return false;
+    }
+    if (config->stress_impairment_threshold < 0.0f || config->stress_impairment_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
+        return false;
+    }
+    if (config->reward_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -385,6 +400,7 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
     pr_hypo_config_t cfg;
     if (config) {
         if (!pr_hypo_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_hypo_bridge_create: pr_hypo_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -435,6 +451,7 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
             cfg.history_buffer_size, sizeof(pr_hypo_history_entry_t));
         if (!bridge->history) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_hypo_bridge_create: bridge->history is NULL");
             return NULL;
         }
         bridge->history_capacity = cfg.history_buffer_size;
@@ -1240,7 +1257,10 @@ NIMCP_EXPORT bool pr_hypo_bridge_get_reward_signal(
     const pr_hypo_bridge_t bridge,
     pr_reward_signal_t* signal
 ) {
-    if (!bridge || !signal) return false;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_get_reward_signal: required parameter is NULL (bridge, signal)");
+        return false;
+    }
 
     PR_HYPO_MUTEX_LOCK(((pr_hypo_bridge_t)bridge)->reward_mutex);
     bool has_reward = bridge->has_active_reward;
@@ -1323,7 +1343,10 @@ NIMCP_EXPORT float pr_hypo_bridge_get_promotion_boost(
 NIMCP_EXPORT bool pr_hypo_bridge_is_flashbulb_state(
     const pr_hypo_bridge_t bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_is_flashbulb_state: bridge is NULL");
+        return false;
+    }
 
     float ne_level = pr_hypo_bridge_get_neuromod(bridge, PR_NEUROMOD_NOREPINEPHRINE);
 
@@ -1570,8 +1593,14 @@ NIMCP_EXPORT uint64_t pr_hypo_current_time_ms(void) {
 }
 
 NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
-    if (!bridge) return false;
-    if (!bridge->initialized) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_validate: bridge is NULL");
+        return false;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_hypo_bridge_validate: bridge->initialized is NULL");
+        return false;
+    }
 
     /* Verify neuromodulator states are in valid range */
     for (int i = 0; i < PR_HYPO_NEUROMOD_COUNT; i++) {
@@ -1583,6 +1612,7 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
 
         if (bridge->neuromod_states[i].concentration < 0.0f ||
             bridge->neuromod_states[i].concentration > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_bridge_validate: validation failed");
             return false;
         }
     }
@@ -1590,6 +1620,7 @@ NIMCP_EXPORT bool pr_hypo_bridge_validate(const pr_hypo_bridge_t bridge) {
     /* Verify stress state is valid */
     if (bridge->stress_state.cortisol_level < 0.0f ||
         bridge->stress_state.cortisol_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_hypo_bridge_validate: operation failed");
         return false;
     }
 

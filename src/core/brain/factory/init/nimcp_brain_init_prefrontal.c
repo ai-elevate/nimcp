@@ -174,6 +174,7 @@ bool nimcp_brain_factory_init_prefrontal_subsystem(brain_t brain) {
     brain->prefrontal = prefrontal_create(&pfc_cfg);
     if (!brain->prefrontal) {
         set_error("Failed to create prefrontal adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_prefrontal_subsystem: brain->prefrontal is NULL");
         return false;
     }
 
@@ -352,6 +353,7 @@ bool nimcp_brain_factory_init_prefrontal_quantum_bridge(brain_t brain) {
 
     if (!brain->prefrontal_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create prefrontal quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_prefrontal_quantum_bridge: brain->prefrontal_quantum_bridge is NULL");
         return false;
     }
 

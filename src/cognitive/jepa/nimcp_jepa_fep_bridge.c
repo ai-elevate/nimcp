@@ -314,6 +314,7 @@ jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
     /* Initialize base (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "jepa_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -450,6 +451,7 @@ int jepa_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->predictor = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_register: validation failed");
         return -1;
     }
 

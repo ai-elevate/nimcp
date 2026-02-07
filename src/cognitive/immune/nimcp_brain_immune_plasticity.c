@@ -96,6 +96,7 @@ int immune_plasticity_default_config(immune_plasticity_config_t* config) {
      */
     if (!config) {
         LOG_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_default_config: config is NULL");
         return -1;
     }
 
@@ -181,7 +182,7 @@ float immune_plasticity_get_cytokine_concentration(
         }
 
         const brain_cytokine_t* cyt = &immune_system->cytokines[i];
-        if (cyt->type == cytokine_type && !cyt->delivered) {
+        if (cyt->type == cytokine_type) {
             total += cyt->concentration;
         }
     }
@@ -235,6 +236,7 @@ int immune_plasticity_compute_modulation(
     /* Guard: Validate inputs */
     if (!immune_system || !config || !modulation) {
         LOG_ERROR("NULL pointer in compute_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_compute_modulation: required parameter is NULL (immune_system, config, modulation)");
         return -1;
     }
 
@@ -441,6 +443,7 @@ int immune_plasticity_modulate_bcm(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_bcm");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_bcm: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -502,6 +505,7 @@ int immune_plasticity_modulate_stdp(
      */
     if (!config || !modulation) {
         LOG_ERROR("NULL pointer in modulate_stdp");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_stdp: required parameter is NULL (config, modulation)");
         return -1;
     }
 
@@ -537,6 +541,7 @@ int immune_plasticity_modulate_stdp_timing(
      */
     if (!synapse || !modulation) {
         LOG_ERROR("NULL pointer in modulate_stdp_timing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_stdp_timing: required parameter is NULL (synapse, modulation)");
         return -1;
     }
 
@@ -565,6 +570,7 @@ int immune_plasticity_modulate_attention_config(
      */
     if (!config || !modulation) {
         LOG_ERROR("NULL pointer in modulate_attention_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_attention_config: required parameter is NULL (config, modulation)");
         return -1;
     }
 
@@ -600,6 +606,7 @@ int immune_plasticity_modulate_attention_gate(
      */
     if (!mha || !modulation) {
         LOG_ERROR("NULL pointer in modulate_attention_gate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_attention_gate: required parameter is NULL (mha, modulation)");
         return -1;
     }
 
@@ -627,6 +634,7 @@ int immune_plasticity_modulate_stp(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_stp");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_stp: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -659,6 +667,7 @@ int immune_plasticity_modulate_stp_state(
      */
     if (!state || !modulation) {
         LOG_ERROR("NULL pointer in modulate_stp_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_stp_state: required parameter is NULL (state, modulation)");
         return -1;
     }
 
@@ -683,6 +692,7 @@ int immune_plasticity_modulate_homeostatic_config(
      */
     if (!config || !modulation) {
         LOG_ERROR("NULL pointer in modulate_homeostatic_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_homeostatic_config: required parameter is NULL (config, modulation)");
         return -1;
     }
 
@@ -711,6 +721,7 @@ int immune_plasticity_modulate_synaptic_scaling(
      * HOW:  Shift target rate and slow scaling
      */
     if (!params || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_synaptic_scaling: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -736,6 +747,7 @@ int immune_plasticity_modulate_metaplasticity(
      * HOW:  Shift min/max theta
      */
     if (!params || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_metaplasticity: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -765,6 +777,7 @@ int immune_plasticity_modulate_nmda(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_nmda");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_nmda: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -794,6 +807,7 @@ int immune_plasticity_modulate_dendritic_compartment(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_dendritic_compartment");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_dendritic_compartment: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -824,6 +838,7 @@ int immune_plasticity_modulate_adaptive_params(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_adaptive_params");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_adaptive_params: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -857,6 +872,7 @@ int immune_plasticity_modulate_eligibility_config(
      */
     if (!config || !modulation) {
         LOG_ERROR("NULL pointer in modulate_eligibility_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_eligibility_config: required parameter is NULL (config, modulation)");
         return -1;
     }
 
@@ -894,6 +910,7 @@ int immune_plasticity_modulate_predictive_coding_layer(
      */
     if (!params || !modulation) {
         LOG_ERROR("NULL pointer in modulate_predictive_coding_layer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_predictive_coding_layer: required parameter is NULL (params, modulation)");
         return -1;
     }
 
@@ -929,6 +946,7 @@ int immune_plasticity_modulate_predictive_coding_hierarchy(
      */
     if (!config || !modulation) {
         LOG_ERROR("NULL pointer in modulate_predictive_coding_hierarchy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_modulate_predictive_coding_hierarchy: required parameter is NULL (config, modulation)");
         return -1;
     }
 
@@ -989,6 +1007,7 @@ bool immune_plasticity_is_impaired(
      * HOW:  Compare global scale to threshold
      */
     if (!modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_plasticity_is_impaired: modulation is NULL");
         return false;
     }
 

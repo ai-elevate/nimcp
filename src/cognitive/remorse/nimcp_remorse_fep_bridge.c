@@ -140,6 +140,7 @@ remorse_fep_bridge_t* remorse_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "remorse_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -524,19 +525,28 @@ void remorse_fep_bridge_set_instance_health_agent(nimcp_health_agent_t* agent) {
  * ============================================================================ */
 
 int remorse_fep_bridge_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_fep_bridge_training_begin: ctx is NULL");
+        return -1;
+    }
     remorse_fep_bridge_heartbeat_instance(g_remorse_fep_bridge_instance_health_agent, "remorse_fep_training_begin", 0.0f);
     return 0;
 }
 
 int remorse_fep_bridge_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_fep_bridge_training_end: ctx is NULL");
+        return -1;
+    }
     remorse_fep_bridge_heartbeat_instance(g_remorse_fep_bridge_instance_health_agent, "remorse_fep_training_end", 1.0f);
     return 0;
 }
 
 int remorse_fep_bridge_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_fep_bridge_training_step: ctx is NULL");
+        return -1;
+    }
     remorse_fep_bridge_heartbeat_instance(g_remorse_fep_bridge_instance_health_agent, "remorse_fep_training_step", progress);
     return 0;
 }

@@ -166,6 +166,7 @@ bool nimcp_brain_factory_init_temporal_subsystem(brain_t brain) {
     brain->temporal = temporal_create(&temporal_cfg);
     if (!brain->temporal) {
         set_error("Failed to create temporal adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_temporal_subsystem: brain->temporal is NULL");
         return false;
     }
 
@@ -249,6 +250,7 @@ bool nimcp_brain_factory_init_temporal_substrate_bridge(brain_t brain) {
 
     if (!brain->temporal_substrate_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create temporal substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_temporal_substrate_bridge: brain->temporal_substrate_bridge is NULL");
         return false;
     }
 
@@ -293,6 +295,7 @@ bool nimcp_brain_factory_init_temporal_thalamic_bridge(brain_t brain) {
 
     if (!brain->temporal_thalamic_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create temporal thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_temporal_thalamic_bridge: brain->temporal_thalamic_bridge is NULL");
         return false;
     }
 
@@ -340,6 +343,7 @@ bool nimcp_brain_factory_init_temporal_quantum_bridge(brain_t brain) {
 
     if (!brain->temporal_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create temporal quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_temporal_quantum_bridge: brain->temporal_quantum_bridge is NULL");
         return false;
     }
 

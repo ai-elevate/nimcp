@@ -97,6 +97,7 @@ static olfact_bio_subscription_t* find_subscription(olfact_bio_async_bridge_t* b
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -116,7 +117,10 @@ static int count_subscribers_for_type(const olfact_bio_async_bridge_t* b, olfact
  * ============================================================================ */
 
 int olfact_bio_async_default_config(olfact_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->odor_broadcast_interval_ms = OLFACT_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -156,6 +160,7 @@ olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(olfact_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "olfact_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -186,7 +191,10 @@ int olfact_bio_async_connect(
     nimcp_olfactory_t* olfact,
     bio_router_t router
 ) {
-    if (!bridge || !olfact) return -1;
+    if (!bridge || !olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_connect: required parameter is NULL (bridge, olfact)");
+        return -1;
+    }
 
     bridge->olfact = olfact;
     bridge->router = router;
@@ -196,7 +204,10 @@ int olfact_bio_async_connect(
 }
 
 int olfact_bio_async_disconnect(olfact_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->olfact = NULL;
     bridge->router = NULL;
@@ -214,7 +225,10 @@ bool olfact_bio_async_is_connected(const olfact_bio_async_bridge_t* bridge) {
  * ============================================================================ */
 
 int olfact_bio_async_process_inbox(olfact_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -224,7 +238,10 @@ int olfact_bio_async_process_inbox(olfact_bio_async_bridge_t* bridge, uint32_t m
 }
 
 int olfact_bio_async_update(olfact_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -240,7 +257,10 @@ int olfact_bio_async_broadcast_odor_detected(
     float intensity,
     bool is_novel
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_odor_detected: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     olfact_bio_odor_detected_msg_t msg = {0};
     msg.header.type = OLFACT_BIO_MSG_ODOR_DETECTED;
@@ -269,7 +289,10 @@ int olfact_bio_async_broadcast_odor_identified(
     odor_category_t category,
     float confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_odor_identified: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     olfact_bio_odor_identified_msg_t msg = {0};
     msg.header.type = OLFACT_BIO_MSG_ODOR_IDENTIFIED;
@@ -298,7 +321,10 @@ int olfact_bio_async_broadcast_hedonic(
     hedonic_valence_t valence,
     float score
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_hedonic: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_hedonic_routing) return 0;
 
     olfact_bio_hedonic_value_msg_t msg = {0};
@@ -331,7 +357,10 @@ int olfact_bio_async_broadcast_memory_trigger(
     uint32_t memory_id,
     float strength
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_memory_trigger: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_memory_triggers) return 0;
 
     olfact_bio_memory_trigger_msg_t msg = {0};
@@ -360,7 +389,10 @@ int olfact_bio_async_broadcast_food_signal(
     bool is_sweet,
     bool is_savory
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_food_signal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_food_signals) return 0;
 
     olfact_bio_food_signal_msg_t msg = {0};
@@ -390,7 +422,10 @@ int olfact_bio_async_broadcast_danger_odor(
     uint32_t danger_type,
     float intensity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_danger_odor: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_danger_alerts) return 0;
 
     olfact_bio_danger_odor_msg_t msg = {0};
@@ -425,7 +460,10 @@ int olfact_bio_async_broadcast_sniff_cycle(
     sniff_phase_t phase,
     float strength
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_sniff_cycle: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     olfact_bio_sniff_cycle_msg_t msg = {0};
     msg.header.type = OLFACT_BIO_MSG_SNIFF_CYCLE;
@@ -450,7 +488,10 @@ int olfact_bio_async_broadcast_adaptation(
     float level,
     bool fully_adapted
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_broadcast_adaptation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     olfact_bio_adaptation_msg_t msg = {0};
     msg.header.type = OLFACT_BIO_MSG_ADAPTATION;
@@ -480,7 +521,10 @@ int olfact_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     olfact_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
@@ -490,6 +534,7 @@ int olfact_bio_async_subscribe_module(
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "olfact_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -510,6 +555,7 @@ int olfact_bio_async_subscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "olfact_bio_async_subscribe_module: validation failed");
     return -1;
 }
 
@@ -517,10 +563,16 @@ int olfact_bio_async_unsubscribe_module(
     olfact_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     olfact_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask = 0;
@@ -546,13 +598,19 @@ int olfact_bio_async_get_stats(
     const olfact_bio_async_bridge_t* bridge,
     olfact_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int olfact_bio_async_reset_stats(olfact_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

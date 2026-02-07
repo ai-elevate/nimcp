@@ -175,7 +175,10 @@ blend_mental_space_t* blending_create_space(const char* name) {
 
 int blending_add_element(blend_mental_space_t* space, const char* name,
     const float* features, uint32_t num_features) {
-    if (!space || space->num_elements >= BLEND_MAX_ELEMENTS) return -1;
+    if (!space || space->num_elements >= BLEND_MAX_ELEMENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "blending_create_space: space is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     conceptual_blending_heartbeat("conceptual_b_blending_add_element", 0.0f);
@@ -221,7 +224,10 @@ void blending_free_space(blend_mental_space_t* space) {
 
 conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
     const blend_mental_space_t* concept1, const blend_mental_space_t* concept2) {
-    if (!engine || !concept1 || !concept2) return NULL;
+    if (!engine || !concept1 || !concept2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "blending_free_space: required parameter is NULL (engine, concept1, concept2)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     conceptual_blending_heartbeat("conceptual_b_blending_create_blen", 0.0f);
@@ -286,7 +292,10 @@ conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
 int blending_find_mappings(blending_engine_t* engine,
     const blend_mental_space_t* space1, const blend_mental_space_t* space2,
     blend_mapping_t* mappings, uint32_t max_mappings, uint32_t* num_found) {
-    if (!engine || !space1 || !space2 || !mappings || !num_found) return -1;
+    if (!engine || !space1 || !space2 || !mappings || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_free_space: required parameter is NULL (engine, space1, space2, mappings, num_found)");
+        return -1;
+    }
     *num_found = 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -330,7 +339,10 @@ int blending_find_mappings(blending_engine_t* engine,
 
 blend_property_t** blending_find_emergent(blending_engine_t* engine,
     const conceptual_blend_t* blend, uint32_t* num_found) {
-    if (!engine || !blend || !num_found) return NULL;
+    if (!engine || !blend || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_free_space: required parameter is NULL (engine, blend, num_found)");
+        return NULL;
+    }
     *num_found = blend->num_emergent;
     return &blend->emergent_properties;
 }
@@ -354,7 +366,10 @@ float blending_evaluate_integration(blending_engine_t* engine, const conceptual_
 }
 
 int blending_optimize_blend(blending_engine_t* engine, conceptual_blend_t* blend) {
-    if (!engine || !blend) return -1;
+    if (!engine || !blend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_optimize_blend: required parameter is NULL (engine, blend)");
+        return -1;
+    }
     if (!engine->config.enable_optimization) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -390,7 +405,10 @@ void blending_free_blend(conceptual_blend_t* blend) {
 }
 
 int blending_set_inflammation(blending_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_set_inflammation: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     conceptual_blending_heartbeat("conceptual_b_blending_set_inflamm", 0.0f);
 
@@ -400,7 +418,10 @@ int blending_set_inflammation(blending_engine_t* engine, float level) {
 }
 
 int blending_set_fatigue(blending_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_set_fatigue: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     conceptual_blending_heartbeat("conceptual_b_blending_set_fatigue", 0.0f);
 
@@ -410,7 +431,10 @@ int blending_set_fatigue(blending_engine_t* engine, float level) {
 }
 
 int blending_get_stats(const blending_engine_t* engine, blend_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blending_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     conceptual_blending_heartbeat("conceptual_b_blending_get_stats", 0.0f);

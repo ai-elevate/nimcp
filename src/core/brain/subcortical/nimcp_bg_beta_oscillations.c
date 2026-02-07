@@ -207,6 +207,7 @@ bg_beta_system_t* bg_beta_create(const bg_beta_config_t* config) {
     system->channels = nimcp_calloc(system->num_channels, sizeof(bg_beta_channel_t));
     if (!system->channels) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_beta_create: system->channels is NULL");
         return NULL;
     }
 
@@ -256,7 +257,10 @@ void bg_beta_destroy(bg_beta_system_t* system) {
 }
 
 int bg_beta_reset(bg_beta_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_reset: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -296,7 +300,10 @@ int bg_beta_reset(bg_beta_system_t* system) {
  * ============================================================================ */
 
 int bg_beta_step(bg_beta_system_t* system, float dt_ms) {
-    if (!system || dt_ms <= 0) return -1;
+    if (!system || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_beta_step: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -504,7 +511,10 @@ float bg_beta_apply_dopamine(bg_beta_system_t* system, float dopamine_level) {
 
 int bg_beta_signal_movement_intent(bg_beta_system_t* system,
                                     float intention_strength) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_apply_dopamine: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->movement_intent = clamp_f(intention_strength, 0.0f, 1.0f);
@@ -513,7 +523,10 @@ int bg_beta_signal_movement_intent(bg_beta_system_t* system,
 }
 
 int bg_beta_signal_movement_complete(bg_beta_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_complete: system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->movement_intent = 0.0f;
@@ -532,8 +545,14 @@ int bg_beta_signal_movement_complete(bg_beta_system_t* system) {
 int bg_beta_set_pathology(bg_beta_system_t* system,
                           bg_pathology_t pathology,
                           float severity) {
-    if (!system) return -1;
-    if (pathology >= BG_PATHOLOGY_COUNT) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_complete: system is NULL");
+        return -1;
+    }
+    if (pathology >= BG_PATHOLOGY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_beta_signal_movement_complete: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     system->pathology = pathology;
@@ -545,7 +564,10 @@ int bg_beta_set_pathology(bg_beta_system_t* system,
 int bg_beta_get_pathology(const bg_beta_system_t* system,
                           bg_pathology_t* out_pathology,
                           float* out_severity) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_signal_movement_complete: system is NULL");
+        return -1;
+    }
 
     if (out_pathology) *out_pathology = system->pathology;
     if (out_severity) *out_severity = system->pathology_severity;
@@ -621,7 +643,10 @@ float bg_beta_get_coherence(const bg_beta_system_t* system) {
 }
 
 bool bg_beta_is_movement_blocked(const bg_beta_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_is_movement_blocked: system is NULL");
+        return false;
+    }
     return system->state == BG_BETA_STATE_LOCKED;
 }
 
@@ -645,7 +670,10 @@ float bg_beta_get_movement_readiness(const bg_beta_system_t* system) {
 }
 
 int bg_beta_get_output(const bg_beta_system_t* system, float* output) {
-    if (!system || !output) return -1;
+    if (!system || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_get_output: required parameter is NULL (system, output)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < system->num_channels; i++) {
         output[i] = generate_oscillation(system->channels[i].phase,
@@ -656,7 +684,10 @@ int bg_beta_get_output(const bg_beta_system_t* system, float* output) {
 }
 
 int bg_beta_get_stats(const bg_beta_system_t* system, bg_beta_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_beta_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
     *stats = system->stats;
     return 0;
 }

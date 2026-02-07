@@ -175,6 +175,7 @@ static cached_explanation_t* lookup_cache(
             return &system->cache[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_cache: operation failed");
     return NULL;
 }
 
@@ -352,6 +353,7 @@ interpretability_t* interpretability_create(
     interpretability_t* system = nimcp_calloc(1, sizeof(interpretability_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate interpretability system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "interpretability_create: validation failed");
         return NULL;
     }
 
@@ -360,6 +362,7 @@ interpretability_t* interpretability_create(
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "interpretability_create: validation failed");
         return NULL;
     }
 

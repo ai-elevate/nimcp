@@ -210,7 +210,10 @@ int entorhinal_omni_bridge_connect(
     nimcp_entorhinal_t* entorhinal,
     nimcp_omnidirectional_system_t* omni)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->entorhinal = entorhinal;
     bridge->omni = omni;
@@ -222,7 +225,10 @@ int entorhinal_omni_bridge_connect(
 int entorhinal_omni_bridge_disconnect(
     entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->entorhinal = NULL;
     bridge->omni = NULL;
@@ -234,7 +240,10 @@ int entorhinal_omni_bridge_disconnect(
 int entorhinal_omni_bridge_reset(
     entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Clear spatial map */
     memset(&bridge->spatial_map, 0, sizeof(omni_spatial_map_t));
@@ -285,7 +294,10 @@ int entorhinal_omni_bridge_update(
     entorhinal_omni_bridge_state_t* bridge,
     float dt)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* Decay attention over time */
     bridge->attention_strength *= expf(-bridge->config.attention_decay_rate * dt);
@@ -383,7 +395,10 @@ int entorhinal_omni_receive_spatial_map(
     entorhinal_omni_bridge_state_t* bridge,
     const omni_spatial_map_t* map)
 {
-    if (!bridge || !map) return -1;
+    if (!bridge || !map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_receive_spatial_map: required parameter is NULL (bridge, map)");
+        return -1;
+    }
 
     /* Copy azimuthal data */
     memcpy(bridge->spatial_map.azimuth_salience, map->azimuth_salience,
@@ -407,7 +422,10 @@ int entorhinal_omni_receive_spatial_map(
 int entorhinal_omni_send_grid_representation(
     entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_send_grid_representation: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Would extract grid cell population vector and send to omni system */
     /* For now, just return success */
@@ -420,8 +438,14 @@ int entorhinal_omni_receive_threats(
     const omni_threat_vector_t* threats,
     uint32_t num_threats)
 {
-    if (!bridge) return -1;
-    if (num_threats > 0 && !threats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_receive_threats: bridge is NULL");
+        return -1;
+    }
+    if (num_threats > 0 && !threats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_receive_threats: threats is NULL");
+        return -1;
+    }
 
     uint32_t count = num_threats < OMNI_MAX_THREATS ? num_threats : OMNI_MAX_THREATS;
     memcpy(bridge->threats, threats, count * sizeof(omni_threat_vector_t));
@@ -446,8 +470,14 @@ int entorhinal_omni_receive_opportunities(
     const omni_opportunity_vector_t* opportunities,
     uint32_t num_opportunities)
 {
-    if (!bridge) return -1;
-    if (num_opportunities > 0 && !opportunities) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_receive_opportunities: bridge is NULL");
+        return -1;
+    }
+    if (num_opportunities > 0 && !opportunities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_receive_opportunities: opportunities is NULL");
+        return -1;
+    }
 
     uint32_t count = num_opportunities < OMNI_MAX_OPPORTUNITIES ?
         num_opportunities : OMNI_MAX_OPPORTUNITIES;
@@ -471,7 +501,10 @@ int entorhinal_omni_receive_opportunities(
 int entorhinal_omni_send_memory_overlay(
     entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_send_memory_overlay: bridge is NULL");
+        return -1;
+    }
 
     /* Would compute memory familiarity for each direction based on
        grid cell patterns and send to omnidirectional system */
@@ -543,7 +576,10 @@ int entorhinal_omni_get_sector_summary(
     omni_sector_t sector,
     float* salience, float* threat, float* opportunity)
 {
-    if (!bridge || sector >= OMNI_SECTOR_COUNT) return -1;
+    if (!bridge || sector >= OMNI_SECTOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "entorhinal_omni_get_sector_summary: bridge is NULL");
+        return -1;
+    }
 
     if (salience) *salience = bridge->spatial_map.sector_salience[sector];
     if (threat) *threat = bridge->spatial_map.sector_threat[sector];
@@ -574,6 +610,7 @@ const omni_tracked_object_t* entorhinal_omni_get_tracked_object(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_tracked_object: validation failed");
     return NULL;
 }
 
@@ -581,8 +618,14 @@ int entorhinal_omni_get_nearest_threat(
     const entorhinal_omni_bridge_state_t* bridge,
     omni_threat_vector_t* threat_out)
 {
-    if (!bridge || !threat_out) return -1;
-    if (bridge->num_threats == 0) return -1;
+    if (!bridge || !threat_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_nearest_threat: required parameter is NULL (bridge, threat_out)");
+        return -1;
+    }
+    if (bridge->num_threats == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_omni_get_nearest_threat: bridge->num_threats is zero");
+        return -1;
+    }
 
     /* Find nearest threat */
     float min_distance = 1e9f;
@@ -604,8 +647,14 @@ int entorhinal_omni_get_best_opportunity(
     const entorhinal_omni_bridge_state_t* bridge,
     omni_opportunity_vector_t* opportunity_out)
 {
-    if (!bridge || !opportunity_out) return -1;
-    if (bridge->num_opportunities == 0) return -1;
+    if (!bridge || !opportunity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_best_opportunity: required parameter is NULL (bridge, opportunity_out)");
+        return -1;
+    }
+    if (bridge->num_opportunities == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_omni_get_best_opportunity: bridge->num_opportunities is zero");
+        return -1;
+    }
 
     /* Find best opportunity (highest value / distance ratio) */
     float best_score = -1e9f;
@@ -630,7 +679,10 @@ int entorhinal_omni_get_escape_vector(
     const entorhinal_omni_bridge_state_t* bridge,
     float* vector_out)
 {
-    if (!bridge || !vector_out) return -1;
+    if (!bridge || !vector_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_escape_vector: required parameter is NULL (bridge, vector_out)");
+        return -1;
+    }
 
     vector_out[0] = bridge->escape_vector[0];
     vector_out[1] = bridge->escape_vector[1];
@@ -643,7 +695,10 @@ int entorhinal_omni_get_approach_vector(
     const entorhinal_omni_bridge_state_t* bridge,
     float* vector_out)
 {
-    if (!bridge || !vector_out) return -1;
+    if (!bridge || !vector_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_approach_vector: required parameter is NULL (bridge, vector_out)");
+        return -1;
+    }
 
     vector_out[0] = bridge->approach_vector[0];
     vector_out[1] = bridge->approach_vector[1];
@@ -660,7 +715,10 @@ int entorhinal_omni_set_attention_focus(
     entorhinal_omni_bridge_state_t* bridge,
     float azimuth, float distance)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_set_attention_focus: bridge is NULL");
+        return -1;
+    }
 
     bridge->attention_direction = normalize_angle(azimuth);
     bridge->attention_distance = distance;
@@ -673,7 +731,10 @@ int entorhinal_omni_get_attention_focus(
     const entorhinal_omni_bridge_state_t* bridge,
     float* azimuth_out, float* distance_out, float* strength_out)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_attention_focus: bridge is NULL");
+        return -1;
+    }
 
     if (azimuth_out) *azimuth_out = bridge->attention_direction;
     if (distance_out) *distance_out = bridge->attention_distance;
@@ -687,7 +748,10 @@ int entorhinal_omni_compute_attended_representation(
     float* representation_out,
     uint32_t representation_size)
 {
-    if (!bridge || !representation_out || representation_size == 0) return -1;
+    if (!bridge || !representation_out || representation_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_compute_attended_representation: required parameter is NULL (bridge, representation_out)");
+        return -1;
+    }
 
     /* Compute attention-weighted representation */
     int center_idx = angle_to_index(bridge->attention_direction);
@@ -716,7 +780,10 @@ int entorhinal_omni_compute_attended_representation(
 int entorhinal_omni_modulate_grid_cells(
     entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_modulate_grid_cells: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Would modulate grid cell activations based on omnidirectional input */
     /* Threat increases attention and grid cell gain in that direction */
@@ -732,7 +799,10 @@ int entorhinal_omni_get_boundary_signals(
     uint32_t max_boundaries,
     uint32_t* num_boundaries)
 {
-    if (!bridge || !boundary_distances || !boundary_directions || !num_boundaries) return -1;
+    if (!bridge || !boundary_distances || !boundary_directions || !num_boundaries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_get_boundary_signals: required parameter is NULL (bridge, boundary_distances, boundary_directions, num_boundaries)");
+        return -1;
+    }
 
     /* Extract boundary signals from spatial map for border cells */
     uint32_t count = 0;
@@ -769,7 +839,10 @@ int entorhinal_omni_bridge_get_stats(
     uint64_t* threats_detected,
     uint64_t* opportunities_detected)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
 
     if (updates_processed) *updates_processed = bridge->updates_processed;
     if (threats_detected) *threats_detected = bridge->threats_detected;
@@ -781,7 +854,10 @@ int entorhinal_omni_bridge_get_stats(
 int entorhinal_omni_bridge_log_diagnostics(
     const entorhinal_omni_bridge_state_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_omni_bridge_log_diagnostics: bridge is NULL");
+        return -1;
+    }
 
     /* Would log to nimcp_logger here */
 

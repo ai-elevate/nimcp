@@ -241,11 +241,13 @@ static int bridge_kg_publish(financial_world_model_bridge_t* bridge, const char*
 
 int fin_world_state_alloc(fin_world_state_t* state, uint32_t num_assets) {
     if (!state || num_assets == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fin_world_state_alloc: state is NULL");
         return -1;
     }
 
     state->asset_prices = nimcp_calloc(num_assets, sizeof(float));
     if (!state->asset_prices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fin_world_state_alloc: state->asset_prices is NULL");
         return -1;
     }
 
@@ -253,6 +255,7 @@ int fin_world_state_alloc(fin_world_state_t* state, uint32_t num_assets) {
     if (!state->volatilities) {
         nimcp_free(state->asset_prices);
         state->asset_prices = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fin_world_state_alloc: state->volatilities is NULL");
         return -1;
     }
 
@@ -278,9 +281,11 @@ void fin_world_state_free(fin_world_state_t* state) {
 
 int fin_world_state_copy(fin_world_state_t* dst, const fin_world_state_t* src) {
     if (!dst || !src || !dst->asset_prices || !dst->volatilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fin_world_state_copy: required parameter is NULL (dst, src, dst->asset_prices, dst->volatilities)");
         return -1;
     }
     if (dst->num_assets < src->num_assets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fin_world_state_copy: validation failed");
         return -1;
     }
 
@@ -354,6 +359,7 @@ financial_world_model_bridge_t* financial_world_model_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_WORLD_MODEL, "financial_world_model") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_world_model_bridge_create: validation failed");
         return NULL;
     }
 
@@ -362,6 +368,7 @@ financial_world_model_bridge_t* financial_world_model_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error("Failed to allocate world state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_world_model_bridge_create: validation failed");
         return NULL;
     }
 

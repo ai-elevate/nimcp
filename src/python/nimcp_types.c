@@ -55,6 +55,7 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
 
             if (!self->brain) {
                 PyErr_SetString(PyExc_RuntimeError, "Failed to create brain from config");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_init: self->brain is NULL");
                 return -1;
             }
             return 0;
@@ -71,18 +72,21 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
     // Parse constructor arguments
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "siiII", kwlist,
                                      &name, &size, &task, &num_inputs, &num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_init: operation failed");
         return -1;
     }
 
     // Validate size parameter
     if (size < NIMCP_BRAIN_TINY || size > NIMCP_BRAIN_LARGE) {
         PyErr_SetString(PyExc_ValueError, "size must be 0-3 (TINY=0, SMALL=1, MEDIUM=2, LARGE=3)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_init: validation failed");
         return -1;
     }
 
     // Validate task parameter
     if (task < NIMCP_TASK_CLASSIFICATION || task > NIMCP_TASK_ASSOCIATION) {
         PyErr_SetString(PyExc_ValueError, "task must be 0-4 (CLASSIFICATION=0, REGRESSION=1, PATTERN_MATCHING=2, SEQUENCE=3, ASSOCIATION=4)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_init: validation failed");
         return -1;
     }
 
@@ -93,6 +97,7 @@ static int Brain_init(BrainObject* self, PyObject* args, PyObject* kwds)
 
     if (!self->brain) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_init: self->brain is NULL");
         return -1;
     }
 
@@ -127,18 +132,21 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "Os|f", kwlist,
                                      &features_list, &label, &confidence)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_learn: operation failed");
         return NULL;
     }
 
     // Convert Python list to C array
     if (!PyList_Check(features_list)) {
         PyErr_SetString(PyExc_TypeError, "features must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_learn: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_features = PyList_Size(features_list);
     if (num_features <= 0) {
         PyErr_SetString(PyExc_ValueError, "features list must not be empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_learn: validation failed");
         return NULL;
     }
 
@@ -152,6 +160,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
         features[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
             nimcp_free(features);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_learn: validation failed");
             return NULL;
         }
     }
@@ -175,6 +184,7 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args, PyObject* kwds)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to learn from example");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_learn: validation failed");
         return NULL;
     }
 
@@ -187,18 +197,21 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
     PyObject* features_list;
 
     if (!PyArg_ParseTuple(args, "O", &features_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_decide: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     // Convert Python list to C array
     if (!PyList_Check(features_list)) {
         PyErr_SetString(PyExc_TypeError, "features must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_decide: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_features = PyList_Size(features_list);
     if (num_features <= 0) {
         PyErr_SetString(PyExc_ValueError, "features list must not be empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_decide: validation failed");
         return NULL;
     }
 
@@ -212,6 +225,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
         features[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
             nimcp_free(features);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_decide: validation failed");
             return NULL;
         }
     }
@@ -231,6 +245,7 @@ static PyObject* Brain_decide(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to make prediction");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_decide: validation failed");
         return NULL;
     }
 
@@ -243,6 +258,7 @@ static PyObject* Brain_clone_cow(BrainObject* self, PyObject* Py_UNUSED(ignored)
 {
     if (!self->brain) {
         PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_clone_cow: self->brain is NULL");
         return NULL;
     }
 
@@ -251,6 +267,7 @@ static PyObject* Brain_clone_cow(BrainObject* self, PyObject* Py_UNUSED(ignored)
 
     if (!clone_brain) {
         PyErr_SetString(NIMCPError, "Failed to create COW clone");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_clone_cow: clone_brain is NULL");
         return NULL;
     }
 
@@ -258,6 +275,7 @@ static PyObject* Brain_clone_cow(BrainObject* self, PyObject* Py_UNUSED(ignored)
     BrainObject* clone_obj = (BrainObject*)BrainType.tp_alloc(&BrainType, 0);
     if (!clone_obj) {
         nimcp_brain_destroy(clone_brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_clone_cow: clone_obj is NULL");
         return NULL;
     }
 
@@ -273,6 +291,7 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args)
     const char* filepath;
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_save: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -292,6 +311,7 @@ static PyObject* Brain_save(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to save brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_save: validation failed");
         return NULL;
     }
 
@@ -304,6 +324,7 @@ static PyObject* Brain_load(PyObject* cls, PyObject* args)
     const char* filepath;
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_load: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -323,6 +344,7 @@ static PyObject* Brain_load(PyObject* cls, PyObject* args)
 
     if (!brain) {
         PyErr_SetString(NIMCPError, "Failed to load brain from file");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_load: brain is NULL");
         return NULL;
     }
 
@@ -331,6 +353,7 @@ static PyObject* Brain_load(PyObject* cls, PyObject* args)
     BrainObject* brain_obj = (BrainObject*)type->tp_alloc(type, 0);
     if (!brain_obj) {
         nimcp_brain_destroy(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_load: brain_obj is NULL");
         return NULL;
     }
 
@@ -349,6 +372,7 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|z", kwlist,
                                      &model_name, &models_dir)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_from_pretrained: operation failed");
         return NULL;
     }
 
@@ -378,6 +402,7 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
 
     if (!brain) {
         PyErr_Format(NIMCPError, "Failed to load pre-trained model: %s", model_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_from_pretrained: brain is NULL");
         return NULL;
     }
 
@@ -386,6 +411,7 @@ static PyObject* Brain_from_pretrained(PyObject* cls, PyObject* args, PyObject* 
     BrainObject* brain_obj = (BrainObject*)type->tp_alloc(type, 0);
     if (!brain_obj) {
         nimcp_brain_destroy(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_from_pretrained: brain_obj is NULL");
         return NULL;
     }
 
@@ -411,22 +437,26 @@ static PyObject* Brain_finetune(BrainObject* self, PyObject* args, PyObject* kwd
                                      &training_data_list, &labels_list,
                                      &num_epochs, &learning_rate,
                                      &freeze_sensory, &freeze_cognitive)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_finetune: operation failed");
         return NULL;
     }
 
     // Validate inputs
     if (!PyList_Check(training_data_list)) {
         PyErr_SetString(PyExc_TypeError, "training_data must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_finetune: PyList_Check is NULL");
         return NULL;
     }
     if (!PyList_Check(labels_list)) {
         PyErr_SetString(PyExc_TypeError, "labels must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_finetune: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_samples = PyList_Size(training_data_list);
     if (num_samples != PyList_Size(labels_list)) {
         PyErr_SetString(PyExc_ValueError, "training_data and labels must have same length");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_finetune: validation failed");
         return NULL;
     }
 
@@ -450,6 +480,7 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to probe brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_probe: validation failed");
         return NULL;
     }
 
@@ -469,11 +500,13 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
         PyObject* _val = (value_expr); \
         if (!_val) { \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_probe: _val is NULL"); \
             return NULL; \
         } \
         if (PyDict_SetItemString(dict, (key), _val) < 0) { \
             Py_DECREF(_val); \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_probe: validation failed"); \
             return NULL; \
         } \
         Py_DECREF(_val); \
@@ -519,12 +552,14 @@ static PyObject* Brain_configure_training(BrainObject* self, PyObject* args)
     PyObject* config_obj;
 
     if (!PyArg_ParseTuple(args, "O", &config_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_configure_training: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     /* Verify it's a TrainingConfig object */
     if (!PyObject_TypeCheck(config_obj, &TrainingConfigType)) {
         PyErr_SetString(PyExc_TypeError, "config must be a TrainingConfig object");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_configure_training: PyObject_TypeCheck is NULL");
         return NULL;
     }
 
@@ -544,6 +579,7 @@ static PyObject* Brain_configure_training(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to configure training pipeline");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_configure_training: validation failed");
         return NULL;
     }
 
@@ -561,16 +597,19 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     PyObject* targets_list;
 
     if (!PyArg_ParseTuple(args, "OO", &features_list, &targets_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     /* Validate inputs */
     if (!PyList_Check(features_list)) {
         PyErr_SetString(PyExc_TypeError, "features must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: PyList_Check is NULL");
         return NULL;
     }
     if (!PyList_Check(targets_list)) {
         PyErr_SetString(PyExc_TypeError, "targets must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: PyList_Check is NULL");
         return NULL;
     }
 
@@ -579,6 +618,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
 
     if (num_features <= 0 || num_targets <= 0) {
         PyErr_SetString(PyExc_ValueError, "features and targets must be non-empty lists");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: validation failed");
         return NULL;
     }
 
@@ -586,6 +626,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     float* features = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (features == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: validation failed");
         return NULL;
     }
 
@@ -594,6 +635,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
             nimcp_free(features);
             PyErr_SetString(PyExc_TypeError, "All feature values must be numbers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: required parameter is NULL (PyFloat_Check, PyLong_Check)");
             return NULL;
         }
         features[i] = (float)PyFloat_AsDouble(item);
@@ -604,6 +646,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
     if (targets == NULL) {
         nimcp_free(features);
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: validation failed");
         return NULL;
     }
 
@@ -613,6 +656,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
             nimcp_free(features);
             nimcp_free(targets);
             PyErr_SetString(PyExc_TypeError, "All target values must be numbers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: required parameter is NULL (PyFloat_Check, PyLong_Check)");
             return NULL;
         }
         targets[i] = (float)PyFloat_AsDouble(item);
@@ -632,6 +676,7 @@ static PyObject* Brain_train_step(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Training step failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_step: validation failed");
         return NULL;
     }
 
@@ -649,18 +694,21 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
     PyObject* targets_list;
 
     if (!PyArg_ParseTuple(args, "OO", &features_list, &targets_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     /* Validate inputs are lists of lists */
     if (!PyList_Check(features_list) || !PyList_Check(targets_list)) {
         PyErr_SetString(PyExc_TypeError, "features and targets must be lists of lists");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: required parameter is NULL (PyList_Check, PyList_Check)");
         return NULL;
     }
 
     Py_ssize_t batch_size = PyList_Size(features_list);
     if (batch_size <= 0 || PyList_Size(targets_list) != batch_size) {
         PyErr_SetString(PyExc_ValueError, "features and targets must have same batch size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_train_batch: validation failed");
         return NULL;
     }
 
@@ -670,6 +718,7 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
 
     if (!PyList_Check(first_features) || !PyList_Check(first_targets)) {
         PyErr_SetString(PyExc_TypeError, "features and targets must be 2D lists");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: required parameter is NULL (PyList_Check, PyList_Check)");
         return NULL;
     }
 
@@ -678,6 +727,7 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
 
     if (num_features <= 0 || num_targets <= 0) {
         PyErr_SetString(PyExc_ValueError, "feature and target dimensions must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: validation failed");
         return NULL;
     }
 
@@ -689,6 +739,7 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
         nimcp_free(features);
         nimcp_free(targets);
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: validation failed");
         return NULL;
     }
 
@@ -701,12 +752,14 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
             nimcp_free(features);
             nimcp_free(targets);
             PyErr_SetString(PyExc_ValueError, "All feature rows must have same length");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_train_batch: PyList_Check is NULL");
             return NULL;
         }
         if (!PyList_Check(targ_row) || PyList_Size(targ_row) != num_targets) {
             nimcp_free(features);
             nimcp_free(targets);
             PyErr_SetString(PyExc_ValueError, "All target rows must have same length");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_train_batch: PyList_Check is NULL");
             return NULL;
         }
 
@@ -735,6 +788,7 @@ static PyObject* Brain_train_batch(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Batch training failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_train_batch: validation failed");
         return NULL;
     }
 
@@ -759,6 +813,7 @@ static PyObject* Brain_get_training_stats(BrainObject* self, PyObject* Py_UNUSED
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to get training stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_training_stats: validation failed");
         return NULL;
     }
 
@@ -775,6 +830,7 @@ static PyObject* Brain_step_scheduler(BrainObject* self, PyObject* args)
     float validation_metric = 0.0f;
 
     if (!PyArg_ParseTuple(args, "|f", &validation_metric)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_step_scheduler: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -819,6 +875,7 @@ static PyObject* Brain_enable_callbacks(BrainObject* self, PyObject* args)
     PyObject* config_obj = NULL;
 
     if (!PyArg_ParseTuple(args, "|O", &config_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_callbacks: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -828,6 +885,7 @@ static PyObject* Brain_enable_callbacks(BrainObject* self, PyObject* args)
     if (config_obj != NULL && config_obj != Py_None) {
         if (!PyObject_TypeCheck(config_obj, &CallbackConfigType)) {
             PyErr_SetString(PyExc_TypeError, "config must be a CallbackConfig object");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_callbacks: PyObject_TypeCheck is NULL");
             return NULL;
         }
 
@@ -849,6 +907,7 @@ static PyObject* Brain_enable_callbacks(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to enable callbacks");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_callbacks: validation failed");
         return NULL;
     }
 
@@ -867,6 +926,7 @@ static PyObject* Brain_disable_callbacks(BrainObject* self, PyObject* Py_UNUSED(
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to disable callbacks");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_disable_callbacks: validation failed");
         return NULL;
     }
 
@@ -887,12 +947,14 @@ static PyObject* Brain_register_callback(BrainObject* self, PyObject* args, PyOb
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "iO|zO", kwlist,
                                      &event, &callback, &name, &user_data)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_register_callback: operation failed");
         return NULL;
     }
 
     /* Validate callback is callable */
     if (!PyCallable_Check(callback)) {
         PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_register_callback: PyCallable_Check is NULL");
         return NULL;
     }
 
@@ -900,6 +962,7 @@ static PyObject* Brain_register_callback(BrainObject* self, PyObject* args, PyOb
     PyCallbackContext* ctx = allocate_callback_context();
     if (ctx == NULL) {
         PyErr_SetString(NIMCPError, "Maximum number of callbacks exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_register_callback: validation failed");
         return NULL;
     }
 
@@ -931,6 +994,7 @@ static PyObject* Brain_register_callback(BrainObject* self, PyObject* args, PyOb
         ctx->callback = NULL;
         ctx->user_data = NULL;
         PyErr_SetString(NIMCPError, "Failed to register callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_register_callback: callback_id is zero");
         return NULL;
     }
 
@@ -946,6 +1010,7 @@ static PyObject* Brain_unregister_callback(BrainObject* self, PyObject* args)
     unsigned int callback_id;
 
     if (!PyArg_ParseTuple(args, "I", &callback_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_unregister_callback: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -956,6 +1021,7 @@ static PyObject* Brain_unregister_callback(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to unregister callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_unregister_callback: validation failed");
         return NULL;
     }
 
@@ -981,6 +1047,7 @@ static PyObject* Brain_get_callback_stats(BrainObject* self, PyObject* Py_UNUSED
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to get callback stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_callback_stats: validation failed");
         return NULL;
     }
 
@@ -1005,6 +1072,7 @@ static PyObject* Brain_snapshot_save(BrainObject* self, PyObject* args, PyObject
     const char* description = NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|z", kwlist, &name, &description)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_save: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -1015,6 +1083,7 @@ static PyObject* Brain_snapshot_save(BrainObject* self, PyObject* args, PyObject
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to save snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_save: validation failed");
         return NULL;
     }
 
@@ -1029,6 +1098,7 @@ static PyObject* Brain_snapshot_restore(BrainObject* self, PyObject* args)
     const char* name;
 
     if (!PyArg_ParseTuple(args, "s", &name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_restore: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1039,6 +1109,7 @@ static PyObject* Brain_snapshot_restore(BrainObject* self, PyObject* args)
 
     if (restored == NULL) {
         PyErr_SetString(NIMCPError, "Failed to restore snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_restore: validation failed");
         return NULL;
     }
 
@@ -1046,6 +1117,7 @@ static PyObject* Brain_snapshot_restore(BrainObject* self, PyObject* args)
     BrainObject* new_brain = (BrainObject*)BrainType.tp_alloc(&BrainType, 0);
     if (new_brain == NULL) {
         nimcp_brain_destroy(restored);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_snapshot_restore: validation failed");
         return NULL;
     }
     new_brain->brain = restored;
@@ -1061,6 +1133,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     unsigned int max_count = 100;
 
     if (!PyArg_ParseTuple(args, "|I", &max_count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_list: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1073,6 +1146,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
         sizeof(nimcp_brain_snapshot_info_t) * max_count);
     if (infos == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_list: validation failed");
         return NULL;
     }
 
@@ -1086,6 +1160,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     if (status != NIMCP_OK) {
         nimcp_free(infos);
         PyErr_SetString(NIMCPError, "Failed to list snapshots");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_list: validation failed");
         return NULL;
     }
 
@@ -1093,6 +1168,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
     PyObject* result_list = PyList_New((Py_ssize_t)out_count);
     if (result_list == NULL) {
         nimcp_free(infos);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_snapshot_list: validation failed");
         return NULL;
     }
 
@@ -1101,6 +1177,7 @@ static PyObject* Brain_snapshot_list(BrainObject* self, PyObject* args)
         if (dict == NULL) {
             Py_DECREF(result_list);
             nimcp_free(infos);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_snapshot_list: validation failed");
             return NULL;
         }
 
@@ -1126,6 +1203,7 @@ static PyObject* Brain_snapshot_delete(BrainObject* self, PyObject* args)
     const char* name;
 
     if (!PyArg_ParseTuple(args, "s", &name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_delete: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1136,6 +1214,7 @@ static PyObject* Brain_snapshot_delete(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to delete snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_snapshot_delete: validation failed");
         return NULL;
     }
 
@@ -1155,23 +1234,27 @@ static PyObject* Brain_working_memory_add(BrainObject* self, PyObject* args)
     float salience;
 
     if (!PyArg_ParseTuple(args, "Of", &data_list, &salience)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_add: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!PyList_Check(data_list)) {
         PyErr_SetString(PyExc_TypeError, "data must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_add: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t size = PyList_Size(data_list);
     if (size <= 0) {
         PyErr_SetString(PyExc_ValueError, "data must be non-empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_working_memory_add: validation failed");
         return NULL;
     }
 
     float* data = (float*)nimcp_malloc(sizeof(float) * (size_t)size);
     if (data == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_add: validation failed");
         return NULL;
     }
 
@@ -1189,6 +1272,7 @@ static PyObject* Brain_working_memory_add(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to add to working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_add: validation failed");
         return NULL;
     }
 
@@ -1203,6 +1287,7 @@ static PyObject* Brain_working_memory_get(BrainObject* self, PyObject* args)
     unsigned int index;
 
     if (!PyArg_ParseTuple(args, "I", &index)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Brain_working_memory_get: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1220,6 +1305,7 @@ static PyObject* Brain_working_memory_get(BrainObject* self, PyObject* args)
     /* Build Python list from data */
     PyObject* result_list = PyList_New((Py_ssize_t)size_out);
     if (result_list == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_working_memory_get: validation failed");
         return NULL;
     }
 
@@ -1244,6 +1330,7 @@ static PyObject* Brain_working_memory_stats(BrainObject* self, PyObject* Py_UNUS
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to get working memory stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_stats: validation failed");
         return NULL;
     }
 
@@ -1258,6 +1345,7 @@ static PyObject* Brain_working_memory_refresh(BrainObject* self, PyObject* args)
     unsigned int index;
 
     if (!PyArg_ParseTuple(args, "I", &index)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "Brain_working_memory_refresh: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1268,6 +1356,7 @@ static PyObject* Brain_working_memory_refresh(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to refresh working memory item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_working_memory_refresh: validation failed");
         return NULL;
     }
 
@@ -1288,23 +1377,27 @@ static PyObject* Brain_workspace_compete(BrainObject* self, PyObject* args)
     float strength;
 
     if (!PyArg_ParseTuple(args, "iOf", &module, &content_list, &strength)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_compete: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!PyList_Check(content_list)) {
         PyErr_SetString(PyExc_TypeError, "content must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_compete: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t content_dim = PyList_Size(content_list);
     if (content_dim <= 0) {
         PyErr_SetString(PyExc_ValueError, "content must be non-empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_workspace_compete: validation failed");
         return NULL;
     }
 
     float* content = (float*)nimcp_malloc(sizeof(float) * (size_t)content_dim);
     if (content == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_compete: validation failed");
         return NULL;
     }
 
@@ -1333,12 +1426,14 @@ static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
     unsigned int max_dim = 256;
 
     if (!PyArg_ParseTuple(args, "|I", &max_dim)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain_workspace_read: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     float* content = (float*)nimcp_malloc(sizeof(float) * max_dim);
     if (content == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_read: validation failed");
         return NULL;
     }
 
@@ -1359,6 +1454,7 @@ static PyObject* Brain_workspace_read(BrainObject* self, PyObject* args)
     PyObject* result_list = PyList_New((Py_ssize_t)actual_dim);
     if (result_list == NULL) {
         nimcp_free(content);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Brain_workspace_read: validation failed");
         return NULL;
     }
 
@@ -1379,6 +1475,7 @@ static PyObject* Brain_workspace_subscribe(BrainObject* self, PyObject* args)
     int module;
 
     if (!PyArg_ParseTuple(args, "i", &module)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_subscribe: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1389,6 +1486,7 @@ static PyObject* Brain_workspace_subscribe(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to subscribe to workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_subscribe: validation failed");
         return NULL;
     }
 
@@ -1403,6 +1501,7 @@ static PyObject* Brain_workspace_unsubscribe(BrainObject* self, PyObject* args)
     int module;
 
     if (!PyArg_ParseTuple(args, "i", &module)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_unsubscribe: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1413,6 +1512,7 @@ static PyObject* Brain_workspace_unsubscribe(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to unsubscribe from workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_unsubscribe: validation failed");
         return NULL;
     }
 
@@ -1453,6 +1553,7 @@ static PyObject* Brain_workspace_stats(BrainObject* self, PyObject* Py_UNUSED(ar
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to get workspace stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_workspace_stats: validation failed");
         return NULL;
     }
 
@@ -1474,6 +1575,7 @@ static PyObject* Brain_enable_complex_oscillations(BrainObject* self, PyObject* 
     int enable;
 
     if (!PyArg_ParseTuple(args, "p", &enable)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_enable_complex_oscillations: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1506,6 +1608,7 @@ static PyObject* Brain_get_oscillation_phasor(BrainObject* self, PyObject* args)
     unsigned int neuron_id;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_oscillation_phasor: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1525,23 +1628,27 @@ static PyObject* Brain_get_phase_coherence(BrainObject* self, PyObject* args)
     PyObject* neuron_ids_list;
 
     if (!PyArg_ParseTuple(args, "O", &neuron_ids_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_phase_coherence: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!PyList_Check(neuron_ids_list)) {
         PyErr_SetString(PyExc_TypeError, "neuron_ids must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_phase_coherence: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t count = PyList_Size(neuron_ids_list);
     if (count <= 0) {
         PyErr_SetString(PyExc_ValueError, "neuron_ids must be non-empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_phase_coherence: validation failed");
         return NULL;
     }
 
     uint32_t* neuron_ids = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * (size_t)count);
     if (neuron_ids == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_get_phase_coherence: validation failed");
         return NULL;
     }
 
@@ -1567,23 +1674,27 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
     PyObject* inputs_obj;
 
     if (!PyArg_ParseTuple(args, "O", &inputs_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!self->brain) {
         PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: self->brain is NULL");
         return NULL;
     }
 
     // Convert inputs to float array
     if (!PyList_Check(inputs_obj)) {
         PyErr_SetString(PyExc_TypeError, "inputs must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_inputs = PyList_Size(inputs_obj);
     if (num_inputs <= 0) {
         PyErr_SetString(PyExc_ValueError, "inputs list must not be empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: validation failed");
         return NULL;
     }
 
@@ -1597,6 +1708,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
         inputs[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
             nimcp_free(inputs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: validation failed");
             return NULL;
         }
     }
@@ -1614,6 +1726,7 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(NIMCPError, "Failed to process inputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_process: validation failed");
         return NULL;
     }
 
@@ -1643,11 +1756,13 @@ static PyObject* Brain_release_dopamine(BrainObject* self, PyObject* args, PyObj
     static char* kwlist[] = {"amount", "predicted", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "f|f", kwlist, &amount, &predicted)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_release_dopamine: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
     if (!self->brain) {
         PyErr_SetString(NIMCPError, "Brain not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_release_dopamine: self->brain is NULL");
         return NULL;
     }
 
@@ -1655,6 +1770,7 @@ static PyObject* Brain_release_dopamine(BrainObject* self, PyObject* args, PyObj
     neuromodulator_system_t neuromod = brain_get_neuromodulator_system(self->brain->internal_brain);
     if (!neuromod) {
         PyErr_SetString(NIMCPError, "Neuromodulator system not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain_release_dopamine: neuromod is NULL");
         return NULL;
     }
 
@@ -2130,6 +2246,7 @@ static int BrainConfig_init(BrainConfigObject* self, PyObject* args, PyObject* k
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "II|Os", kwlist,
                                      &num_inputs, &num_outputs, &hidden_layers, &task_name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BrainConfig_init: operation failed");
         return -1;
     }
 
@@ -2247,6 +2364,7 @@ static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObjec
 
     // Parse constructor arguments
     if (!PyArg_ParseTuple(args, "i", &num_neurons)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_init: PyArg_ParseTuple is NULL");
         return -1;
     }
 
@@ -2276,6 +2394,7 @@ static int NeuralNetwork_init(NeuralNetworkObject* self, PyObject* args, PyObjec
     self->network = neural_network_create(&config);
     if (!self->network) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create neural network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_init: self->network is NULL");
         return -1;
     }
 
@@ -2306,23 +2425,27 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
     int num_outputs;
 
     if (!PyArg_ParseTuple(args, "Oi", &input_list, &num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     // Convert Python list to C array
     if (!PyList_Check(input_list)) {
         PyErr_SetString(PyExc_TypeError, "First argument must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: PyList_Check is NULL");
         return NULL;
     }
 
     if (num_outputs <= 0) {
         PyErr_SetString(PyExc_ValueError, "num_outputs must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: validation failed");
         return NULL;
     }
 
     Py_ssize_t input_size = PyList_Size(input_list);
     if (input_size <= 0) {
         PyErr_SetString(PyExc_ValueError, "Input list must not be empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_forward: validation failed");
         return NULL;
     }
 
@@ -2336,6 +2459,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         inputs[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
             nimcp_free(inputs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: validation failed");
             return NULL;
         }
     }
@@ -2357,6 +2481,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
         nimcp_free(inputs);
         nimcp_free(outputs);
         PyErr_SetString(NetworkError, "Forward pass failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: success is NULL");
         return NULL;
     }
 
@@ -2365,6 +2490,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
     if (!result) {
         nimcp_free(inputs);
         nimcp_free(outputs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_forward: result is NULL");
         return NULL;
     }
 
@@ -2374,6 +2500,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
             Py_DECREF(result);
             nimcp_free(inputs);
             nimcp_free(outputs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: item is NULL");
             return NULL;
         }
         // PyList_SetItem steals reference on success, so don't decref item
@@ -2383,6 +2510,7 @@ static PyObject* NeuralNetwork_forward(NeuralNetworkObject* self, PyObject* args
             Py_DECREF(result);
             nimcp_free(inputs);
             nimcp_free(outputs);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_forward: validation failed");
             return NULL;
         }
     }
@@ -2400,6 +2528,7 @@ static PyObject* NeuralNetwork_add_connection(NeuralNetworkObject* self, PyObjec
     float weight;
 
     if (!PyArg_ParseTuple(args, "IIf", &from_id, &to_id, &weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_add_connection: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2407,6 +2536,7 @@ static PyObject* NeuralNetwork_add_connection(NeuralNetworkObject* self, PyObjec
 
     if (!success) {
         PyErr_SetString(NetworkError, "Failed to add connection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_add_connection: success is NULL");
         return NULL;
     }
 
@@ -2421,6 +2551,7 @@ static PyObject* NeuralNetwork_update_neuron(NeuralNetworkObject* self, PyObject
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IfK", &neuron_id, &new_state, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_update_neuron: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2428,6 +2559,7 @@ static PyObject* NeuralNetwork_update_neuron(NeuralNetworkObject* self, PyObject
 
     if (!success) {
         PyErr_SetString(NetworkError, "Failed to update neuron");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_update_neuron: success is NULL");
         return NULL;
     }
 
@@ -2441,6 +2573,7 @@ static PyObject* NeuralNetwork_get_neuron_state(NeuralNetworkObject* self, PyObj
     float state;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_neuron_state: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2448,6 +2581,7 @@ static PyObject* NeuralNetwork_get_neuron_state(NeuralNetworkObject* self, PyObj
 
     if (!success) {
         PyErr_SetString(NetworkError, "Failed to get neuron state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_neuron_state: success is NULL");
         return NULL;
     }
 
@@ -2460,6 +2594,7 @@ static PyObject* NeuralNetwork_compute_step(NeuralNetworkObject* self, PyObject*
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "K", &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_compute_step: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2481,6 +2616,7 @@ static PyObject* NeuralNetwork_add_neuron(NeuralNetworkObject* self, PyObject* a
     int activation_type;
 
     if (!PyArg_ParseTuple(args, "i", &activation_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_add_neuron: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2495,6 +2631,7 @@ static PyObject* NeuralNetwork_apply_stdp(NeuralNetworkObject* self, PyObject* a
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IK", &neuron_id, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_apply_stdp: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2509,6 +2646,7 @@ static PyObject* NeuralNetwork_apply_oja(NeuralNetworkObject* self, PyObject* ar
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IK", &neuron_id, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_apply_oja: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2523,6 +2661,7 @@ static PyObject* NeuralNetwork_apply_homeostasis(NeuralNetworkObject* self, PyOb
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IK", &neuron_id, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_apply_homeostasis: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2540,6 +2679,7 @@ static PyObject* NeuralNetwork_normalize_weights(NeuralNetworkObject* self, PyOb
     unsigned int neuron_id;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_normalize_weights: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2559,6 +2699,7 @@ static PyObject* NeuralNetwork_record_spike(NeuralNetworkObject* self, PyObject*
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IfK", &neuron_id, &magnitude, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_record_spike: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2576,6 +2717,7 @@ static PyObject* NeuralNetwork_get_average_activity(NeuralNetworkObject* self, P
     unsigned int neuron_id;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_average_activity: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2589,6 +2731,7 @@ static PyObject* NeuralNetwork_get_weight_norm(NeuralNetworkObject* self, PyObje
     unsigned int neuron_id;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_weight_norm: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2603,6 +2746,7 @@ static PyObject* NeuralNetwork_get_weight_statistics(NeuralNetworkObject* self, 
     float mean, std_dev;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_weight_statistics: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2617,6 +2761,7 @@ static PyObject* NeuralNetwork_maintain_homeostasis(NeuralNetworkObject* self, P
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "K", &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_maintain_homeostasis: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2630,6 +2775,7 @@ static PyObject* NeuralNetwork_prune_synapses(NeuralNetworkObject* self, PyObjec
     float threshold;
 
     if (!PyArg_ParseTuple(args, "f", &threshold)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_prune_synapses: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2643,6 +2789,7 @@ static PyObject* NeuralNetwork_get_incoming_synapse_count(NeuralNetworkObject* s
     unsigned int neuron_id;
 
     if (!PyArg_ParseTuple(args, "I", &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_get_incoming_synapse_count: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2657,6 +2804,7 @@ static PyObject* NeuralNetwork_update_plasticity(NeuralNetworkObject* self, PyOb
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IK", &neuron_id, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_update_plasticity: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2671,6 +2819,7 @@ static PyObject* NeuralNetwork_adapt_threshold(NeuralNetworkObject* self, PyObje
     unsigned long long timestamp;
 
     if (!PyArg_ParseTuple(args, "IK", &neuron_id, &timestamp)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_adapt_threshold: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -2691,12 +2840,14 @@ static PyObject* NeuralNetwork_set_neuron_model(NeuralNetworkObject* self, PyObj
     // Parse arguments: neuron_id (required), model_type (required)
     // Note: params parameter not yet supported, defaults used
     if (!PyArg_ParseTuple(args, "Ii", &neuron_id, &model_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_set_neuron_model: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     // Validate model_type range
     if (model_type < 0 || model_type > 3) {
         PyErr_SetString(PyExc_ValueError, "Invalid model_type: must be 0-3 (LIF, Izhikevich, AdEx, Hodgkin-Huxley)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_set_neuron_model: validation failed");
         return NULL;
     }
 
@@ -2724,6 +2875,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
     static char* kwlist[] = {"compress", "password", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|pz#", kwlist, &compress, &password, &password_len)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_serialize: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -2731,6 +2883,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
     NimcpSerializer* serializer = nimcp_serializer_create(0);
     if (!serializer) {
         PyErr_SetString(PyExc_MemoryError, "Failed to create serializer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_serialize: serializer is NULL");
         return NULL;
     }
 
@@ -2766,6 +2919,7 @@ static PyObject* NeuralNetwork_serialize(NeuralNetworkObject* self, PyObject* ar
         nimcp_serializer_destroy(serializer);
         PyErr_Format(NetworkError, "Serialization failed: %s",
                      nimcp_network_serial_strerror(result));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_serialize: validation failed");
         return NULL;
     }
 
@@ -2791,6 +2945,7 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     static char* kwlist[] = {"data", "password", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y#|z#", kwlist, &data, &data_length, &password, &password_len)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_deserialize: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -2798,12 +2953,14 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     NimcpSerializer* serializer = nimcp_serializer_create((size_t)data_length);
     if (!serializer) {
         PyErr_SetString(PyExc_MemoryError, "Failed to create serializer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_deserialize: serializer is NULL");
         return NULL;
     }
 
     if (!nimcp_serializer_set_buffer(serializer, (uint8_t*)data, (size_t)data_length)) {
         nimcp_serializer_destroy(serializer);
         PyErr_SetString(PyExc_ValueError, "Failed to set serializer buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NeuralNetwork_deserialize: nimcp_serializer_set_buffer is NULL");
         return NULL;
     }
 
@@ -2839,6 +2996,7 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     if (result != NIMCP_NETWORK_SERIAL_SUCCESS) {
         PyErr_Format(NetworkError, "Deserialization failed: %s",
                      nimcp_network_serial_strerror(result));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NeuralNetwork_deserialize: validation failed");
         return NULL;
     }
 
@@ -2848,6 +3006,7 @@ static PyObject* NeuralNetwork_deserialize(PyObject* cls, PyObject* args, PyObje
     NeuralNetworkObject* py_network = (NeuralNetworkObject*)type->tp_alloc(type, 0);
     if (!py_network) {
         neural_network_destroy(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "NeuralNetwork_deserialize: py_network is NULL");
         return NULL;
     }
 
@@ -3073,6 +3232,7 @@ static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds)
 
     // Parse constructor arguments
     if (!PyArg_ParseTuple(args, "H", &listen_port)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "P2PNode_init: PyArg_ParseTuple is NULL");
         return -1;
     }
 
@@ -3089,6 +3249,7 @@ static int P2PNode_init(P2PNodeObject* self, PyObject* args, PyObject* kwds)
     self->node = p2p_node_create(&config);
     if (!self->node) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create P2P node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_init: self->node is NULL");
         return -1;
     }
 
@@ -3119,6 +3280,7 @@ static PyObject* P2PNode_start(P2PNodeObject* self, PyObject* Py_UNUSED(ignored)
 
     if (!success) {
         PyErr_SetString(NodeError, "Failed to start P2P node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_start: success is NULL");
         return NULL;
     }
 
@@ -3132,6 +3294,7 @@ static PyObject* P2PNode_stop(P2PNodeObject* self, PyObject* Py_UNUSED(ignored))
 
     if (!success) {
         PyErr_SetString(NodeError, "Failed to stop P2P node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_stop: success is NULL");
         return NULL;
     }
 
@@ -3145,6 +3308,7 @@ static PyObject* P2PNode_connect_peer(P2PNodeObject* self, PyObject* args)
     unsigned short peer_port;
 
     if (!PyArg_ParseTuple(args, "sH", &peer_ip, &peer_port)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_connect_peer: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -3152,6 +3316,7 @@ static PyObject* P2PNode_connect_peer(P2PNodeObject* self, PyObject* args)
 
     if (!success) {
         PyErr_SetString(NodeError, "Failed to connect to peer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_connect_peer: success is NULL");
         return NULL;
     }
 
@@ -3165,6 +3330,7 @@ static PyObject* P2PNode_disconnect_peer(P2PNodeObject* self, PyObject* args)
     unsigned short peer_port;
 
     if (!PyArg_ParseTuple(args, "sH", &peer_ip, &peer_port)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_disconnect_peer: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -3172,6 +3338,7 @@ static PyObject* P2PNode_disconnect_peer(P2PNodeObject* self, PyObject* args)
 
     if (!success) {
         PyErr_SetString(NodeError, "Failed to disconnect from peer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_disconnect_peer: success is NULL");
         return NULL;
     }
 
@@ -3185,6 +3352,7 @@ static PyObject* P2PNode_is_peer_connected(P2PNodeObject* self, PyObject* args)
     unsigned short peer_port;
 
     if (!PyArg_ParseTuple(args, "sH", &peer_ip, &peer_port)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_is_peer_connected: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -3210,6 +3378,7 @@ static PyObject* P2PNode_check_peer_health(P2PNodeObject* self, PyObject* args)
     unsigned int timeout_ms;
 
     if (!PyArg_ParseTuple(args, "I", &timeout_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_check_peer_health: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -3231,6 +3400,7 @@ static PyObject* P2PNode_process_pong(P2PNodeObject* self, PyObject* args)
     unsigned short peer_port;
 
     if (!PyArg_ParseTuple(args, "sH", &peer_ip, &peer_port)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "P2PNode_process_pong: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -3339,6 +3509,7 @@ static int NetworkConfig_init(NetworkConfigObject* self, PyObject* args, PyObjec
     // Parse constructor arguments
     if (!PyArg_ParseTuple(args, "ifffffff", &num_neurons, &ei_ratio, &learning_rate, &hebbian_rate,
                           &stdp_window, &homeostatic_rate, &target_activity, &adaptation_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NetworkConfig_init: operation failed");
         return -1;
     }
 
@@ -3416,6 +3587,7 @@ static int NodeConfig_init(NodeConfigObject* self, PyObject* args, PyObject* kwd
     // Parse constructor arguments
     if (!PyArg_ParseTuple(args, "Hiiiii", &listen_port, &max_peers, &keepalive_interval,
                           &discovery_interval, &reconnect_interval, &max_retries)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "NodeConfig_init: operation failed");
         return -1;
     }
 
@@ -3475,12 +3647,14 @@ static int GlialIntegration_init(GlialIntegrationObject* self, PyObject* args, P
     static char* kwlist[] = {"network", "max_mappings", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|I", kwlist, &network_obj, &max_mappings)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "GlialIntegration_init: PyArg_ParseTupleAndKeywords is NULL");
         return -1;
     }
 
     // Verify it's a NeuralNetwork object
     if (!PyObject_IsInstance(network_obj, (PyObject*)&NeuralNetworkType)) {
         PyErr_SetString(PyExc_TypeError, "First argument must be a NeuralNetwork");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "GlialIntegration_init: PyObject_IsInstance is NULL");
         return -1;
     }
 
@@ -3490,6 +3664,7 @@ static int GlialIntegration_init(GlialIntegrationObject* self, PyObject* args, P
     self->integration = glial_integration_create(network->network, max_mappings);
     if (!self->integration) {
         PyErr_SetString(NIMCPError, "Failed to create glial integration system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_init: self->integration is NULL");
         return -1;
     }
 
@@ -3525,11 +3700,13 @@ static PyObject* GlialIntegration_enable_astrocytes(GlialIntegrationObject* self
     int enable;
 
     if (!PyArg_ParseTuple(args, "p", &enable)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_astrocytes: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!self->integration) {
         PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_astrocytes: self->integration is NULL");
         return NULL;
     }
 
@@ -3544,11 +3721,13 @@ static PyObject* GlialIntegration_enable_oligodendrocytes(GlialIntegrationObject
     int enable;
 
     if (!PyArg_ParseTuple(args, "p", &enable)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_oligodendrocytes: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!self->integration) {
         PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_oligodendrocytes: self->integration is NULL");
         return NULL;
     }
 
@@ -3563,11 +3742,13 @@ static PyObject* GlialIntegration_enable_microglia(GlialIntegrationObject* self,
     int enable;
 
     if (!PyArg_ParseTuple(args, "p", &enable)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_microglia: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!self->integration) {
         PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_enable_microglia: self->integration is NULL");
         return NULL;
     }
 
@@ -3581,6 +3762,7 @@ static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObje
 {
     if (!self->integration) {
         PyErr_SetString(NIMCPError, "Glial integration not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_get_stats: self->integration is NULL");
         return NULL;
     }
 
@@ -3589,6 +3771,7 @@ static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObje
 
     if (result != NIMCP_SUCCESS) {
         PyErr_SetString(NIMCPError, "Failed to get glial statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_get_stats: validation failed");
         return NULL;
     }
 
@@ -3606,11 +3789,13 @@ static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObje
         PyObject* _val = (value_expr); \
         if (!_val) { \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_get_stats: _val is NULL"); \
             return NULL; \
         } \
         if (PyDict_SetItemString(dict, (key), _val) < 0) { \
             Py_DECREF(_val); \
             Py_DECREF(dict); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialIntegration_get_stats: validation failed"); \
             return NULL; \
         } \
         Py_DECREF(_val); \

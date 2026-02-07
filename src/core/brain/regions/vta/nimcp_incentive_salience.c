@@ -154,6 +154,7 @@ int nimcp_salience_update(
     float dt
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -215,10 +216,12 @@ int nimcp_salience_compute_wanting(
     float* wanting
 ) {
     if (!system || !wanting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_wanting: required parameter is NULL (system, wanting)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_wanting: system->initialized is NULL");
         return -1;
     }
 
@@ -238,10 +241,12 @@ int nimcp_salience_get_wanting(
     float* wanting
 ) {
     if (!system || !wanting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_wanting: required parameter is NULL (system, wanting)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_wanting: system->initialized is NULL");
         return -1;
     }
 
@@ -254,10 +259,12 @@ int nimcp_salience_get_motivation(
     nimcp_motivation_level_t* level
 ) {
     if (!system || !level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_motivation: required parameter is NULL (system, level)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_motivation: system->initialized is NULL");
         return -1;
     }
 
@@ -270,10 +277,12 @@ int nimcp_salience_get_vigor(
     float* vigor
 ) {
     if (!system || !vigor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_vigor: required parameter is NULL (system, vigor)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_vigor: system->initialized is NULL");
         return -1;
     }
 
@@ -294,10 +303,12 @@ int nimcp_salience_add_goal(
     uint32_t* goal_id
 ) {
     if (!system || !goal_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_add_goal: required parameter is NULL (system, goal_id)");
         return -1;
     }
 
     if (!system->initialized || system->num_goals >= SALIENCE_MAX_GOALS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_add_goal: system->initialized is NULL");
         return -1;
     }
 
@@ -325,6 +336,7 @@ int nimcp_salience_remove_goal(
     uint32_t goal_id
 ) {
     if (!system || !system->initialized || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_remove_goal: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -337,6 +349,7 @@ int nimcp_salience_set_active_goal(
     uint32_t goal_id
 ) {
     if (!system || !system->initialized || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_set_active_goal: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -350,6 +363,7 @@ int nimcp_salience_update_goal_progress(
     float progress
 ) {
     if (!system || !system->initialized || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_update_goal_progress: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -363,6 +377,7 @@ int nimcp_salience_goal_achieved(
     float actual_reward
 ) {
     if (!system || !system->initialized || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_goal_achieved: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -386,10 +401,12 @@ int nimcp_salience_get_goal_wanting(
     float* wanting
 ) {
     if (!system || !wanting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_goal_wanting: required parameter is NULL (system, wanting)");
         return -1;
     }
 
     if (!system->initialized || goal_id >= system->num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_goal_wanting: system->initialized is NULL");
         return -1;
     }
 
@@ -431,10 +448,12 @@ int nimcp_salience_compute_utility(
     nimcp_utility_result_t* result
 ) {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_utility: required parameter is NULL (system, result)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_utility: system->initialized is NULL");
         return -1;
     }
 
@@ -470,10 +489,12 @@ int nimcp_salience_compute_effort_cost(
     float* cost
 ) {
     if (!system || !cost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_effort_cost: required parameter is NULL (system, cost)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_compute_effort_cost: system->initialized is NULL");
         return -1;
     }
 
@@ -506,10 +527,12 @@ int nimcp_salience_apply_delay_discount(
     float* discounted
 ) {
     if (!system || !discounted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_apply_delay_discount: required parameter is NULL (system, discounted)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_apply_delay_discount: system->initialized is NULL");
         return -1;
     }
 
@@ -528,10 +551,12 @@ int nimcp_salience_is_worth_pursuing(
     bool* worth_it
 ) {
     if (!system || !worth_it) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_is_worth_pursuing: required parameter is NULL (system, worth_it)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_is_worth_pursuing: system->initialized is NULL");
         return -1;
     }
 
@@ -552,10 +577,12 @@ int nimcp_salience_add_cue(
     uint32_t* cue_id
 ) {
     if (!system || !cue_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_add_cue: required parameter is NULL (system, cue_id)");
         return -1;
     }
 
     if (!system->initialized || system->num_cues >= SALIENCE_MAX_CUES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_add_cue: system->initialized is NULL");
         return -1;
     }
 
@@ -578,6 +605,7 @@ int nimcp_salience_cue_present(
     uint32_t cue_id
 ) {
     if (!system || !system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_cue_present: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -591,6 +619,7 @@ int nimcp_salience_cue_absent(
     uint32_t cue_id
 ) {
     if (!system || !system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_cue_absent: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -604,6 +633,7 @@ int nimcp_salience_update_cue(
     float reward_received
 ) {
     if (!system || !system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_update_cue: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -626,10 +656,12 @@ int nimcp_salience_get_cue_wanting(
     float* cue_wanting
 ) {
     if (!system || !cue_wanting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_cue_wanting: required parameter is NULL (system, cue_wanting)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_cue_wanting: system->initialized is NULL");
         return -1;
     }
 
@@ -653,6 +685,7 @@ int nimcp_salience_signal_liking(
     float liking
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_signal_liking: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -665,10 +698,12 @@ int nimcp_salience_get_liking(
     float* liking
 ) {
     if (!system || !liking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_liking: required parameter is NULL (system, liking)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_liking: system->initialized is NULL");
         return -1;
     }
 
@@ -681,10 +716,12 @@ int nimcp_salience_get_wanting_liking_ratio(
     float* ratio
 ) {
     if (!system || !ratio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_wanting_liking_ratio: required parameter is NULL (system, ratio)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_wanting_liking_ratio: system->initialized is NULL");
         return -1;
     }
 
@@ -706,10 +743,12 @@ int nimcp_salience_get_state(
     nimcp_salience_state_t* state
 ) {
     if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_state: required parameter is NULL (system, state)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_salience_get_state: system->initialized is NULL");
         return -1;
     }
 

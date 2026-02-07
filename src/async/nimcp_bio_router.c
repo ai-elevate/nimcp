@@ -184,7 +184,10 @@ static int bio_router_kg_dispatch_internal(const void* msg, size_t msg_size, uin
  * @brief Thread-safe accessor for brain KG pointer
  */
 static struct brain_kg* get_router_brain_kg_safe(void) {
-    if (!g_router_brain_kg_mutex_initialized) return NULL;
+    if (!g_router_brain_kg_mutex_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_router_brain_kg_safe: g_router_brain_kg_mutex_initialized is NULL");
+        return NULL;
+    }
     nimcp_platform_mutex_lock(&g_router_brain_kg_mutex);
     struct brain_kg* kg = g_router_brain_kg;
     nimcp_platform_mutex_unlock(&g_router_brain_kg_mutex);
@@ -837,6 +840,7 @@ void bio_router_reset_stats(void) {
 bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     if (!g_router || !info) {
         LOG_ERROR("Cannot register module: router not initialized or invalid info");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_register_module: required parameter is NULL (g_router, info)");
         return NULL;
     }
 
@@ -911,6 +915,7 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     if (bio_msg_queue_init(&entry->inbox, inbox_cap) != NIMCP_SUCCESS) {
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         LOG_ERROR("Failed to initialize inbox for module %s", entry->module_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bio_router_register_module: validation failed");
         return NULL;
     }
 
@@ -919,6 +924,7 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
         bio_msg_queue_destroy(&entry->inbox);
         nimcp_platform_mutex_unlock(&g_router->modules_mutex);
         LOG_ERROR("Failed to initialize handler mutex for module %s", entry->module_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bio_router_register_module: validation failed");
         return NULL;
     }
 
@@ -1197,6 +1203,7 @@ static bio_module_entry_t* bio_router_find_module(bio_module_id_t module_id) {
             return &g_router->modules[i];
         }
     }
+    /* Module not found - normal case for unregistered targets */
     return NULL;
 }
 
@@ -1513,7 +1520,10 @@ nimcp_bio_promise_t bio_router_send_async(bio_module_context_t ctx,
                                            const void* msg,
                                            size_t msg_size,
                                            nimcp_bio_channel_type_t channel) {
-    if (!g_router || !ctx || !msg || msg_size == 0) return NULL;
+    if (!g_router || !ctx || !msg || msg_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (g_router, ctx, msg)");
+        return NULL;
+    }
 
     // Create promise for response
     // Note: result_size is used as capacity - actual copy size determined by
@@ -1656,6 +1666,7 @@ static bio_message_handler_t bio_router_find_handler(bio_module_entry_t* entry,
     }
 
     nimcp_platform_mutex_unlock(&entry->handler_mutex);
+    /* No handler found - normal for messages without registered handlers */
     return NULL;
 }
 
@@ -1876,6 +1887,7 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
                                             size_t request_size) {
     if (!ctx || !targets || target_count == 0 || !request || request_size == 0) {
         LOG_ERROR("Invalid parameters for sync request");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_signal_mutex_once: required parameter is NULL (ctx, targets, request)");
         return NULL;
     }
 
@@ -1906,6 +1918,7 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
     if (!sync_ctx->promises) {
         nimcp_free(sync_ctx);
         LOG_ERROR("Failed to allocate promise array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_signal_mutex_once: sync_ctx->promises is NULL");
         return NULL;
     }
 
@@ -1991,7 +2004,10 @@ static void init_wave_mutex_once(void) {
 nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
                                              float intensity,
                                              const void* metadata) {
-    if (!ctx || intensity <= 0.0F) return NULL;
+    if (!ctx || intensity <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_wave_mutex_once: ctx is NULL");
+        return NULL;
+    }
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_wave_mutex_once, init_wave_mutex_once);
@@ -2001,6 +2017,7 @@ nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
     if (g_wave_count >= 64) {
         nimcp_platform_mutex_unlock(&g_wave_mutex);
         LOG_ERROR("Glial wave registry full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "init_wave_mutex_once: capacity exceeded");
         return NULL;
     }
 
@@ -2104,10 +2121,16 @@ const char* bio_module_context_get_name(bio_module_context_t ctx) {
 }
 
 void* bio_module_context_get_user_data(bio_module_context_t ctx) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return NULL;
+    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_module_context_get_user_data: ctx is NULL");
+        return NULL;
+    }
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NULL;
+    if (!entry || entry->magic != BIO_MODULE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_module_context_get_user_data: entry is NULL");
+        return NULL;
+    }
 
     return entry->user_data;
 }
@@ -2216,6 +2239,7 @@ bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
     /* WHAT: Guard clause - validate parameters */
     if (ctx == NULL) {
         LOG_WARNING("bio_router_subscribe: NULL context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_router_subscribe: validation failed");
         return false;
     }
 
@@ -2230,6 +2254,7 @@ bool bio_router_subscribe(void* ctx, uint32_t msg_type) {
         nimcp_platform_mutex_unlock(&g_subscription_mutex);
         LOG_ERROR("bio_router_subscribe: subscription limit reached (%u)",
                   MAX_SUBSCRIPTIONS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bio_router_subscribe: capacity exceeded");
         return false;
     }
 
@@ -2626,7 +2651,10 @@ static int bio_router_kg_dispatch_internal(
 ) {
     /* Internal function returns -1 on error, >= 0 for handler count */
     struct brain_kg* kg = get_router_brain_kg_safe();
-    if (!kg || !msg) return -1;
+    if (!kg || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_kg_dispatch_internal: required parameter is NULL (kg, msg)");
+        return -1;
+    }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
 
@@ -2638,6 +2666,7 @@ static int bio_router_kg_dispatch_internal(
 
     if (!handlers) {
         LOG_WARN("KG dispatch: failed to query handlers for msg type 0x%04X", header->type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_router_kg_dispatch_internal: handlers is NULL");
         return -1;
     }
 

@@ -217,7 +217,10 @@ int physics_snn_register_spike(
     physics_snn_bridge_t* bridge,
     const physics_snn_spike_t* spike
 ) {
-    if (!bridge || !spike) return -1;
+    if (!bridge || !spike) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_register_spike: required parameter is NULL (bridge, spike)");
+        return -1;
+    }
 
     /* Add to circular buffer */
     bridge->spike_buffer[bridge->spike_head] = *spike;
@@ -241,7 +244,10 @@ int physics_snn_encode_spikes(
     uint32_t num_outputs,
     float window_ms
 ) {
-    if (!bridge || !output_currents) return -1;
+    if (!bridge || !output_currents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_encode_spikes: required parameter is NULL (bridge, output_currents)");
+        return -1;
+    }
 
     /* Clear outputs */
     memset(output_currents, 0, num_outputs * sizeof(float));
@@ -562,7 +568,10 @@ int physics_snn_receive_modulation(
     physics_snn_bridge_t* bridge,
     const physics_snn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_receive_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     /* Accumulate modulation with smoothing */
     float alpha = 0.1f;  /* Smoothing factor */
@@ -592,7 +601,10 @@ int physics_snn_get_modulation(
     physics_snn_bridge_t* bridge,
     physics_snn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     *modulation = bridge->accumulated_mod;
     return 0;
 }
@@ -663,7 +675,10 @@ int physics_snn_get_stats(
     const physics_snn_bridge_t* bridge,
     physics_snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -690,7 +705,10 @@ int physics_snn_get_stdp_windows(
 bool physics_snn_is_learning_gated(const physics_snn_bridge_t* bridge) {
     if (!bridge) return true;
 
-    if (!bridge->config.enable_atp_gating) return false;
+    if (!bridge->config.enable_atp_gating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_snn_is_learning_gated: bridge->config is NULL");
+        return false;
+    }
 
     return bridge->atp_level < bridge->config.atp_ltp_threshold;
 }

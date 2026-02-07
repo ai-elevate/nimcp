@@ -147,6 +147,7 @@ static int find_elf_cb(
     (void)base;
     (void)file_name;
     (void)elfp;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_elf_cb: operation failed");
     return -1;  /* Use default */
 }
 
@@ -171,6 +172,7 @@ static int find_debuginfo_cb(
     (void)debuglink_file;
     (void)debuglink_crc;
     (void)debuginfo_file_name;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_debuginfo_cb: operation failed");
     return -1;  /* Use default */
 }
 
@@ -192,6 +194,7 @@ static bool get_self_exe_path(char* path, size_t path_size) {
     ssize_t len = readlink("/proc/self/exe", path, path_size - 1);
     if (len < 0) {
         LOG_MODULE_WARN(LOG_MODULE, "Failed to read /proc/self/exe: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_self_exe_path: validation failed");
         return false;
     }
     path[len] = '\0';
@@ -213,12 +216,14 @@ static bool file_exists(const char* path) {
  */
 static bool parse_proc_maps(struct dwarf_symbols* syms) {
     if (!syms || syms->binary_path[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_proc_maps: syms is NULL");
         return false;
     }
 
     FILE* maps = fopen("/proc/self/maps", "r");
     if (!maps) {
         LOG_MODULE_DEBUG(LOG_MODULE, "Cannot open /proc/self/maps: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_proc_maps: maps is NULL");
         return false;
     }
 
@@ -310,6 +315,7 @@ static void cache_insert(struct dwarf_symbols* syms, void* addr,
  */
 static bool cache_lookup(struct dwarf_symbols* syms, void* addr, symbol_info_t* info) {
     if (!syms || !info || !syms->cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_lookup: required parameter is NULL (syms, info, syms->cache)");
         return false;
     }
 
@@ -328,6 +334,7 @@ static bool cache_lookup(struct dwarf_symbols* syms, void* addr, symbol_info_t* 
     }
 
     nimcp_platform_mutex_unlock(&syms->cache_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cache_lookup: validation failed");
     return false;
 }
 
@@ -338,6 +345,7 @@ static bool cache_lookup(struct dwarf_symbols* syms, void* addr, symbol_info_t* 
 #ifdef HAVE_LIBDW
 static bool lookup_via_dwarf(struct dwarf_symbols* syms, void* addr, symbol_info_t* info) {
     if (!syms || !info || !syms->dwfl || !syms->dwarf_available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_via_dwarf: required parameter is NULL (syms, info, syms->dwfl, syms->dwarf_available)");
         return false;
     }
 
@@ -350,6 +358,7 @@ static bool lookup_via_dwarf(struct dwarf_symbols* syms, void* addr, symbol_info
     /* Find module containing address */
     Dwfl_Module* mod = dwfl_addrmodule(syms->dwfl, dwarf_addr);
     if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_via_dwarf: mod is NULL");
         return false;
     }
 
@@ -450,6 +459,7 @@ static bool lookup_via_dwarf(struct dwarf_symbols* syms, void* addr, symbol_info
     (void)syms;
     (void)addr;
     (void)info;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lookup_via_dwarf: operation failed");
     return false;  /* No libdw support */
 }
 #endif
@@ -466,6 +476,7 @@ static bool lookup_via_dwarf(struct dwarf_symbols* syms, void* addr, symbol_info
  */
 static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_info_t* info) {
     if (!syms || !info || !syms->addr2line_available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_via_addr2line: required parameter is NULL (syms, info, syms->addr2line_available)");
         return false;
     }
 
@@ -473,6 +484,7 @@ static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_
     int pipefd[2];
     if (pipe(pipefd) < 0) {
         LOG_MODULE_DEBUG(LOG_MODULE, "pipe() failed: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lookup_via_addr2line: validation failed");
         return false;
     }
 
@@ -481,6 +493,7 @@ static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_
         LOG_MODULE_DEBUG(LOG_MODULE, "fork() failed: %s", strerror(errno));
         close(pipefd[0]);
         close(pipefd[1]);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lookup_via_addr2line: validation failed");
         return false;
     }
 
@@ -525,6 +538,7 @@ static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_
 
     if (bytes_read <= 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
         LOG_MODULE_DEBUG(LOG_MODULE, "addr2line failed for %p", addr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lookup_via_addr2line: WIFEXITED is NULL");
         return false;
     }
 
@@ -533,6 +547,7 @@ static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_
     /* Parse output: "function_name\nfile:line\n" */
     char* newline = strchr(output, '\n');
     if (!newline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_via_addr2line: newline is NULL");
         return false;
     }
 
@@ -593,11 +608,13 @@ static bool lookup_via_addr2line(struct dwarf_symbols* syms, void* addr, symbol_
  */
 static bool lookup_via_dladdr(struct dwarf_symbols* syms, void* addr, symbol_info_t* info) {
     if (!syms || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lookup_via_dladdr: required parameter is NULL (syms, info)");
         return false;
     }
 
     Dl_info dl_info;
     if (!dladdr(addr, &dl_info)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lookup_via_dladdr: dladdr is NULL");
         return false;
     }
 
@@ -636,6 +653,7 @@ dwarf_symbols_t dwarf_symbols_create_with_config(
     struct dwarf_symbols* syms = nimcp_calloc(1, sizeof(struct dwarf_symbols));
     if (!syms) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate dwarf_symbols");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dwarf_symbols_create_with_config: syms is NULL");
         return NULL;
     }
 
@@ -656,6 +674,7 @@ dwarf_symbols_t dwarf_symbols_create_with_config(
         if (!get_self_exe_path(syms->binary_path, DWARF_SYMBOLS_MAX_PATH)) {
             LOG_MODULE_ERROR(LOG_MODULE, "Cannot determine binary path");
             nimcp_free(syms);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_create_with_config: get_self_exe_path is NULL");
             return NULL;
         }
     }
@@ -664,6 +683,7 @@ dwarf_symbols_t dwarf_symbols_create_with_config(
     if (!file_exists(syms->binary_path)) {
         LOG_MODULE_ERROR(LOG_MODULE, "Binary not found: %s", syms->binary_path);
         nimcp_free(syms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_create_with_config: file_exists is NULL");
         return NULL;
     }
 
@@ -671,6 +691,7 @@ dwarf_symbols_t dwarf_symbols_create_with_config(
     if (nimcp_platform_mutex_init(&syms->cache_lock, false) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize mutex");
         nimcp_free(syms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "dwarf_symbols_create_with_config: validation failed");
         return NULL;
     }
 
@@ -694,6 +715,7 @@ dwarf_symbols_t dwarf_symbols_create_with_config(
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to create symbol cache");
         nimcp_platform_mutex_destroy(&syms->cache_lock);
         nimcp_free(syms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dwarf_symbols_create_with_config: syms->cache is NULL");
         return NULL;
     }
 
@@ -800,6 +822,7 @@ bool dwarf_symbols_lookup(
     symbol_info_t* info
 ) {
     if (!syms || !addr || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_lookup: required parameter is NULL (syms, addr, info)");
         return false;
     }
 
@@ -807,6 +830,7 @@ bool dwarf_symbols_lookup(
 
     if (s->magic != DWARF_SYMBOLS_MAGIC || !s->initialized) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid or uninitialized dwarf_symbols");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_lookup: s->initialized is NULL");
         return false;
     }
 
@@ -854,6 +878,7 @@ bool dwarf_symbols_lookup_extended(
     symbol_info_extended_t* info_ext
 ) {
     if (!syms || !addr || !info_ext) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_lookup_extended: required parameter is NULL (syms, addr, info_ext)");
         return false;
     }
 
@@ -934,6 +959,7 @@ bool dwarf_symbols_get_function_range(
     void** end_addr
 ) {
     if (!syms || !func_name || !start_addr || !end_addr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_function_range: required parameter is NULL (syms, func_name, start_addr, end_addr)");
         return false;
     }
 
@@ -941,6 +967,7 @@ bool dwarf_symbols_get_function_range(
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;
 
     if (!s->dwfl || !s->dwarf_available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_function_range: required parameter is NULL (s->dwfl, s->dwarf_available)");
         return false;
     }
 
@@ -970,6 +997,7 @@ bool dwarf_symbols_get_function_range(
     (void)end_addr;
 #endif
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_get_function_range: operation failed");
     return false;
 }
 
@@ -980,6 +1008,7 @@ bool dwarf_symbols_get_function_at(
     size_t func_name_size
 ) {
     if (!syms || !addr || !func_name || func_name_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_function_at: required parameter is NULL (syms, addr, func_name)");
         return false;
     }
 
@@ -990,6 +1019,7 @@ bool dwarf_symbols_get_function_at(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_get_function_at: validation failed");
     return false;
 }
 
@@ -1004,6 +1034,7 @@ bool dwarf_symbols_get_locals(
     size_t buffer_size
 ) {
     if (!syms || !addr || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_locals: required parameter is NULL (syms, addr, buffer)");
         return false;
     }
 
@@ -1013,6 +1044,7 @@ bool dwarf_symbols_get_locals(
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;
 
     if (!s->dwfl || !s->dwarf_available || !s->config.enable_locals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_locals: required parameter is NULL (s->dwfl, s->dwarf_available, s->config)");
         return false;
     }
 
@@ -1023,12 +1055,14 @@ bool dwarf_symbols_get_locals(
 
     Dwfl_Module* mod = dwfl_addrmodule(s->dwfl, dwarf_addr);
     if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_locals: mod is NULL");
         return false;
     }
 
     Dwarf_Addr bias;
     Dwarf* dwarf = dwfl_module_getdwarf(mod, &bias);
     if (!dwarf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_locals: dwarf is NULL");
         return false;
     }
 
@@ -1036,6 +1070,7 @@ bool dwarf_symbols_get_locals(
     Dwarf_Die* scopes = NULL;
     int nscopes = dwfl_module_addrscopes(mod, dwarf_addr, &scopes);
     if (nscopes <= 0 || !scopes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_locals: scopes is NULL");
         return false;
     }
 
@@ -1076,6 +1111,7 @@ bool dwarf_symbols_get_locals(
 #else
     (void)syms;
     (void)addr;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_get_locals: operation failed");
     return false;
 #endif
 }
@@ -1158,11 +1194,13 @@ bool dwarf_symbols_get_stats(
     dwarf_symbols_stats_t* stats
 ) {
     if (!syms || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_get_stats: required parameter is NULL (syms, stats)");
         return false;
     }
 
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;
     if (s->magic != DWARF_SYMBOLS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_get_stats: validation failed");
         return false;
     }
 
@@ -1229,6 +1267,7 @@ void dwarf_symbols_print_stats(dwarf_symbols_t syms) {
 
 bool dwarf_symbols_has_dwarf(dwarf_symbols_t syms) {
     if (!syms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_has_dwarf: syms is NULL");
         return false;
     }
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;
@@ -1236,6 +1275,7 @@ bool dwarf_symbols_has_dwarf(dwarf_symbols_t syms) {
     return s->dwarf_available;
 #else
     (void)s;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_has_dwarf: syms is NULL");
     return false;
 #endif
 }
@@ -1252,6 +1292,7 @@ const char* dwarf_symbols_get_binary_path(dwarf_symbols_t syms) {
 
 bool dwarf_symbols_validate(dwarf_symbols_t syms) {
     if (!syms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_validate: syms is NULL");
         return false;
     }
 
@@ -1259,21 +1300,25 @@ bool dwarf_symbols_validate(dwarf_symbols_t syms) {
 
     if (s->magic != DWARF_SYMBOLS_MAGIC) {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: bad magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_validate: validation failed");
         return false;
     }
 
     if (!s->initialized) {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_validate: s->initialized is NULL");
         return false;
     }
 
     if (!s->cache) {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: no cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dwarf_symbols_validate: s->cache is NULL");
         return false;
     }
 
     if (s->binary_path[0] == '\0') {
         LOG_MODULE_ERROR(LOG_MODULE, "Validation failed: no binary path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dwarf_symbols_validate: validation failed");
         return false;
     }
 

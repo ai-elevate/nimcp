@@ -52,6 +52,7 @@ static NimcpTernaryEdge* find_edge(
         if (edge->dest == dest) return edge;
         edge = edge->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_edge: validation failed");
     return NULL;
 }
 
@@ -121,6 +122,7 @@ NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
     graph->vertices = nimcp_malloc(NIMCP_MAX_VERTICES * sizeof(NimcpTernaryVertex));
     if (!graph->vertices) {
         nimcp_free(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ternary_graph_create: graph->vertices is NULL");
         return NULL;
     }
     memset(graph->vertices, 0, NIMCP_MAX_VERTICES * sizeof(NimcpTernaryVertex));
@@ -130,6 +132,7 @@ NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
     if (!graph->components) {
         nimcp_free(graph->vertices);
         nimcp_free(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ternary_graph_create: graph->components is NULL");
         return NULL;
     }
     memset(graph->components, 0, NIMCP_MAX_VERTICES * sizeof(uint32_t));
@@ -140,6 +143,7 @@ NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
         nimcp_free(graph->components);
         nimcp_free(graph->vertices);
         nimcp_free(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_ternary_graph_create: validation failed");
         return NULL;
     }
 
@@ -271,8 +275,14 @@ bool nimcp_ternary_graph_remove_vertex(
     NimcpTernaryGraph* graph,
     uint32_t vertex_idx
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (vertex_idx >= graph->vertex_count) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_remove_vertex: graph is NULL");
+        return false;
+    }
+    if (vertex_idx >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_remove_vertex: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -358,10 +368,22 @@ bool nimcp_ternary_graph_add_edge(
     uint32_t to,
     trit_t weight
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (from >= graph->vertex_count || to >= graph->vertex_count) return false;
-    if (from == to) return false;
-    if (!TRIT_IS_VALID(weight)) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_add_edge: graph is NULL");
+        return false;
+    }
+    if (from >= graph->vertex_count || to >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_add_edge: capacity exceeded");
+        return false;
+    }
+    if (from == to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_add_edge: validation failed");
+        return false;
+    }
+    if (!TRIT_IS_VALID(weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_add_edge: TRIT_IS_VALID is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -387,6 +409,7 @@ bool nimcp_ternary_graph_add_edge(
         if (edge1) nimcp_free(edge1);
         if (edge2) nimcp_free(edge2);
         nimcp_mutex_unlock(&graph->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_add_edge: validation failed");
         return false;
     }
 
@@ -419,8 +442,14 @@ bool nimcp_ternary_graph_remove_edge(
     uint32_t from,
     uint32_t to
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (from >= graph->vertex_count || to >= graph->vertex_count) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_remove_edge: graph is NULL");
+        return false;
+    }
+    if (from >= graph->vertex_count || to >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_remove_edge: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -472,9 +501,18 @@ bool nimcp_ternary_graph_get_edge_weight(
     uint32_t to,
     trit_t* weight
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (from >= graph->vertex_count || to >= graph->vertex_count) return false;
-    if (!weight) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_get_edge_weight: graph is NULL");
+        return false;
+    }
+    if (from >= graph->vertex_count || to >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_get_edge_weight: capacity exceeded");
+        return false;
+    }
+    if (!weight) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_get_edge_weight: weight is NULL");
+        return false;
+    }
 
     NimcpTernaryEdge* edge = find_edge(
         (NimcpTernaryVertex*)&graph->vertices[from], to
@@ -485,6 +523,7 @@ bool nimcp_ternary_graph_get_edge_weight(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_get_edge_weight: validation failed");
     return false;
 }
 
@@ -494,8 +533,14 @@ bool nimcp_ternary_graph_set_edge_weight(
     uint32_t to,
     trit_t weight
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (!TRIT_IS_VALID(weight)) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_set_edge_weight: graph is NULL");
+        return false;
+    }
+    if (!TRIT_IS_VALID(weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_set_edge_weight: TRIT_IS_VALID is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&graph->lock);
 
@@ -504,6 +549,7 @@ bool nimcp_ternary_graph_set_edge_weight(
 
     if (!edge1 || !edge2) {
         nimcp_mutex_unlock(&graph->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_set_edge_weight: required parameter is NULL (edge1, edge2)");
         return false;
     }
 
@@ -523,8 +569,14 @@ bool nimcp_ternary_graph_has_edge(
     uint32_t from,
     uint32_t to
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return false;
-    if (from >= graph->vertex_count || to >= graph->vertex_count) return false;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_has_edge: graph is NULL");
+        return false;
+    }
+    if (from >= graph->vertex_count || to >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_has_edge: capacity exceeded");
+        return false;
+    }
 
     return find_edge((NimcpTernaryVertex*)&graph->vertices[from], to) != NULL;
 }
@@ -538,9 +590,18 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
     uint32_t from,
     uint32_t to
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return NULL;
-    if (from >= graph->vertex_count || to >= graph->vertex_count) return NULL;
-    if (from == to) return NULL;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: graph is NULL");
+        return NULL;
+    }
+    if (from >= graph->vertex_count || to >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_shortest_path: capacity exceeded");
+        return NULL;
+    }
+    if (from == to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: validation failed");
+        return NULL;
+    }
 
     uint32_t n = graph->vertex_count;
 
@@ -553,6 +614,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         if (dist) nimcp_free(dist);
         if (prev) nimcp_free(prev);
         if (visited) nimcp_free(visited);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: validation failed");
         return NULL;
     }
 
@@ -599,6 +661,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         nimcp_free(dist);
         nimcp_free(prev);
         nimcp_free(visited);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: validation failed");
         return NULL;
     }
 
@@ -615,6 +678,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         nimcp_free(dist);
         nimcp_free(prev);
         nimcp_free(visited);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ternary_graph_shortest_path: path is NULL");
         return NULL;
     }
 
@@ -624,6 +688,7 @@ NimcpPath* nimcp_ternary_graph_shortest_path(
         nimcp_free(dist);
         nimcp_free(prev);
         nimcp_free(visited);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_shortest_path: path->vertices is NULL");
         return NULL;
     }
 
@@ -649,7 +714,10 @@ NimcpPath* nimcp_ternary_graph_strong_path(
     uint32_t from,
     uint32_t to
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return NULL;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_strong_path: graph is NULL");
+        return NULL;
+    }
 
     /* Temporarily modify costs to strongly prefer strong edges */
     NimcpTernaryGraph* mutable_graph = (NimcpTernaryGraph*)graph;
@@ -670,6 +738,7 @@ NimcpPath* nimcp_ternary_graph_strong_path(
         /* Path includes non-strong edges */
         nimcp_free(path->vertices);
         nimcp_free(path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ternary_graph_strong_path: capacity exceeded");
         return NULL;
     }
 
@@ -843,10 +912,16 @@ trit_matrix_t* nimcp_ternary_graph_to_matrix(
     const NimcpTernaryGraph* graph,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) return NULL;
+    if (!graph || graph->magic != GRAPH_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_to_matrix: graph is NULL");
+        return NULL;
+    }
 
     uint32_t n = graph->vertex_count;
-    if (n == 0) return NULL;
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ternary_graph_to_matrix: n is zero");
+        return NULL;
+    }
 
     trit_matrix_t* mat = trit_matrix_create(n, n, pack_mode);
     if (!mat) {
@@ -875,8 +950,14 @@ trit_matrix_t* nimcp_ternary_graph_to_matrix(
 NimcpTernaryGraph* nimcp_ternary_graph_from_matrix(
     const trit_matrix_t* adjacency
 ) {
-    if (!adjacency || adjacency->magic != TERNARY_MAGIC) return NULL;
-    if (adjacency->rows != adjacency->cols) return NULL;
+    if (!adjacency || adjacency->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_from_matrix: adjacency is NULL");
+        return NULL;
+    }
+    if (adjacency->rows != adjacency->cols) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ternary_graph_from_matrix: validation failed");
+        return NULL;
+    }
 
     uint32_t n = adjacency->rows;
 

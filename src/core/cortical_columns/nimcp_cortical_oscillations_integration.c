@@ -210,6 +210,7 @@ cortical_oscillation_integration_t* cortical_oscillation_create(
     if (!integration->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_oscillation_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -405,6 +406,7 @@ bool cortical_oscillation_gate_competition(
     const cortical_oscillation_integration_t* integration
 ) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_oscillation_gate_competition: integration is NULL");
         return false;
     }
 
@@ -419,6 +421,7 @@ bool cortical_oscillation_gate_competition(
     if (integration->gating_state.last_competition_us > 0) {
         uint64_t elapsed = current_time - integration->gating_state.last_competition_us;
         if (elapsed < min_interval_us) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_oscillation_gate_competition: validation failed");
             return false;
         }
     }
@@ -471,6 +474,7 @@ bool cortical_oscillation_is_binding_active(
     const cortical_oscillation_integration_t* integration
 ) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_oscillation_is_binding_active: integration is NULL");
         return false;
     }
 
@@ -650,6 +654,7 @@ bool cortical_oscillation_is_bio_async_connected(
     const cortical_oscillation_integration_t* integration
 ) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_oscillation_is_bio_async_connected: integration is NULL");
         return false;
     }
 

@@ -292,6 +292,7 @@ habituation_system_t* habituation_create(const habituation_config_t* config) {
     habituation_system_t* system = nimcp_calloc(1, sizeof(habituation_system_t));
     if (!system) {
         nimcp_log(LOG_LEVEL_ERROR, "Habituation: Failed to allocate system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "habituation_create: system is NULL");
         return NULL;
     }
 
@@ -314,6 +315,7 @@ habituation_system_t* habituation_create(const habituation_config_t* config) {
     if (!system->mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "Habituation: Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "habituation_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -817,6 +819,7 @@ const habituation_record_t* habituation_get_record(
             return &system->patterns[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "habituation_get_record: validation failed");
     return NULL;
 }
 
@@ -910,7 +913,10 @@ void habituation_simd_update(
 //=============================================================================
 
 bool habituation_register_bio_async(habituation_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "habituation_register_bio_async: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_register", 0.0f);

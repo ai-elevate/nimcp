@@ -232,12 +232,14 @@ parietal_snn_bridge_t* parietal_snn_create(const parietal_snn_config_t* config) 
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > PARIETAL_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "parietal_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "parietal_snn_create: validation failed");
         return NULL;
     }
 
@@ -255,6 +257,7 @@ parietal_snn_bridge_t* parietal_snn_create(const parietal_snn_config_t* config) 
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -267,6 +270,7 @@ parietal_snn_bridge_t* parietal_snn_create(const parietal_snn_config_t* config) 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->spatial_buffer || !bridge->prev_state) {
         parietal_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_create: operation failed");
         return NULL;
     }
 
@@ -329,7 +333,10 @@ void parietal_snn_destroy(parietal_snn_bridge_t* bridge) {
 }
 
 int parietal_snn_reset(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_reset", 0.0f);
@@ -387,9 +394,15 @@ int parietal_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, dimensions, sizeof(*dimensions));
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_encode_", 0.0f);
@@ -467,7 +480,10 @@ int parietal_snn_encode_attention(
     float attention,
     float focus
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_encode_attention: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_encode_", 0.0f);
@@ -492,7 +508,10 @@ int parietal_snn_encode_magnitude(
     float magnitude,
     uint32_t precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_encode_magnitude: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_encode_", 0.0f);
@@ -516,7 +535,10 @@ int parietal_snn_encode_multisensory(
     float integration,
     uint32_t modality_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_encode_multisensory: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_encode_", 0.0f);
@@ -550,8 +572,14 @@ int parietal_snn_encode_multisensory(
 //=============================================================================
 
 int parietal_snn_simulate(parietal_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_simulat", 0.0f);
@@ -637,7 +665,10 @@ int parietal_snn_simulate(parietal_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int parietal_snn_step(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_step", 0.0f);
 
@@ -654,7 +685,10 @@ int parietal_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_forward", 0.0f);
@@ -662,9 +696,13 @@ int parietal_snn_forward(
     BRIDGE_BBB_VALIDATE(bridge, inputs, sizeof(*inputs));
 
     int spike_count = parietal_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_forward: validation failed");
+        return -1;
+    }
 
     if (parietal_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_forward: validation failed");
         return -1;
     }
 
@@ -679,7 +717,10 @@ int parietal_snn_get_spatial_output(
     parietal_snn_bridge_t* bridge,
     parietal_spatial_output_t* spatial
 ) {
-    if (!bridge || !spatial) return -1;
+    if (!bridge || !spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_get_spatial_output: required parameter is NULL (bridge, spatial)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_spa", 0.0f);
@@ -698,9 +739,15 @@ int parietal_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, activations, sizeof(*activations));
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_act", 0.0f);
@@ -725,7 +772,10 @@ bool parietal_snn_check_attention(
     parietal_snn_bridge_t* bridge,
     float* attention_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_check_attention: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_a", 0.0f);
@@ -747,7 +797,10 @@ bool parietal_snn_check_precision(
     parietal_snn_bridge_t* bridge,
     float* precision_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_check_precision: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_p", 0.0f);
@@ -769,7 +822,10 @@ bool parietal_snn_check_state_change(
     parietal_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_check_s", 0.0f);
@@ -809,9 +865,15 @@ int parietal_snn_get_dim_state(
     uint32_t dim,
     parietal_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_dim", 0.0f);
@@ -828,7 +890,10 @@ int parietal_snn_get_state(
     parietal_snn_bridge_t* bridge,
     parietal_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_sta", 0.0f);
@@ -863,7 +928,10 @@ int parietal_snn_get_state(
 }
 
 int parietal_snn_get_stats(parietal_snn_bridge_t* bridge, parietal_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_get_sta", 0.0f);
@@ -878,7 +946,10 @@ int parietal_snn_get_stats(parietal_snn_bridge_t* bridge, parietal_snn_stats_t* 
 }
 
 int parietal_snn_reset_stats(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_reset_s", 0.0f);
@@ -937,7 +1008,10 @@ int parietal_snn_register_attention_callback(
     parietal_snn_attention_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_register_attention_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
@@ -957,7 +1031,10 @@ int parietal_snn_register_spatial_callback(
     parietal_snn_spatial_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_register_spatial_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
@@ -977,7 +1054,10 @@ int parietal_snn_register_precision_callback(
     parietal_snn_precision_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_register_precision_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_registe", 0.0f);
@@ -997,8 +1077,14 @@ int parietal_snn_register_precision_callback(
 //=============================================================================
 
 int parietal_snn_bio_async_connect(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_bio_asy", 0.0f);
@@ -1013,7 +1099,10 @@ int parietal_snn_bio_async_connect(parietal_snn_bridge_t* bridge) {
 }
 
 int parietal_snn_bio_async_disconnect(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_bio_asy", 0.0f);
@@ -1027,7 +1116,10 @@ int parietal_snn_bio_async_disconnect(parietal_snn_bridge_t* bridge) {
 }
 
 bool parietal_snn_is_bio_async_connected(parietal_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_snn_bridge_heartbeat("parietal_snn_parietal_snn_is_bio_", 0.0f);

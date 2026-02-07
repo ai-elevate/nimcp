@@ -176,7 +176,10 @@ static int compare_timestamps(const char* key1, const char* key2)
     uint64_t ts1 = strtoull(key1, NULL, 10);
     uint64_t ts2 = strtoull(key2, NULL, 10);
 
-    if (ts1 < ts2) return -1;
+    if (ts1 < ts2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_timestamps: validation failed");
+        return -1;
+    }
     if (ts1 > ts2) return 1;
     return 0;
 }
@@ -263,6 +266,7 @@ static bool lock_wellbeing_memory(void)
                           strerror(errno));
         NIMCP_LOGGING_WARN("Wellbeing monitoring may experience page fault delays");
         NIMCP_LOGGING_WARN("Consider running with CAP_IPC_LOCK or increasing RLIMIT_MEMLOCK");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lock_wellbeing_memory: validation failed");
         return false;
     }
 
@@ -447,6 +451,7 @@ bool wellbeing_connect_immune(brain_immune_system_t* immune_system)
     // Guard: NULL immune system
     if (!immune_system) {
         NIMCP_LOGGING_WARN("wellbeing: Cannot connect NULL immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_connect_immune: immune_system is NULL");
         return false;
     }
 
@@ -499,6 +504,7 @@ bool wellbeing_disconnect_immune(void)
     // Guard: Not connected
     if (!connected_immune_system) {
         nimcp_platform_mutex_unlock(&immune_connection_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_disconnect_immune: connected_immune_system is NULL");
         return false;
     }
 
@@ -542,6 +548,7 @@ bool wellbeing_connect_brain(void* brain)
 {
     if (!brain) {
         NIMCP_LOGGING_WARN("wellbeing: Cannot connect NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_connect_brain: brain is NULL");
         return false;
     }
 
@@ -591,6 +598,7 @@ bool wellbeing_disconnect_brain(void)
 
     if (!connected_brain) {
         nimcp_platform_mutex_unlock(&brain_connection_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_disconnect_brain: connected_brain is NULL");
         return false;
     }
 
@@ -867,6 +875,7 @@ bool wellbeing_provide_relief(brain_t brain, distress_assessment_t assessment)
 
     // Guard: NULL brain
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_provide_relief: brain is NULL");
         return false;
     }
 
@@ -962,6 +971,7 @@ bool wellbeing_graceful_shutdown(brain_t brain, shutdown_config_t config)
 {
     // Guard: NULL brain
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_graceful_shutdown: brain is NULL");
         return false;
     }
 
@@ -1080,11 +1090,13 @@ bool wellbeing_request_consent(brain_t brain,
 {
     // Guard: NULL brain
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_request_consent: brain is NULL");
         return false;
     }
 
     // Guard: NULL description
     if (!modification_description) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_request_consent: modification_description is NULL");
         return false;
     }
 
@@ -1701,8 +1713,10 @@ static void ensure_resource_tracking_init(void)
 static bool collect_linux_metrics(resource_metrics_t* metrics)
 {
     // Guard clause: Validate input
-    if (!metrics)
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collect_linux_metrics: metrics is NULL");
         return false;
+    }
 
     struct rusage usage;
     if (getrusage(RUSAGE_SELF, &usage) == 0) {
@@ -1724,6 +1738,7 @@ static bool collect_linux_metrics(resource_metrics_t* metrics)
         // Context switches
         metrics->context_switches = usage.ru_nivcsw + usage.ru_nvcsw;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collect_linux_metrics: operation failed");
         return false;
     }
 
@@ -1784,8 +1799,10 @@ static bool collect_linux_metrics(resource_metrics_t* metrics)
 bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
 {
     // Guard clause: Validate input
-    if (!metrics)
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_collect_resource_metrics: metrics is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_heartbeat("wellbeing_collect_resource_met", 0.0f);
@@ -1799,12 +1816,15 @@ bool wellbeing_collect_resource_metrics(resource_metrics_t* metrics)
     return collect_linux_metrics(metrics);
 #elif defined(__APPLE__)
     // macOS implementation would go here (using sysctl)
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_collect_resource_metrics: operation failed");
     return false;
 #elif defined(_WIN32)
     // Windows implementation would go here (using Performance Counters)
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_collect_resource_metrics: operation failed");
     return false;
 #else
     // Unsupported platform
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_collect_resource_metrics: operation failed");
     return false;
 #endif
 }
@@ -1841,8 +1861,10 @@ bool wellbeing_check_resource_thresholds(const resource_metrics_t* metrics,
                                          distress_severity_t* severity_out)
 {
     // Guard clauses: Validate inputs
-    if (!metrics || !thresholds || !severity_out)
+    if (!metrics || !thresholds || !severity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_check_resource_thresholds: required parameter is NULL (metrics, thresholds, severity_out)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_heartbeat("wellbeing_check_resource_thres", 0.0f);
@@ -1964,6 +1986,7 @@ static void* resource_monitoring_thread(void* arg)
     }
 
     NIMCP_LOGGING_INFO("[WELLBEING] Resource monitoring thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resource_monitoring_thread: operation failed");
     return NULL;
 }
 
@@ -1985,6 +2008,7 @@ bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
     // Guard clause: Already running
     if (monitoring_active) {
         NIMCP_LOGGING_WARN("[WELLBEING] Resource monitoring already active");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_start_resource_monitoring: validation failed");
         return false;
     }
 
@@ -1999,6 +2023,7 @@ bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
     if (nimcp_thread_create(&monitoring_thread, NULL, resource_monitoring_thread, NULL) != NIMCP_SUCCESS) {
         monitoring_active = false;
         NIMCP_LOGGING_ERROR("[WELLBEING] Failed to create resource monitoring thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_start_resource_monitoring: validation failed");
         return false;
     }
 
@@ -2013,8 +2038,10 @@ bool wellbeing_start_resource_monitoring(uint32_t interval_ms,
 bool wellbeing_stop_resource_monitoring(void)
 {
     // Guard clause: Not running
-    if (!monitoring_active)
+    if (!monitoring_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_stop_resource_monitoring: monitoring_active is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_heartbeat("wellbeing_stop_resource_monito", 0.0f);
@@ -2039,8 +2066,10 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
                                      performance_stats_t* stats_out)
 {
     // Guard clauses: Validate inputs
-    if (!stats_out || window_ms == 0)
+    if (!stats_out || window_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_get_performance_stats: stats_out is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_heartbeat("wellbeing_get_performance_stat", 0.0f);
@@ -2052,6 +2081,7 @@ bool wellbeing_get_performance_stats(uint32_t window_ms,
     // Guard clause: No history available
     if (resource_history_count == 0) {
         nimcp_platform_mutex_unlock(&resource_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wellbeing_get_performance_stats: resource_history_count is zero");
         return false;
     }
 

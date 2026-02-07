@@ -73,10 +73,12 @@ static bool bfs_shortest_paths(const NimcpGraph* graph, uint32_t source, uint32_
                                uint32_t* path_counts)
 {
     if (!graph || !distances) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bfs_shortest_paths: required parameter is NULL (graph, distances)");
         return false;
     }
 
     if (source >= graph->vertex_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bfs_shortest_paths: capacity exceeded");
         return false;
     }
 
@@ -93,6 +95,7 @@ static bool bfs_shortest_paths(const NimcpGraph* graph, uint32_t source, uint32_
     // Simple BFS queue
     uint32_t* queue = (uint32_t*)nimcp_malloc(sizeof(uint32_t) * graph->vertex_count);
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bfs_shortest_paths: queue is NULL");
         return false;
     }
 
@@ -137,12 +140,14 @@ NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
 
     if (!graph) {
         LOG_ERROR("NULL graph provided to degree centrality");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_degree_centrality: graph is NULL");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
         LOG_WARN("Empty graph provided to degree centrality");
         LOG_ERROR("nimcp_degree_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_degree_centrality: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -150,6 +155,7 @@ NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
         LOG_ERROR("Failed to allocate centrality scores structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_degree_centrality: scores is NULL");
         return NULL;
     }
 
@@ -157,6 +163,7 @@ NimcpCentralityScores* nimcp_degree_centrality(const NimcpGraph* graph)
     if (!scores->scores) {
         nimcp_free(scores);
         LOG_ERROR("nimcp_degree_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_degree_centrality: scores->scores is NULL");
         return NULL;
     }
 
@@ -177,11 +184,13 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
     LOG_DEBUG("Entering nimcp_betweenness_centrality");
     if (!graph) {
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_betweenness_centrality: graph is NULL");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_betweenness_centrality: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -189,6 +198,7 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_betweenness_centrality: scores is NULL");
         return NULL;
     }
 
@@ -196,6 +206,7 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
     if (!scores->scores) {
         nimcp_free(scores);
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_betweenness_centrality: scores->scores is NULL");
         return NULL;
     }
 
@@ -211,6 +222,7 @@ NimcpCentralityScores* nimcp_betweenness_centrality(const NimcpGraph* graph)
         nimcp_free(path_counts);
         nimcp_centrality_scores_destroy(scores);
         LOG_ERROR("nimcp_betweenness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_betweenness_centrality: required parameter is NULL (distances, path_counts)");
         return NULL;
     }
 
@@ -246,11 +258,13 @@ NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
     LOG_DEBUG("Entering nimcp_closeness_centrality");
     if (!graph) {
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_closeness_centrality: graph is NULL");
         return NULL;
     }
 
     if (graph->vertex_count == 0) {
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_closeness_centrality: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -258,6 +272,7 @@ NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_closeness_centrality: scores is NULL");
         return NULL;
     }
 
@@ -265,6 +280,7 @@ NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
     if (!scores->scores) {
         nimcp_free(scores);
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_closeness_centrality: scores->scores is NULL");
         return NULL;
     }
 
@@ -274,6 +290,7 @@ NimcpCentralityScores* nimcp_closeness_centrality(const NimcpGraph* graph)
     if (!distances) {
         nimcp_centrality_scores_destroy(scores);
         LOG_ERROR("nimcp_closeness_centrality failed: returning error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_closeness_centrality: distances is NULL");
         return NULL;
     }
 
@@ -317,6 +334,7 @@ NimcpCentralityScores* nimcp_eigenvector_centrality(const NimcpGraph* graph,
     }
 
     if (graph->vertex_count == 0 || max_iterations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_eigenvector_centrality: graph->vertex_count is zero");
         return NULL;
     }
 
@@ -331,6 +349,7 @@ NimcpCentralityScores* nimcp_eigenvector_centrality(const NimcpGraph* graph,
     scores->scores = (double*)nimcp_malloc(sizeof(double) * graph->vertex_count);
     if (!scores->scores) {
         nimcp_free(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_eigenvector_centrality: scores->scores is NULL");
         return NULL;
     }
 
@@ -340,6 +359,7 @@ NimcpCentralityScores* nimcp_eigenvector_centrality(const NimcpGraph* graph,
     double* prev_scores = (double*)nimcp_malloc(sizeof(double) * graph->vertex_count);
     if (!prev_scores) {
         nimcp_centrality_scores_destroy(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_eigenvector_centrality: prev_scores is NULL");
         return NULL;
     }
 

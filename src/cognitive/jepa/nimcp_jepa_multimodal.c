@@ -253,6 +253,7 @@ jepa_multimodal_t* jepa_multimodal_create(const jepa_multimodal_config_t* config
 
 cleanup:
     jepa_multimodal_destroy(mm);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_multimodal_create: operation failed");
     return NULL;
 }
 
@@ -1223,6 +1224,7 @@ jepa_mm_batch_t* jepa_mm_batch_create(uint32_t max_pairs)
 
 
     if (max_pairs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mm_batch_create: max_pairs is zero");
         return NULL;
     }
 
@@ -1236,6 +1238,7 @@ jepa_mm_batch_t* jepa_mm_batch_create(uint32_t max_pairs)
     batch->pairs = (jepa_mm_pair_t*)nimcp_calloc(max_pairs, sizeof(jepa_mm_pair_t));
     if (!batch->pairs) {
         nimcp_free(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mm_batch_create: batch->pairs is NULL");
         return NULL;
     }
 

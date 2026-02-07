@@ -79,6 +79,7 @@ swarm_brain_immune_bridge_t* swarm_brain_immune_bridge_create(
 {
     if (!config || !immune_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for swarm brain immune bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_bridge_create: required parameter is NULL (config, immune_system)");
         return NULL;
     }
 
@@ -100,6 +101,7 @@ swarm_brain_immune_bridge_t* swarm_brain_immune_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm brain immune bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -131,7 +133,10 @@ void swarm_brain_immune_bridge_destroy(swarm_brain_immune_bridge_t* bridge)
 
 int swarm_brain_immune_apply_cytokine_effects(swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_cytokine_impairment) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -165,7 +170,10 @@ int swarm_brain_immune_apply_cytokine_effects(swarm_brain_immune_bridge_t* bridg
 
 int swarm_brain_immune_apply_inflammation_effects(swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_inflammation_effects) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -173,6 +181,7 @@ int swarm_brain_immune_apply_inflammation_effects(swarm_brain_immune_bridge_t* b
     brain_immune_stats_t stats;
     if (brain_immune_get_stats(bridge->immune_system, &stats) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_immune_apply_inflammation_effects: validation failed");
         return -1;
     }
     brain_inflammation_level_t level = stats.inflammation_level;
@@ -210,7 +219,10 @@ float swarm_brain_immune_compute_coherence(const swarm_brain_immune_bridge_t* br
 
 int swarm_brain_immune_trigger_from_stress(swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_trigger_from_stress: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_stress_trigger) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -227,7 +239,10 @@ int swarm_brain_immune_trigger_from_stress(swarm_brain_immune_bridge_t* bridge)
 
 int swarm_brain_immune_boost_from_cohesion(swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_boost_from_cohesion: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
     if (!bridge->config.enable_cohesion_boost) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -262,7 +277,10 @@ int swarm_brain_immune_bridge_update(swarm_brain_immune_bridge_t* bridge, uint64
 int swarm_brain_immune_get_cytokine_effects(const swarm_brain_immune_bridge_t* bridge,
                                              cytokine_swarm_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_swarm_effects_t));
@@ -274,7 +292,10 @@ int swarm_brain_immune_get_cytokine_effects(const swarm_brain_immune_bridge_t* b
 int swarm_brain_immune_get_inflammation_state(const swarm_brain_immune_bridge_t* bridge,
                                                inflammation_swarm_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_swarm_state_t));
@@ -285,7 +306,10 @@ int swarm_brain_immune_get_inflammation_state(const swarm_brain_immune_bridge_t*
 
 bool swarm_brain_immune_is_fragmented(const swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_is_fragmented: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool fragmented = bridge->inflammation_state.fragmentation_risk > 0.3f;
@@ -309,6 +333,7 @@ int swarm_brain_immune_connect_bio_async(swarm_brain_immune_bridge_t* bridge)
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot connect to bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -339,6 +364,7 @@ int swarm_brain_immune_disconnect_bio_async(swarm_brain_immune_bridge_t* bridge)
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot disconnect from bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -359,6 +385,9 @@ int swarm_brain_immune_disconnect_bio_async(swarm_brain_immune_bridge_t* bridge)
 
 bool swarm_brain_immune_is_bio_async_connected(const swarm_brain_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }

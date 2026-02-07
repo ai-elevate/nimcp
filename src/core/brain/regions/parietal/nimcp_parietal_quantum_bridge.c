@@ -288,6 +288,7 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
     if (!bridge->spatial_states) {
         LOG_ERROR("[%s] Failed to allocate spatial states", PARIETAL_Q_LOG_MODULE);
         parietal_region_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_region_quantum_default_config: bridge->spatial_states is NULL");
         return NULL;
     }
 
@@ -297,6 +298,7 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
     if (!bridge->attention_superposition) {
         LOG_ERROR("[%s] Failed to allocate attention states", PARIETAL_Q_LOG_MODULE);
         parietal_region_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_region_quantum_default_config: bridge->attention_superposition is NULL");
         return NULL;
     }
 
@@ -307,6 +309,7 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
     if (!bridge->trajectory_states) {
         LOG_ERROR("[%s] Failed to allocate trajectory states", PARIETAL_Q_LOG_MODULE);
         parietal_region_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_region_quantum_default_config: bridge->trajectory_states is NULL");
         return NULL;
     }
 
@@ -316,6 +319,7 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
     if (!bridge->walk_states) {
         LOG_ERROR("[%s] Failed to allocate walk states", PARIETAL_Q_LOG_MODULE);
         parietal_region_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_region_quantum_default_config: bridge->walk_states is NULL");
         return NULL;
     }
 
@@ -342,7 +346,10 @@ void parietal_region_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
 }
 
 bool parietal_region_quantum_bridge_is_enabled(const parietal_quantum_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_is_enabled: bridge is NULL");
+        return false;
+    }
     return bridge->config.enabled;
 }
 
@@ -387,7 +394,10 @@ int parietal_quantum_search_spatial(
     uint32_t grid_size,
     quantum_spatial_result_t* result) {
 
-    if (!bridge || !salience_map || !result) return -1;
+    if (!bridge || !salience_map || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_reset: required parameter is NULL (bridge, salience_map, result)");
+        return -1;
+    }
     if (!bridge->config.enabled) {
         LOG_DEBUG("[%s] Quantum disabled, using classical search", PARIETAL_Q_LOG_MODULE);
         /* Fall back to linear search */
@@ -489,8 +499,14 @@ int parietal_quantum_superpose_attention(
     uint32_t num_targets,
     const float* amplitudes) {
 
-    if (!bridge || !targets) return -1;
-    if (!bridge->config.enable_superposition) return -1;
+    if (!bridge || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_reset: required parameter is NULL (bridge, targets)");
+        return -1;
+    }
+    if (!bridge->config.enable_superposition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_reset: bridge->config is NULL");
+        return -1;
+    }
 
     uint32_t count = num_targets;
     if (count > bridge->config.max_targets) {
@@ -532,8 +548,14 @@ int parietal_quantum_collapse_attention(
     parietal_quantum_bridge_t* bridge,
     parietal_cortex_spatial_target_t* selected_target) {
 
-    if (!bridge || !selected_target) return -1;
-    if (bridge->attention_state_count == 0) return -1;
+    if (!bridge || !selected_target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_bridge_reset: required parameter is NULL (bridge, selected_target)");
+        return -1;
+    }
+    if (bridge->attention_state_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_region_quantum_bridge_reset: bridge->attention_state_count is zero");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Collapsing attention superposition", PARIETAL_Q_LOG_MODULE);
 
@@ -563,8 +585,14 @@ int parietal_quantum_frame_superposition(
     parietal_cortex_spatial_frame_t base_frame,
     quantum_frame_superposition_t* superposition) {
 
-    if (!bridge || !position || !superposition) return -1;
-    if (!bridge->config.enable_superposition) return -1;
+    if (!bridge || !position || !superposition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, position, superposition)");
+        return -1;
+    }
+    if (!bridge->config.enable_superposition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->config is NULL");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Creating frame superposition from frame %d", PARIETAL_Q_LOG_MODULE, base_frame);
 
@@ -604,8 +632,14 @@ int parietal_quantum_collapse_frame(
     parietal_cortex_spatial_frame_t target_frame,
     parietal_cortex_position_t* result) {
 
-    if (!bridge || !superposition || !result) return -1;
-    if (target_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) return -1;
+    if (!bridge || !superposition || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, superposition, result)");
+        return -1;
+    }
+    if (target_frame >= PARIETAL_CORTEX_SPATIAL_FRAME_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Collapsing frame superposition to frame %d",
               PARIETAL_Q_LOG_MODULE, target_frame);
@@ -621,7 +655,10 @@ int parietal_quantum_transform(
     parietal_cortex_spatial_frame_t to_frame,
     parietal_cortex_position_t* result) {
 
-    if (!bridge || !position || !result) return -1;
+    if (!bridge || !position || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, position, result)");
+        return -1;
+    }
 
     if (!bridge->config.enabled || !bridge->config.enable_superposition) {
         /* Direct transform without superposition */
@@ -653,7 +690,10 @@ int parietal_quantum_optimize_trajectory(
     uint32_t num_obstacles,
     quantum_trajectory_result_t* result) {
 
-    if (!bridge || !start || !target || !result) return -1;
+    if (!bridge || !start || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, start, target, result)");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Optimizing trajectory with %u obstacles",
               PARIETAL_Q_LOG_MODULE, num_obstacles);
@@ -763,7 +803,10 @@ int parietal_quantum_superpose_trajectories(
     const parietal_cortex_position_t* target,
     uint32_t num_candidates) {
 
-    if (!bridge || !start || !target) return -1;
+    if (!bridge || !start || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, start, target)");
+        return -1;
+    }
 
     quantum_trajectory_result_t result;
     int rc = parietal_quantum_optimize_trajectory(bridge, start, target, NULL, 0, &result);
@@ -777,8 +820,14 @@ int parietal_quantum_collapse_trajectory(
     parietal_quantum_bridge_t* bridge,
     quantum_trajectory_candidate_t* trajectory) {
 
-    if (!bridge || !trajectory) return -1;
-    if (bridge->trajectory_state_count == 0) return -1;
+    if (!bridge || !trajectory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, trajectory)");
+        return -1;
+    }
+    if (bridge->trajectory_state_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bridge->trajectory_state_count is zero");
+        return -1;
+    }
 
     /* Select based on amplitude */
     float max_amp = 0.0f;
@@ -805,8 +854,14 @@ int parietal_quantum_walk_init(
     const parietal_cortex_position_t* start,
     uint32_t graph_size) {
 
-    if (!bridge || !start) return -1;
-    if (!bridge->config.enable_quantum_walk) return -1;
+    if (!bridge || !start) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, start)");
+        return -1;
+    }
+    if (!bridge->config.enable_quantum_walk) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->config is NULL");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Initializing quantum walk, graph size %u",
               PARIETAL_Q_LOG_MODULE, graph_size);
@@ -859,7 +914,10 @@ int parietal_quantum_walk_step(
 
 
     }
-    if (!bridge->walk_initialized) return -1;
+    if (!bridge->walk_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->walk_initialized is NULL");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Quantum walk step, %u steps", PARIETAL_Q_LOG_MODULE, steps);
 
@@ -903,8 +961,14 @@ int parietal_quantum_walk_measure(
     parietal_cortex_position_t* position,
     float* probability) {
 
-    if (!bridge || !position) return -1;
-    if (!bridge->walk_initialized) return -1;
+    if (!bridge || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, position)");
+        return -1;
+    }
+    if (!bridge->walk_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->walk_initialized is NULL");
+        return -1;
+    }
 
     uint32_t n = bridge->walk_graph_size;
     uint32_t total = n * n * 4;
@@ -948,7 +1012,10 @@ int parietal_region_quantum_walk_search(
     uint32_t max_steps,
     quantum_spatial_result_t* result) {
 
-    if (!bridge || !start || !target || !result) return -1;
+    if (!bridge || !start || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, start, target, result)");
+        return -1;
+    }
 
     LOG_DEBUG("[%s] Quantum walk search", PARIETAL_Q_LOG_MODULE);
 
@@ -1007,7 +1074,10 @@ int parietal_region_quantum_get_stats(
     const parietal_quantum_bridge_t* bridge,
     parietal_quantum_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -1021,7 +1091,10 @@ int parietal_region_quantum_get_config(
     const parietal_quantum_bridge_t* bridge,
     parietal_region_quantum_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_region_quantum_reset_stats: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

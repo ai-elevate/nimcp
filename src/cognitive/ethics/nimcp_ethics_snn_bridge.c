@@ -224,12 +224,14 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > ETHICS_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "ethics_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_snn_create: validation failed");
         return NULL;
     }
 
@@ -247,6 +249,7 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -257,6 +260,7 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
 
     if (!bridge->encoding_buffer || !bridge->output_buffer || !bridge->judgment_buffer) {
         ethics_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_snn_create: required parameter is NULL (bridge->encoding_buffer, bridge->output_buffer, bridge->judgment_buffer)");
         return NULL;
     }
 
@@ -311,7 +315,10 @@ void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
 }
 
 int ethics_snn_reset(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_reset", 0.0f);
@@ -372,7 +379,10 @@ int ethics_snn_encode_context(
     const float* dimensions,
     uint32_t num_dims)
 {
-    if (!bridge || !dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_encode_context: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_co", 0.0f);
@@ -448,7 +458,10 @@ int ethics_snn_encode_harm(
     float harm_level,
     float urgency)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_encode_harm: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_ha", 0.0f);
@@ -513,7 +526,10 @@ int ethics_snn_encode_golden_rule(
     float other_impact,
     float empathy_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_encode_golden_rule: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_encode_go", 0.0f);
@@ -574,7 +590,10 @@ int ethics_snn_encode_golden_rule(
 //=============================================================================
 
 int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge || duration_ms <= 0) return -1;
+    if (!bridge || duration_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_snn_simulate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_simulate", 0.0f);
@@ -599,7 +618,10 @@ int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int ethics_snn_step(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_step: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_step", 0.0f);
@@ -628,7 +650,10 @@ int ethics_snn_forward(
     const float* inputs,
     uint32_t input_count)
 {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_forward", 0.0f);
@@ -661,7 +686,10 @@ int ethics_snn_get_judgment(
     ethics_snn_bridge_t* bridge,
     ethics_judgment_t* judgment)
 {
-    if (!bridge || !judgment) return -1;
+    if (!bridge || !judgment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_get_judgment: required parameter is NULL (bridge, judgment)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_judgm", 0.0f);
@@ -783,7 +811,10 @@ int ethics_snn_get_activations(
     float* activations,
     uint32_t num_dims)
 {
-    if (!bridge || !activations) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_activ", 0.0f);
@@ -813,7 +844,10 @@ bool ethics_snn_check_harm(
     ethics_snn_bridge_t* bridge,
     float* harm_level)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_check_harm: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_check_har", 0.0f);
@@ -835,7 +869,10 @@ bool ethics_snn_check_conflict(
     ethics_snn_bridge_t* bridge,
     float* conflict_level)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_check_conflict: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_check_con", 0.0f);
@@ -862,7 +899,10 @@ int ethics_snn_get_dim_state(
     uint32_t dim,
     ethics_dim_state_t* state)
 {
-    if (!bridge || !state || dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state || dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_dim_s", 0.0f);
@@ -879,7 +919,10 @@ int ethics_snn_get_state(
     ethics_snn_bridge_t* bridge,
     ethics_snn_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_state", 0.0f);
@@ -914,7 +957,10 @@ int ethics_snn_get_state(
 }
 
 int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_get_stats", 0.0f);
@@ -928,7 +974,10 @@ int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats)
 }
 
 int ethics_snn_reset_stats(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_reset_sta", 0.0f);
@@ -989,7 +1038,10 @@ int ethics_snn_register_harm_callback(
     ethics_snn_harm_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_register_harm_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
@@ -1008,7 +1060,10 @@ int ethics_snn_register_judgment_callback(
     ethics_snn_judgment_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_register_judgment_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
@@ -1027,7 +1082,10 @@ int ethics_snn_register_conflict_callback(
     ethics_snn_conflict_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_register_conflict_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_register_", 0.0f);
@@ -1046,8 +1104,14 @@ int ethics_snn_register_conflict_callback(
 //=============================================================================
 
 int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_bio_async", 0.0f);
@@ -1062,7 +1126,10 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
 }
 
 int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_bio_async", 0.0f);
@@ -1076,7 +1143,10 @@ int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
 }
 
 bool ethics_snn_is_bio_async_connected(ethics_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_snn_bridge_heartbeat("ethics_snn_b_ethics_snn_is_bio_as", 0.0f);

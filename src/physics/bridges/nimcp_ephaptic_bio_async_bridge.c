@@ -106,6 +106,7 @@ static int find_subscription_slot(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_subscription_slot: operation failed");
     return -1;
 }
 
@@ -121,6 +122,7 @@ static int find_empty_subscription_slot(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_subscription_slot: bridge->subscriptions is NULL");
     return -1;
 }
 
@@ -258,6 +260,7 @@ int ephaptic_bio_async_connect(
     bio_router_t router
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_connect: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -275,6 +278,7 @@ int ephaptic_bio_async_connect(
 
 int ephaptic_bio_async_disconnect(ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_disconnect: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -290,6 +294,7 @@ int ephaptic_bio_async_disconnect(ephaptic_bio_async_bridge_t* bridge) {
 
 bool ephaptic_bio_async_is_connected(const ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
     return bridge->connected;
@@ -304,10 +309,12 @@ int ephaptic_bio_async_broadcast_field_state(
     const nimcp_ephaptic_system_t* system
 ) {
     if (!bridge || !bridge->initialized || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_field_state: required parameter is NULL (bridge, bridge->initialized, system)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_field_state: system->initialized is NULL");
         return -1;
     }
 
@@ -352,10 +359,12 @@ int ephaptic_bio_async_broadcast_coupling(
     const nimcp_ephaptic_system_t* system
 ) {
     if (!bridge || !bridge->initialized || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_coupling: required parameter is NULL (bridge, bridge->initialized, system)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_coupling: system->initialized is NULL");
         return -1;
     }
 
@@ -389,10 +398,12 @@ int ephaptic_bio_async_broadcast_sync_phase(
     const nimcp_ephaptic_system_t* system
 ) {
     if (!bridge || !bridge->initialized || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_sync_phase: required parameter is NULL (bridge, bridge->initialized, system)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_sync_phase: system->initialized is NULL");
         return -1;
     }
 
@@ -441,6 +452,7 @@ int ephaptic_bio_async_broadcast_band_power(
     const nimcp_lfp_result_t* lfp
 ) {
     if (!bridge || !bridge->initialized || !lfp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_band_power: required parameter is NULL (bridge, bridge->initialized, lfp)");
         return -1;
     }
 
@@ -496,6 +508,7 @@ int ephaptic_bio_async_broadcast_oscillation(
     const nimcp_lfp_result_t* lfp
 ) {
     if (!bridge || !bridge->initialized || !lfp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_oscillation: required parameter is NULL (bridge, bridge->initialized, lfp)");
         return -1;
     }
 
@@ -544,6 +557,7 @@ int ephaptic_bio_async_broadcast_ionic_gradient(
     float resistivity
 ) {
     if (!bridge || !bridge->initialized || !gradient) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_ionic_gradient: required parameter is NULL (bridge, bridge->initialized, gradient)");
         return -1;
     }
 
@@ -579,10 +593,12 @@ int ephaptic_bio_async_broadcast_spatial_pattern(
     const nimcp_ephaptic_system_t* system
 ) {
     if (!bridge || !bridge->initialized || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_spatial_pattern: required parameter is NULL (bridge, bridge->initialized, system)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_spatial_pattern: system->initialized is NULL");
         return -1;
     }
 
@@ -633,10 +649,12 @@ int ephaptic_bio_async_broadcast_lfp_state(
     const float position[3]
 ) {
     if (!bridge || !bridge->initialized || !system || !lfp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_lfp_state: required parameter is NULL (bridge, bridge->initialized, system, lfp)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_lfp_state: system->initialized is NULL");
         return -1;
     }
 
@@ -682,6 +700,7 @@ int ephaptic_bio_async_broadcast_all(
     const nimcp_lfp_result_t* lfp
 ) {
     if (!bridge || !bridge->initialized || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_broadcast_all: required parameter is NULL (bridge, bridge->initialized, system)");
         return -1;
     }
 
@@ -745,6 +764,7 @@ int ephaptic_bio_async_subscribe_module(
     uint32_t message_mask
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_subscribe_module: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -760,6 +780,7 @@ int ephaptic_bio_async_subscribe_module(
     slot = find_empty_subscription_slot(bridge);
     if (slot < 0) {
         // Table full
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_bio_async_subscribe_module: validation failed");
         return -1;
     }
 
@@ -778,12 +799,14 @@ int ephaptic_bio_async_unsubscribe_module(
     uint32_t module_id
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_unsubscribe_module: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
     int slot = find_subscription_slot(bridge, module_id);
     if (slot < 0) {
         // Not subscribed
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_bio_async_unsubscribe_module: validation failed");
         return -1;
     }
 
@@ -802,11 +825,13 @@ int ephaptic_bio_async_update_subscription(
     uint32_t message_mask
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_update_subscription: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
     int slot = find_subscription_slot(bridge, module_id);
     if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_bio_async_update_subscription: validation failed");
         return -1;
     }
 
@@ -832,6 +857,7 @@ int ephaptic_bio_async_get_stats(
     ephaptic_bio_async_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -841,6 +867,7 @@ int ephaptic_bio_async_get_stats(
 
 int ephaptic_bio_async_reset_stats(ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -858,6 +885,7 @@ int ephaptic_bio_async_reset_stats(ephaptic_bio_async_bridge_t* bridge) {
 
 int ephaptic_bio_async_process_inbox(ephaptic_bio_async_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_process_inbox: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -879,6 +907,7 @@ int ephaptic_bio_async_set_channel(
     nimcp_bio_channel_type_t channel
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_bio_async_set_channel: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

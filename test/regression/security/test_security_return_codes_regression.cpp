@@ -79,7 +79,7 @@ TEST(SecurityReturnCodesRegression, PQGetStats_NullStats) {
 }
 
 TEST(SecurityReturnCodesRegression, KyberKeygen_NullKeypair) {
-    ASSERT_NO_BARE_MINUS1(nimcp_kyber_keygen(NIMCP_KYBER_512, nullptr));
+    ASSERT_NO_BARE_MINUS1(nimcp_kyber_keygen(NIMCP_PQ_KYBER_512, nullptr));
 }
 
 // --- Consensus regression ---
@@ -102,7 +102,7 @@ TEST(SecurityReturnCodesRegression, ConsensusProposePolicy_NullCtx) {
 }
 
 TEST(SecurityReturnCodesRegression, ConsensusInitiateResponse_NullCtx) {
-    ASSERT_NO_BARE_MINUS1(nimcp_consensus_initiate_response(nullptr, NIMCP_RESPONSE_QUARANTINE, nullptr));
+    ASSERT_NO_BARE_MINUS1(nimcp_consensus_initiate_response(nullptr, NIMCP_RESPONSE_ISOLATE_NODE, nullptr));
 }
 
 // --- Skepticism regression ---
@@ -117,7 +117,7 @@ TEST(SecurityReturnCodesRegression, Skepticism_NullClaim) {
 
 // --- Security log/stats regression ---
 TEST(SecurityReturnCodesRegression, LogEvent_NullDetails) {
-    ASSERT_NO_BARE_MINUS1(nimcp_security_log_event(NIMCP_SECURITY_EVENT_LOGIN, NIMCP_THREAT_LEVEL_LOW, nullptr));
+    ASSERT_NO_BARE_MINUS1(nimcp_security_log_event(NIMCP_SECURITY_EVENT_THREAT_DETECTED, NIMCP_THREAT_LOW, nullptr));
 }
 
 TEST(SecurityReturnCodesRegression, GetStats_AllNull) {

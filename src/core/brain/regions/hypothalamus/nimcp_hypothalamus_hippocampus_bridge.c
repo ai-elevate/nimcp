@@ -417,7 +417,10 @@ bool hypo_hipp_bridge_get_encoding_priority(
     const hypo_hipp_bridge_t* bridge,
     hypo_hipp_encoding_priority_t* priority) {
 
-    if (!bridge || !priority) return false;
+    if (!bridge || !priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_update: required parameter is NULL (bridge, priority)");
+        return false;
+    }
 
     *priority = bridge->current_priority;
     return true;
@@ -538,7 +541,10 @@ bool hypo_hipp_bridge_get_memory_influences(
     const hypo_hipp_bridge_t* bridge,
     float* influences) {
 
-    if (!bridge || !influences) return false;
+    if (!bridge || !influences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, influences)");
+        return false;
+    }
 
     memcpy(influences, bridge->memory_drive_influence,
            sizeof(float) * HYPO_DRIVE_COUNT);
@@ -553,7 +559,10 @@ bool hypo_hipp_bridge_connect(
     hypo_hipp_bridge_t* bridge,
     hippocampus_adapter_t* hippocampus) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return false;
+    }
 
     if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -617,6 +626,7 @@ int hypo_hipp_bridge_set_nav_goal(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -630,7 +640,10 @@ bool hypo_hipp_bridge_create_association(
     uint32_t memory_id,
     float strength) {
 
-    if (!bridge || drive >= HYPO_DRIVE_COUNT) return false;
+    if (!bridge || drive >= HYPO_DRIVE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: bridge is NULL");
+        return false;
+    }
 
     if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -791,7 +804,10 @@ bool hypo_hipp_bridge_register_bio(
     hypo_hipp_bridge_t* bridge,
     bool use_kg_wiring) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return false;
+    }
 
     (void)use_kg_wiring; /* For future KG-driven wiring */
 
@@ -807,22 +823,26 @@ bool hypo_hipp_bridge_register_bio(
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         NIMCP_LOG_ERROR("Failed to register hippocampus bridge with bio router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 
     /* Register message handlers */
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_HIPPOCAMPUS_MEMORY_ENCODED,
                                      hipp_handle_memory_encoded) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_HIPPOCAMPUS_CONTEXT_UPDATE,
                                      hipp_handle_context_update) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_HIPPOCAMPUS_REPLAY_EVENT,
                                      hipp_handle_replay_event) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 

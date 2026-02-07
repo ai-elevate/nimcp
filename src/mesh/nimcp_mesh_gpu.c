@@ -125,6 +125,7 @@ bool mesh_gpu_cuda_available(void) {
     cudaError_t err = cudaGetDeviceCount(&count);
     return err == cudaSuccess && count > 0;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_cuda_available: operation failed");
     return false;
 #endif
 }
@@ -141,10 +142,16 @@ int mesh_gpu_get_device_count(void) {
 
 bool mesh_gpu_get_device_memory(int device_id, size_t* free_bytes, size_t* total_bytes) {
 #ifdef NIMCP_ENABLE_CUDA
-    if (cudaSetDevice(device_id) != cudaSuccess) return false;
+    if (cudaSetDevice(device_id) != cudaSuccess) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_get_device_memory: validation failed");
+        return false;
+    }
 
     size_t free_mem, total_mem;
-    if (cudaMemGetInfo(&free_mem, &total_mem) != cudaSuccess) return false;
+    if (cudaMemGetInfo(&free_mem, &total_mem) != cudaSuccess) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_get_device_memory: validation failed");
+        return false;
+    }
 
     if (free_bytes) *free_bytes = free_mem;
     if (total_bytes) *total_bytes = total_mem;
@@ -153,6 +160,7 @@ bool mesh_gpu_get_device_memory(int device_id, size_t* free_bytes, size_t* total
     (void)device_id;
     if (free_bytes) *free_bytes = 0;
     if (total_bytes) *total_bytes = 0;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gpu_get_device_memory: validation failed");
     return false;
 #endif
 }
@@ -227,7 +235,10 @@ static nimcp_error_t init_coordinators(mesh_gpu_channel_t channel) {
 }
 
 static gpu_coordinator_t* select_coordinator(mesh_gpu_channel_t channel, const mesh_gpu_transaction_t* tx) {
-    if (!channel || channel->coordinator_count == 0) return NULL;
+    if (!channel || channel->coordinator_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "select_coordinator: channel is NULL");
+        return NULL;
+    }
 
     /* Specific device requested? */
     if (tx && tx->target_device >= 0) {
@@ -268,6 +279,7 @@ static gpu_coordinator_t* select_coordinator(mesh_gpu_channel_t channel, const m
         return best;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_coordinator: validation failed");
     return NULL;
 }
 
@@ -335,6 +347,7 @@ static nimcp_error_t batch_add(mesh_gpu_batch_t* batch, mesh_gpu_transaction_t* 
 
 static bool try_cpu_fallback(mesh_gpu_channel_t channel, mesh_gpu_transaction_t* tx) {
     if (!channel || !tx || !channel->config.enable_cpu_fallback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "try_cpu_fallback: required parameter is NULL (channel, tx, channel->config)");
         return false;
     }
 
@@ -349,6 +362,7 @@ static bool try_cpu_fallback(mesh_gpu_channel_t channel, mesh_gpu_transaction_t*
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "try_cpu_fallback: validation failed");
     return false;
 }
 
@@ -374,6 +388,7 @@ typedef struct {
 static bool gpu_recovery_execute(void* context) {
     gpu_recovery_context_t* ctx = (gpu_recovery_context_t*)context;
     if (!ctx || !ctx->channel || !ctx->tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_recovery_execute: required parameter is NULL (ctx, ctx->channel, ctx->tx)");
         return false;
     }
     return try_cpu_fallback(ctx->channel, ctx->tx);
@@ -392,6 +407,7 @@ static bool gpu_recovery_execute(void* context) {
  */
 static bool attempt_gpu_recovery_with_retry(mesh_gpu_channel_t channel, mesh_gpu_transaction_t* tx) {
     if (!channel || !tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attempt_gpu_recovery_with_retry: required parameter is NULL (channel, tx)");
         return false;
     }
 
@@ -425,6 +441,7 @@ static bool attempt_gpu_recovery_with_retry(mesh_gpu_channel_t channel, mesh_gpu
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attempt_gpu_recovery_with_retry: validation failed");
     return false;
 }
 
@@ -587,13 +604,17 @@ static nimcp_error_t flush_batch(mesh_gpu_channel_t channel) {
 
 mesh_gpu_channel_t mesh_gpu_channel_create(const mesh_gpu_channel_config_t* config) {
     mesh_gpu_channel_t channel = (mesh_gpu_channel_t)nimcp_calloc(1, sizeof(struct mesh_gpu_channel_internal));
-    if (!channel) return NULL;
+    if (!channel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_gpu_channel_create: channel is NULL");
+        return NULL;
+    }
 
     channel->config = config ? *config : mesh_gpu_channel_default_config();
 
     /* Initialize coordinators */
     if (init_coordinators(channel) != NIMCP_SUCCESS) {
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_gpu_channel_create: validation failed");
         return NULL;
     }
 
@@ -602,6 +623,7 @@ mesh_gpu_channel_t mesh_gpu_channel_create(const mesh_gpu_channel_config_t* conf
     if (batch_init(&channel->current_batch, batch_capacity) != NIMCP_SUCCESS) {
         nimcp_free(channel->coordinators);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mesh_gpu_channel_create: validation failed");
         return NULL;
     }
 
@@ -613,6 +635,7 @@ mesh_gpu_channel_t mesh_gpu_channel_create(const mesh_gpu_channel_config_t* conf
         batch_destroy(&channel->current_batch);
         nimcp_free(channel->coordinators);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_gpu_channel_create: channel->fallbacks is NULL");
         return NULL;
     }
 
@@ -745,7 +768,10 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
     size_t output_size
 ) {
     mesh_gpu_transaction_t* tx = (mesh_gpu_transaction_t*)nimcp_calloc(1, sizeof(mesh_gpu_transaction_t));
-    if (!tx) return NULL;
+    if (!tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_gpu_transaction_create: tx is NULL");
+        return NULL;
+    }
 
     tx->gpu_type = gpu_type;
     tx->status = MESH_GPU_TX_STATUS_PENDING;
@@ -756,6 +782,7 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
         tx->input_data = nimcp_malloc(input_size);
         if (!tx->input_data) {
             nimcp_free(tx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_gpu_transaction_create: tx->input_data is NULL");
             return NULL;
         }
         memcpy(tx->input_data, input_data, input_size);
@@ -768,6 +795,7 @@ mesh_gpu_transaction_t* mesh_gpu_transaction_create(
         if (!tx->output_data) {
             nimcp_free(tx->input_data);
             nimcp_free(tx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_gpu_transaction_create: tx->output_data is NULL");
             return NULL;
         }
         tx->output_size = output_size;

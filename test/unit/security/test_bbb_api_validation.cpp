@@ -224,7 +224,7 @@ TEST_F(BBBApiValidationTest, ReportThreat_Basic) {
     bbb_threat_report_t report = bbb_report_threat(
         system_, BBB_THREAT_BUFFER_OVERFLOW, BBB_SEVERITY_HIGH,
         desc, nullptr, data, sizeof(data));
-    EXPECT_NE(report.report_id, 0u);
+    EXPECT_NE(report.timestamp, 0u);
 }
 
 TEST_F(BBBApiValidationTest, ReportThreat_NullDescription) {

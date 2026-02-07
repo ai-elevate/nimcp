@@ -149,6 +149,7 @@ surface_geometry_bridge_t* surface_geometry_bridge_create(
     if (!bridge->message_subscriptions) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_geometry_bridge_create: bridge->message_subscriptions is NULL");
         return NULL;
     }
     memset(bridge->message_subscriptions, 0,
@@ -270,6 +271,7 @@ int surface_geometry_bridge_subscribe(
     BRIDGE_NULL_CHECK(bridge);
 
     if (msg_type >= SURFACE_BIO_MSG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_geometry_bridge_subscribe: capacity exceeded");
         return -1;
     }
 
@@ -286,6 +288,7 @@ int surface_geometry_bridge_subscribe(
     /* Add subscription */
     if (bridge->num_subscriptions >= bridge->max_subscriptions) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_geometry_bridge_subscribe: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -317,6 +320,7 @@ int surface_geometry_bridge_unsubscribe(
     }
 
     BRIDGE_UNLOCK(bridge);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_geometry_bridge_unsubscribe: operation failed");
     return -1;  /* Not found */
 }
 
@@ -334,6 +338,7 @@ int surface_geometry_bridge_compute_branch(
     BRIDGE_NULL_CHECK(params);
 
     if (!bridge->geometry_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_bridge_compute_branch: bridge->geometry_ctx is NULL");
         return -1;
     }
 
@@ -378,6 +383,7 @@ int surface_geometry_bridge_compute_spine(
     BRIDGE_NULL_CHECK(result);
 
     if (!bridge->geometry_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_bridge_compute_spine: bridge->geometry_ctx is NULL");
         return -1;
     }
 
@@ -428,6 +434,7 @@ int surface_geometry_bridge_compute_axon_branch(
     BRIDGE_NULL_CHECK(result);
 
     if (!bridge->geometry_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_bridge_compute_axon_branch: bridge->geometry_ctx is NULL");
         return -1;
     }
 
@@ -466,6 +473,7 @@ int surface_geometry_bridge_optimize(
     BRIDGE_NULL_CHECK(result);
 
     if (!bridge->geometry_ctx || num_terminals < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_bridge_optimize: bridge->geometry_ctx is NULL");
         return -1;
     }
 
@@ -518,6 +526,7 @@ int surface_geometry_bridge_validate(
     BRIDGE_NULL_CHECK(result);
 
     if (!bridge->geometry_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_bridge_validate: bridge->geometry_ctx is NULL");
         return -1;
     }
 

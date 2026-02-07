@@ -222,6 +222,7 @@ cingulate_immune_bridge_t cingulate_immune_create(
     /* Guard: Null checks */
     if (!cingulate || !immune) {
         NIMCP_LOGGING_ERROR("Null cingulate or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_immune_create: required parameter is NULL (cingulate, immune)");
         return NULL;
     }
 
@@ -254,6 +255,7 @@ cingulate_immune_bridge_t cingulate_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -703,6 +705,9 @@ int cingulate_immune_disconnect_bio_async(cingulate_immune_bridge_t bridge) {
 }
 
 bool cingulate_immune_is_bio_async_connected(cingulate_immune_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }

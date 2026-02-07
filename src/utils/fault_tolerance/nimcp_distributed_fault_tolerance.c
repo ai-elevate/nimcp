@@ -27,11 +27,14 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(distributed_fault_tolerance)
 /**
  * @brief Internal DFT context
  */
+#define DFT_CHECKPOINT_DATA_MAX 4096        /**< Max data per checkpoint */
+
 struct dft_context {
     dft_config_t config;                    /**< Configuration */
     dft_peer_info_t peers[DFT_MAX_PEERS];   /**< Peer information */
     uint32_t peer_count;                    /**< Number of peers */
     dft_checkpoint_meta_t checkpoints[DFT_MAX_CHECKPOINTS]; /**< Checkpoints */
+    uint8_t checkpoint_data[DFT_MAX_CHECKPOINTS][DFT_CHECKPOINT_DATA_MAX]; /**< Checkpoint data */
     uint32_t checkpoint_count;              /**< Number of checkpoints */
     uint64_t next_checkpoint_id;            /**< Next checkpoint ID */
     uint64_t current_view;                  /**< Current view number */
@@ -42,7 +45,7 @@ struct dft_context {
     uint32_t callback_count;                /**< Number of callbacks */
     nimcp_mutex_t lock;                     /**< Context lock */
     nimcp_thread_t heartbeat_thread;        /**< Heartbeat thread */
-    bool running;                           /**< Is running */
+    volatile bool running;                  /**< Is running (volatile for thread visibility) */
     bool initialized;                       /**< Is initialized */
 };
 
@@ -80,6 +83,7 @@ static dft_peer_info_t* dft_find_peer(dft_context_t* ctx, uint32_t node_id) {
             return &ctx->peers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_find_peer: validation failed");
     return NULL;
 }
 
@@ -119,23 +123,46 @@ static void* dft_heartbeat_thread(void* arg) {
         // Send heartbeats
         dft_send_heartbeat(ctx);
 
+        // Re-check running flag after heartbeat send
+        if (!ctx->running) break;
+
         // Check for failures
         dft_failure_detection_t failures[DFT_MAX_PEERS];
         uint32_t failure_count = dft_detect_failures(ctx, failures, DFT_MAX_PEERS);
 
-        // Process detected failures
+        // Re-check running flag after failure detection
+        if (!ctx->running) break;
+
+        // Process detected failures under lock to protect peer state
+        uint32_t events_to_emit = 0;
+        uint32_t event_indices[DFT_MAX_PEERS];
+
+        nimcp_mutex_lock(&ctx->lock);
         for (uint32_t i = 0; i < failure_count; i++) {
             dft_peer_info_t* peer = dft_find_peer(ctx, failures[i].node_id);
             if (peer && peer->state == DFT_NODE_HEALTHY) {
                 peer->state = DFT_NODE_SUSPECTED;
-                dft_emit_event(ctx, DFT_EVENT_NODE_SUSPECTED, &failures[i]);
+                event_indices[events_to_emit++] = i;
             }
         }
+        nimcp_mutex_unlock(&ctx->lock);
 
-        // Sleep for heartbeat interval
-        nimcp_time_sleep_ms(ctx->config.heartbeat_interval_ms);
+        // Emit events outside lock to avoid deadlock with callbacks
+        for (uint32_t i = 0; i < events_to_emit; i++) {
+            if (!ctx->running) break;
+            dft_emit_event(ctx, DFT_EVENT_NODE_SUSPECTED, &failures[event_indices[i]]);
+        }
+
+        // Sleep in small increments to allow quick shutdown
+        uint32_t remaining_ms = ctx->config.heartbeat_interval_ms;
+        while (remaining_ms > 0 && ctx->running) {
+            uint32_t sleep_ms = (remaining_ms > 10) ? 10 : remaining_ms;
+            nimcp_time_sleep_ms(sleep_ms);
+            remaining_ms -= sleep_ms;
+        }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_heartbeat_thread: operation failed");
     return NULL;
 }
 
@@ -166,6 +193,7 @@ dft_context_t* dft_create(const dft_config_t* config) {
     // Guard: Validate config
     if (!config) {
         LOG_ERROR("DFT", "NULL config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dft_create: config is NULL");
         return NULL;
     }
 
@@ -173,6 +201,7 @@ dft_context_t* dft_create(const dft_config_t* config) {
     dft_context_t* ctx = nimcp_malloc(sizeof(dft_context_t));
     if (!ctx) {
         LOG_ERROR("DFT", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dft_create: ctx is NULL");
         return NULL;
     }
 
@@ -187,6 +216,7 @@ dft_context_t* dft_create(const dft_config_t* config) {
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("DFT", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "dft_create: validation failed");
         return NULL;
     }
 
@@ -222,6 +252,7 @@ bool dft_start(dft_context_t* ctx) {
     // Guard: Validate context
     if (!ctx || !ctx->initialized) {
         LOG_ERROR("DFT", "Invalid context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_start: required parameter is NULL (ctx, ctx->initialized)");
         return false;
     }
 
@@ -234,9 +265,10 @@ bool dft_start(dft_context_t* ctx) {
     ctx->running = true;
 
     // Start heartbeat thread
-    if (nimcp_thread_create(&ctx->heartbeat_thread, NULL, dft_heartbeat_thread, ctx) != 0) {
+    if (nimcp_thread_create(&ctx->heartbeat_thread, dft_heartbeat_thread, ctx, NULL) != 0) {
         LOG_ERROR("DFT", "Failed to start heartbeat thread");
         ctx->running = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_start: validation failed");
         return false;
     }
 
@@ -247,15 +279,21 @@ bool dft_start(dft_context_t* ctx) {
 
 bool dft_stop(dft_context_t* ctx) {
     // Guard: Validate context
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_stop: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
 
     // Guard: Not running
     if (!ctx->running) return true;
 
+    // Set running flag under lock for memory barrier visibility
+    nimcp_mutex_lock(&ctx->lock);
     ctx->running = false;
+    nimcp_mutex_unlock(&ctx->lock);
 
-    // Wait for heartbeat thread
-    nimcp_thread_join(&ctx->heartbeat_thread, NULL);
+    // Wait for heartbeat thread (pass by value, not pointer)
+    nimcp_thread_join(ctx->heartbeat_thread, NULL);
 
     dft_emit_event(ctx, DFT_EVENT_NODE_LEFT, &ctx->config.node_id);
     LOG_INFO("DFT", "Stopped DFT for node %u", ctx->config.node_id);
@@ -268,21 +306,28 @@ bool dft_stop(dft_context_t* ctx) {
 
 bool dft_add_peer(dft_context_t* ctx, uint32_t node_id, void* user_data) {
     // Guard: Validate context
-    if (!ctx || !ctx->initialized) return false;
-
-    // Guard: Capacity check
-    if (ctx->peer_count >= DFT_MAX_PEERS) {
-        LOG_ERROR("DFT", "Maximum peers reached");
-        return false;
-    }
-
-    // Guard: Duplicate check
-    if (dft_find_peer(ctx, node_id)) {
-        LOG_WARN("DFT", "Peer %u already exists", node_id);
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_add_peer: required parameter is NULL (ctx, ctx->initialized)");
         return false;
     }
 
     nimcp_mutex_lock(&ctx->lock);
+
+    // Guard: Capacity check
+    if (ctx->peer_count >= DFT_MAX_PEERS) {
+        nimcp_mutex_unlock(&ctx->lock);
+        LOG_ERROR("DFT", "Maximum peers reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dft_add_peer: capacity exceeded");
+        return false;
+    }
+
+    // Guard: Duplicate check (must be under lock for thread safety)
+    if (dft_find_peer(ctx, node_id)) {
+        nimcp_mutex_unlock(&ctx->lock);
+        LOG_WARN("DFT", "Peer %u already exists", node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_add_peer: validation failed");
+        return false;
+    }
 
     // Add peer
     dft_peer_info_t* peer = &ctx->peers[ctx->peer_count];
@@ -303,7 +348,10 @@ bool dft_add_peer(dft_context_t* ctx, uint32_t node_id, void* user_data) {
 
 bool dft_remove_peer(dft_context_t* ctx, uint32_t node_id) {
     // Guard: Validate context
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_remove_peer: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -325,12 +373,16 @@ bool dft_remove_peer(dft_context_t* ctx, uint32_t node_id) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_remove_peer: operation failed");
     return false;
 }
 
 bool dft_get_peer_info(dft_context_t* ctx, uint32_t node_id, dft_peer_info_t* info) {
     // Guard: Validate inputs
-    if (!ctx || !info) return false;
+    if (!ctx || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_get_peer_info: required parameter is NULL (ctx, info)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -342,6 +394,7 @@ bool dft_get_peer_info(dft_context_t* ctx, uint32_t node_id, dft_peer_info_t* in
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_get_peer_info: validation failed");
     return false;
 }
 
@@ -387,7 +440,10 @@ uint32_t dft_send_heartbeat(dft_context_t* ctx) {
 
 bool dft_receive_heartbeat(dft_context_t* ctx, uint32_t node_id, float health_score) {
     // Guard: Validate context
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_receive_heartbeat: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -408,6 +464,7 @@ bool dft_receive_heartbeat(dft_context_t* ctx, uint32_t node_id, float health_sc
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_receive_heartbeat: operation failed");
     return false;
 }
 
@@ -450,7 +507,10 @@ uint32_t dft_detect_failures(dft_context_t* ctx, dft_failure_detection_t* failur
 
 bool dft_report_suspected_failure(dft_context_t* ctx, uint32_t node_id, const char* reason) {
     // Guard: Validate inputs
-    if (!ctx || !reason) return false;
+    if (!ctx || !reason) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_report_suspected_failure: required parameter is NULL (ctx, reason)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -478,6 +538,7 @@ bool dft_report_suspected_failure(dft_context_t* ctx, uint32_t node_id, const ch
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_report_suspected_failure: operation failed");
     return false;
 }
 
@@ -487,27 +548,43 @@ bool dft_report_suspected_failure(dft_context_t* ctx, uint32_t node_id, const ch
 
 bool dft_create_checkpoint(dft_context_t* ctx, const void* data, size_t data_size, dft_checkpoint_meta_t* meta) {
     // Guard: Validate inputs
-    if (!ctx || !data || data_size == 0 || !meta) return false;
+    if (!ctx || !data || data_size == 0 || !meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_create_checkpoint: required parameter is NULL (ctx, data, meta)");
+        return false;
+    }
 
     // Guard: BBB security check
     if (!bbb_check_pointer((void*)data, "checkpoint_data")) {
         LOG_ERROR("DFT", "BBB rejected checkpoint data pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_create_checkpoint: bbb_check_pointer is NULL");
         return false;
     }
 
     nimcp_mutex_lock(&ctx->lock);
 
+    // Guard: Data size check
+    if (data_size > DFT_CHECKPOINT_DATA_MAX) {
+        nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED,
+            "dft_create_checkpoint: data_size %zu exceeds max %d",
+            data_size, DFT_CHECKPOINT_DATA_MAX);
+        return false;
+    }
+
     // Guard: Capacity check
     if (ctx->checkpoint_count >= DFT_MAX_CHECKPOINTS) {
-        // Remove oldest checkpoint
+        // Remove oldest checkpoint (shift metadata and data)
         for (uint32_t i = 0; i < ctx->checkpoint_count - 1; i++) {
             ctx->checkpoints[i] = ctx->checkpoints[i + 1];
+            memcpy(ctx->checkpoint_data[i], ctx->checkpoint_data[i + 1],
+                   ctx->checkpoints[i].data_size);
         }
         ctx->checkpoint_count--;
     }
 
     // Create checkpoint metadata
-    dft_checkpoint_meta_t* cp = &ctx->checkpoints[ctx->checkpoint_count];
+    uint32_t idx = ctx->checkpoint_count;
+    dft_checkpoint_meta_t* cp = &ctx->checkpoints[idx];
     cp->magic = DFT_CHECKPOINT_MAGIC;
     cp->checkpoint_id = ctx->next_checkpoint_id++;
     cp->source_node_id = ctx->config.node_id;
@@ -518,6 +595,9 @@ bool dft_create_checkpoint(dft_context_t* ctx, const void* data, size_t data_siz
     cp->data_size = data_size;
     cp->crc32 = dft_crc32(data, data_size);
     cp->is_valid = true;
+
+    // Store checkpoint data
+    memcpy(ctx->checkpoint_data[idx], data, data_size);
 
     ctx->checkpoint_count++;
     ctx->stats.total_checkpoints_created++;
@@ -535,7 +615,10 @@ bool dft_create_checkpoint(dft_context_t* ctx, const void* data, size_t data_siz
 
 bool dft_retrieve_checkpoint(dft_context_t* ctx, uint64_t checkpoint_id, void* data_buffer, size_t buffer_size, size_t* actual_size) {
     // Guard: Validate inputs
-    if (!ctx || !data_buffer || buffer_size == 0 || !actual_size) return false;
+    if (!ctx || !data_buffer || buffer_size == 0 || !actual_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_retrieve_checkpoint: required parameter is NULL (ctx, data_buffer, actual_size)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -547,11 +630,12 @@ bool dft_retrieve_checkpoint(dft_context_t* ctx, uint64_t checkpoint_id, void* d
             if (cp->data_size > buffer_size) {
                 *actual_size = cp->data_size;
                 nimcp_mutex_unlock(&ctx->lock);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_retrieve_checkpoint: validation failed");
                 return false; // Buffer too small
             }
 
-            // In real implementation, would retrieve actual data
-            // For now, just report size
+            // Copy checkpoint data to output buffer
+            memcpy(data_buffer, ctx->checkpoint_data[i], cp->data_size);
             *actual_size = cp->data_size;
             nimcp_mutex_unlock(&ctx->lock);
             return true;
@@ -559,6 +643,7 @@ bool dft_retrieve_checkpoint(dft_context_t* ctx, uint64_t checkpoint_id, void* d
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_retrieve_checkpoint: operation failed");
     return false;
 }
 
@@ -586,13 +671,17 @@ uint32_t dft_list_checkpoints(dft_context_t* ctx, dft_checkpoint_meta_t* metas, 
 
 bool dft_initiate_recovery(dft_context_t* ctx, uint32_t node_id) {
     // Guard: Validate context
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_initiate_recovery: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
     dft_peer_info_t* peer = dft_find_peer(ctx, node_id);
     if (!peer) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_initiate_recovery: peer is NULL");
         return false;
     }
 
@@ -611,7 +700,10 @@ bool dft_initiate_recovery(dft_context_t* ctx, uint32_t node_id) {
 
 bool dft_vote_recovery(dft_context_t* ctx, const dft_recovery_vote_t* vote) {
     // Guard: Validate inputs
-    if (!ctx || !vote) return false;
+    if (!ctx || !vote) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_vote_recovery: required parameter is NULL (ctx, vote)");
+        return false;
+    }
 
     // In real implementation, would broadcast vote to peers
     LOG_DEBUG("DFT", "Vote for recovery: node %u -> %s",
@@ -623,7 +715,10 @@ bool dft_vote_recovery(dft_context_t* ctx, const dft_recovery_vote_t* vote) {
 
 bool dft_check_recovery_consensus(dft_context_t* ctx, uint32_t node_id, bool* quorum_reached, uint64_t* checkpoint_id) {
     // Guard: Validate inputs
-    if (!ctx || !quorum_reached || !checkpoint_id) return false;
+    if (!ctx || !quorum_reached || !checkpoint_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_check_recovery_consensus: required parameter is NULL (ctx, quorum_reached, checkpoint_id)");
+        return false;
+    }
 
     // For now, simple majority check
     *quorum_reached = (ctx->peer_count >= 2);
@@ -634,7 +729,10 @@ bool dft_check_recovery_consensus(dft_context_t* ctx, uint32_t node_id, bool* qu
 
 bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
     // Guard: Validate context
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_complete_recovery: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -654,6 +752,7 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_complete_recovery: operation failed");
     return false;
 }
 
@@ -662,7 +761,10 @@ bool dft_complete_recovery(dft_context_t* ctx, uint32_t node_id, bool success) {
 //=============================================================================
 
 bool dft_has_quorum(dft_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_has_quorum: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -687,7 +789,10 @@ uint32_t dft_get_leader(dft_context_t* ctx) {
 
 bool dft_trigger_election(dft_context_t* ctx) {
     // Guard: Validate context
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_trigger_election: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -716,10 +821,16 @@ bool dft_trigger_election(dft_context_t* ctx) {
 
 bool dft_register_callback(dft_context_t* ctx, dft_event_callback_t callback, void* user_data) {
     // Guard: Validate inputs
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_register_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     // Guard: Capacity check
-    if (ctx->callback_count >= 8) return false;
+    if (ctx->callback_count >= 8) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dft_register_callback: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -733,7 +844,10 @@ bool dft_register_callback(dft_context_t* ctx, dft_event_callback_t callback, vo
 
 bool dft_unregister_callback(dft_context_t* ctx, dft_event_callback_t callback) {
     // Guard: Validate inputs
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_unregister_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -751,6 +865,7 @@ bool dft_unregister_callback(dft_context_t* ctx, dft_event_callback_t callback) 
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dft_unregister_callback: operation failed");
     return false;
 }
 
@@ -760,7 +875,10 @@ bool dft_unregister_callback(dft_context_t* ctx, dft_event_callback_t callback) 
 
 bool dft_get_stats(dft_context_t* ctx, dft_stats_t* stats) {
     // Guard: Validate inputs
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dft_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     *stats = ctx->stats;

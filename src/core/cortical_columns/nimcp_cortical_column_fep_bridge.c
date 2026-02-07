@@ -118,6 +118,7 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
     if (bridge_base_init(&bridge->base, 0, "cortical_column_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         cortical_column_fep_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_column_fep_create: bridge->base is NULL");
         return NULL;
     }
 

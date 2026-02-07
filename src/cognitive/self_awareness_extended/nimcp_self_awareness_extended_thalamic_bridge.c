@@ -101,6 +101,7 @@ self_awareness_ext_thalamic_bridge_t* self_awareness_ext_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "self_awareness_extended_thalam") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->self_awareness_ext = self_awareness_ext;
@@ -122,7 +123,10 @@ void self_awareness_ext_thalamic_bridge_destroy(self_awareness_ext_thalamic_brid
 }
 
 int self_awareness_ext_thalamic_bridge_reset(self_awareness_ext_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -131,7 +135,10 @@ int self_awareness_ext_thalamic_bridge_reset(self_awareness_ext_thalamic_bridge_
 }
 
 int self_awareness_ext_thalamic_route_metacognition(self_awareness_ext_thalamic_bridge_t* bridge, float relevance, float depth) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_route_metacognition: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Gate low-relevance signals */
@@ -149,7 +156,10 @@ int self_awareness_ext_thalamic_route_metacognition(self_awareness_ext_thalamic_
 }
 
 int self_awareness_ext_thalamic_route_temporal(self_awareness_ext_thalamic_bridge_t* bridge, float relevance, float span) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_route_temporal: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.temporal_updates++;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -157,7 +167,10 @@ int self_awareness_ext_thalamic_route_temporal(self_awareness_ext_thalamic_bridg
 }
 
 int self_awareness_ext_thalamic_route_signal(self_awareness_ext_thalamic_bridge_t* bridge, const self_awareness_ext_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply attention gating */
@@ -192,7 +205,10 @@ int self_awareness_ext_thalamic_route_signal(self_awareness_ext_thalamic_bridge_
 }
 
 int self_awareness_ext_thalamic_set_attention(self_awareness_ext_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -200,7 +216,10 @@ int self_awareness_ext_thalamic_set_attention(self_awareness_ext_thalamic_bridge
 }
 
 int self_awareness_ext_thalamic_get_attention(const self_awareness_ext_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *attention = bridge->attention_weight;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -208,7 +227,10 @@ int self_awareness_ext_thalamic_get_attention(const self_awareness_ext_thalamic_
 }
 
 int self_awareness_ext_thalamic_bridge_get_stats(const self_awareness_ext_thalamic_bridge_t* bridge, self_awareness_ext_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);

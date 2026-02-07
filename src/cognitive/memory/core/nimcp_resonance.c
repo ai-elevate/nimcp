@@ -205,6 +205,7 @@ resonance_config_t resonance_config_temporal_focused(void) {
 bool resonance_config_validate(resonance_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_config_validate: config is NULL");
         return false;
     }
 
@@ -218,6 +219,7 @@ bool resonance_config_validate(resonance_config_t* config) {
         config->weight_quaternion < 0.0f ||
         config->weight_kuramoto < 0.0f) {
         set_error("Weights must be non-negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_config_validate: operation failed");
         return false;
     }
 
@@ -226,12 +228,14 @@ bool resonance_config_validate(resonance_config_t* config) {
                 config->weight_quaternion + config->weight_kuramoto;
     if (sum < RESONANCE_EPSILON) {
         set_error("At least one weight must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_config_validate: validation failed");
         return false;
     }
 
     // Check threshold range
     if (config->threshold < 0.0f || config->threshold > 1.0f) {
         set_error("Threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_config_validate: validation failed");
         return false;
     }
 
@@ -365,6 +369,7 @@ bool resonance_compute(
     if (!query || !target || !config || !result) {
         set_error("NULL pointer: query=%p, target=%p, config=%p, result=%p",
                   (void*)query, (void*)target, (void*)config, (void*)result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_compute: required parameter is NULL (query, target, config, result)");
         return false;
     }
 
@@ -378,6 +383,7 @@ bool resonance_compute(
     // Create working copy of config for validation
     resonance_config_t cfg = *config;
     if (!resonance_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute: resonance_config_validate is NULL");
         return false;  // Error already set
     }
 
@@ -453,6 +459,7 @@ bool resonance_compute_fast(
 {
     if (!query || !target || !config || !result) {
         set_error("NULL pointer in resonance_compute_fast");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_compute_fast: required parameter is NULL (query, target, config, result)");
         return false;
     }
 
@@ -514,6 +521,7 @@ int resonance_compute_batch(
 {
     if (!query || !targets || !config || !results) {
         set_error("NULL pointer in batch computation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_compute_batch: required parameter is NULL (query, targets, config, results)");
         return -1;
     }
 
@@ -527,12 +535,14 @@ int resonance_compute_batch(
 
     if (count > RESONANCE_MAX_BATCH_SIZE) {
         set_error("Batch size %zu exceeds maximum %d", count, RESONANCE_MAX_BATCH_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_batch: validation failed");
         return -1;
     }
 
     // Validate config once
     resonance_config_t cfg = *config;
     if (!resonance_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_batch: resonance_config_validate is NULL");
         return -1;
     }
 
@@ -562,7 +572,10 @@ static int compare_batch_results_desc(const void* a, const void* b) {
     const resonance_batch_result_t* rb = (const resonance_batch_result_t*)b;
 
     if (rb->result.total > ra->result.total) return 1;
-    if (rb->result.total < ra->result.total) return -1;
+    if (rb->result.total < ra->result.total) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_batch_results_desc: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -577,6 +590,7 @@ int resonance_compute_top_k(
 {
     if (!query || !targets || !config || !results) {
         set_error("NULL pointer in top-K computation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_compute_top_k: required parameter is NULL (query, targets, config, results)");
         return -1;
     }
 
@@ -590,12 +604,14 @@ int resonance_compute_top_k(
 
     if (count > RESONANCE_MAX_BATCH_SIZE) {
         set_error("Batch size %zu exceeds maximum %d", count, RESONANCE_MAX_BATCH_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_top_k: validation failed");
         return -1;
     }
 
     // Validate config
     resonance_config_t cfg = *config;
     if (!resonance_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_top_k: resonance_config_validate is NULL");
         return -1;
     }
 
@@ -608,6 +624,7 @@ int resonance_compute_top_k(
         (resonance_batch_result_t*)nimcp_malloc(count * sizeof(resonance_batch_result_t));
     if (!all_results) {
         set_error("Failed to allocate memory for batch results");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resonance_compute_top_k: all_results is NULL");
         return -1;
     }
 
@@ -656,6 +673,7 @@ bool resonance_compute_above_threshold(
 {
     if (!query || !targets || !config || !results || !result_count) {
         set_error("NULL pointer in threshold computation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_compute_above_threshold: required parameter is NULL (query, targets, config, results, result_count)");
         return false;
     }
 
@@ -672,12 +690,14 @@ bool resonance_compute_above_threshold(
 
     if (count > RESONANCE_MAX_BATCH_SIZE) {
         set_error("Batch size %zu exceeds maximum %d", count, RESONANCE_MAX_BATCH_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_above_threshold: validation failed");
         return false;
     }
 
     // Validate config
     resonance_config_t cfg = *config;
     if (!resonance_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resonance_compute_above_threshold: resonance_config_validate is NULL");
         return false;
     }
 
@@ -735,6 +755,7 @@ bool resonance_modulate_batch(
 {
     if (!scores || !pink_buffer) {
         set_error("NULL pointer in batch modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance_modulate_batch: required parameter is NULL (scores, pink_buffer)");
         return false;
     }
 

@@ -329,12 +329,14 @@ reasoning_substrate_bridge_t* reasoning_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -468,6 +470,7 @@ int reasoning_substrate_disconnect_bio_async(reasoning_substrate_bridge_t* bridg
 bool reasoning_substrate_is_bio_async_connected(const reasoning_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -696,6 +699,7 @@ const reasoning_substrate_effects_t* reasoning_substrate_get_effects(
 bool reasoning_substrate_is_impaired(const reasoning_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_substrate_is_impaired: bridge is NULL");
         return false;
     }
 

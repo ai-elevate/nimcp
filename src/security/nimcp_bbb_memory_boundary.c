@@ -195,8 +195,10 @@ static bool g_memory_boundary_module_initialized = false;
  */
 static int find_region_by_id(uint32_t id)
 {
-    if (id == BBB_INVALID_REGION_ID)
+    if (id == BBB_INVALID_REGION_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_region_by_id: validation failed");
         return -1;
+    }
 
     for (uint32_t i = 0; i < BBB_MAX_MEMORY_REGIONS; i++) {
         if (g_memory_state.regions[i].active &&
@@ -205,7 +207,8 @@ static int find_region_by_id(uint32_t id)
         }
     }
 
-    return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_region_by_id: operation failed");
+    return -1;
 }
 
 /**
@@ -227,7 +230,8 @@ static int find_available_slot(void)
         }
     }
 
-    return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_available_slot: g_memory_state is NULL");
+    return -1;
 }
 
 /**
@@ -422,8 +426,10 @@ NIMCP_EXPORT bool bbb_unregister_memory_region(bbb_system_t system,
     (void)system;
 
     /* Guard: Invalid region ID */
-    if (region_id == BBB_INVALID_REGION_ID)
+    if (region_id == BBB_INVALID_REGION_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_unregister_memory_region: validation failed");
         return false;
+    }
 
     ensure_initialized();
 
@@ -434,6 +440,7 @@ NIMCP_EXPORT bool bbb_unregister_memory_region(bbb_system_t system,
     int slot = find_region_by_id(region_id);
     if (slot < 0) {
         nimcp_platform_mutex_unlock(&g_memory_state_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_unregister_memory_region: validation failed");
         return false;
     }
 
@@ -489,6 +496,7 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
 
     /* Check if memory is quarantined (access denied if quarantined) */
     if (bbb_is_quarantined(system, address, size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_memory_access: validation failed");
         return false;
     }
 
@@ -517,6 +525,7 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
              * WHY:  Read-only regions must reject write attempts
              */
             if (write && region->read_only) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_memory_access: validation failed");
                 return false;  /* Write to read-only region */
             }
             return true;  /* Valid access within region */
@@ -524,6 +533,7 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
     }
 
     /* Access not within any registered region */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_memory_access: validation failed");
     return false;
 }
 
@@ -568,8 +578,10 @@ NIMCP_EXPORT bool bbb_protect_memory(bbb_system_t system,
         }
 
     /* Guard: Zero size */
-    if (size == 0)
+    if (size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_protect_memory: size is zero");
         return false;
+    }
 
 #ifndef _WIN32
     /* WHAT: Build mprotect permission flags
@@ -589,6 +601,7 @@ NIMCP_EXPORT bool bbb_protect_memory(bbb_system_t system,
      */
     if (write && execute) {
         fprintf(stderr, "[BBB-MEM] W^X violation: cannot set both write and execute\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_protect_memory: validation failed");
         return false;
     }
 
@@ -597,6 +610,7 @@ NIMCP_EXPORT bool bbb_protect_memory(bbb_system_t system,
      */
     if (mprotect(address, size, prot) != 0) {
         perror("[BBB-MEM] mprotect failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_protect_memory: validation failed");
         return false;
     }
 
@@ -607,6 +621,7 @@ NIMCP_EXPORT bool bbb_protect_memory(bbb_system_t system,
     (void)write;
     (void)execute;
     fprintf(stderr, "[BBB-MEM] mprotect not implemented for Windows\n");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_protect_memory: operation failed");
     return false;
 #endif
 }
@@ -679,8 +694,10 @@ NIMCP_EXPORT bool bbb_verify_stack_canary(bbb_system_t system,
         }
 
     /* Guard: Zero canary is likely uninitialized */
-    if (expected_canary == 0)
+    if (expected_canary == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_stack_canary: expected_canary is zero");
         return false;
+    }
 
     /* WHAT: Read current value and compare
      * WHY:  If different, stack was corrupted (overflow/smashing)
@@ -696,6 +713,7 @@ NIMCP_EXPORT bool bbb_verify_stack_canary(bbb_system_t system,
                 "Expected: 0x%016llx, Found: 0x%016llx\n",
                 (unsigned long long)expected_canary,
                 (unsigned long long)current_canary);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_stack_canary: validation failed");
         return false;
     }
 

@@ -32,6 +32,7 @@ myelin_sheath_fep_bridge_t* myelin_sheath_fep_create(
 {
     if (!config || !myelin_network || !fep_system) {
         NIMCP_LOGGING_ERROR("myelin_sheath_fep_create: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_fep_create: required parameter is NULL (config, myelin_network, fep_system)");
         return NULL;
     }
 
@@ -48,6 +49,7 @@ myelin_sheath_fep_bridge_t* myelin_sheath_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("myelin_sheath_fep_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "myelin_sheath_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -171,6 +173,7 @@ int myelin_sheath_fep_connect_bio_async(myelin_sheath_fep_bridge_t* bridge) {
         return 0;
     }
     NIMCP_LOGGING_WARN("Bio-async router not available for myelin sheath-FEP bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "myelin_sheath_fep_connect_bio_async: validation failed");
     return -1;
 }
 

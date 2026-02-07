@@ -337,6 +337,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
         1, sizeof(nimcp_retrosplenial_t));
     if (!rsc) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate RSC memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rsc_create: rsc is NULL");
         return NULL;
     }
 
@@ -366,6 +367,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
         if (!rsc->navigation.hd_cell_activations) {
             LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate HD cell activations");
             nimcp_rsc_destroy(rsc);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rsc_create: rsc->navigation is NULL");
             return NULL;
         }
     }
@@ -389,6 +391,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
         !rsc->current_context.environmental_context) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate context vectors");
         nimcp_rsc_destroy(rsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rsc_create: operation failed");
         return NULL;
     }
 
@@ -401,6 +404,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
     if (!rsc->current_scene.scene_vector) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate scene vector");
         nimcp_rsc_destroy(rsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rsc_create: rsc->current_scene is NULL");
         return NULL;
     }
 
@@ -414,6 +418,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
     if (!rsc->landmarks) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate landmarks array");
         nimcp_rsc_destroy(rsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rsc_create: rsc->landmarks is NULL");
         return NULL;
     }
 
@@ -423,6 +428,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
     if (!rsc->context_history) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate context history");
         nimcp_rsc_destroy(rsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rsc_create: rsc->context_history is NULL");
         return NULL;
     }
 
@@ -440,6 +446,7 @@ nimcp_retrosplenial_t* nimcp_rsc_create(const nimcp_rsc_config_t* config) {
         !rsc->scene_activations || !rsc->hd_activations) {
         LOG_MODULE_ERROR(RSC_LOG_MODULE, "Failed to allocate neural activations");
         nimcp_rsc_destroy(rsc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rsc_create: operation failed");
         return NULL;
     }
 
@@ -1779,8 +1786,14 @@ nimcp_rsc_error_t nimcp_rsc_init_all_bridges(
  *===========================================================================*/
 
 int nimcp_rsc_process_bio_messages(nimcp_retrosplenial_t* rsc, uint32_t max_messages) {
-    if (!rsc) return -1;
-    if (!rsc->initialized) return -1;
+    if (!rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rsc_process_bio_messages: rsc is NULL");
+        return -1;
+    }
+    if (!rsc->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rsc_process_bio_messages: rsc->initialized is NULL");
+        return -1;
+    }
 
     /* Placeholder for bio-async message processing */
     /* Would dequeue messages from router and handle them */

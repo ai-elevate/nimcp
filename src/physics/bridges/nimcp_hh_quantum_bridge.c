@@ -194,7 +194,10 @@ static float hh_fi_energy(
 //=============================================================================
 
 int hh_qmc_default_config(hh_qmc_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -228,7 +231,10 @@ int hh_qmc_default_config(hh_qmc_config_t* config) {
 }
 
 int hh_qmc_default_target(hh_qmc_target_t* target) {
-    if (!target) return -1;
+    if (!target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_default_target: target is NULL");
+        return -1;
+    }
 
     memset(target, 0, sizeof(*target));
 
@@ -247,7 +253,10 @@ int hh_qmc_default_target(hh_qmc_target_t* target) {
 }
 
 int hh_entropy_default_config(hh_entropy_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_entropy_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -261,7 +270,10 @@ int hh_entropy_default_config(hh_entropy_config_t* config) {
 }
 
 int hh_stochastic_default_config(hh_stochastic_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_stochastic_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -285,8 +297,14 @@ int hh_qmc_optimize_parameters(
     const hh_qmc_config_t* config,
     hh_qmc_result_t* result
 ) {
-    if (!neuron || !target || !result) return -1;
-    if (!neuron->initialized) return -1;
+    if (!neuron || !target || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_optimize_parameters: required parameter is NULL (neuron, target, result)");
+        return -1;
+    }
+    if (!neuron->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_optimize_parameters: neuron->initialized is NULL");
+        return -1;
+    }
 
     // Use default config if not provided
     hh_qmc_config_t default_cfg;
@@ -350,6 +368,7 @@ int hh_qmc_optimize_parameters(
 
     if (qmc_err != QMC_OK) {
         result->converged = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hh_qmc_optimize_parameters: validation failed");
         return -1;
     }
 
@@ -407,8 +426,14 @@ int hh_qmc_fit_fi_curve(
     const hh_qmc_config_t* config,
     hh_qmc_result_t* result
 ) {
-    if (!neuron || !currents || !target_rates || !result) return -1;
-    if (!neuron->initialized || num_points == 0) return -1;
+    if (!neuron || !currents || !target_rates || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_fit_fi_curve: required parameter is NULL (neuron, currents, target_rates, result)");
+        return -1;
+    }
+    if (!neuron->initialized || num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_fit_fi_curve: neuron->initialized is NULL");
+        return -1;
+    }
 
     // Use default config if not provided
     hh_qmc_config_t default_cfg;
@@ -457,6 +482,7 @@ int hh_qmc_fit_fi_curve(
 
     if (err != QMC_OK) {
         result->converged = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hh_qmc_fit_fi_curve: validation failed");
         return -1;
     }
 
@@ -482,8 +508,14 @@ int hh_qmc_apply_result(
     nimcp_hh_neuron_t* neuron,
     const hh_qmc_result_t* result
 ) {
-    if (!neuron || !result) return -1;
-    if (!neuron->initialized) return -1;
+    if (!neuron || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_apply_result: required parameter is NULL (neuron, result)");
+        return -1;
+    }
+    if (!neuron->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_apply_result: neuron->initialized is NULL");
+        return -1;
+    }
 
     neuron->channels[NIMCP_ION_CHANNEL_NA].g_max = result->opt_g_Na;
     neuron->channels[NIMCP_ION_CHANNEL_K].g_max = result->opt_g_K;
@@ -514,8 +546,14 @@ int hh_qmc_spike_train_entropy(
     const hh_entropy_config_t* config,
     hh_entropy_result_t* result
 ) {
-    if (!neuron || !stimulus || !result) return -1;
-    if (!neuron->initialized || stimulus_len == 0) return -1;
+    if (!neuron || !stimulus || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_spike_train_entropy: required parameter is NULL (neuron, stimulus, result)");
+        return -1;
+    }
+    if (!neuron->initialized || stimulus_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_spike_train_entropy: neuron->initialized is NULL");
+        return -1;
+    }
 
     hh_entropy_config_t default_cfg;
     if (!config) {
@@ -624,8 +662,14 @@ int hh_qmc_mutual_information(
     const hh_entropy_config_t* config,
     float* mutual_info
 ) {
-    if (!neuron || !stimuli || !mutual_info) return -1;
-    if (!neuron->initialized || num_stimuli == 0) return -1;
+    if (!neuron || !stimuli || !mutual_info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_mutual_information: required parameter is NULL (neuron, stimuli, mutual_info)");
+        return -1;
+    }
+    if (!neuron->initialized || num_stimuli == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_mutual_information: neuron->initialized is NULL");
+        return -1;
+    }
 
     (void)config;  // Not used in simplified implementation
 
@@ -686,8 +730,14 @@ int hh_qmc_stochastic_simulation(
     const hh_stochastic_config_t* config,
     hh_stochastic_result_t* result
 ) {
-    if (!neuron || !result) return -1;
-    if (!neuron->initialized) return -1;
+    if (!neuron || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_stochastic_simulation: required parameter is NULL (neuron, result)");
+        return -1;
+    }
+    if (!neuron->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_stochastic_simulation: neuron->initialized is NULL");
+        return -1;
+    }
 
     hh_stochastic_config_t default_cfg;
     if (!config) {
@@ -785,7 +835,10 @@ int hh_qmc_channel_noise_variance(
     const hh_stochastic_config_t* config,
     float* variance
 ) {
-    if (!neuron || !variance) return -1;
+    if (!neuron || !variance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_channel_noise_variance: required parameter is NULL (neuron, variance)");
+        return -1;
+    }
 
     hh_stochastic_result_t result;
     int err = hh_qmc_stochastic_simulation(
@@ -808,8 +861,14 @@ int hh_qmc_population_coherence(
     float* coherence,
     float* entropy
 ) {
-    if (!population || !coherence || !entropy) return -1;
-    if (!population->initialized || population->count == 0) return -1;
+    if (!population || !coherence || !entropy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_population_coherence: required parameter is NULL (population, coherence, entropy)");
+        return -1;
+    }
+    if (!population->initialized || population->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_qmc_population_coherence: population->initialized is NULL");
+        return -1;
+    }
 
     // Compute phase coherence from spike times (Kuramoto-like order parameter)
     float sum_cos = 0.0f, sum_sin = 0.0f;

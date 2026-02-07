@@ -375,6 +375,7 @@ nimcp_tensor_t* snn_surrogate_gradient_tensor(
 ) {
     // Guard: Null checks
     if (!ctx || !membrane_v) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_surrogate_gradient_tensor: required parameter is NULL (ctx, membrane_v)");
         return NULL;
     }
 
@@ -440,12 +441,14 @@ snn_backprop_ctx_t* snn_backprop_create(
     // Guard: Null checks
     if (!network || !config) {
         NIMCP_LOGGING_ERROR("Null network or config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_backprop_create: required parameter is NULL (network, config)");
         return NULL;
     }
 
     // Guard: Validate config
     if (snn_backprop_validate_config(config) != SNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_backprop_create: validation failed");
         return NULL;
     }
 
@@ -731,6 +734,7 @@ snn_batch_t* snn_batch_create(
     (void)inputs; (void)targets; (void)batch_size;
     (void)n_inputs; (void)n_outputs;
     NIMCP_LOGGING_INFO("SNN batch create (stub)");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_batch_create: operation failed");
     return NULL;
 }
 

@@ -285,7 +285,10 @@ void wiring_diagram_destroy(wiring_diagram_t* wd) {
  * HOW:  Parse JSONL, populate module configs
  */
 int wiring_diagram_load_master(wiring_diagram_t* wd) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_master: wd is NULL");
+        return -1;
+    }
 
     char filepath[WIRING_MAX_PATH_LENGTH * 2];
     snprintf(filepath, sizeof(filepath), "%s/master.jsonl", wd->base_path);
@@ -308,8 +311,14 @@ int wiring_diagram_load_master(wiring_diagram_t* wd) {
  * HOW:  Merge subsystem entries with existing configs
  */
 int wiring_diagram_load_subsystem(wiring_diagram_t* wd, wiring_subsystem_t subsystem) {
-    if (!wd) return -1;
-    if (subsystem >= WIRING_SUBSYSTEM_COUNT) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_subsystem: wd is NULL");
+        return -1;
+    }
+    if (subsystem >= WIRING_SUBSYSTEM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wiring_diagram_load_subsystem: capacity exceeded");
+        return -1;
+    }
 
     char filepath[WIRING_MAX_PATH_LENGTH * 2];
     snprintf(filepath, sizeof(filepath), "%s/subsystems/%s.jsonl",
@@ -336,7 +345,10 @@ int wiring_diagram_load_subsystem(wiring_diagram_t* wd, wiring_subsystem_t subsy
  * HOW:  Iterate WIRING_SUBSYSTEM_* and load each
  */
 int wiring_diagram_load_all_subsystems(wiring_diagram_t* wd) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_all_subsystems: wd is NULL");
+        return -1;
+    }
 
     for (int i = 0; i < WIRING_SUBSYSTEM_COUNT; i++) {
         wiring_diagram_load_subsystem(wd, (wiring_subsystem_t)i);
@@ -353,8 +365,14 @@ int wiring_diagram_load_all_subsystems(wiring_diagram_t* wd) {
  * HOW:  Merge tier entries with existing configs
  */
 int wiring_diagram_load_platform(wiring_diagram_t* wd, platform_tier_t tier) {
-    if (!wd) return -1;
-    if (tier > PLATFORM_TIER_FULL) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_platform: wd is NULL");
+        return -1;
+    }
+    if (tier > PLATFORM_TIER_FULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_load_platform: validation failed");
+        return -1;
+    }
 
     char filepath[WIRING_MAX_PATH_LENGTH * 2];
     snprintf(filepath, sizeof(filepath), "%s/platforms/%s.jsonl",
@@ -381,7 +399,10 @@ int wiring_diagram_load_platform(wiring_diagram_t* wd, platform_tier_t tier) {
  * HOW:  Load based on hardware flags (may load multiple files)
  */
 int wiring_diagram_load_hardware(wiring_diagram_t* wd, wiring_hardware_flags_t hw) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_hardware: wd is NULL");
+        return -1;
+    }
     if (hw == WIRING_HW_NONE) return 0;
 
     char filepath[WIRING_MAX_PATH_LENGTH * 2];
@@ -409,7 +430,10 @@ int wiring_diagram_load_hardware(wiring_diagram_t* wd, wiring_hardware_flags_t h
  * HOW:  Merge custom entries (override existing, add new)
  */
 int wiring_diagram_load_custom(wiring_diagram_t* wd, const char* filename) {
-    if (!wd || !filename) return -1;
+    if (!wd || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_custom: required parameter is NULL (wd, filename)");
+        return -1;
+    }
 
     char filepath[WIRING_MAX_PATH_LENGTH * 2];
     snprintf(filepath, sizeof(filepath), "%s/custom/%s", wd->base_path, filename);
@@ -429,7 +453,10 @@ int wiring_diagram_load_custom(wiring_diagram_t* wd, const char* filename) {
  * HOW:  Iterate custom/ directory and load each
  */
 int wiring_diagram_load_all_custom(wiring_diagram_t* wd) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_all_custom: wd is NULL");
+        return -1;
+    }
 
     char dirpath[WIRING_MAX_PATH_LENGTH * 2];
     snprintf(dirpath, sizeof(dirpath), "%s/custom", wd->base_path);
@@ -466,7 +493,10 @@ int wiring_diagram_load_for_profile(
     wiring_diagram_t* wd,
     const wiring_hardware_profile_t* profile
 ) {
-    if (!wd || !profile) return -1;
+    if (!wd || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_load_for_profile: required parameter is NULL (wd, profile)");
+        return -1;
+    }
 
     /* 1. Load master (base wiring) */
     wiring_diagram_load_master(wd);
@@ -505,13 +535,17 @@ int wiring_diagram_get_module_config(
     const char* module_name,
     wiring_module_config_t* config
 ) {
-    if (!wd || !module_name || !config) return -1;
+    if (!wd || !module_name || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_module_config: required parameter is NULL (wd, module_name, config)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)wd->mutex);
 
     wiring_module_config_t* found = find_module_by_name_unlocked(wd, module_name);
     if (!found) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_module_config: found is NULL");
         return -1;
     }
 
@@ -534,13 +568,17 @@ int wiring_diagram_get_module_config_by_id(
     bio_module_id_t module_id,
     wiring_module_config_t* config
 ) {
-    if (!wd || !config) return -1;
+    if (!wd || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_module_config_by_id: required parameter is NULL (wd, config)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)wd->mutex);
 
     wiring_module_config_t* found = find_module_by_id_unlocked(wd, module_id);
     if (!found) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_module_config_by_id: found is NULL");
         return -1;
     }
 
@@ -562,19 +600,24 @@ bool wiring_diagram_module_available(
     const char* module_name,
     const wiring_hardware_profile_t* profile
 ) {
-    if (!wd || !module_name || !profile) return false;
+    if (!wd || !module_name || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_module_available: required parameter is NULL (wd, module_name, profile)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)wd->mutex);
 
     wiring_module_config_t* config = find_module_by_name_unlocked(wd, module_name);
     if (!config) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_module_available: config is NULL");
         return false;
     }
 
     /* Check tier requirement */
     if (profile->tier < config->min_tier) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_module_available: validation failed");
         return false;
     }
 
@@ -582,6 +625,7 @@ bool wiring_diagram_module_available(
     if (config->required_hw != WIRING_HW_NONE) {
         if ((profile->hw_flags & config->required_hw) != config->required_hw) {
             nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)wd->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_module_available: validation failed");
             return false;
         }
     }
@@ -677,10 +721,16 @@ int wiring_diagram_add_module(
     const char* module_name,
     const wiring_module_config_t* config
 ) {
-    if (!wd || !module_name || !config) return -1;
+    if (!wd || !module_name || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_add_module: required parameter is NULL (wd, module_name, config)");
+        return -1;
+    }
 
     /* Reject empty module names */
-    if (module_name[0] == '\0') return -1;
+    if (module_name[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_add_module: validation failed");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
@@ -695,6 +745,7 @@ int wiring_diagram_add_module(
         /* Add new */
         if (ensure_capacity(wd) != 0) {
             nimcp_platform_mutex_unlock(wd->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_add_module: validation failed");
             return -1;
         }
 
@@ -702,6 +753,7 @@ int wiring_diagram_add_module(
             1, sizeof(wiring_module_config_t));
         if (!new_config) {
             nimcp_platform_mutex_unlock(wd->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wiring_diagram_add_module: new_config is NULL");
             return -1;
         }
 
@@ -732,7 +784,10 @@ int wiring_diagram_add_relation(
     const char* to,
     wiring_relation_type_t relation_type
 ) {
-    if (!wd || !from || !to) return -1;
+    if (!wd || !from || !to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_add_relation: required parameter is NULL (wd, from, to)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
@@ -741,6 +796,7 @@ int wiring_diagram_add_relation(
 
     if (!from_config || !to_config) {
         nimcp_platform_mutex_unlock(wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_add_relation: required parameter is NULL (from_config, to_config)");
         return -1;
     }
 
@@ -796,13 +852,17 @@ int wiring_diagram_add_handler(
     const char* module_name,
     bio_message_type_t message_type
 ) {
-    if (!wd || !module_name) return -1;
+    if (!wd || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_add_handler: required parameter is NULL (wd, module_name)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
     wiring_module_config_t* config = find_module_by_name_unlocked(wd, module_name);
     if (!config) {
         nimcp_platform_mutex_unlock(wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_add_handler: config is NULL");
         return -1;
     }
 
@@ -831,7 +891,10 @@ int wiring_diagram_add_handler(
  * HOW:  Remove from map, clean up relations, auto-persist
  */
 int wiring_diagram_remove_module(wiring_diagram_t* wd, const char* module_name) {
-    if (!wd || !module_name) return -1;
+    if (!wd || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_remove_module: required parameter is NULL (wd, module_name)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
@@ -847,6 +910,7 @@ int wiring_diagram_remove_module(wiring_diagram_t* wd, const char* module_name) 
 
     if (found_idx < 0) {
         nimcp_platform_mutex_unlock(wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_remove_module: validation failed");
         return -1;
     }
 
@@ -882,13 +946,17 @@ int wiring_diagram_set_enabled(
     const char* module_name,
     bool enabled
 ) {
-    if (!wd || !module_name) return -1;
+    if (!wd || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_set_enabled: required parameter is NULL (wd, module_name)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
     wiring_module_config_t* config = find_module_by_name_unlocked(wd, module_name);
     if (!config) {
         nimcp_platform_mutex_unlock(wd->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_set_enabled: config is NULL");
         return -1;
     }
 
@@ -913,7 +981,10 @@ int wiring_diagram_set_enabled(
  * HOW:  Write to subsystem files based on module membership
  */
 int wiring_diagram_persist(wiring_diagram_t* wd) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_persist: wd is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
 
@@ -938,8 +1009,14 @@ int wiring_diagram_persist(wiring_diagram_t* wd) {
  * HOW:  Write to subsystems/<name>.jsonl
  */
 int wiring_diagram_persist_subsystem(wiring_diagram_t* wd, wiring_subsystem_t subsystem) {
-    if (!wd) return -1;
-    if (subsystem >= WIRING_SUBSYSTEM_COUNT) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_persist_subsystem: wd is NULL");
+        return -1;
+    }
+    if (subsystem >= WIRING_SUBSYSTEM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wiring_diagram_persist_subsystem: capacity exceeded");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(wd->mutex);
     int result = persist_subsystem_unlocked(wd, subsystem);
@@ -967,7 +1044,10 @@ void wiring_diagram_set_auto_persist(wiring_diagram_t* wd, bool enabled) {
  * @brief Check if auto-persist is enabled
  */
 bool wiring_diagram_get_auto_persist(const wiring_diagram_t* wd) {
-    if (!wd) return false;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_auto_persist: wd is NULL");
+        return false;
+    }
     return wd->auto_persist;
 }
 
@@ -990,11 +1070,15 @@ bool wiring_diagram_get_auto_persist(const wiring_diagram_t* wd) {
  * HOW:  Only allow alphanumeric, hyphen, underscore, and dot
  */
 static bool is_safe_command_name(const char* cmd) {
-    if (!cmd || !*cmd) return false;
+    if (!cmd || !*cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_command_name: cmd is NULL");
+        return false;
+    }
     for (const char* p = cmd; *p; p++) {
         char c = *p;
         if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
               (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.')) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_command_name: capacity exceeded");
             return false;  /* Invalid character in command name */
         }
     }
@@ -1011,6 +1095,7 @@ static bool is_safe_command_name(const char* cmd) {
 static bool check_command_exists(const char* cmd) {
     /* Validate command name - prevent injection */
     if (!is_safe_command_name(cmd)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_command_exists: is_safe_command_name is NULL");
         return false;
     }
 
@@ -1048,7 +1133,10 @@ static bool check_command_exists(const char* cmd) {
  *       used for hardware detection. General command execution is not supported.
  */
 static bool run_command_success(const char* cmd) {
-    if (!cmd || !*cmd) return false;
+    if (!cmd || !*cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_command_success: cmd is NULL");
+        return false;
+    }
 
     /* Define allowed commands for hardware detection */
     typedef struct {
@@ -1088,12 +1176,14 @@ static bool run_command_success(const char* cmd) {
 
     if (!match) {
         /* Command not in allowlist - reject for security */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "run_command_success: match is NULL");
         return false;
     }
 
     /* Fork and exec safely */
     pid_t pid = fork();
     if (pid < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "run_command_success: validation failed");
         return false;  /* Fork failed */
     }
 
@@ -1277,7 +1367,10 @@ static platform_tier_t detect_platform_tier(size_t memory_mb, uint32_t cpu_cores
 }
 
 int wiring_detect_hardware_profile(wiring_hardware_profile_t* profile) {
-    if (!profile) return -1;
+    if (!profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_detect_hardware_profile: profile is NULL");
+        return -1;
+    }
 
     /* Initialize with defaults first */
     wiring_get_default_profile(profile);
@@ -1459,7 +1552,10 @@ int wiring_diagram_get_stats(
     uint32_t* enabled_modules,
     uint32_t* total_relations
 ) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_stats: wd is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)wd->mutex);
 
@@ -1500,12 +1596,18 @@ static int ensure_capacity(wiring_diagram_t* wd) {
     if (new_capacity > WIRING_MAX_MODULES) {
         new_capacity = WIRING_MAX_MODULES;
     }
-    if (new_capacity <= wd->module_capacity) return -1;
+    if (new_capacity <= wd->module_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_capacity: validation failed");
+        return -1;
+    }
 
     wiring_module_config_t** new_array = (wiring_module_config_t**)nimcp_realloc(
         wd->module_configs,
         new_capacity * sizeof(wiring_module_config_t*));
-    if (!new_array) return -1;
+    if (!new_array) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_capacity: new_array is NULL");
+        return -1;
+    }
 
     wd->module_configs = new_array;
     wd->module_capacity = new_capacity;
@@ -1525,6 +1627,7 @@ static wiring_module_config_t* find_module_by_name_unlocked(
             return wd->module_configs[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_by_name_unlocked: operation failed");
     return NULL;
 }
 
@@ -1541,6 +1644,7 @@ static wiring_module_config_t* find_module_by_id_unlocked(
             return wd->module_configs[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_by_id_unlocked: operation failed");
     return NULL;
 }
 
@@ -1555,6 +1659,7 @@ static int parse_jsonl_file(wiring_diagram_t* wd, const char* filepath) {
     FILE* file = fopen(filepath, "r");
     if (!file) {
         /* Missing file is not necessarily an error */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_jsonl_file: file is NULL");
         return -1;
     }
 
@@ -1659,12 +1764,16 @@ static void populate_config_from_json(
  */
 static int parse_entity_line(wiring_diagram_t* wd, const char* line) {
     cJSON* json = cJSON_Parse(line);
-    if (!json) return -1;
+    if (!json) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_entity_line: json is NULL");
+        return -1;
+    }
 
     /* Get required fields */
     cJSON* name = cJSON_GetObjectItem(json, "name");
     if (!name || !cJSON_IsString(name)) {
         cJSON_Delete(json);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_entity_line: required parameter is NULL (name, cJSON_IsString)");
         return -1;
     }
 
@@ -1673,12 +1782,14 @@ static int parse_entity_line(wiring_diagram_t* wd, const char* line) {
     if (!config) {
         if (ensure_capacity(wd) != 0) {
             cJSON_Delete(json);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_entity_line: validation failed");
             return -1;
         }
 
         config = (wiring_module_config_t*)nimcp_calloc(1, sizeof(wiring_module_config_t));
         if (!config) {
             cJSON_Delete(json);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_entity_line: config is NULL");
             return -1;
         }
 
@@ -1705,7 +1816,10 @@ static int parse_entity_line(wiring_diagram_t* wd, const char* line) {
  */
 static int parse_relation_line(wiring_diagram_t* wd, const char* line) {
     cJSON* json = cJSON_Parse(line);
-    if (!json) return -1;
+    if (!json) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation_line: json is NULL");
+        return -1;
+    }
 
     /* Get required fields */
     cJSON* from = cJSON_GetObjectItem(json, "from");
@@ -1716,6 +1830,7 @@ static int parse_relation_line(wiring_diagram_t* wd, const char* line) {
         !to || !cJSON_IsString(to) ||
         !rel_type || !cJSON_IsString(rel_type)) {
         cJSON_Delete(json);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation_line: required parameter is NULL (from, cJSON_IsString)");
         return -1;
     }
 
@@ -1724,6 +1839,7 @@ static int parse_relation_line(wiring_diagram_t* wd, const char* line) {
         wd, from->valuestring);
     if (!from_config) {
         cJSON_Delete(json);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation_line: from_config is NULL");
         return -1;
     }
 
@@ -1745,6 +1861,7 @@ static int parse_relation_line(wiring_diagram_t* wd, const char* line) {
             wd, to->valuestring);
         if (!to_config) {
             cJSON_Delete(json);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation_line: to_config is NULL");
             return -1;
         }
 
@@ -1791,7 +1908,10 @@ static int add_to_id_array(
 
         bio_module_id_t* new_array = (bio_module_id_t*)nimcp_realloc(
             *array, new_cap * sizeof(bio_module_id_t));
-        if (!new_array) return -1;
+        if (!new_array) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_to_id_array: new_array is NULL");
+            return -1;
+        }
 
         *array = new_array;
         *capacity = new_cap;
@@ -1822,7 +1942,10 @@ static int add_to_msgtype_array(
 
         bio_message_type_t* new_array = (bio_message_type_t*)nimcp_realloc(
             *array, new_cap * sizeof(bio_message_type_t));
-        if (!new_array) return -1;
+        if (!new_array) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_to_msgtype_array: new_array is NULL");
+            return -1;
+        }
 
         *array = new_array;
         *capacity = new_cap;
@@ -1935,6 +2058,7 @@ static int persist_subsystem_unlocked(wiring_diagram_t* wd, wiring_subsystem_t s
     FILE* file = fopen(filepath, "w");
     if (!file) {
         NIMCP_LOGGING_WARN("Failed to open %s for writing: %s", filepath, strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "persist_subsystem_unlocked: file is NULL");
         return -1;
     }
 
@@ -1994,7 +2118,10 @@ static void auto_persist_if_enabled(wiring_diagram_t* wd) {
  * @return Number of handlers synced, or -1 on error
  */
 int wiring_diagram_sync_to_brain_kg(wiring_diagram_t* wd, brain_kg_t* kg) {
-    if (!wd || !kg) return -1;
+    if (!wd || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_sync_to_brain_kg: required parameter is NULL (wd, kg)");
+        return -1;
+    }
 
     int handlers_synced = 0;
 
@@ -2050,7 +2177,10 @@ int wiring_diagram_sync_to_brain_kg(wiring_diagram_t* wd, brain_kg_t* kg) {
  * @return Number of handlers synced, or -1 on error
  */
 int wiring_diagram_sync_from_brain_kg(wiring_diagram_t* wd, const brain_kg_t* kg) {
-    if (!wd || !kg) return -1;
+    if (!wd || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_sync_from_brain_kg: required parameter is NULL (wd, kg)");
+        return -1;
+    }
 
     int handlers_synced = 0;
 
@@ -2182,6 +2312,7 @@ static bool dfs_find_cycle(
     wiring_module_config_t* module = wd->module_configs[module_idx];
     if (!module) {
         colors[module_idx] = DFS_BLACK;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dfs_find_cycle: module is NULL");
         return false;
     }
 
@@ -2216,6 +2347,7 @@ static bool dfs_find_cycle(
     }
 
     colors[module_idx] = DFS_BLACK;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dfs_find_cycle: operation failed");
     return false;
 }
 
@@ -2225,7 +2357,10 @@ int wiring_diagram_check_circular_deps(
     uint32_t max_cycle_modules,
     uint32_t* cycle_count
 ) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_check_circular_deps: wd is NULL");
+        return -1;
+    }
 
     if (wd->mutex) {
         nimcp_platform_mutex_lock(wd->mutex);
@@ -2244,6 +2379,7 @@ int wiring_diagram_check_circular_deps(
         if (wd->mutex) {
             nimcp_platform_mutex_unlock(wd->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "wiring_diagram_check_circular_deps: validation failed");
         return -1;
     }
 
@@ -2271,7 +2407,10 @@ int wiring_diagram_check_circular_deps(
 }
 
 int wiring_diagram_validate(const wiring_diagram_t* wd, wiring_validation_result_t* result) {
-    if (!wd || !result) return -1;
+    if (!wd || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_validate: required parameter is NULL (wd, result)");
+        return -1;
+    }
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -2368,7 +2507,10 @@ int wiring_diagram_get_startup_order(
     bio_module_id_t* order_out,
     uint32_t max_modules
 ) {
-    if (!wd || !order_out || max_modules == 0) return -1;
+    if (!wd || !order_out || max_modules == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_startup_order: required parameter is NULL (wd, order_out)");
+        return -1;
+    }
 
     if (wd->mutex) {
         nimcp_platform_mutex_lock(wd->mutex);
@@ -2397,6 +2539,7 @@ int wiring_diagram_get_startup_order(
         if (wd->mutex) {
             nimcp_platform_mutex_unlock(wd->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "wiring_diagram_get_startup_order: validation failed");
         return -1;
     }
 
@@ -2423,11 +2566,13 @@ int wiring_diagram_get_startup_order(
     if (result == NIMCP_SORT_ERROR_CYCLE) {
         NIMCP_LOGGING_WARN("wiring_diagram_get_startup_order: cycle detected, only %u/%u sorted",
             sorted_count, wd->module_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_get_startup_order: validation failed");
         return -1;
     }
 
     if (result != NIMCP_SORT_OK) {
         NIMCP_LOGGING_ERROR("wiring_diagram_get_startup_order: sort error %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_get_startup_order: validation failed");
         return -1;
     }
 
@@ -2441,7 +2586,10 @@ int wiring_diagram_get_dependency_chain(
     bio_module_id_t* deps_out,
     uint32_t max_deps
 ) {
-    if (!wd || !deps_out || max_deps == 0) return -1;
+    if (!wd || !deps_out || max_deps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_dependency_chain: required parameter is NULL (wd, deps_out)");
+        return -1;
+    }
 
     if (wd->mutex) {
         nimcp_platform_mutex_lock(wd->mutex);
@@ -2453,6 +2601,7 @@ int wiring_diagram_get_dependency_chain(
         if (wd->mutex) {
             nimcp_platform_mutex_unlock(wd->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "wiring_diagram_get_dependency_chain: validation failed");
         return -1;
     }
 
@@ -2465,6 +2614,7 @@ int wiring_diagram_get_dependency_chain(
         if (wd->mutex) {
             nimcp_platform_mutex_unlock(wd->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "wiring_diagram_get_dependency_chain: validation failed");
         return -1;
     }
 
@@ -2530,7 +2680,10 @@ int wiring_diagram_get_dependents(
     bio_module_id_t* dependents_out,
     uint32_t max_dependents
 ) {
-    if (!wd || !dependents_out || max_dependents == 0) return -1;
+    if (!wd || !dependents_out || max_dependents == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_get_dependents: required parameter is NULL (wd, dependents_out)");
+        return -1;
+    }
 
     if (wd->mutex) {
         nimcp_platform_mutex_lock(wd->mutex);
@@ -2562,12 +2715,18 @@ int wiring_diagram_can_disable_module(
     const wiring_diagram_t* wd,
     bio_module_id_t module_id
 ) {
-    if (!wd) return -1;
+    if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring_diagram_can_disable_module: wd is NULL");
+        return -1;
+    }
 
     bio_module_id_t dependents[WIRING_MAX_DEPENDENCIES];
     int dep_count = wiring_diagram_get_dependents(wd, module_id, dependents, WIRING_MAX_DEPENDENCIES);
 
-    if (dep_count < 0) return -1;
+    if (dep_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wiring_diagram_can_disable_module: validation failed");
+        return -1;
+    }
     if (dep_count == 0) return 1;  /* No dependents, safe to disable */
 
     if (wd->mutex) {

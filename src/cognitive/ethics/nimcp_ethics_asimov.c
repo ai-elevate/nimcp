@@ -561,8 +561,10 @@ NIMCP_EXPORT bool asimov_laws_lock(ethics_engine_t engine)
         }
 
     // Already locked?
-    if (ethics_engine_is_asimov_locked(engine))
+    if (ethics_engine_is_asimov_locked(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "asimov_laws_lock: validation failed");
         return false;
+    }
 
     // Compute integrity hash
     uint8_t hash[32];

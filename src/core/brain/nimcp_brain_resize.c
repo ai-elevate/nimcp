@@ -358,6 +358,7 @@ static float compute_weight_saturation(neural_network_t network)
 static bool should_grow(const growth_metrics_t* metrics)
 {
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_grow: metrics is NULL");
         return false;
     }
 
@@ -389,6 +390,7 @@ static bool should_grow(const growth_metrics_t* metrics)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_grow: validation failed");
     return false;
 }
 
@@ -512,6 +514,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     adaptive_network_t old_network = brain->network;
     if (!old_network) {
         LOG_ERROR("brain_resize: Brain has no network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: old_network is NULL");
         return false;
     }
 
@@ -519,6 +522,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     neural_network_t base_network = adaptive_network_get_base_network(old_network);
     if (!base_network) {
         LOG_ERROR("brain_resize: Cannot access base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: base_network is NULL");
         return false;
     }
 
@@ -531,6 +535,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         // Publish failure event
         publish_resize_event(BIO_MSG_ERROR_REPORT, current_neuron_count, new_neuron_count,
                            false, BIO_CHANNEL_NOREPINEPHRINE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_resize: validation failed");
         return false;
     }
 
@@ -547,6 +552,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     const adaptive_network_config_t* old_config = adaptive_network_get_config(old_network);
     if (!old_config) {
         LOG_ERROR("brain_resize: Cannot access old network config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: old_config is NULL");
         return false;
     }
 
@@ -581,6 +587,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         new_layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
         if (!new_layer_sizes) {
             LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_resize: new_layer_sizes is NULL");
             return false;
         }
 
@@ -610,6 +617,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         new_layer_sizes = nimcp_calloc(old_config->base_config.num_layers, sizeof(uint32_t));
         if (!new_layer_sizes) {
             LOG_ERROR("brain_resize: Failed to allocate layer_sizes");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_resize: new_layer_sizes is NULL");
             return false;
         }
         memcpy(new_layer_sizes, old_config->base_config.layer_sizes,
@@ -669,6 +677,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
 
     if (!new_network) {
         LOG_ERROR("brain_resize: Failed to create new network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: new_network is NULL");
         return false;
     }
 
@@ -685,6 +694,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
     if (!new_base) {
         LOG_ERROR("brain_resize: Cannot access new base network");
         adaptive_network_destroy(new_network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: new_base is NULL");
         return false;
     }
 
@@ -696,6 +706,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
         if (!old_neuron || !new_neuron) {
             LOG_ERROR("brain_resize: Failed to access neuron %u during transfer", i);
             adaptive_network_destroy(new_network);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (old_neuron, new_neuron)");
             return false;
         }
 
@@ -786,12 +797,14 @@ bool brain_auto_resize(brain_t brain)
     adaptive_network_t network = brain->network;
     if (!network) {
         LOG_ERROR("brain_auto_resize: Brain has no network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_auto_resize: network is NULL");
         return false;
     }
 
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
         LOG_ERROR("brain_auto_resize: Cannot access base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_auto_resize: base_network is NULL");
         return false;
     }
 
@@ -804,12 +817,14 @@ bool brain_auto_resize(brain_t brain)
 
     if (current_size == 0) {
         LOG_DEBUG("brain_auto_resize: Brain has 0 neurons (not initialized), skipping resize");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: current_size is zero");
         return false;
     }
 
     // Verify num_neurons is reasonable (sanity check for corrupted structure)
     if (current_size == 0 || current_size > 100000000) {
         LOG_WARN("brain_auto_resize: Suspicious neuron count %u, skipping resize", current_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: current_size is zero");
         return false;
     }
 
@@ -818,12 +833,14 @@ bool brain_auto_resize(brain_t brain)
     neuron_t* first_neuron = neural_network_get_neuron(base_network, 0);
     if (!first_neuron) {
         LOG_WARN("brain_auto_resize: Cannot access neurons, network may be corrupt");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_auto_resize: first_neuron is NULL");
         return false;
     }
 
     // Don't grow beyond reasonable limits
     if (current_size >= 100000) {
         LOG_INFO("brain_auto_resize: Already at max size (%u neurons), skipping", current_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: capacity exceeded");
         return false;  // Already at 100K neurons, stop
     }
 
@@ -833,6 +850,7 @@ bool brain_auto_resize(brain_t brain)
 
     if (!brain_get_utilization_metrics(brain, &utilization, &saturation)) {
         LOG_WARN("brain_auto_resize: Failed to get utilization metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: brain_get_utilization_metrics is NULL");
         return false;
     }
 
@@ -846,6 +864,7 @@ bool brain_auto_resize(brain_t brain)
         // Brain has spare capacity - no need to resize
         LOG_DEBUG("brain_auto_resize: Brain not saturated (util=%.1f%%, sat=%.1f%%), skipping resize",
                   utilization * 100.0F, saturation * 100.0F);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: validation failed");
         return false;
     }
 
@@ -871,6 +890,7 @@ bool brain_auto_resize(brain_t brain)
             // Publish resource constraint event
             publish_resize_event(BIO_MSG_ERROR_REPORT, current_size, new_size,
                                false, BIO_CHANNEL_NOREPINEPHRINE);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_auto_resize: system_resources_can_resize is NULL");
             return false;
         }
     }
@@ -931,6 +951,7 @@ bool brain_get_utilization_metrics(brain_t brain, float* utilization, float* sat
 
     neural_network_t base_network = adaptive_network_get_base_network(brain->network);
     if (!base_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_utilization_metrics: base_network is NULL");
         return false;
     }
 

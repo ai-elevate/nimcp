@@ -365,6 +365,7 @@ static bool resolve_winner_take_all(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "resolve_winner_take_all: capacity exceeded");
     return false;  // No winner above threshold
 }
 
@@ -436,6 +437,7 @@ static bool resolve_priority_based(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "resolve_priority_based: capacity exceeded");
     return false;
 }
 
@@ -456,7 +458,10 @@ static bool resolve_round_robin(
     uint32_t* winner_idx,
     float* winner_strength)
 {
-    if (workspace->num_active_competitors == 0) return false;
+    if (workspace->num_active_competitors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resolve_round_robin: workspace->num_active_competitors is zero");
+        return false;
+    }
 
     uint64_t current_time = get_time_ms();
     uint32_t start_idx = (workspace->last_winner_idx + 1) % GLOBAL_WORKSPACE_MAX_COMPETITORS;
@@ -493,6 +498,7 @@ static bool resolve_round_robin(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "resolve_round_robin: operation failed");
     return false;
 }
 
@@ -600,6 +606,7 @@ global_workspace_t* global_workspace_create_custom(
         char error[256];
         if (!global_workspace_validate_config(config, error, sizeof(error))) {
             fprintf(stderr, "Global workspace creation failed: %s\n", error);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_create_custom: global_workspace_validate_config is NULL");
             return NULL;
         }
     }
@@ -621,6 +628,7 @@ global_workspace_t* global_workspace_create_custom(
         (struct global_workspace_struct*)nimcp_calloc(1, sizeof(struct global_workspace_struct));
     if (workspace == NULL) {
         fprintf(stderr, "Failed to allocate workspace structure\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
         return NULL;
     }
 
@@ -636,6 +644,7 @@ global_workspace_t* global_workspace_create_custom(
     if (workspace->broadcast_content == NULL) {
         fprintf(stderr, "Failed to allocate broadcast content buffer\n");
         nimcp_free(workspace);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
         return NULL;
     }
 
@@ -652,6 +661,7 @@ global_workspace_t* global_workspace_create_custom(
             fprintf(stderr, "Failed to allocate history buffer\n");
             nimcp_free(workspace->broadcast_content);
             nimcp_free(workspace);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
             return NULL;
         }
 
@@ -663,6 +673,7 @@ global_workspace_t* global_workspace_create_custom(
             nimcp_free(workspace->history);
             nimcp_free(workspace->broadcast_content);
             nimcp_free(workspace);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: validation failed");
             return NULL;
         }
 
@@ -691,6 +702,7 @@ global_workspace_t* global_workspace_create_custom(
                 nimcp_free(workspace->history);
                 nimcp_free(workspace->broadcast_content);
                 nimcp_free(workspace);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_create_custom: operation failed");
                 return NULL;
             }
         }
@@ -917,6 +929,7 @@ bool global_workspace_compete(
 
     // Guard: NULL checks
     if (workspace == NULL || content == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
     }
 
@@ -941,6 +954,7 @@ bool global_workspace_compete(
         fprintf(stderr, "Content dimension mismatch in global_workspace_compete: "
                 "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
     }
 
@@ -949,6 +963,7 @@ bool global_workspace_compete(
         fprintf(stderr, "Invalid strength in global_workspace_compete: %.2f "
                 "(must be 0.0-1.0)\n", strength);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
     }
 
@@ -1002,6 +1017,7 @@ bool global_workspace_compete(
         fprintf(stderr, "Competition pool full in global_workspace_compete "
                 "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: validation failed");
         return false;
     }
 
@@ -1014,6 +1030,7 @@ bool global_workspace_compete(
     if (!content_copy) {
         fprintf(stderr, "Failed to allocate content buffer in global_workspace_compete\n");
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_compete: content_copy is NULL");
         return false;
     }
     memcpy(content_copy, content, content_dim * sizeof(float));
@@ -1040,6 +1057,7 @@ bool global_workspace_compete(
     // Check if pool is empty
     if (ws->num_active_competitors == 0) {
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete: ws->num_active_competitors is zero");
         return false;
     }
 
@@ -1120,11 +1138,13 @@ bool global_workspace_submit(
     // Guard: NULL checks
     if (workspace == NULL) {
         fprintf(stderr, "NULL workspace in global_workspace_submit\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
     if (content == NULL) {
         fprintf(stderr, "NULL content in global_workspace_submit\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
@@ -1142,6 +1162,7 @@ bool global_workspace_submit(
         fprintf(stderr, "Content dimension mismatch in global_workspace_submit: "
                 "expected %u, got %u\n", ws->config.capacity_dim, content_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
@@ -1150,6 +1171,7 @@ bool global_workspace_submit(
         fprintf(stderr, "Invalid strength in global_workspace_submit: %.2f "
                 "(must be 0.0-1.0)\n", strength);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
@@ -1204,6 +1226,7 @@ bool global_workspace_submit(
         fprintf(stderr, "Competition pool full in global_workspace_submit "
                 "(%u competitors)\n", GLOBAL_WORKSPACE_MAX_COMPETITORS);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_submit: validation failed");
         return false;
     }
 
@@ -1216,6 +1239,7 @@ bool global_workspace_submit(
     if (!content_copy) {
         fprintf(stderr, "Failed to allocate content buffer in global_workspace_submit\n");
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_submit: content_copy is NULL");
         return false;
     }
     memcpy(content_copy, content, content_dim * sizeof(float));
@@ -1249,6 +1273,7 @@ bool global_workspace_resolve(
     // Guard: NULL checks
     if (workspace == NULL) {
         fprintf(stderr, "NULL workspace in global_workspace_resolve\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: validation failed");
         return false;
     }
 
@@ -1270,6 +1295,7 @@ bool global_workspace_resolve(
     if (ws->num_active_competitors == 0) {
         // No competitors to resolve
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: ws->num_active_competitors is zero");
         return false;
     }
 
@@ -1350,6 +1376,7 @@ bool global_workspace_resolve(
         }
 
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: validation failed");
         return false;
     }
 
@@ -1400,6 +1427,7 @@ bool global_workspace_resolve(
         // Winner found but blocked by refractory period
         // Keep competitors in pool for next resolve attempt
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_resolve: operation failed");
         return false;
     }
 }
@@ -1411,7 +1439,10 @@ bool global_workspace_read_broadcast(
     uint32_t* actual_dim,
     cognitive_module_t* source)
 {
-    if (workspace == NULL || content == NULL) return false;
+    if (workspace == NULL || content == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_read_broadcast: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_read_broadcast", 0.0f);
@@ -1425,6 +1456,7 @@ bool global_workspace_read_broadcast(
     // Check if broadcast available
     if (!ws->current_broadcast.is_valid) {
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_read_broadcast: ws->current_broadcast is NULL");
         return false;
     }
 
@@ -1433,6 +1465,7 @@ bool global_workspace_read_broadcast(
         fprintf(stderr, "Buffer too small: need %u, have %u\n",
                 ws->current_broadcast.content_dim, max_dim);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_read_broadcast: validation failed");
         return false;
     }
 
@@ -1456,7 +1489,10 @@ bool global_workspace_subscribe(
     global_workspace_t* workspace,
     cognitive_module_t module)
 {
-    if (workspace == NULL) return false;
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_subscribe: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_subscribe", 0.0f);
@@ -1485,6 +1521,7 @@ bool global_workspace_subscribe(
     if (ws->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
         fprintf(stderr, "Subscriber list full (%u max)\n", GLOBAL_WORKSPACE_MAX_SUBSCRIBERS);
         nimcp_platform_mutex_unlock(&ws->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_subscribe: capacity exceeded");
         return false;
     }
 
@@ -1504,7 +1541,10 @@ bool global_workspace_unsubscribe(
     global_workspace_t* workspace,
     cognitive_module_t module)
 {
-    if (workspace == NULL) return false;
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_unsubscribe: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_unsubscribe", 0.0f);
@@ -1541,6 +1581,7 @@ bool global_workspace_unsubscribe(
     }
 
     nimcp_platform_mutex_unlock(&ws->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_unsubscribe: operation failed");
     return false;  // Not subscribed
 }
 
@@ -1549,7 +1590,10 @@ bool global_workspace_unsubscribe(
 //=============================================================================
 
 bool global_workspace_has_broadcast(const global_workspace_t* workspace) {
-    if (workspace == NULL) return false;
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_has_broadcast: validation failed");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_has_broadcast", 0.0f);
 
@@ -1642,7 +1686,10 @@ bool global_workspace_is_competing(
     const global_workspace_t* workspace,
     cognitive_module_t module)
 {
-    if (workspace == NULL) return false;
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_is_competing: validation failed");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_is_competing", 0.0f);
 
@@ -1679,7 +1726,10 @@ bool global_workspace_get_history(
     uint32_t max_history,
     uint32_t* actual_count)
 {
-    if (workspace == NULL || history == NULL || actual_count == NULL) return false;
+    if (workspace == NULL || history == NULL || actual_count == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_get_history: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_get_history", 0.0f);
@@ -1690,6 +1740,7 @@ bool global_workspace_get_history(
 
     if (!ws->config.enable_history || ws->history == NULL) {
         *actual_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_history: ws->config is NULL");
         return false;
     }
 
@@ -1745,7 +1796,10 @@ bool global_workspace_get_statistics(
     const global_workspace_t* workspace,
     workspace_statistics_t* stats)
 {
-    if (workspace == NULL || stats == NULL) return false;
+    if (workspace == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_get_statistics: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_get_statistics", 0.0f);
@@ -1755,6 +1809,7 @@ bool global_workspace_get_statistics(
         (const struct global_workspace_struct*)workspace;
 
     if (!ws->config.enable_statistics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_statistics: ws->config is NULL");
         return false;
     }
 
@@ -1930,7 +1985,10 @@ bool global_workspace_set_ignition_threshold(
     global_workspace_t* workspace,
     float new_threshold)
 {
-    if (workspace == NULL) return false;
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_set_ignition_threshold: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_set_ignition_thresho", 0.0f);
@@ -1963,8 +2021,14 @@ bool global_workspace_set_module_priority(
     cognitive_module_t module,
     float priority)
 {
-    if (workspace == NULL) return false;
-    if (module >= MODULE_CUSTOM_START) return false;  // Only for standard modules
+    if (workspace == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_set_module_priority: validation failed");
+        return false;
+    }
+    if (module >= MODULE_CUSTOM_START) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_set_module_priority: capacity exceeded");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_heartbeat("global_works_set_module_priority", 0.0f);

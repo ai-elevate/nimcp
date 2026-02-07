@@ -203,24 +203,29 @@ static bool matches_query(const autobiographical_memory_entry_t* mem,
 {
     // Time range filter
     if (query->start_time_ms > 0 && mem->timestamp_ms < query->start_time_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
     if (query->end_time_ms > 0 && mem->timestamp_ms > query->end_time_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Type filter
     if (query->filter_by_type && mem->type != query->type_filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Valence filter
     if (query->filter_by_valence && mem->valence != query->valence_filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
     // Importance filter
     if (query->filter_by_importance && mem->importance < query->min_importance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "matches_query: validation failed");
         return false;
     }
 
@@ -238,6 +243,7 @@ static bool matches_query(const autobiographical_memory_entry_t* mem,
                    (strstr(mem->outcome, query->search_text) != NULL);
         }
         if (!found) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "matches_query: found is NULL");
             return false;
         }
     }
@@ -254,7 +260,10 @@ static int compare_by_recency(const void* a, const void* b)
     const autobiographical_memory_entry_t* mb = (const autobiographical_memory_entry_t*)b;
 
     // Newer first
-    if (ma->timestamp_ms > mb->timestamp_ms) return -1;
+    if (ma->timestamp_ms > mb->timestamp_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_recency: validation failed");
+        return -1;
+    }
     if (ma->timestamp_ms < mb->timestamp_ms) return 1;
     return 0;
 }
@@ -268,7 +277,10 @@ static int compare_by_importance(const void* a, const void* b)
     const autobiographical_memory_entry_t* mb = (const autobiographical_memory_entry_t*)b;
 
     // More important first
-    if (ma->importance > mb->importance) return -1;
+    if (ma->importance > mb->importance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_importance: validation failed");
+        return -1;
+    }
     if (ma->importance < mb->importance) return 1;
     return 0;
 }
@@ -325,6 +337,7 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
     if (!system->memories) {
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_create: validation failed");
         return NULL;
     }
 
@@ -338,6 +351,7 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
         else nimcp_free(system->memories);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_create: validation failed");
         return NULL;
     }
 
@@ -572,6 +586,7 @@ bool autobio_retrieve(autobiographical_memory_t system,
 
     // Guard: NULL checks
     if (!system || !out_memory || memory_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_retrieve: required parameter is NULL (system, out_memory)");
         return false;
     }
 
@@ -613,6 +628,7 @@ bool autobio_query(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || !query || !results || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_query: required parameter is NULL (system, query, results, num_found)");
         return false;
     }
 
@@ -628,7 +644,7 @@ bool autobio_query(autobiographical_memory_t system,
     for (uint32_t i = 0; i < system->count && *num_found < max_results; i++) {
         if (matches_query(&system->memories[i], query)) {
             memcpy(&results[*num_found], &system->memories[i],
-                   sizeof(autobiographical_memory_t));
+                   sizeof(autobiographical_memory_entry_t));
             (*num_found)++;
 
             // Update retrieval stats
@@ -642,10 +658,10 @@ bool autobio_query(autobiographical_memory_t system,
     // Sort results
     if (*num_found > 1) {
         if (query->sort_by_recency) {
-            qsort(results, *num_found, sizeof(autobiographical_memory_t),
+            qsort(results, *num_found, sizeof(autobiographical_memory_entry_t),
                   compare_by_recency);
         } else if (query->sort_by_importance) {
-            qsort(results, *num_found, sizeof(autobiographical_memory_t),
+            qsort(results, *num_found, sizeof(autobiographical_memory_entry_t),
                   compare_by_importance);
         }
     }
@@ -679,6 +695,7 @@ bool autobio_get_core_memories(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || !results || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_get_core_memories: required parameter is NULL (system, results, num_found)");
         return false;
     }
 
@@ -694,14 +711,14 @@ bool autobio_get_core_memories(autobiographical_memory_t system,
     for (uint32_t i = 0; i < system->count && *num_found < max_results; i++) {
         if (system->memories[i].is_core_memory) {
             memcpy(&results[*num_found], &system->memories[i],
-                   sizeof(autobiographical_memory_t));
+                   sizeof(autobiographical_memory_entry_t));
             (*num_found)++;
         }
     }
 
     // Sort by importance
     if (*num_found > 1) {
-        qsort(results, *num_found, sizeof(autobiographical_memory_t),
+        qsort(results, *num_found, sizeof(autobiographical_memory_entry_t),
               compare_by_importance);
     }
 
@@ -716,6 +733,7 @@ bool autobio_mark_core(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || memory_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_mark_core: system is NULL");
         return false;
     }
 
@@ -760,6 +778,7 @@ bool autobio_update_importance(autobiographical_memory_t system,
 {
     // Guard: NULL checks and bounds
     if (!system || memory_id == 0 || new_importance < 0.0F || new_importance > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_update_importance: system is NULL");
         return false;
     }
 
@@ -794,6 +813,7 @@ bool autobio_get_stats(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 
@@ -804,7 +824,7 @@ bool autobio_get_stats(autobiographical_memory_t system,
     nimcp_mutex_lock(&system->mutex);
 
     memcpy(stats, &system->stats, sizeof(autobio_stats_t));
-    stats->memory_usage_bytes = system->capacity * sizeof(autobiographical_memory_t) +
+    stats->memory_usage_bytes = system->capacity * sizeof(autobiographical_memory_entry_t) +
                                 sizeof(struct autobiographical_memory_system);
 
     nimcp_mutex_unlock(&system->mutex);
@@ -882,7 +902,7 @@ uint32_t autobio_consolidate(autobiographical_memory_t system)
             if (system->memories[read_idx].memory_id != 0) {
                 if (write_idx != read_idx) {
                     memcpy(&system->memories[write_idx], &system->memories[read_idx],
-                           sizeof(autobiographical_memory_t));
+                           sizeof(autobiographical_memory_entry_t));
                 }
                 write_idx++;
             }
@@ -904,6 +924,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
 {
     // Guard: NULL checks
     if (!system || !summary || summary_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_generate_timeline_summary: required parameter is NULL (system, summary)");
         return false;
     }
 
@@ -923,6 +944,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
     uint32_t found;
 
     if (!autobio_query(system, &query, results, 100, &found)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_generate_timeline_summary: autobio_query is NULL");
         return false;
     }
 
@@ -931,6 +953,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
                           "Timeline Summary (%u memories):\n\n", found);
 
     if (written < 0 || (size_t)written >= summary_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_generate_timeline_summary: capacity exceeded");
         return false;
     }
 
@@ -974,6 +997,7 @@ bool autobio_generate_timeline_summary(autobiographical_memory_t system,
 int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memory_id)
 {
     if (!system || memory_id == 0 || !system->bridges_enabled || !system->snn_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_encode_memory_to_snn: required parameter is NULL (system, system->bridges_enabled, system->snn_bridge)");
         return -1;
     }
 
@@ -1000,6 +1024,7 @@ int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memo
 
     if (!mem) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_encode_memory_to_snn: mem is NULL");
         return -1;
     }
 
@@ -1037,6 +1062,7 @@ int autobio_encode_memory_to_snn(autobiographical_memory_t system, uint64_t memo
 
     // Simulate memory processing
     if (autobio_snn_simulate(system->snn_bridge, 50.0f) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "autobio_encode_memory_to_snn: validation failed");
         return -1;
     }
 
@@ -1068,6 +1094,7 @@ int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
                                             float emotional_boost)
 {
     if (!system || memory_id == 0 || !system->bridges_enabled || !system->plasticity_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "autobio_apply_consolidation_plasticity: required parameter is NULL (system, system->bridges_enabled, system->plasticity_bridge)");
         return -1;
     }
 
@@ -1094,6 +1121,7 @@ int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
 
     if (!mem) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_apply_consolidation_plasticity: mem is NULL");
         return -1;
     }
 
@@ -1176,6 +1204,7 @@ int autobio_apply_consolidation_plasticity(autobiographical_memory_t system,
 int autobio_get_snn_recall_state(autobiographical_memory_t system, autobio_recall_t* recall)
 {
     if (!system || !recall || !system->bridges_enabled || !system->snn_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_get_snn_recall_state: required parameter is NULL (system, recall, system->bridges_enabled, system->snn_bridge)");
         return -1;
     }
 
@@ -1197,6 +1226,7 @@ int autobio_get_consolidation_state(autobiographical_memory_t system,
                                      autobio_consolidation_state_t* state)
 {
     if (!system || !state || !system->bridges_enabled || !system->plasticity_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_get_consolidation_state: required parameter is NULL (system, state, system->bridges_enabled, system->plasticity_bridge)");
         return -1;
     }
 
@@ -1216,6 +1246,7 @@ int autobio_get_consolidation_state(autobiographical_memory_t system,
 bool autobio_bridges_enabled(autobiographical_memory_t system)
 {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobio_bridges_enabled: system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1278,7 +1309,10 @@ void autobiographical_memory_set_instance_health_agent(void* instance, nimcp_hea
  * ============================================================================ */
 
 int autobiographical_memory_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_memory_training_begin: ctx is NULL");
+        return -1;
+    }
     struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
     autobiographical_memory_heartbeat_instance(g_autobiographical_memory_instance_health_agent, "autobio_mem_training_begin", 0.0f);
 
@@ -1290,7 +1324,10 @@ int autobiographical_memory_training_begin(void* ctx) {
 }
 
 int autobiographical_memory_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_memory_training_end: ctx is NULL");
+        return -1;
+    }
     struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
     autobiographical_memory_heartbeat_instance(g_autobiographical_memory_instance_health_agent, "autobio_mem_training_end", 1.0f);
 
@@ -1302,7 +1339,10 @@ int autobiographical_memory_training_end(void* ctx) {
 }
 
 int autobiographical_memory_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "autobiographical_memory_training_step: ctx is NULL");
+        return -1;
+    }
     struct autobiographical_memory_system* sys = (struct autobiographical_memory_system*)ctx;
 
     float p = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);

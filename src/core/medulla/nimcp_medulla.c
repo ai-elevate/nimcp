@@ -818,6 +818,7 @@ int medulla_update(medulla_t medulla, float dt) {
 
     if (medulla->state != MEDULLA_STATE_RUNNING) {
         nimcp_platform_mutex_unlock(medulla->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_update: validation failed");
         return -1;
     }
 
@@ -922,6 +923,7 @@ int medulla_request_state_change(medulla_t medulla, medulla_state_t new_state) {
         new_state != MEDULLA_STATE_STOPPED) {
         NIMCP_LOGGING_WARN("Cannot transition from EMERGENCY except to STOPPED");
         nimcp_platform_mutex_unlock(medulla->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_request_state_change: operation failed");
         return -1;
     }
 
@@ -1418,6 +1420,7 @@ const char* medulla_state_to_string(medulla_state_t state) {
 
 int medulla_test_set_arousal(medulla_t medulla, float level) {
     if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_test_set_arousal: is_valid_medulla is NULL");
         return -1;
     }
 
@@ -1457,10 +1460,12 @@ int medulla_test_set_arousal(medulla_t medulla, float level) {
 
 int medulla_test_set_protection(medulla_t medulla, protection_level_t level) {
     if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_test_set_protection: is_valid_medulla is NULL");
         return -1;
     }
 
     if (level < PROTECTION_LEVEL_NORMAL || level > PROTECTION_LEVEL_SHUTDOWN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_test_set_protection: validation failed");
         return -1;
     }
 
@@ -1472,10 +1477,12 @@ int medulla_test_set_protection(medulla_t medulla, protection_level_t level) {
 
 int medulla_test_set_circadian(medulla_t medulla, circadian_phase_t phase) {
     if (!is_valid_medulla(medulla)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_test_set_circadian: is_valid_medulla is NULL");
         return -1;
     }
 
     if (phase < CIRCADIAN_PHASE_EARLY_MORNING || phase > CIRCADIAN_PHASE_PRE_DAWN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_test_set_circadian: validation failed");
         return -1;
     }
 

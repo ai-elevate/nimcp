@@ -128,7 +128,10 @@ static void record_loss(fep_learning_stats_t* stats, float loss) {
  * ============================================================================ */
 
 int fep_learning_default_config(fep_learning_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_default_config", 0.0f);
@@ -169,6 +172,7 @@ fep_transition_learner_t* fep_transition_learner_create(
 
     if (state_dim == 0) {
         NIMCP_LOGGING_ERROR("State dimension must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_transition_learner_create: state_dim is zero");
         return NULL;
     }
 
@@ -199,6 +203,7 @@ fep_transition_learner_t* fep_transition_learner_create(
 
     if (!learner->matrix || !learner->gradient || !learner->batch_gradient) {
         fep_transition_learner_destroy(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_transition_learner_create: required parameter is NULL (learner->matrix, learner->gradient, learner->batch_gradient)");
         return NULL;
     }
 
@@ -229,6 +234,7 @@ fep_transition_learner_t* fep_transition_learner_create(
         learner->momentum = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
         if (!learner->momentum) {
             fep_transition_learner_destroy(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_transition_learner_create: learner->momentum is NULL");
             return NULL;
         }
     }
@@ -238,6 +244,7 @@ fep_transition_learner_t* fep_transition_learner_create(
         learner->velocity = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
         if (!learner->velocity) {
             fep_transition_learner_destroy(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_transition_learner_create: learner->velocity is NULL");
             return NULL;
         }
     }
@@ -254,6 +261,7 @@ fep_transition_learner_t* fep_transition_learner_create(
     learner->mutex = nimcp_platform_mutex_create();
     if (!learner->mutex) {
         fep_transition_learner_destroy(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_transition_learner_create: learner->mutex is NULL");
         return NULL;
     }
 
@@ -299,6 +307,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
 
     if (observation_dim == 0 || state_dim == 0) {
         NIMCP_LOGGING_ERROR("Dimensions must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_likelihood_learner_create: observation_dim is zero");
         return NULL;
     }
 
@@ -330,6 +339,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
 
     if (!learner->matrix || !learner->gradient || !learner->batch_gradient) {
         fep_likelihood_learner_destroy(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_likelihood_learner_create: required parameter is NULL (learner->matrix, learner->gradient, learner->batch_gradient)");
         return NULL;
     }
 
@@ -360,6 +370,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
         learner->momentum = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
         if (!learner->momentum) {
             fep_likelihood_learner_destroy(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_likelihood_learner_create: learner->momentum is NULL");
             return NULL;
         }
     }
@@ -368,6 +379,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
         learner->velocity = nimcp_tensor_create(dims, 2, NIMCP_DTYPE_F32);
         if (!learner->velocity) {
             fep_likelihood_learner_destroy(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_likelihood_learner_create: learner->velocity is NULL");
             return NULL;
         }
     }
@@ -384,6 +396,7 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
     learner->mutex = nimcp_platform_mutex_create();
     if (!learner->mutex) {
         fep_likelihood_learner_destroy(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_likelihood_learner_create: learner->mutex is NULL");
         return NULL;
     }
 
@@ -430,8 +443,14 @@ int fep_learn_transition(
     const float* state_t1,
     size_t dim
 ) {
-    if (!learner || !sys || !state_t || !state_t1) return -1;
-    if (dim != learner->state_dim) return -1;
+    if (!learner || !sys || !state_t || !state_t1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learn_transition: required parameter is NULL (learner, sys, state_t, state_t1)");
+        return -1;
+    }
+    if (dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_learn_transition: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_learn_transition", 0.0f);
@@ -444,6 +463,7 @@ int fep_learn_transition(
     float* prediction = (float*)nimcp_calloc(dim, sizeof(float));
     if (!prediction) {
         nimcp_platform_mutex_unlock(learner->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_learn_transition: prediction is NULL");
         return -1;
     }
 
@@ -537,8 +557,14 @@ int fep_learn_transition_batch(
     size_t n_transitions,
     size_t dim
 ) {
-    if (!learner || !sys || !states || n_transitions == 0) return -1;
-    if (dim != learner->state_dim) return -1;
+    if (!learner || !sys || !states || n_transitions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learn_transition_batch: required parameter is NULL (learner, sys, states)");
+        return -1;
+    }
+    if (dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_learn_transition_batch: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_learn_transition", 0.0f);
@@ -559,6 +585,7 @@ int fep_learn_transition_batch(
     float* prediction = (float*)nimcp_calloc(dim, sizeof(float));
     if (!prediction) {
         nimcp_platform_mutex_unlock(learner->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_learn_transition_batch: prediction is NULL");
         return -1;
     }
 
@@ -667,8 +694,14 @@ int fep_learn_likelihood(
     size_t obs_dim,
     size_t state_dim
 ) {
-    if (!learner || !sys || !observation || !state) return -1;
-    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
+    if (!learner || !sys || !observation || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learn_likelihood: required parameter is NULL (learner, sys, observation, state)");
+        return -1;
+    }
+    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_learn_likelihood: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_learn_likelihood", 0.0f);
@@ -681,6 +714,7 @@ int fep_learn_likelihood(
     float* prediction = (float*)nimcp_calloc(obs_dim, sizeof(float));
     if (!prediction) {
         nimcp_platform_mutex_unlock(learner->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_learn_likelihood: prediction is NULL");
         return -1;
     }
 
@@ -762,8 +796,14 @@ int fep_learn_likelihood_batch(
     size_t obs_dim,
     size_t state_dim
 ) {
-    if (!learner || !observations || !states || n_pairs == 0) return -1;
-    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
+    if (!learner || !observations || !states || n_pairs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learn_likelihood_batch: required parameter is NULL (learner, observations, states)");
+        return -1;
+    }
+    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_learn_likelihood_batch: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_learn_likelihood", 0.0f);
@@ -783,6 +823,7 @@ int fep_learn_likelihood_batch(
     float* prediction = (float*)nimcp_calloc(obs_dim, sizeof(float));
     if (!prediction) {
         nimcp_platform_mutex_unlock(learner->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_learn_likelihood_batch: prediction is NULL");
         return -1;
     }
 
@@ -888,8 +929,14 @@ int fep_get_learned_transition(
     float* matrix,
     size_t dim
 ) {
-    if (!learner || !matrix) return -1;
-    if (dim != learner->state_dim) return -1;
+    if (!learner || !matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_get_learned_transition: required parameter is NULL (learner, matrix)");
+        return -1;
+    }
+    if (dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_get_learned_transition: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_get_learned_tran", 0.0f);
@@ -922,8 +969,14 @@ int fep_get_learned_likelihood(
     size_t obs_dim,
     size_t state_dim
 ) {
-    if (!learner || !matrix) return -1;
-    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) return -1;
+    if (!learner || !matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_get_learned_likelihood: required parameter is NULL (learner, matrix)");
+        return -1;
+    }
+    if (obs_dim != learner->observation_dim || state_dim != learner->state_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_get_learned_likelihood: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_get_learned_like", 0.0f);
@@ -958,7 +1011,10 @@ int fep_apply_learned_transition(
     fep_transition_learner_t* learner,
     fep_system_t* sys
 ) {
-    if (!learner || !sys) return -1;
+    if (!learner || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_apply_learned_transition: required parameter is NULL (learner, sys)");
+        return -1;
+    }
 
     /* Apply to FEP level 0 transition matrix if available */
     /* Phase 8: Heartbeat at operation start */
@@ -971,7 +1027,10 @@ int fep_apply_learned_transition(
 
         if (!level->transition_matrix) {
             level->transition_matrix = (float*)nimcp_calloc(dim * dim, sizeof(float));
-            if (!level->transition_matrix) return -1;
+            if (!level->transition_matrix) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_apply_learned_transition: level->transition_matrix is NULL");
+                return -1;
+            }
         }
 
         return fep_get_learned_transition(learner, level->transition_matrix, dim);
@@ -983,7 +1042,10 @@ int fep_apply_learned_likelihood(
     fep_likelihood_learner_t* learner,
     fep_system_t* sys
 ) {
-    if (!learner || !sys) return -1;
+    if (!learner || !sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_apply_learned_likelihood: required parameter is NULL (learner, sys)");
+        return -1;
+    }
 
     /* Apply to FEP level 0 likelihood matrix if available */
     /* Phase 8: Heartbeat at operation start */
@@ -997,7 +1059,10 @@ int fep_apply_learned_likelihood(
 
         if (!level->likelihood_matrix) {
             level->likelihood_matrix = (float*)nimcp_calloc(obs_dim * state_dim, sizeof(float));
-            if (!level->likelihood_matrix) return -1;
+            if (!level->likelihood_matrix) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_apply_learned_likelihood: level->likelihood_matrix is NULL");
+                return -1;
+            }
         }
 
         return fep_get_learned_likelihood(learner, level->likelihood_matrix, obs_dim, state_dim);
@@ -1013,7 +1078,10 @@ int fep_transition_learning_get_stats(
     const fep_transition_learner_t* learner,
     fep_learning_stats_t* stats
 ) {
-    if (!learner || !stats) return -1;
+    if (!learner || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_transition_learning_get_stats: required parameter is NULL (learner, stats)");
+        return -1;
+    }
     *stats = learner->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_transition_learn", 0.0f);
@@ -1026,7 +1094,10 @@ int fep_likelihood_learning_get_stats(
     const fep_likelihood_learner_t* learner,
     fep_learning_stats_t* stats
 ) {
-    if (!learner || !stats) return -1;
+    if (!learner || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_likelihood_learning_get_stats: required parameter is NULL (learner, stats)");
+        return -1;
+    }
     *stats = learner->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_learning_instance_heartbeat("fep_learning_fep_likelihood_learn", 0.0f);
@@ -1036,7 +1107,10 @@ int fep_likelihood_learning_get_stats(
 }
 
 int fep_learning_reset_stats(void* learner) {
-    if (!learner) return -1;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_reset_stats: learner is NULL");
+        return -1;
+    }
 
     /* Cast to transition learner to access stats (same offset in both structs) */
     /* Phase 8: Heartbeat at operation start */
@@ -1067,7 +1141,10 @@ int fep_learning_reset_stats(void* learner) {
  * ============================================================================ */
 
 int fep_transition_learner_connect_bio_async(fep_transition_learner_t* learner) {
-    if (!learner) return -1;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_transition_learner_connect_bio_async: learner is NULL");
+        return -1;
+    }
     if (learner->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1092,7 +1169,10 @@ int fep_transition_learner_connect_bio_async(fep_transition_learner_t* learner) 
 }
 
 int fep_transition_learner_disconnect_bio_async(fep_transition_learner_t* learner) {
-    if (!learner) return -1;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_transition_learner_disconnect_bio_async: learner is NULL");
+        return -1;
+    }
     if (!learner->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1108,7 +1188,10 @@ int fep_transition_learner_disconnect_bio_async(fep_transition_learner_t* learne
 }
 
 int fep_likelihood_learner_connect_bio_async(fep_likelihood_learner_t* learner) {
-    if (!learner) return -1;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_likelihood_learner_connect_bio_async: learner is NULL");
+        return -1;
+    }
     if (learner->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1133,7 +1216,10 @@ int fep_likelihood_learner_connect_bio_async(fep_likelihood_learner_t* learner) 
 }
 
 int fep_likelihood_learner_disconnect_bio_async(fep_likelihood_learner_t* learner) {
-    if (!learner) return -1;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_likelihood_learner_disconnect_bio_async: learner is NULL");
+        return -1;
+    }
     if (!learner->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1211,14 +1297,20 @@ void fep_learning_set_instance_health_agent(void* ctx, nimcp_health_agent_t* age
 }
 
 int fep_learning_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_training_begin: ctx is NULL");
+        return -1;
+    }
     fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("fep_learning: training begun");
     return 0;
 }
 
 int fep_learning_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_training_step: ctx is NULL");
+        return -1;
+    }
     float clamped = progress < 0.0f ? 0.0f : (progress > 1.0f ? 1.0f : progress);
     fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_step", clamped);
     (void)clamped;
@@ -1226,7 +1318,10 @@ int fep_learning_training_step(void* ctx, float progress) {
 }
 
 int fep_learning_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_learning_training_end: ctx is NULL");
+        return -1;
+    }
     fep_learning_heartbeat_instance(g_fep_learning_instance_health_agent, "fep_lrn_training_end", 1.0f);
     NIMCP_LOGGING_INFO("fep_learning: training complete");
     return 0;

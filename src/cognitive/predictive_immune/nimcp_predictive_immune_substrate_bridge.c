@@ -132,12 +132,14 @@ predictive_immune_substrate_bridge_t* predictive_immune_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for predictive immune substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_immune_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for predictive immune substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "predictive_immune_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -166,7 +168,10 @@ void predictive_immune_substrate_bridge_destroy(predictive_immune_substrate_brid
 }
 
 int predictive_immune_substrate_bridge_update(predictive_immune_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_immune_substrate_bridge_heartbeat("predictive_i_update", 0.0f);
@@ -177,6 +182,7 @@ int predictive_immune_substrate_bridge_update(predictive_immune_substrate_bridge
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_immune_substrate_bridge_update: validation failed");
         return -1;
     }
 
@@ -210,7 +216,10 @@ int predictive_immune_substrate_bridge_update(predictive_immune_substrate_bridge
 }
 
 int predictive_immune_substrate_bridge_get_effects(const predictive_immune_substrate_bridge_t* bridge, predictive_immune_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     predictive_immune_substrate_bridge_heartbeat("predictive_i_get_effects", 0.0f);
@@ -220,7 +229,10 @@ int predictive_immune_substrate_bridge_get_effects(const predictive_immune_subst
 }
 
 int predictive_immune_substrate_bridge_apply_effects(predictive_immune_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
@@ -289,7 +301,10 @@ int predictive_immune_substrate_bridge_apply_effects(predictive_immune_substrate
 }
 
 int predictive_immune_substrate_bridge_register_bio_async(predictive_immune_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_immune_substrate_bridge_heartbeat("predictive_i_register_bio_async", 0.0f);

@@ -133,7 +133,10 @@ creative_api_client_t* creative_api_client_create(
     init_api_circuit_breaker();
 
     creative_api_client_t* client = nimcp_calloc(1, sizeof(creative_api_client_t));
-    if (!client) return NULL;
+    if (!client) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_api_client_create: client is NULL");
+        return NULL;
+    }
 
     if (config) {
         client->config = *config;
@@ -207,10 +210,14 @@ void creative_api_client_destroy(creative_api_client_t* client)
 
 int creative_api_client_test(creative_api_client_t* client)
 {
-    if (!client) return -1;
+    if (!client) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_api_client_test: client is NULL");
+        return -1;
+    }
 
     /* Verify credentials are set */
     if (strlen(client->config.credentials.api_key) == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_api_client_test: validation failed");
         return -1;
     }
 
@@ -280,7 +287,10 @@ int api_generate_image(creative_api_client_t* client,
                         const api_image_request_t* request,
                         api_image_response_t* response)
 {
-    if (!client || !request || !response) return -1;
+    if (!client || !request || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_generate_image: required parameter is NULL (client, request, response)");
+        return -1;
+    }
 
     memset(response, 0, sizeof(api_image_response_t));
 
@@ -290,6 +300,7 @@ int api_generate_image(creative_api_client_t* client,
         strncpy(response->error_message, "Circuit breaker open - API unavailable",
                 sizeof(response->error_message) - 1);
         response->retry_after_ms = API_CB_TIMEOUT_MS;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_image: circuit_breaker_allow_operation is NULL");
         return -1;
     }
 
@@ -298,6 +309,7 @@ int api_generate_image(creative_api_client_t* client,
         response->status = API_STATUS_RATE_LIMITED;
         response->retry_after_ms = 60000 - (uint32_t)((uint64_t)time(NULL) -
                                                        client->minute_start_time) * 1000;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_image: check_rate_limit is NULL");
         return -1;
     }
 
@@ -306,6 +318,7 @@ int api_generate_image(creative_api_client_t* client,
         response->status = API_STATUS_AUTH_ERROR;
         strncpy(response->error_message, "API key not set",
                 sizeof(response->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_image: validation failed");
         return -1;
     }
 
@@ -349,6 +362,7 @@ int api_generate_image(creative_api_client_t* client,
             response->status = API_STATUS_INVALID_REQUEST;
             strncpy(response->error_message, "Unsupported provider",
                     sizeof(response->error_message) - 1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_image: operation failed");
             return -1;
     }
 
@@ -371,6 +385,7 @@ int api_generate_image(creative_api_client_t* client,
         strncpy(response->error_message, "Network request failed",
                 sizeof(response->error_message) - 1);
         client->failed_requests++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_image: validation failed");
         return -1;
     }
 
@@ -428,7 +443,10 @@ int api_generate_image_async(creative_api_client_t* client,
                               api_image_callback_t callback,
                               void* user_data)
 {
-    if (!client || !request || !callback) return -1;
+    if (!client || !request || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_generate_image_async: required parameter is NULL (client, request, callback)");
+        return -1;
+    }
 
     /* Placeholder: run synchronously and call callback */
     api_image_response_t response;
@@ -443,7 +461,10 @@ int api_upscale_image(creative_api_client_t* client,
                        uint32_t scale,
                        api_image_response_t* response)
 {
-    if (!client || !image || !response) return -1;
+    if (!client || !image || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_upscale_image: required parameter is NULL (client, image, response)");
+        return -1;
+    }
 
     memset(response, 0, sizeof(api_image_response_t));
 
@@ -495,7 +516,10 @@ int api_generate_text(creative_api_client_t* client,
                        const api_text_request_t* request,
                        api_text_response_t* response)
 {
-    if (!client || !request || !response) return -1;
+    if (!client || !request || !response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_generate_text: required parameter is NULL (client, request, response)");
+        return -1;
+    }
 
     memset(response, 0, sizeof(api_text_response_t));
 
@@ -504,12 +528,14 @@ int api_generate_text(creative_api_client_t* client,
         response->status = API_STATUS_SERVER_ERROR;
         strncpy(response->error_message, "Circuit breaker open - API unavailable",
                 sizeof(response->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_text: circuit_breaker_allow_operation is NULL");
         return -1;
     }
 
     /* Check rate limit */
     if (!check_rate_limit(client)) {
         response->status = API_STATUS_RATE_LIMITED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_text: check_rate_limit is NULL");
         return -1;
     }
 
@@ -518,6 +544,7 @@ int api_generate_text(creative_api_client_t* client,
         response->status = API_STATUS_AUTH_ERROR;
         strncpy(response->error_message, "API key not set",
                 sizeof(response->error_message) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_text: validation failed");
         return -1;
     }
 
@@ -553,6 +580,7 @@ int api_generate_text(creative_api_client_t* client,
             response->status = API_STATUS_INVALID_REQUEST;
             strncpy(response->error_message, "Provider doesn't support text generation",
                     sizeof(response->error_message) - 1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_text: operation failed");
             return -1;
     }
 
@@ -573,6 +601,7 @@ int api_generate_text(creative_api_client_t* client,
         }
         response->status = API_STATUS_NETWORK_ERROR;
         client->failed_requests++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_generate_text: validation failed");
         return -1;
     }
 
@@ -607,7 +636,10 @@ int api_generate_text_stream(creative_api_client_t* client,
                               api_complete_callback_t complete_callback,
                               void* user_data)
 {
-    if (!client || !request || !complete_callback) return -1;
+    if (!client || !request || !complete_callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_generate_text_stream: required parameter is NULL (client, request, complete_callback)");
+        return -1;
+    }
 
     /* Placeholder: generate text and simulate streaming */
     api_text_response_t response;
@@ -701,7 +733,10 @@ int api_get_balance(creative_api_client_t* client,
                      float* balance,
                      char* currency)
 {
-    if (!client || !balance) return -1;
+    if (!client || !balance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "api_get_balance: required parameter is NULL (client, balance)");
+        return -1;
+    }
 
     /* Placeholder - would query API */
     *balance = 100.0f;
@@ -719,11 +754,13 @@ int api_get_balance(creative_api_client_t* client,
 bool api_is_rate_limited(const creative_api_client_t* client)
 {
     if (!client || client->config.requests_per_minute == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_is_rate_limited: client is NULL");
         return false;
     }
 
     uint64_t now = (uint64_t)time(NULL);
     if (now - client->minute_start_time >= 60) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "api_is_rate_limited: capacity exceeded");
         return false;  /* Minute has passed */
     }
 

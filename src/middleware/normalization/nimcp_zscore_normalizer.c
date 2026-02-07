@@ -62,7 +62,10 @@ zscore_normalizer_t* zscore_normalizer_create(
     size_t window_size,
     float outlier_clip
 ) {
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "zscore_normalizer_create: num_channels is zero");
+        return NULL;
+    }
 
     zscore_normalizer_t* norm = nimcp_calloc(1, sizeof(zscore_normalizer_t));
     if (!norm) {
@@ -80,6 +83,7 @@ zscore_normalizer_t* zscore_normalizer_create(
     norm->channels = nimcp_calloc(num_channels, sizeof(channel_stats_t));
     if (!norm->channels) {
         nimcp_free(norm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "zscore_normalizer_create: norm->channels is NULL");
         return NULL;
     }
 
@@ -122,7 +126,10 @@ bool zscore_normalizer_fit(
     size_t channel,
     float value
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "zscore_normalizer_fit: normalizer is NULL");
+        return false;
+    }
 
     channel_stats_t* stats = &normalizer->channels[channel];
 
@@ -290,7 +297,10 @@ bool zscore_normalizer_get_stats(
     size_t channel,
     zscore_stats_t* stats
 ) {
-    if (!normalizer || channel >= normalizer->num_channels || !stats) return false;
+    if (!normalizer || channel >= normalizer->num_channels || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "zscore_normalizer_get_stats: required parameter is NULL (normalizer, stats)");
+        return false;
+    }
 
     const channel_stats_t* ch = &normalizer->channels[channel];
     stats->mean = ch->mean;
@@ -319,7 +329,10 @@ size_t zscore_normalizer_num_channels(const zscore_normalizer_t* normalizer) {
 }
 
 bool zscore_normalizer_reset_channel(zscore_normalizer_t* normalizer, size_t channel) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "zscore_normalizer_reset_channel: normalizer is NULL");
+        return false;
+    }
 
     channel_stats_t* stats = &normalizer->channels[channel];
     stats->mean = 0.0F;
@@ -367,11 +380,13 @@ bool zscore_normalizer_transform_tensor(
     nimcp_tensor_t* tensor
 ) {
     if (!normalizer || !tensor || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "zscore_normalizer_transform_tensor: required parameter is NULL (normalizer, tensor)");
         return false;
     }
 
     const channel_stats_t* stats = &normalizer->channels[channel];
     if (stats->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "zscore_normalizer_transform_tensor: stats->count is zero");
         return false;
     }
 
@@ -413,11 +428,13 @@ bool zscore_normalizer_inverse_transform_tensor(
     nimcp_tensor_t* tensor
 ) {
     if (!normalizer || !tensor || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "zscore_normalizer_inverse_transform_tensor: required parameter is NULL (normalizer, tensor)");
         return false;
     }
 
     const channel_stats_t* stats = &normalizer->channels[channel];
     if (stats->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "zscore_normalizer_inverse_transform_tensor: stats->count is zero");
         return false;
     }
 

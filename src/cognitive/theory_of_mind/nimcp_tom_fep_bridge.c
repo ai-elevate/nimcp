@@ -475,7 +475,10 @@ int tom_fep_bridge_get_stats(
 }
 
 bool tom_fep_is_empathy_active(const tom_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_fep_is_empathy_active: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     tom_fep_bridge_heartbeat("tom_fep_brid_tom_fep_is_empathy_a", 0.0f);
 
@@ -523,6 +526,7 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
 
     NIMCP_LOGGING_WARN(LOG_MODULE_TOM_FEP
         " Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

@@ -459,6 +459,7 @@ mesh_global_workspace_integration_t* mesh_gw_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create global workspace integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_gw_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -614,6 +615,7 @@ mesh_participant_id_t mesh_gw_get_participant_id(
 
 bool mesh_gw_is_registered(const mesh_global_workspace_integration_t* integration) {
     if (!integration || integration->magic != MESH_GW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_gw_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;

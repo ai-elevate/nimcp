@@ -135,6 +135,7 @@ int pag_brain_init_register(brain_t brain) {
     if (!pag) {
         NIMCP_LOG_ERROR(PAG_INIT_MODULE_NAME,
             "PAG subsystem initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_brain_init_register: pag is NULL");
         return -1;
     }
 
@@ -151,7 +152,10 @@ nimcp_pag_t* pag_brain_init_create(
     const pag_init_config_t* config,
     pag_init_result_t* result
 ) {
-    if (!brain || !config) return NULL;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pag_brain_init_create: required parameter is NULL (brain, config)");
+        return NULL;
+    }
 
     pag_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -162,6 +166,7 @@ nimcp_pag_t* pag_brain_init_create(
     if (pag_default_config(&pag_cfg) < 0) {
         local_result.error_count++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_brain_init_create: validation failed");
         return NULL;
     }
 
@@ -278,7 +283,10 @@ bool pag_init_columns(
     nimcp_pag_t* pag,
     const pag_init_config_t* config
 ) {
-    if (!pag || !config) return false;
+    if (!pag || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_columns: required parameter is NULL (pag, config)");
+        return false;
+    }
 
     /* Columns are initialized during pag_create, verify they exist */
     /* Set column competition from config */
@@ -295,7 +303,10 @@ bool pag_init_defense(
     nimcp_pag_t* pag,
     const pag_init_config_t* config
 ) {
-    if (!pag || !config) return false;
+    if (!pag || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_defense: required parameter is NULL (pag, config)");
+        return false;
+    }
 
     /* Defense system initialized during pag_create */
     NIMCP_LOG_DEBUG(PAG_INIT_MODULE_NAME,
@@ -309,7 +320,10 @@ bool pag_init_pain_modulation(
     nimcp_pag_t* pag,
     const pag_init_config_t* config
 ) {
-    if (!pag || !config) return false;
+    if (!pag || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_pain_modulation: required parameter is NULL (pag, config)");
+        return false;
+    }
 
     /* Pain modulation initialized during pag_create */
     NIMCP_LOG_DEBUG(PAG_INIT_MODULE_NAME,
@@ -327,7 +341,10 @@ bool pag_init_bio_async_bridges(
     nimcp_pag_t* pag,
     brain_t brain
 ) {
-    if (!pag || !brain) return false;
+    if (!pag || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_bio_async_bridges: required parameter is NULL (pag, brain)");
+        return false;
+    }
 
     /* Bio-async connection would happen here via brain router */
     /* pag_bio_async_connect(pag, brain_get_bio_router(brain)); */
@@ -343,7 +360,10 @@ bool pag_init_kg_wiring(
     brain_t brain,
     uint64_t admin_token
 ) {
-    if (!pag || !brain) return false;
+    if (!pag || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_kg_wiring: required parameter is NULL (pag, brain)");
+        return false;
+    }
 
     /* Would access brain's KG and register PAG nodes */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -361,7 +381,10 @@ bool pag_init_security(
     nimcp_pag_t* pag,
     brain_t brain
 ) {
-    if (!pag || !brain) return false;
+    if (!pag || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_security: required parameter is NULL (pag, brain)");
+        return false;
+    }
 
     /* Would access brain's BBB and register PAG */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -377,7 +400,10 @@ bool pag_init_immune_bridge(
     nimcp_pag_t* pag,
     brain_t brain
 ) {
-    if (!pag || !brain) return false;
+    if (!pag || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_immune_bridge: required parameter is NULL (pag, brain)");
+        return false;
+    }
 
     /* Would connect to brain's immune system */
     NIMCP_LOG_DEBUG(PAG_INIT_MODULE_NAME,
@@ -390,7 +416,10 @@ bool pag_init_hypothalamus_link(
     nimcp_pag_t* pag,
     brain_t brain
 ) {
-    if (!pag || !brain) return false;
+    if (!pag || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_init_hypothalamus_link: required parameter is NULL (pag, brain)");
+        return false;
+    }
 
     /* Would connect to brain's hypothalamus */
     /* pag_hypothalamus_connect(pag, brain_get_hypothalamus(brain)); */
@@ -406,7 +435,10 @@ bool pag_init_hypothalamus_link(
 //=============================================================================
 
 bool pag_is_initialized(nimcp_pag_t* pag) {
-    if (!pag) return false;
+    if (!pag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_is_initialized: pag is NULL");
+        return false;
+    }
 
     /* PAG is considered initialized if the pointer is valid */
     /* The actual initialized field check would require the full header */

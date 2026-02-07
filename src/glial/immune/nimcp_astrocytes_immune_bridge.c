@@ -47,7 +47,10 @@ DEFINE_HANDLER_CALLBACK(astro_cell_immune, astro_immune_bridge_t, bridge)
 
 int astro_cell_default_config(astro_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_cell_default_config: config is NULL");
+        return -1;
+    }
     memset(config, 0, sizeof(*config));
     config->il1_a1_induction = 0.5f;
     config->tnf_a1_induction = 0.4f;
@@ -87,6 +90,7 @@ astro_immune_bridge_t* astro_cell_create(
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "astro_cell_create: validation failed");
         return NULL;
     }
 

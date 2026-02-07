@@ -466,6 +466,7 @@ brainstem_adapter_t* brainstem_create(const brainstem_config_t* config,
     brainstem_adapter_t* adapter = nimcp_calloc(1, sizeof(brainstem_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", BRAINSTEM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_default_config: adapter is NULL");
         return NULL;
     }
 
@@ -481,6 +482,7 @@ brainstem_adapter_t* brainstem_create(const brainstem_config_t* config,
     if (!adapter->midbrain) {
         LOG_ERROR("[%s] Failed to create midbrain processor", BRAINSTEM_LOG_MODULE);
         brainstem_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_default_config: adapter->midbrain is NULL");
         return NULL;
     }
 
@@ -489,6 +491,7 @@ brainstem_adapter_t* brainstem_create(const brainstem_config_t* config,
     if (!adapter->pons) {
         LOG_ERROR("[%s] Failed to create pons processor", BRAINSTEM_LOG_MODULE);
         brainstem_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_default_config: adapter->pons is NULL");
         return NULL;
     }
 
@@ -497,6 +500,7 @@ brainstem_adapter_t* brainstem_create(const brainstem_config_t* config,
     if (!adapter->reticular) {
         LOG_ERROR("[%s] Failed to create reticular formation", BRAINSTEM_LOG_MODULE);
         brainstem_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_default_config: adapter->reticular is NULL");
         return NULL;
     }
 
@@ -524,6 +528,7 @@ brainstem_adapter_t* brainstem_create(const brainstem_config_t* config,
     if (!adapter->reflexes) {
         LOG_ERROR("[%s] Failed to allocate reflex registry", BRAINSTEM_LOG_MODULE);
         brainstem_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_default_config: adapter->reflexes is NULL");
         return NULL;
     }
 
@@ -592,7 +597,10 @@ void brainstem_destroy(brainstem_adapter_t* adapter) {
 }
 
 bool brainstem_reset(brainstem_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", BRAINSTEM_LOG_MODULE);
 
@@ -637,10 +645,14 @@ bool brainstem_reset(brainstem_adapter_t* adapter) {
 
 bool brainstem_register_reflex(brainstem_adapter_t* adapter,
                                 const brainstem_reflex_t* reflex) {
-    if (!adapter || !reflex) return false;
+    if (!adapter || !reflex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reset: required parameter is NULL (adapter, reflex)");
+        return false;
+    }
 
     if (adapter->reflex_count >= adapter->reflex_capacity) {
         LOG_WARN("[%s] Reflex registry full", BRAINSTEM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brainstem_reset: capacity exceeded");
         return false;
     }
 
@@ -656,6 +668,7 @@ bool brainstem_register_reflex(brainstem_adapter_t* adapter,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_reset: operation failed");
     return false;
 }
 
@@ -663,7 +676,10 @@ bool brainstem_trigger_reflex(brainstem_adapter_t* adapter,
                                uint32_t reflex_id,
                                float stimulus_intensity,
                                brainstem_motor_output_t* output) {
-    if (!adapter || !output) return false;
+    if (!adapter || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reset: required parameter is NULL (adapter, output)");
+        return false;
+    }
 
     /* Find reflex */
     for (uint32_t i = 0; i < adapter->reflex_capacity; i++) {
@@ -674,6 +690,7 @@ bool brainstem_trigger_reflex(brainstem_adapter_t* adapter,
 
             /* Check threshold */
             if (stimulus_intensity < reflex->threshold) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_reset: validation failed");
                 return false;
             }
 
@@ -699,13 +716,17 @@ bool brainstem_trigger_reflex(brainstem_adapter_t* adapter,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_reset: operation failed");
     return false;
 }
 
 bool brainstem_set_reflex_callback(brainstem_adapter_t* adapter,
                                     brainstem_reflex_callback_t callback,
                                     void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reset: adapter is NULL");
+        return false;
+    }
     adapter->reflex_callback = callback;
     adapter->reflex_user_data = user_data;
     return true;
@@ -720,6 +741,7 @@ bool brainstem_process_sensory(brainstem_adapter_t* adapter,
                                 brainstem_orienting_response_t* response) {
     if (!adapter || !input || !response || !adapter->midbrain) {
         set_error(adapter, BRAINSTEM_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reset: required parameter is NULL (adapter, input, response, adapter->midbrain)");
         return false;
     }
 
@@ -793,7 +815,10 @@ bool brainstem_generate_saccade(brainstem_adapter_t* adapter,
                                  float target_x,
                                  float target_y,
                                  float urgency) {
-    if (!adapter || !adapter->midbrain) return false;
+    if (!adapter || !adapter->midbrain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, adapter->midbrain)");
+        return false;
+    }
 
     midbrain_processor_t* mb = adapter->midbrain;
     mb->target_x = target_x;
@@ -809,7 +834,10 @@ bool brainstem_generate_saccade(brainstem_adapter_t* adapter,
 bool brainstem_set_orienting_callback(brainstem_adapter_t* adapter,
                                        brainstem_orienting_callback_t callback,
                                        void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->orienting_callback = callback;
     adapter->orienting_user_data = user_data;
     return true;
@@ -830,7 +858,10 @@ float brainstem_get_arousal_value(const brainstem_adapter_t* adapter) {
 }
 
 bool brainstem_boost_arousal(brainstem_adapter_t* adapter, float amount) {
-    if (!adapter || !adapter->reticular) return false;
+    if (!adapter || !adapter->reticular) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_boost_arousal: required parameter is NULL (adapter, adapter->reticular)");
+        return false;
+    }
 
     brainstem_arousal_level_t old_level = adapter->reticular->arousal_level;
 
@@ -854,7 +885,10 @@ bool brainstem_boost_arousal(brainstem_adapter_t* adapter, float amount) {
 }
 
 bool brainstem_reduce_arousal(brainstem_adapter_t* adapter, float amount) {
-    if (!adapter || !adapter->reticular) return false;
+    if (!adapter || !adapter->reticular) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_reduce_arousal: required parameter is NULL (adapter, adapter->reticular)");
+        return false;
+    }
 
     brainstem_arousal_level_t old_level = adapter->reticular->arousal_level;
 
@@ -878,7 +912,10 @@ bool brainstem_reduce_arousal(brainstem_adapter_t* adapter, float amount) {
 }
 
 bool brainstem_set_target_arousal(brainstem_adapter_t* adapter, float target) {
-    if (!adapter || !adapter->reticular) return false;
+    if (!adapter || !adapter->reticular) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_set_target_arousal: required parameter is NULL (adapter, adapter->reticular)");
+        return false;
+    }
 
     if (target < 0.0f) target = 0.0f;
     if (target > 1.0f) target = 1.0f;
@@ -890,7 +927,10 @@ bool brainstem_set_target_arousal(brainstem_adapter_t* adapter, float target) {
 bool brainstem_set_arousal_callback(brainstem_adapter_t* adapter,
                                      brainstem_arousal_callback_t callback,
                                      void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_set_target_arousal: adapter is NULL");
+        return false;
+    }
     adapter->arousal_callback = callback;
     adapter->arousal_user_data = user_data;
     return true;
@@ -902,7 +942,10 @@ bool brainstem_set_arousal_callback(brainstem_adapter_t* adapter,
 
 bool brainstem_get_vitals(const brainstem_adapter_t* adapter,
                            brainstem_vitals_t* vitals) {
-    if (!adapter || !vitals) return false;
+    if (!adapter || !vitals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_set_target_arousal: required parameter is NULL (adapter, vitals)");
+        return false;
+    }
 
     memset(vitals, 0, sizeof(brainstem_vitals_t));
 
@@ -938,14 +981,20 @@ bool brainstem_get_vitals(const brainstem_adapter_t* adapter,
 bool brainstem_set_vital_callback(brainstem_adapter_t* adapter,
                                    brainstem_vital_callback_t callback,
                                    void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_set_target_arousal: adapter is NULL");
+        return false;
+    }
     adapter->vital_callback = callback;
     adapter->vital_user_data = user_data;
     return true;
 }
 
 bool brainstem_trigger_protection(brainstem_adapter_t* adapter, float severity) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_trigger_protection: adapter is NULL");
+        return false;
+    }
 
     if (adapter->medulla) {
         if (severity > 0.9f) {
@@ -970,7 +1019,10 @@ bool brainstem_relay_signal(brainstem_adapter_t* adapter,
                              const float* signal,
                              uint32_t signal_size,
                              float* output) {
-    if (!adapter || !signal || !output || !adapter->pons) return false;
+    if (!adapter || !signal || !output || !adapter->pons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_trigger_protection: required parameter is NULL (adapter, signal, output, adapter->pons)");
+        return false;
+    }
 
     pons_processor_t* pons = adapter->pons;
 
@@ -986,7 +1038,10 @@ bool brainstem_relay_signal(brainstem_adapter_t* adapter,
 }
 
 bool brainstem_modulate_sleep(brainstem_adapter_t* adapter, float sleep_pressure) {
-    if (!adapter || !adapter->pons) return false;
+    if (!adapter || !adapter->pons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_modulate_sleep: required parameter is NULL (adapter, adapter->pons)");
+        return false;
+    }
 
     pons_processor_t* pons = adapter->pons;
     pons->sleep_pressure = sleep_pressure;
@@ -1006,7 +1061,10 @@ bool brainstem_modulate_sleep(brainstem_adapter_t* adapter, float sleep_pressure
  *===========================================================================*/
 
 bool brainstem_update(brainstem_adapter_t* adapter, float dt) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_update: adapter is NULL");
+        return false;
+    }
 
     adapter->current_time_ms += dt * 1000.0;
 
@@ -1052,7 +1110,10 @@ bool brainstem_update(brainstem_adapter_t* adapter, float dt) {
 
 bool brainstem_get_state(const brainstem_adapter_t* adapter,
                           brainstem_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_update: required parameter is NULL (adapter, state)");
+        return false;
+    }
 
     memset(state, 0, sizeof(brainstem_state_t));
 
@@ -1139,13 +1200,19 @@ const char* brainstem_arousal_string(brainstem_arousal_level_t level) {
 }
 
 bool brainstem_get_stats(const brainstem_adapter_t* adapter, brainstem_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool brainstem_get_config(const brainstem_adapter_t* adapter, brainstem_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }

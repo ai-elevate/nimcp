@@ -80,10 +80,12 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(serialization)
 static bool nimcp_check_read(NimcpSerializer* serializer, size_t bytes_needed)
 {
     if (!serializer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_check_read: serializer is NULL");
         return false;
     }
     if (serializer->position + bytes_needed - 1 >= serializer->length) {
         serializer->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_check_read: capacity exceeded");
         return false;
     }
     return true;
@@ -107,18 +109,21 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
     // This allows tests to verify error handling with fixed-size buffers
     if (serializer->capacity < NIMCP_SERIALIZER_INITIAL_SIZE && required > serializer->capacity) {
         serializer->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ensure_capacity: validation failed");
         return false;
     }
 
     // Check for overflow before doubling capacity
     if (serializer->capacity > SIZE_MAX / 2) {
         serializer->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_capacity: validation failed");
         return false;
     }
     size_t new_capacity = serializer->capacity * 2;
     while (new_capacity < required) {
         if (new_capacity > SIZE_MAX / 2) {
             serializer->has_error = true;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_capacity: validation failed");
             return false;
         }
         new_capacity *= 2;
@@ -126,6 +131,7 @@ static bool ensure_capacity(NimcpSerializer* serializer, size_t additional_size)
 
     if (new_capacity > NIMCP_SERIALIZER_MAX_SIZE) {
         serializer->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_capacity: validation failed");
         return false;
     }
 
@@ -149,6 +155,7 @@ NimcpSerializer* nimcp_serializer_create(size_t initial_capacity)
     }
 
     if (initial_capacity > NIMCP_SERIALIZER_MAX_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_serializer_create: validation failed");
         return NULL;
     }
 
@@ -199,10 +206,12 @@ void nimcp_serializer_reset(NimcpSerializer* serializer)
 bool nimcp_serializer_set_buffer(NimcpSerializer* serializer, const uint8_t* data, size_t length)
 {
     if (!serializer || !data || length > NIMCP_SERIALIZER_MAX_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_serializer_set_buffer: required parameter is NULL (serializer, data)");
         return false;
     }
 
     if (!ensure_capacity(serializer, length)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_serializer_set_buffer: ensure_capacity is NULL");
         return false;
     }
 
@@ -230,6 +239,7 @@ size_t nimcp_serializer_get_position(NimcpSerializer* serializer)
 bool nimcp_serializer_set_position(NimcpSerializer* serializer, size_t position)
 {
     if (!serializer || position > serializer->length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_serializer_set_position: serializer is NULL");
         return false;
     }
     serializer->position = position;
@@ -340,6 +350,7 @@ NimcpSerialResult nimcp_serializer_decompress(NimcpSerializer* serializer)
 bool nimcp_write_uint8(NimcpSerializer* serializer, uint8_t value)
 {
     if (!ensure_capacity(serializer, sizeof(uint8_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_uint8: ensure_capacity is NULL");
         return false;
     }
     serializer->buffer[serializer->position++] = value;
@@ -351,6 +362,7 @@ bool nimcp_write_uint8(NimcpSerializer* serializer, uint8_t value)
 bool nimcp_write_uint16(NimcpSerializer* serializer, uint16_t value)
 {
     if (!ensure_capacity(serializer, sizeof(uint16_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_uint16: ensure_capacity is NULL");
         return false;
     }
     serializer->buffer[serializer->position++] = (value >> 8) & 0xFF;
@@ -384,6 +396,7 @@ uint16_t nimcp_read_uint16(NimcpSerializer* serializer)
 bool nimcp_write_bytes(NimcpSerializer* serializer, const uint8_t* data, size_t length)
 {
     if (!serializer || !data || !ensure_capacity(serializer, length)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_write_bytes: required parameter is NULL (serializer, data, ensure_capacity)");
         return false;
     }
     memcpy(serializer->buffer + serializer->position, data, length);
@@ -398,6 +411,7 @@ const uint8_t* nimcp_read_bytes(NimcpSerializer* serializer, size_t* length)
     if (!serializer || !length || serializer->position >= serializer->length) {
         if (length)
             *length = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_read_bytes: validation failed");
         return NULL;
     }
     *length = serializer->length - serializer->position;
@@ -409,6 +423,7 @@ const uint8_t* nimcp_read_bytes(NimcpSerializer* serializer, size_t* length)
 bool nimcp_write_uint32(NimcpSerializer* serializer, uint32_t value)
 {
     if (!ensure_capacity(serializer, sizeof(uint32_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_uint32: ensure_capacity is NULL");
         return false;
     }
     serializer->buffer[serializer->position++] = (value >> 24) & 0xFF;
@@ -423,6 +438,7 @@ bool nimcp_write_uint32(NimcpSerializer* serializer, uint32_t value)
 bool nimcp_write_uint64(NimcpSerializer* serializer, uint64_t value)
 {
     if (!ensure_capacity(serializer, sizeof(uint64_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_write_uint64: ensure_capacity is NULL");
         return false;
     }
     serializer->buffer[serializer->position++] = (value >> 56) & 0xFF;

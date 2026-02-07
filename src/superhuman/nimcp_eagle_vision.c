@@ -335,6 +335,7 @@ static internal_target_t* allocate_target(eagle_vision_system_t* sys,
             return t;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_frame_history: operation failed");
     return NULL;
 }
 
@@ -435,6 +436,7 @@ eagle_vision_system_t* eagle_vision_create(const eagle_vision_config_t* config) 
         NIMCP_LOGGING_ERROR("Failed to allocate frame history");
         /* Exception already thrown in alloc_frame_history */
         eagle_vision_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eagle_vision_create: validation failed");
         return NULL;
     }
 

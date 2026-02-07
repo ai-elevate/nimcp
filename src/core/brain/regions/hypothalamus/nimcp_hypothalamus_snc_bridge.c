@@ -313,7 +313,10 @@ float hypo_snc_bridge_get_global_dopamine(const hypo_snc_bridge_t* bridge) {
 }
 
 const hypo_rpe_t* hypo_snc_bridge_get_last_rpe(const hypo_snc_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_get_last_rpe: bridge is NULL");
+        return NULL;
+    }
     return &bridge->last_rpe;
 }
 
@@ -373,7 +376,10 @@ bool hypo_snc_bridge_connect_snc(
     hypo_snc_bridge_t* bridge,
     void* snc_module) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_get_last_rpe: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->external_snc = snc_module;
@@ -400,7 +406,10 @@ bool hypo_snc_bridge_register_bio(
     hypo_snc_bridge_t* bridge,
     bool use_kg_wiring) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_disconnect_snc: bridge is NULL");
+        return false;
+    }
 
     (void)use_kg_wiring;  /* Reserved for future KG wiring */
 
@@ -414,6 +423,7 @@ bool hypo_snc_bridge_register_bio(
 
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_snc_bridge_disconnect_snc: bridge->bio_ctx is NULL");
         return false;
     }
 
@@ -425,6 +435,7 @@ bool hypo_snc_bridge_register_bio(
     if (err != NIMCP_SUCCESS) {
         bio_router_unregister_module(bridge->bio_ctx);
         bridge->bio_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_disconnect_snc: validation failed");
         return false;
     }
 
@@ -436,6 +447,7 @@ bool hypo_snc_bridge_register_bio(
     if (err != NIMCP_SUCCESS) {
         bio_router_unregister_module(bridge->bio_ctx);
         bridge->bio_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_disconnect_snc: validation failed");
         return false;
     }
 

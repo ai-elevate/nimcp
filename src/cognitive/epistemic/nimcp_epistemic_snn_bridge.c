@@ -174,6 +174,7 @@ static bool neuron_step(epistemic_neuron_t* neuron, float dt_ms, float input) {
 
     if (neuron->refractory_remaining > 0.0f) {
         neuron->refractory_remaining -= dt_ms;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: validation failed");
         return false;
     }
 
@@ -189,6 +190,7 @@ static bool neuron_step(epistemic_neuron_t* neuron, float dt_ms, float input) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_step: capacity exceeded");
     return false;
 }
 
@@ -351,7 +353,10 @@ void epistemic_snn_destroy(epistemic_snn_bridge_t* bridge) {
 }
 
 int epistemic_snn_reset(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_reset", 0.0f);
@@ -423,7 +428,10 @@ int epistemic_snn_encode_evidence(
     float plausibility,
     float source_reliability
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_encode_evidence: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
@@ -474,7 +482,10 @@ int epistemic_snn_encode_claim(
     uint32_t feature_count,
     float prior_probability
 ) {
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_encode_claim: required parameter is NULL (bridge, features)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
@@ -516,7 +527,10 @@ int epistemic_snn_encode_bias_signals(
     const float* bias_magnitudes,
     uint32_t num_biases
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_encode_bias_signals: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_encode", 0.0f);
@@ -541,7 +555,10 @@ int epistemic_snn_encode_bias_signals(
 //=============================================================================
 
 int epistemic_snn_simulate(epistemic_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_simulate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_simula", 0.0f);
@@ -567,7 +584,10 @@ int epistemic_snn_simulate(epistemic_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int epistemic_snn_step(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_step: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_step", 0.0f);
@@ -660,7 +680,10 @@ int epistemic_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     // Encode inputs directly into evidence neurons
     /* Phase 8: Heartbeat at operation start */
@@ -683,7 +706,10 @@ int epistemic_snn_decode_assessment(
     epistemic_snn_bridge_t* bridge,
     epistemic_snn_output_t* output
 ) {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_decode_assessment: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     // Compute average membrane potential activity (more responsive than spike rates)
     /* Phase 8: Heartbeat at operation start */
@@ -845,8 +871,14 @@ int epistemic_snn_register_source(
     uint32_t source_id,
     float initial_reliability
 ) {
-    if (!bridge || !bridge->sources) return -1;
-    if (bridge->num_sources >= bridge->config.max_sources) return -1;
+    if (!bridge || !bridge->sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_register_source: required parameter is NULL (bridge, bridge->sources)");
+        return -1;
+    }
+    if (bridge->num_sources >= bridge->config.max_sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_snn_register_source: capacity exceeded");
+        return -1;
+    }
 
     // Check if source already exists
     /* Phase 8: Heartbeat at operation start */
@@ -861,6 +893,7 @@ int epistemic_snn_register_source(
         }
 
         if (bridge->sources[i].active && bridge->sources[i].source_id == source_id) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_snn_register_source: validation failed");
             return -1;  // Already registered
         }
     }
@@ -886,6 +919,7 @@ int epistemic_snn_register_source(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_snn_register_source: operation failed");
     return -1;
 }
 
@@ -894,7 +928,10 @@ int epistemic_snn_update_source_reliability(
     uint32_t source_id,
     bool was_correct
 ) {
-    if (!bridge || !bridge->sources) return -1;
+    if (!bridge || !bridge->sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_update_source_reliability: required parameter is NULL (bridge, bridge->sources)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_update", 0.0f);
@@ -928,6 +965,7 @@ int epistemic_snn_update_source_reliability(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_snn_update_source_reliability: operation failed");
     return -1;
 }
 
@@ -965,8 +1003,14 @@ int epistemic_snn_get_dimension_state(
     uint32_t dim,
     epistemic_dimension_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->num_evidence_neurons) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_get_dimension_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->num_evidence_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_snn_get_dimension_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_di", 0.0f);
@@ -986,7 +1030,10 @@ int epistemic_snn_get_state(
     epistemic_snn_bridge_t* bridge,
     epistemic_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_st", 0.0f);
@@ -1016,7 +1063,10 @@ int epistemic_snn_get_state(
 }
 
 int epistemic_snn_get_stats(epistemic_snn_bridge_t* bridge, epistemic_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_get_st", 0.0f);
@@ -1026,7 +1076,10 @@ int epistemic_snn_get_stats(epistemic_snn_bridge_t* bridge, epistemic_snn_stats_
 }
 
 int epistemic_snn_reset_stats(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_reset_", 0.0f);
 
@@ -1044,7 +1097,10 @@ int epistemic_snn_register_spike_callback(
     epistemic_snn_spike_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_register_spike_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_regist", 0.0f);
 
@@ -1059,7 +1115,10 @@ int epistemic_snn_register_bias_callback(
     epistemic_snn_bias_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_register_bias_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_regist", 0.0f);
 
@@ -1074,8 +1133,14 @@ int epistemic_snn_register_bias_callback(
 //=============================================================================
 
 int epistemic_snn_bio_async_connect(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_bio_as", 0.0f);
@@ -1086,7 +1151,10 @@ int epistemic_snn_bio_async_connect(epistemic_snn_bridge_t* bridge) {
 }
 
 int epistemic_snn_bio_async_disconnect(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_bio_as", 0.0f);
@@ -1097,7 +1165,10 @@ int epistemic_snn_bio_async_disconnect(epistemic_snn_bridge_t* bridge) {
 }
 
 bool epistemic_snn_is_bio_async_connected(epistemic_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     epistemic_snn_bridge_heartbeat("epistemic_sn_epistemic_snn_is_bio", 0.0f);
 

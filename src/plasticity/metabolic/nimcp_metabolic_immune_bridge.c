@@ -134,6 +134,7 @@ metabolic_immune_bridge_t* metabolic_immune_bridge_create(
     /* Guard: require immune system and metabolic system */
     if (!immune_system || !metabolic) {
         NIMCP_LOGGING_ERROR("Cannot create metabolic-immune bridge without both systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_immune_bridge_create: required parameter is NULL (immune_system, metabolic)");
         return NULL;
     }
 
@@ -218,7 +219,10 @@ int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_metabolic_burden) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -261,7 +265,10 @@ int metabolic_immune_apply_inflammation_effects(metabolic_immune_bridge_t* bridg
 
     }
     if (!bridge->enable_inflammation_cost_increase) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -340,7 +347,10 @@ int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_atp_immune_feedback) return 0;
-    if (!bridge->metabolic) return -1;
+    if (!bridge->metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_update_atp_effects: bridge->metabolic is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -371,8 +381,14 @@ int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
 }
 
 bool metabolic_immune_is_impaired_by_atp(const metabolic_immune_bridge_t* bridge) {
-    if (!bridge) return false;
-    if (!bridge->enable_atp_immune_feedback) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_impaired_by_atp: bridge is NULL");
+        return false;
+    }
+    if (!bridge->enable_atp_immune_feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_impaired_by_atp: bridge->enable_atp_immune_feedback is NULL");
+        return false;
+    }
 
     return (bridge->atp_effects.atp_level < METABOLIC_IMMUNE_ATP_IMPAIRED);
 }
@@ -432,7 +448,10 @@ int metabolic_immune_get_cytokine_effects(
     const metabolic_immune_bridge_t* bridge,
     cytokine_metabolic_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_metabolic_effects_t));
@@ -445,7 +464,10 @@ int metabolic_immune_get_inflammation_state(
     const metabolic_immune_bridge_t* bridge,
     inflammation_metabolic_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_metabolic_state_t));
@@ -458,7 +480,10 @@ int metabolic_immune_get_atp_effects(
     const metabolic_immune_bridge_t* bridge,
     atp_immune_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_get_atp_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->atp_effects, sizeof(atp_immune_effects_t));
@@ -495,6 +520,7 @@ int metabolic_immune_connect_bio_async(metabolic_immune_bridge_t* bridge) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_immune_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -520,6 +546,9 @@ int metabolic_immune_disconnect_bio_async(metabolic_immune_bridge_t* bridge) {
 }
 
 bool metabolic_immune_is_bio_async_connected(const metabolic_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

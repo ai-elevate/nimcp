@@ -98,10 +98,22 @@ static uint64_t get_timestamp_ms(void) {
  * HOW:  Validates source, priority range, and text presence
  */
 static bool validate_command(const command_t* cmd) {
-    if (!cmd) return false;
-    if (cmd->source >= COMMAND_SOURCE_COUNT) return false;
-    if (cmd->priority < 0.0f || cmd->priority > 1.0f) return false;
-    if (cmd->command_text[0] == '\0') return false;
+    if (!cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_command: cmd is NULL");
+        return false;
+    }
+    if (cmd->source >= COMMAND_SOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_command: capacity exceeded");
+        return false;
+    }
+    if (cmd->priority < 0.0f || cmd->priority > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_command: validation failed");
+        return false;
+    }
+    if (cmd->command_text[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_command: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -128,6 +140,7 @@ static bool check_authorization(
 
     /* Unknown sources always rejected */
     if (cmd->source == COMMAND_SOURCE_UNKNOWN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_authorization: validation failed");
         return false;
     }
 
@@ -165,6 +178,7 @@ static int add_to_pending_queue(
     if (system->pending_count >= COMMAND_MAX_PENDING) {
         NIMCP_LOGGING_WARN("Pending command queue full, dropping command %u",
                           cmd->command_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_to_pending_queue: capacity exceeded");
         return -1;
     }
 
@@ -173,6 +187,7 @@ static int add_to_pending_queue(
         sizeof(pending_command_node_t));
     if (!node) {
         NIMCP_LOGGING_ERROR("Failed to allocate pending command node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_to_pending_queue: node is NULL");
         return -1;
     }
 
@@ -256,12 +271,14 @@ command_compliance_system_t* command_compliance_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "command_compliance_create: system->mutex is NULL");
         return NULL;
     }
 
     if (nimcp_mutex_init(system->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "command_compliance_create: validation failed");
         return NULL;
     }
 
@@ -304,6 +321,7 @@ int command_compliance_evaluate(
     /* Guard: validate inputs */
     if (!system || !command || !result) {
         NIMCP_LOGGING_ERROR("Invalid parameters to command_compliance_evaluate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_evaluate: required parameter is NULL (system, command, result)");
         return -1;
     }
 
@@ -406,11 +424,13 @@ int command_compliance_execute_if_safe(
 ) {
     /* Evaluate command */
     if (command_compliance_evaluate(system, command, result) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "command_compliance_execute_if_safe: validation failed");
         return -1;
     }
 
     /* Only execute if decision is COMPLY */
     if (result->decision != COMMAND_DECISION_COMPLY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "command_compliance_execute_if_safe: validation failed");
         return -1;  /* Refused */
     }
 
@@ -432,6 +452,7 @@ int command_compliance_refuse(
     /* Guard: validate inputs */
     if (!system || !command || !reason) {
         NIMCP_LOGGING_ERROR("Invalid parameters to command_compliance_refuse");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_refuse: required parameter is NULL (system, command, reason)");
         return -1;
     }
 
@@ -457,6 +478,7 @@ int command_compliance_get_pending_commands(
     /* Guard: validate inputs */
     if (!system || !out_commands || !out_count) {
         NIMCP_LOGGING_ERROR("Invalid parameters to get_pending_commands");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_get_pending_commands: required parameter is NULL (system, out_commands, out_count)");
         return -1;
     }
 
@@ -485,6 +507,7 @@ int command_compliance_get_stats(
     /* Guard: validate inputs */
     if (!system || !stats) {
         NIMCP_LOGGING_ERROR("Invalid parameters to command_compliance_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_get_stats: required parameter is NULL (system, stats)");
         return -1;
     }
 
@@ -517,6 +540,7 @@ int command_compliance_connect_bio_async(command_compliance_system_t* system) {
     /* Guard: validate input */
     if (!system) {
         NIMCP_LOGGING_ERROR("NULL system in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_connect_bio_async: system is NULL");
         return -1;
     }
 
@@ -552,6 +576,7 @@ int command_compliance_disconnect_bio_async(command_compliance_system_t* system)
     /* Guard: validate input */
     if (!system) {
         NIMCP_LOGGING_ERROR("NULL system in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_disconnect_bio_async: system is NULL");
         return -1;
     }
 
@@ -579,7 +604,10 @@ int command_compliance_disconnect_bio_async(command_compliance_system_t* system)
 bool command_compliance_is_bio_async_connected(
     const command_compliance_system_t* system
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "command_compliance_is_bio_async_connected: system is NULL");
+        return false;
+    }
 
     /* Safe to read boolean without mutex (atomic read) */
     return system->bio_async_enabled;

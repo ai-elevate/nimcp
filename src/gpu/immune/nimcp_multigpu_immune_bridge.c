@@ -451,6 +451,7 @@ int multigpu_immune_get_error_state(
 
 bool multigpu_immune_is_gpu_count_reduced(const multigpu_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multigpu_immune_is_gpu_count_reduced: bridge is NULL");
         return false;
     }
 

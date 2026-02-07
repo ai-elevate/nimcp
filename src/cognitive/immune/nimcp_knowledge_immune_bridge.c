@@ -209,7 +209,10 @@ static float compute_sickness_behavior(const brain_immune_system_t* immune) {
  * HOW:  Simple keyword matching (real impl would use domain tagging)
  */
 static bool is_health_concept(const char* concept) {
-    if (!concept) return false;
+    if (!concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_health_concept: concept is NULL");
+        return false;
+    }
 
     /* Simple keyword matching - real implementation would check domain */
     const char* health_keywords[] = {
@@ -224,6 +227,7 @@ static bool is_health_concept(const char* concept) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_health_concept: validation failed");
     return false;
 }
 
@@ -275,6 +279,7 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
     if (!immune_system || !knowledge_system) {
         LOG_MODULE_ERROR("knowledge_immune_bridge",
                   "Cannot create bridge without immune and knowledge systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_immune_bridge_create: required parameter is NULL (immune_system, knowledge_system)");
         return NULL;
     }
 
@@ -363,7 +368,10 @@ int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_retrieval_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
@@ -429,7 +437,10 @@ int knowledge_immune_apply_inflammation_encoding(knowledge_immune_bridge_t* brid
 
     }
     if (!bridge->enable_inflammation_encoding_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_apply_inflammation_encoding: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
@@ -523,7 +534,10 @@ int knowledge_immune_apply_sickness_learning_impairment(
 
     }
     if (!bridge->enable_sickness_learning_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_apply_sickness_learning_impairment: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_app", 0.0f);
@@ -562,7 +576,10 @@ int knowledge_immune_prime_from_health_knowledge(knowledge_immune_bridge_t* brid
 
     }
     if (!bridge->enable_knowledge_immune_priming) return 0;
-    if (!bridge->knowledge_system) return -1;
+    if (!bridge->knowledge_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_prime_from_health_knowledge: bridge->knowledge_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_pri", 0.0f);
@@ -603,8 +620,14 @@ int knowledge_immune_assess_threat(
     float* assessed_severity
 ) {
     /* Guard clauses */
-    if (!bridge || !threat_description || !assessed_severity) return -1;
-    if (!bridge->knowledge_system) return -1;
+    if (!bridge || !threat_description || !assessed_severity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_assess_threat: required parameter is NULL (bridge, threat_description, assessed_severity)");
+        return -1;
+    }
+    if (!bridge->knowledge_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_assess_threat: bridge->knowledge_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_ass", 0.0f);
@@ -644,7 +667,10 @@ int knowledge_immune_trigger_from_threat_learning(
     const char* learned_concept
 ) {
     /* Guard clauses */
-    if (!bridge || !learned_concept) return -1;
+    if (!bridge || !learned_concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_trigger_from_threat_learning: required parameter is NULL (bridge, learned_concept)");
+        return -1;
+    }
     if (!bridge->enable_knowledge_immune_priming) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -793,7 +819,10 @@ int knowledge_immune_get_cytokine_effects(
     const knowledge_immune_bridge_t* bridge,
     cytokine_knowledge_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
@@ -810,7 +839,10 @@ int knowledge_immune_get_inflammation_state(
     const knowledge_immune_bridge_t* bridge,
     inflammation_knowledge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_get", 0.0f);
@@ -826,7 +858,10 @@ int knowledge_immune_get_inflammation_state(
 bool knowledge_immune_is_cognitively_impaired(
     const knowledge_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_is_cognitively_impaired: bridge is NULL");
+        return false;
+    }
 
     /* Significant impairment if retrieval > 30% slower or encoding > 40% impaired */
     /* Phase 8: Heartbeat at operation start */
@@ -935,7 +970,10 @@ int knowledge_immune_disconnect_bio_async(knowledge_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool knowledge_immune_is_bio_async_connected(const knowledge_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_immune_bridge_heartbeat("knowledge_im_knowledge_immune_is_", 0.0f);
 

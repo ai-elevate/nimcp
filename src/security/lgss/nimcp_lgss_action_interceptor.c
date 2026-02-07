@@ -231,6 +231,7 @@ static void* background_evaluation_thread(void* arg) {
 
     if (!ctx || !is_valid_aix(ctx->aix)) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_evaluation_thread: required parameter is NULL (ctx, is_valid_aix)");
         return NULL;
     }
 
@@ -246,12 +247,14 @@ static void* background_evaluation_thread(void* arg) {
         aix_unlock(aix);
         LOG_WARN("%s: Background eval - proposal %lu not found",
                  MODULE_NAME, (unsigned long)proposal_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_evaluation_thread: entry is NULL");
         return NULL;
     }
 
     // Skip if already evaluated
     if (entry->decision_ready) {
         aix_unlock(aix);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_evaluation_thread: validation failed");
         return NULL;
     }
 
@@ -316,6 +319,7 @@ static void* background_evaluation_thread(void* arg) {
 
     aix_unlock(aix);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "background_evaluation_thread: operation failed");
     return NULL;
 }
 
@@ -481,6 +485,7 @@ static bool evaluate_condition(
     }
 
     // Field not found - condition does not match
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_condition: operation failed");
     return false;
 }
 
@@ -494,12 +499,14 @@ static bool evaluate_rule(
     const safety_action_context_t* context
 ) {
     if (!rule->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_rule: rule->enabled is NULL");
         return false;
     }
 
     // All conditions must match (AND logic)
     for (uint32_t i = 0; i < rule->num_conditions; i++) {
         if (!evaluate_condition(&rule->conditions[i], context)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_rule: evaluate_condition is NULL");
             return false;
         }
     }
@@ -758,6 +765,7 @@ static pending_proposal_t* find_pending_unlocked(
         }
         current = current->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pending_unlocked: validation failed");
     return NULL;
 }
 
@@ -775,6 +783,7 @@ static escalation_entry_t* find_escalation_unlocked(
         }
         current = current->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_escalation_unlocked: validation failed");
     return NULL;
 }
 
@@ -837,6 +846,7 @@ action_interceptor_t aix_create(const aix_config_t* config) {
     if (mutex_result != 0) {
         LOG_ERROR("%s: Failed to initialize mutex", MODULE_NAME);
         nimcp_free(aix);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "aix_create: validation failed");
         return NULL;
     }
 

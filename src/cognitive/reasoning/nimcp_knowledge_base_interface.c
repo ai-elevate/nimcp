@@ -302,6 +302,7 @@ bool brain_add_fact(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_add_fact: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -309,18 +310,21 @@ bool brain_add_fact(
     if (!brain_has_symbolic_logic(brain)) {
         set_error("Symbolic logic engine not attached - call brain_attach_symbolic_logic first");
         NIMCP_LOGGING_ERROR("brain_add_fact: no logic engine attached to brain %p", (void*)brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: brain_has_symbolic_logic is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(fact_str, "fact_str")) {
         set_error("Fact string is NULL");
         NIMCP_LOGGING_ERROR("brain_add_fact: fact_str is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (salience < 0.0F || salience > 1.0F) {
         set_error("Salience must be in range [0,1], got %.2f", salience);
         NIMCP_LOGGING_ERROR("brain_add_fact: invalid salience %.2f", salience);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: validation failed");
         return false;
     }
 
@@ -332,6 +336,7 @@ bool brain_add_fact(
     if (!formula) {
         set_error("Failed to parse fact: %s", fact_str);
         NIMCP_LOGGING_ERROR("brain_add_fact: parse failed for '%s'", fact_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_add_fact: formula is NULL");
         return false;
     }
 
@@ -344,6 +349,7 @@ bool brain_add_fact(
     if (!success || num_clauses == 0) {
         set_error("Failed to convert fact to CNF: %s", fact_str);
         NIMCP_LOGGING_ERROR("brain_add_fact: CNF conversion failed for '%s'", fact_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: success is NULL");
         return false;
     }
 
@@ -364,6 +370,7 @@ bool brain_add_fact(
                 nimcp_free(clauses[j]);
             }
             nimcp_free(clauses);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_fact: symbolic_logic_add_fact is NULL");
             return false;
         }
     }
@@ -405,18 +412,21 @@ bool brain_add_rule(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_add_rule: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!brain_has_symbolic_logic(brain)) {
         set_error("Symbolic logic engine not attached");
         NIMCP_LOGGING_ERROR("brain_add_rule: no logic engine attached to brain %p", (void*)brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: brain_has_symbolic_logic is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(rule_str, "rule_str")) {
         set_error("Rule string is NULL");
         NIMCP_LOGGING_ERROR("brain_add_rule: rule_str is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -427,6 +437,7 @@ bool brain_add_rule(
     if (priority < 0.0F || priority > 1.0F) {
         set_error("Priority must be in range [0,1], got %.2f", priority);
         NIMCP_LOGGING_ERROR("brain_add_rule: invalid priority %.2f", priority);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
         return false;
     }
 
@@ -438,6 +449,7 @@ bool brain_add_rule(
     if (!formula) {
         set_error("Failed to parse rule: %s", rule_str);
         NIMCP_LOGGING_ERROR("brain_add_rule: parse failed for '%s'", rule_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_add_rule: formula is NULL");
         return false;
     }
 
@@ -446,6 +458,7 @@ bool brain_add_rule(
         set_error("Rule must be an implication (->): %s", rule_str);
         NIMCP_LOGGING_ERROR("brain_add_rule: not an implication '%s'", rule_str);
         logic_formula_destroy(formula);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
         return false;
     }
 
@@ -471,6 +484,7 @@ bool brain_add_rule(
         NIMCP_LOGGING_ERROR("brain_add_rule: CNF conversion failed for '%s'", rule_str);
         if (premise_clauses) nimcp_free(premise_clauses);
         if (conclusion_clauses) nimcp_free(conclusion_clauses);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
         return false;
     }
 
@@ -481,6 +495,7 @@ bool brain_add_rule(
         NIMCP_LOGGING_ERROR("brain_add_rule: allocation failed");
         if (premise_clauses) nimcp_free(premise_clauses);
         if (conclusion_clauses) nimcp_free(conclusion_clauses);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
         return false;
     }
 
@@ -498,6 +513,7 @@ bool brain_add_rule(
         nimcp_free(rule);
         if (premise_clauses) nimcp_free(premise_clauses);
         if (conclusion_clauses) nimcp_free(conclusion_clauses);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_add_rule: validation failed");
         return false;
     }
 
@@ -529,24 +545,28 @@ bool brain_query_knowledge(
     if (!nimcp_validate_pointer(brain, "brain")) {
         set_error("Brain is NULL");
         NIMCP_LOGGING_ERROR("brain_query_knowledge: brain is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_query_knowledge: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!brain_has_symbolic_logic(brain)) {
         set_error("Symbolic logic engine not attached");
         NIMCP_LOGGING_ERROR("brain_query_knowledge: no logic engine attached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_query_knowledge: brain_has_symbolic_logic is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(query_str, "query_str")) {
         set_error("Query string is NULL");
         NIMCP_LOGGING_ERROR("brain_query_knowledge: query_str is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_query_knowledge: nimcp_validate_pointer is NULL");
         return false;
     }
 
     if (!nimcp_validate_pointer(result, "result")) {
         set_error("Result pointer is NULL");
         NIMCP_LOGGING_ERROR("brain_query_knowledge: result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_query_knowledge: nimcp_validate_pointer is NULL");
         return false;
     }
 
@@ -565,6 +585,7 @@ bool brain_query_knowledge(
     if (!formula) {
         set_error("Failed to parse query: %s", query_str);
         NIMCP_LOGGING_ERROR("brain_query_knowledge: parse failed for '%s'", query_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_query_knowledge: formula is NULL");
         return false;
     }
 
@@ -577,6 +598,7 @@ bool brain_query_knowledge(
     if (!success || num_clauses == 0) {
         set_error("Failed to convert query to CNF: %s", query_str);
         NIMCP_LOGGING_ERROR("brain_query_knowledge: CNF conversion failed for '%s'", query_str);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_query_knowledge: success is NULL");
         return false;
     }
 
@@ -600,6 +622,7 @@ bool brain_query_knowledge(
     if (!success) {
         set_error("Query execution failed: %s", query_str);
         NIMCP_LOGGING_ERROR("brain_query_knowledge: query execution failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_query_knowledge: success is NULL");
         return false;
     }
 

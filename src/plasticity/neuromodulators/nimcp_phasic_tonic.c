@@ -496,6 +496,7 @@ bool phasic_tonic_trigger_burst(
 
     /* Check minimum amplitude threshold */
     if (amplitude < min_burst_amp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasic_tonic_trigger_burst: validation failed");
         return false;  /* Too weak to trigger */
     }
 
@@ -600,10 +601,12 @@ bool phasic_tonic_encode_td_error(
         /* Negative TD error -> tonic dip */
         float dip_magnitude = fabsf(td_error);  /* Convert to positive */
         phasic_tonic_induce_dip(state, dip_magnitude * 0.5F);  /* 50% scaling */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasic_tonic_encode_td_error: operation failed");
         return false;
 
     } else {
         // Zero TD error → no change (expected outcome)
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasic_tonic_encode_td_error: operation failed");
         return false;
     }
 }

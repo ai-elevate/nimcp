@@ -77,7 +77,10 @@ static void cortical_neuromodulation_on_sleep_state_change(sleep_state_t new_sta
 
 int cortical_neuromodulation_sleep_default_config(cortical_neuromodulation_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromodulation_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_ach_modulation = true;
     config->enable_ne_modulation = true;
     config->enable_serotonin_modulation = true;
@@ -90,7 +93,10 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
     void* neuromodulation_module,
     sleep_system_t sleep)
 {
-    if (!neuromodulation_module || !sleep) return NULL;
+    if (!neuromodulation_module || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromodulation_sleep_bridge_create: required parameter is NULL (neuromodulation_module, sleep)");
+        return NULL;
+    }
 
     struct cortical_neuromodulation_sleep_bridge_struct* bridge =
         (struct cortical_neuromodulation_sleep_bridge_struct*)nimcp_malloc(
@@ -114,6 +120,7 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
     if (bridge_base_init(&bridge->base, 0, "cortical_neuromodulation_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromodulation_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -143,7 +150,10 @@ void cortical_neuromodulation_sleep_bridge_destroy(cortical_neuromodulation_slee
 
 int cortical_neuromodulation_sleep_update(cortical_neuromodulation_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromodulation_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 

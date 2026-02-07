@@ -112,7 +112,10 @@ static brain_kg_edge_id_t create_claustrum_edge(
 //=============================================================================
 
 int claustrum_kg_default_config(claustrum_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_modalities = true;
     config->register_states = true;
@@ -135,7 +138,10 @@ int claustrum_kg_register_all(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     claustrum_kg_config_t local_config;
@@ -158,6 +164,7 @@ int claustrum_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(CLAUSTRUM_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -232,7 +239,10 @@ int claustrum_kg_register_modalities(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_modalities: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create modalities subsystem node */
     state->modalities_id = create_claustrum_node(
@@ -241,7 +251,10 @@ int claustrum_kg_register_modalities(
         "Sensory modality inputs for cross-modal binding",
         admin_token
     );
-    if (state->modalities_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->modalities_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_register_modalities: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -365,7 +378,10 @@ int claustrum_kg_register_states(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_states: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create states subsystem node */
     state->states_id = create_claustrum_node(
@@ -374,7 +390,10 @@ int claustrum_kg_register_states(
         "Claustrum operational states",
         admin_token
     );
-    if (state->states_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->states_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_register_states: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -459,7 +478,10 @@ int claustrum_kg_register_consciousness(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_consciousness: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create consciousness subsystem node */
     state->consciousness_id = create_claustrum_node(
@@ -468,7 +490,10 @@ int claustrum_kg_register_consciousness(
         "Consciousness levels - GWT-based awareness hierarchy",
         admin_token
     );
-    if (state->consciousness_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->consciousness_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_register_consciousness: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -565,7 +590,10 @@ int claustrum_kg_register_oscillations(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_oscillations: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create oscillations subsystem node */
     state->oscillations_id = create_claustrum_node(
@@ -574,7 +602,10 @@ int claustrum_kg_register_oscillations(
         "Neural oscillations for synchronization and binding",
         admin_token
     );
-    if (state->oscillations_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->oscillations_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_register_oscillations: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -629,7 +660,10 @@ int claustrum_kg_register_binding_edges(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_binding_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Visual-auditory binding (audiovisual integration) */
     if (state->visual_id != BRAIN_KG_INVALID_NODE &&
@@ -702,7 +736,10 @@ int claustrum_kg_register_cross_edges(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Gamma oscillation synchronizes modalities */
     if (state->gamma_id != BRAIN_KG_INVALID_NODE &&
@@ -774,7 +811,10 @@ int claustrum_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update binding state metadata */
     if (state->binding_state_id != BRAIN_KG_INVALID_NODE) {
@@ -817,8 +857,14 @@ int claustrum_kg_update_modality(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
-    if (modality > 7) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_update_modality: required parameter is NULL (kg, state)");
+        return -1;
+    }
+    if (modality > 7) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_update_modality: validation failed");
+        return -1;
+    }
 
     /* Map modality index to node ID */
     brain_kg_node_id_t modality_ids[] = {
@@ -833,7 +879,10 @@ int claustrum_kg_update_modality(
     };
 
     brain_kg_node_id_t node_id = modality_ids[modality];
-    if (node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "claustrum_kg_update_modality: validation failed");
+        return -1;
+    }
 
     /* Update activity metadata */
     char activity_str[32];
@@ -963,7 +1012,10 @@ int claustrum_kg_unregister_all(
     claustrum_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
     (void)admin_token;  /* Would be used for actual deletion */
 
     /* Mark as unregistered - full implementation would remove nodes */

@@ -139,13 +139,19 @@ void symbolic_logic_substrate_bridge_destroy(symbolic_logic_substrate_bridge_t* 
 }
 
 int symbolic_logic_substrate_bridge_update(symbolic_logic_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_substrate_bridge_heartbeat("symbolic_log_update", 0.0f);
 
 
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_substrate_bridge_update: validation failed");
+        return -1;
+    }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables symbol manipulation and inference depth */
     if (bridge->config.enable_atp_modulation) {
@@ -164,7 +170,10 @@ int symbolic_logic_substrate_bridge_update(symbolic_logic_substrate_bridge_t* br
 }
 
 int symbolic_logic_substrate_bridge_get_effects(const symbolic_logic_substrate_bridge_t* bridge, symbolic_logic_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_substrate_bridge_heartbeat("symbolic_log_get_effects", 0.0f);
@@ -174,7 +183,10 @@ int symbolic_logic_substrate_bridge_get_effects(const symbolic_logic_substrate_b
 }
 
 int symbolic_logic_substrate_bridge_apply_effects(symbolic_logic_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -222,7 +234,10 @@ int symbolic_logic_substrate_bridge_apply_effects(symbolic_logic_substrate_bridg
 }
 
 int symbolic_logic_substrate_bridge_register_bio_async(symbolic_logic_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_substrate_bridge_heartbeat("symbolic_log_register_bio_async", 0.0f);
 

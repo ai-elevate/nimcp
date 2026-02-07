@@ -157,7 +157,10 @@ static uint32_t hash_pattern_key(const pattern_key_t* key) {
  * HOW:  Compare all three fields
  */
 static bool pattern_key_equal(const pattern_key_t* a, const pattern_key_t* b) {
-    if (!a || !b) return false;
+    if (!a || !b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_key_equal: required parameter is NULL (a, b)");
+        return false;
+    }
     return a->source == b->source &&
            a->target == b->target &&
            a->msg_type == b->msg_type;
@@ -189,7 +192,10 @@ static uint32_t hash_transition_key(const pattern_key_t* from, const pattern_key
  * HOW:  Hash key, search bucket chain
  */
 static pattern_entry_t* find_pattern(predictive_protocol_t proto, const pattern_key_t* key) {
-    if (!proto || !key) return NULL;
+    if (!proto || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: required parameter is NULL (proto, key)");
+        return NULL;
+    }
 
     uint32_t bucket = hash_pattern_key(key) % MAX_PATTERN_HASH_BUCKETS;
     pattern_entry_t* entry = proto->pattern_buckets[bucket];
@@ -201,6 +207,7 @@ static pattern_entry_t* find_pattern(predictive_protocol_t proto, const pattern_
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: validation failed");
     return NULL;
 }
 
@@ -265,7 +272,10 @@ static void upsert_pattern(predictive_protocol_t proto, const pattern_key_t* key
 static markov_transition_t* find_transition(predictive_protocol_t proto,
                                             const pattern_key_t* from,
                                             const pattern_key_t* to) {
-    if (!proto || !from || !to) return NULL;
+    if (!proto || !from || !to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "upsert_pattern: required parameter is NULL (proto, from, to)");
+        return NULL;
+    }
 
     uint32_t bucket = hash_transition_key(from, to) % MAX_TRANSITION_HASH_BUCKETS;
     markov_transition_t* trans = proto->transition_buckets[bucket];
@@ -278,6 +288,7 @@ static markov_transition_t* find_transition(predictive_protocol_t proto,
         trans = trans->hash_next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "upsert_pattern: validation failed");
     return NULL;
 }
 
@@ -404,7 +415,10 @@ static void cache_add_to_head(predictive_protocol_t proto, cache_entry_t* entry)
  * HOW:  Hash lookup in cache buckets
  */
 static cache_entry_t* find_cache_entry(predictive_protocol_t proto, const pattern_key_t* key) {
-    if (!proto || !key) return NULL;
+    if (!proto || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: required parameter is NULL (proto, key)");
+        return NULL;
+    }
 
     uint32_t bucket = hash_pattern_key(key) % MAX_CACHE_HASH_BUCKETS;
     cache_entry_t* entry = proto->cache_buckets[bucket];
@@ -416,6 +430,7 @@ static cache_entry_t* find_cache_entry(predictive_protocol_t proto, const patter
         entry = entry->hash_next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cache_entry: validation failed");
     return NULL;
 }
 
@@ -565,7 +580,10 @@ void predictive_protocol_destroy(predictive_protocol_t proto) {
 
 int predictive_protocol_observe(predictive_protocol_t proto,
                                  const bio_message_header_t* msg_header) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC || !msg_header) return -1;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC || !msg_header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_destroy: required parameter is NULL (proto, msg_header)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&proto->mutex);
 
@@ -654,7 +672,10 @@ static int compare_predictions(const void* a, const void* b) {
     const prediction_t* pa = (const prediction_t*)a;
     const prediction_t* pb = (const prediction_t*)b;
 
-    if (pa->confidence > pb->confidence) return -1;
+    if (pa->confidence > pb->confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_predictions: validation failed");
+        return -1;
+    }
     if (pa->confidence < pb->confidence) return 1;
     return 0;
 }
@@ -744,7 +765,10 @@ float predictive_protocol_get_confidence(predictive_protocol_t proto,
  *============================================================================*/
 
 int predictive_protocol_prefetch(predictive_protocol_t proto, const prediction_t* prediction) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC || !prediction) return -1;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_prefetch: required parameter is NULL (proto, prediction)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&proto->mutex);
 
@@ -771,6 +795,7 @@ int predictive_protocol_prefetch(predictive_protocol_t proto, const prediction_t
     if (!entry) {
         nimcp_platform_mutex_unlock(&proto->mutex);
         LOG_ERROR("Failed to allocate cache entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_protocol_prefetch: entry is NULL");
         return -1;
     }
 
@@ -806,7 +831,10 @@ int predictive_protocol_prefetch(predictive_protocol_t proto, const prediction_t
 void* predictive_protocol_get_prefetched(predictive_protocol_t proto,
                                          bio_message_type_t msg_type,
                                          bio_module_id_t target) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC) return NULL;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_prefetch: proto is NULL");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&proto->mutex);
 
@@ -912,7 +940,10 @@ uint32_t predictive_protocol_invalidate(predictive_protocol_t proto, bio_message
  *============================================================================*/
 
 int predictive_protocol_get_stats(predictive_protocol_t proto, prefetch_result_t* stats) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC || !stats) return -1;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_get_stats: required parameter is NULL (proto, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&proto->mutex);
 
@@ -977,7 +1008,10 @@ int predictive_protocol_get_pattern(predictive_protocol_t proto,
                                     bio_module_id_t target,
                                     bio_message_type_t msg_type,
                                     message_pattern_t* pattern) {
-    if (!proto || proto->magic != PREDICTIVE_MAGIC || !pattern) return -1;
+    if (!proto || proto->magic != PREDICTIVE_MAGIC || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_reset_stats: required parameter is NULL (proto, pattern)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&proto->mutex);
 

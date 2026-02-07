@@ -176,6 +176,7 @@ static int ensure_initialized(void) {
 
     g_collective_fep_state.mutex = nimcp_mutex_create(NULL);
     if (!g_collective_fep_state.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "ensure_initialized: g_collective_fep_state is NULL");
         return -1;
     }
 
@@ -422,6 +423,7 @@ collective_fep_bridge_t* collective_fep_bridge_create(
     /* Initialize bridge base (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "collective_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -463,7 +465,10 @@ void collective_fep_bridge_destroy(collective_fep_bridge_t* bridge) {
 }
 
 int collective_fep_bridge_reset(collective_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_fep_bridge_heartbeat("collective_f_reset", 0.0f);
@@ -513,9 +518,15 @@ int collective_cognition_fep_bridge_register(
     collective_cognition_t* collective,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !collective) return -1;
+    if (!orchestrator || !collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_bridge_register: required parameter is NULL (orchestrator, collective)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_bridge_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
@@ -537,6 +548,7 @@ int collective_cognition_fep_bridge_register(
         g_collective_fep_state.bridge = collective_fep_bridge_create(NULL);
         if (!g_collective_fep_state.bridge) {
             nimcp_mutex_unlock(g_collective_fep_state.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_cognition_fep_bridge_register: g_collective_fep_state is NULL");
             return -1;
         }
     }
@@ -575,7 +587,10 @@ int collective_cognition_fep_bridge_register(
 }
 
 int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_bridge_unregister: orchestrator is NULL");
+        return -1;
+    }
 
     if (!g_collective_fep_state.initialized) return 0;
 
@@ -610,7 +625,10 @@ int collective_cognition_fep_bridge_unregister(fep_orchestrator_t* orchestrator)
 }
 
 bool collective_cognition_fep_is_registered(void) {
-    if (!g_collective_fep_state.initialized) return false;
+    if (!g_collective_fep_state.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_is_registered: g_collective_fep_state is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
 
@@ -639,7 +657,10 @@ int collective_cognition_fep_update_callback(void* handle) {
 
 
     collective_fep_bridge_t* bridge = (collective_fep_bridge_t*)handle;
-    if (!bridge || !bridge->collective) return -1;
+    if (!bridge || !bridge->collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_update_callback: required parameter is NULL (bridge, bridge->collective)");
+        return -1;
+    }
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
@@ -650,6 +671,7 @@ int collective_cognition_fep_update_callback(void* handle) {
     if (collective_cognition_get_state(bridge->collective, &cog_state) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.update_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_cognition_fep_update_callback: validation failed");
         return -1;
     }
 
@@ -755,7 +777,10 @@ void collective_cognition_fep_destroy_callback(void* handle) {
  * ============================================================================ */
 
 int collective_cognition_fep_get_metrics(collective_fep_metrics_t* metrics_out) {
-    if (!metrics_out) return -1;
+    if (!metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_get_metrics: metrics_out is NULL");
+        return -1;
+    }
 
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
         memset(metrics_out, 0, sizeof(collective_fep_metrics_t));
@@ -775,7 +800,10 @@ int collective_cognition_fep_get_metrics(collective_fep_metrics_t* metrics_out) 
 }
 
 int collective_cognition_fep_get_stats(collective_fep_stats_t* stats_out) {
-    if (!stats_out) return -1;
+    if (!stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_get_stats: stats_out is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
@@ -811,9 +839,13 @@ int collective_cognition_fep_reset_metrics(void) {
  * ============================================================================ */
 
 int collective_cognition_fep_set_config(const collective_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_set_config: config is NULL");
+        return -1;
+    }
 
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_set_config: required parameter is NULL (g_collective_fep_state, g_collective_fep_state)");
         return -1;
     }
 
@@ -829,7 +861,10 @@ int collective_cognition_fep_set_config(const collective_fep_config_t* config) {
 }
 
 int collective_cognition_fep_get_config(collective_fep_config_t* config_out) {
-    if (!config_out) return -1;
+    if (!config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_cognition_fep_get_config: config_out is NULL");
+        return -1;
+    }
 
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
         *config_out = collective_fep_config_default();
@@ -852,7 +887,10 @@ int collective_cognition_fep_get_config(collective_fep_config_t* config_out) {
  * ============================================================================ */
 
 collective_fep_bridge_t* collective_cognition_fep_get_bridge(void) {
-    if (!g_collective_fep_state.initialized) return NULL;
+    if (!g_collective_fep_state.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_get_bridge: g_collective_fep_state is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     collective_fep_bridge_heartbeat("collective_f_collective_cognition", 0.0f);
 
@@ -862,6 +900,7 @@ collective_fep_bridge_t* collective_cognition_fep_get_bridge(void) {
 
 int collective_cognition_fep_force_update(void) {
     if (!g_collective_fep_state.initialized || !g_collective_fep_state.bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "collective_cognition_fep_force_update: required parameter is NULL (g_collective_fep_state, g_collective_fep_state)");
         return -1;
     }
 

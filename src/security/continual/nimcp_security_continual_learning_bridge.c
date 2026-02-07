@@ -143,7 +143,10 @@ static void compute_buffer_hash(
  * @brief Compare two hashes
  */
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
-    if (!h1 || !h2) return false;
+    if (!h1 || !h2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
+        return false;
+    }
     return memcmp(h1, h2, SECURITY_CL_HASH_SIZE) == 0;
 }
 
@@ -163,6 +166,7 @@ static int find_task(const security_cl_bridge_t* bridge, uint32_t task_id) {
             return (int)i;
         }
     }
+    /* Task not found - normal case, not an error */
     return -1;
 }
 
@@ -185,6 +189,7 @@ static int find_replay_buffer(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_replay_buffer: validation failed");
     return -1;
 }
 
@@ -288,6 +293,7 @@ security_cl_bridge_t* security_cl_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY,
                          SECURITY_CL_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_bridge_create: operation failed");
         return NULL;
     }
 
@@ -762,9 +768,10 @@ int security_cl_update_drift_baseline(
     uint32_t num_features)
 {
     BRIDGE_NULL_CHECK(bridge);
-    BRIDGE_NULL_CHECK(features);
 
     if (num_features == 0) return 0;
+
+    BRIDGE_NULL_CHECK(features);
 
     BRIDGE_LOCK(bridge);
 
@@ -1128,7 +1135,9 @@ bool security_cl_detect_lr_manipulation(
 {
     BRIDGE_NULL_CHECK_BOOL(bridge);
 
-    if (!bridge->config.enable_lr_monitoring) return false;
+    if (!bridge->config.enable_lr_monitoring) {
+        return false;
+    }
 
     internal_stats_t* stats = get_internal_stats(bridge);
     stats->lr_checks++;
@@ -1168,6 +1177,7 @@ bool security_cl_detect_lr_manipulation(
 
     BRIDGE_UNLOCK(bridge);
 
+    /* No manipulation detected */
     return false;
 }
 
@@ -1239,11 +1249,16 @@ int security_cl_update_security_effects(security_cl_bridge_t* bridge) {
     /* Aggregate threat signals */
     float threat_level = 0.0f;
 
-    /* Factor 1: Retention degradation */
+    /* Factor 1: Retention degradation (from direct monitoring) */
     if (bridge->security_effects.retention_status == SECURITY_CL_RETENTION_DEGRADING) {
         threat_level += 0.2f;
     } else if (bridge->security_effects.retention_status == SECURITY_CL_RETENTION_CRITICAL) {
         threat_level += 0.4f;
+    }
+
+    /* Factor 1b: Retention anomaly (from CL effects update) */
+    if (bridge->cl_effects.valid && bridge->cl_effects.retention_anomaly) {
+        threat_level += 0.3f;
     }
 
     /* Factor 2: Drift anomaly */
@@ -1296,6 +1311,9 @@ int security_cl_update_security_effects(security_cl_bridge_t* bridge) {
     if (threat_level > 0.7f) {
         bridge->phase = SECURITY_CL_PHASE_DEFENDING;
     } else if (threat_level > 0.3f) {
+        bridge->phase = SECURITY_CL_PHASE_PROTECTING;
+    } else if (bridge->cl_connected) {
+        /* When CL is connected, minimum phase is PROTECTING */
         bridge->phase = SECURITY_CL_PHASE_PROTECTING;
     } else {
         bridge->phase = SECURITY_CL_PHASE_MONITORING;
@@ -1399,7 +1417,10 @@ float security_cl_get_threat_level(const security_cl_bridge_t* bridge) {
 }
 
 bool security_cl_is_under_attack(const security_cl_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cl_is_under_attack: bridge is NULL");
+        return false;
+    }
     return bridge->security_effects.under_attack;
 }
 

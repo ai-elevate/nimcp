@@ -138,11 +138,13 @@ bool sensory_extract_features(
 
     if (!brain || !input || !features) {
         fprintf(stderr, "sensory_extractor: Invalid parameters\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_extract_features: required parameter is NULL (brain, input, features)");
         return false;
     }
 
     if (!sensory_input_validate(input)) {
         fprintf(stderr, "sensory_extractor: No valid sensory input\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_extract_features: sensory_input_validate is NULL");
         return false;
     }
 
@@ -247,6 +249,7 @@ bool sensory_extract_features(
 
     if (!any_valid) {
         fprintf(stderr, "sensory_extractor: No features extracted from any modality\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_extract_features: any_valid is NULL");
         return false;
     }
 

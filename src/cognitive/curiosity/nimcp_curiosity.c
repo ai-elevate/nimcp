@@ -54,12 +54,14 @@ static bool curiosity_init_gpu_mc(void) {
 
     if (!qmc_gpu_is_available()) {
         LOG_DEBUG("GPU not available for curiosity MC, using CPU fallback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_init_gpu_mc: qmc_gpu_is_available is NULL");
         return false;
     }
 
     g_curiosity_gpu_ctx = nimcp_gpu_context_create_auto();
     if (!g_curiosity_gpu_ctx) {
         LOG_DEBUG("Failed to create GPU context for curiosity MC");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_init_gpu_mc: g_curiosity_gpu_ctx is NULL");
         return false;
     }
 
@@ -68,6 +70,7 @@ static bool curiosity_init_gpu_mc(void) {
         LOG_DEBUG("Failed to create GPU RNG for curiosity MC");
         nimcp_gpu_context_destroy(g_curiosity_gpu_ctx);
         g_curiosity_gpu_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_init_gpu_mc: g_curiosity_gpu_rng is NULL");
         return false;
     }
 
@@ -728,6 +731,7 @@ static const size_t num_question_strategies =
 static const question_strategy_t* get_question_strategy(question_type_t type)
 {
     if (type < 0 || (size_t) type >= num_question_strategies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_question_strategy: capacity exceeded");
         return NULL;
     }
     return &question_strategies[type];
@@ -779,6 +783,7 @@ static void normalize_string(const char* input, char* output, size_t max_len)
 static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const char* concept_str)
 {
     if (!engine || !concept_str || !engine->concept_hash_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_concept_bucket: required parameter is NULL (engine, concept_str, engine->concept_hash_table)");
         return NULL;
     }
 
@@ -801,6 +806,7 @@ static concept_bucket_t* find_concept_bucket(curiosity_engine_t engine, const ch
 static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, const char* concept_str)
 {
     if (!engine || !concept_str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_concept_to_hash_table: required parameter is NULL (engine, concept_str)");
         return NULL;
     }
 
@@ -822,6 +828,7 @@ static concept_bucket_t* add_concept_to_hash_table(curiosity_engine_t engine, co
     // Insert into hash table
     if (!hash_table_insert_string(engine->concept_hash_table, concept_str, &new_bucket,
                                   sizeof(concept_bucket_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_concept_to_hash_table: operation failed");
         return NULL;
     }
 
@@ -1297,11 +1304,13 @@ static bool generate_single_question(const knowledge_gap_t* gap, question_type_t
                                      generated_question_t* output)
 {
     if (!gap || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_single_question: required parameter is NULL (gap, output)");
         return false;
     }
 
     const question_strategy_t* strategy = get_question_strategy(type);
     if (!strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_single_question: strategy is NULL");
         return false;
     }
 
@@ -1374,6 +1383,7 @@ uint32_t curiosity_generate_questions(curiosity_engine_t engine, const knowledge
 const char* curiosity_generate_followup(curiosity_engine_t engine, const char* previous_answer)
 {
     if (!engine || !previous_answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_generate_followup: required parameter is NULL (engine, previous_answer)");
         return NULL;
     }
 
@@ -1520,6 +1530,7 @@ static bool record_question_history(curiosity_engine_t engine, const char* quest
                                     const char* answer)
 {
     if (engine->num_questions >= engine->questions_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "record_question_history: capacity exceeded");
         return false;
     }
 
@@ -1549,10 +1560,12 @@ static bool record_question_history(curiosity_engine_t engine, const char* quest
 bool curiosity_learn_answer(curiosity_engine_t engine, const char* question, const char* answer)
 {
     if (!engine || !question || !answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_learn_answer: required parameter is NULL (engine, question, answer)");
         return false;
     }
 
     if (!record_question_history(engine, question, answer)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_learn_answer: record_question_history is NULL");
         return false;
     }
 
@@ -1620,6 +1633,7 @@ bool curiosity_learn_experience(curiosity_engine_t engine, const char* experienc
                                 const float* sensory_data, uint32_t num_features)
 {
     if (!engine || !experience_description) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_learn_experience: required parameter is NULL (engine, experience_description)");
         return false;
     }
 
@@ -1659,6 +1673,7 @@ bool curiosity_learn_observation(curiosity_engine_t engine, const char* what_obs
                                  const char* context)
 {
     if (!engine || !what_observed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_learn_observation: required parameter is NULL (engine, what_observed)");
         return false;
     }
 
@@ -1692,6 +1707,7 @@ static bool ensure_source_capacity(curiosity_engine_t engine)
         nimcp_realloc(engine->sources, engine->sources_capacity * sizeof(knowledge_source_t));
 
     if (!new_sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_source_capacity: new_sources is NULL");
         return false;
     }
 
@@ -1717,10 +1733,12 @@ bool curiosity_register_knowledge_source(curiosity_engine_t engine, const char* 
                                          knowledge_search_fn_t search_fn, void* context)
 {
     if (!engine || !source_name || !search_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_register_knowledge_source: required parameter is NULL (engine, source_name, search_fn)");
         return false;
     }
 
     if (!ensure_source_capacity(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_register_knowledge_source: ensure_source_capacity is NULL");
         return false;
     }
 
@@ -1848,6 +1866,7 @@ static void update_progress_statistics(curiosity_engine_t engine, learning_progr
 bool curiosity_get_progress(curiosity_engine_t engine, learning_progress_t* progress)
 {
     if (!engine || !progress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_get_progress: required parameter is NULL (engine, progress)");
         return false;
     }
 
@@ -2182,6 +2201,7 @@ int curiosity_connect_immune(curiosity_engine_t engine, struct brain_immune_syst
     // Guard: NULL pointers
     if (!engine || !immune_system) {
         LOG_ERROR("Cannot connect NULL engine or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_connect_immune: required parameter is NULL (engine, immune_system)");
         return -1;
     }
 
@@ -2206,6 +2226,7 @@ int curiosity_connect_immune(curiosity_engine_t engine, struct brain_immune_syst
 
     if (!bridge) {
         LOG_ERROR("Failed to create curiosity-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_connect_immune: bridge is NULL");
         return -1;
     }
 
@@ -2231,6 +2252,7 @@ int curiosity_disconnect_immune(curiosity_engine_t engine)
 {
     // Guard: NULL engine
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_disconnect_immune: engine is NULL");
         return -1;
     }
 
@@ -2334,7 +2356,10 @@ float curiosity_get_novelty_vigilance_boost(curiosity_engine_t engine)
  * @return true if should explore, false if should exploit
  */
 bool curiosity_should_explore_mc(curiosity_engine_t engine, float epsilon) {
-    if (!engine) return false;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_should_explore_mc: engine is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_heartbeat("curiosity_should_explore_mc", 0.0f);
@@ -2710,7 +2735,10 @@ int curiosity_compute_empowerment(
     uint32_t horizon,
     curiosity_empowerment_t* result) {
 
-    if (!engine || !concept_name || !result) return -1;
+    if (!engine || !concept_name || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_query_self_knowledge: required parameter is NULL (engine, concept_name, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_heartbeat("curiosity_compute_empowerment", 0.0f);
@@ -2735,7 +2763,10 @@ int curiosity_compute_empowerment(
     /* MC estimation of empowerment via action-state transition sampling */
     uint32_t num_samples = 500;
     float* state_counts = (float*)nimcp_calloc(num_actions * num_actions, sizeof(float));
-    if (!state_counts) return -1;
+    if (!state_counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_query_self_knowledge: state_counts is NULL");
+        return -1;
+    }
 
     /* Simulate action-state transitions */
     for (uint32_t s = 0; s < num_samples; s++) {
@@ -2767,6 +2798,7 @@ int curiosity_compute_empowerment(
         nimcp_free(state_counts);
         if (p_a) nimcp_free(p_a);
         if (p_s) nimcp_free(p_s);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_query_self_knowledge: validation failed");
         return -1;
     }
 

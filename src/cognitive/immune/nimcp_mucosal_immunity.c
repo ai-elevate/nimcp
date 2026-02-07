@@ -112,6 +112,7 @@ static mucosal_site_t* find_site(mucosal_system_t* system, uint32_t site_id) {
             return &system->sites[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_site: validation failed");
     return NULL;
 }
 
@@ -140,6 +141,7 @@ static mucosal_siga_t* find_siga(mucosal_system_t* system, uint32_t siga_id) {
             return &system->siga_antibodies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_siga: validation failed");
     return NULL;
 }
 
@@ -168,6 +170,7 @@ static mucosal_tolerance_t* find_tolerance(mucosal_system_t* system, uint32_t to
             return &system->tolerances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tolerance: validation failed");
     return NULL;
 }
 
@@ -189,7 +192,10 @@ static float compute_tolerance_affinity(
 
 int mucosal_default_config(mucosal_config_t* config) {
     /* Guard clause */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_default_config: config is NULL");
+        return -1;
+    }
 
     /* Set defaults */
     /* Phase 8: Heartbeat at operation start */
@@ -272,6 +278,7 @@ mucosal_system_t* mucosal_create(
     if (!system->sites || !system->siga_antibodies ||
         !system->tolerances || !system->m_cell_samples) {
         mucosal_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_create: operation failed");
         return NULL;
     }
 
@@ -284,6 +291,7 @@ mucosal_system_t* mucosal_create(
     system->mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!system->mutex) {
         mucosal_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mucosal_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -315,7 +323,10 @@ void mucosal_destroy(mucosal_system_t* system) {
 
 int mucosal_start(mucosal_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_start: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_start", 0.0f);
@@ -330,7 +341,10 @@ int mucosal_start(mucosal_system_t* system) {
 
 int mucosal_stop(mucosal_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_stop: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_stop", 0.0f);
@@ -353,8 +367,14 @@ int mucosal_register_boundary(
     uint32_t* site_id
 ) {
     /* Guard clauses */
-    if (!system || !site_id) return -1;
-    if (system->site_count >= system->site_capacity) return -1;
+    if (!system || !site_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_register_boundary: required parameter is NULL (system, site_id)");
+        return -1;
+    }
+    if (system->site_count >= system->site_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_register_boundary: capacity exceeded");
+        return -1;
+    }
 
     /* Create site */
     /* Phase 8: Heartbeat at operation start */
@@ -392,14 +412,20 @@ int mucosal_unregister_boundary(
     uint32_t site_id
 ) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_unregister_boundary: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_unregister_b", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_unregister_boundary: site is NULL");
+        return -1;
+    }
 
     site->active = false;
     system->stats.active_sites--;
@@ -420,16 +446,28 @@ int mucosal_sample_antigen(
     uint32_t* sample_id
 ) {
     /* Guard clauses */
-    if (!system || !data || !sample_id) return -1;
-    if (data_len == 0 || data_len > MUCOSAL_EPITOPE_SIZE) return -1;
-    if (system->m_cell_sample_count >= system->m_cell_sample_capacity) return -1;
+    if (!system || !data || !sample_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_sample_antigen: required parameter is NULL (system, data, sample_id)");
+        return -1;
+    }
+    if (data_len == 0 || data_len > MUCOSAL_EPITOPE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_sample_antigen: data_len is zero");
+        return -1;
+    }
+    if (system->m_cell_sample_count >= system->m_cell_sample_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_sample_antigen: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_sample_antig", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site || !site->active) return -1;
+    if (!site || !site->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_sample_antigen: required parameter is NULL (site, site->active)");
+        return -1;
+    }
 
     /* Create M cell sample */
     m_cell_sample_t* sample = &system->m_cell_samples[system->m_cell_sample_count++];
@@ -458,7 +496,10 @@ int mucosal_process_m_cell_sample(
     uint32_t sample_id
 ) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_process_m_cell_sample: system is NULL");
+        return -1;
+    }
 
     /* Find sample */
     /* Phase 8: Heartbeat at operation start */
@@ -478,10 +519,16 @@ int mucosal_process_m_cell_sample(
             break;
         }
     }
-    if (!sample) return -1;
+    if (!sample) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_process_m_cell_sample: sample is NULL");
+        return -1;
+    }
 
     mucosal_site_t* site = find_site(system, sample->site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_process_m_cell_sample: site is NULL");
+        return -1;
+    }
 
     /* Check for existing tolerance */
     uint32_t tolerance_id;
@@ -549,20 +596,32 @@ int mucosal_produce_siga(
     uint32_t* siga_id
 ) {
     /* Guard clauses */
-    if (!system || !siga_id) return -1;
-    if (system->siga_count >= system->siga_capacity) return -1;
+    if (!system || !siga_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: required parameter is NULL (system, siga_id)");
+        return -1;
+    }
+    if (system->siga_count >= system->siga_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_produce_siga: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_produce_siga", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site || !site->active) return -1;
+    if (!site || !site->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: required parameter is NULL (site, site->active)");
+        return -1;
+    }
 
     /* Get antigen from brain immune */
     const brain_antigen_t* antigen = brain_immune_get_antigen(
         system->immune_system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_produce_siga: antigen is NULL");
+        return -1;
+    }
 
     /* Create sIgA */
     mucosal_siga_t* siga = &system->siga_antibodies[system->siga_count++];
@@ -600,14 +659,20 @@ int mucosal_neutralize_with_siga(
     uint32_t antigen_id
 ) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_neutralize_with_siga: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_neutralize_w", 0.0f);
 
 
     mucosal_siga_t* siga = find_siga(system, siga_id);
-    if (!siga || siga->state != MUCOSAL_SIGA_ACTIVE) return -1;
+    if (!siga || siga->state != MUCOSAL_SIGA_ACTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_neutralize_with_siga: siga is NULL");
+        return -1;
+    }
 
     /* Neutralize antigen */
     siga->neutralizations++;
@@ -638,16 +703,28 @@ int mucosal_induce_oral_tolerance(
     uint32_t* tolerance_id
 ) {
     /* Guard clauses */
-    if (!system || !antigen || !tolerance_id) return -1;
-    if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) return -1;
-    if (system->tolerance_count >= system->tolerance_capacity) return -1;
+    if (!system || !antigen || !tolerance_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_induce_oral_tolerance: required parameter is NULL (system, antigen, tolerance_id)");
+        return -1;
+    }
+    if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_induce_oral_tolerance: antigen_len is zero");
+        return -1;
+    }
+    if (system->tolerance_count >= system->tolerance_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mucosal_induce_oral_tolerance: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_induce_oral_", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site || !site->active) return -1;
+    if (!site || !site->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_induce_oral_tolerance: required parameter is NULL (site, site->active)");
+        return -1;
+    }
 
     /* Check for existing tolerance entry */
     for (size_t i = 0; i < system->tolerance_count; i++) {
@@ -708,8 +785,14 @@ int mucosal_check_tolerance(
     uint32_t* tolerance_id
 ) {
     /* Guard clauses */
-    if (!system || !antigen) return -1;
-    if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) return -1;
+    if (!system || !antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_check_tolerance: required parameter is NULL (system, antigen)");
+        return -1;
+    }
+    if (antigen_len == 0 || antigen_len > MUCOSAL_EPITOPE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_check_tolerance: antigen_len is zero");
+        return -1;
+    }
 
     /* Search tolerance entries */
     /* Phase 8: Heartbeat at operation start */
@@ -743,6 +826,7 @@ int mucosal_check_tolerance(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_check_tolerance: validation failed");
     return -1;  /* Not tolerized */
 }
 
@@ -751,14 +835,20 @@ int mucosal_break_tolerance(
     uint32_t tolerance_id
 ) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_break_tolerance: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_break_tolera", 0.0f);
 
 
     mucosal_tolerance_t* tolerance = find_tolerance(system, tolerance_id);
-    if (!tolerance) return -1;
+    if (!tolerance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_break_tolerance: tolerance is NULL");
+        return -1;
+    }
 
     tolerance->state = TOLERANCE_BROKEN;
     tolerance->suppression_strength = 0.0f;
@@ -777,14 +867,20 @@ int mucosal_get_barrier_integrity(
     float* integrity_out
 ) {
     /* Guard clauses */
-    if (!system || !integrity_out) return -1;
+    if (!system || !integrity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_get_barrier_integrity: required parameter is NULL (system, integrity_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_get_barrier_", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_get_barrier_integrity: site is NULL");
+        return -1;
+    }
 
     *integrity_out = site->barrier_integrity;
     return 0;
@@ -796,15 +892,24 @@ int mucosal_set_tolerance_threshold(
     float threshold
 ) {
     /* Guard clauses */
-    if (!system) return -1;
-    if (threshold < 0.0f || threshold > 1.0f) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_set_tolerance_threshold: system is NULL");
+        return -1;
+    }
+    if (threshold < 0.0f || threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mucosal_set_tolerance_threshold: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_set_toleranc", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_set_tolerance_threshold: site is NULL");
+        return -1;
+    }
 
     site->tolerance_threshold = threshold;
 
@@ -818,14 +923,20 @@ int mucosal_update_barrier_integrity(
     bool breach_occurred
 ) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_update_barrier_integrity: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_update_barri", 0.0f);
 
 
     mucosal_site_t* site = find_site(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_update_barrier_integrity: site is NULL");
+        return -1;
+    }
 
     if (breach_occurred) {
         /* Decay integrity */
@@ -857,7 +968,10 @@ int mucosal_update(
     uint64_t delta_ms
 ) {
     /* Guard clause */
-    if (!system || !system->running) return -1;
+    if (!system || !system->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_update: required parameter is NULL (system, system->running)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mucosal_immunity_heartbeat("mucosal_immu_mucosal_update", 0.0f);
@@ -942,7 +1056,10 @@ int mucosal_get_stats(
     mucosal_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mucosal_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     *stats = system->stats;
     /* Phase 8: Heartbeat at operation start */

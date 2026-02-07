@@ -170,12 +170,18 @@ static int ensure_capacity(omni_kg_sync_t* sync) {
 
     omni_kg_module_info_t* new_modules = nimcp_realloc(
         sync->modules, new_capacity * sizeof(omni_kg_module_info_t));
-    if (!new_modules) return -1;
+    if (!new_modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_capacity: new_modules is NULL");
+        return -1;
+    }
     sync->modules = new_modules;
 
     brain_kg_node_id_t* new_ids = nimcp_realloc(
         sync->node_ids, new_capacity * sizeof(brain_kg_node_id_t));
-    if (!new_ids) return -1;
+    if (!new_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_capacity: new_ids is NULL");
+        return -1;
+    }
     sync->node_ids = new_ids;
 
     sync->module_capacity = new_capacity;
@@ -194,6 +200,7 @@ static int find_module_index(const omni_kg_sync_t* sync, const char* name) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_index: validation failed");
     return -1;
 }
 
@@ -210,6 +217,7 @@ static int find_module_index_by_node(const omni_kg_sync_t* sync,
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_index: validation failed");
     return -1;
 }
 
@@ -273,6 +281,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
     sync->mutex = nimcp_mutex_create(NULL);
     if (!sync->mutex) {
         nimcp_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_kg_sync_default_config: sync->mutex is NULL");
         return NULL;
     }
 
@@ -288,6 +297,7 @@ omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
         if (sync->node_ids) nimcp_free(sync->node_ids);
         nimcp_mutex_free(sync->mutex);
         nimcp_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_kg_sync_default_config: validation failed");
         return NULL;
     }
 

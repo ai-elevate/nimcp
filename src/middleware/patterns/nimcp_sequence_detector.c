@@ -105,7 +105,10 @@ struct sequence_detector {
 
 static bool init_spike_buffer(spike_buffer_t* buffer, uint32_t capacity) {
     buffer->spikes = (spike_record_t*)nimcp_calloc(capacity, sizeof(spike_record_t));
-    if (!buffer->spikes) return false;
+    if (!buffer->spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_spike_buffer: buffer->spikes is NULL");
+        return false;
+    }
     buffer->capacity = capacity;
     buffer->count = 0;
     buffer->head = 0;
@@ -323,12 +326,14 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
     detector->mutex = nimcp_mutex_create(NULL);
     if (!detector->mutex) {
         sequence_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_detector_create: detector->mutex is NULL");
         return NULL;
     }
 
     // Initialize spike buffer
     if (!init_spike_buffer(&detector->buffer, SPIKE_BUFFER_SIZE)) {
         sequence_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sequence_detector_create: init_spike_buffer is NULL");
         return NULL;
     }
 
@@ -337,6 +342,7 @@ sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* 
                                                        sizeof(sequence_template_t));
     if (!detector->templates) {
         sequence_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_detector_create: detector->templates is NULL");
         return NULL;
     }
 
@@ -425,7 +431,10 @@ void sequence_detector_destroy(sequence_detector_t* detector) {
 bool sequence_detector_add_spike(sequence_detector_t* detector,
                                   uint32_t neuron_id,
                                   double timestamp_ms) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_destroy: detector is NULL");
+        return false;
+    }
 
     /* Thread safety: Lock mutex to protect buffer and ngram access */
     nimcp_mutex_lock(detector->mutex);
@@ -448,6 +457,7 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
     if (!detector || !elements || length == 0 ||
         length > detector->config.max_sequence_length ||
         detector->num_templates >= detector->config.max_templates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sequence_detector_destroy: operation failed");
         return false;
     }
 
@@ -459,6 +469,7 @@ bool sequence_detector_learn_template(sequence_detector_t* detector,
     tmpl->elements = (sequence_element_t*)nimcp_malloc(length * sizeof(sequence_element_t));
     if (!tmpl->elements) {
         nimcp_mutex_unlock(detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_detector_destroy: tmpl->elements is NULL");
         return false;
     }
 
@@ -497,6 +508,7 @@ bool sequence_detector_detect(sequence_detector_t* detector,
                                uint32_t max_detections,
                                uint32_t* num_detected) {
     if (!detector || !detections || !num_detected || max_detections == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_destroy: required parameter is NULL (detector, detections, num_detected)");
         return false;
     }
 
@@ -585,7 +597,10 @@ bool sequence_detector_detect(sequence_detector_t* detector,
 bool sequence_detector_get_template(const sequence_detector_t* detector,
                                      uint32_t template_id,
                                      sequence_template_t* seq_template) {
-    if (!detector || !seq_template) return false;
+    if (!detector || !seq_template) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector, seq_template)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < detector->num_templates; i++) {
         if (detector->templates[i].template_id == template_id) {
@@ -594,6 +609,7 @@ bool sequence_detector_get_template(const sequence_detector_t* detector,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -602,6 +618,7 @@ bool sequence_detector_get_ngrams(const sequence_detector_t* detector,
                                    uint32_t max_ngrams,
                                    uint32_t* num_ngrams) {
     if (!detector || !ngrams || !num_ngrams || max_ngrams == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector, ngrams, num_ngrams)");
         return false;
     }
 
@@ -663,7 +680,10 @@ bool sequence_detector_get_stats(const sequence_detector_t* detector,
                                   uint32_t* num_templates,
                                   uint64_t* total_detections,
                                   float* avg_strength) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: detector is NULL");
+        return false;
+    }
 
     if (num_templates) *num_templates = detector->num_templates;
     if (total_detections) *total_detections = detector->total_detections;
@@ -722,12 +742,14 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
 
     if (!detector || !pe_config) {
         LOG_ERROR("SequenceDetector: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: required parameter is NULL (detector, pe_config)");
         return false;
     }
 
     // Validate PE configuration
     if (nimcp_pos_validate_config(pe_config) != NIMCP_POS_SUCCESS) {
         LOG_ERROR("SequenceDetector: Invalid PE configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sequence_detector_clear_templates: validation failed");
         return false;
     }
 
@@ -735,6 +757,7 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
     if (pe_config->type != NIMCP_POS_ROTARY && pe_config->type != NIMCP_POS_RELATIVE) {
         LOG_ERROR("SequenceDetector: Unsupported PE type %d (use ROTARY or RELATIVE)",
                   pe_config->type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sequence_detector_clear_templates: validation failed");
         return false;
     }
 
@@ -752,6 +775,7 @@ bool sequence_detector_set_pe_config(sequence_detector_t* detector,
     if (!detector->pe_encoder) {
         LOG_ERROR("SequenceDetector: Failed to create PE encoder");
         nimcp_mutex_unlock(detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: detector->pe_encoder is NULL");
         return false;
     }
 
@@ -790,11 +814,13 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
 
     if (!detector) {
         LOG_ERROR("SequenceDetector: NULL detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: detector is NULL");
         return false;
     }
 
     if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
         LOG_ERROR("SequenceDetector: PE not configured");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: required parameter is NULL (detector->config, detector->pe_encoder)");
         return false;
     }
 
@@ -813,6 +839,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
     if (!tmpl) {
         LOG_ERROR("SequenceDetector: Template %u not found", template_id);
         nimcp_mutex_unlock(detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_clear_templates: tmpl is NULL");
         return false;
     }
 
@@ -831,6 +858,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
         if (!elem->position_embedding) {
             LOG_ERROR("SequenceDetector: Failed to allocate position embedding");
             nimcp_mutex_unlock(detector->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_detector_clear_templates: elem->position_embedding is NULL");
             return false;
         }
 
@@ -840,6 +868,7 @@ bool sequence_detector_encode_template(sequence_detector_t* detector,
         if (result != NIMCP_POS_SUCCESS) {
             LOG_ERROR("SequenceDetector: PE encoding failed: %d", result);
             nimcp_mutex_unlock(detector->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sequence_detector_clear_templates: validation failed");
             return false;
         }
     }
@@ -974,11 +1003,13 @@ bool sequence_detector_match_with_pe(sequence_detector_t* detector,
 
     if (!detector || !detections || !num_detected || max_detections == 0) {
         LOG_ERROR("SequenceDetector: Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector, detections, num_detected)");
         return false;
     }
 
     if (!detector->config.enable_positional_encoding || !detector->pe_encoder) {
         LOG_ERROR("SequenceDetector: PE not configured");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (detector->config, detector->pe_encoder)");
         return false;
     }
 
@@ -1056,6 +1087,7 @@ bool sequence_detector_get_pe_stats(const sequence_detector_t* detector,
 
     if (!detector) {
         LOG_ERROR("SequenceDetector: NULL detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: detector is NULL");
         return false;
     }
 

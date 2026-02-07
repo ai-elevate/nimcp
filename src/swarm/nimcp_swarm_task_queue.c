@@ -53,7 +53,10 @@ static inline bool entry_compare(
     if (deadline_sorting) {
         if (a->deadline_ms != b->deadline_ms) {
             // Earlier deadline comes first (0 means no deadline, sort last)
-            if (a->deadline_ms == 0) return false;
+            if (a->deadline_ms == 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entry_compare: a->deadline_ms is zero");
+                return false;
+            }
             if (b->deadline_ms == 0) return true;
             return a->deadline_ms < b->deadline_ms;
         }
@@ -145,6 +148,7 @@ static int find_entry_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry_index: validation failed");
     return -1;
 }
 
@@ -246,6 +250,7 @@ int swarm_task_queue_enqueue(
     float estimated_duration_ms)
 {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_enqueue: queue is NULL");
         return -1;
     }
 
@@ -296,6 +301,7 @@ int swarm_task_queue_dequeue(
     uint64_t* task_id)
 {
     if (!queue || !task_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_dequeue: required parameter is NULL (queue, task_id)");
         return -1;
     }
 
@@ -345,6 +351,7 @@ int swarm_task_queue_peek(
     uint64_t* task_id)
 {
     if (!queue || !task_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_peek: required parameter is NULL (queue, task_id)");
         return -1;
     }
 
@@ -367,6 +374,7 @@ int swarm_task_queue_remove(
     uint64_t task_id)
 {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_remove: queue is NULL");
         return -1;
     }
 
@@ -405,6 +413,7 @@ int swarm_task_queue_update_priority(
     swarm_task_priority_t new_priority)
 {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_update_priority: queue is NULL");
         return -1;
     }
 
@@ -438,6 +447,7 @@ bool swarm_task_queue_contains(
     uint64_t task_id)
 {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_contains: queue is NULL");
         return false;
     }
 
@@ -561,6 +571,7 @@ int swarm_task_queue_get_overdue(
     uint32_t* count)
 {
     if (!queue || !task_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_queue_get_overdue: required parameter is NULL (queue, task_ids, count)");
         return -1;
     }
 

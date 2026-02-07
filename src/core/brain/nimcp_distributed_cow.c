@@ -250,6 +250,7 @@ static int serialize_network_segment(
     bool enable_compression
 ) {
     if (!network || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_network_segment: required parameter is NULL (network, buffer)");
         return -1;
     }
 
@@ -264,6 +265,7 @@ static int serialize_network_segment(
     // Get network info
     uint32_t total_neurons = get_network_num_neurons(network);
     if (start_neuron >= total_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_network_segment: capacity exceeded");
         return -1;
     }
     if (start_neuron + num_neurons > total_neurons) {
@@ -320,6 +322,7 @@ static int serialize_network_segment(
             uint8_t* new_buffer = nimcp_realloc(temp_buffer, temp_buffer_size);
             if (!new_buffer) {
                 nimcp_free(temp_buffer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "serialize_network_segment: new_buffer is NULL");
                 return -1;
             }
             temp_buffer = new_buffer;
@@ -357,6 +360,7 @@ static int serialize_network_segment(
     }
 
     nimcp_free(temp_buffer);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_network_segment: validation failed");
     return -1; // Buffer too small
 }
 
@@ -378,6 +382,7 @@ static bool deserialize_network_segment(
     adaptive_network_t network
 ) {
     if (!buffer || !network || buffer_size < 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_network_segment: required parameter is NULL (buffer, network)");
         return false;
     }
 
@@ -392,12 +397,14 @@ static bool deserialize_network_segment(
         decompressed_buffer = nimcp_malloc(decompressed_size);
 
         if (!decompressed_buffer) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_network_segment: decompressed_buffer is NULL");
             return false;
         }
 
         int result = uncompress(decompressed_buffer, &decompressed_size, data, data_size);
         if (result != Z_OK) {
             nimcp_free(decompressed_buffer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_network_segment: validation failed");
             return false;
         }
 
@@ -503,6 +510,7 @@ static network_segment_t* find_cached_segment(
 
     state->cache_misses++;
     nimcp_platform_rwlock_rdunlock(&state->cache_lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_cached_segment: validation failed");
     return NULL;
 }
 
@@ -565,18 +573,21 @@ static bool handle_fetch_segment_request(
 ) {
     // Validate inputs
     if (!brain || !request || !response_buffer || !response_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_fetch_segment_request: required parameter is NULL (brain, request, response_buffer, response_length)");
         return false;
     }
 
     // Get network from brain
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_fetch_segment_request: network is NULL");
         return false;
     }
 
     // Validate segment bounds
     uint32_t total_neurons = get_network_num_neurons(network);
     if (request->start_neuron_id >= total_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_fetch_segment_request: capacity exceeded");
         return false;
     }
 
@@ -597,6 +608,7 @@ static bool handle_fetch_segment_request(
 
     // Ensure we have space for response header
     if (response_buffer_size < sizeof(cow_segment_data_response_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_fetch_segment_request: validation failed");
         return false;
     }
 
@@ -614,6 +626,7 @@ static bool handle_fetch_segment_request(
     );
 
     if (bytes_written < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_fetch_segment_request: validation failed");
         return false;
     }
 
@@ -729,6 +742,7 @@ static bool register_distributed_cow_brain(brain_t brain, distributed_cow_state_
     distributed_cow_brain_t* entry = nimcp_calloc(1, sizeof(distributed_cow_brain_t));
     if (!entry) {
         nimcp_platform_mutex_unlock(&g_registry_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "register_distributed_cow_brain: entry is NULL");
         return false;
     }
     entry->brain = brain;
@@ -756,6 +770,7 @@ static distributed_cow_state_t* find_distributed_cow_state(brain_t brain) {
     }
 
     nimcp_platform_mutex_unlock(&g_registry_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_distributed_cow_state: validation failed");
     return NULL;
 }
 
@@ -780,6 +795,7 @@ brain_t brain_clone_cow_distributed(
     if (!original || !remote_host) {
         LOG_ERROR("brain_clone_cow_distributed: Invalid parameters (original=%p, remote_host=%p)",
                   (void*)original, (const void*)remote_host);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_clone_cow_distributed: required parameter is NULL (original, remote_host)");
         return NULL;
     }
 
@@ -789,6 +805,7 @@ brain_t brain_clone_cow_distributed(
     if (!clone) {
         LOG_ERROR("brain_clone_cow_distributed: Failed to create local COW clone");
         publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_clone_cow_distributed: clone is NULL");
         return NULL;
     }
 
@@ -804,6 +821,7 @@ brain_t brain_clone_cow_distributed(
         LOG_ERROR("brain_clone_cow_distributed: Failed to create P2P node");
         brain_destroy(clone);
         publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_clone_cow_distributed: p2p_node is NULL");
         return NULL;
     }
 
@@ -818,6 +836,7 @@ brain_t brain_clone_cow_distributed(
         p2p_node_destroy(p2p_node);
         brain_destroy(clone);
         publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_clone_cow_distributed: p2p_node_connect_peer is NULL");
         return NULL;
     }
 
@@ -831,6 +850,7 @@ brain_t brain_clone_cow_distributed(
         p2p_node_destroy(p2p_node);
         brain_destroy(clone);
         publish_cow_event(BIO_MSG_ERROR_REPORT, 0, 0, 0, false, BIO_CHANNEL_NOREPINEPHRINE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_clone_cow_distributed: dcow_state is NULL");
         return NULL;
     }
 
@@ -856,12 +876,14 @@ brain_t brain_clone_cow_distributed(
  */
 bool brain_enable_distributed_cow_master(brain_t brain, p2p_node_t p2p_node) {
     if (!brain || !p2p_node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_distributed_cow_master: required parameter is NULL (brain, p2p_node)");
         return false;
     }
 
     // Create master state
     distributed_cow_state_t* state = nimcp_calloc(1, sizeof(distributed_cow_state_t));
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_enable_distributed_cow_master: state is NULL");
         return false;
     }
 
@@ -905,6 +927,7 @@ bool distributed_cow_fetch_segment(
     if (!state || !state->is_distributed || state->is_master) {
         LOG_WARN("distributed_cow_fetch_segment: Invalid state (state=%p, is_distributed=%d, is_master=%d)",
                  (void*)state, state ? state->is_distributed : 0, state ? state->is_master : 0);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_cow_fetch_segment: required parameter is NULL (state, state->is_distributed)");
         return false;
     }
 
@@ -933,6 +956,7 @@ bool distributed_cow_fetch_segment(
     uint8_t* response_buffer = (uint8_t*)nimcp_malloc(65536);
     if (!response_buffer) {
         nimcp_platform_mutex_unlock(&state->fetch_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distributed_cow_fetch_segment: response_buffer is NULL");
         return false;  // Return bool false, not error code (function returns bool)
     }
     size_t response_length = 0;
@@ -1029,11 +1053,13 @@ uint32_t distributed_cow_prefetch_segments(brain_t brain, uint32_t current_neuro
 bool distributed_cow_fetch_full_network(brain_t brain) {
     distributed_cow_state_t* state = find_distributed_cow_state(brain);
     if (!state || !state->is_distributed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_cow_fetch_full_network: required parameter is NULL (state, state->is_distributed)");
         return false;
     }
 
     adaptive_network_t network = brain_get_network(brain);
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distributed_cow_fetch_full_network: network is NULL");
         return false;
     }
 
@@ -1047,6 +1073,7 @@ bool distributed_cow_fetch_full_network(brain_t brain) {
                                (total_neurons - start) : segment_size;
 
         if (!distributed_cow_fetch_segment(brain, start, num_neurons)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distributed_cow_fetch_full_network: distributed_cow_fetch_segment is NULL");
             return false;
         }
     }
@@ -1062,6 +1089,7 @@ bool distributed_cow_fetch_full_network(brain_t brain) {
  */
 bool brain_get_distributed_cow_stats(brain_t brain, distributed_cow_stats_t* stats) {
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_distributed_cow_stats: stats is NULL");
         return false;
     }
 
@@ -1069,6 +1097,7 @@ bool brain_get_distributed_cow_stats(brain_t brain, distributed_cow_stats_t* sta
     if (!state) {
         memset(stats, 0, sizeof(distributed_cow_stats_t));
         stats->is_distributed = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_distributed_cow_stats: state is NULL");
         return false;
     }
 

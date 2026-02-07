@@ -390,6 +390,7 @@ brain_t brain_create_custom(const brain_config_t* config)
 {
     if (!config) {
         set_error("Null config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_custom: config is NULL");
         return NULL;
     }
 
@@ -412,35 +413,42 @@ brain_t brain_create_custom(const brain_config_t* config)
     size_t task_name_size = sizeof(config->task_name);
     if (!nimcp_validate_string_field(config->task_name, task_name_size)) {
         set_error("Invalid task_name in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_custom: nimcp_validate_string_field is NULL");
         return NULL;
     }
     if (!nimcp_validate_integer_field(&config->num_inputs, sizeof(config->num_inputs)) ||
         config->num_inputs < 1 || config->num_inputs > 10000) {
         set_error("Invalid num_inputs in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_custom: nimcp_validate_integer_field is NULL");
         return NULL;
     }
     if (!nimcp_validate_integer_field(&config->num_outputs, sizeof(config->num_outputs)) ||
         config->num_outputs < 1 || config->num_outputs > 10000) {
         set_error("Invalid num_outputs in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_custom: nimcp_validate_integer_field is NULL");
         return NULL;
     }
     if (!nimcp_validate_float_field(&config->learning_rate, sizeof(config->learning_rate))) {
         set_error("Invalid learning_rate in config (NaN or Inf)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_custom: nimcp_validate_float_field is NULL");
         return NULL;
     }
     // Allow 0.0 for zero-initialized configs - will use default downstream
     // Validate learning_rate is in sensible range (0.0 to 1.0) - 0.0 means "use default"
     if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
         set_error("learning_rate must be in range [0.0, 1.0], got %f", config->learning_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_custom: validation failed");
         return NULL;
     }
     if (!nimcp_validate_float_field(&config->sparsity_target, sizeof(config->sparsity_target))) {
         set_error("Invalid sparsity_target in config (NaN or Inf)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_custom: nimcp_validate_float_field is NULL");
         return NULL;
     }
     // Validate sparsity_target is in valid range (0.0 to 1.0)
     if (config->sparsity_target < 0.0f || config->sparsity_target > 1.0f) {
         set_error("sparsity_target must be in range [0.0, 1.0], got %f", config->sparsity_target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_custom: validation failed");
         return NULL;
     }
 
@@ -470,6 +478,7 @@ brain_t brain_create_custom(const brain_config_t* config)
     if (!brain->strategy) {
         set_error("Failed to create task strategy");
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_custom: brain->strategy is NULL");
         return NULL;
     }
 
@@ -479,6 +488,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         set_error("Failed to create personality profile");
         strategy_destroy(brain->strategy);
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_custom: brain->personality is NULL");
         return NULL;
     }
 
@@ -492,6 +502,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         strategy_destroy(brain->strategy);
         nimcp_free(brain->personality);
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_custom: brain->network is NULL");
         return NULL;
     }
 
@@ -501,6 +512,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         strategy_destroy(brain->strategy);
         nimcp_free(brain->personality);
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_create_custom: init_output_labels is NULL");
         return NULL;
     }
 
@@ -510,6 +522,7 @@ brain_t brain_create_custom(const brain_config_t* config)
         strategy_destroy(brain->strategy);
         nimcp_free(brain->personality);
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_create_custom: init_event_bus is NULL");
         return NULL;
     }
 
@@ -1117,6 +1130,7 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
 {
     // Guard: Validate parameters
     if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create: nimcp_brain_factory_validate_creation_params is NULL");
         return NULL;
     }
 
@@ -1127,6 +1141,7 @@ brain_t brain_create(const char* task_name, brain_size_t size, brain_task_t task
     task_strategy_t* strategy = strategy_create(task);
     if (!strategy) {
         set_error("Failed to create task strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create: strategy is NULL");
         return NULL;
     }
 
@@ -1161,6 +1176,7 @@ brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_tas
 {
     // Guard: Validate parameters
     if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_minimal: nimcp_brain_factory_validate_creation_params is NULL");
         return NULL;
     }
 
@@ -1172,6 +1188,7 @@ brain_t brain_create_minimal(const char* task_name, brain_size_t size, brain_tas
     task_strategy_t* strategy = strategy_create(task);
     if (!strategy) {
         set_error("Failed to create task strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_minimal: strategy is NULL");
         return NULL;
     }
 
@@ -1208,6 +1225,7 @@ brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t
 {
     // Guard: Validate parameters
     if (!nimcp_brain_factory_validate_creation_params(task_name, num_inputs, num_outputs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_lazy: nimcp_brain_factory_validate_creation_params is NULL");
         return NULL;
     }
 
@@ -1219,6 +1237,7 @@ brain_t brain_create_lazy(const char* task_name, brain_size_t size, brain_task_t
     task_strategy_t* strategy = strategy_create(task);
     if (!strategy) {
         set_error("Failed to create task strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_lazy: strategy is NULL");
         return NULL;
     }
 

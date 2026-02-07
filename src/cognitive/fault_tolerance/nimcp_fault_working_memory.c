@@ -246,6 +246,7 @@ fault_working_memory_t* fault_working_memory_create_custom(
 
     if (!config) {
         LOG_ERROR("NULL config in fault_working_memory_create_custom");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_working_memory_create_custom: config is NULL");
         return NULL;
     }
 
@@ -274,6 +275,7 @@ fault_working_memory_t* fault_working_memory_create_custom(
     fault_working_memory_t* wm = nimcp_malloc(sizeof(fault_working_memory_t));
     if (!wm) {
         LOG_ERROR("Failed to allocate fault_working_memory_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_working_memory_create_custom: wm is NULL");
         return NULL;
     }
 
@@ -282,6 +284,7 @@ fault_working_memory_t* fault_working_memory_create_custom(
     if (!wm->faults) {
         LOG_ERROR("Failed to allocate faults array");
         nimcp_free(wm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_working_memory_create_custom: wm->faults is NULL");
         return NULL;
     }
 
@@ -369,11 +372,13 @@ bool fault_working_memory_add_fault(
 
     if (!wm) {
         LOG_ERROR("NULL working memory in add_fault");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_add_fault: wm is NULL");
         return false;
     }
 
     if (!fault) {
         LOG_ERROR("NULL fault in add_fault");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_add_fault: fault is NULL");
         return false;
     }
 
@@ -522,6 +527,7 @@ const active_fault_t* fault_working_memory_get_fault_at(
 
 
     if (index >= wm->count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_working_memory_get_fault_at: capacity exceeded");
         return NULL;
     }
 
@@ -559,6 +565,7 @@ active_fault_t* fault_working_memory_get_priority_fault(
 
 
     if (wm->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_working_memory_get_priority_fault: wm->count is zero");
         return NULL;
     }
 
@@ -577,6 +584,7 @@ bool fault_working_memory_set_recovery_strategy(
 {
     if (!wm) {
         LOG_ERROR("NULL working memory in set_recovery_strategy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_set_recovery_strategy: wm is NULL");
         return false;
     }
 
@@ -649,6 +657,7 @@ uint32_t fault_working_memory_get_total_steps(
 
 bool fault_working_memory_is_cascading(const fault_working_memory_t* wm) {
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_working_memory_is_cascading: wm is NULL");
         return false;
     }
 

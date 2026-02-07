@@ -193,22 +193,46 @@ multi_target_config_t multi_target_default_config(void) {
 }
 
 bool multi_target_validate_config(const multi_target_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multi_target_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->max_queue_size == 0 || config->max_queue_size > MULTI_TARGET_MAX_QUEUE) return false;
-    if (config->min_confidence_threshold < 0.0f || config->min_confidence_threshold > 1.0f) return false;
-    if (config->rejection_threshold < 0.0f || config->rejection_threshold > 1.0f) return false;
+    if (config->max_queue_size == 0 || config->max_queue_size > MULTI_TARGET_MAX_QUEUE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: config->max_queue_size is zero");
+        return false;
+    }
+    if (config->min_confidence_threshold < 0.0f || config->min_confidence_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
+        return false;
+    }
+    if (config->rejection_threshold < 0.0f || config->rejection_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
+        return false;
+    }
 
     /* Check weights sum to ~1 */
     float weight_sum = 0.0f;
     for (int i = 0; i < PRIORITY_COUNT; i++) {
-        if (config->priority_weights[i] < 0.0f) return false;
+        if (config->priority_weights[i] < 0.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
+            return false;
+        }
         weight_sum += config->priority_weights[i];
     }
-    if (weight_sum < 0.5f || weight_sum > 1.5f) return false;
+    if (weight_sum < 0.5f || weight_sum > 1.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_lock_time_s < 0.0f) return false;
-    if (config->better_target_margin < 0.0f) return false;
+    if (config->min_lock_time_s < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "multi_target_validate_config: validation failed");
+        return false;
+    }
+    if (config->better_target_margin < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multi_target_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -223,6 +247,7 @@ static int find_target_by_id(const dragonfly_multi_target_t mt, uint32_t id) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_target_by_id: validation failed");
     return -1;
 }
 
@@ -357,7 +382,10 @@ void dragonfly_multi_target_destroy(dragonfly_multi_target_t mt) {
 }
 
 int dragonfly_multi_target_reset(dragonfly_multi_target_t mt) {
-    if (!mt) return -1;
+    if (!mt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_reset: mt is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
@@ -382,7 +410,10 @@ int dragonfly_multi_target_update(
     const dragonfly_detection_t* detection,
     const dragonfly_self_state_t* self_state
 ) {
-    if (!mt || !detection || !self_state) return -1;
+    if (!mt || !detection || !self_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_update: required parameter is NULL (mt, detection, self_state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
@@ -472,13 +503,17 @@ int dragonfly_multi_target_remove(
     dragonfly_multi_target_t mt,
     uint32_t target_id
 ) {
-    if (!mt) return -1;
+    if (!mt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_remove: mt is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
     int idx = find_target_by_id(mt, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock(mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_remove: validation failed");
         return -1;
     }
 
@@ -505,13 +540,17 @@ int dragonfly_multi_target_set_primary(
     dragonfly_multi_target_t mt,
     uint32_t target_id
 ) {
-    if (!mt) return -1;
+    if (!mt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_set_primary: mt is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
     int idx = find_target_by_id(mt, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock(mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_set_primary: validation failed");
         return -1;
     }
 
@@ -537,7 +576,10 @@ int dragonfly_multi_target_evaluate(
     dragonfly_multi_target_t mt,
     const dragonfly_self_state_t* self_state
 ) {
-    if (!mt || !self_state) return -1;
+    if (!mt || !self_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_evaluate: required parameter is NULL (mt, self_state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
@@ -587,7 +629,10 @@ bool dragonfly_multi_target_should_switch(
     const dragonfly_multi_target_t mt,
     switch_reason_t* reason
 ) {
-    if (!mt || mt->num_targets < 2 || !mt->has_primary) return false;
+    if (!mt || mt->num_targets < 2 || !mt->has_primary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_should_switch: required parameter is NULL (mt, mt->has_primary)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
 
@@ -600,6 +645,7 @@ bool dragonfly_multi_target_should_switch(
     /* Check minimum lock time */
     if (lock_duration_s < mt->config.min_lock_time_s) {
         nimcp_mutex_unlock((nimcp_mutex_t*)mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_multi_target_should_switch: validation failed");
         return false;
     }
 
@@ -647,7 +693,10 @@ int dragonfly_multi_target_switch(
     switch_reason_t reason,
     switch_event_t* event
 ) {
-    if (!mt || mt->num_targets < 2) return -1;
+    if (!mt || mt->num_targets < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_switch: mt is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
@@ -668,6 +717,7 @@ int dragonfly_multi_target_switch(
 
     if (best_idx < 0) {
         nimcp_mutex_unlock(mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_switch: validation failed");
         return -1;
     }
 
@@ -715,13 +765,17 @@ int dragonfly_multi_target_switch_to(
     uint32_t target_id,
     switch_reason_t reason
 ) {
-    if (!mt) return -1;
+    if (!mt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_switch_to: mt is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mt->mutex);
 
     int idx = find_target_by_id(mt, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock(mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_switch_to: validation failed");
         return -1;
     }
 
@@ -753,7 +807,10 @@ int dragonfly_multi_target_get_backup(
     const dragonfly_multi_target_t mt,
     queued_target_t* backup
 ) {
-    if (!mt || !backup || mt->num_targets < 2) return -1;
+    if (!mt || !backup || mt->num_targets < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_backup: required parameter is NULL (mt, backup)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
 
@@ -769,6 +826,7 @@ int dragonfly_multi_target_get_backup(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)mt->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_get_backup: operation failed");
     return -1;
 }
 
@@ -780,7 +838,10 @@ int dragonfly_multi_target_get_primary(
     const dragonfly_multi_target_t mt,
     queued_target_t* primary
 ) {
-    if (!mt || !primary || !mt->has_primary) return -1;
+    if (!mt || !primary || !mt->has_primary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_primary: required parameter is NULL (mt, primary, mt->has_primary)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
     *primary = mt->targets[mt->primary_index];
@@ -795,7 +856,10 @@ int dragonfly_multi_target_get_queue(
     uint32_t max_targets,
     uint32_t* num_targets
 ) {
-    if (!mt || !targets || !num_targets) return -1;
+    if (!mt || !targets || !num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_queue: required parameter is NULL (mt, targets, num_targets)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
 
@@ -813,13 +877,17 @@ int dragonfly_multi_target_get_by_id(
     uint32_t target_id,
     queued_target_t* target
 ) {
-    if (!mt || !target) return -1;
+    if (!mt || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_by_id: required parameter is NULL (mt, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
 
     int idx = find_target_by_id(mt, target_id);
     if (idx < 0) {
         nimcp_mutex_unlock((nimcp_mutex_t*)mt->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_multi_target_get_by_id: validation failed");
         return -1;
     }
 
@@ -834,7 +902,10 @@ int dragonfly_multi_target_get_state(
     const dragonfly_multi_target_t mt,
     multi_target_state_t* state
 ) {
-    if (!mt || !state) return -1;
+    if (!mt || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_state: required parameter is NULL (mt, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
     *state = mt->state;
@@ -847,7 +918,10 @@ int dragonfly_multi_target_get_stats(
     const dragonfly_multi_target_t mt,
     multi_target_stats_t* stats
 ) {
-    if (!mt || !stats) return -1;
+    if (!mt || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_stats: required parameter is NULL (mt, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
     *stats = mt->stats;
@@ -862,7 +936,10 @@ int dragonfly_multi_target_get_history(
     uint32_t max_events,
     uint32_t* num_events
 ) {
-    if (!mt || !history || !num_events) return -1;
+    if (!mt || !history || !num_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_multi_target_get_history: required parameter is NULL (mt, history, num_events)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)mt->mutex);
 

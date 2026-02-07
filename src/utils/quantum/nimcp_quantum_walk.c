@@ -127,13 +127,19 @@ static bool build_adjacency_lists(
 ) {
     // Get number of neurons
     uint32_t num_neurons = neural_network_get_num_neurons(network);
-    if (num_neurons == 0) return false;
+    if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_adjacency_lists: num_neurons is zero");
+        return false;
+    }
 
     walker->num_nodes = num_neurons;
 
     // Allocate degree array
     walker->node_degrees = (uint32_t*)nimcp_calloc(num_neurons, sizeof(uint32_t));
-    if (!walker->node_degrees) return false;
+    if (!walker->node_degrees) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_lists: walker->node_degrees is NULL");
+        return false;
+    }
 
     // PASS 1: Count degrees
     // WHAT: Count outgoing edges for each neuron
@@ -150,6 +156,7 @@ static bool build_adjacency_lists(
     walker->adjacency_list = (uint32_t**)nimcp_malloc(num_neurons * sizeof(uint32_t*));
     if (!walker->adjacency_list) {
         nimcp_free(walker->node_degrees);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_adjacency_lists: walker->adjacency_list is NULL");
         return false;
     }
 
@@ -164,6 +171,7 @@ static bool build_adjacency_lists(
                 }
                 nimcp_free(walker->adjacency_list);
                 nimcp_free(walker->node_degrees);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_adjacency_lists: validation failed");
                 return false;
             }
 
@@ -271,7 +279,10 @@ quantum_walker_t* quantum_walk_create(
     const quantum_walk_config_t* config
 ) {
     // Guard: NULL checks
-    if (!network || !config) return NULL;
+    if (!network || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_create: required parameter is NULL (network, config)");
+        return NULL;
+    }
 
     // Allocate walker structure
     quantum_walker_t* walker = (quantum_walker_t*)nimcp_malloc(sizeof(quantum_walker_t));
@@ -291,6 +302,7 @@ quantum_walker_t* quantum_walk_create(
     // Build adjacency lists from network
     if (!build_adjacency_lists(walker, network)) {
         nimcp_free(walker);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_create: build_adjacency_lists is NULL");
         return NULL;
     }
 
@@ -300,6 +312,7 @@ quantum_walker_t* quantum_walk_create(
     );
     if (!walker->amplitudes) {
         quantum_walk_destroy(walker);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_create: walker->amplitudes is NULL");
         return NULL;
     }
 
@@ -308,6 +321,7 @@ quantum_walker_t* quantum_walk_create(
     );
     if (!walker->probabilities) {
         quantum_walk_destroy(walker);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_create: walker->probabilities is NULL");
         return NULL;
     }
 
@@ -316,6 +330,7 @@ quantum_walker_t* quantum_walk_create(
     );
     if (!walker->temp_amplitudes) {
         quantum_walk_destroy(walker);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_create: walker->temp_amplitudes is NULL");
         return NULL;
     }
 
@@ -390,8 +405,14 @@ quantum_walker_t* quantum_walk_clone(const quantum_walker_t* walker) {
 
 bool quantum_walk_initialize(quantum_walker_t* walker, uint32_t node_id) {
     // Guard: NULL check and bounds
-    if (!walker) return false;
-    if (node_id >= walker->num_nodes) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_initialize: walker is NULL");
+        return false;
+    }
+    if (node_id >= walker->num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_initialize: capacity exceeded");
+        return false;
+    }
 
     // WHAT: Set |ψ⟩ = |node_id⟩
     // WHY: Localized initial state (e.g., reward source)
@@ -419,7 +440,10 @@ bool quantum_walk_initialize_superposition(
     const quantum_amplitude_t* initial_amplitudes
 ) {
     // Guard: NULL check
-    if (!walker) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_initialize_superposition: walker is NULL");
+        return false;
+    }
 
     if (initial_amplitudes == NULL) {
         // Uniform superposition: |ψ⟩ = (1/√N)Σ|i⟩
@@ -448,7 +472,10 @@ bool quantum_walk_initialize_superposition(
 
 bool quantum_walk_step(quantum_walker_t* walker) {
     // Guard: NULL check
-    if (!walker) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_step: walker is NULL");
+        return false;
+    }
 
     uint64_t start_time = nimcp_time_get_us();
 
@@ -546,10 +573,14 @@ bool quantum_walk_step(quantum_walker_t* walker) {
 
 bool quantum_walk_evolve(quantum_walker_t* walker, uint32_t num_steps) {
     // Guard: NULL check
-    if (!walker) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_evolve: walker is NULL");
+        return false;
+    }
 
     for (uint32_t step = 0; step < num_steps; step++) {
         if (!quantum_walk_step(walker)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_evolve: quantum_walk_step is NULL");
             return false;
         }
     }
@@ -559,7 +590,10 @@ bool quantum_walk_evolve(quantum_walker_t* walker, uint32_t num_steps) {
 
 bool quantum_walk_reset(quantum_walker_t* walker) {
     // Guard: NULL check
-    if (!walker) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_reset: walker is NULL");
+        return false;
+    }
 
     // Re-initialize at initial node
     return quantum_walk_initialize(walker, walker->initial_node);
@@ -574,7 +608,10 @@ bool quantum_walk_get_distribution(
     float* probabilities
 ) {
     // Guard: NULL checks
-    if (!walker || !probabilities) return false;
+    if (!walker || !probabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_get_distribution: required parameter is NULL (walker, probabilities)");
+        return false;
+    }
 
     // Copy cached probabilities
     memcpy(probabilities, walker->probabilities,
@@ -588,7 +625,10 @@ bool quantum_walk_get_amplitudes(
     quantum_amplitude_t* amplitudes
 ) {
     // Guard: NULL checks
-    if (!walker || !amplitudes) return false;
+    if (!walker || !amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_get_amplitudes: required parameter is NULL (walker, amplitudes)");
+        return false;
+    }
 
     // Copy quantum amplitudes
     memcpy(amplitudes, walker->amplitudes,
@@ -632,7 +672,10 @@ bool quantum_walk_compute_stats(
     quantum_walk_stats_t* stats
 ) {
     // Guard: NULL checks
-    if (!walker || !stats) return false;
+    if (!walker || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_compute_stats: required parameter is NULL (walker, stats)");
+        return false;
+    }
 
     // Compute total probability
     float total_prob = 0.0F;
@@ -698,7 +741,10 @@ void quantum_walk_print_stats(const quantum_walker_t* walker) {
 }
 
 bool quantum_walk_verify(const quantum_walker_t* walker) {
-    if (!walker) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_verify: walker is NULL");
+        return false;
+    }
 
     // WHAT: Check probability conservation
     // WHY: Detect numerical errors
@@ -713,6 +759,7 @@ bool quantum_walk_verify(const quantum_walker_t* walker) {
     if (error > PROB_TOLERANCE) {
         printf("⚠️ Quantum walk verification FAILED: Probability = %.6f (error = %.6f)\n",
                total_prob, error);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_verify: validation failed");
         return false;
     }
 
@@ -728,7 +775,10 @@ bool quantum_walk_apply_custom_coin(
     const quantum_amplitude_t** coin_matrix
 ) {
     // Guard: NULL checks
-    if (!walker || !coin_matrix) return false;
+    if (!walker || !coin_matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_apply_custom_coin: required parameter is NULL (walker, coin_matrix)");
+        return false;
+    }
 
     // WHAT: Apply custom coin operator using user-provided matrix
     // WHY: Enable experimentation with custom quantum gates and operators
@@ -746,14 +796,20 @@ bool quantum_walk_apply_custom_coin(
     uint32_t matrix_size = walker->num_nodes;
 
     // Guard: Validate matrix is not empty
-    if (matrix_size == 0) return false;
+    if (matrix_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_apply_custom_coin: matrix_size is zero");
+        return false;
+    }
 
     // STEP 2: Allocate temporary buffer for result
     // WHAT: Create temporary array to store transformed amplitudes
     // WHY: Cannot modify amplitudes in-place during matrix multiplication
     // HOW: Use walker's temp_amplitudes buffer
 
-    if (!walker->temp_amplitudes) return false;
+    if (!walker->temp_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_walk_apply_custom_coin: walker->temp_amplitudes is NULL");
+        return false;
+    }
 
     // Zero temp buffer
     memset(walker->temp_amplitudes, 0, walker->num_nodes * sizeof(quantum_amplitude_t));
@@ -766,6 +822,7 @@ bool quantum_walk_apply_custom_coin(
     for (uint32_t i = 0; i < matrix_size; i++) {
         // Guard: Check row pointer
         if (!coin_matrix[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_apply_custom_coin: coin_matrix is NULL");
             return false;
         }
 
@@ -812,8 +869,14 @@ bool quantum_walk_hybrid_step(
     float mixing_ratio
 ) {
     // Guard: NULL checks
-    if (!walker || !classical_weights) return false;
-    if (mixing_ratio < 0.0F || mixing_ratio > 1.0F) return false;
+    if (!walker || !classical_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_hybrid_step: required parameter is NULL (walker, classical_weights)");
+        return false;
+    }
+    if (mixing_ratio < 0.0F || mixing_ratio > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_hybrid_step: validation failed");
+        return false;
+    }
 
     // WHAT: Mix quantum + classical diffusion
     // WHY: Balance speedup and biological realism
@@ -842,8 +905,14 @@ bool quantum_walk_apply_decoherence(
     float decoherence_strength
 ) {
     // Guard: NULL check
-    if (!walker) return false;
-    if (decoherence_strength < 0.0F || decoherence_strength > 1.0F) return false;
+    if (!walker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_apply_decoherence: walker is NULL");
+        return false;
+    }
+    if (decoherence_strength < 0.0F || decoherence_strength > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_walk_apply_decoherence: validation failed");
+        return false;
+    }
 
     // WHAT: Add noise to quantum amplitudes
     // WHY: Model environmental decoherence
@@ -910,7 +979,10 @@ bool quantum_walk_measure_finite_shots(
     uint32_t num_shots,
     qmc_measurement_result_t* result
 ) {
-    if (!walker || !result || num_shots == 0) return false;
+    if (!walker || !result || num_shots == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_measure_finite_shots: required parameter is NULL (walker, result)");
+        return false;
+    }
 
     qmc_measurement_config_t config = {
         .num_shots = num_shots,
@@ -947,7 +1019,10 @@ bool quantum_walk_estimate_entropy_mc(
     uint32_t num_samples,
     qmc_entropy_result_t* result
 ) {
-    if (!walker || !result) return false;
+    if (!walker || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_walk_estimate_entropy_mc: required parameter is NULL (walker, result)");
+        return false;
+    }
 
     qmc_entropy_config_t config = {
         .num_samples = num_samples > 0 ? num_samples : 10000,

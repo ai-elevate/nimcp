@@ -130,6 +130,7 @@ struct fault_attention {
  */
 static bool validate_config_internal(const fault_attention_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_config_internal: config is NULL");
         return false;
     }
 
@@ -139,6 +140,7 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
         config->frequency_weight < 0.0F ||
         config->impact_weight < 0.0F) {
         nimcp_log(LOG_LEVEL_ERROR, "Attention weights cannot be negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: operation failed");
         return false;
     }
 
@@ -149,6 +151,7 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
     if (fabsf(sum - 1.0F) > 0.01F) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Attention weights must sum to 1.0 (got %.3f)", sum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: validation failed");
         return false;
     }
 
@@ -157,6 +160,7 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Learning rate must be in [0.0, 1.0] (got %.3f)",
                   config->learning_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: validation failed");
         return false;
     }
 
@@ -166,6 +170,7 @@ static bool validate_config_internal(const fault_attention_config_t* config) {
         nimcp_log(LOG_LEVEL_ERROR,
                   "Max tracked faults must be in [1, %u] (got %u)",
                   FAULT_ATTENTION_MAX_FAULTS, config->max_tracked_faults);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config_internal: operation failed");
         return false;
     }
 
@@ -315,6 +320,7 @@ fault_attention_t* fault_attention_create_custom(
     } else {
         // Validate provided config
         if (!validate_config_internal(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_create_custom: validate_config_internal is NULL");
             return NULL;
         }
         final_config = *config;
@@ -432,6 +438,7 @@ bool fault_attention_compute_weights(
 
     if (!attention) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL attention in compute_weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_compute_weights: attention is NULL");
         return false;
     }
 
@@ -446,6 +453,7 @@ bool fault_attention_compute_weights(
 
     if (fault_count > 0 && !faults) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL faults with non-zero count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_compute_weights: faults is NULL");
         return false;
     }
 
@@ -453,6 +461,7 @@ bool fault_attention_compute_weights(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault count %u exceeds maximum %u",
                   fault_count, attention->config.max_tracked_faults);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_attention_compute_weights: validation failed");
         return false;
     }
 
@@ -644,11 +653,13 @@ bool fault_attention_get_weight(
 
     if (!attention) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL attention in get_weight");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_weight: attention is NULL");
         return false;
     }
 
     if (!weight) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL weight output in get_weight");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_weight: weight is NULL");
         return false;
     }
 
@@ -660,6 +671,7 @@ bool fault_attention_get_weight(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds (count=%u)",
                   fault_index, attention->fault_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_get_weight: capacity exceeded");
         return false;
     }
 
@@ -714,15 +726,18 @@ bool fault_attention_get_focused_index(
 
     if (!attention) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL attention in get_focused_index");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_index: attention is NULL");
         return false;
     }
 
     if (!focused_index) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL focused_index output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_index: focused_index is NULL");
         return false;
     }
 
     if (!attention->has_focus || attention->fault_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_index: attention->has_focus is NULL");
         return false;
     }
 
@@ -749,10 +764,12 @@ bool fault_attention_get_focused_fault(
     // =========================================================================
 
     if (!attention || !faults || !focused_fault) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_fault: required parameter is NULL (attention, faults, focused_fault)");
         return false;
     }
 
     if (!attention->has_focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_focused_fault: attention->has_focus is NULL");
         return false;
     }
 
@@ -764,6 +781,7 @@ bool fault_attention_get_focused_fault(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Focused index %u out of bounds (count=%u)",
                   attention->focused_fault_idx, fault_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_get_focused_fault: capacity exceeded");
         return false;
     }
 
@@ -790,6 +808,7 @@ bool fault_attention_update_weights(
 
     if (!attention) {
         nimcp_log(LOG_LEVEL_ERROR, "NULL attention in update_weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_update_weights: attention is NULL");
         return false;
     }
 
@@ -806,6 +825,7 @@ bool fault_attention_update_weights(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Fault index %u out of bounds in update_weights",
                   fault_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "fault_attention_update_weights: capacity exceeded");
         return false;
     }
 
@@ -917,6 +937,7 @@ bool fault_attention_update_weights(
 
 bool fault_attention_reset_weights(fault_attention_t* attention) {
     if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_reset_weights: attention is NULL");
         return false;
     }
 
@@ -945,6 +966,7 @@ bool fault_attention_get_config(
     fault_attention_config_t* config
 ) {
     if (!attention || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_config: required parameter is NULL (attention, config)");
         return false;
     }
 
@@ -961,10 +983,12 @@ bool fault_attention_set_config(
     const fault_attention_config_t* config
 ) {
     if (!attention || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_set_config: required parameter is NULL (attention, config)");
         return false;
     }
 
     if (!validate_config_internal(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_attention_set_config: validate_config_internal is NULL");
         return false;
     }
 
@@ -988,6 +1012,7 @@ bool fault_attention_get_stats(
     fault_attention_stats_t* stats
 ) {
     if (!attention || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_get_stats: required parameter is NULL (attention, stats)");
         return false;
     }
 
@@ -1001,6 +1026,7 @@ bool fault_attention_get_stats(
 
 bool fault_attention_reset_stats(fault_attention_t* attention) {
     if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fault_attention_reset_stats: attention is NULL");
         return false;
     }
 

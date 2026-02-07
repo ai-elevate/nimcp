@@ -186,6 +186,7 @@ static procedural_skill_t* find_skill(procedural_memory_t pm, uint64_t id) {
             return &pm->skills[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_skill: validation failed");
     return NULL;
 }
 
@@ -212,6 +213,7 @@ static procedural_habit_t* find_habit(procedural_memory_t pm, uint64_t id) {
             return &pm->habits[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_habit: validation failed");
     return NULL;
 }
 
@@ -245,6 +247,7 @@ static procedural_skill_t* find_free_skill_slot(procedural_memory_t pm) {
         return &pm->skills[pm->num_skills++];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_skill_slot: validation failed");
     return NULL;
 }
 
@@ -278,6 +281,7 @@ static procedural_habit_t* find_free_habit_slot(procedural_memory_t pm) {
         return &pm->habits[pm->num_habits++];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_habit_slot: validation failed");
     return NULL;
 }
 
@@ -445,7 +449,10 @@ static float update_running_average(float current, float new_value, size_t count
  * @brief Check if skill is ready to advance to next stage
  */
 static bool check_stage_advancement(procedural_skill_t* skill, const procedural_config_t* config) {
-    if (!skill || !config) return false;
+    if (!skill || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_stage_advancement: required parameter is NULL (skill, config)");
+        return false;
+    }
 
     switch (skill->stage) {
         case SKILL_STAGE_COGNITIVE:
@@ -459,9 +466,11 @@ static bool check_stage_advancement(procedural_skill_t* skill, const procedural_
                     skill->automaticity >= config->associative_auto_threshold);
 
         case SKILL_STAGE_AUTONOMOUS:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_stage_advancement: operation failed");
             return false; // Already at highest stage
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_stage_advancement: operation failed");
             return false;
     }
 }
@@ -471,7 +480,10 @@ static bool check_stage_advancement(procedural_skill_t* skill, const procedural_
  */
 static pr_memory_node_t* create_skill_memory_node(procedural_memory_t pm,
                                                    procedural_skill_t* skill) {
-    if (!pm || !skill || !pm->node_manager) return NULL;
+    if (!pm || !skill || !pm->node_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "check_stage_advancement: required parameter is NULL (pm, skill, pm->node_manager)");
+        return NULL;
+    }
 
     pr_node_config_t config = pr_memory_node_default_config();
     config.initial_tier = PR_MEMORY_TIER_Z2; // Long-term storage for skills
@@ -491,7 +503,10 @@ static pr_memory_node_t* create_skill_memory_node(procedural_memory_t pm,
  */
 static pr_memory_node_t* create_habit_memory_node(procedural_memory_t pm,
                                                    procedural_habit_t* habit) {
-    if (!pm || !habit || !pm->node_manager) return NULL;
+    if (!pm || !habit || !pm->node_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "check_stage_advancement: required parameter is NULL (pm, habit, pm->node_manager)");
+        return NULL;
+    }
 
     pr_node_config_t config = pr_memory_node_default_config();
     config.initial_tier = PR_MEMORY_TIER_Z2;
@@ -625,14 +640,32 @@ NIMCP_EXPORT procedural_config_t procedural_config_default(void) {
 }
 
 NIMCP_EXPORT bool procedural_config_validate(const procedural_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "procedural_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->max_skills == 0) return false;
-    if (config->max_habits == 0) return false;
-    if (config->max_steps_per_skill == 0) return false;
+    if (config->max_skills == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "procedural_config_validate: config->max_skills is zero");
+        return false;
+    }
+    if (config->max_habits == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "procedural_config_validate: config->max_habits is zero");
+        return false;
+    }
+    if (config->max_steps_per_skill == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "procedural_config_validate: config->max_steps_per_skill is zero");
+        return false;
+    }
 
-    if (config->base_learning_rate < 0.0f || config->base_learning_rate > 1.0f) return false;
-    if (config->skill_decay_rate < 0.0f) return false;
+    if (config->base_learning_rate < 0.0f || config->base_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "procedural_config_validate: validation failed");
+        return false;
+    }
+    if (config->skill_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "procedural_config_validate: validation failed");
+        return false;
+    }
 
     if (config->cognitive_accuracy_threshold < 0.0f ||
         config->cognitive_accuracy_threshold > 1.0f) return false;
@@ -660,6 +693,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
         cfg = *config;
         if (!procedural_config_validate(&cfg)) {
             set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "procedural_create: procedural_config_validate is NULL");
             return NULL;
         }
     } else {
@@ -670,6 +704,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     procedural_memory_t pm = (procedural_memory_t)nimcp_calloc(1, sizeof(struct procedural_memory_internal));
     if (!pm) {
         set_error("Memory allocation failed for manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "procedural_create: pm is NULL");
         return NULL;
     }
 
@@ -682,6 +717,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
     if (!pm->skills) {
         set_error("Memory allocation failed for skills");
         nimcp_free(pm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "procedural_create: pm->skills is NULL");
         return NULL;
     }
 
@@ -705,6 +741,7 @@ NIMCP_EXPORT procedural_memory_t procedural_create(
         set_error("Memory allocation failed for habits");
         nimcp_free(pm->skills);
         nimcp_free(pm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "procedural_create: pm->habits is NULL");
         return NULL;
     }
 
@@ -2219,10 +2256,16 @@ NIMCP_EXPORT bool procedural_is_chunk(
     procedural_memory_t pm,
     uint64_t skill_id
 ) {
-    if (!pm) return false;
+    if (!pm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "procedural_is_chunk: pm is NULL");
+        return false;
+    }
 
     procedural_skill_t* skill = find_skill(pm, skill_id);
-    if (!skill) return false;
+    if (!skill) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "procedural_is_chunk: skill is NULL");
+        return false;
+    }
 
     return skill->is_chunk;
 }

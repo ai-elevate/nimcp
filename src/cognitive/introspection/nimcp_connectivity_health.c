@@ -175,6 +175,7 @@ static inline uint32_t brain_get_num_communities(brain_t brain) {
  */
 static inline uint32_t* brain_get_community_sizes(brain_t brain) {
     (void)brain;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_community_sizes: operation failed");
     return NULL;  /* Full implementation requires community detection results */
 }
 
@@ -184,6 +185,7 @@ static inline uint32_t* brain_get_community_sizes(brain_t brain) {
 static inline uint32_t* brain_get_hub_ids(brain_t brain, uint32_t* num_hubs) {
     (void)brain;
     if (num_hubs) *num_hubs = 0;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_hub_ids: validation failed");
     return NULL;  /* Full implementation requires centrality computation */
 }
 
@@ -193,6 +195,7 @@ static inline uint32_t* brain_get_hub_ids(brain_t brain, uint32_t* num_hubs) {
 static inline float* brain_get_hub_centrality(brain_t brain, uint32_t* num_hubs) {
     (void)brain;
     if (num_hubs) *num_hubs = 0;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_hub_centrality: validation failed");
     return NULL;  /* Full implementation requires centrality computation */
 }
 
@@ -345,6 +348,7 @@ bool is_neuron_in_region(
     int region)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_neuron_in_region: brain is NULL");
         return false;
     }
 
@@ -887,6 +891,7 @@ bool brain_enable_connectivity_monitoring(
     void* callback_context)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_connectivity_monitoring: brain is NULL");
         return false;
     }
 
@@ -936,6 +941,7 @@ void brain_disable_connectivity_monitoring(brain_t brain)
 bool brain_is_connectivity_monitoring_enabled(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_connectivity_monitoring_enabled: brain is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -953,6 +959,7 @@ bool brain_get_connectivity_health(
     brain_connectivity_health_t* health)
 {
     if (!brain || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_connectivity_health: required parameter is NULL (brain, health)");
         return false;
     }
 
@@ -961,6 +968,7 @@ bool brain_get_connectivity_health(
 
 
     if (brain->last_connectivity_assessment_time_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_connectivity_health: brain->last_connectivity_assessment_time_ms is zero");
         return false;  /* Never assessed */
     }
 
@@ -1021,6 +1029,7 @@ const char* connectivity_health_to_string(
     size_t buffer_size)
 {
     if (!buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connectivity_health_to_string: buffer is NULL");
         return NULL;  /* Invalid buffer - return NULL for safety */
     }
 
@@ -1135,7 +1144,10 @@ void connectivity_health_set_instance_health_agent(void* ctx, nimcp_health_agent
 }
 
 int connectivity_health_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "connectivity_health_training_begin: ctx is NULL");
+        return -1;
+    }
     connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
         "conn_health_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("[CONNECTIVITY_HEALTH] Training begin: module state reset");
@@ -1143,7 +1155,10 @@ int connectivity_health_training_begin(void* ctx) {
 }
 
 int connectivity_health_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "connectivity_health_training_step: ctx is NULL");
+        return -1;
+    }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
@@ -1152,7 +1167,10 @@ int connectivity_health_training_step(void* ctx, float progress) {
 }
 
 int connectivity_health_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "connectivity_health_training_end: ctx is NULL");
+        return -1;
+    }
     connectivity_health_heartbeat_instance(g_connectivity_health_instance_health_agent,
         "conn_health_training_end", 1.0f);
     NIMCP_LOGGING_INFO("[CONNECTIVITY_HEALTH] Training end: metrics finalized");

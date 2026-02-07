@@ -244,6 +244,7 @@ static analog_entity_t* find_entity_by_id(
             return &domain->entities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entity_by_id: validation failed");
     return NULL;
 }
 
@@ -311,6 +312,7 @@ analogical_engine_t* analogical_engine_create_custom(const analog_config_t* conf
     if (!engine->cached_domains) {
         set_error("Failed to allocate domain cache");
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_engine_create_custom: engine->cached_domains is NULL");
         return NULL;
     }
 
@@ -321,6 +323,7 @@ analogical_engine_t* analogical_engine_create_custom(const analog_config_t* conf
         set_error("Failed to allocate analogy cache");
         nimcp_free(engine->cached_domains);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_engine_create_custom: engine->cached_analogies is NULL");
         return NULL;
     }
 
@@ -391,6 +394,7 @@ analog_domain_t* analogical_create_domain(
         if (domain->entities) nimcp_free(domain->entities);
         if (domain->relations) nimcp_free(domain->relations);
         nimcp_free(domain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_create_domain: validation failed");
         return NULL;
     }
 
@@ -485,6 +489,7 @@ int analogical_register_domain(
 ) {
     if (!engine || !domain) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_register_domain: required parameter is NULL (engine, domain)");
         return -1;
     }
 
@@ -494,6 +499,7 @@ int analogical_register_domain(
 
     if (engine->num_cached_domains >= engine->config.max_domains_cache) {
         set_error("Domain cache full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "analogical_register_domain: capacity exceeded");
         return -1;
     }
 
@@ -542,6 +548,7 @@ analog_analogy_t* analogical_find_analogy(
 ) {
     if (!engine || !source || !target) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_find_analogy: required parameter is NULL (engine, source, target)");
         return NULL;
     }
 
@@ -568,6 +575,7 @@ analog_analogy_t* analogical_find_analogy(
     if (!analogy->mappings) {
         set_error("Failed to allocate mappings");
         nimcp_free(analogy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_find_analogy: analogy->mappings is NULL");
         return NULL;
     }
     analogy->num_mappings = 0;
@@ -636,6 +644,7 @@ analog_analogy_t* analogical_find_analogy(
     /* Check minimum threshold */
     if (analogy->mapping_strength < engine->config.min_mapping_strength) {
         analogical_free_analogy(analogy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_find_analogy: validation failed");
         return NULL;
     }
 
@@ -662,6 +671,7 @@ analog_analogy_t* analogical_find_best_analogy(
 ) {
     if (!engine || !target) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_find_best_analogy: required parameter is NULL (engine, target)");
         return NULL;
     }
 
@@ -707,6 +717,7 @@ int analogical_find_multiple_analogies(
 ) {
     if (!engine || !target || !analogies || !num_found) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_find_multiple_analogies: required parameter is NULL (engine, target, analogies, num_found)");
         return -1;
     }
 
@@ -737,6 +748,7 @@ int analogical_evaluate_analogy(
 ) {
     if (!engine || !analogy || !quality) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_evaluate_analogy: required parameter is NULL (engine, analogy, quality)");
         return -1;
     }
 
@@ -883,6 +895,7 @@ int analogical_map_entities(
 ) {
     if (!engine || !source || !target || !mappings || !num_found) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_map_entities: required parameter is NULL (engine, source, target, mappings, num_found)");
         return -1;
     }
 
@@ -896,6 +909,7 @@ int analogical_map_entities(
     bool* target_used = nimcp_calloc(target->num_entities, sizeof(bool));
     if (!target_used) {
         set_error("Failed to allocate tracking array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "analogical_map_entities: target_used is NULL");
         return -1;
     }
 
@@ -948,6 +962,7 @@ int analogical_map_relations(
 ) {
     if (!engine || !source || !target || !relation_mappings || !num_found) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_map_relations: required parameter is NULL (engine, source, target, relation_mappings, num_found)");
         return -1;
     }
 
@@ -1021,6 +1036,7 @@ analog_solution_t* analogical_transfer_solution(
 ) {
     if (!engine || !analogy || !source_solution) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_transfer_solution: required parameter is NULL (engine, analogy, source_solution)");
         return NULL;
     }
 
@@ -1124,6 +1140,7 @@ int analogical_predict_properties(
 ) {
     if (!engine || !analogy || !source_entity || !predicted_features || !num_features) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_predict_properties: required parameter is NULL (engine, analogy, source_entity, predicted_features, num_features)");
         return -1;
     }
 
@@ -1152,6 +1169,7 @@ int analogical_predict_properties(
 
     if (mapped_id == 0) {
         set_error("Entity not mapped");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "analogical_predict_properties: mapped_id is zero");
         return -1;
     }
 
@@ -1201,11 +1219,13 @@ analog_abstraction_t* analogical_extract_principle(
 ) {
     if (!engine || !analogies || num_analogies == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_extract_principle: required parameter is NULL (engine, analogies)");
         return NULL;
     }
 
     if (!engine->config.enable_abstraction) {
         set_error("Abstraction disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_extract_principle: engine->config is NULL");
         return NULL;
     }
 
@@ -1281,6 +1301,7 @@ int analogical_apply_abstraction(
 ) {
     if (!engine || !abstraction || !target || !instantiated_relations || !num_found) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_apply_abstraction: required parameter is NULL (engine, abstraction, target, instantiated_relations, num_found)");
         return -1;
     }
 
@@ -1338,6 +1359,7 @@ analog_analogy_t* analogical_generate_explanation(
 ) {
     if (!engine || !concept_domain || !audience_familiarity) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_generate_explanation: required parameter is NULL (engine, concept_domain, audience_familiarity)");
         return NULL;
     }
 
@@ -1437,7 +1459,10 @@ int analogical_set_fatigue(analogical_engine_t* engine, float level) {
  * ============================================================================ */
 
 int analogical_get_stats(const analogical_engine_t* engine, analog_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogical_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     analogical_reasoning_heartbeat("analogical_r_analogical_get_stats", 0.0f);

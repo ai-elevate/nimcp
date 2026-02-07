@@ -143,6 +143,7 @@ static genius_plasticity_synapse_t* find_synapse(genius_plasticity_bridge_t* bri
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -312,7 +313,10 @@ void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
 }
 
 int genius_plasticity_reset(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -346,7 +350,10 @@ int genius_plasticity_reset(genius_plasticity_bridge_t* bridge) {
 }
 
 int genius_plasticity_link_genius(genius_plasticity_bridge_t* bridge, struct mathematical_genius* genius) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_link_genius: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_li", 0.0f);
@@ -366,7 +373,10 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
                                        genius_synapse_type_t type,
                                        float initial_weight,
                                        genius_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_link_genius: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -377,12 +387,14 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_plasticity_link_genius: capacity exceeded");
         return -1;
     }
 
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id) != NULL) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_link_genius: validation failed");
         return -1;
     }
 
@@ -413,7 +425,10 @@ int genius_plasticity_register_synapse(genius_plasticity_bridge_t* bridge,
 }
 
 int genius_plasticity_unregister_synapse(genius_plasticity_bridge_t* bridge, uint32_t synapse_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_un", 0.0f);
@@ -437,13 +452,17 @@ int genius_plasticity_unregister_synapse(genius_plasticity_bridge_t* bridge, uin
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
 int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
                                   uint32_t synapse_id,
                                   genius_plasticity_synapse_t* synapse) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_unregister_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
@@ -460,13 +479,17 @@ int genius_plasticity_get_synapse(genius_plasticity_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
 int genius_plasticity_protect_synapse(genius_plasticity_bridge_t* bridge,
                                       uint32_t synapse_id,
                                       bool protect) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_pr", 0.0f);
@@ -482,6 +505,7 @@ int genius_plasticity_protect_synapse(genius_plasticity_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
@@ -676,7 +700,10 @@ float genius_plasticity_apply_stdp(genius_plasticity_bridge_t* bridge,
 int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
                                          float reward,
                                          float elegance) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ap", 0.0f);
@@ -718,7 +745,10 @@ int genius_plasticity_apply_proof_reward(genius_plasticity_bridge_t* bridge,
 int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
                                            float insight_strength,
                                            genius_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ap", 0.0f);
@@ -757,7 +787,10 @@ int genius_plasticity_apply_insight_reward(genius_plasticity_bridge_t* bridge,
 }
 
 int genius_plasticity_update_bcm(genius_plasticity_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_up", 0.0f);
@@ -785,7 +818,10 @@ int genius_plasticity_update_bcm(genius_plasticity_bridge_t* bridge, float dt_ms
 }
 
 int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ho", 0.0f);
@@ -840,7 +876,10 @@ int genius_plasticity_homeostatic_update(genius_plasticity_bridge_t* bridge, flo
 }
 
 int genius_plasticity_update_traces(genius_plasticity_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_up", 0.0f);
@@ -865,7 +904,10 @@ int genius_plasticity_update_traces(genius_plasticity_bridge_t* bridge, float dt
 }
 
 int genius_plasticity_consolidate(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_co", 0.0f);
@@ -906,7 +948,10 @@ int genius_plasticity_consolidate(genius_plasticity_bridge_t* bridge) {
 
 int genius_plasticity_get_learning_state(genius_plasticity_bridge_t* bridge,
                                          genius_learning_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_consolidate: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
@@ -964,7 +1009,10 @@ float genius_plasticity_get_mode_skill(genius_plasticity_bridge_t* bridge, geniu
 
 int genius_plasticity_get_state(genius_plasticity_bridge_t* bridge,
                                 genius_plasticity_bridge_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_get_mode_skill: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
@@ -1008,7 +1056,10 @@ int genius_plasticity_get_state(genius_plasticity_bridge_t* bridge,
 
 int genius_plasticity_get_stats(genius_plasticity_bridge_t* bridge,
                                 genius_plasticity_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_get_mode_skill: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
@@ -1034,7 +1085,10 @@ int genius_plasticity_get_stats(genius_plasticity_bridge_t* bridge,
 }
 
 int genius_plasticity_reset_stats(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -1053,7 +1107,10 @@ int genius_plasticity_reset_stats(genius_plasticity_bridge_t* bridge) {
 int genius_plasticity_register_learn_callback(genius_plasticity_bridge_t* bridge,
                                               genius_plasticity_learn_callback_t callback,
                                               void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -1070,7 +1127,10 @@ int genius_plasticity_register_learn_callback(genius_plasticity_bridge_t* bridge
 int genius_plasticity_register_skill_callback(genius_plasticity_bridge_t* bridge,
                                               genius_plasticity_skill_callback_t callback,
                                               void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -1087,7 +1147,10 @@ int genius_plasticity_register_skill_callback(genius_plasticity_bridge_t* bridge
 int genius_plasticity_register_breakthrough_callback(genius_plasticity_bridge_t* bridge,
                                                      genius_plasticity_breakthrough_callback_t callback,
                                                      void* user_data) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_re", 0.0f);
@@ -1106,7 +1169,10 @@ int genius_plasticity_register_breakthrough_callback(genius_plasticity_bridge_t*
 //=============================================================================
 
 int genius_plasticity_bio_async_connect(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_bi", 0.0f);
@@ -1119,7 +1185,10 @@ int genius_plasticity_bio_async_connect(genius_plasticity_bridge_t* bridge) {
 }
 
 int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_bi", 0.0f);
@@ -1132,7 +1201,10 @@ int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge) {
 }
 
 bool genius_plasticity_is_bio_async_connected(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_is", 0.0f);
@@ -1298,7 +1370,10 @@ uint32_t genius_plasticity_compute_checksum(const genius_plasticity_serialized_t
 }
 
 bool genius_plasticity_verify_checksum(const genius_plasticity_serialized_t* serialized) {
-    if (!serialized) return false;
+    if (!serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_verify_checksum: serialized is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ve", 0.0f);
@@ -1367,7 +1442,10 @@ kg_module_wiring_t* genius_plasticity_create_kg_wiring(void) {
 }
 
 kg_module_wiring_t* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_plasticity_get_kg_wiring: bridge is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     genius_plasticity_bridge_heartbeat("genius_plast_genius_plasticity_ge", 0.0f);
 

@@ -82,6 +82,7 @@ static lock_dependency_t* find_thread_deps(pthread_t thread_id) {
         g_thread_deps[first_empty].in_use = true;  /* Mark slot as in use */
         return &g_thread_deps[first_empty];
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_thread_deps: capacity exceeded");
     return NULL; // Table full
 }
 
@@ -120,7 +121,10 @@ static bool check_lock_ordering(lock_dependency_t* deps, tracked_mutex_t* mutex)
 
 static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thread,
                                      bool visited[], int depth) {
-    if (depth > MAX_THREADS) return false; // Prevent infinite recursion
+    if (depth > MAX_THREADS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_lock_ordering: validation failed");
+        return false;
+    }
 
     // Check if we've cycled back to start (use pthread_equal for portability)
     if (depth > 0 && pthread_equal(current_thread, start_thread)) {
@@ -131,7 +135,10 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
 
     // Find what this thread is waiting on
     lock_dependency_t* deps = find_thread_deps(current_thread);
-    if (!deps || !deps->waiting_on) return false;
+    if (!deps || !deps->waiting_on) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_lock_ordering: required parameter is NULL (deps, deps->waiting_on)");
+        return false;
+    }
 
     tracked_mutex_t* waiting_on = deps->waiting_on;
 
@@ -160,6 +167,7 @@ static bool detect_cycle_recursive(pthread_t start_thread, pthread_t current_thr
         return detect_cycle_recursive(start_thread, owner, visited, depth + 1);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_lock_ordering: operation failed");
     return false;
 }
 
@@ -255,6 +263,7 @@ bool tracked_mutex_init(tracked_mutex_t* mutex, const char* name, uint32_t timeo
 
     // Initialize underlying mutex
     if (nimcp_mutex_init(&mutex->mutex, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tracked_mutex_init: validation failed");
         return false;
     }
 
@@ -346,6 +355,7 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
     // Check lock ordering
     if (!check_lock_ordering(deps, mutex)) {
         unlock_detector();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "tracked_mutex_lock: check_lock_ordering is NULL");
         return false; // Order violation
     }
 
@@ -445,6 +455,7 @@ bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracked_mutex_trylock: operation failed");
     return false;
 }
 

@@ -139,6 +139,7 @@ triplet_stdp_immune_bridge_t triplet_stdp_immune_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "triplet_stdp_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -451,7 +452,10 @@ int triplet_stdp_immune_bridge_update(
 bool triplet_stdp_immune_is_plasticity_impaired(
     const triplet_stdp_immune_bridge_t bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_is_plasticity_impaired: bridge is NULL");
+        return false;
+    }
 
     return (bridge->inflammation_state.a2_suppression > 0.1f ||
             bridge->inflammation_state.a3_suppression > 0.1f);
@@ -524,6 +528,9 @@ int triplet_stdp_immune_disconnect_bio_async(triplet_stdp_immune_bridge_t bridge
 bool triplet_stdp_immune_is_bio_async_connected(
     const triplet_stdp_immune_bridge_t bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

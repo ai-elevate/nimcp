@@ -131,6 +131,7 @@ static void lru_remove(nimcp_recovery_cache_t* cache, nimcp_cache_entry_t* entry
  */
 static bool evict_lru_entry(nimcp_recovery_cache_t* cache) {
     if (!cache->lru_tail) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evict_lru_entry: cache->lru_tail is NULL");
         return false;  /* Cache is empty */
     }
 
@@ -226,6 +227,7 @@ nimcp_recovery_cache_t* nimcp_recovery_cache_create(size_t capacity) {
         NIMCP_LOGGING_ERROR("Failed to initialize cache mutex");
         nimcp_free(cache->hash_table);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_recovery_cache_create: validation failed");
         return NULL;
     }
 
@@ -274,6 +276,7 @@ void nimcp_recovery_cache_destroy(nimcp_recovery_cache_t* cache) {
 
 bool nimcp_recovery_cache_clear(nimcp_recovery_cache_t* cache) {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_clear: cache is NULL");
         return false;
     }
 
@@ -316,6 +319,7 @@ bool nimcp_recovery_cache_compute_signature(
     nimcp_error_signature_t* signature)
 {
     if (!context || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_compute_signature: required parameter is NULL (context, signature)");
         return false;
     }
 
@@ -363,16 +367,19 @@ bool nimcp_recovery_cache_signatures_equal(
     const nimcp_error_signature_t* sig2)
 {
     if (!sig1 || !sig2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_signatures_equal: required parameter is NULL (sig1, sig2)");
         return false;
     }
 
     /* Fast path: compare hashes */
     if (sig1->hash != sig2->hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_signatures_equal: validation failed");
         return false;
     }
 
     /* Slow path: compare raw data (hash collision check) */
     if (sig1->size != sig2->size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_signatures_equal: validation failed");
         return false;
     }
 
@@ -389,6 +396,7 @@ bool nimcp_recovery_cache_lookup(
     nimcp_recovery_strategy_t* strategy)
 {
     if (!cache || !signature || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_lookup: required parameter is NULL (cache, signature, strategy)");
         return false;
     }
 
@@ -437,6 +445,7 @@ bool nimcp_recovery_cache_lookup(
 
     NIMCP_LOGGING_DEBUG("Cache miss for signature 0x%016lx", signature->hash);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_lookup: validation failed");
     return false;
 }
 
@@ -447,6 +456,7 @@ bool nimcp_recovery_cache_store(
     const char* description)
 {
     if (!cache || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_store: required parameter is NULL (cache, signature)");
         return false;
     }
 
@@ -494,6 +504,7 @@ bool nimcp_recovery_cache_store(
         if (!evict_lru_entry(cache)) {
             nimcp_mutex_unlock(&cache->lock);
             NIMCP_LOGGING_ERROR("Failed to evict LRU entry");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_store: evict_lru_entry is NULL");
             return false;
         }
     }
@@ -503,6 +514,7 @@ bool nimcp_recovery_cache_store(
     if (!entry) {
         nimcp_mutex_unlock(&cache->lock);
         NIMCP_LOGGING_ERROR("Failed to allocate cache entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_recovery_cache_store: entry is NULL");
         return false;
     }
 
@@ -564,6 +576,7 @@ bool nimcp_recovery_cache_update_success(
     bool success)
 {
     if (!cache || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_update_success: required parameter is NULL (cache, signature)");
         return false;
     }
 
@@ -608,6 +621,7 @@ bool nimcp_recovery_cache_update_success(
     NIMCP_LOGGING_DEBUG("Entry not found for success update (signature: 0x%016lx)",
                    signature->hash);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_update_success: operation failed");
     return false;
 }
 
@@ -616,6 +630,7 @@ bool nimcp_recovery_cache_invalidate(
     const nimcp_error_signature_t* signature)
 {
     if (!cache || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_invalidate: required parameter is NULL (cache, signature)");
         return false;
     }
 
@@ -660,6 +675,7 @@ bool nimcp_recovery_cache_invalidate(
     NIMCP_LOGGING_DEBUG("Entry not found for invalidation (signature: 0x%016lx)",
                    signature->hash);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_invalidate: operation failed");
     return false;
 }
 
@@ -673,6 +689,7 @@ bool nimcp_recovery_cache_get_entry(
     nimcp_cache_entry_t* entry)
 {
     if (!cache || !signature || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_get_entry: required parameter is NULL (cache, signature, entry)");
         return false;
     }
 
@@ -710,6 +727,7 @@ bool nimcp_recovery_cache_get_entry(
     }
 
     nimcp_mutex_unlock(&cache->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_get_entry: operation failed");
     return false;
 }
 
@@ -718,6 +736,7 @@ bool nimcp_recovery_cache_get_stats(
     nimcp_recovery_cache_stats_t* stats)
 {
     if (!cache || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_get_stats: required parameter is NULL (cache, stats)");
         return false;
     }
 
@@ -731,6 +750,7 @@ bool nimcp_recovery_cache_get_stats(
 
 bool nimcp_recovery_cache_reset_stats(nimcp_recovery_cache_t* cache) {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_reset_stats: cache is NULL");
         return false;
     }
 
@@ -748,6 +768,7 @@ bool nimcp_recovery_cache_resize(
     size_t new_capacity)
 {
     if (!cache || new_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_resize: cache is NULL");
         return false;
     }
 
@@ -766,6 +787,7 @@ bool nimcp_recovery_cache_resize(
             cache->capacity = old_capacity;
             nimcp_mutex_unlock(&cache->lock);
             NIMCP_LOGGING_ERROR("Failed to resize cache");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_recovery_cache_resize: evict_lru_entry is NULL");
             return false;
         }
     }
@@ -831,6 +853,7 @@ void nimcp_recovery_cache_print_stats(const nimcp_recovery_cache_t* cache) {
 
 bool nimcp_recovery_cache_validate(const nimcp_recovery_cache_t* cache) {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_recovery_cache_validate: cache is NULL");
         return false;
     }
 

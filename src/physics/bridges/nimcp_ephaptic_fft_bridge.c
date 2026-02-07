@@ -246,6 +246,7 @@ static void update_ema(float* ema, float new_value, float alpha) {
 
 int ephaptic_fft_default_config(ephaptic_fft_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_default_config: config is NULL");
         return -1;
     }
 
@@ -348,6 +349,7 @@ ephaptic_fft_bridge_t* ephaptic_fft_bridge_create(
         nimcp_free(bridge->lfp_buffer);
         fft_plan_destroy(bridge->fft_plan);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_bridge_create: bridge->power_spectrum is NULL");
         return NULL;
     }
 
@@ -387,6 +389,7 @@ void ephaptic_fft_bridge_destroy(ephaptic_fft_bridge_t* bridge) {
 
 int ephaptic_fft_bridge_reset(ephaptic_fft_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_bridge_reset: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -410,6 +413,7 @@ int ephaptic_fft_add_sample(
     float timestamp
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_add_sample: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -432,6 +436,7 @@ int ephaptic_fft_add_lfp_result(
     float timestamp
 ) {
     if (!bridge || !lfp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_add_lfp_result: required parameter is NULL (bridge, lfp)");
         return -1;
     }
 
@@ -440,6 +445,7 @@ int ephaptic_fft_add_lfp_result(
 
 bool ephaptic_fft_buffer_ready(const ephaptic_fft_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_buffer_ready: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
     return bridge->buffer_count >= bridge->config.fft_size;
@@ -461,10 +467,12 @@ int ephaptic_fft_compute_band_power(
     ephaptic_fft_result_t* result
 ) {
     if (!bridge || !bridge->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_compute_band_power: required parameter is NULL (bridge, bridge->initialized, result)");
         return -1;
     }
 
     if (!ephaptic_fft_buffer_ready(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_fft_compute_band_power: ephaptic_fft_buffer_ready is NULL");
         return -1;  /* Not enough samples */
     }
 
@@ -482,11 +490,13 @@ int ephaptic_fft_compute_band_power(
 
     /* Execute FFT (windowing applied by plan) */
     if (!fft_execute_real(bridge->fft_plan, bridge->windowed_signal, bridge->spectrum)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_fft_compute_band_power: fft_execute_real is NULL");
         return -1;
     }
 
     /* Compute power spectrum */
     if (!fft_power_spectrum(bridge->spectrum, bridge->power_spectrum, bridge->num_bins)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_fft_compute_band_power: fft_power_spectrum is NULL");
         return -1;
     }
 
@@ -615,10 +625,12 @@ int ephaptic_fft_get_averaged_power(
     ephaptic_fft_result_t* result
 ) {
     if (!bridge || !bridge->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_get_averaged_power: required parameter is NULL (bridge, bridge->initialized, result)");
         return -1;
     }
 
     if (!bridge->config.enable_averaging || !bridge->averaging_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_get_averaged_power: required parameter is NULL (bridge->config, bridge->averaging_initialized)");
         return -1;
     }
 
@@ -632,6 +644,7 @@ int ephaptic_fft_get_power_spectrum(
     uint32_t size
 ) {
     if (!bridge || !bridge->initialized || !power) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_get_power_spectrum: required parameter is NULL (bridge, bridge->initialized, power)");
         return -1;
     }
 
@@ -647,6 +660,7 @@ int ephaptic_fft_get_frequencies(
     uint32_t size
 ) {
     if (!bridge || !bridge->initialized || !freq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_get_frequencies: required parameter is NULL (bridge, bridge->initialized, freq)");
         return -1;
     }
 
@@ -671,12 +685,14 @@ int ephaptic_fft_compute_lfp(
     nimcp_lfp_result_t* result
 ) {
     if (!bridge || !bridge->initialized || !system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_compute_lfp: required parameter is NULL (bridge, bridge->initialized, system, result)");
         return -1;
     }
 
     /* First compute LFP using the standard ephaptic function */
     nimcp_error_t err = nimcp_ephaptic_compute_lfp(system, position, result);
     if (err != NIMCP_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ephaptic_fft_compute_lfp: validation failed");
         return -1;
     }
 
@@ -709,6 +725,7 @@ int ephaptic_fft_get_config(
     ephaptic_fft_config_t* config
 ) {
     if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ephaptic_fft_get_config: required parameter is NULL (bridge, bridge->initialized, config)");
         return -1;
     }
 

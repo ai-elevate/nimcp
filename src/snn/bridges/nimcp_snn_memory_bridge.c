@@ -116,6 +116,7 @@ snn_memory_bridge_t* snn_memory_bridge_create(
         if (!bridge->memory_pops) {
             NIMCP_LOGGING_ERROR("Failed to allocate memory populations array");
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_bridge_create: bridge->memory_pops is NULL");
             return NULL;
         }
 
@@ -139,6 +140,7 @@ snn_memory_bridge_t* snn_memory_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to allocate patterns array");
         nimcp_free(bridge->memory_pops);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_bridge_create: bridge->patterns is NULL");
         return NULL;
     }
     memset(bridge->patterns, 0, sizeof(snn_memory_pattern_t) * config->max_memory_items);
@@ -160,6 +162,7 @@ snn_memory_bridge_t* snn_memory_bridge_create(
         nimcp_free(bridge->patterns);
         nimcp_free(bridge->memory_pops);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_create: operation failed");
         return NULL;
     }
 
@@ -243,6 +246,7 @@ int snn_memory_bridge_connect_bio_async(snn_memory_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_memory_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -397,6 +401,7 @@ int snn_memory_encode_item(
     snn_population_t* pop = snn_network_get_population(bridge->snn, population_id);
     if (!pop) {
         NIMCP_LOGGING_ERROR("Population %u not found", population_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_encode_item: pop is NULL");
         return -1;
     }
 
@@ -406,6 +411,7 @@ int snn_memory_encode_item(
         /* Would need to evict - for now just log */
         NIMCP_LOGGING_WARN("Memory capacity reached, skipping encoding");
         bridge->state.capacity_evictions++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_memory_encode_item: operation failed");
         return -1;
     }
 
@@ -471,6 +477,7 @@ int snn_memory_extract_pattern(
     pattern->spike_rates = nimcp_malloc(sizeof(float) * pattern->num_neurons);
     if (!pattern->spike_rates) {
         NIMCP_LOGGING_ERROR("Failed to allocate spike rates");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_extract_pattern: pattern->spike_rates is NULL");
         return -1;
     }
 
@@ -518,6 +525,7 @@ bool snn_memory_is_persistent(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_is_persistent: validation failed");
     return false;
 }
 
@@ -568,6 +576,7 @@ int snn_memory_retrieve_item(
 
     if (item_index >= bridge->state.num_encoded_items) {
         NIMCP_LOGGING_ERROR("Item index %u out of range", item_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "snn_memory_retrieve_item: capacity exceeded");
         return -1;
     }
 
@@ -577,12 +586,14 @@ int snn_memory_retrieve_item(
     /* Get corresponding population */
     if (item_index >= bridge->config.num_memory_populations) {
         NIMCP_LOGGING_ERROR("No population for item %u", item_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_retrieve_item: capacity exceeded");
         return -1;
     }
 
     snn_population_t* pop = bridge->memory_pops[item_index];
     if (!pop) {
         NIMCP_LOGGING_ERROR("Population for item %u not found", item_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_retrieve_item: pop is NULL");
         return -1;
     }
 
@@ -709,6 +720,7 @@ bool snn_memory_has_persistent_activity(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_memory_has_persistent_activity: validation failed");
     return false;
 }
 

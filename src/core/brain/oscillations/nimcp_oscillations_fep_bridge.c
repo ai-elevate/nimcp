@@ -139,6 +139,7 @@ oscillations_fep_bridge_t* oscillations_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "oscillations_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         oscillations_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -171,7 +172,10 @@ int oscillations_fep_bridge_connect_fep(
     oscillations_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -185,7 +189,10 @@ int oscillations_fep_bridge_connect_oscillations(
     oscillations_fep_bridge_t* bridge,
     brain_complex_oscillation_state_t* osc_state
 ) {
-    if (!bridge || !osc_state) return -1;
+    if (!bridge || !osc_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_bridge_connect_oscillations: required parameter is NULL (bridge, osc_state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->osc_state = osc_state;
@@ -221,7 +228,10 @@ int oscillations_fep_bridge_disconnect(
 int oscillations_fep_modulate_gamma_from_pe(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_modulate_gamma_from_pe: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_pe_gamma_coupling) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -265,7 +275,10 @@ int oscillations_fep_modulate_gamma_from_pe(
 int oscillations_fep_modulate_beta_from_predictions(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_modulate_beta_from_predictions: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_prediction_beta_coupling) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -311,7 +324,10 @@ int oscillations_fep_modulate_beta_from_predictions(
 int oscillations_fep_modulate_alpha_from_precision(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_modulate_alpha_from_precision: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_precision_alpha_coupling) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -358,7 +374,10 @@ int oscillations_fep_modulate_alpha_from_precision(
 int oscillations_fep_generate_theta_gamma_pac(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_generate_theta_gamma_pac: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
     if (!bridge->config.enable_theta_gamma_pac) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -397,7 +416,10 @@ int oscillations_fep_derive_precision_from_ratio(
     oscillations_fep_bridge_t* bridge,
     float* precision
 ) {
-    if (!bridge || !precision) return -1;
+    if (!bridge || !precision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_derive_precision_from_ratio: required parameter is NULL (bridge, precision)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -411,7 +433,10 @@ int oscillations_fep_derive_precision_from_ratio(
 int oscillations_fep_weight_errors_by_gamma(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system) return -1;
+    if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_weight_errors_by_gamma: required parameter is NULL (bridge, bridge->fep_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -436,7 +461,10 @@ int oscillations_fep_weight_errors_by_gamma(
 int oscillations_fep_bind_beliefs_via_coherence(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->osc_state) return -1;
+    if (!bridge || !bridge->osc_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_bind_beliefs_via_coherence: required parameter is NULL (bridge, bridge->osc_state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -462,7 +490,10 @@ int oscillations_fep_compute_band_power(
     oscillations_fep_bridge_t* bridge,
     oscillation_band_power_t* band_power
 ) {
-    if (!bridge || !band_power) return -1;
+    if (!bridge || !band_power) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_compute_band_power: required parameter is NULL (bridge, band_power)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -484,7 +515,10 @@ int oscillations_fep_detect_pac(
     float* pac_strength,
     float* preferred_phase
 ) {
-    if (!bridge || !pac_strength || !preferred_phase) return -1;
+    if (!bridge || !pac_strength || !preferred_phase) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_detect_pac: required parameter is NULL (bridge, pac_strength, preferred_phase)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -576,7 +610,10 @@ int oscillations_fep_bridge_get_state(
     const oscillations_fep_bridge_t* bridge,
     oscillations_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -585,7 +622,10 @@ int oscillations_fep_bridge_get_stats(
     const oscillations_fep_bridge_t* bridge,
     oscillations_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

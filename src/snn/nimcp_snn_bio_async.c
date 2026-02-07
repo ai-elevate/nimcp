@@ -92,7 +92,10 @@ typedef struct {
  * @brief Get bio-async context from network
  */
 static inline snn_bio_async_ctx_t* get_bio_ctx(snn_network_t* network) {
-    if (!network || !network->bio_ctx) return NULL;
+    if (!network || !network->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_bio_ctx: required parameter is NULL (network, network->bio_ctx)");
+        return NULL;
+    }
     return (snn_bio_async_ctx_t*)network->bio_ctx;
 }
 
@@ -100,7 +103,10 @@ static inline snn_bio_async_ctx_t* get_bio_ctx(snn_network_t* network) {
  * @brief Get bio-async context from network (const version)
  */
 static inline const snn_bio_async_ctx_t* get_bio_ctx_const(const snn_network_t* network) {
-    if (!network || !network->bio_ctx) return NULL;
+    if (!network || !network->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_bio_ctx_const: required parameter is NULL (network, network->bio_ctx)");
+        return NULL;
+    }
     return (const snn_bio_async_ctx_t*)network->bio_ctx;
 }
 
@@ -318,7 +324,10 @@ int snn_bio_async_disconnect(snn_network_t* network) {
 }
 
 bool snn_bio_async_is_connected(const snn_network_t* network) {
-    if (!network) return false;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bio_async_is_connected: network is NULL");
+        return false;
+    }
     const snn_bio_async_ctx_t* ctx = get_bio_ctx_const(network);
     return (ctx != NULL && ctx->connected);
 }

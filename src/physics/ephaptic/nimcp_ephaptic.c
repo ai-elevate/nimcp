@@ -137,13 +137,17 @@ static nimcp_ephaptic_neuron_t* find_neuron(
     nimcp_ephaptic_system_t* system,
     uint32_t neuron_id
 ) {
-    if (!system || !system->neurons) return NULL;
+    if (!system || !system->neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron: required parameter is NULL (system, system->neurons)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < system->neuron_count; i++) {
         if (system->neurons[i].id == neuron_id) {
             return &system->neurons[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_neuron: validation failed");
     return NULL;
 }
 
@@ -902,6 +906,9 @@ nimcp_error_t nimcp_ephaptic_get_sync_count(
 }
 
 bool nimcp_ephaptic_is_initialized(const nimcp_ephaptic_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ephaptic_is_initialized: system is NULL");
+        return false;
+    }
     return system->initialized;
 }

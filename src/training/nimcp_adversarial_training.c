@@ -213,6 +213,7 @@ int adv_default_config(adv_config_t* config) {
 
 int adv_trades_config(adv_config_t* config) {
     if (adv_default_config(config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_trades_config: validation failed");
         return -1;
     }
 
@@ -262,6 +263,7 @@ adv_ctx_t* adv_create(const adv_config_t* config) {
     ctx->mutex = nimcp_mutex_create(NULL);
     if (!ctx->mutex) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adv_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -302,6 +304,7 @@ int adv_fgsm(
     adv_example_t* adv_example
 ) {
     if (!ctx || !input || !label || !forward_fn || !model || !adv_example) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_fgsm: required parameter is NULL (ctx, input, label, forward_fn, model, adv_example)");
         return -1;
     }
 
@@ -316,6 +319,7 @@ int adv_fgsm(
     nimcp_tensor_t* adv_input = nimcp_tensor_clone(input);
     if (!adv_input) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_fgsm: adv_input is NULL");
         return -1;
     }
 
@@ -324,6 +328,7 @@ int adv_fgsm(
     if (!logits) {
         nimcp_tensor_destroy(adv_input);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_fgsm: logits is NULL");
         return -1;
     }
 
@@ -393,6 +398,7 @@ int adv_pgd(
     adv_example_t* adv_example
 ) {
     if (!ctx || !input || !label || !forward_fn || !model || !adv_example) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_pgd: required parameter is NULL (ctx, input, label, forward_fn, model, adv_example)");
         return -1;
     }
 
@@ -409,6 +415,7 @@ int adv_pgd(
     nimcp_tensor_t* adv_input = nimcp_tensor_clone(input);
     if (!adv_input) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_pgd: adv_input is NULL");
         return -1;
     }
 
@@ -528,6 +535,7 @@ int adv_generate_batch(
     nimcp_tensor_t** adv_inputs
 ) {
     if (!ctx || !inputs || !labels || !forward_fn || !model || !adv_inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_generate_batch: required parameter is NULL (ctx, inputs, labels, forward_fn, model, adv_inputs)");
         return -1;
     }
 
@@ -539,6 +547,7 @@ int adv_generate_batch(
     nimcp_tensor_t* batch_adv = nimcp_tensor_clone(inputs);
     if (!batch_adv) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_generate_batch: batch_adv is NULL");
         return -1;
     }
 
@@ -616,6 +625,7 @@ int adv_compute_loss(
     float* adv_loss
 ) {
     if (!ctx || !inputs || !labels || !forward_fn || !model || !total_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_compute_loss: required parameter is NULL (ctx, inputs, labels, forward_fn, model, total_loss)");
         return -1;
     }
 
@@ -625,6 +635,7 @@ int adv_compute_loss(
     nimcp_tensor_t* clean_logits = forward_fn(model, inputs);
     if (!clean_logits) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_compute_loss: clean_logits is NULL");
         return -1;
     }
 
@@ -638,6 +649,7 @@ int adv_compute_loss(
     if (ret != 0 || !adv_inputs) {
         nimcp_tensor_destroy(clean_logits);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_compute_loss: adv_inputs is NULL");
         return -1;
     }
 
@@ -647,6 +659,7 @@ int adv_compute_loss(
         nimcp_tensor_destroy(clean_logits);
         nimcp_tensor_destroy(adv_inputs);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_compute_loss: adv_logits is NULL");
         return -1;
     }
 
@@ -778,6 +791,7 @@ int adv_awp_perturb(
     const float* gradients
 ) {
     if (!ctx || !params || !gradients || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_awp_perturb: required parameter is NULL (ctx, params, gradients)");
         return -1;
     }
 
@@ -794,6 +808,7 @@ int adv_awp_perturb(
 
         if (!ctx->awp.backup_params || !ctx->awp.perturbation) {
             nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adv_awp_perturb: required parameter is NULL (ctx->awp, ctx->awp)");
             return -1;
         }
     }
@@ -827,6 +842,7 @@ int adv_awp_restore(
     size_t num_params
 ) {
     if (!ctx || !params || num_params == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_awp_restore: required parameter is NULL (ctx, params)");
         return -1;
     }
 
@@ -834,6 +850,7 @@ int adv_awp_restore(
 
     if (!ctx->awp.applied || num_params != ctx->awp.num_params) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_awp_restore: ctx->awp is NULL");
         return -1;
     }
 
@@ -858,6 +875,7 @@ int adv_detect(
     float* confidence
 ) {
     if (!ctx || !input || !forward_fn || !model || !is_adversarial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_detect: required parameter is NULL (ctx, input, forward_fn, model, is_adversarial)");
         return -1;
     }
 
@@ -957,6 +975,7 @@ int adv_evaluate(
     float* robust_accuracy
 ) {
     if (!ctx || !inputs || !labels || !forward_fn || !model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_evaluate: required parameter is NULL (ctx, inputs, labels, forward_fn, model)");
         return -1;
     }
 
@@ -1072,6 +1091,7 @@ int adv_connect_predictive_immune(adv_ctx_t* ctx, void* predictive_immune) {
 
 int adv_get_stats(const adv_ctx_t* ctx, adv_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -1140,26 +1160,32 @@ int adv_validate_config(const adv_config_t* config) {
     }
 
     if (config->method >= ADV_TRAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.type >= ADV_ATTACK_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.norm >= ADV_NORM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "adv_validate_config: capacity exceeded");
         return -1;
     }
 
     if (config->attack.epsilon < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 
     if (config->attack.step_size <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 
     if (config->trades.beta < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_validate_config: validation failed");
         return -1;
     }
 

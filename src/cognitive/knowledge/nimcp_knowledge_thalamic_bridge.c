@@ -148,7 +148,10 @@ void knowledge_thalamic_bridge_destroy(knowledge_thalamic_bridge_t* bridge) {
 }
 
 int knowledge_thalamic_bridge_reset(knowledge_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_reset", 0.0f);
 
@@ -168,7 +171,10 @@ int knowledge_thalamic_bridge_reset(knowledge_thalamic_bridge_t* bridge) {
  * HOW: Create routed_signal_t, apply relevance boost if enabled, call router
  */
 int knowledge_thalamic_route_retrieval(knowledge_thalamic_bridge_t* bridge, const knowledge_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_route_retrieval: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_knowledge_thalamic_r", 0.0f);
@@ -232,6 +238,7 @@ int knowledge_thalamic_route_retrieval(knowledge_thalamic_bridge_t* bridge, cons
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_route_retrieval: routed_ok is NULL");
             return -1;  /* Routing failed */
         }
     }
@@ -253,7 +260,10 @@ int knowledge_thalamic_route_retrieval(knowledge_thalamic_bridge_t* bridge, cons
  * HOW: Package confidence data, route with appropriate priority
  */
 int knowledge_thalamic_route_inference(knowledge_thalamic_bridge_t* bridge, const void* inference, float confidence) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_route_inference: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_knowledge_thalamic_r", 0.0f);
@@ -299,6 +309,7 @@ int knowledge_thalamic_route_inference(knowledge_thalamic_bridge_t* bridge, cons
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_route_inference: routed_ok is NULL");
             return -1;
         }
     }
@@ -311,7 +322,10 @@ int knowledge_thalamic_route_inference(knowledge_thalamic_bridge_t* bridge, cons
 }
 
 int knowledge_thalamic_set_attention(knowledge_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_knowledge_thalamic_s", 0.0f);
 
@@ -323,7 +337,10 @@ int knowledge_thalamic_set_attention(knowledge_thalamic_bridge_t* bridge, float 
 }
 
 int knowledge_thalamic_get_attention(knowledge_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_knowledge_thalamic_g", 0.0f);
 
@@ -335,7 +352,10 @@ int knowledge_thalamic_get_attention(knowledge_thalamic_bridge_t* bridge, float*
 }
 
 int knowledge_thalamic_bridge_get_stats(knowledge_thalamic_bridge_t* bridge, knowledge_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_thalamic_bridge_heartbeat("knowledge_th_get_stats", 0.0f);
 

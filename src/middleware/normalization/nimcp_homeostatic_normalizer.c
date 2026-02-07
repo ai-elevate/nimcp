@@ -81,7 +81,10 @@ bool homeostatic_normalizer_update(
     float activity,
     float dt
 ) {
-    if (!normalizer || channel >= normalizer->num_channels || dt <= 0.0F) return false;
+    if (!normalizer || channel >= normalizer->num_channels || dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeostatic_normalizer_update: normalizer is NULL");
+        return false;
+    }
 
     homeostatic_channel_t* ch = &normalizer->channels[channel];
 
@@ -124,7 +127,10 @@ bool homeostatic_normalizer_reset_channel(
     homeostatic_normalizer_t* normalizer,
     size_t channel
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeostatic_normalizer_reset_channel: normalizer is NULL");
+        return false;
+    }
 
     homeostatic_channel_t* ch = &normalizer->channels[channel];
     ch->current_activity = 0.0F;

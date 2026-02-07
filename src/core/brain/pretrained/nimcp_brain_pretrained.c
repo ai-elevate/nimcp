@@ -117,6 +117,7 @@ static bool get_model_directory(char* buffer, size_t buffer_size)
     const char* appdata = getenv("LOCALAPPDATA");
     if (!appdata) {
         fprintf(stderr, "NIMCP Error: LOCALAPPDATA environment variable not set\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_model_directory: appdata is NULL");
         return false;
     }
     snprintf(buffer, buffer_size, "%s\\NIMCP\\models", appdata);
@@ -124,6 +125,7 @@ static bool get_model_directory(char* buffer, size_t buffer_size)
     const char* home = getenv("HOME");
     if (!home) {
         fprintf(stderr, "NIMCP Error: HOME environment variable not set\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_model_directory: home is NULL");
         return false;
     }
     snprintf(buffer, buffer_size, "%s/.nimcp/models", home);
@@ -146,17 +148,20 @@ static bool ensure_model_directory_exists(void)
 {
     char model_dir[512];
     if (!get_model_directory(model_dir, sizeof(model_dir))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_model_directory_exists: get_model_directory is NULL");
         return false;
     }
 
 #ifdef _WIN32
     if (_mkdir(model_dir) != 0 && errno != EEXIST) {
         fprintf(stderr, "NIMCP Error: Failed to create model directory: %s\n", model_dir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_model_directory_exists: validation failed");
         return false;
     }
 #else
     if (mkdir(model_dir, 0755) != 0 && errno != EEXIST) {
         fprintf(stderr, "NIMCP Error: Failed to create model directory: %s\n", model_dir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_model_directory_exists: validation failed");
         return false;
     }
 #endif
@@ -184,6 +189,7 @@ static bool get_model_filepath(const char* model_id, char* buffer, size_t buffer
 {
     char model_dir[512];
     if (!get_model_directory(model_dir, sizeof(model_dir))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_model_filepath: get_model_directory is NULL");
         return false;
     }
 
@@ -198,11 +204,13 @@ static bool get_model_filepath(const char* model_id, char* buffer, size_t buffer
 bool brain_model_exists(const char* model_id)
 {
     if (!model_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_model_exists: model_id is NULL");
         return false;
     }
 
     char filepath[512];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_model_exists: get_model_filepath is NULL");
         return false;
     }
 
@@ -214,16 +222,19 @@ bool brain_download_model(const char* model_id)
 {
     if (!model_id) {
         fprintf(stderr, "NIMCP Error: model_id is NULL\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_download_model: model_id is NULL");
         return false;
     }
 
     // Ensure model directory exists
     if (!ensure_model_directory_exists()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: ensure_model_directory_exists is NULL");
         return false;
     }
 
     char filepath[512];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: get_model_filepath is NULL");
         return false;
     }
 
@@ -248,12 +259,14 @@ bool brain_download_model(const char* model_id)
     if (result != 0) {
         fprintf(stderr, "NIMCP Error: Failed to download model (curl exit code: %d)\n", result);
         fprintf(stderr, "NIMCP Error: Make sure curl is installed and you have internet connection\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: validation failed");
         return false;
     }
 
     // Verify download
     if (!brain_model_exists(model_id)) {
         fprintf(stderr, "NIMCP Error: Download completed but model file not found\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: brain_model_exists is NULL");
         return false;
     }
 
@@ -264,6 +277,7 @@ bool brain_download_model(const char* model_id)
 bool brain_get_model_info(const char* model_id, brain_model_info_t* info)
 {
     if (!model_id || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_model_info: required parameter is NULL (model_id, info)");
         return false;
     }
 
@@ -289,6 +303,7 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info)
                 sizeof(info->description) - 1);
     } else {
         fprintf(stderr, "NIMCP Error: Unknown model_id '%s'\n", model_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_model_info: operation failed");
         return false;
     }
 
@@ -316,6 +331,7 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
         printf("NIMCP: Model not found locally, downloading...\n");
         if (!brain_download_model(model_id)) {
             fprintf(stderr, "NIMCP Error: Failed to download model '%s'\n", model_id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_pretrained: brain_download_model is NULL");
             return NULL;
         }
     }
@@ -323,6 +339,7 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
     // Get model filepath
     char filepath[512];
     if (!get_model_filepath(model_id, filepath, sizeof(filepath))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_pretrained: get_model_filepath is NULL");
         return NULL;
     }
 
@@ -362,6 +379,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
 {
     if (!brain || !training_data || !labels || num_samples == 0) {
         fprintf(stderr, "NIMCP Error: Invalid parameters for brain_finetune\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_finetune: required parameter is NULL (brain, training_data, labels)");
         return false;
     }
 
@@ -417,6 +435,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
     if (!brain_get_stats(brain, &stats)) {
         fprintf(stderr, "NIMCP Error: Failed to get brain stats for layer freezing\n");
         brain->config.learning_rate = original_lr;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_finetune: brain_get_stats is NULL");
         return false;
     }
 
@@ -459,6 +478,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
             if (!decision) {
                 fprintf(stderr, "NIMCP Error: Forward pass failed at sample %u\n", i);
                 brain->config.learning_rate = original_lr;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_finetune: decision is NULL");
                 return false;
             }
 

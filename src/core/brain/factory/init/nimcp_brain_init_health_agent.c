@@ -177,6 +177,7 @@ bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain) {
     nimcp_health_agent_t* agent = nimcp_health_agent_create(NULL);
     if (!agent) {
         NIMCP_LOGGING_ERROR("Failed to create health agent");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_health_agent_subsystem: agent is NULL");
         return false;
     }
 
@@ -306,6 +307,7 @@ bool brain_start_health_agent(brain_t brain) {
     }
 
     NIMCP_LOGGING_ERROR("Failed to start health agent");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_start_health_agent: result is zero");
     return false;
 }
 
@@ -331,6 +333,7 @@ bool brain_stop_health_agent(brain_t brain) {
     }
 
     NIMCP_LOGGING_ERROR("Failed to stop health agent");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stop_health_agent: result is zero");
     return false;
 }
 

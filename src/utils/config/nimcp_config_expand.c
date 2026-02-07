@@ -108,6 +108,7 @@ static char* extract_var_name(const char* start, const char* end, const char* se
     char* var_name = nimcp_malloc(name_len + 1);
     if (!var_name) {
         g_last_error = CONFIG_EXPAND_ERROR_MEMORY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "extract_var_name: var_name is NULL");
         return NULL;
     }
     memcpy(var_name, start, name_len);
@@ -140,6 +141,7 @@ static bool parse_modifier(const char* sep, const char* end,
         if (!*default_val) {
             nimcp_free(var_name);
             g_last_error = CONFIG_EXPAND_ERROR_MEMORY;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_var_name: validation failed");
             return false;
         }
         memcpy(*default_val, value_start, value_len);
@@ -150,6 +152,7 @@ static bool parse_modifier(const char* sep, const char* end,
         if (!*alternate_val) {
             nimcp_free(var_name);
             g_last_error = CONFIG_EXPAND_ERROR_MEMORY;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_var_name: validation failed");
             return false;
         }
         memcpy(*alternate_val, value_start, value_len);
@@ -177,6 +180,7 @@ static bool parse_var_expansion(const char* start,
     if (!end) {
         g_last_error = CONFIG_EXPAND_ERROR_SYNTAX;
         LOG_ERROR("Missing closing '}' in variable expansion");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_var_name: end is NULL");
         return false;
     }
 
@@ -186,6 +190,7 @@ static bool parse_var_expansion(const char* start,
 
     *var_name = extract_var_name(start, end, sep);
     if (!*var_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_var_name: validation failed");
         return false;
     }
 
@@ -197,6 +202,7 @@ static bool parse_var_expansion(const char* start,
     if (sep < end) {
         if (!parse_modifier(sep, end, has_default, default_val,
                              has_alternate, alternate_val, *var_name)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_var_name: validation failed");
             return false;
         }
     }
@@ -246,6 +252,7 @@ static bool append_expansion(char* output, size_t* out_len,
         nimcp_free(var_name);
         nimcp_free(default_val);
         nimcp_free(alternate_val);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_var_name: expanded_result is NULL");
         return false;
     }
 
@@ -257,6 +264,7 @@ static bool append_expansion(char* output, size_t* out_len,
         nimcp_free(var_name);
         nimcp_free(default_val);
         nimcp_free(alternate_val);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "extract_var_name: capacity exceeded");
         return false;
     }
 
@@ -289,6 +297,7 @@ static bool process_var_expansion(const char** p, char* output,
     if (!parse_var_expansion(*p + 2, &var_name, &has_default,
                               &default_val, &has_alternate,
                               &alternate_val, &end_ptr)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_var_name: operation failed");
         return false;
     }
 
@@ -303,6 +312,7 @@ static bool process_var_expansion(const char** p, char* output,
 
     if (!append_expansion(output, out_len, result, depth,
                            var_name, default_val, alternate_val)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 
@@ -323,12 +333,14 @@ static char* expand_env_recursive(const char* input, int depth) {
             g_last_error = CONFIG_EXPAND_ERROR_TOO_DEEP;
             LOG_ERROR("Expansion depth exceeded: %d", depth);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expand_env_recursive: validation failed");
         return NULL;
     }
 
     char* output = nimcp_malloc(CONFIG_EXPAND_MAX_LENGTH);
     if (!output) {
         g_last_error = CONFIG_EXPAND_ERROR_MEMORY;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_env_recursive: output is NULL");
         return NULL;
     }
 
@@ -342,6 +354,7 @@ static char* expand_env_recursive(const char* input, int depth) {
         } else if (*p == '$' && *(p + 1) == '{') {
             if (!process_var_expansion(&p, output, &out_len, depth)) {
                 nimcp_free(output);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expand_env_recursive: process_var_expansion is NULL");
                 return NULL;
             }
         } else {
@@ -353,6 +366,7 @@ static char* expand_env_recursive(const char* input, int depth) {
         g_last_error = CONFIG_EXPAND_ERROR_TOO_LONG;
         LOG_ERROR("Expanded string too long");
         nimcp_free(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expand_env_recursive: validation failed");
         return NULL;
     }
 
@@ -394,11 +408,13 @@ char* config_expand_env(const char* value) {
 bool config_expand_env_inplace(char* value, size_t max_size) {
     if (!value || max_size == 0) {
         g_last_error = CONFIG_EXPAND_ERROR_INVALID;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_expand_env_inplace: value is NULL");
         return false;
     }
 
     char* expanded = config_expand_env(value);
     if (!expanded) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_expand_env_inplace: expanded is NULL");
         return false;
     }
 
@@ -406,6 +422,7 @@ bool config_expand_env_inplace(char* value, size_t max_size) {
     if (len >= max_size) {
         g_last_error = CONFIG_EXPAND_ERROR_TOO_LONG;
         nimcp_free(expanded);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_expand_env_inplace: capacity exceeded");
         return false;
     }
 
@@ -524,6 +541,7 @@ const char* config_get_nested_string(const char* path, const char* default_val) 
 
 bool config_set_nested_int(const char* path, int64_t value) {
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_nested_int: path is NULL");
         return false;
     }
 
@@ -533,6 +551,7 @@ bool config_set_nested_int(const char* path, int64_t value) {
 
 bool config_set_nested_float(const char* path, double value) {
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_nested_float: path is NULL");
         return false;
     }
 
@@ -542,6 +561,7 @@ bool config_set_nested_float(const char* path, double value) {
 
 bool config_set_nested_bool(const char* path, bool value) {
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_nested_bool: path is NULL");
         return false;
     }
 
@@ -551,6 +571,7 @@ bool config_set_nested_bool(const char* path, bool value) {
 
 bool config_set_nested_string(const char* path, const char* value) {
     if (!path || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_set_nested_string: required parameter is NULL (path, value)");
         return false;
     }
 
@@ -583,6 +604,7 @@ static bool component_matches(const char* pattern, const char* key) {
 static char** split_path(const char* path, size_t* count) {
     if (!path) {
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_path: path is NULL");
         return NULL;
     }
 
@@ -596,6 +618,7 @@ static char** split_path(const char* path, size_t* count) {
     char** components = nimcp_malloc(sizeof(char*) * (n + 1));
     if (!components) {
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "split_path: components is NULL");
         return NULL;
     }
 
@@ -604,6 +627,7 @@ static char** split_path(const char* path, size_t* count) {
     if (!path_copy) {
         nimcp_free(components);
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "split_path: path_copy is NULL");
         return NULL;
     }
 
@@ -637,6 +661,7 @@ static void free_components(char** components, size_t count) {
 
 bool config_key_matches(const char* pattern, const char* key) {
     if (!pattern || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_key_matches: required parameter is NULL (pattern, key)");
         return false;
     }
 
@@ -715,6 +740,7 @@ char* config_key_parent(const char* path) {
     const char* last_dot = strrchr(path, '.');
     if (!last_dot) {
         // No parent
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_key_parent: last_dot is NULL");
         return NULL;
     }
 
@@ -765,6 +791,7 @@ size_t config_key_depth(const char* path) {
 
 char* config_key_join(const char** components) {
     if (!components || !components[0]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_key_join: required parameter is NULL (components, components)");
         return NULL;
     }
 
@@ -816,18 +843,21 @@ struct config_section_struct {
 config_section_t config_get_section(const char* prefix) {
     if (!prefix) {
         LOG_ERROR("config_get_section: NULL prefix");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_section: prefix is NULL");
         return NULL;
     }
 
     config_section_t section = nimcp_malloc(sizeof(struct config_section_struct));
     if (!section) {
         LOG_ERROR("config_get_section: Failed to allocate section");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "config_get_section: section is NULL");
         return NULL;
     }
 
     section->prefix = nimcp_strdup(prefix);
     if (!section->prefix) {
         nimcp_free(section);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_section: section->prefix is NULL");
         return NULL;
     }
 

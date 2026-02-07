@@ -217,6 +217,7 @@ static bool has_significant_change(
     if (fabsf(tensor->overall_valence - bridge->cached_valence) > threshold) return true;
     if (fabsf(tensor->overall_arousal - bridge->cached_arousal) > threshold) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "has_significant_change: validation failed");
     return false;
 }
 
@@ -1031,7 +1032,10 @@ nimcp_result_t emotion_tensor_bridge_notify_contradiction(
  *============================================================================*/
 
 bool emotion_tensor_bridge_needs_sync(const emotion_tensor_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor_bridge_needs_sync: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_tensor_bridge_heartbeat("emotion_tens_needs_sync", 0.0f);
@@ -1039,6 +1043,7 @@ bool emotion_tensor_bridge_needs_sync(const emotion_tensor_bridge_t* bridge) {
 
     emotion_tensor_t current;
     if (!emotion_tensor_get(bridge->tensor, &current)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_tensor_bridge_needs_sync: emotion_tensor_get is NULL");
         return false;
     }
 

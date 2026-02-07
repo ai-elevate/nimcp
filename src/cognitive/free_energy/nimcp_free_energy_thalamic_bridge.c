@@ -101,6 +101,7 @@ free_energy_thalamic_bridge_t* free_energy_thalamic_bridge_create(void* free_ene
     if (bridge_base_init(&bridge->base, 0, "free_energy_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->free_energy = free_energy;
@@ -124,7 +125,10 @@ void free_energy_thalamic_bridge_destroy(free_energy_thalamic_bridge_t* bridge) 
 }
 
 int free_energy_thalamic_bridge_reset(free_energy_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__reset", 0.0f);
 
@@ -137,7 +141,10 @@ int free_energy_thalamic_bridge_reset(free_energy_thalamic_bridge_t* bridge) {
 }
 
 int free_energy_thalamic_route_prediction_error(free_energy_thalamic_bridge_t* bridge, const free_energy_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_route_prediction_error: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__free_energy_thalamic", 0.0f);
 
@@ -158,7 +165,10 @@ int free_energy_thalamic_route_prediction_error(free_energy_thalamic_bridge_t* b
 }
 
 int free_energy_thalamic_route_model_update(free_energy_thalamic_bridge_t* bridge, const void* model, float importance) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_route_model_update: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__free_energy_thalamic", 0.0f);
 
@@ -170,7 +180,10 @@ int free_energy_thalamic_route_model_update(free_energy_thalamic_bridge_t* bridg
 }
 
 int free_energy_thalamic_set_attention(free_energy_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__free_energy_thalamic", 0.0f);
 
@@ -182,7 +195,10 @@ int free_energy_thalamic_set_attention(free_energy_thalamic_bridge_t* bridge, fl
 }
 
 int free_energy_thalamic_get_attention(const free_energy_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__free_energy_thalamic", 0.0f);
 
@@ -194,7 +210,10 @@ int free_energy_thalamic_get_attention(const free_energy_thalamic_bridge_t* brid
 }
 
 int free_energy_thalamic_bridge_get_stats(const free_energy_thalamic_bridge_t* bridge, free_energy_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_energy_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     free_energy_thalamic_bridge_heartbeat("free_energy__get_stats", 0.0f);
 

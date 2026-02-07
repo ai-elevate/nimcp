@@ -160,6 +160,7 @@ vestibular_cerebellum_bridge_t* vestibular_cerebellum_bridge_create(
 
     if (!vestibular || !cerebellum) {
         LOG_ERROR("[%s] Cannot create bridge: NULL component", BRIDGE_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vestibular_cerebellum_default_config: required parameter is NULL (vestibular, cerebellum)");
         return NULL;
     }
 
@@ -168,6 +169,7 @@ vestibular_cerebellum_bridge_t* vestibular_cerebellum_bridge_create(
     vestibular_cerebellum_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge", BRIDGE_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vestibular_cerebellum_default_config: bridge is NULL");
         return NULL;
     }
 
@@ -208,6 +210,7 @@ int vestibular_cerebellum_send_mossy_signal(vestibular_cerebellum_bridge_t* brid
 
     if (!bridge->vestibular || !bridge->cerebellum) {
         set_error(bridge, VESTIBULAR_CEREBELLUM_ERROR_NOT_CONNECTED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_send_mossy_signal: required parameter is NULL (bridge->vestibular, bridge->cerebellum)");
         return -1;
     }
 
@@ -217,6 +220,7 @@ int vestibular_cerebellum_send_mossy_signal(vestibular_cerebellum_bridge_t* brid
     vestibular_mossy_signal_t signal;
     if (!vestibular_get_mossy_signal(bridge->vestibular, &signal)) {
         set_error(bridge, VESTIBULAR_CEREBELLUM_ERROR_INTERNAL);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vestibular_cerebellum_send_mossy_signal: vestibular_get_mossy_signal is NULL");
         return -1;
     }
 
@@ -247,11 +251,13 @@ int vestibular_cerebellum_send_mossy_signal(vestibular_cerebellum_bridge_t* brid
 int vestibular_cerebellum_send_custom_signal(vestibular_cerebellum_bridge_t* bridge,
                                               const vestibular_mossy_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_send_mossy_signal: required parameter is NULL (bridge, signal)");
         return -1;
     }
 
     if (!bridge->cerebellum) {
         set_error(bridge, VESTIBULAR_CEREBELLUM_ERROR_NOT_CONNECTED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_send_mossy_signal: bridge->cerebellum is NULL");
         return -1;
     }
 
@@ -279,6 +285,7 @@ int vestibular_cerebellum_trigger_vor_adaptation(
     const float slip_direction[3]) {
 
     if (!bridge || !slip_direction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_send_mossy_signal: required parameter is NULL (bridge, slip_direction)");
         return -1;
     }
 
@@ -400,6 +407,7 @@ int vestibular_cerebellum_apply_feedback(vestibular_cerebellum_bridge_t* bridge)
 
     if (!bridge->vestibular || !bridge->cerebellum) {
         set_error(bridge, VESTIBULAR_CEREBELLUM_ERROR_NOT_CONNECTED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_apply_feedback: required parameter is NULL (bridge->vestibular, bridge->cerebellum)");
         return -1;
     }
 
@@ -437,10 +445,12 @@ int vestibular_cerebellum_get_modulation(const vestibular_cerebellum_bridge_t* b
                                           vestibular_nucleus_type_t nucleus,
                                           float* modulation) {
     if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_apply_feedback: required parameter is NULL (bridge, modulation)");
         return -1;
     }
 
     if (nucleus >= VESTIBULAR_NUM_NUCLEI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vestibular_cerebellum_apply_feedback: capacity exceeded");
         return -1;
     }
 
@@ -467,6 +477,7 @@ vestibular_cerebellum_error_t vestibular_cerebellum_get_last_error(
 int vestibular_cerebellum_get_stats(const vestibular_cerebellum_bridge_t* bridge,
                                      vestibular_cerebellum_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_cerebellum_apply_feedback: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

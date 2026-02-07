@@ -232,6 +232,7 @@ brain_immune_fep_bridge_t* brain_immune_fep_create(
 ) {
     if (!immune_system || !fep_system) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: null immune or FEP system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_fep_create: required parameter is NULL (immune_system, fep_system)");
         return NULL;
     }
 
@@ -264,6 +265,7 @@ brain_immune_fep_bridge_t* brain_immune_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -556,7 +558,10 @@ int brain_immune_fep_disconnect_bio_async(brain_immune_fep_bridge_t* bridge) {
 }
 
 bool brain_immune_fep_is_bio_async_connected(const brain_immune_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_fep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_fep_bridge_heartbeat("brain_immune_brain_immune_fep_is_", 0.0f);
 

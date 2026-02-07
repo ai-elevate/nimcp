@@ -135,6 +135,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
     } else {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_logic_create: validation failed");
         return NULL;
     }
 
@@ -146,6 +147,7 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
         NIMCP_LOGGING_ERROR("Failed to create neural logic network");
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_swarm_logic_create: bridge->logic_network is NULL");
         return NULL;
     }
 
@@ -462,6 +464,7 @@ static bool evaluate_local_decision(
     if (bridge->config.mode == PSL_MODE_DISABLED ||
         bridge->config.mode == PSL_MODE_SWARM_ONLY) {
         if (confidence_out) *confidence_out = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_local_decision: validation failed");
         return false;
     }
 
@@ -498,6 +501,7 @@ static bool evaluate_swarm_decision(
         bridge->config.mode == PSL_MODE_PORTIA_ONLY) {
         if (consensus_count_out) *consensus_count_out = 0;
         if (confidence_out) *confidence_out = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_swarm_decision: validation failed");
         return false;
     }
 
@@ -919,6 +923,7 @@ bool portia_swarm_logic_evaluate_unified_gate(
 {
     if (!bridge || !bridge->logic_network) {
         NIMCP_LOGGING_ERROR("Invalid bridge or no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_swarm_logic_evaluate_unified_gate: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -933,6 +938,7 @@ bool portia_swarm_logic_evaluate_unified_gate(
 
     if (!success) {
         NIMCP_LOGGING_ERROR("Failed to evaluate gate %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_swarm_logic_evaluate_unified_gate: success is NULL");
         return false;
     }
 

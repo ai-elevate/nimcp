@@ -105,6 +105,7 @@ static bool calculate_isi(
     uint32_t* num_isi_out
 ) {
     if (!train || !isi_out || !num_isi_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calculate_isi: required parameter is NULL (train, isi_out, num_isi_out)");
         return false;
     }
 
@@ -132,6 +133,7 @@ rate_coding_encoder_t rate_coding_create(const rate_coding_config_t* config) {
         1, sizeof(struct rate_coding_encoder_struct)
     );
     if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_create: encoder is NULL");
         return NULL;
     }
 
@@ -195,6 +197,7 @@ bool rate_coding_encode(
 ) {
     // Guard clauses
     if (!encoder || !spike_train || !rate_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_coding_encode: required parameter is NULL (encoder, spike_train, rate_out)");
         return false;
     }
 
@@ -310,6 +313,7 @@ bool rate_coding_decode(
 ) {
     // Guard clauses
     if (!encoder || !spike_train_out || rate_hz < 0.0F || duration_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_coding_decode: required parameter is NULL (encoder, spike_train_out)");
         return false;
     }
 
@@ -333,6 +337,7 @@ bool rate_coding_decode(
             if (r < prob_spike) {
                 uint64_t spike_time = (uint64_t)t;
                 if (!spike_train_add_spike(spike_train_out, spike_time)) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_decode: spike_train_add_spike is NULL");
                     return false;
                 }
             }
@@ -346,6 +351,7 @@ bool rate_coding_decode(
             for (float t = 0.0F; t < duration_ms; t += isi_ms) {
                 uint64_t spike_time = (uint64_t)t;
                 if (!spike_train_add_spike(spike_train_out, spike_time)) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_decode: spike_train_add_spike is NULL");
                     return false;
                 }
             }
@@ -404,6 +410,7 @@ bool rate_coding_detect_bursts(
     // Guard clauses
     if (!encoder || !spike_train || !burst_count_out ||
         !burst_rate_out || !tonic_rate_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_detect_bursts: operation failed");
         return false;
     }
 
@@ -420,12 +427,14 @@ bool rate_coding_detect_bursts(
     // Calculate ISIs
     float* isi = (float*)nimcp_malloc((spike_train->num_spikes - 1) * sizeof(float));
     if (!isi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_detect_bursts: isi is NULL");
         return false;
     }
 
     uint32_t num_isi = 0;
     if (!calculate_isi(spike_train, isi, &num_isi)) {
         nimcp_free(isi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_detect_bursts: calculate_isi is NULL");
         return false;
     }
 
@@ -500,6 +509,7 @@ bool rate_coding_instantaneous_rate(
 ) {
     // Guard clauses
     if (!encoder || !spike_train || !inst_rate_out || kernel_width_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_coding_instantaneous_rate: required parameter is NULL (encoder, spike_train, inst_rate_out)");
         return false;
     }
 
@@ -567,6 +577,7 @@ void rate_coding_spike_train_destroy(spike_train_t* train) {
 bool spike_train_add_spike(spike_train_t* train, uint64_t spike_time) {
     // Guard clause
     if (!train) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_train_add_spike: train is NULL");
         return false;
     }
 
@@ -577,6 +588,7 @@ bool spike_train_add_spike(spike_train_t* train, uint64_t spike_time) {
             new_capacity = RATE_CODING_MAX_SPIKE_HISTORY;
         }
         if (train->num_spikes >= new_capacity) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "spike_train_add_spike: capacity exceeded");
             return false;  // Already at max capacity
         }
 
@@ -585,6 +597,7 @@ bool spike_train_add_spike(spike_train_t* train, uint64_t spike_time) {
             new_capacity * sizeof(uint64_t)
         );
         if (!new_array) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_train_add_spike: new_array is NULL");
             return false;
         }
 
@@ -624,11 +637,13 @@ void rate_coding_spike_train_clear(spike_train_t* train) {
 spike_train_t* spike_train_copy(const spike_train_t* src) {
     // Guard clause
     if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_train_copy: src is NULL");
         return NULL;
     }
 
     spike_train_t* copy = rate_coding_spike_train_create(src->capacity);
     if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_train_copy: copy is NULL");
         return NULL;
     }
 
@@ -648,11 +663,13 @@ spike_train_t* spike_train_copy(const spike_train_t* src) {
 bool rate_coding_compute_cv(const spike_train_t* spike_train, float* cv_out) {
     // Guard clauses
     if (!spike_train || !cv_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_coding_compute_cv: required parameter is NULL (spike_train, cv_out)");
         return false;
     }
 
     // Need at least 2 spikes
     if (spike_train->num_spikes < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_compute_cv: validation failed");
         return false;
     }
 
@@ -660,12 +677,14 @@ bool rate_coding_compute_cv(const spike_train_t* spike_train, float* cv_out) {
     uint32_t num_isi = spike_train->num_spikes - 1;
     float* isi = (float*)nimcp_malloc(num_isi * sizeof(float));
     if (!isi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_compute_cv: isi is NULL");
         return false;
     }
 
     uint32_t actual_num_isi = 0;
     if (!calculate_isi(spike_train, isi, &actual_num_isi)) {
         nimcp_free(isi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_compute_cv: calculate_isi is NULL");
         return false;
     }
 
@@ -704,12 +723,14 @@ bool rate_coding_compute_fano_factor(
 ) {
     // Guard clauses
     if (!spike_trains || !fano_out || num_trials == 0 || window_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_coding_compute_fano_factor: required parameter is NULL (spike_trains, fano_out)");
         return false;
     }
 
     // Count spikes in window for each trial
     uint32_t* spike_counts = (uint32_t*)nimcp_calloc(num_trials, sizeof(uint32_t));
     if (!spike_counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_compute_fano_factor: spike_counts is NULL");
         return false;
     }
 

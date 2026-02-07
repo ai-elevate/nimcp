@@ -84,6 +84,7 @@ creative_emotion_bridge_t* creative_emotion_bridge_create(
     creative_emotion_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_emotion_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate emotion bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_emotion_bridge_config_defaults: bridge is NULL");
         return NULL;
     }
 
@@ -119,7 +120,10 @@ void creative_emotion_bridge_destroy(creative_emotion_bridge_t* bridge) {
 int creative_emotion_bridge_process(creative_emotion_bridge_t* bridge,
                                      const aesthetic_evaluation_t* eval,
                                      aesthetic_emotional_state_t* out) {
-    if (!bridge || !eval || !out) return -1;
+    if (!bridge || !eval || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_emotion_bridge_destroy: required parameter is NULL (bridge, eval, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(aesthetic_emotional_state_t));
     bridge->events_processed++;
@@ -131,7 +135,10 @@ int creative_emotion_bridge_extract(creative_emotion_bridge_t* bridge,
                                      const void* content,
                                      art_modality_t modality,
                                      aesthetic_emotional_response_t* out) {
-    if (!bridge || !content || !out) return -1;
+    if (!bridge || !content || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_emotion_bridge_destroy: required parameter is NULL (bridge, content, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(aesthetic_emotional_response_t));
 

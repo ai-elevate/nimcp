@@ -462,6 +462,7 @@ bool brain_get_stats(brain_t brain, brain_stats_t* stats)
     // Guard: Validate parameters
     if (!brain || !stats) {
         set_error("Invalid parameters to brain_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_stats: required parameter is NULL (brain, stats)");
         return false;
     }
 
@@ -534,6 +535,7 @@ systems_consolidation_system_t* brain_get_systems_consolidation(brain_t brain)
 {
     // GUARD: NULL check
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_systems_consolidation: validation failed");
         return NULL;
     }
 
@@ -570,6 +572,7 @@ bool brain_get_cow_stats(brain_t brain, brain_cow_stats_t* cow_stats)
     // Guard: Validate parameters
     if (!brain || !cow_stats) {
         set_error("Invalid parameters to brain_get_cow_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_cow_stats: required parameter is NULL (brain, cow_stats)");
         return false;
     }
 
@@ -729,6 +732,7 @@ bool brain_explain_decision(brain_t brain, const float* features, uint32_t num_f
     // Guard: Validate parameters
     if (!brain || !features || !explanation) {
         set_error("Invalid parameters to brain_explain_decision");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_explain_decision: required parameter is NULL (brain, features, explanation)");
         return false;
     }
 
@@ -797,6 +801,7 @@ bool brain_optimize_for_inference(brain_t brain)
     // Guard: Validate brain
     if (!brain) {
         set_error("Null brain provided to brain_optimize_for_inference");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_optimize_for_inference: brain is NULL");
         return false;
     }
 

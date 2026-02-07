@@ -225,7 +225,10 @@ int snn_routing_bridge_process(
         if (n_out_actual) *n_out_actual = 0;
         return 0;
     }
-    if (!spikes_out || !n_out_actual) return -1;
+    if (!spikes_out || !n_out_actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_process: required parameter is NULL (spikes_out, n_out_actual)");
+        return -1;
+    }
 
     uint32_t n_routed = 0;
 
@@ -410,6 +413,7 @@ bool snn_routing_bridge_detect_burst(
     if (last_time == 0) {
         /* First spike, not a burst */
         bridge->in_burst_mode[neuron_idx] = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_detect_burst: last_time is zero");
         return false;
     }
 

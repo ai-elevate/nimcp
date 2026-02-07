@@ -633,6 +633,7 @@ int attention_snn_encode_weights(
     if (ret != SNN_SUCCESS) {
         bridge->state = ATTENTION_SNN_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_encode_weights: validation failed");
         return -1;
     }
 
@@ -734,6 +735,7 @@ int attention_snn_encode_multihead(
     if (!multihead_attention_get_stats(mha, &mha_stats)) {
         bridge->state = ATTENTION_SNN_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_snn_encode_multihead: multihead_attention_get_stats is NULL");
         return -1;
     }
 
@@ -1519,7 +1521,10 @@ int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
 }
 
 bool attention_snn_is_bio_async_connected(const attention_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     attention_snn_bridge_heartbeat("attention_sn_attention_snn_is_bio", 0.0f);
 

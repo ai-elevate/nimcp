@@ -463,7 +463,10 @@ float snn_medulla_get_combined_modulation(const snn_medulla_bridge_t* bridge) {
 }
 
 bool snn_medulla_is_activity_restricted(const snn_medulla_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_is_activity_restricted: bridge is NULL");
+        return false;
+    }
     return bridge->state.protection_level >= PROTECTION_LEVEL_GUARDED;
 }
 

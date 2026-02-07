@@ -122,6 +122,7 @@ personality_thalamic_bridge_t* personality_thalamic_bridge_create(void* personal
     if (bridge_base_init(&bridge->base, 0, "personality_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->personality = personality;
@@ -147,7 +148,10 @@ void personality_thalamic_bridge_destroy(personality_thalamic_bridge_t* bridge) 
 }
 
 int personality_thalamic_bridge_reset(personality_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__reset", 0.0f);
 
@@ -167,7 +171,10 @@ int personality_thalamic_bridge_reset(personality_thalamic_bridge_t* bridge) {
  * HOW: Create routed_signal_t, apply state modulation if enabled, call router
  */
 int personality_thalamic_route_trait(personality_thalamic_bridge_t* bridge, const personality_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_trait: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__personality_thalamic", 0.0f);
@@ -233,6 +240,7 @@ int personality_thalamic_route_trait(personality_thalamic_bridge_t* bridge, cons
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_trait: routed_ok is NULL");
             return -1;  /* Routing failed */
         }
     }
@@ -258,7 +266,10 @@ int personality_thalamic_route_trait(personality_thalamic_bridge_t* bridge, cons
  * HOW: Package effort data, route with appropriate priority
  */
 int personality_thalamic_route_regulation(personality_thalamic_bridge_t* bridge, const void* regulation, float effort) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_regulation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__personality_thalamic", 0.0f);
@@ -298,6 +309,7 @@ int personality_thalamic_route_regulation(personality_thalamic_bridge_t* bridge,
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_route_regulation: routed_ok is NULL");
             return -1;
         }
     }
@@ -312,7 +324,10 @@ int personality_thalamic_route_regulation(personality_thalamic_bridge_t* bridge,
 }
 
 int personality_thalamic_set_attention(personality_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__personality_thalamic", 0.0f);
 
@@ -324,7 +339,10 @@ int personality_thalamic_set_attention(personality_thalamic_bridge_t* bridge, fl
 }
 
 int personality_thalamic_get_attention(personality_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__personality_thalamic", 0.0f);
 
@@ -336,7 +354,10 @@ int personality_thalamic_get_attention(personality_thalamic_bridge_t* bridge, fl
 }
 
 int personality_thalamic_bridge_get_stats(personality_thalamic_bridge_t* bridge, personality_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     personality_thalamic_bridge_heartbeat("personality__get_stats", 0.0f);
 

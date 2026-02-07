@@ -398,6 +398,7 @@ static bool integrate_multimodal_features(
     // For visual/audio/speech inputs, we need the multimodal system
     if (!brain->multimodal || !brain->integrated_feature_buffer) {
         set_error("Multimodal integration required for visual/audio/speech but not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integrate_multimodal_features: required parameter is NULL (brain->multimodal, brain->integrated_feature_buffer)");
         return false;
     }
 
@@ -426,6 +427,7 @@ static bool integrate_multimodal_features(
                 "if: integrate_success is NULL");
 
 
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integrate_multimodal_features: integrate_success is NULL");
             return false;
     }
 
@@ -598,6 +600,7 @@ static bool apply_cognitive_processing(
         // Validate output structure
         if (!output) {
             set_error("NULL output in symbolic logic processing");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_cognitive_processing: output is NULL");
             return false;
         }
 
@@ -618,6 +621,7 @@ static bool apply_cognitive_processing(
         // Check for buffer overflow
         if (written < 0 || (size_t)written >= sizeof(output->logical_reasoning)) {
             set_error("Logic reasoning buffer overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_cognitive_processing: capacity exceeded");
             return false;
         }
 
@@ -693,7 +697,10 @@ static bool consolidation_strengthen(
             return false;
 
         }
-    if (!brain->network) return false;
+    if (!brain->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_strengthen: brain->network is NULL");
+        return false;
+    }
 
     // GUARD: Skip if consolidation disabled
     if (!brain->consolidation) return true;
@@ -763,6 +770,7 @@ static bool format_output(
     if (!output->ethical_approved) {
         snprintf(output->explanation, sizeof(output->explanation),
                  "Output blocked: Failed ethical validation (NaN/Inf/extreme values detected)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "format_output: output->ethical_approved is NULL");
         return false;
     }
 
@@ -853,6 +861,7 @@ bool brain_process_multimodal(
     // Guard clause: Validate inputs
     if (!brain || !input || !output) {
         set_error("Invalid parameters: brain, input, or output is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_process_multimodal: required parameter is NULL (brain, input, output)");
         return false;
     }
 
@@ -863,6 +872,7 @@ bool brain_process_multimodal(
 
     if (!has_visual && !has_audio && !has_direct) {
         set_error("No input modality provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_process_multimodal: required parameter is NULL (has_visual, has_audio, has_direct)");
         return false;
     }
 
@@ -870,6 +880,7 @@ bool brain_process_multimodal(
     bool needs_multimodal = has_visual || has_audio;
     if (needs_multimodal && !brain->config.enable_multimodal_integration) {
         set_error("Brain not configured for multimodal processing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_process_multimodal: brain->config is NULL");
         return false;
     }
 
@@ -955,6 +966,7 @@ bool brain_process_multimodal(
             &speech_features, &speech_dim,
             &direct_features, &direct_dim,
             has_visual, has_audio, has_direct)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_process_multimodal: operation failed");
         return false;
     }
 
@@ -969,6 +981,7 @@ bool brain_process_multimodal(
             direct_features, direct_dim,
             input->timestamp_ms,
             output)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_process_multimodal: operation failed");
         return false;
     }
 
@@ -1043,6 +1056,7 @@ bool brain_process_multimodal(
     // STAGE 2.5: Apply multihead attention for selective feature processing
     // -------------------------------------------------------------------------
     if (!apply_attention_to_features(brain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_process_multimodal: apply_attention_to_features is NULL");
         return false;
     }
 
@@ -1050,6 +1064,7 @@ bool brain_process_multimodal(
     // STAGE 2.6: Process through hierarchical brain regions
     // -------------------------------------------------------------------------
     if (!process_brain_regions(brain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: process_brain_regions is NULL");
         return false;
     }
 
@@ -1062,6 +1077,7 @@ bool brain_process_multimodal(
 
     if (!network_input) {
         set_error("No input data available for neural network processing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: network_input is NULL");
         return false;
     }
 
@@ -1079,6 +1095,7 @@ bool brain_process_multimodal(
 
     if (!network_output) {
         set_error("Neural network forward pass returned NULL output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: network_output is NULL");
         return false;
     }
 
@@ -1107,6 +1124,7 @@ bool brain_process_multimodal(
             input->timestamp_ms,
             output)) {
         nimcp_free(network_output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 

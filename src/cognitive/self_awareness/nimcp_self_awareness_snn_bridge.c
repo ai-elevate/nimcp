@@ -204,12 +204,14 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > SELF_AWARENESS_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "self_awareness_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_snn_create: validation failed");
         return NULL;
     }
 
@@ -227,6 +229,7 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -239,6 +242,7 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->awareness_buffer || !bridge->prev_state) {
         self_awareness_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_create: operation failed");
         return NULL;
     }
 
@@ -291,7 +295,10 @@ void self_awareness_snn_destroy(self_awareness_snn_bridge_t* bridge) {
 }
 
 int self_awareness_snn_reset(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -339,8 +346,14 @@ int self_awareness_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_SNN_STATE_ENCODING;
@@ -396,7 +409,10 @@ int self_awareness_snn_encode_self_recognition(
     float recognition,
     float body_ownership
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_encode_self_recognition: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -417,7 +433,10 @@ int self_awareness_snn_encode_agency(
     float agency_level,
     uint32_t agency_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_encode_agency: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -438,7 +457,10 @@ int self_awareness_snn_encode_metacognitive(
     float metacog_level,
     float reflection_depth
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_encode_metacognitive: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -467,8 +489,14 @@ int self_awareness_snn_encode_metacognitive(
 //=============================================================================
 
 int self_awareness_snn_simulate(self_awareness_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_simulate: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_SNN_STATE_SIMULATING;
@@ -546,7 +574,10 @@ int self_awareness_snn_simulate(self_awareness_snn_bridge_t* bridge, float durat
 }
 
 int self_awareness_snn_step(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_step: bridge is NULL");
+        return -1;
+    }
     return self_awareness_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -555,12 +586,19 @@ int self_awareness_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     int spike_count = self_awareness_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_forward: validation failed");
+        return -1;
+    }
 
     if (self_awareness_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_forward: validation failed");
         return -1;
     }
 
@@ -575,7 +613,10 @@ int self_awareness_snn_get_awareness_state(
     self_awareness_snn_bridge_t* bridge,
     self_awareness_state_t* awareness_state
 ) {
-    if (!bridge || !awareness_state) return -1;
+    if (!bridge || !awareness_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_get_awareness_state: required parameter is NULL (bridge, awareness_state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *awareness_state = bridge->last_awareness_state;
@@ -589,8 +630,14 @@ int self_awareness_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
@@ -605,7 +652,10 @@ bool self_awareness_snn_check_recognition(
     self_awareness_snn_bridge_t* bridge,
     float* recognition_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_check_recognition: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_awareness_state.self_recognition;
@@ -622,7 +672,10 @@ bool self_awareness_snn_check_agency(
     self_awareness_snn_bridge_t* bridge,
     float* agency_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_check_agency: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_awareness_state.agency_sense;
@@ -639,7 +692,10 @@ bool self_awareness_snn_check_state_change(
     self_awareness_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
@@ -668,8 +724,14 @@ int self_awareness_snn_get_dim_state(
     uint32_t dim,
     self_awareness_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
@@ -682,7 +744,10 @@ int self_awareness_snn_get_state(
     self_awareness_snn_bridge_t* bridge,
     self_awareness_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -706,7 +771,10 @@ int self_awareness_snn_get_state(
 }
 
 int self_awareness_snn_get_stats(self_awareness_snn_bridge_t* bridge, self_awareness_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -716,7 +784,10 @@ int self_awareness_snn_get_stats(self_awareness_snn_bridge_t* bridge, self_aware
 }
 
 int self_awareness_snn_reset_stats(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(self_awareness_snn_stats_t));
@@ -757,7 +828,10 @@ int self_awareness_snn_register_recognition_callback(
     self_awareness_snn_recognition_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_register_recognition_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->recognition_callback = callback;
@@ -772,7 +846,10 @@ int self_awareness_snn_register_state_callback(
     self_awareness_snn_state_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_register_state_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
@@ -787,7 +864,10 @@ int self_awareness_snn_register_agency_callback(
     self_awareness_snn_agency_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_register_agency_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->agency_callback = callback;
@@ -802,8 +882,14 @@ int self_awareness_snn_register_agency_callback(
 //=============================================================================
 
 int self_awareness_snn_bio_async_connect(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
@@ -814,7 +900,10 @@ int self_awareness_snn_bio_async_connect(self_awareness_snn_bridge_t* bridge) {
 }
 
 int self_awareness_snn_bio_async_disconnect(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -824,7 +913,10 @@ int self_awareness_snn_bio_async_disconnect(self_awareness_snn_bridge_t* bridge)
 }
 
 bool self_awareness_snn_is_bio_async_connected(self_awareness_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

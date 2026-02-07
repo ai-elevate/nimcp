@@ -104,7 +104,10 @@ static brain_kg_edge_id_t create_pag_edge(
 //=============================================================================
 
 int pag_kg_default_config(pag_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_columns = true;
     config->register_defense = true;
@@ -128,7 +131,10 @@ int pag_kg_register_all(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     pag_kg_config_t local_config;
     if (config) {
@@ -150,6 +156,7 @@ int pag_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(PAG_KG_MODULE_NAME, "Failed to create PAG root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -216,7 +223,10 @@ int pag_kg_register_columns(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_columns: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create columns subsystem node */
     state->columns_subsystem_id = create_pag_node(
@@ -225,7 +235,10 @@ int pag_kg_register_columns(
         "PAG columnar organization - functional subdivisions controlling behavior",
         admin_token
     );
-    if (state->columns_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->columns_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_columns: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -317,7 +330,10 @@ int pag_kg_register_defense(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_defense: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create defense subsystem node */
     state->defense_subsystem_id = create_pag_node(
@@ -326,7 +342,10 @@ int pag_kg_register_defense(
         "PAG defensive behavior system - 4F response patterns",
         admin_token
     );
-    if (state->defense_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->defense_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_defense: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -428,7 +447,10 @@ int pag_kg_register_pain(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_pain: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create pain modulation subsystem node */
     state->pain_subsystem_id = create_pag_node(
@@ -438,7 +460,10 @@ int pag_kg_register_pain(
         "endogenous analgesia pathways",
         admin_token
     );
-    if (state->pain_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->pain_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_pain: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -564,7 +589,10 @@ int pag_kg_register_emotions(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_emotions: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create emotion subsystem node */
     state->emotion_subsystem_id = create_pag_node(
@@ -574,7 +602,10 @@ int pag_kg_register_emotions(
         "survival-related emotions",
         admin_token
     );
-    if (state->emotion_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->emotion_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_emotions: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -683,7 +714,10 @@ int pag_kg_register_vocalizations(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_vocalizations: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create vocalization subsystem node */
     state->vocal_subsystem_id = create_pag_node(
@@ -693,7 +727,10 @@ int pag_kg_register_vocalizations(
         "lPAG mediated voice production",
         admin_token
     );
-    if (state->vocal_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->vocal_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_vocalizations: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -802,7 +839,10 @@ int pag_kg_register_autonomic(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_autonomic: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create autonomic subsystem node */
     state->autonomic_subsystem_id = create_pag_node(
@@ -812,7 +852,10 @@ int pag_kg_register_autonomic(
         "control for survival behaviors",
         admin_token
     );
-    if (state->autonomic_subsystem_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (state->autonomic_subsystem_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_kg_register_autonomic: validation failed");
+        return -1;
+    }
     state->node_count++;
 
     /* Link to parent */
@@ -860,7 +903,10 @@ int pag_kg_register_cross_edges(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* ===== Column -> Defense edges ===== */
 
@@ -1083,7 +1129,10 @@ int pag_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     char value_str[64];
 
@@ -1236,7 +1285,10 @@ int pag_kg_unregister_all(
     pag_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
     (void)admin_token;
 
     /* Mark as unregistered */

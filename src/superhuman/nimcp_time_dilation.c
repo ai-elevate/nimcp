@@ -227,6 +227,7 @@ static event_entry_t* find_empty_slot(time_dilation_system_t* sys) {
             return &sys->events[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: sys->events is NULL");
     return NULL;
 }
 
@@ -241,6 +242,7 @@ static event_entry_t* find_event_by_id(time_dilation_system_t* sys, uint32_t id)
             return &sys->events[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_event_by_id: validation failed");
     return NULL;
 }
 
@@ -379,6 +381,7 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
         NIMCP_LOGGING_ERROR("Failed to allocate input buffer");
         /* Exception already thrown in alloc_buffer */
         time_dilation_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "time_dilation_create: validation failed");
         return NULL;
     }
 
@@ -386,6 +389,7 @@ time_dilation_system_t* time_dilation_create(const time_dilation_config_t* confi
         NIMCP_LOGGING_ERROR("Failed to allocate output buffer");
         /* Exception already thrown in alloc_buffer */
         time_dilation_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "time_dilation_create: validation failed");
         return NULL;
     }
 
@@ -1215,7 +1219,10 @@ int time_dilation_reset_stats(time_dilation_system_t* system) {
  * ============================================================================ */
 
 bool time_dilation_is_active(const time_dilation_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "time_dilation_is_active: system is NULL");
+        return false;
+    }
     return system->state.is_dilating;
 }
 

@@ -89,7 +89,10 @@ static uint64_t get_timestamp_us(void) {
 static int compare_by_priority(const void* a, const void* b) {
     const nimcp_state_module_entry_t* ma = (const nimcp_state_module_entry_t*)a;
     const nimcp_state_module_entry_t* mb = (const nimcp_state_module_entry_t*)b;
-    if (ma->priority < mb->priority) return -1;
+    if (ma->priority < mb->priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_priority: validation failed");
+        return -1;
+    }
     if (ma->priority > mb->priority) return 1;
     return 0;
 }
@@ -248,13 +251,17 @@ nimcp_state_module_entry_t* nimcp_state_manager_find(
     nimcp_state_manager_t* manager,
     const char* name
 ) {
-    if (!manager || !name) return NULL;
+    if (!manager || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_state_manager_find: required parameter is NULL (manager, name)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < manager->module_count; i++) {
         if (strncmp(manager->modules[i].name, name, NIMCP_STATE_MANAGER_MAX_NAME_LEN) == 0) {
             return &manager->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_state_manager_find: validation failed");
     return NULL;
 }
 

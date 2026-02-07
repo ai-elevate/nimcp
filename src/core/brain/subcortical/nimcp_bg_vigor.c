@@ -63,13 +63,17 @@ static float bgv_clamp(float value, float min_val, float max_val) {
  * @brief Find action by ID
  */
 static bgv_action_vigor_t* bgv_find_action(bgv_system_t* system, uint32_t action_id) {
-    if (!system || !system->actions) return NULL;
+    if (!system || !system->actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: required parameter is NULL (system, system->actions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < system->num_actions; i++) {
         if (system->actions[i].action_id == action_id) {
             return &system->actions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: validation failed");
     return NULL;
 }
 
@@ -78,13 +82,17 @@ static bgv_action_vigor_t* bgv_find_action(bgv_system_t* system, uint32_t action
  */
 static const bgv_action_vigor_t* bgv_find_action_const(const bgv_system_t* system,
                                                          uint32_t action_id) {
-    if (!system || !system->actions) return NULL;
+    if (!system || !system->actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: required parameter is NULL (system, system->actions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < system->num_actions; i++) {
         if (system->actions[i].action_id == action_id) {
             return &system->actions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgv_find_action: validation failed");
     return NULL;
 }
 
@@ -147,6 +155,7 @@ bgv_system_t* bgv_create(const bgv_config_t* config) {
     bgv_system_t* system = (bgv_system_t*)nimcp_calloc(1, sizeof(bgv_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate vigor system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgv_create: system is NULL");
         return NULL;
     }
 
@@ -160,6 +169,7 @@ bgv_system_t* bgv_create(const bgv_config_t* config) {
     if (!system->actions) {
         NIMCP_LOGGING_ERROR("Failed to allocate action array");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgv_create: system->actions is NULL");
         return NULL;
     }
 

@@ -224,12 +224,14 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > PERSONALITY_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "personality_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "personality_snn_create: validation failed");
         return NULL;
     }
 
@@ -247,6 +249,7 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "personality_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -259,6 +262,7 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->tendency_buffer || !bridge->prev_state) {
         personality_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_create: operation failed");
         return NULL;
     }
 
@@ -323,7 +327,10 @@ void personality_snn_destroy(personality_snn_bridge_t* bridge) {
 }
 
 int personality_snn_reset(personality_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_rese", 0.0f);
@@ -385,8 +392,14 @@ int personality_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
@@ -467,7 +480,10 @@ int personality_snn_encode_ocean(
     float agreeableness,
     float neuroticism
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_encode_ocean: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
@@ -496,7 +512,10 @@ int personality_snn_encode_temperament(
     float approach,
     float avoidance
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_encode_temperament: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
@@ -519,7 +538,10 @@ int personality_snn_encode_behavioral(
     float sociability,
     float emotionality
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_encode_behavioral: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_enco", 0.0f);
@@ -553,8 +575,14 @@ int personality_snn_encode_behavioral(
 //=============================================================================
 
 int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_simu", 0.0f);
@@ -682,7 +710,10 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
 }
 
 int personality_snn_step(personality_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_step", 0.0f);
 
@@ -695,16 +726,23 @@ int personality_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_forw", 0.0f);
 
 
     int spike_count = personality_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_forward: validation failed");
+        return -1;
+    }
 
     if (personality_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_forward: validation failed");
         return -1;
     }
 
@@ -719,7 +757,10 @@ int personality_snn_get_tendency(
     personality_snn_bridge_t* bridge,
     personality_tendency_t* tendency
 ) {
-    if (!bridge || !tendency) return -1;
+    if (!bridge || !tendency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_get_tendency: required parameter is NULL (bridge, tendency)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
@@ -737,8 +778,14 @@ int personality_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
@@ -763,7 +810,10 @@ bool personality_snn_check_stability(
     personality_snn_bridge_t* bridge,
     float* stability_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_stability: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
@@ -784,7 +834,10 @@ bool personality_snn_check_fluctuation(
     personality_snn_bridge_t* bridge,
     float* fluctuation_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_fluctuation: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
@@ -805,7 +858,10 @@ bool personality_snn_check_state_change(
     personality_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_chec", 0.0f);
@@ -844,8 +900,14 @@ int personality_snn_get_dim_state(
     uint32_t dim,
     personality_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "personality_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
@@ -862,7 +924,10 @@ int personality_snn_get_state(
     personality_snn_bridge_t* bridge,
     personality_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
@@ -900,7 +965,10 @@ int personality_snn_get_state(
 }
 
 int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_get_", 0.0f);
@@ -914,7 +982,10 @@ int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_
 }
 
 int personality_snn_reset_stats(personality_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_rese", 0.0f);
@@ -973,7 +1044,10 @@ int personality_snn_register_stability_callback(
     personality_snn_stability_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_register_stability_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
@@ -992,7 +1066,10 @@ int personality_snn_register_tendency_callback(
     personality_snn_tendency_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_register_tendency_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
@@ -1011,7 +1088,10 @@ int personality_snn_register_fluctuation_callback(
     personality_snn_fluctuation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_register_fluctuation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_regi", 0.0f);
@@ -1030,8 +1110,14 @@ int personality_snn_register_fluctuation_callback(
 //=============================================================================
 
 int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_bio_", 0.0f);
@@ -1046,7 +1132,10 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
 }
 
 int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_bio_", 0.0f);
@@ -1060,7 +1149,10 @@ int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
 }
 
 bool personality_snn_is_bio_async_connected(personality_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "personality_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     personality_snn_bridge_heartbeat("personality__personality_snn_is_b", 0.0f);

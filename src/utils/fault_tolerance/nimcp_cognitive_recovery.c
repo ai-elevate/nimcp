@@ -291,6 +291,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_create(
 ) {
     if (!brain) {
         LOG_ERROR("Cannot create cognitive recovery: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_recovery_create: brain is NULL");
         return NULL;
     }
 
@@ -298,6 +299,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_create(
         nimcp_calloc(1, sizeof(struct cognitive_recovery_coordinator_internal));
     if (!coordinator) {
         LOG_ERROR("Failed to allocate cognitive recovery coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_recovery_create: coordinator is NULL");
         return NULL;
     }
 
@@ -327,6 +329,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_create(
                 health_monitor_destroy(coordinator->health_monitor);
             }
             nimcp_free(coordinator);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_recovery_create: validation failed");
             return NULL;
         }
     }
@@ -400,7 +403,10 @@ void cognitive_recovery_destroy(cognitive_recovery_coordinator_t coordinator) {
 }
 
 bool cognitive_recovery_start(cognitive_recovery_coordinator_t coordinator) {
-    if (!coordinator) return false;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_start: coordinator is NULL");
+        return false;
+    }
 
     if (coordinator->is_running) {
         LOG_WARNING("Cognitive recovery already running");
@@ -419,7 +425,10 @@ bool cognitive_recovery_start(cognitive_recovery_coordinator_t coordinator) {
 }
 
 bool cognitive_recovery_stop(cognitive_recovery_coordinator_t coordinator) {
-    if (!coordinator) return false;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_stop: coordinator is NULL");
+        return false;
+    }
 
     if (!coordinator->is_running) {
         LOG_WARNING("Cognitive recovery not running");
@@ -447,6 +456,7 @@ cognitive_recovery_result_t* cognitive_recovery_execute(
 ) {
     if (!coordinator) {
         LOG_ERROR("Invalid coordinator for recovery execution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_execute: coordinator is NULL");
         return NULL;
     }
 
@@ -456,6 +466,7 @@ cognitive_recovery_result_t* cognitive_recovery_execute(
     cognitive_recovery_result_t* result = nimcp_calloc(1, sizeof(cognitive_recovery_result_t));
     if (!result) {
         LOG_ERROR("Failed to allocate recovery result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_recovery_execute: result is NULL");
         return NULL;
     }
 
@@ -793,7 +804,10 @@ cognitive_recovery_result_t* cognitive_recovery_preventive(
     cognitive_recovery_coordinator_t coordinator,
     health_status_snapshot_t* health
 ) {
-    if (!coordinator || !health) return NULL;
+    if (!coordinator || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_preventive: required parameter is NULL (coordinator, health)");
+        return NULL;
+    }
 
     // Create diagnosis from health status
     diagnostic_result_t diagnosis = {0};
@@ -837,7 +851,10 @@ bool cognitive_recovery_get_health(
     cognitive_recovery_coordinator_t coordinator,
     health_status_snapshot_t* health
 ) {
-    if (!coordinator || !health) return false;
+    if (!coordinator || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_get_health: required parameter is NULL (coordinator, health)");
+        return false;
+    }
 
     if (coordinator->health_monitor) {
         return health_monitor_get_status(coordinator->health_monitor, health);
@@ -853,10 +870,14 @@ bool cognitive_recovery_get_health(
 }
 
 bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t coordinator) {
-    if (!coordinator) return false;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_is_needed: coordinator is NULL");
+        return false;
+    }
 
     health_status_snapshot_t health;
     if (!cognitive_recovery_get_health(coordinator, &health)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_is_needed: cognitive_recovery_get_health is NULL");
         return false;
     }
 
@@ -874,11 +895,15 @@ bool cognitive_recovery_is_needed(cognitive_recovery_coordinator_t coordinator) 
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_is_needed: operation failed");
     return false;
 }
 
 bool cognitive_recovery_is_ready(cognitive_recovery_coordinator_t coordinator) {
-    if (!coordinator) return false;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_is_ready: coordinator is NULL");
+        return false;
+    }
 
     // Check all subsystems are initialized
     bool ready = true;
@@ -901,7 +926,10 @@ bool cognitive_recovery_get_stats(
     cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_stats_t* stats
 ) {
-    if (!coordinator || !stats) return false;
+    if (!coordinator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_get_stats: required parameter is NULL (coordinator, stats)");
+        return false;
+    }
 
     *stats = coordinator->stats;
     return true;
@@ -930,7 +958,10 @@ bool cognitive_recovery_update_config(
     cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_config_t* config
 ) {
-    if (!coordinator || !config) return false;
+    if (!coordinator || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_update_config: required parameter is NULL (coordinator, config)");
+        return false;
+    }
 
     // Store old config for comparison
     cognitive_recovery_config_t old_config = coordinator->config;
@@ -958,7 +989,10 @@ bool cognitive_recovery_get_config(
     cognitive_recovery_coordinator_t coordinator,
     cognitive_recovery_config_t* config
 ) {
-    if (!coordinator || !config) return false;
+    if (!coordinator || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_get_config: required parameter is NULL (coordinator, config)");
+        return false;
+    }
 
     *config = coordinator->config;
     return true;
@@ -972,11 +1006,15 @@ bool cognitive_recovery_save(
     cognitive_recovery_coordinator_t coordinator,
     const char* filepath
 ) {
-    if (!coordinator || !filepath) return false;
+    if (!coordinator || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_save: required parameter is NULL (coordinator, filepath)");
+        return false;
+    }
 
     FILE* f = fopen(filepath, "wb");
     if (!f) {
         LOG_ERROR("Failed to open file for writing: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_save: f is NULL");
         return false;
     }
 
@@ -1015,11 +1053,15 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
     const char* filepath,
     cognitive_recovery_config_t* config
 ) {
-    if (!brain || !filepath) return NULL;
+    if (!brain || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_load: required parameter is NULL (brain, filepath)");
+        return NULL;
+    }
 
     FILE* f = fopen(filepath, "rb");
     if (!f) {
         LOG_ERROR("Failed to open file for reading: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_load: f is NULL");
         return NULL;
     }
 
@@ -1028,6 +1070,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
     if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version != 1) {
         LOG_ERROR("Invalid or unsupported file version");
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_load: validation failed");
         return NULL;
     }
 
@@ -1036,6 +1079,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
     if (fread(&saved_config, sizeof(cognitive_recovery_config_t), 1, f) != 1) {
         LOG_ERROR("Failed to read config from file");
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_load: validation failed");
         return NULL;
     }
 
@@ -1047,6 +1091,7 @@ cognitive_recovery_coordinator_t cognitive_recovery_load(
         cognitive_recovery_create(brain, use_config);
     if (!coordinator) {
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_recovery_load: coordinator is NULL");
         return NULL;
     }
 
@@ -1139,7 +1184,10 @@ int32_t cognitive_recovery_export_json(
     char* json_buffer,
     size_t buffer_size
 ) {
-    if (!coordinator || !json_buffer || buffer_size == 0) return -1;
+    if (!coordinator || !json_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_export_json: required parameter is NULL (coordinator, json_buffer)");
+        return -1;
+    }
 
     int written = snprintf(json_buffer, buffer_size,
         "{\n"
@@ -1180,7 +1228,10 @@ int32_t cognitive_recovery_export_json(
 bool cognitive_recovery_install_signal_handlers(
     cognitive_recovery_coordinator_t coordinator
 ) {
-    if (!coordinator) return false;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_recovery_install_signal_handlers: coordinator is NULL");
+        return false;
+    }
 
     if (coordinator->signal_handlers_installed) {
         LOG_WARNING("Signal handlers already installed");
@@ -1198,22 +1249,27 @@ bool cognitive_recovery_install_signal_handlers(
     // Install handlers for crash signals
     if (sigaction(SIGSEGV, &sa, &coordinator->old_sigsegv) != 0) {
         LOG_ERROR("Failed to install SIGSEGV handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_install_signal_handlers: validation failed");
         return false;
     }
     if (sigaction(SIGFPE, &sa, &coordinator->old_sigfpe) != 0) {
         LOG_ERROR("Failed to install SIGFPE handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_install_signal_handlers: validation failed");
         return false;
     }
     if (sigaction(SIGABRT, &sa, &coordinator->old_sigabrt) != 0) {
         LOG_ERROR("Failed to install SIGABRT handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_install_signal_handlers: validation failed");
         return false;
     }
     if (sigaction(SIGBUS, &sa, &coordinator->old_sigbus) != 0) {
         LOG_ERROR("Failed to install SIGBUS handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_install_signal_handlers: validation failed");
         return false;
     }
     if (sigaction(SIGILL, &sa, &coordinator->old_sigill) != 0) {
         LOG_ERROR("Failed to install SIGILL handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_recovery_install_signal_handlers: validation failed");
         return false;
     }
 

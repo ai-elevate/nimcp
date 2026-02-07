@@ -193,6 +193,7 @@ bg_temporal_credit_t* bgtc_create(const bgtc_config_t* config) {
 
 cleanup:
     bgtc_destroy(tc);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_create: operation failed");
     return NULL;
 }
 
@@ -218,7 +219,10 @@ void bgtc_destroy(bg_temporal_credit_t* tc) {
 }
 
 int bgtc_reset(bg_temporal_credit_t* tc) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_reset: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -267,7 +271,10 @@ int bgtc_reset(bg_temporal_credit_t* tc) {
 int bgtc_update_trace(bg_temporal_credit_t* tc,
                        uint32_t state,
                        uint32_t action) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_reset: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -341,7 +348,10 @@ static void bgtc_decay_traces_unlocked(bg_temporal_credit_t* tc) {
 }
 
 int bgtc_decay_traces(bg_temporal_credit_t* tc) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_decay_traces: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
     bgtc_decay_traces_unlocked(tc);
@@ -363,7 +373,10 @@ float bgtc_get_trace(const bg_temporal_credit_t* tc,
 }
 
 int bgtc_clear_traces(bg_temporal_credit_t* tc) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_clear_traces: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
     tc->num_traces = 0;
@@ -376,7 +389,10 @@ int bgtc_clear_traces(bg_temporal_credit_t* tc) {
 int bgtc_get_active_traces(const bg_temporal_credit_t* tc,
                             bgtc_trace_entry_t* traces,
                             uint32_t* count) {
-    if (!tc || !traces || !count) return -1;
+    if (!tc || !traces || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_clear_traces: required parameter is NULL (tc, traces, count)");
+        return -1;
+    }
 
     uint32_t n = (*count < tc->num_traces) ? *count : tc->num_traces;
     memcpy(traces, tc->traces, n * sizeof(bgtc_trace_entry_t));
@@ -409,7 +425,10 @@ int bgtc_apply_credit(bg_temporal_credit_t* tc,
                        float learning_rate,
                        float* value_updates,
                        uint32_t* num_updates) {
-    if (!tc || !value_updates || !num_updates) return -1;
+    if (!tc || !value_updates || !num_updates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_clear_traces: required parameter is NULL (tc, value_updates, num_updates)");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -430,7 +449,10 @@ int bgtc_apply_credit(bg_temporal_credit_t* tc,
 
 int bgtc_store_experience(bg_temporal_credit_t* tc,
                            const bgtc_experience_t* exp) {
-    if (!tc || !exp) return -1;
+    if (!tc || !exp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_clear_traces: required parameter is NULL (tc, exp)");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -474,7 +496,10 @@ int bgtc_compute_gae(bg_temporal_credit_t* tc,
                       const float* rewards,
                       uint32_t length,
                       float* advantages) {
-    if (!tc || !values || !rewards || !advantages) return -1;
+    if (!tc || !values || !rewards || !advantages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_clear_traces: required parameter is NULL (tc, values, rewards, advantages)");
+        return -1;
+    }
     if (length == 0) return 0;
 
     float gamma = tc->config.gamma;
@@ -497,7 +522,10 @@ int bgtc_compute_gae(bg_temporal_credit_t* tc,
  * ============================================================================ */
 
 int bgtc_start_timing(bg_temporal_credit_t* tc) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_start_timing: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -552,7 +580,10 @@ static void bgtc_update_timing_unlocked(bg_temporal_credit_t* tc, float dt_ms) {
 }
 
 int bgtc_update_timing(bg_temporal_credit_t* tc, float dt_ms) {
-    if (!tc || !tc->timing_active) return -1;
+    if (!tc || !tc->timing_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_update_timing: required parameter is NULL (tc, tc->timing_active)");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
     bgtc_update_timing_unlocked(tc, dt_ms);
@@ -563,7 +594,10 @@ int bgtc_update_timing(bg_temporal_credit_t* tc, float dt_ms) {
 int bgtc_get_timing_activities(const bg_temporal_credit_t* tc,
                                 float* activities,
                                 uint32_t* count) {
-    if (!tc || !activities || !count) return -1;
+    if (!tc || !activities || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_update_timing: required parameter is NULL (tc, activities, count)");
+        return -1;
+    }
 
     uint32_t n = (*count < tc->num_timing_cells) ? *count : tc->num_timing_cells;
     for (uint32_t i = 0; i < n; i++) {
@@ -591,7 +625,10 @@ float bgtc_estimate_elapsed_time(const bg_temporal_credit_t* tc) {
 
 int bgtc_learn_interval(bg_temporal_credit_t* tc,
                          float actual_interval_ms) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_estimate_elapsed_time: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -625,8 +662,14 @@ int bgtc_learn_interval(bg_temporal_credit_t* tc,
 int bgtc_update_successor(bg_temporal_credit_t* tc,
                            uint32_t state,
                            uint32_t next_state) {
-    if (!tc || !tc->sr_enabled) return -1;
-    if (state >= tc->sr.num_states || next_state >= tc->sr.num_states) return -1;
+    if (!tc || !tc->sr_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_estimate_elapsed_time: required parameter is NULL (tc, tc->sr_enabled)");
+        return -1;
+    }
+    if (state >= tc->sr.num_states || next_state >= tc->sr.num_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtc_estimate_elapsed_time: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -646,8 +689,14 @@ int bgtc_update_successor(bg_temporal_credit_t* tc,
 int bgtc_get_successor_features(const bg_temporal_credit_t* tc,
                                  uint32_t state,
                                  float* features) {
-    if (!tc || !tc->sr_enabled || !features) return -1;
-    if (state >= tc->sr.num_states) return -1;
+    if (!tc || !tc->sr_enabled || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_estimate_elapsed_time: required parameter is NULL (tc, tc->sr_enabled, features)");
+        return -1;
+    }
+    if (state >= tc->sr.num_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtc_estimate_elapsed_time: capacity exceeded");
+        return -1;
+    }
 
     memcpy(features, tc->sr.sr_matrix[state], tc->sr.num_states * sizeof(float));
     return 0;
@@ -672,7 +721,10 @@ float bgtc_successor_value(const bg_temporal_credit_t* tc,
  * ============================================================================ */
 
 int bgtc_step(bg_temporal_credit_t* tc, float dt_ms) {
-    if (!tc || dt_ms <= 0) return -1;
+    if (!tc || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgtc_step: tc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(tc->mutex);
 
@@ -700,7 +752,10 @@ int bgtc_step(bg_temporal_credit_t* tc, float dt_ms) {
 int bgtc_process_reward(bg_temporal_credit_t* tc,
                          float reward,
                          uint32_t delay_steps) {
-    if (!tc) return -1;
+    if (!tc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_step: tc is NULL");
+        return -1;
+    }
     (void)delay_steps; /* Used for timing, simplified here */
 
     nimcp_mutex_lock(tc->mutex);
@@ -724,7 +779,10 @@ float bgtc_get_effective_discount(const bg_temporal_credit_t* tc,
 }
 
 int bgtc_get_stats(const bg_temporal_credit_t* tc, bgtc_stats_t* stats) {
-    if (!tc || !stats) return -1;
+    if (!tc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgtc_get_stats: required parameter is NULL (tc, stats)");
+        return -1;
+    }
     *stats = tc->stats;
     return 0;
 }

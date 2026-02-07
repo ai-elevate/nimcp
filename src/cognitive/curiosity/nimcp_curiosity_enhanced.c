@@ -322,7 +322,10 @@ static void boredom_report_stimulus(curiosity_enhanced_system_t* sys,
 static curiosity_topic_interest_t* interest_get_or_create(
     curiosity_enhanced_system_t* sys, const char* topic) {
 
-    if (!sys || !topic || !sys->interest_table) return NULL;
+    if (!sys || !topic || !sys->interest_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "boredom_update: required parameter is NULL (sys, topic, sys->interest_table)");
+        return NULL;
+    }
 
     /* Look up existing */
     interest_entry_t* entry = (interest_entry_t*)hash_table_lookup_string(
@@ -348,6 +351,7 @@ static curiosity_topic_interest_t* interest_get_or_create(
                                             &new_entry, sizeof(new_entry));
     if (!success) {
         NIMCP_LOGGING_ERROR("Failed to create interest entry for topic: %s", topic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "boredom_update: success is NULL");
         return NULL;
     }
 
@@ -541,7 +545,10 @@ static void social_init(curiosity_social_state_t* state,
 static curiosity_social_target_t* social_get_or_create_target(
     curiosity_social_state_t* state, const char* agent_id) {
 
-    if (!state || !agent_id) return NULL;
+    if (!state || !agent_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anxiety_balance_update: required parameter is NULL (state, agent_id)");
+        return NULL;
+    }
 
     /* Find existing */
     for (uint32_t i = 0; i < state->num_targets; i++) {
@@ -558,6 +565,7 @@ static curiosity_social_target_t* social_get_or_create_target(
 
     /* Create new if space available */
     if (state->num_targets >= MAX_SOCIAL_TARGETS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anxiety_balance_update: capacity exceeded");
         return NULL;
     }
 
@@ -793,7 +801,10 @@ static int counterfactual_generate(curiosity_enhanced_system_t* sys,
                                    const char* decision_point,
                                    const char* actual_outcome,
                                    curiosity_counterfactual_t* cf) {
-    if (!sys || !decision_point || !actual_outcome || !cf) return -1;
+    if (!sys || !decision_point || !actual_outcome || !cf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fatigue_update: required parameter is NULL (sys, decision_point, actual_outcome, cf)");
+        return -1;
+    }
 
     curiosity_counterfactual_state_t* state = &sys->state.counterfactual;
 
@@ -961,6 +972,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
 
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced curiosity system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys is NULL");
         return NULL;
     }
 
@@ -978,6 +990,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
     if (!sys->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys->mutex is NULL");
         return NULL;
     }
 
@@ -996,6 +1009,7 @@ curiosity_enhanced_system_t* curiosity_enhanced_create(
         NIMCP_LOGGING_ERROR("Failed to create interest table");
         nimcp_platform_mutex_destroy(sys->mutex);
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_enhanced_config_default: sys->interest_table is NULL");
         return NULL;
     }
 
@@ -1113,7 +1127,10 @@ bool curiosity_enhanced_is_bored(
     const curiosity_enhanced_system_t* system,
     curiosity_boredom_state_t* state) {
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_enhanced_update: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_is_bored", 0.0f);
@@ -1359,7 +1376,10 @@ bool curiosity_enhanced_should_explore(
     const curiosity_enhanced_system_t* system,
     float threat_level) {
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_should_explore", 0.0f);
@@ -1578,7 +1598,10 @@ bool curiosity_enhanced_observe_curiosity(
     curiosity_enhanced_system_t* system,
     const curiosity_contagion_event_t* event) {
 
-    if (!system || !event) return false;
+    if (!system || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, event)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_observe_curiosity", 0.0f);
@@ -1732,7 +1755,10 @@ int curiosity_enhanced_initiate_recovery(
 bool curiosity_enhanced_needs_rest(
     const curiosity_enhanced_system_t* system) {
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_needs_rest", 0.0f);
 
@@ -1925,7 +1951,10 @@ int curiosity_enhanced_disconnect_bio_async(
 bool curiosity_enhanced_is_bio_async_connected(
     const curiosity_enhanced_system_t* system) {
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_enhanced_heartbeat("curiosity_en_is_bio_async_connect", 0.0f);
 

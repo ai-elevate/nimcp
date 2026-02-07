@@ -198,10 +198,12 @@ mesh_cycle_coordinator_integration_t* mesh_cycle_coordinator_integration_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create mesh-cycle integration without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cycle_coordinator_integration_create: bootstrap is NULL");
         return NULL;
     }
     if (!cycle_coordinator) {
         LOG_ERROR("Cannot create mesh-cycle integration without cycle coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cycle_coordinator_integration_create: cycle_coordinator is NULL");
         return NULL;
     }
 
@@ -214,6 +216,7 @@ mesh_cycle_coordinator_integration_t* mesh_cycle_coordinator_integration_create(
     mesh_cycle_coordinator_integration_t* integration = nimcp_calloc(1, sizeof(*integration));
     if (!integration) {
         LOG_ERROR("Failed to allocate mesh-cycle integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cycle_coordinator_integration_create: integration is NULL");
         return NULL;
     }
 
@@ -228,6 +231,7 @@ mesh_cycle_coordinator_integration_t* mesh_cycle_coordinator_integration_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_cycle_coordinator_integration_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -983,6 +987,7 @@ mesh_cycle_coordinator_integration_t* mesh_bootstrap_get_cycle_coordinator_integ
     /* This would need to be added to mesh_bootstrap_t structure */
     /* For now, return NULL as placeholder */
     (void)bootstrap;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bootstrap_get_cycle_coordinator_integration: operation failed");
     return NULL;
 }
 

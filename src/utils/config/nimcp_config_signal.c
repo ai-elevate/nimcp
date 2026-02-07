@@ -227,12 +227,14 @@ void config_destroy_snapshot(config_snapshot_t snap) {
 bool config_restore_snapshot(config_snapshot_t snap) {
     if (!snap) {
         LOG_ERROR("config_restore_snapshot: NULL snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_restore_snapshot: snap is NULL");
         return false;
     }
 
     config_snapshot_internal_t* s = (config_snapshot_internal_t*)snap;
     if (!validate_snapshot(s)) {
         LOG_ERROR("config_restore_snapshot: invalid snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_restore_snapshot: validate_snapshot is NULL");
         return false;
     }
 
@@ -277,6 +279,7 @@ config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
     config_snapshot_internal_t* src = (config_snapshot_internal_t*)snap;
     if (!validate_snapshot(src)) {
         LOG_ERROR("config_clone_snapshot: invalid source snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_clone_snapshot: validate_snapshot is NULL");
         return NULL;
     }
 
@@ -308,6 +311,7 @@ config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
             if (!clone->entries[i].value.string_val) {
                 LOG_ERROR("config_clone_snapshot: string duplication failed");
                 config_destroy_snapshot((config_snapshot_t)clone);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_clone_snapshot: clone->entries is NULL");
                 return NULL;
             }
         }
@@ -339,6 +343,7 @@ bool config_atomic_reload(const char* path) {
         LOG_ERROR("config_atomic_reload: failed to create snapshot");
         g_atomic_stats.atomic_reload_failures++;
         nimcp_platform_rwlock_unlock(&g_atomic_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_atomic_reload: snapshot is NULL");
         return false;
     }
 
@@ -361,6 +366,7 @@ bool config_atomic_reload(const char* path) {
         g_atomic_stats.atomic_reload_failures++;
         nimcp_platform_rwlock_unlock(&g_atomic_lock);
         run_post_reload_callbacks(version_before, version_before, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_atomic_reload: parse_success is NULL");
         return false;
     }
 
@@ -379,6 +385,7 @@ bool config_atomic_reload(const char* path) {
         g_atomic_stats.validation_failures++;
         nimcp_platform_rwlock_unlock(&g_atomic_lock);
         run_post_reload_callbacks(version_before, version_before, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_atomic_reload: validation_passed is NULL");
         return false;
     }
 
@@ -408,6 +415,7 @@ bool config_rollback(void) {
     if (g_history_count < 2) {
         LOG_ERROR("config_rollback: no previous version available");
         nimcp_platform_rwlock_unlock(&g_atomic_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_rollback: validation failed");
         return false;
     }
 
@@ -436,6 +444,7 @@ bool config_rollback_to_version(uint32_t version) {
     if (!snapshot) {
         LOG_ERROR("config_rollback_to_version: version %u not found in history", version);
         nimcp_platform_rwlock_unlock(&g_atomic_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_rollback_to_version: snapshot is NULL");
         return false;
     }
 
@@ -663,7 +672,10 @@ void config_unregister_post_reload_callback(uint32_t id) {
 //=============================================================================
 
 bool config_get_atomic_stats(config_atomic_stats_t* stats) {
-    if (!stats) return false;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_get_atomic_stats: stats is NULL");
+        return false;
+    }
 
     nimcp_platform_rwlock_rdlock(&g_atomic_lock);
 
@@ -721,6 +733,7 @@ bool config_install_sighup_handler(void) {
 
     if (sigaction(SIGHUP, &sa, &g_old_sighup_handler) != 0) {
         LOG_ERROR("config_install_sighup_handler: sigaction failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_install_sighup_handler: validation failed");
         return false;
     }
 
@@ -736,6 +749,7 @@ bool config_uninstall_sighup_handler(void) {
 
     if (sigaction(SIGHUP, &g_old_sighup_handler, NULL) != 0) {
         LOG_ERROR("config_uninstall_sighup_handler: sigaction failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_uninstall_sighup_handler: validation failed");
         return false;
     }
 
@@ -825,6 +839,7 @@ static config_snapshot_t find_version_in_history(uint32_t version) {
             return g_version_history[i].snapshot;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_version_in_history: validation failed");
     return NULL;
 }
 

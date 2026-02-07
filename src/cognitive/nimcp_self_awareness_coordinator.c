@@ -277,6 +277,7 @@ self_awareness_coordinator_t* sac_create(
     /* Validate required components */
     if (!introspection || !self_model || !autobio || !tom) {
         NIMCP_LOGGING_ERROR("Missing required component for self-awareness coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sac_create: required parameter is NULL (introspection, self_model, autobio, tom)");
         return NULL;
     }
 
@@ -343,6 +344,7 @@ self_awareness_coordinator_t* sac_create(
     if (!coord->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sac_create: coord->mutex is NULL");
         return NULL;
     }
     nimcp_mutex_init(coord->mutex, NULL);
@@ -829,6 +831,7 @@ float sac_get_phi(const self_awareness_coordinator_t* coord) {
 
 bool sac_is_low_consciousness(const self_awareness_coordinator_t* coord) {
     if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sac_is_low_consciousness: coord is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -935,6 +938,7 @@ int sac_disconnect_bio_async(self_awareness_coordinator_t* coord) {
 
 bool sac_is_bio_async_connected(const self_awareness_coordinator_t* coord) {
     if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sac_is_bio_async_connected: coord is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

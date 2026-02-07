@@ -185,7 +185,10 @@ static float clamp_float(float value, float min_val, float max_val) {
 static int compare_weights_desc(const void* a, const void* b) {
     float wa = *(const float*)a;
     float wb = *(const float*)b;
-    if (wa > wb) return -1;
+    if (wa > wb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_weights_desc: validation failed");
+        return -1;
+    }
     if (wa < wb) return 1;
     return 0;
 }
@@ -222,56 +225,67 @@ NIMCP_EXPORT bool future_thinking_config_validate(
 ) {
     if (!config) {
         set_error("NULL configuration pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_thinking_config_validate: config is NULL");
         return false;
     }
 
     if (config->max_events == 0) {
         set_error("max_events must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: config->max_events is zero");
         return false;
     }
 
     if (config->max_goals == 0) {
         set_error("max_goals must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: config->max_goals is zero");
         return false;
     }
 
     if (config->fragment_pool_size == 0) {
         set_error("fragment_pool_size must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: config->fragment_pool_size is zero");
         return false;
     }
 
     if (config->sample_count == 0) {
         set_error("sample_count must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: config->sample_count is zero");
         return false;
     }
 
     if (config->discount_rate < 0.0f) {
         set_error("discount_rate must be >= 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->temporal_horizon <= 0.0f) {
         set_error("temporal_horizon must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->resonance_threshold < 0.0f || config->resonance_threshold > 1.0f) {
         set_error("resonance_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_spatial_coherence < 0.0f || config->min_spatial_coherence > 1.0f) {
         set_error("min_spatial_coherence must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_temporal_coherence < 0.0f || config->min_temporal_coherence > 1.0f) {
         set_error("min_temporal_coherence must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
     if (config->min_causal_coherence < 0.0f || config->min_causal_coherence > 1.0f) {
         set_error("min_causal_coherence must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "future_thinking_config_validate: validation failed");
         return false;
     }
 
@@ -305,6 +319,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
     future_thinking_config_t cfg;
     if (config) {
         if (!future_thinking_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_thinking_create: future_thinking_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -329,6 +344,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
     if (!ft->events) {
         set_error("Failed to allocate event storage");
         nimcp_free(ft);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: ft->events is NULL");
         return NULL;
     }
     ft->events_capacity = cfg.max_events;
@@ -340,6 +356,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         set_error("Failed to allocate goal storage");
         nimcp_free(ft->events);
         nimcp_free(ft);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_thinking_create: ft->goals is NULL");
         return NULL;
     }
     ft->goals_capacity = cfg.max_goals;
@@ -355,6 +372,7 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
         nimcp_free(ft->fragment_pool);
         nimcp_free(ft->fragment_weights);
         nimcp_free(ft);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_thinking_create: required parameter is NULL (ft->fragment_pool, ft->fragment_weights)");
         return NULL;
     }
     ft->pool_size = cfg.fragment_pool_size;

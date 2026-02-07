@@ -288,6 +288,7 @@ static model_node_t* find_model_unlocked(financial_tom_bridge_t* bridge, const c
         }
         node = node->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_model_unlocked: validation failed");
     return NULL;
 }
 
@@ -621,6 +622,7 @@ financial_tom_bridge_t* financial_tom_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_TOM, "financial_tom") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_tom_bridge_create: validation failed");
         return NULL;
     }
 

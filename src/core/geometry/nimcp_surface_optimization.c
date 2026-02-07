@@ -352,7 +352,10 @@ static inline void vec3_scale(float result[3], const float v[3], float s) {
 //=============================================================================
 
 int surface_gradient_default_config(surface_gradient_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_gradient_default_config: config is NULL");
+        return -1;
+    }
 
     config->learning_rate = 0.01f;
     config->momentum = 0.9f;
@@ -426,6 +429,7 @@ int surface_compute_area_gradient(
     float* diameter_gradients
 ) {
     if (!branch_points || num_points == 0 || !position_gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_area_gradient: required parameter is NULL (branch_points, position_gradients)");
         return -1;
     }
 
@@ -437,7 +441,10 @@ int surface_compute_area_gradient(
     /* Create working copy */
     surface_branch_point_t* working = nimcp_malloc(
         num_points * sizeof(surface_branch_point_t));
-    if (!working) return -1;
+    if (!working) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_compute_area_gradient: working is NULL");
+        return -1;
+    }
     memcpy(working, branch_points, num_points * sizeof(surface_branch_point_t));
 
     /* Compute position gradients via central differences */
@@ -521,7 +528,10 @@ int surface_compute_area_gradient(
 //=============================================================================
 
 int surface_mc_default_config(surface_monte_carlo_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_mc_default_config: config is NULL");
+        return -1;
+    }
 
     config->num_samples = 10000;
     config->use_importance_sampling = true;
@@ -545,6 +555,7 @@ int surface_mc_estimate_area(
     float* variance
 ) {
     if (!branch_points || num_points == 0 || !config || !area_estimate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_mc_estimate_area: required parameter is NULL (branch_points, config, area_estimate)");
         return -1;
     }
 
@@ -693,7 +704,10 @@ int surface_mc_estimate_area(
 //=============================================================================
 
 int surface_annealing_default_config(surface_annealing_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_annealing_default_config: config is NULL");
+        return -1;
+    }
 
     config->temperature_initial = 10.0f;
     config->temperature_final = 0.01f;
@@ -759,8 +773,14 @@ int surface_annealing_step(
     const surface_annealing_config_t* config,
     bool* accepted
 ) {
-    if (!state || !config || !accepted) return -1;
-    if (!state->current || state->num_points == 0) return -1;
+    if (!state || !config || !accepted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_annealing_step: required parameter is NULL (state, config, accepted)");
+        return -1;
+    }
+    if (!state->current || state->num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_annealing_step: state->current is NULL");
+        return -1;
+    }
 
     *accepted = false;
 
@@ -856,7 +876,10 @@ int surface_annealing_step(
 //=============================================================================
 
 int surface_mcts_default_config(surface_mcts_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_mcts_default_config: config is NULL");
+        return -1;
+    }
 
     config->num_iterations = 1000;
     config->max_depth = 20;
@@ -877,7 +900,10 @@ int surface_mcts_get_actions(
     uint32_t max_actions,
     uint32_t* num_actions
 ) {
-    if (!state || !actions || !num_actions) return -1;
+    if (!state || !actions || !num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_mcts_get_actions: required parameter is NULL (state, actions, num_actions)");
+        return -1;
+    }
 
     *num_actions = 0;
 
@@ -973,11 +999,17 @@ int surface_mcts_apply_action(
     surface_mcts_state_t* state,
     const surface_mcts_action_t* action
 ) {
-    if (!state || !action) return -1;
+    if (!state || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_mcts_apply_action: required parameter is NULL (state, action)");
+        return -1;
+    }
 
     /* Add new branch point */
     uint32_t new_idx = state->num_branch_points;
-    if (new_idx >= SURFACE_MAX_BRANCH_POINTS) return -1;
+    if (new_idx >= SURFACE_MAX_BRANCH_POINTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_mcts_apply_action: capacity exceeded");
+        return -1;
+    }
 
     surface_branch_point_t* new_point = &state->branch_points[new_idx];
     memset(new_point, 0, sizeof(*new_point));
@@ -1056,7 +1088,10 @@ int surface_tetrahedron_chi(
     float circumference,
     float* chi
 ) {
-    if (!terminals || circumference <= 0.0f || !chi) return -1;
+    if (!terminals || circumference <= 0.0f || !chi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_tetrahedron_chi: required parameter is NULL (terminals, chi)");
+        return -1;
+    }
 
     /* Compute centroid */
     float centroid[3] = {0, 0, 0};
@@ -1077,7 +1112,10 @@ int surface_tetrahedron_chi(
     r /= 4.0f;
 
     /* chi = w/r where w is circumference */
-    if (r < 1e-10f) return -1;
+    if (r < 1e-10f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_tetrahedron_chi: validation failed");
+        return -1;
+    }
     *chi = circumference / r;
 
     return 0;
@@ -1090,6 +1128,7 @@ int surface_tetrahedron_lambda(
     float* lambda
 ) {
     if (!solution || num_points < 5 || circumference <= 0.0f || !lambda) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_tetrahedron_lambda: required parameter is NULL (solution, lambda)");
         return -1;
     }
 
@@ -1111,6 +1150,7 @@ int surface_tetrahedron_lambda(
         /* Single trifurcation point - lambda is 0 */
         *lambda = 0.0f;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_tetrahedron_lambda: validation failed");
         return -1;
     }
 
@@ -1125,12 +1165,14 @@ int surface_optimize_tetrahedron_internal(
     surface_optimization_result_t* result
 ) {
     if (!terminals || min_circumference <= 0.0f || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimize_tetrahedron_internal: required parameter is NULL (terminals, result)");
         return -1;
     }
 
     /* Compute chi to determine expected topology */
     float chi;
     if (surface_tetrahedron_chi(terminals, min_circumference, &chi) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimize_tetrahedron_internal: validation failed");
         return -1;
     }
 
@@ -1144,6 +1186,7 @@ int surface_optimize_tetrahedron_internal(
     uint32_t num_points = use_trifurcation ? 5 : 6;  /* 4 terminals + 1 or 2 intermediate */
     result->branch_points = nimcp_malloc(num_points * sizeof(surface_branch_point_t));
     if (!result->branch_points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_optimize_tetrahedron_internal: result->branch_points is NULL");
         return -1;
     }
     memset(result->branch_points, 0, num_points * sizeof(surface_branch_point_t));
@@ -1297,7 +1340,10 @@ int surface_compute_centroid(
     uint32_t num_terminals,
     float centroid[3]
 ) {
-    if (!terminals || num_terminals == 0 || !centroid) return -1;
+    if (!terminals || num_terminals == 0 || !centroid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_centroid: required parameter is NULL (terminals, centroid)");
+        return -1;
+    }
 
     centroid[0] = 0.0f;
     centroid[1] = 0.0f;
@@ -1321,10 +1367,14 @@ int surface_compute_characteristic_distance(
     uint32_t num_terminals,
     float* distance
 ) {
-    if (!terminals || num_terminals == 0 || !distance) return -1;
+    if (!terminals || num_terminals == 0 || !distance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_characteristic_distance: required parameter is NULL (terminals, distance)");
+        return -1;
+    }
 
     float centroid[3];
     if (surface_compute_centroid(terminals, num_terminals, centroid) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_compute_characteristic_distance: validation failed");
         return -1;
     }
 
@@ -1345,11 +1395,15 @@ int surface_create_initial_topology(
     uint32_t* num_points
 ) {
     if (!terminals || num_terminals < 2 || !branch_points || !num_points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_create_initial_topology: required parameter is NULL (terminals, branch_points, num_points)");
         return -1;
     }
 
     /* At minimum, need space for terminals plus one intermediate */
-    if (max_points < num_terminals + 1) return -1;
+    if (max_points < num_terminals + 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_create_initial_topology: validation failed");
+        return -1;
+    }
 
     *num_points = 0;
 
@@ -1376,7 +1430,10 @@ int surface_create_initial_topology(
 
     } else if (num_terminals == 3) {
         /* Star topology: single bifurcation at centroid */
-        if (*num_points >= max_points) return -1;
+        if (*num_points >= max_points) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_create_initial_topology: capacity exceeded");
+            return -1;
+        }
 
         float centroid[3];
         surface_compute_centroid(terminals, num_terminals, centroid);
@@ -1401,7 +1458,10 @@ int surface_create_initial_topology(
 
     } else if (num_terminals == 4) {
         /* Two bifurcations for 4 terminals */
-        if (*num_points + 2 > max_points) return -1;
+        if (*num_points + 2 > max_points) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_create_initial_topology: validation failed");
+            return -1;
+        }
 
         float centroid[3];
         surface_compute_centroid(terminals, num_terminals, centroid);
@@ -1469,7 +1529,10 @@ int surface_create_initial_topology(
 
     } else {
         /* General case: star topology from centroid */
-        if (*num_points >= max_points) return -1;
+        if (*num_points >= max_points) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_create_initial_topology: capacity exceeded");
+            return -1;
+        }
 
         float centroid[3];
         surface_compute_centroid(terminals, num_terminals, centroid);
@@ -1561,6 +1624,7 @@ surface_optimizer_t* surface_optimizer_create(
     opt->solution = nimcp_malloc(opt->max_solution_points * sizeof(surface_branch_point_t));
     if (!opt->solution) {
         nimcp_free(opt);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_optimizer_create: opt->solution is NULL");
         return NULL;
     }
     memset(opt->solution, 0, opt->max_solution_points * sizeof(surface_branch_point_t));
@@ -1633,6 +1697,7 @@ int surface_optimizer_init(
     float min_circumference
 ) {
     if (!optimizer || !terminals || num_terminals < 2 || min_circumference <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_init: required parameter is NULL (optimizer, terminals)");
         return -1;
     }
 
@@ -1643,6 +1708,7 @@ int surface_optimizer_init(
                                          optimizer->solution,
                                          optimizer->max_solution_points,
                                          &optimizer->num_solution_points) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimizer_init: operation failed");
         return -1;
     }
 
@@ -1652,7 +1718,10 @@ int surface_optimizer_init(
             uint32_t n = optimizer->num_solution_points;
 
             optimizer->state.gradient = nimcp_malloc(sizeof(surface_gradient_state_t));
-            if (!optimizer->state.gradient) return -1;
+            if (!optimizer->state.gradient) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_optimizer_init: optimizer->state is NULL");
+                return -1;
+            }
             memset(optimizer->state.gradient, 0, sizeof(surface_gradient_state_t));
 
             optimizer->state.gradient->branch_points = optimizer->solution;
@@ -1695,19 +1764,28 @@ int surface_optimizer_init(
 
         case SURFACE_OPT_MONTE_CARLO:
             optimizer->state.mc = nimcp_malloc(sizeof(surface_mc_state_t));
-            if (!optimizer->state.mc) return -1;
+            if (!optimizer->state.mc) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_optimizer_init: optimizer->state is NULL");
+                return -1;
+            }
             memset(optimizer->state.mc, 0, sizeof(surface_mc_state_t));
             optimizer->state.mc->rng_state = optimizer->config.mc.seed;
             break;
 
         case SURFACE_OPT_QUANTUM_ANNEALING:
             optimizer->state.annealing = surface_annealing_state_create(&optimizer->config.annealing);
-            if (!optimizer->state.annealing) return -1;
+            if (!optimizer->state.annealing) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_init: optimizer->state is NULL");
+                return -1;
+            }
 
             /* Copy solution to annealing state */
             optimizer->state.annealing->current = nimcp_malloc(
                 optimizer->num_solution_points * sizeof(surface_branch_point_t));
-            if (!optimizer->state.annealing->current) return -1;
+            if (!optimizer->state.annealing->current) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_optimizer_init: optimizer->state is NULL");
+                return -1;
+            }
             memcpy(optimizer->state.annealing->current, optimizer->solution,
                    optimizer->num_solution_points * sizeof(surface_branch_point_t));
             optimizer->state.annealing->num_points = optimizer->num_solution_points;
@@ -1741,6 +1819,7 @@ int surface_optimizer_step(
     bool* improved
 ) {
     if (!optimizer || !optimizer->initialized || !improved) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_step: required parameter is NULL (optimizer, optimizer->initialized, improved)");
         return -1;
     }
 
@@ -1758,6 +1837,7 @@ int surface_optimizer_step(
                                               optimizer->min_circumference,
                                               state->position_gradients,
                                               state->diameter_gradients) != 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimizer_step: operation failed");
                 return -1;
             }
 
@@ -1814,6 +1894,7 @@ int surface_optimizer_step(
             if (surface_annealing_step(optimizer->state.annealing,
                                        &optimizer->config.annealing,
                                        &accepted) != 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimizer_step: operation failed");
                 return -1;
             }
 
@@ -1866,6 +1947,7 @@ int surface_optimizer_run(
     surface_optimization_result_t* result
 ) {
     if (!optimizer || !optimizer->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_run: required parameter is NULL (optimizer, optimizer->initialized, result)");
         return -1;
     }
 
@@ -1888,6 +1970,7 @@ int surface_optimizer_run(
     bool improved;
     while (!optimizer->converged && optimizer->iteration < max_iter) {
         if (surface_optimizer_step(optimizer, &improved) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimizer_run: validation failed");
             return -1;
         }
     }
@@ -1928,7 +2011,10 @@ int surface_optimizer_run(
 }
 
 bool surface_optimizer_converged(const surface_optimizer_t* optimizer) {
-    if (!optimizer) return false;
+    if (!optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_converged: optimizer is NULL");
+        return false;
+    }
     return optimizer->converged;
 }
 
@@ -1938,7 +2024,10 @@ int surface_optimizer_get_solution(
     uint32_t max_points,
     uint32_t* num_points
 ) {
-    if (!optimizer || !branch_points || !num_points) return -1;
+    if (!optimizer || !branch_points || !num_points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimizer_get_solution: required parameter is NULL (optimizer, branch_points, num_points)");
+        return -1;
+    }
 
     uint32_t n = (optimizer->num_solution_points < max_points) ?
                   optimizer->num_solution_points : max_points;

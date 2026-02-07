@@ -77,6 +77,7 @@ static thermo_bio_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: operation failed");
     return NULL;
 }
 
@@ -164,7 +165,10 @@ int thermo_bio_async_connect(
     nimcp_thermodynamic_state_t* state,
     bio_router_t router
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_connect: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     bridge->state = state;
     bridge->router = router;
@@ -179,7 +183,10 @@ int thermo_bio_async_connect(
 }
 
 int thermo_bio_async_disconnect(thermo_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->state = NULL;
     bridge->router = NULL;
@@ -200,7 +207,10 @@ int thermo_bio_async_process_inbox(
     thermo_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -210,7 +220,10 @@ int thermo_bio_async_process_inbox(
 }
 
 int thermo_bio_async_update(thermo_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -257,7 +270,10 @@ int thermo_bio_async_broadcast_temperature(
     thermo_bio_async_bridge_t* bridge,
     double temperature_k
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_temperature: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     thermo_bio_temperature_msg_t msg = {0};
     msg.header.type = 0x1320;  /* THERMO_BIO_MSG_TEMPERATURE */
@@ -287,7 +303,10 @@ int thermo_bio_async_broadcast_heat_flow(
     double heat_dissipation,
     double heat_absorbed
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_heat_flow: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     thermo_bio_heat_flow_msg_t msg = {0};
     msg.header.type = 0x1321;
@@ -307,7 +326,10 @@ int thermo_bio_async_broadcast_heat_flow(
 }
 
 int thermo_bio_async_broadcast_entropy(thermo_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected || !bridge->state) return -1;
+    if (!bridge || !bridge->connected || !bridge->state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_entropy: required parameter is NULL (bridge, bridge->connected, bridge->state)");
+        return -1;
+    }
 
     thermo_bio_entropy_msg_t msg = {0};
     msg.header.type = 0x1322;
@@ -330,7 +352,10 @@ int thermo_bio_async_broadcast_entropy(thermo_bio_async_bridge_t* bridge) {
 }
 
 int thermo_bio_async_broadcast_atp_level(thermo_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected || !bridge->state) return -1;
+    if (!bridge || !bridge->connected || !bridge->state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_atp_level: required parameter is NULL (bridge, bridge->connected, bridge->state)");
+        return -1;
+    }
 
     thermo_bio_atp_level_msg_t msg = {0};
     msg.header.type = 0x1323;
@@ -365,7 +390,10 @@ int thermo_bio_async_send_atp_critical(
     thermo_bio_async_bridge_t* bridge,
     uint32_t severity
 ) {
-    if (!bridge || !bridge->connected || !bridge->state) return -1;
+    if (!bridge || !bridge->connected || !bridge->state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_send_atp_critical: required parameter is NULL (bridge, bridge->connected, bridge->state)");
+        return -1;
+    }
 
     thermo_bio_atp_critical_msg_t msg = {0};
     msg.header.type = 0x1324;
@@ -397,7 +425,10 @@ int thermo_bio_async_broadcast_energy_budget(
     thermo_bio_async_bridge_t* bridge,
     const nimcp_energy_budget_t* budget
 ) {
-    if (!bridge || !bridge->connected || !budget) return -1;
+    if (!bridge || !bridge->connected || !budget) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_energy_budget: required parameter is NULL (bridge, bridge->connected, budget)");
+        return -1;
+    }
 
     thermo_bio_energy_budget_msg_t msg = {0};
     msg.header.type = 0x1325;
@@ -425,7 +456,10 @@ int thermo_bio_async_broadcast_landauer_cost(
     thermo_bio_async_bridge_t* bridge,
     const nimcp_landauer_cost_t* cost
 ) {
-    if (!bridge || !bridge->connected || !cost) return -1;
+    if (!bridge || !bridge->connected || !cost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_landauer_cost: required parameter is NULL (bridge, bridge->connected, cost)");
+        return -1;
+    }
 
     thermo_bio_landauer_cost_msg_t msg = {0};
     msg.header.type = 0x1326;
@@ -449,7 +483,10 @@ int thermo_bio_async_broadcast_landauer_cost(
 }
 
 int thermo_bio_async_broadcast_efficiency(thermo_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected || !bridge->state) return -1;
+    if (!bridge || !bridge->connected || !bridge->state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_broadcast_efficiency: required parameter is NULL (bridge, bridge->connected, bridge->state)");
+        return -1;
+    }
 
     thermo_bio_efficiency_msg_t msg = {0};
     msg.header.type = 0x1327;
@@ -482,7 +519,10 @@ int thermo_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     thermo_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
@@ -491,6 +531,7 @@ int thermo_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "thermo_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -513,7 +554,10 @@ int thermo_bio_async_unsubscribe_module(
     thermo_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -522,6 +566,7 @@ int thermo_bio_async_unsubscribe_module(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thermo_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
@@ -530,10 +575,16 @@ int thermo_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     thermo_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -566,13 +617,19 @@ int thermo_bio_async_get_stats(
     const thermo_bio_async_bridge_t* bridge,
     thermo_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int thermo_bio_async_reset_stats(thermo_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thermo_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(thermo_bio_async_stats_t));
     return 0;
 }

@@ -392,10 +392,12 @@ bool middleware_controller_set_attention_threshold(
     /* Guard clauses */
     if (controller == NULL) {
         LOG_ERROR("Cannot set attention threshold: controller is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_threshold: validation failed");
         return false;
     }
     if (!is_valid_region(region)) {
         LOG_ERROR("Cannot set attention threshold: invalid region %d", region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_threshold: is_valid_region is NULL");
         return false;
     }
 
@@ -436,8 +438,14 @@ bool middleware_controller_set_attention_priority(
     float priority)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(region)) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_priority: validation failed");
+        return false;
+    }
+    if (!is_valid_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_priority: is_valid_region is NULL");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     priority = clampf(priority, 0.0F, 1.0F);
@@ -466,8 +474,14 @@ bool middleware_controller_set_attention_selectivity(
     uint32_t top_k)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(region)) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_selectivity: validation failed");
+        return false;
+    }
+    if (!is_valid_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_attention_selectivity: is_valid_region is NULL");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     selectivity = clampf(selectivity, 0.0F, 1.0F);
@@ -488,7 +502,10 @@ bool middleware_controller_reset_attention(
     command_target_region_t region)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_reset_attention: validation failed");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
 
@@ -528,8 +545,14 @@ bool middleware_controller_set_routing_priority(
     float weight)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(source) || !is_valid_region(destination)) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_routing_priority: validation failed");
+        return false;
+    }
+    if (!is_valid_region(source) || !is_valid_region(destination)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_routing_priority: required parameter is NULL (is_valid_region, is_valid_region)");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     weight = clampf(weight, 0.0F, 1.0F);
@@ -551,8 +574,14 @@ bool middleware_controller_set_route_learning(
     bool enable)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(source) || !is_valid_region(destination)) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_route_learning: validation failed");
+        return false;
+    }
+    if (!is_valid_region(source) || !is_valid_region(destination)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_route_learning: required parameter is NULL (is_valid_region, is_valid_region)");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
 
@@ -578,7 +607,10 @@ bool middleware_controller_unblock_route(
     command_target_region_t destination)
 {
     /* Guard: NULL check before dereference */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_unblock_route: validation failed");
+        return false;
+    }
 
     return middleware_controller_set_routing_priority(
         controller, source, destination,
@@ -598,9 +630,18 @@ bool middleware_controller_subscribe_pattern(
     uint32_t* subscription_id)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (callback == NULL) return false;
-    if (subscription_id == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_subscribe_pattern: validation failed");
+        return false;
+    }
+    if (callback == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_subscribe_pattern: validation failed");
+        return false;
+    }
+    if (subscription_id == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_subscribe_pattern: validation failed");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     confidence_threshold = clampf(confidence_threshold, 0.0F, 1.0F);
@@ -611,6 +652,7 @@ bool middleware_controller_subscribe_pattern(
     if (controller->num_subscriptions >= controller->config.max_subscriptions) {
         nimcp_mutex_unlock(&controller->mutex);
         record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "middleware_controller_subscribe_pattern: capacity exceeded");
         return false;
     }
 
@@ -626,6 +668,7 @@ bool middleware_controller_subscribe_pattern(
     if (slot < 0) {
         nimcp_mutex_unlock(&controller->mutex);
         record_command(controller, COMMAND_SUBSCRIBE_PATTERN, start_us, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_subscribe_pattern: validation failed");
         return false;
     }
 
@@ -656,7 +699,10 @@ bool middleware_controller_unsubscribe_pattern(
     uint32_t subscription_id)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_unsubscribe_pattern: validation failed");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     bool found = false;
@@ -686,7 +732,10 @@ bool middleware_controller_set_pattern_threshold(
     float threshold)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_pattern_threshold: validation failed");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     threshold = clampf(threshold, 0.0F, 1.0F);
@@ -703,7 +752,10 @@ bool middleware_controller_get_subscription(
     pattern_subscription_t* subscription)
 {
     /* Guard clauses */
-    if (controller == NULL || subscription == NULL) return false;
+    if (controller == NULL || subscription == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_get_subscription: validation failed");
+        return false;
+    }
 
     for (uint32_t i = 0; i < controller->config.max_subscriptions; i++) {
         if (controller->subscriptions[i].active &&
@@ -713,6 +765,7 @@ bool middleware_controller_get_subscription(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_get_subscription: operation failed");
     return false;
 }
 
@@ -726,8 +779,14 @@ bool middleware_controller_set_activity_scale(
     float scale)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
-    if (!is_valid_region(region)) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_activity_scale: validation failed");
+        return false;
+    }
+    if (!is_valid_region(region)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_set_activity_scale: is_valid_region is NULL");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     scale = clampf(scale, controller->config.min_activity_scale,
@@ -756,7 +815,10 @@ bool middleware_controller_reduce_activity(
     command_target_region_t region)
 {
     /* Reduce by 50% */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_reduce_activity: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&controller->mutex);
     float current = controller->activity_scales[region];
@@ -771,7 +833,10 @@ bool middleware_controller_boost_activity(
     command_target_region_t region)
 {
     /* Boost by 50% */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_boost_activity: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&controller->mutex);
     float current = controller->activity_scales[region];
@@ -790,7 +855,10 @@ bool middleware_controller_reset_buffers(
     command_target_region_t region)
 {
     /* Guard clauses */
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_reset_buffers: validation failed");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
 
@@ -810,7 +878,10 @@ bool middleware_controller_begin_batch(
     middleware_command_batch_t* batch)
 {
     /* Guard clauses */
-    if (controller == NULL || batch == NULL) return false;
+    if (controller == NULL || batch == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_begin_batch: validation failed");
+        return false;
+    }
 
     memset(batch, 0, sizeof(middleware_command_batch_t));
     return true;
@@ -915,7 +986,10 @@ bool middleware_controller_get_metrics(
     middleware_controller_metrics_t* metrics)
 {
     /* Guard clauses */
-    if (controller == NULL || metrics == NULL) return false;
+    if (controller == NULL || metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_get_metrics: validation failed");
+        return false;
+    }
 
     /* Thread-safe copy */
     middleware_controller_t* ctrl = (middleware_controller_t*)controller;
@@ -943,7 +1017,10 @@ float middleware_controller_get_avg_latency(
 bool middleware_controller_is_performant(
     const middleware_controller_t* controller)
 {
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_is_performant: validation failed");
+        return false;
+    }
     return controller->metrics.avg_latency_us < MIDDLEWARE_CTRL_LATENCY_TARGET_US;
 }
 
@@ -1001,7 +1078,10 @@ bool middleware_controller_connect_shannon(
     middleware_controller_t* controller,
     shannon_monitor_t* monitor)
 {
-    if (controller == NULL) return false;
+    if (controller == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_controller_connect_shannon: validation failed");
+        return false;
+    }
     controller->shannon_monitor = monitor;
     return true;
 }

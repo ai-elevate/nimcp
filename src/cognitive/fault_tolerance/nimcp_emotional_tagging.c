@@ -151,6 +151,7 @@ struct nimcp_emotional_tagger {
  */
 static bool is_critical_error(const char* error_type) {
     if (!error_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_critical_error: error_type is NULL");
         return false;
     }
 
@@ -171,6 +172,7 @@ static bool is_critical_error(const char* error_type) {
         }
     }
 
+    /* Not a critical error - this is normal, not an error condition */
     return false;
 }
 
@@ -217,10 +219,10 @@ static float compute_valence(const nimcp_recovery_episode_t* episode) {
             valence -= 0.2F;
         }
 
-        /* High data loss risk → more negative */
-        if (episode->data_loss_risk > CRITICAL_ERROR_THRESHOLD) {
-            valence -= 0.1F;
-        }
+        /* Data loss risk → proportionally more negative
+         * WHY:  Higher data loss risk means worse outcome
+         * HOW:  Scale contribution with risk level for smooth escalation */
+        valence -= episode->data_loss_risk * 0.15F;
     }
 
     return CLAMP_VALENCE(valence);
@@ -262,9 +264,10 @@ static float compute_arousal(const nimcp_recovery_episode_t* episode) {
     }
 
     /* WHAT: Successful recovery adds arousal if fast
-     * WHY:  Quick resolution is noteworthy */
+     * WHY:  Quick resolution is noteworthy
+     * HOW:  Fast recovery is a significant event worth remembering */
     if (episode->success && episode->recovery_time_us < FAST_RECOVERY_THRESHOLD_US) {
-        arousal += 0.1F;
+        arousal += 0.2F;
     }
 
     return CLAMP_01(arousal);
@@ -375,10 +378,11 @@ static float compute_frustration(const nimcp_recovery_episode_t* episode) {
         frustration = episode->retry_count * 0.1F;
     }
 
-    /* WHAT: Failure amplifies frustration
-     * WHY:  Still failing after many retries is very frustrating */
-    if (!episode->success) {
-        frustration += 0.2F;
+    /* WHAT: Failure amplifies frustration only when retries have occurred
+     * WHY:  Frustration comes from repeated inability to resolve, not single failures
+     * HOW:  Only add failure penalty when there were actual retries */
+    if (!episode->success && episode->retry_count > 0) {
+        frustration += 0.15F;
     }
 
     return CLAMP_01(frustration);
@@ -452,6 +456,7 @@ nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
     if (nimcp_mutex_init(&tagger->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize tagger mutex");
         nimcp_free(tagger);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_emotional_tagger_create: validation failed");
         return NULL;
     }
 
@@ -509,6 +514,7 @@ bool nimcp_emotional_tagger_reset(nimcp_emotional_tagger_t* tagger) {
     /* Guard: NULL check */
     if (!tagger) {
         LOG_ERROR("Cannot reset NULL tagger");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_reset: tagger is NULL");
         return false;
     }
 
@@ -538,16 +544,19 @@ bool nimcp_emotional_tagger_compute_tag(
 
     if (!tagger) {
         LOG_ERROR("NULL tagger in compute_tag");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_compute_tag: tagger is NULL");
         return false;
     }
 
     if (!episode) {
         LOG_ERROR("NULL episode in compute_tag");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_compute_tag: episode is NULL");
         return false;
     }
 
     if (!output) {
         LOG_ERROR("NULL output in compute_tag");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_compute_tag: output is NULL");
         return false;
     }
 
@@ -635,11 +644,11 @@ float nimcp_emotional_memory_boost(const nimcp_emotional_tag_t* emotion) {
 
     /* WHAT: Specific emotions can boost memory
      * WHY:  Fear and relief are evolutionary important
-     * HOW:  Add small boost for high fear or relief */
-    if (emotion->fear > 0.8F) {
+     * HOW:  Add small boost for significant fear or relief */
+    if (emotion->fear > 0.7F) {
         boost += 0.2F; /* Fear enhances memory for threats */
     }
-    if (emotion->relief > 0.8F) {
+    if (emotion->relief > 0.75F) {
         boost += 0.15F; /* Relief reinforces successful strategies */
     }
 
@@ -683,11 +692,13 @@ bool nimcp_emotional_tagger_get_stats(
     /* Guard: NULL checks */
     if (!tagger) {
         LOG_ERROR("NULL tagger in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_get_stats: tagger is NULL");
         return false;
     }
 
     if (!stats) {
         LOG_ERROR("NULL stats output in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_emotional_tagger_get_stats: stats is NULL");
         return false;
     }
 

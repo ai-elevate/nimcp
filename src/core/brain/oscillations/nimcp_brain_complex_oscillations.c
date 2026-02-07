@@ -81,6 +81,7 @@ brain_complex_oscillation_state_t* brain_complex_oscillation_create(
 ) {
     // Guard: Validate inputs
     if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_create: num_neurons is zero");
         return NULL;
     }
 
@@ -97,6 +98,7 @@ brain_complex_oscillation_state_t* brain_complex_oscillation_create(
     state->neuron_phasors = (neural_phasor_t*)nimcp_calloc(num_neurons, sizeof(neural_phasor_t));
     if (!state->neuron_phasors) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_complex_oscillation_create: state->neuron_phasors is NULL");
         return NULL;
     }
 
@@ -140,6 +142,7 @@ bool brain_complex_oscillation_update(
 ) {
     // Guard: Validate inputs
     if (!state || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_update: required parameter is NULL (state, activations)");
         return false;
     }
 
@@ -175,11 +178,13 @@ bool brain_complex_oscillation_get_phasor(
 ) {
     // Guard: Validate inputs
     if (!state || !phasor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_get_phasor: required parameter is NULL (state, phasor)");
         return false;
     }
 
     // Guard: Check index bounds
     if (neuron_index >= state->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_complex_oscillation_get_phasor: capacity exceeded");
         return false;
     }
 
@@ -195,11 +200,13 @@ bool brain_complex_oscillation_set_phasor(
 ) {
     // Guard: Validate inputs
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_set_phasor: state is NULL");
         return false;
     }
 
     // Guard: Check index bounds
     if (neuron_index >= state->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "brain_complex_oscillation_set_phasor: capacity exceeded");
         return false;
     }
 
@@ -222,11 +229,13 @@ bool brain_complex_oscillation_compute_coherence(
 ) {
     // Guard: Validate inputs
     if (!state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_compute_coherence: required parameter is NULL (state, result)");
         return false;
     }
 
     // Guard: Need at least 2 neurons
     if (state->num_neurons < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_coherence: validation failed");
         return false;
     }
 
@@ -273,11 +282,13 @@ bool brain_complex_oscillation_compute_coherence_subset(
 ) {
     // Guard: Validate inputs
     if (!state || !neuron_indices || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_compute_coherence_subset: required parameter is NULL (state, neuron_indices, result)");
         return false;
     }
 
     // Guard: Need at least 2 neurons
     if (num_neurons < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_coherence_subset: validation failed");
         return false;
     }
 
@@ -285,6 +296,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
     neural_phasor_t* subset_phasors =
         (neural_phasor_t*)nimcp_malloc(num_neurons * sizeof(neural_phasor_t));
     if (!subset_phasors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_complex_oscillation_compute_coherence_subset: subset_phasors is NULL");
         return false;
     }
 
@@ -293,6 +305,7 @@ bool brain_complex_oscillation_compute_coherence_subset(
         // Guard: Check index bounds
         if (neuron_indices[i] >= state->num_neurons) {
             nimcp_free(subset_phasors);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_coherence_subset: capacity exceeded");
             return false;
         }
         subset_phasors[i] = state->neuron_phasors[neuron_indices[i]];
@@ -387,11 +400,13 @@ bool brain_complex_oscillation_compute_pac(
 ) {
     // Guard: Validate inputs
     if (!state || !phase_indices || !amplitude_values || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_compute_pac: required parameter is NULL (state, phase_indices, amplitude_values, result)");
         return false;
     }
 
     // Guard: Need matching array sizes
     if (num_phase != num_amplitude || num_phase == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_pac: num_phase is zero");
         return false;
     }
 
@@ -399,6 +414,7 @@ bool brain_complex_oscillation_compute_pac(
     neural_phasor_t* phase_phasors =
         (neural_phasor_t*)nimcp_malloc(num_phase * sizeof(neural_phasor_t));
     if (!phase_phasors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_complex_oscillation_compute_pac: phase_phasors is NULL");
         return false;
     }
 
@@ -406,6 +422,7 @@ bool brain_complex_oscillation_compute_pac(
     for (uint32_t i = 0; i < num_phase; i++) {
         if (phase_indices[i] >= state->num_neurons) {
             nimcp_free(phase_phasors);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_complex_oscillation_compute_pac: capacity exceeded");
             return false;
         }
         phase_phasors[i] = state->neuron_phasors[phase_indices[i]];
@@ -503,6 +520,7 @@ uint32_t brain_complex_oscillation_get_num_neurons(
 bool brain_complex_oscillation_is_enabled(brain_t brain) {
     // Guard: NULL brain
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_complex_oscillation_is_enabled: brain is NULL");
         return false;
     }
 

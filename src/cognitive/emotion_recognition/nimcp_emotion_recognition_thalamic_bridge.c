@@ -122,7 +122,10 @@ void emotion_recognition_thalamic_bridge_destroy(emotion_recognition_thalamic_br
 }
 
 int emotion_recognition_thalamic_bridge_reset(emotion_recognition_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_reset", 0.0f);
 
@@ -133,7 +136,10 @@ int emotion_recognition_thalamic_bridge_reset(emotion_recognition_thalamic_bridg
 }
 
 int emotion_recognition_thalamic_route_recognition(emotion_recognition_thalamic_bridge_t* bridge, const emotion_recognition_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_route_recognition: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
@@ -152,7 +158,10 @@ int emotion_recognition_thalamic_route_recognition(emotion_recognition_thalamic_
 }
 
 int emotion_recognition_thalamic_route_context(emotion_recognition_thalamic_bridge_t* bridge, const void* context, float relevance) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_route_context: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
@@ -162,7 +171,10 @@ int emotion_recognition_thalamic_route_context(emotion_recognition_thalamic_brid
 }
 
 int emotion_recognition_thalamic_set_attention(emotion_recognition_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
 
@@ -172,7 +184,10 @@ int emotion_recognition_thalamic_set_attention(emotion_recognition_thalamic_brid
 }
 
 int emotion_recognition_thalamic_get_attention(const emotion_recognition_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_emotion_recognition_", 0.0f);
@@ -182,7 +197,10 @@ int emotion_recognition_thalamic_get_attention(const emotion_recognition_thalami
 }
 
 int emotion_recognition_thalamic_bridge_get_stats(const emotion_recognition_thalamic_bridge_t* bridge, emotion_recognition_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_thalamic_bridge_heartbeat("emotion_reco_get_stats", 0.0f);

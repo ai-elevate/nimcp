@@ -78,7 +78,10 @@ static plasticity_bio_subscription_t* find_subscription(
     plasticity_bio_async_bridge_t* b,
     uint32_t module_id
 ) {
-    if (!b || !b->subscriptions) return NULL;
+    if (!b || !b->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < b->subscription_count; i++) {
         if (b->subscriptions[i].module_id == module_id &&
@@ -86,6 +89,7 @@ static plasticity_bio_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
     return NULL;
 }
 
@@ -106,6 +110,7 @@ static plasticity_bio_module_entry_t* find_module(
             return &b->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: validation failed");
     return NULL;
 }
 

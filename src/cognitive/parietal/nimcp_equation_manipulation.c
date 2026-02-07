@@ -168,7 +168,10 @@ equation_config_t equation_default_config(void) {
 }
 
 bool equation_validate_config(const equation_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_validate_co", 0.0f);
@@ -177,11 +180,13 @@ bool equation_validate_config(const equation_config_t* config) {
     if (config->max_simplify_iterations == 0 ||
         config->max_simplify_iterations > 10000) {
         set_equation_error("Invalid simplify iterations");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_validate_config: config is NULL");
         return false;
     }
 
     if (config->max_tree_depth == 0 || config->max_tree_depth > 100) {
         set_equation_error("Invalid tree depth");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "equation_validate_config: config->max_tree_depth is zero");
         return false;
     }
 
@@ -205,6 +210,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
 
     if (config) {
         if (!equation_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_engine_create_custom: equation_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -215,6 +221,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
     equation_engine_t* eq = nimcp_calloc(1, sizeof(equation_engine_t));
     if (!eq) {
         set_equation_error("Failed to allocate equation engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "equation_engine_create_custom: eq is NULL");
         return NULL;
     }
 
@@ -226,6 +233,7 @@ equation_engine_t* equation_engine_create_custom(const equation_config_t* config
     if (!eq->lock) {
         set_equation_error("Failed to create mutex");
         nimcp_free(eq);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "equation_engine_create_custom: eq->lock is NULL");
         return NULL;
     }
 
@@ -280,7 +288,10 @@ expr_node_t* equation_create_variable(equation_engine_t* eq, const char* name) {
 
     (void)eq;
 
-    if (!name || strlen(name) == 0) return NULL;
+    if (!name || strlen(name) == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "equation_create_variable: name is NULL");
+        return NULL;
+    }
 
     expr_node_t* node = alloc_node();
     if (!node) {
@@ -311,10 +322,14 @@ expr_node_t* equation_create_binary(
 
     (void)eq;
 
-    if (!left || !right) return NULL;
+    if (!left || !right) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "equation_create_binary: required parameter is NULL (left, right)");
+        return NULL;
+    }
 
     if (type != EXPR_ADD && type != EXPR_SUB && type != EXPR_MUL &&
         type != EXPR_DIV && type != EXPR_POW) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_create_binary: required parameter is NULL (left, right)");
         return NULL;
     }
 
@@ -515,6 +530,7 @@ static expr_node_t* parse_atom(parser_state_t* p) {
         return equation_create_variable(p->eq, name);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_atom: validation failed");
     return NULL;
 }
 
@@ -604,7 +620,10 @@ const char* equation_to_string(
 ) {
     (void)eq;
 
-    if (!node || !buffer || buffer_size < 16) return NULL;
+    if (!node || !buffer || buffer_size < 16) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_to_string: required parameter is NULL (node, buffer)");
+        return NULL;
+    }
 
     buffer[0] = '\0';
 
@@ -692,6 +711,7 @@ expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
     expr_node_t* result = equation_copy_expr(eq, node);
     if (!result) {
         nimcp_mutex_unlock(eq->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_simplify: result is NULL");
         return NULL;
     }
 
@@ -844,7 +864,10 @@ expr_node_t* equation_substitute(
     const char* var_name,
     const expr_node_t* replacement
 ) {
-    if (!node || !var_name || !replacement) return NULL;
+    if (!node || !var_name || !replacement) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_substitute: required parameter is NULL (node, var_name, replacement)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_substitute", 0.0f);
@@ -1246,7 +1269,10 @@ float equation_evaluate(
 bool equation_is_constant(const expr_node_t* node) {
     if (!node) return true;
 
-    if (node->type == EXPR_VARIABLE) return false;
+    if (node->type == EXPR_VARIABLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "equation_is_constant: validation failed");
+        return false;
+    }
     if (node->type == EXPR_CONSTANT) return true;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1257,7 +1283,10 @@ bool equation_is_constant(const expr_node_t* node) {
 }
 
 bool equation_contains_variable(const expr_node_t* node, const char* var_name) {
-    if (!node || !var_name) return false;
+    if (!node || !var_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_contains_variable: required parameter is NULL (node, var_name)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_contains_va", 0.0f);
@@ -1339,7 +1368,10 @@ expr_node_t* equation_solve_for(
     const equation_t* eqn,
     const char* var_name
 ) {
-    if (!eq || !eqn || !var_name) return NULL;
+    if (!eq || !eqn || !var_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_solve_for: required parameter is NULL (eq, eqn, var_name)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_solve_for", 0.0f);
@@ -1359,6 +1391,7 @@ expr_node_t* equation_solve_for(
     /* TODO: More sophisticated solving */
 
     nimcp_mutex_unlock(eq->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_solve_for: operation failed");
     return NULL;
 }
 
@@ -1428,7 +1461,10 @@ float equation_find_root(
  * ============================================================================ */
 
 int equation_set_inflammation(equation_engine_t* eq, float level) {
-    if (!eq) return -1;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_set_inflammation: eq is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_set_inflamm", 0.0f);
@@ -1442,7 +1478,10 @@ int equation_set_inflammation(equation_engine_t* eq, float level) {
 }
 
 int equation_set_fatigue(equation_engine_t* eq, float level) {
-    if (!eq) return -1;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_set_fatigue: eq is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     equation_manipulation_heartbeat("equation_man_equation_set_fatigue", 0.0f);

@@ -63,6 +63,7 @@ struct multimodal_integration_struct {
 multimodal_integration_t multimodal_integration_create(const multimodal_config_t* config)
 {
     if (!config || config->output_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: config is NULL");
         return NULL;
     }
 
@@ -96,6 +97,7 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
     integration->output_buffer = nimcp_calloc(config->output_dim, sizeof(float));
     if (!integration->output_buffer) {
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multimodal_integration_create: integration->output_buffer is NULL");
         return NULL;
     }
 
@@ -301,6 +303,7 @@ bool multimodal_integrate(
     float* output)
 {
     if (!integration || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_integrate: required parameter is NULL (integration, input, output)");
         return false;
     }
 
@@ -317,6 +320,7 @@ bool multimodal_integrate(
             success = integrate_learned(integration, input, output);
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_integrate: operation failed");
             return false;
     }
 
@@ -334,7 +338,10 @@ bool multimodal_get_attention(
     float* speech_attn,
     float* direct_attn)
 {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_get_attention: integration is NULL");
+        return false;
+    }
 
     if (visual_attn) *visual_attn = integration->visual_attention;
     if (audio_attn) *audio_attn = integration->audio_attention;
@@ -349,7 +356,10 @@ bool multimodal_update_weights(
     float reward,
     float learning_rate)
 {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_update_weights: integration is NULL");
+        return false;
+    }
 
     // Update attention weights using simple gradient ascent
     // Increase weight of modalities that led to good outcomes
@@ -411,13 +421,28 @@ bool multimodal_validate_input(
     const multimodal_integration_t integration,
     const multimodal_input_t* input)
 {
-    if (!integration || !input) return false;
+    if (!integration || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_validate_input: required parameter is NULL (integration, input)");
+        return false;
+    }
 
     // Check dimensions match
-    if (input->visual_dim > 0 && input->visual_dim != integration->config.visual_dim) return false;
-    if (input->audio_dim > 0 && input->audio_dim != integration->config.audio_dim) return false;
-    if (input->speech_dim > 0 && input->speech_dim != integration->config.speech_dim) return false;
-    if (input->direct_dim > 0 && input->direct_dim != integration->config.direct_dim) return false;
+    if (input->visual_dim > 0 && input->visual_dim != integration->config.visual_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_validate_input: validation failed");
+        return false;
+    }
+    if (input->audio_dim > 0 && input->audio_dim != integration->config.audio_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_validate_input: validation failed");
+        return false;
+    }
+    if (input->speech_dim > 0 && input->speech_dim != integration->config.speech_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_validate_input: validation failed");
+        return false;
+    }
+    if (input->direct_dim > 0 && input->direct_dim != integration->config.direct_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_validate_input: validation failed");
+        return false;
+    }
 
     // Check at least one input is present
     if (!input->visual_features && !input->audio_features &&

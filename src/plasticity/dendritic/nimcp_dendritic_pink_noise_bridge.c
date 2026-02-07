@@ -702,6 +702,7 @@ int dendritic_pink_noise_connect_bio_async(dendritic_pink_noise_bridge_t* bridge
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_pink_noise_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -733,7 +734,10 @@ bool dendritic_pink_noise_is_bio_async_connected(
     const dendritic_pink_noise_bridge_t* bridge
 ) {
     /* Guard: Validate input */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_pink_noise_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->base.bio_async_enabled;
 }

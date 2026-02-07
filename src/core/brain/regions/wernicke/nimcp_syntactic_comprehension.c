@@ -286,6 +286,7 @@ static void init_argument_frames(syntactic_comprehension_t* ctx) {
  */
 static syntactic_node_t* allocate_node(syntactic_comprehension_t* ctx) {
     if (ctx->nodes_allocated >= SYNTACTIC_MAX_CONSTITUENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_node: capacity exceeded");
         return NULL;
     }
     syntactic_node_t* node = &ctx->node_pool[ctx->nodes_allocated++];
@@ -506,6 +507,7 @@ int syntactic_parse_sentence(syntactic_comprehension_t* ctx,
     for (uint32_t i = 0; i < num_words; i++) {
         parse_state_t state = syntactic_add_word(ctx, &words[i]);
         if (state == PARSE_STATE_ERROR) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntactic_comprehension_destroy: validation failed");
             return -1;
         }
     }
@@ -904,7 +906,10 @@ int syntactic_extract_dependencies(syntactic_comprehension_t* ctx,
 }
 
 int32_t syntactic_find_head(const syntactic_node_t* node) {
-    if (!node) return -1;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntactic_find_head: node is NULL");
+        return -1;
+    }
 
     if (node->num_children == 0) {
         return (int32_t)node->start_pos;
@@ -1036,7 +1041,10 @@ int syntactic_get_argument_structure(syntactic_comprehension_t* ctx,
  *=============================================================================*/
 
 bool syntactic_is_garden_path(const syntactic_comprehension_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntactic_is_garden_path: ctx is NULL");
+        return false;
+    }
     return ctx->current_state == PARSE_STATE_GARDEN_PATH;
 }
 
@@ -1139,7 +1147,10 @@ float syntactic_compute_complexity(const syntactic_parse_t* parse) {
 
 bool syntactic_is_grammatical(const syntactic_comprehension_t* ctx,
                                const syntactic_parse_t* parse) {
-    if (!ctx || !parse) return false;
+    if (!ctx || !parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntactic_compute_complexity: required parameter is NULL (ctx, parse)");
+        return false;
+    }
     return parse->state != PARSE_STATE_ERROR &&
            parse->parse_probability > ctx->config.pruning_threshold;
 }

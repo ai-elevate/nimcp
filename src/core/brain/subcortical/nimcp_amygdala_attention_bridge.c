@@ -108,6 +108,7 @@ amygdala_attention_bridge_t* amygdala_attention_create(
         if (amygdala_attention_validate_config(config) != 0) {
             NIMCP_LOGGING_ERROR("Invalid configuration");
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_attention_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -120,6 +121,7 @@ amygdala_attention_bridge_t* amygdala_attention_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_attention_create: bridge->base is NULL");
         return NULL;
     }
     nimcp_mutex_init(bridge->base.mutex, NULL);
@@ -244,6 +246,7 @@ int amygdala_attention_disconnect_attention(amygdala_attention_bridge_t* bridge)
 
 bool amygdala_attention_is_connected(const amygdala_attention_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_attention_is_connected: bridge is NULL");
         return false;
     }
     return bridge->bridge_active;
@@ -341,6 +344,7 @@ bool amygdala_attention_is_hypervigilant(
     const amygdala_attention_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_attention_is_hypervigilant: bridge is NULL");
         return false;
     }
 
@@ -615,6 +619,7 @@ bool amygdala_attention_is_bio_async_connected(
     const amygdala_attention_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_attention_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

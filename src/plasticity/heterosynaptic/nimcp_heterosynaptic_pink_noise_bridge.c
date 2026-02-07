@@ -174,6 +174,7 @@ hetero_pink_noise_bridge_t* hetero_pink_noise_bridge_create(
         if (!bridge->pink_generator) {
             NIMCP_LOGGING_ERROR("Failed to create pink noise generator");
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_pink_noise_bridge_create: bridge->pink_generator is NULL");
             return NULL;
         }
         bridge->pink_generator_owned = true;
@@ -238,7 +239,10 @@ int hetero_pink_noise_connect_hetero(
     hetero_pink_noise_bridge_t* bridge,
     hetero_system_t* hetero_system)
 {
-    if (!bridge || !hetero_system) return -1;
+    if (!bridge || !hetero_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_connect_hetero: required parameter is NULL (bridge, hetero_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->hetero_system = hetero_system;
@@ -262,7 +266,10 @@ int hetero_pink_noise_connect_generator(
     hetero_pink_noise_bridge_t* bridge,
     pink_noise_generator_t pink_generator)
 {
-    if (!bridge || !pink_generator) return -1;
+    if (!bridge || !pink_generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_connect_generator: required parameter is NULL (bridge, pink_generator)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -379,8 +386,14 @@ bool hetero_pink_noise_is_enabled(const hetero_pink_noise_bridge_t* bridge) {
  * HOW:  Sample pink noise, compute modulated values
  */
 int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->enabled) return -1;
-    if (!bridge->pink_generator) return -1;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_apply_modulation: required parameter is NULL (bridge, bridge->enabled)");
+        return -1;
+    }
+    if (!bridge->pink_generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_apply_modulation: bridge->pink_generator is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -388,6 +401,7 @@ int hetero_pink_noise_apply_modulation(hetero_pink_noise_bridge_t* bridge) {
     float noise;
     if (!pink_noise_generate_sample(bridge->pink_generator, &noise)) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_pink_noise_apply_modulation: pink_noise_generate_sample is NULL");
         return -1;
     }
 
@@ -500,7 +514,10 @@ float hetero_pink_noise_get_effective_delay(
  * HOW:  Compute competition metrics, set feedback flags
  */
 int hetero_pink_noise_update_feedback(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->hetero_system) return -1;
+    if (!bridge || !bridge->hetero_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_update_feedback: required parameter is NULL (bridge, bridge->hetero_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -543,7 +560,10 @@ int hetero_pink_noise_get_feedback(
     const hetero_pink_noise_bridge_t* bridge,
     hetero_pink_noise_feedback_t* feedback)
 {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_get_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *feedback = bridge->feedback;
@@ -609,6 +629,7 @@ int hetero_pink_noise_bridge_update(
     /* Apply pink noise modulation to heterosynaptic parameters */
     if (bridge->enabled) {
         if (hetero_pink_noise_apply_modulation(bridge) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_pink_noise_bridge_update: validation failed");
             return -1;
         }
     }
@@ -616,6 +637,7 @@ int hetero_pink_noise_bridge_update(
     /* Update feedback from heterosynaptic state */
     if (bridge->config.enable_feedback) {
         if (hetero_pink_noise_update_feedback(bridge) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_pink_noise_bridge_update: validation failed");
             return -1;
         }
 
@@ -651,7 +673,10 @@ int hetero_pink_noise_get_state(
     const hetero_pink_noise_bridge_t* bridge,
     hetero_pink_noise_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_pink_noise_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, state, sizeof(*state));
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

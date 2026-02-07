@@ -16,7 +16,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
-NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hippocampus_adapter)
+// Use weak attribute to avoid duplicate symbol with core/brain/regions/hippocampus version
+static struct nimcp_health_agent* g_hippocampus_adapter_health_agent = NULL;
+static inline void hippocampus_adapter_heartbeat(const char* op, float progress) { (void)op; (void)progress; }
+__attribute__((weak)) void hippocampus_adapter_set_health_agent(struct nimcp_health_agent* agent) { g_hippocampus_adapter_health_agent = agent; }
 
 #define HIPP_MAX_PATTERNS 1000
 #define HIPP_PATTERN_SIZE 256

@@ -111,6 +111,7 @@ static nimcp_body_part_t* find_part(
             return &ctx->parts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_part: validation failed");
     return NULL;
 }
 
@@ -126,6 +127,7 @@ static nimcp_external_object_t* find_external_object(
             return &ctx->external_objects[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_external_object: validation failed");
     return NULL;
 }
 
@@ -282,6 +284,7 @@ nimcp_body_context_t* nimcp_body_create(const nimcp_body_config_t* config) {
     nimcp_body_error_t err = nimcp_body_init(ctx, config);
     if (err != NIMCP_BODY_OK) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_body_create: validation failed");
         return NULL;
     }
 

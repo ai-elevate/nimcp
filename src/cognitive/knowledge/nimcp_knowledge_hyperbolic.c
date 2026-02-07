@@ -114,7 +114,10 @@ static int compare_knn_candidates(const void *a, const void *b) {
     const knn_candidate_t *ca = (const knn_candidate_t*)a;
     const knn_candidate_t *cb = (const knn_candidate_t*)b;
 
-    if (ca->distance < cb->distance) return -1;
+    if (ca->distance < cb->distance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_knn_candidates: validation failed");
+        return -1;
+    }
     if (ca->distance > cb->distance) return 1;
     return 0;
 }

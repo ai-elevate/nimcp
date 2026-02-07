@@ -672,6 +672,7 @@ bool epistemic_assess_claim(
     }
 
     if (!filter || !claim_text || !evidence || !assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_assess_claim: required parameter is NULL (filter, claim_text, evidence, assessment)");
         return false;
     }
 
@@ -856,6 +857,7 @@ bool epistemic_update_source(
     bool was_correct)
 {
     if (!filter || !source_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_update_source: required parameter is NULL (filter, source_id)");
         return false;
     }
 
@@ -904,6 +906,7 @@ bool epistemic_update_source(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_update_source: operation failed");
     return false;
 }
 

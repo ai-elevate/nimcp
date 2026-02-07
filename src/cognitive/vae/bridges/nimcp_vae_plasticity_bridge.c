@@ -227,10 +227,16 @@ int vae_plasticity_bridge_default_config(vae_plasticity_bridge_config_t* config)
 
 vae_plasticity_bridge_t* vae_plasticity_bridge_create(const vae_plasticity_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_plasticity_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_plasticity_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_PLAST_STATE_DISCONNECTED;
@@ -245,6 +251,7 @@ vae_plasticity_bridge_t* vae_plasticity_bridge_create(const vae_plasticity_bridg
 
     if (!bridge->recon_error_history || !bridge->kl_history || !bridge->precision_history) {
         vae_plasticity_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_plasticity_bridge_create: required parameter is NULL (bridge->recon_error_history, bridge->kl_history, bridge->precision_history)");
         return NULL;
     }
 
@@ -354,7 +361,10 @@ int vae_plasticity_bridge_disconnect(vae_plasticity_bridge_t* bridge)
 
 bool vae_plasticity_bridge_is_connected(const vae_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_plasticity_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_PLAST_STATE_CONNECTED;
 }
 
@@ -606,7 +616,10 @@ float vae_plasticity_get_elbo(const vae_plasticity_bridge_t* bridge)
 
 bool vae_plasticity_detect_collapse(const vae_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_plasticity_detect_collapse: bridge is NULL");
+        return false;
+    }
 
     float kl = vae_plasticity_get_kl_divergence(bridge);
     return kl < bridge->config.homeo_config.collapse_threshold;
@@ -709,7 +722,10 @@ int vae_plasticity_add_to_replay_buffer(vae_plasticity_bridge_t* bridge,
                                          const float* sample, uint32_t dim)
 {
     if (!bridge || !sample) return NIMCP_ERROR_VAE_PLAST_NULL;
-    if (!bridge->replay_buffer) return -1;
+    if (!bridge->replay_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_plasticity_add_to_replay_buffer: bridge->replay_buffer is NULL");
+        return -1;
+    }
 
     uint32_t offset = bridge->replay_buffer_head * dim;
     if (offset + dim <= bridge->replay_buffer_size) {

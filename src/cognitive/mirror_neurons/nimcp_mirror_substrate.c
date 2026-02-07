@@ -144,7 +144,10 @@ static inline float clamp_f(float value, float min_val, float max_val)
  */
 static inline int find_first_set_bit64(uint64_t word)
 {
-    if (word == 0) return -1;
+    if (word == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_first_set_bit64: word is zero");
+        return -1;
+    }
 #ifdef __GNUC__
     return __builtin_ctzll(word);
 #else
@@ -178,7 +181,10 @@ static float calculate_myelin_speedup(float myelination_level)
  */
 static bool is_coactivated(uint64_t time1, uint64_t time2)
 {
-    if (time1 == 0 || time2 == 0) return false;
+    if (time1 == 0 || time2 == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_coactivated: time1 is zero");
+        return false;
+    }
     uint64_t diff = (time1 > time2) ? (time1 - time2) : (time2 - time1);
     return diff <= COACTIVATION_WINDOW_US;
 }
@@ -196,6 +202,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
 
     if (capacity == 0) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: capacity cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: capacity is zero");
         return NULL;
     }
 
@@ -208,6 +215,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
         1, sizeof(mirror_substrate_pool_t));
     if (!pool) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate pool structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: pool is NULL");
         return NULL;
     }
 
@@ -217,6 +225,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
     if (!pool->buffer) {
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate buffer");
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: pool->buffer is NULL");
         return NULL;
     }
 
@@ -226,6 +235,7 @@ mirror_substrate_pool_t* mirror_substrate_pool_create(uint32_t capacity)
         SUBSTRATE_LOG_ERROR("Mirror substrate pool: failed to allocate bitmap");
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_create: pool->bitmap is NULL");
         return NULL;
     }
 
@@ -286,6 +296,7 @@ mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t*
     if (pool->allocated_count >= pool->capacity) {
         nimcp_spinlock_unlock(&pool->lock);
         SUBSTRATE_LOG_WARN("Mirror substrate pool: pool exhausted");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_pool_alloc: capacity exceeded");
         return NULL;
     }
 
@@ -316,6 +327,7 @@ mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t*
 
     if (found_slot == UINT32_MAX || found_slot >= pool->capacity) {
         nimcp_spinlock_unlock(&pool->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_substrate_pool_alloc: capacity exceeded");
         return NULL;
     }
 
@@ -428,6 +440,7 @@ mirror_substrate_backing_t* mirror_substrate_backing_create(
     if (!backing) {
         SUBSTRATE_LOG_ERROR("Mirror substrate: failed to allocate backing for unit %u",
                            mirror_unit_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_substrate_backing_create: backing is NULL");
         return NULL;
     }
 
@@ -548,6 +561,7 @@ mirror_substrate_backing_t* mirror_substrate_cow_copy(
         nimcp_spinlock_lock(&backing->lock);
         backing->cow_ref_count--;
         nimcp_spinlock_unlock(&backing->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_substrate_cow_copy: copy is NULL");
         return NULL;
     }
 
@@ -870,6 +884,7 @@ int32_t mirror_substrate_add_spine(
     if (backing->num_spines >= NIMCP_MIRROR_SUBSTRATE_MAX_SPINES) {
         SUBSTRATE_LOG_WARN("Mirror substrate: max spines reached for unit %u",
                           backing->mirror_unit_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_substrate_add_spine: capacity exceeded");
         return -1;
     }
 

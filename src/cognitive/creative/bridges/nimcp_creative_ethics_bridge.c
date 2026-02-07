@@ -132,12 +132,18 @@ static const char* g_terrorism_keywords[] = {
 //=============================================================================
 
 static bool contains_keyword(const char* text, const char** keywords) {
-    if (!text || !keywords) return false;
+    if (!text || !keywords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_keyword: required parameter is NULL (text, keywords)");
+        return false;
+    }
 
     /* Convert to lowercase for comparison */
     size_t len = strlen(text);
     char* lower = nimcp_calloc(len + 1, sizeof(char));
-    if (!lower) return false;
+    if (!lower) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "contains_keyword: lower is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < len; i++) {
         lower[i] = (char)tolower((unsigned char)text[i]);
@@ -205,12 +211,14 @@ creative_ethics_bridge_t* creative_ethics_bridge_create(
 
     if (!config) {
         set_ethics_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_ethics_bridge_config_defaults: config is NULL");
         return NULL;
     }
 
     creative_ethics_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_ethics_bridge_t));
     if (!bridge) {
         set_ethics_error("Failed to allocate ethics bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_ethics_bridge_config_defaults: bridge is NULL");
         return NULL;
     }
 
@@ -262,7 +270,10 @@ static int add_concern(creative_ethics_evaluation_t* eval,
     uint32_t new_count = eval->num_concerns + 1;
     ethics_concern_result_t* new_concerns = nimcp_calloc(
         new_count, sizeof(ethics_concern_result_t));
-    if (!new_concerns) return -1;
+    if (!new_concerns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_ethics_bridge_destroy: new_concerns is NULL");
+        return -1;
+    }
 
     /* Copy existing concerns */
     if (eval->concerns && eval->num_concerns > 0) {
@@ -305,6 +316,7 @@ int creative_ethics_evaluate(creative_ethics_bridge_t* bridge,
                               creative_ethics_evaluation_t* evaluation) {
     if (!bridge || !content || !evaluation) {
         set_ethics_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_ethics_bridge_destroy: required parameter is NULL (bridge, content, evaluation)");
         return -1;
     }
 
@@ -349,6 +361,7 @@ int creative_ethics_evaluate_text(creative_ethics_bridge_t* bridge,
                                    const char* context,
                                    creative_ethics_evaluation_t* evaluation) {
     if (!bridge || !text || !evaluation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_ethics_bridge_destroy: required parameter is NULL (bridge, text, evaluation)");
         return -1;
     }
 
@@ -455,6 +468,7 @@ int creative_ethics_evaluate_image(creative_ethics_bridge_t* bridge,
                                     const char* context,
                                     creative_ethics_evaluation_t* evaluation) {
     if (!bridge || !image || !evaluation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, evaluation)");
         return -1;
     }
 
@@ -530,6 +544,7 @@ int creative_ethics_check_nsfw(creative_ethics_bridge_t* bridge,
                                 const visual_image_t* image,
                                 ethics_concern_result_t* result) {
     if (!bridge || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, result)");
         return -1;
     }
 
@@ -559,6 +574,7 @@ int creative_ethics_check_violence(creative_ethics_bridge_t* bridge,
                                     art_modality_t modality,
                                     ethics_concern_result_t* result) {
     if (!bridge || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, content, result)");
         return -1;
     }
 
@@ -594,6 +610,7 @@ int creative_ethics_check_hate(creative_ethics_bridge_t* bridge,
                                 art_modality_t modality,
                                 ethics_concern_result_t* result) {
     if (!bridge || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, content, result)");
         return -1;
     }
 
@@ -625,6 +642,7 @@ int creative_ethics_check_deepfake(creative_ethics_bridge_t* bridge,
                                     const visual_image_t* image,
                                     ethics_concern_result_t* result) {
     if (!bridge || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, result)");
         return -1;
     }
 
@@ -650,6 +668,7 @@ int creative_ethics_check_bias(creative_ethics_bridge_t* bridge,
                                 art_modality_t modality,
                                 ethics_concern_result_t* result) {
     if (!bridge || !content || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, content, result)");
         return -1;
     }
 
@@ -676,6 +695,7 @@ int creative_ethics_check_privacy(creative_ethics_bridge_t* bridge,
                                    const visual_image_t* image,
                                    ethics_concern_result_t* result) {
     if (!bridge || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, image, result)");
         return -1;
     }
 
@@ -704,6 +724,7 @@ int creative_ethics_evaluate_prompt(creative_ethics_bridge_t* bridge,
                                      const char* prompt,
                                      creative_ethics_evaluation_t* evaluation) {
     if (!bridge || !prompt || !evaluation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, prompt, evaluation)");
         return -1;
     }
 
@@ -717,6 +738,7 @@ int creative_ethics_filter_prompt(creative_ethics_bridge_t* bridge,
                                    char* filtered,
                                    size_t max_len) {
     if (!bridge || !prompt || !filtered || max_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, prompt, filtered)");
         return -1;
     }
 
@@ -726,7 +748,10 @@ int creative_ethics_filter_prompt(creative_ethics_bridge_t* bridge,
 
     /* Simple keyword filtering (production would use more sophisticated methods) */
     char* lower = nimcp_calloc(max_len, sizeof(char));
-    if (!lower) return -1;
+    if (!lower) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: lower is NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < strlen(filtered); i++) {
         lower[i] = (char)tolower((unsigned char)filtered[i]);
@@ -796,6 +821,7 @@ int creative_ethics_check_review(creative_ethics_bridge_t* bridge,
                                   uint64_t ticket_id,
                                   bool* approved) {
     if (!bridge || !approved) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, approved)");
         return -1;
     }
 

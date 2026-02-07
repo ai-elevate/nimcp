@@ -99,11 +99,15 @@ static vta_bio_subscription_t* find_subscription(vta_bio_async_bridge_t* b, uint
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
 int vta_bio_async_default_config(vta_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_default_config: config is NULL");
+        return -1;
+    }
     config->da_broadcast_interval_ms = VTA_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
     config->max_inbox_process_per_update = 32;
@@ -139,6 +143,7 @@ vta_bio_async_bridge_t* vta_bio_async_bridge_create(const vta_bio_async_config_t
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(vta_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vta_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -156,7 +161,10 @@ void vta_bio_async_bridge_destroy(vta_bio_async_bridge_t* bridge) {
 }
 
 int vta_bio_async_connect(vta_bio_async_bridge_t* bridge, nimcp_vta_adapter_t adapter, bio_router_t router) {
-    if (!bridge || !adapter) return -1;
+    if (!bridge || !adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_connect: required parameter is NULL (bridge, adapter)");
+        return -1;
+    }
     bridge->adapter = adapter;
     bridge->router = router;
     bridge->connected = true;
@@ -164,7 +172,10 @@ int vta_bio_async_connect(vta_bio_async_bridge_t* bridge, nimcp_vta_adapter_t ad
 }
 
 int vta_bio_async_disconnect(vta_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
     bridge->adapter = NULL;
     bridge->router = NULL;
     bridge->connected = false;
@@ -176,13 +187,19 @@ bool vta_bio_async_is_connected(const vta_bio_async_bridge_t* bridge) {
 }
 
 int vta_bio_async_process_inbox(vta_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     (void)max_messages;
     return 0;
 }
 
 int vta_bio_async_update(vta_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     bridge->time_since_broadcast_ms += delta_ms;
     if (bridge->config.enable_auto_broadcast &&
         bridge->time_since_broadcast_ms >= bridge->config.da_broadcast_interval_ms) {
@@ -193,7 +210,10 @@ int vta_bio_async_update(vta_bio_async_bridge_t* bridge, uint32_t delta_ms) {
 }
 
 int vta_bio_async_broadcast_da_state(vta_bio_async_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_da_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     vta_bio_da_state_msg_t msg = {0};
     msg.header.type = BIO_MSG_VTA_DA_STATE;
@@ -227,7 +247,10 @@ int vta_bio_async_update_state(
     float value_estimate,
     bool phasic_mode
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_update_state: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.da_level = da_level;
     bridge->state.tonic_da = phasic_mode ? da_level * 0.3f : da_level * 0.7f;
@@ -241,7 +264,10 @@ int vta_bio_async_update_state(
 }
 
 int vta_bio_async_broadcast_rpe(vta_bio_async_bridge_t* bridge, float rpe, float predicted, float actual) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_rpe: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_rpe_routing) return 0;
 
     vta_bio_rpe_msg_t msg = {0};
@@ -263,7 +289,10 @@ int vta_bio_async_broadcast_rpe(vta_bio_async_bridge_t* bridge, float rpe, float
 }
 
 int vta_bio_async_broadcast_da_burst(vta_bio_async_bridge_t* bridge, float magnitude, float reward, uint32_t source) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_da_burst: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     vta_bio_da_burst_msg_t msg = {0};
     msg.header.type = BIO_MSG_VTA_DOPAMINE_BURST;
@@ -284,7 +313,10 @@ int vta_bio_async_broadcast_da_burst(vta_bio_async_bridge_t* bridge, float magni
 }
 
 int vta_bio_async_broadcast_da_dip(vta_bio_async_bridge_t* bridge, float magnitude, float expected) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_da_dip: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     vta_bio_da_dip_msg_t msg = {0};
     msg.header.type = BIO_MSG_VTA_DOPAMINE_DIP;
@@ -305,7 +337,10 @@ int vta_bio_async_broadcast_da_dip(vta_bio_async_bridge_t* bridge, float magnitu
 }
 
 int vta_bio_async_send_plasticity_gate(vta_bio_async_bridge_t* bridge, float gate_strength, float lr_multiplier, uint32_t target) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_send_plasticity_gate: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_plasticity_gating) return 0;
 
     vta_bio_plasticity_gate_msg_t msg = {0};
@@ -331,7 +366,10 @@ int vta_bio_async_send_plasticity_gate(vta_bio_async_bridge_t* bridge, float gat
 }
 
 int vta_bio_async_broadcast_motivation(vta_bio_async_bridge_t* bridge, float motivation, float effort) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_motivation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_motivation_routing) return 0;
 
     vta_bio_motivation_msg_t msg = {0};
@@ -351,7 +389,10 @@ int vta_bio_async_broadcast_motivation(vta_bio_async_bridge_t* bridge, float mot
 }
 
 int vta_bio_async_broadcast_value_update(vta_bio_async_bridge_t* bridge, float new_value, uint32_t context_id) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_value_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     (void)new_value;
     (void)context_id;
     bridge->stats.broadcasts_sent++;
@@ -359,20 +400,29 @@ int vta_bio_async_broadcast_value_update(vta_bio_async_bridge_t* bridge, float n
 }
 
 int vta_bio_async_broadcast_tonic_shift(vta_bio_async_bridge_t* bridge, float new_tonic) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_broadcast_tonic_shift: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     (void)new_tonic;
     bridge->stats.broadcasts_sent++;
     return vta_bio_async_broadcast_da_state(bridge);
 }
 
 int vta_bio_async_subscribe_module(vta_bio_async_bridge_t* bridge, uint32_t module_id, uint32_t msg_types) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
     vta_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
         existing->msg_type_mask |= msg_types;
         return 0;
     }
-    if (bridge->subscription_count >= bridge->subscription_capacity) return -1;
+    if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_bio_async_subscribe_module: capacity exceeded");
+        return -1;
+    }
 
     vta_bio_subscription_t* sub = &bridge->subscriptions[bridge->subscription_count++];
     sub->module_id = module_id;
@@ -388,7 +438,10 @@ int vta_bio_async_subscribe_module(vta_bio_async_bridge_t* bridge, uint32_t modu
 }
 
 int vta_bio_async_unsubscribe_module(vta_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].active = false;
@@ -396,13 +449,20 @@ int vta_bio_async_unsubscribe_module(vta_bio_async_bridge_t* bridge, uint32_t mo
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
 int vta_bio_async_update_subscription(vta_bio_async_bridge_t* bridge, uint32_t module_id, uint32_t msg_types) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
     vta_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
     sub->msg_type_mask = msg_types;
     return 0;
 }
@@ -418,13 +478,19 @@ uint32_t vta_bio_async_get_subscriber_count(const vta_bio_async_bridge_t* bridge
 }
 
 int vta_bio_async_get_stats(const vta_bio_async_bridge_t* bridge, vta_bio_async_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int vta_bio_async_reset_stats(vta_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vta_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;
     memset(&bridge->stats, 0, sizeof(bridge->stats));

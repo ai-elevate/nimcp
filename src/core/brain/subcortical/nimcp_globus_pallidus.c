@@ -153,6 +153,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
         nimcp_free(gp->output);
         nimcp_free(gp->neurons);
         nimcp_free(gp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "globus_pallidus_create: validation failed");
         return NULL;
     }
 
@@ -166,6 +167,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
         nimcp_free(gp->output);
         nimcp_free(gp->neurons);
         nimcp_free(gp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "globus_pallidus_create: gp->mutex is NULL");
         return NULL;
     }
     nimcp_mutex_init(gp->mutex, NULL);

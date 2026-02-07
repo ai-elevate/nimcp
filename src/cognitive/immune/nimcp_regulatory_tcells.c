@@ -195,6 +195,7 @@ int treg_default_config(treg_config_t* config)
     /* Guard: validate input */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_default_config: config is NULL");
         return -1;
     }
 
@@ -269,6 +270,7 @@ treg_system_t* treg_create(
     if (!system->checkpoints) {
         NIMCP_LOGGING_ERROR("Failed to allocate checkpoint pool");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->checkpoints is NULL");
         return NULL;
     }
 
@@ -280,6 +282,7 @@ treg_system_t* treg_create(
         NIMCP_LOGGING_ERROR("Failed to allocate cytokine pool");
         nimcp_free(system->checkpoints);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->cytokines is NULL");
         return NULL;
     }
 
@@ -299,6 +302,7 @@ treg_system_t* treg_create(
         nimcp_free(system->cytokines);
         nimcp_free(system->checkpoints);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "treg_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -353,6 +357,7 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 {
     /* Guard: validate system */
     if (!system || !system->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_update: required parameter is NULL (system, system->active)");
         return -1;
     }
 
@@ -362,6 +367,7 @@ int treg_update(treg_system_t* system, uint64_t delta_ms)
 
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_update: validation failed");
         return -1;
     }
 
@@ -468,6 +474,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 {
     /* Guard: validate system */
     if (!system || !system->active || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_suppress_inflammation: required parameter is NULL (system, system->active, system->immune_system)");
         return -1;
     }
 
@@ -477,6 +484,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_suppress_inflammation: validation failed");
         return -1;
     }
 
@@ -491,6 +499,7 @@ int treg_suppress_inflammation(treg_system_t* system, uint32_t site_id)
 
     if (!site) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_suppress_inflammation: site is NULL");
         return -1;
     }
 
@@ -543,6 +552,7 @@ int treg_checkpoint_activate(
 {
     /* Guard: validate inputs */
     if (!system || !system->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_checkpoint_activate: required parameter is NULL (system, system->active)");
         return -1;
     }
 
@@ -552,14 +562,17 @@ int treg_checkpoint_activate(
 
 
     if (type == CHECKPOINT_PD1_PDL1 && !system->config.enable_pd1_pathway) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_checkpoint_activate: system->config is NULL");
         return -1;
     }
     if (type == CHECKPOINT_CTLA4 && !system->config.enable_ctla4_pathway) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_checkpoint_activate: system->config is NULL");
         return -1;
     }
 
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_activate: validation failed");
         return -1;
     }
 
@@ -567,6 +580,7 @@ int treg_checkpoint_activate(
     if (system->checkpoint_count >= system->checkpoint_capacity) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_WARN("Checkpoint capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "treg_checkpoint_activate: capacity exceeded");
         return -1;
     }
 
@@ -619,6 +633,7 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
 {
     /* Guard: validate system */
     if (!system || !system->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_checkpoint_release: required parameter is NULL (system, system->active)");
         return -1;
     }
 
@@ -628,6 +643,7 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
 
 
     if (nimcp_mutex_lock(system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_checkpoint_release: validation failed");
         return -1;
     }
 
@@ -650,6 +666,7 @@ int treg_checkpoint_release(treg_system_t* system, uint32_t checkpoint_id)
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "treg_checkpoint_release: operation failed");
     return -1; /* Not found */
 }
 
@@ -696,6 +713,7 @@ int treg_release_cytokine(
 {
     /* Guard: validate inputs */
     if (!system || !system->active || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_release_cytokine: required parameter is NULL (system, system->active, system->immune_system)");
         return -1;
     }
 
@@ -705,14 +723,17 @@ int treg_release_cytokine(
 
 
     if (type == TREG_CYTOKINE_IL10 && !system->config.enable_il10_production) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_release_cytokine: system->config is NULL");
         return -1;
     }
     if (type == TREG_CYTOKINE_TGFB && !system->config.enable_tgfb_production) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_release_cytokine: system->config is NULL");
         return -1;
     }
 
     /* Lock for thread safety */
     if (nimcp_mutex_lock(system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "treg_release_cytokine: validation failed");
         return -1;
     }
 
@@ -720,6 +741,7 @@ int treg_release_cytokine(
     if (system->cytokine_count >= system->cytokine_capacity) {
         nimcp_mutex_unlock(system->mutex);
         NIMCP_LOGGING_WARN("Cytokine capacity reached");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "treg_release_cytokine: capacity exceeded");
         return -1;
     }
 
@@ -747,6 +769,7 @@ int treg_release_cytokine(
         /* Failed to release via brain immune - rollback */
         system->cytokine_count--;
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "treg_release_cytokine: validation failed");
         return -1;
     }
 
@@ -846,6 +869,7 @@ int treg_get_stats(const treg_system_t* system, treg_stats_t* stats)
 {
     /* Guard: validate inputs */
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_get_stats: required parameter is NULL (system, stats)");
         return -1;
     }
 
@@ -870,7 +894,10 @@ treg_state_t treg_get_state(const treg_system_t* system)
 
 bool treg_is_active(const treg_system_t* system)
 {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "treg_is_active: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     regulatory_tcells_heartbeat("regulatory_t_treg_is_active", 0.0f);
 

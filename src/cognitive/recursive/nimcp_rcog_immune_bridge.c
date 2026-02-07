@@ -210,6 +210,7 @@ rcog_immune_bridge_t* rcog_immune_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_immune") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_immune_bridge_create: validation failed");
         return NULL;
     }
 
@@ -559,6 +560,7 @@ bool rcog_immune_bridge_is_quarantined(
     const struct rcog_decomposition* decomposition
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_immune_bridge_is_quarantined: bridge is NULL");
         return false;
     }
 
@@ -586,6 +588,7 @@ bool rcog_immune_bridge_is_quarantined(
     }
 
     nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_immune_bridge_is_quarantined: operation failed");
     return false;
 }
 

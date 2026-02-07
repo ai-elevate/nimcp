@@ -161,6 +161,7 @@ int nlang_expr_add(nlang_expression_t* expr, uint8_t primitive) {
 
     if (expr->primitive_count >= NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_WARN("nlang", "Expression full, cannot add primitive 0x%02X", primitive);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nlang_expr_add: capacity exceeded");
         return -1;
     }
 
@@ -171,10 +172,14 @@ int nlang_expr_add(nlang_expression_t* expr, uint8_t primitive) {
 int nlang_expr_add_sequence(nlang_expression_t* expr,
                             const uint8_t* primitives,
                             size_t count) {
-    if (!expr || !primitives) return -1;
+    if (!expr || !primitives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_expr_add: required parameter is NULL (expr, primitives)");
+        return -1;
+    }
 
     if (expr->primitive_count + count > NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_WARN("nlang", "Not enough space for %zu primitives", count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_add: validation failed");
         return -1;
     }
 
@@ -239,11 +244,15 @@ void nlang_expr_finalize(nlang_expression_t* expr) {
 int nlang_expr_serialize(const nlang_expression_t* expr,
                          uint8_t* buffer,
                          size_t buffer_len) {
-    if (!expr || !buffer) return -1;
+    if (!expr || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_expr_finalize: required parameter is NULL (expr, buffer)");
+        return -1;
+    }
 
     size_t required = nlang_expr_size(expr);
     if (buffer_len < required) {
         NIMCP_LOGGING_WARN("nlang", "Buffer too small: %zu < %zu", buffer_len, required);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
         return -1;
     }
 
@@ -295,11 +304,15 @@ int nlang_expr_serialize(const nlang_expression_t* expr,
 int nlang_expr_deserialize(const uint8_t* buffer,
                            size_t buffer_len,
                            nlang_expression_t* expr) {
-    if (!buffer || !expr) return -1;
+    if (!buffer || !expr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_expr_finalize: required parameter is NULL (buffer, expr)");
+        return -1;
+    }
 
     // Minimum size: header(3) + emotion(3) + coord_flag(1) + context(1) + checksum(2)
     if (buffer_len < 10) {
         NIMCP_LOGGING_WARN("nlang", "Buffer too small for expression header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
         return -1;
     }
 
@@ -310,6 +323,7 @@ int nlang_expr_deserialize(const uint8_t* buffer,
     expr->version = buffer[offset++];
     if (expr->version != NLANG_VERSION) {
         NIMCP_LOGGING_WARN("nlang", "Unsupported version: %u", expr->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
         return -1;
     }
 
@@ -318,40 +332,57 @@ int nlang_expr_deserialize(const uint8_t* buffer,
 
     if (expr->primitive_count > NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_WARN("nlang", "Invalid primitive count: %u", expr->primitive_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
         return -1;
     }
 
     // Primitives
     if (offset + expr->primitive_count > buffer_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
         return -1;
     }
     memcpy(expr->primitives, &buffer[offset], expr->primitive_count);
     offset += expr->primitive_count;
 
     // Emotion
-    if (offset + 3 > buffer_len) return -1;
+    if (offset + 3 > buffer_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
+        return -1;
+    }
     expr->emotion.pleasure = (int8_t)buffer[offset++];
     expr->emotion.arousal = (int8_t)buffer[offset++];
     expr->emotion.dominance = (int8_t)buffer[offset++];
 
     // Coordinate flag
-    if (offset >= buffer_len) return -1;
+    if (offset >= buffer_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: capacity exceeded");
+        return -1;
+    }
     expr->has_coord = buffer[offset++];
 
     // Coordinate data
     switch (expr->has_coord) {
         case NLANG_COORD_SHORT:
-            if (offset + sizeof(nlang_short_coord_t) > buffer_len) return -1;
+            if (offset + sizeof(nlang_short_coord_t) > buffer_len) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
+                return -1;
+            }
             memcpy(&expr->coord.short_coord, &buffer[offset], sizeof(nlang_short_coord_t));
             offset += sizeof(nlang_short_coord_t);
             break;
         case NLANG_COORD_3D:
-            if (offset + sizeof(nlang_coord_3d_t) > buffer_len) return -1;
+            if (offset + sizeof(nlang_coord_3d_t) > buffer_len) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
+                return -1;
+            }
             memcpy(&expr->coord.coord_3d, &buffer[offset], sizeof(nlang_coord_3d_t));
             offset += sizeof(nlang_coord_3d_t);
             break;
         case NLANG_COORD_FULL:
-            if (offset + sizeof(nlang_full_coord_t) > buffer_len) return -1;
+            if (offset + sizeof(nlang_full_coord_t) > buffer_len) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
+                return -1;
+            }
             memcpy(&expr->coord.full_coord, &buffer[offset], sizeof(nlang_full_coord_t));
             offset += sizeof(nlang_full_coord_t);
             break;
@@ -360,11 +391,17 @@ int nlang_expr_deserialize(const uint8_t* buffer,
     }
 
     // Context refs
-    if (offset >= buffer_len) return -1;
+    if (offset >= buffer_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: capacity exceeded");
+        return -1;
+    }
     expr->context_refs = buffer[offset++];
 
     // Checksum
-    if (offset + 2 > buffer_len) return -1;
+    if (offset + 2 > buffer_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_finalize: validation failed");
+        return -1;
+    }
     expr->semantic_checksum = ((uint16_t)buffer[offset] << 8) | buffer[offset + 1];
     offset += 2;
 
@@ -397,29 +434,36 @@ size_t nlang_expr_size(const nlang_expression_t* expr) {
 //=============================================================================
 
 bool nlang_expr_validate(const nlang_expression_t* expr) {
-    if (!expr) return false;
+    if (!expr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_expr_validate: expr is NULL");
+        return false;
+    }
 
     // Version check
     if (expr->version != NLANG_VERSION) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid version: %u", expr->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Primitive count check
     if (expr->primitive_count > NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid primitive count: %u", expr->primitive_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Intent validation (must be in intent category)
     if ((expr->intent & 0xF0) != 0x80) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid intent: 0x%02X", expr->intent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
     // Coordinate type validation
     if (expr->has_coord > NLANG_COORD_FULL) {
         NIMCP_LOGGING_DEBUG("nlang", "Invalid coord type: %u", expr->has_coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_expr_validate: validation failed");
         return false;
     }
 
@@ -427,7 +471,10 @@ bool nlang_expr_validate(const nlang_expression_t* expr) {
 }
 
 bool nlang_expr_verify_checksum(const nlang_expression_t* expr) {
-    if (!expr) return false;
+    if (!expr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_expr_verify_checksum: expr is NULL");
+        return false;
+    }
 
     uint16_t computed = nlang_compute_semantic_checksum(expr);
     return computed == expr->semantic_checksum;
@@ -713,7 +760,10 @@ int nlang_context_define(nlang_shared_context_t* ctx,
                          uint8_t slot,
                          const uint8_t* primitives,
                          size_t count) {
-    if (!ctx || !primitives || slot >= NLANG_CONTEXT_SLOTS) return -1;
+    if (!ctx || !primitives || slot >= NLANG_CONTEXT_SLOTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_context_init: required parameter is NULL (ctx, primitives)");
+        return -1;
+    }
     if (count > 16) count = 16;
 
     nlang_context_slot_t* s = &ctx->slots[slot];
@@ -743,7 +793,10 @@ void nlang_context_set_reference(nlang_shared_context_t* ctx,
 
 const nlang_context_slot_t* nlang_context_lookup(const nlang_shared_context_t* ctx,
                                                   uint8_t slot) {
-    if (!ctx || slot >= NLANG_CONTEXT_SLOTS) return NULL;
+    if (!ctx || slot >= NLANG_CONTEXT_SLOTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_context_init: ctx is NULL");
+        return NULL;
+    }
 
     const nlang_context_slot_t* s = &ctx->slots[slot];
     return s->valid ? s : NULL;
@@ -761,7 +814,10 @@ void nlang_context_clear(nlang_shared_context_t* ctx, uint8_t slot) {
 int nlang_context_serialize(const nlang_shared_context_t* ctx,
                             uint8_t* buffer,
                             size_t buffer_len) {
-    if (!ctx || !buffer) return -1;
+    if (!ctx || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_context_clear: required parameter is NULL (ctx, buffer)");
+        return -1;
+    }
 
     // Calculate required size
     size_t required = 4;  // version (4 bytes)
@@ -772,7 +828,10 @@ int nlang_context_serialize(const nlang_shared_context_t* ctx,
     }
     required += 1;  // terminator
 
-    if (buffer_len < required) return -1;
+    if (buffer_len < required) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_context_clear: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
 
@@ -800,7 +859,10 @@ int nlang_context_serialize(const nlang_shared_context_t* ctx,
 int nlang_context_deserialize(const uint8_t* buffer,
                               size_t buffer_len,
                               nlang_shared_context_t* ctx) {
-    if (!buffer || !ctx || buffer_len < 5) return -1;
+    if (!buffer || !ctx || buffer_len < 5) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_context_clear: required parameter is NULL (buffer, ctx)");
+        return -1;
+    }
 
     nlang_context_init(ctx);
 
@@ -816,13 +878,25 @@ int nlang_context_deserialize(const uint8_t* buffer,
     // Slots
     while (offset < buffer_len && buffer[offset] != 0xFF) {
         uint8_t slot_id = buffer[offset++];
-        if (slot_id >= NLANG_CONTEXT_SLOTS) return -1;
+        if (slot_id >= NLANG_CONTEXT_SLOTS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_context_clear: capacity exceeded");
+            return -1;
+        }
 
-        if (offset >= buffer_len) return -1;
+        if (offset >= buffer_len) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_context_clear: capacity exceeded");
+            return -1;
+        }
         uint8_t count = buffer[offset++];
-        if (count > 16) return -1;
+        if (count > 16) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_context_clear: validation failed");
+            return -1;
+        }
 
-        if (offset + count > buffer_len) return -1;
+        if (offset + count > buffer_len) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlang_context_clear: validation failed");
+            return -1;
+        }
 
         ctx->slots[slot_id].slot_id = slot_id;
         ctx->slots[slot_id].primitive_count = count;
@@ -878,7 +952,10 @@ uint8_t nlang_primitive_category(uint8_t primitive) {
 int nlang_interpret(const nlang_expression_t* expr,
                     const nlang_shared_context_t* ctx,
                     nlang_interpretation_t* result) {
-    if (!expr || !result) return -1;
+    if (!expr || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlang_primitive_category: required parameter is NULL (expr, result)");
+        return -1;
+    }
 
     static char text_buf[256];
     size_t text_offset = 0;

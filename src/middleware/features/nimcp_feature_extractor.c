@@ -120,11 +120,13 @@ feature_extractor_config_t feature_extractor_default_config(void) {
 feature_extractor_t feature_extractor_create(const feature_extractor_config_t* config) {
     if (config && (config->window_ms < FEATURE_EXTRACTOR_MIN_WINDOW_MS ||
                    config->window_ms > FEATURE_EXTRACTOR_MAX_WINDOW_MS)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_extractor_create: operation failed");
         return NULL;
     }
 
     feature_extractor_t extractor = nimcp_calloc(1, sizeof(struct feature_extractor_struct));
     if (!extractor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_extractor_create: extractor is NULL");
         return NULL;
     }
 
@@ -137,6 +139,7 @@ feature_extractor_t feature_extractor_create(const feature_extractor_config_t* c
 
     if (!extractor->rate_buffer || !extractor->isi_buffer || !extractor->count_buffer) {
         feature_extractor_destroy(extractor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_extractor_create: required parameter is NULL (extractor->rate_buffer, extractor->isi_buffer, extractor->count_buffer)");
         return NULL;
     }
 
@@ -152,11 +155,13 @@ feature_extractor_t feature_extractor_create(const feature_extractor_config_t* c
     extractor->rate_signal_pool = memory_pool_create(&pool_config);
     if (!extractor->rate_signal_pool) {
         feature_extractor_destroy(extractor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_extractor_create: extractor->rate_signal_pool is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(&extractor->mutex, false) != 0) {
         feature_extractor_destroy(extractor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "feature_extractor_create: validation failed");
         return NULL;
     }
 
@@ -215,10 +220,12 @@ bool feature_extractor_update(
     middleware_features_t* features_out
 ) {
     if (!extractor || !spike_data || !features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_update: required parameter is NULL (extractor, spike_data, features_out)");
         return false;
     }
 
     if (spike_data->num_neurons == 0 || spike_data->num_neurons > FEATURE_EXTRACTOR_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_update: spike_data->num_neurons is zero");
         return false;
     }
 
@@ -243,6 +250,7 @@ bool feature_extractor_update(
 
     if (!ensure_buffer_capacity(extractor, spike_data->num_neurons)) {
         nimcp_platform_mutex_unlock(&extractor->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_update: ensure_buffer_capacity is NULL");
         return false;
     }
 
@@ -271,6 +279,7 @@ bool feature_extractor_compute_mean_firing_rate(
     float* rate_out
 ) {
     if (!extractor || !spike_data || !rate_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_mean_firing_rate: required parameter is NULL (extractor, spike_data, rate_out)");
         return false;
     }
 
@@ -300,6 +309,7 @@ bool feature_extractor_compute_population_cv(
     float* cv_out
 ) {
     if (!extractor || !spike_data || !cv_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_population_cv: required parameter is NULL (extractor, spike_data, cv_out)");
         return false;
     }
 
@@ -329,6 +339,7 @@ bool feature_extractor_compute_population_cv(
     // WHY: Fail if no valid neurons (all have < 2 spikes)
     // HOW: Return false for degenerate case
     if (valid_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_compute_population_cv: valid_neurons is zero");
         return false;
     }
 
@@ -342,6 +353,7 @@ bool feature_extractor_compute_fano_factor(
     float* fano_out
 ) {
     if (!extractor || !spike_data || !fano_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_fano_factor: required parameter is NULL (extractor, spike_data, fano_out)");
         return false;
     }
 
@@ -354,6 +366,7 @@ bool feature_extractor_compute_fano_factor(
     // WHY: Fail if no spikes (all counts zero)
     // HOW: Return false for degenerate case
     if (mean_count < 0.001F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_compute_fano_factor: validation failed");
         return false;
     }
 
@@ -374,6 +387,7 @@ bool feature_extractor_compute_burst_index(
     float* burst_index_out
 ) {
     if (!extractor || !spike_data || !burst_index_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_burst_index: required parameter is NULL (extractor, spike_data, burst_index_out)");
         return false;
     }
 
@@ -425,6 +439,7 @@ bool feature_extractor_compute_synchrony_index(
     float* synchrony_out
 ) {
     if (!extractor || !spike_data || !synchrony_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_synchrony_index: required parameter is NULL (extractor, spike_data, synchrony_out)");
         return false;
     }
 
@@ -475,6 +490,7 @@ bool feature_extractor_compute_oscillation_power(
 ) {
     if (!extractor || !spike_data || !delta_power || !theta_power ||
         !alpha_power || !beta_power || !gamma_power) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_compute_oscillation_power: operation failed");
         return false;
     }
 
@@ -491,6 +507,7 @@ bool feature_extractor_compute_oscillation_power(
         total_spikes += spike_data->spike_counts[i];
     }
     if (total_spikes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_compute_oscillation_power: total_spikes is zero");
         return false;
     }
 
@@ -518,6 +535,7 @@ bool feature_extractor_compute_oscillation_power(
     if (!rate_signal) {
         rate_signal = (float*)nimcp_malloc(num_bins * sizeof(float));
         if (!rate_signal) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "feature_extractor_compute_oscillation_power: rate_signal is NULL");
             return false;
         }
     }
@@ -558,6 +576,7 @@ bool feature_extractor_compute_spike_entropy(
     float* entropy_out
 ) {
     if (!extractor || !spike_data || !entropy_out || spike_data->num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_compute_spike_entropy: required parameter is NULL (extractor, spike_data, entropy_out)");
         return false;
     }
 
@@ -571,6 +590,7 @@ bool feature_extractor_compute_spike_entropy(
     // WHY: Fail if no spikes (cannot compute entropy from empty distribution)
     // HOW: Return false for degenerate case
     if (total_spikes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feature_extractor_compute_spike_entropy: total_spikes is zero");
         return false;
     }
 
@@ -660,6 +680,7 @@ void middleware_features_reset(middleware_features_t* features) {
 
 static bool ensure_buffer_capacity(feature_extractor_t extractor, uint32_t neurons) {
     if (!extractor || neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_buffer_capacity: extractor is NULL");
         return false;
     }
 
@@ -672,6 +693,7 @@ static bool ensure_buffer_capacity(feature_extractor_t extractor, uint32_t neuro
     float* new_rate = nimcp_realloc(extractor->rate_buffer,
                                     new_capacity * sizeof(float));
     if (!new_rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_buffer_capacity: new_rate is NULL");
         return false;
     }
     extractor->rate_buffer = new_rate;
@@ -679,6 +701,7 @@ static bool ensure_buffer_capacity(feature_extractor_t extractor, uint32_t neuro
     float* new_isi = nimcp_realloc(extractor->isi_buffer,
                                    new_capacity * 10 * sizeof(float));
     if (!new_isi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_buffer_capacity: new_isi is NULL");
         return false;
     }
     extractor->isi_buffer = new_isi;
@@ -686,6 +709,7 @@ static bool ensure_buffer_capacity(feature_extractor_t extractor, uint32_t neuro
     uint32_t* new_count = nimcp_realloc(extractor->count_buffer,
                                         new_capacity * sizeof(uint32_t));
     if (!new_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensure_buffer_capacity: new_count is NULL");
         return false;
     }
     extractor->count_buffer = new_count;
@@ -774,6 +798,7 @@ static bool extract_basic_features(
     middleware_features_t* features
 ) {
     if (!extractor || !spike_data || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_basic_features: required parameter is NULL (extractor, spike_data, features)");
         return false;
     }
 
@@ -841,6 +866,7 @@ static bool extract_optional_features(
     middleware_features_t* features
 ) {
     if (!extractor || !spike_data || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_optional_features: required parameter is NULL (extractor, spike_data, features)");
         return false;
     }
 
@@ -907,6 +933,7 @@ static bool build_rate_signal(
     uint32_t num_bins
 ) {
     if (!spike_data || !rate_signal || num_bins == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_rate_signal: required parameter is NULL (spike_data, rate_signal)");
         return false;
     }
 

@@ -102,6 +102,7 @@ void brain_topology_mesh_unregister(void) {
 static NimcpGraph* brain_build_topology_graph(brain_t brain) {
     if (!brain || !brain->network) {
         NIMCP_LOGGING_ERROR("brain_build_topology_graph: NULL brain or network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_build_topology_graph: required parameter is NULL (brain, brain->network)");
         return NULL;
     }
 
@@ -155,6 +156,7 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_detect_communities: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: brain is NULL");
         return false;
     }
 
@@ -164,6 +166,7 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
     NimcpGraph* graph = brain_build_topology_graph(brain);
     if (!graph) {
         NIMCP_LOGGING_ERROR("brain_detect_communities: failed to build graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: graph is NULL");
         return false;
     }
 
@@ -172,18 +175,21 @@ NIMCP_EXPORT bool brain_detect_communities(brain_t brain) {
     if (!network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get adaptive network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: failed to get base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: base_network is NULL");
         return false;
     }
     community_structure_t* communities = community_detect(base_network, NULL);
     if (!communities) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_communities: Louvain algorithm failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_communities: communities is NULL");
         return false;
     }
 
@@ -237,6 +243,7 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_detect_hubs: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: brain is NULL");
         return false;
     }
 
@@ -246,6 +253,7 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
     NimcpGraph* graph = brain_build_topology_graph(brain);
     if (!graph) {
         NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to build graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: graph is NULL");
         return false;
     }
 
@@ -254,18 +262,21 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
     if (!network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get adaptive network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: failed to get base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: base_network is NULL");
         return false;
     }
     hub_structure_t* hubs = community_detect_hubs(base_network, threshold);
     if (!hubs) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_detect_hubs: hub detection failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_detect_hubs: hubs is NULL");
         return false;
     }
 
@@ -296,12 +307,14 @@ NIMCP_EXPORT bool brain_detect_hubs(brain_t brain, float threshold) {
 NIMCP_EXPORT bool brain_is_hub_neuron(brain_t brain, uint32_t neuron_id) {
     // Guard: NULL check
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_hub_neuron: brain is NULL");
         return false;
     }
 
     // Check if hubs detected
     if (!brain->network_hubs) {
         NIMCP_LOGGING_ERROR("brain_is_hub_neuron: no hubs detected (call brain_detect_hubs first)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_hub_neuron: brain->network_hubs is NULL");
         return false;
     }
 
@@ -323,6 +336,7 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: brain is NULL");
         return false;
     }
 
@@ -332,6 +346,7 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
     NimcpGraph* graph = brain_build_topology_graph(brain);
     if (!graph) {
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to build graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: graph is NULL");
         return false;
     }
 
@@ -341,12 +356,14 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
     if (!network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_compute_topology_metrics: failed to get base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_topology_metrics: base_network is NULL");
         return false;
     }
 
@@ -359,6 +376,7 @@ NIMCP_EXPORT bool brain_compute_topology_metrics(brain_t brain) {
     brain->topology_metrics = nimcp_malloc(sizeof(topology_validation_t));
     if (!brain->topology_metrics) {
         nimcp_graph_destroy(graph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_compute_topology_metrics: brain->topology_metrics is NULL");
         return false;
     }
     *brain->topology_metrics = validation;
@@ -395,6 +413,7 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_validate_topology: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: brain is NULL");
         return false;
     }
 
@@ -404,6 +423,7 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
     NimcpGraph* graph = brain_build_topology_graph(brain);
     if (!graph) {
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to build graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: graph is NULL");
         return false;
     }
 
@@ -412,12 +432,14 @@ NIMCP_EXPORT bool brain_validate_topology(brain_t brain) {
     if (!network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: network is NULL");
         return false;
     }
     neural_network_t base_network = adaptive_network_get_base_network(network);
     if (!base_network) {
         nimcp_graph_destroy(graph);
         NIMCP_LOGGING_ERROR("brain_validate_topology: failed to get base network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_validate_topology: base_network is NULL");
         return false;
     }
 
@@ -482,6 +504,7 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
     // Guard: Check if network is valid
     if (!b->network) {
         NIMCP_LOGGING_ERROR("brain_get_network_analyzer: brain has no network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_network_analyzer: b->network is NULL");
         return NULL;
     }
 

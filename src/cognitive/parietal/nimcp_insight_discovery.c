@@ -164,6 +164,7 @@ insight_engine_t* insight_engine_create_custom(const insight_config_t* config) {
     if (!engine->incubation_queue) {
         nimcp_free(engine);
         set_error("Queue alloc failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insight_engine_create_custom: engine->incubation_queue is NULL");
         return NULL;
     }
 
@@ -227,7 +228,10 @@ insight_problem_t* insight_create_problem(const char* description) {
 
 int insight_add_constraint(insight_problem_t* problem, const char* description,
                           float binding_strength, bool is_explicit) {
-    if (!problem || problem->num_constraints >= INSIGHT_MAX_CONSTRAINTS) return -1;
+    if (!problem || problem->num_constraints >= INSIGHT_MAX_CONSTRAINTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "insight_create_problem: problem is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_add_constrai", 0.0f);
@@ -247,7 +251,10 @@ int insight_add_constraint(insight_problem_t* problem, const char* description,
 
 int insight_add_perspective(insight_problem_t* problem, const char* description,
                            const float* representation, uint32_t dim) {
-    if (!problem || problem->num_perspectives >= INSIGHT_MAX_PERSPECTIVES) return -1;
+    if (!problem || problem->num_perspectives >= INSIGHT_MAX_PERSPECTIVES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "insight_create_problem: problem is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_add_perspect", 0.0f);
@@ -329,7 +336,10 @@ uint32_t insight_incubate(insight_engine_t* engine, insight_problem_t* problem) 
 
 int insight_check_incubation(insight_engine_t* engine, uint32_t problem_id,
                             insight_eureka_t** result) {
-    if (!engine || !result) return -1;
+    if (!engine || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_incubate: required parameter is NULL (engine, result)");
+        return -1;
+    }
     *result = NULL;
 
     /* Phase 8: Heartbeat at operation start */
@@ -352,11 +362,15 @@ int insight_check_incubation(insight_engine_t* engine, uint32_t problem_id,
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insight_incubate: validation failed");
     return -1;
 }
 
 int insight_process_incubation_step(insight_engine_t* engine) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_process_incubation_step: engine is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_process_incu", 0.0f);
@@ -404,7 +418,10 @@ int insight_process_incubation_step(insight_engine_t* engine) {
 }
 
 int insight_cancel_incubation(insight_engine_t* engine, uint32_t problem_id) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: engine is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_cancel_incub", 0.0f);
@@ -429,6 +446,7 @@ int insight_cancel_incubation(insight_engine_t* engine, uint32_t problem_id) {
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insight_cancel_incubation: operation failed");
     return -1;
 }
 
@@ -441,7 +459,10 @@ int insight_identify_blocking_constraints(insight_engine_t* engine,
                                          insight_constraint_t* blocking,
                                          uint32_t max_constraints,
                                          uint32_t* num_found) {
-    if (!engine || !problem || !blocking || !num_found) return -1;
+    if (!engine || !problem || !blocking || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem, blocking, num_found)");
+        return -1;
+    }
     *num_found = 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -461,8 +482,14 @@ int insight_identify_blocking_constraints(insight_engine_t* engine,
 int insight_relax_constraint(insight_engine_t* engine,
                             insight_problem_t* problem,
                             uint32_t constraint_id) {
-    if (!engine || !problem) return -1;
-    if (!engine->config.enable_constraint_relaxation) return -1;
+    if (!engine || !problem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem)");
+        return -1;
+    }
+    if (!engine->config.enable_constraint_relaxation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: engine->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_relax_constr", 0.0f);
@@ -476,7 +503,10 @@ int insight_relax_constraint(insight_engine_t* engine,
         }
 
         if (problem->constraints[i].id == constraint_id) {
-            if (!problem->constraints[i].is_relaxable) return -1;
+            if (!problem->constraints[i].is_relaxable) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: problem->constraints is NULL");
+                return -1;
+            }
 
             problem->constraints[i].binding_strength *= 0.5f;
             problem->impasse_level *= 0.8f;
@@ -485,6 +515,7 @@ int insight_relax_constraint(insight_engine_t* engine,
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: problem->constraints is NULL");
     return -1;
 }
 
@@ -493,7 +524,10 @@ int insight_find_relaxable_constraints(insight_engine_t* engine,
                                        uint32_t* constraint_ids,
                                        uint32_t max_constraints,
                                        uint32_t* num_found) {
-    if (!engine || !problem || !constraint_ids || !num_found) return -1;
+    if (!engine || !problem || !constraint_ids || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem, constraint_ids, num_found)");
+        return -1;
+    }
     *num_found = 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -514,7 +548,10 @@ int insight_find_relaxable_constraints(insight_engine_t* engine,
 
 insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
                                                     insight_problem_t* problem) {
-    if (!engine || !problem) return NULL;
+    if (!engine || !problem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_attempt_rest", 0.0f);
@@ -561,9 +598,18 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
 int insight_shift_perspective(insight_engine_t* engine,
                              insight_problem_t* problem,
                              uint32_t new_perspective) {
-    if (!engine || !problem) return -1;
-    if (!engine->config.enable_perspective_shifting) return -1;
-    if (new_perspective >= problem->num_perspectives) return -1;
+    if (!engine || !problem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem)");
+        return -1;
+    }
+    if (!engine->config.enable_perspective_shifting) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: engine->config is NULL");
+        return -1;
+    }
+    if (new_perspective >= problem->num_perspectives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insight_cancel_incubation: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_shift_perspe", 0.0f);
@@ -579,7 +625,10 @@ int insight_shift_perspective(insight_engine_t* engine,
 int insight_generate_perspectives(insight_engine_t* engine,
                                  insight_problem_t* problem,
                                  uint32_t max_perspectives) {
-    if (!engine || !problem) return -1;
+    if (!engine || !problem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_cancel_incubation: required parameter is NULL (engine, problem)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_generate_per", 0.0f);
@@ -613,7 +662,10 @@ void insight_free_restructuring(insight_restructuring_t* r) {
 bool insight_check_eureka(insight_engine_t* engine,
                          const insight_problem_t* problem,
                          insight_eureka_t** result) {
-    if (!engine || !problem || !result) return false;
+    if (!engine || !problem || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_free_restructuring: required parameter is NULL (engine, problem, result)");
+        return false;
+    }
     *result = NULL;
 
     /* Phase 8: Heartbeat at operation start */
@@ -632,6 +684,7 @@ bool insight_check_eureka(insight_engine_t* engine,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insight_free_restructuring: operation failed");
     return false;
 }
 
@@ -646,7 +699,10 @@ float insight_estimate_surprise(insight_engine_t* engine,
 }
 
 int insight_verify_eureka(insight_engine_t* engine, insight_eureka_t* eureka) {
-    if (!engine || !eureka) return -1;
+    if (!engine || !eureka) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_verify_eureka: required parameter is NULL (engine, eureka)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_verify_eurek", 0.0f);
 
@@ -673,7 +729,10 @@ void insight_free_eureka(insight_eureka_t* eureka) {
 int insight_detect_impasse(insight_engine_t* engine,
                           const insight_problem_t* problem,
                           insight_impasse_t* impasse) {
-    if (!engine || !problem || !impasse) return -1;
+    if (!engine || !problem || !impasse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_free_eureka: required parameter is NULL (engine, problem, impasse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_detect_impas", 0.0f);
@@ -689,7 +748,10 @@ int insight_detect_impasse(insight_engine_t* engine,
 int insight_resolve_impasse(insight_engine_t* engine,
                            insight_problem_t* problem,
                            const insight_impasse_t* impasse) {
-    if (!engine || !problem || !impasse) return -1;
+    if (!engine || !problem || !impasse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_free_eureka: required parameter is NULL (engine, problem, impasse)");
+        return -1;
+    }
 
     /* Try relaxing constraints */
     /* Phase 8: Heartbeat at operation start */
@@ -726,7 +788,10 @@ int insight_resolve_impasse(insight_engine_t* engine,
  * ============================================================================ */
 
 int insight_set_inflammation(insight_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_set_inflammation: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_set_inflamma", 0.0f);
 
@@ -736,7 +801,10 @@ int insight_set_inflammation(insight_engine_t* engine, float level) {
 }
 
 int insight_set_fatigue(insight_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_set_fatigue: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_set_fatigue", 0.0f);
 
@@ -750,7 +818,10 @@ int insight_set_fatigue(insight_engine_t* engine, float level) {
  * ============================================================================ */
 
 int insight_get_stats(const insight_engine_t* engine, insight_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     insight_discovery_heartbeat("insight_disc_insight_get_stats", 0.0f);

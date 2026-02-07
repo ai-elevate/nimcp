@@ -253,6 +253,7 @@ orientation_column_t* orientation_column_create(
     /* Guard clauses */
     if (tuning_width <= 0.0F || spatial_frequency <= 0.0F) {
         LOG_ERROR("Invalid parameters: tuning_width and spatial_frequency must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_column_create: validation failed");
         return NULL;
     }
 
@@ -295,12 +296,14 @@ orientation_column_t* orientation_column_create(
     if (!col->mutex) {
         LOG_ERROR("Failed to allocate mutex for orientation column");
         nimcp_free(col);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_column_create: col->mutex is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)col->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex for orientation column");
         nimcp_free(col);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "orientation_column_create: validation failed");
         return NULL;
     }
 
@@ -328,6 +331,7 @@ bool orientation_column_set_gabor(
 ) {
     if (!col || !params) {
         LOG_ERROR("NULL parameter in orientation_column_set_gabor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_column_set_gabor: required parameter is NULL (col, params)");
         return false;
     }
 
@@ -495,6 +499,7 @@ bool orientation_column_get_tuning_curve(
     /* Guard clauses */
     if (!col || !orientations || !responses || num_points == 0) {
         LOG_ERROR("Invalid parameters in orientation_column_get_tuning_curve");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_column_get_tuning_curve: required parameter is NULL (col, orientations, responses)");
         return false;
     }
 
@@ -514,6 +519,7 @@ bool orientation_column_get_stats(
 ) {
     if (!col || !stats) {
         LOG_ERROR("NULL parameter in orientation_column_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_column_get_stats: required parameter is NULL (col, stats)");
         return false;
     }
 
@@ -544,11 +550,13 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
     if (num_orientations == 0 || num_orientations > ORIENTATION_MAX_ORIENTATIONS) {
         LOG_ERROR("Invalid num_orientations: %u (must be 1-%d)",
                  num_orientations, ORIENTATION_MAX_ORIENTATIONS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "orientation_hypercolumn_create: num_orientations is zero");
         return NULL;
     }
 
     if (spatial_frequency <= 0.0F || tuning_width <= 0.0F) {
         LOG_ERROR("Invalid parameters: spatial_frequency and tuning_width must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_create: validation failed");
         return NULL;
     }
 
@@ -572,6 +580,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
     if (!hcol->columns) {
         LOG_ERROR("Failed to allocate columns array");
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_hypercolumn_create: hcol->columns is NULL");
         return NULL;
     }
 
@@ -603,6 +612,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
             }
             nimcp_free(hcol->columns);
             nimcp_free(hcol);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_create: col is NULL");
             return NULL;
         }
 
@@ -626,6 +636,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         }
         nimcp_free(hcol->columns);
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "orientation_hypercolumn_create: validation failed");
         return NULL;
     }
 
@@ -639,6 +650,7 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
         }
         nimcp_free(hcol->columns);
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "orientation_hypercolumn_create: validation failed");
         return NULL;
     }
 
@@ -684,6 +696,7 @@ bool orientation_hypercolumn_process(
     /* Guard clauses */
     if (!hcol || !image_patch || patch_width == 0 || patch_height == 0) {
         LOG_ERROR("Invalid parameters in orientation_hypercolumn_process");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_process: required parameter is NULL (hcol, image_patch)");
         return false;
     }
 
@@ -755,6 +768,7 @@ bool orientation_hypercolumn_get_distribution(
     /* Guard clauses */
     if (!hcol || !orientations || !responses || !num_orientations) {
         LOG_ERROR("Invalid parameters in orientation_hypercolumn_get_distribution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_get_distribution: required parameter is NULL (hcol, orientations, responses, num_orientations)");
         return false;
     }
 
@@ -777,6 +791,7 @@ bool orientation_hypercolumn_normalize(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_normalize");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_normalize: hcol is NULL");
         return false;
     }
 
@@ -812,11 +827,13 @@ bool orientation_hypercolumn_apply_inhibition(
     /* Guard clauses */
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_apply_inhibition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_apply_inhibition: hcol is NULL");
         return false;
     }
 
     if (strength < 0.0F || strength > 1.0F) {
         LOG_ERROR("Invalid inhibition strength: %.2f (must be 0-1)", strength);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "orientation_hypercolumn_apply_inhibition: validation failed");
         return false;
     }
 
@@ -829,6 +846,7 @@ bool orientation_hypercolumn_apply_inhibition(
     if (!new_activations) {
         LOG_ERROR("Failed to allocate temporary activation array");
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)hcol->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_hypercolumn_apply_inhibition: new_activations is NULL");
         return false;
     }
 
@@ -987,6 +1005,7 @@ bool orientation_hypercolumn_set_pinwheel(
 ) {
     if (!hcol) {
         LOG_ERROR("NULL hypercolumn in orientation_hypercolumn_set_pinwheel");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_set_pinwheel: hcol is NULL");
         return false;
     }
 
@@ -1035,6 +1054,7 @@ bool orientation_hypercolumn_get_stats(
 ) {
     if (!hcol || !stats) {
         LOG_ERROR("NULL parameter in orientation_hypercolumn_get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_hypercolumn_get_stats: required parameter is NULL (hcol, stats)");
         return false;
     }
 
@@ -1094,11 +1114,13 @@ bool orientation_process_image(
     /* Guard clauses */
     if (!image || !hypercolumns || !orientation_map) {
         LOG_ERROR("NULL parameter in orientation_process_image");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orientation_process_image: required parameter is NULL (image, hypercolumns, orientation_map)");
         return false;
     }
 
     if (width == 0 || height == 0 || num_hypercolumns == 0) {
         LOG_ERROR("Invalid dimensions in orientation_process_image");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "orientation_process_image: width is zero");
         return false;
     }
 
@@ -1120,6 +1142,7 @@ bool orientation_process_image(
             );
             if (!patch) {
                 LOG_ERROR("Failed to allocate image patch");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "orientation_process_image: patch is NULL");
                 return false;
             }
 

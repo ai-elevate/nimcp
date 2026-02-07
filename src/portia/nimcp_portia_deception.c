@@ -267,6 +267,7 @@ portia_deception_t portia_deception_init(
     if (!(config != NULL)) {
         LOG_ERROR("Invalid config pointer");
         deception_set_error("Invalid configuration pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_deception_init: validation failed");
         return NULL;
     }
 
@@ -275,6 +276,7 @@ portia_deception_t portia_deception_init(
         LOG_ERROR("Invalid default_emission_level: %.2f",
                   config->default_emission_level);
         deception_set_error("Invalid emission level (must be 0.0-1.0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_deception_init: operation failed");
         return NULL;
     }
 
@@ -313,6 +315,7 @@ portia_deception_t portia_deception_init(
             LOG_ERROR("Failed to allocate profile registry");
             deception_set_error("Profile registry allocation failed");
             nimcp_free(deception);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_deception_init: deception->profiles is NULL");
             return NULL;
         }
 
@@ -327,6 +330,7 @@ portia_deception_t portia_deception_init(
             nimcp_free(deception->profiles);
         }
         nimcp_free(deception);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_deception_init: validation failed");
         return NULL;
     }
 

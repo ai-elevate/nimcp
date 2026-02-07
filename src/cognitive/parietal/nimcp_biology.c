@@ -165,7 +165,10 @@ static int codon_to_index(const char* codon) {
     int i2 = nucleotide_to_index(codon[1]);
     int i3 = nucleotide_to_index(codon[2]);
 
-    if (i1 < 0 || i2 < 0 || i3 < 0) return -1;
+    if (i1 < 0 || i2 < 0 || i3 < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "codon_to_index: validation failed");
+        return -1;
+    }
 
     return i1 * 16 + i2 * 4 + i3;
 }
@@ -222,6 +225,7 @@ biology_config_t biology_default_config(void) {
 bool biology_validate_config(const biology_config_t* config) {
     if (!config) {
         set_biology_error("Null config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_validate_config: config is NULL");
         return false;
     }
     /* Basic sanity checks */
@@ -231,6 +235,7 @@ bool biology_validate_config(const biology_config_t* config) {
 
     if (config->match_score < 0) {
         set_biology_error("Match score should be non-negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_config: validation failed");
         return false;
     }
     return true;
@@ -252,12 +257,14 @@ biology_t* biology_create_custom(const biology_config_t* config) {
     biology_config_t cfg = config ? *config : biology_default_config();
 
     if (!biology_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_create_custom: biology_validate_config is NULL");
         return NULL;
     }
 
     biology_t* bio = nimcp_calloc(1, sizeof(biology_t));
     if (!bio) {
         set_biology_error("Failed to allocate biology struct");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "biology_create_custom: bio is NULL");
         return NULL;
     }
 
@@ -270,6 +277,7 @@ biology_t* biology_create_custom(const biology_config_t* config) {
     if (!bio->lock) {
         set_biology_error("Failed to create mutex");
         nimcp_free(bio);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "biology_create_custom: bio->lock is NULL");
         return NULL;
     }
 
@@ -294,7 +302,10 @@ void biology_destroy(biology_t* bio) {
  * ============================================================================ */
 
 bool biology_validate_dna(const biology_t* bio, const char* sequence) {
-    if (!bio || !sequence) return false;
+    if (!bio || !sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_validate_dna: required parameter is NULL (bio, sequence)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_validate_dna", 0.0f);
@@ -303,6 +314,7 @@ bool biology_validate_dna(const biology_t* bio, const char* sequence) {
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
         if (c != 'A' && c != 'T' && c != 'G' && c != 'C') {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_dna: validation failed");
             return false;
         }
     }
@@ -310,7 +322,10 @@ bool biology_validate_dna(const biology_t* bio, const char* sequence) {
 }
 
 bool biology_validate_rna(const biology_t* bio, const char* sequence) {
-    if (!bio || !sequence) return false;
+    if (!bio || !sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_validate_rna: required parameter is NULL (bio, sequence)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_validate_rna", 0.0f);
@@ -319,6 +334,7 @@ bool biology_validate_rna(const biology_t* bio, const char* sequence) {
     for (const char* p = sequence; *p; p++) {
         char c = toupper(*p);
         if (c != 'A' && c != 'U' && c != 'G' && c != 'C') {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_validate_rna: validation failed");
             return false;
         }
     }
@@ -333,6 +349,7 @@ int biology_complement_dna(
 ) {
     if (!bio || !dna || !complement || buffer_size == 0) {
         set_biology_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_complement_dna: required parameter is NULL (bio, dna, complement)");
         return -1;
     }
 
@@ -346,6 +363,7 @@ int biology_complement_dna(
     if (len >= buffer_size) {
         set_biology_error("Buffer too small");
         nimcp_mutex_unlock(bio->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_complement_dna: capacity exceeded");
         return -1;
     }
 
@@ -373,6 +391,7 @@ int biology_reverse_complement(
 ) {
     if (!bio || !dna || !reverse_complement || buffer_size == 0) {
         set_biology_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_reverse_complement: required parameter is NULL (bio, dna, reverse_complement)");
         return -1;
     }
 
@@ -386,6 +405,7 @@ int biology_reverse_complement(
     if (len >= buffer_size) {
         set_biology_error("Buffer too small");
         nimcp_mutex_unlock(bio->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_reverse_complement: capacity exceeded");
         return -1;
     }
 
@@ -413,6 +433,7 @@ int biology_transcribe(
 ) {
     if (!bio || !dna || !rna || buffer_size == 0) {
         set_biology_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_transcribe: required parameter is NULL (bio, dna, rna)");
         return -1;
     }
 
@@ -426,6 +447,7 @@ int biology_transcribe(
     if (len >= buffer_size) {
         set_biology_error("Buffer too small");
         nimcp_mutex_unlock(bio->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_transcribe: capacity exceeded");
         return -1;
     }
 
@@ -459,6 +481,7 @@ int biology_translate(
 ) {
     if (!bio || !rna || !protein || buffer_size == 0) {
         set_biology_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_translate: required parameter is NULL (bio, rna, protein)");
         return -1;
     }
 
@@ -562,6 +585,7 @@ int biology_align_global(
 ) {
     if (!bio || !seq1 || !seq2 || !result) {
         set_biology_error("Null parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_align_global: required parameter is NULL (bio, seq1, seq2, result)");
         return -1;
     }
 
@@ -577,6 +601,7 @@ int biology_align_global(
     if (len1 >= BIOLOGY_MAX_SEQUENCE || len2 >= BIOLOGY_MAX_SEQUENCE) {
         set_biology_error("Sequence too long");
         nimcp_mutex_unlock(bio->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "biology_align_global: capacity exceeded");
         return -1;
     }
 
@@ -732,8 +757,14 @@ bool biology_is_silent_mutation(
     const char* original_codon,
     const char* mutated_codon
 ) {
-    if (!bio || !original_codon || !mutated_codon) return false;
-    if (strlen(original_codon) != 3 || strlen(mutated_codon) != 3) return false;
+    if (!bio || !original_codon || !mutated_codon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_is_silent_mutation: required parameter is NULL (bio, original_codon, mutated_codon)");
+        return false;
+    }
+    if (strlen(original_codon) != 3 || strlen(mutated_codon) != 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "biology_is_silent_mutation: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_is_silent_mutation", 0.0f);
@@ -757,6 +788,7 @@ phylo_tree_t* biology_create_phylo_tree(
 ) {
     if (!bio || !species_names || !distances || num_species < 2) {
         set_biology_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_create_phylo_tree: required parameter is NULL (bio, species_names, distances)");
         return NULL;
     }
 
@@ -766,6 +798,7 @@ phylo_tree_t* biology_create_phylo_tree(
 
     if (num_species > BIOLOGY_MAX_SPECIES) {
         set_biology_error("Too many species");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "biology_create_phylo_tree: validation failed");
         return NULL;
     }
 
@@ -775,6 +808,7 @@ phylo_tree_t* biology_create_phylo_tree(
     if (!tree) {
         set_biology_error("Failed to allocate tree");
         nimcp_mutex_unlock(bio->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "biology_create_phylo_tree: tree is NULL");
         return NULL;
     }
 
@@ -903,7 +937,10 @@ phylo_node_t* biology_find_mrca(
     const char* species1,
     const char* species2
 ) {
-    if (!tree || !species1 || !species2) return NULL;
+    if (!tree || !species1 || !species2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_find_mrca: required parameter is NULL (tree, species1, species2)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_find_mrca", 0.0f);
@@ -912,7 +949,10 @@ phylo_node_t* biology_find_mrca(
     phylo_node_t* n1 = find_node_by_name(tree->root, species1);
     phylo_node_t* n2 = find_node_by_name(tree->root, species2);
 
-    if (!n1 || !n2) return NULL;
+    if (!n1 || !n2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_find_mrca: required parameter is NULL (n1, n2)");
+        return NULL;
+    }
 
     /* Find MRCA by traversing ancestors */
     /* Simple O(n^2) approach */
@@ -975,7 +1015,10 @@ int biology_hardy_weinberg(
     const population_params_t* params,
     hw_equilibrium_t* result
 ) {
-    if (!bio || !params || !result) return -1;
+    if (!bio || !params || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_hardy_weinberg: required parameter is NULL (bio, params, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_hardy_weinberg", 0.0f);
@@ -1060,7 +1103,10 @@ float biology_genetic_drift(
  * ============================================================================ */
 
 int biology_set_inflammation(biology_t* bio, float level) {
-    if (!bio) return -1;
+    if (!bio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_set_inflammation: bio is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_set_inflammation", 0.0f);
@@ -1074,7 +1120,10 @@ int biology_set_inflammation(biology_t* bio, float level) {
 }
 
 int biology_set_sleep_deprivation(biology_t* bio, float level) {
-    if (!bio) return -1;
+    if (!bio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_set_sleep_deprivation: bio is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_set_sleep_deprivatio", 0.0f);
@@ -1092,7 +1141,10 @@ int biology_set_sleep_deprivation(biology_t* bio, float level) {
  * ============================================================================ */
 
 int biology_get_stats(const biology_t* bio, biology_stats_t* stats) {
-    if (!bio || !stats) return -1;
+    if (!bio || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "biology_get_stats: required parameter is NULL (bio, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     biology_heartbeat("biology_get_stats", 0.0f);

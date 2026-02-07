@@ -129,7 +129,10 @@ static uint64_t current_time_ms(void) {
  * @brief Find agent index by ID
  */
 static int find_agent_index(collective_memory_system_t* system, uint64_t agent_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_index: system is NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < system->num_agents; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -142,6 +145,7 @@ static int find_agent_index(collective_memory_system_t* system, uint64_t agent_i
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_agent_index: validation failed");
     return -1;
 }
 
@@ -149,7 +153,10 @@ static int find_agent_index(collective_memory_system_t* system, uint64_t agent_i
  * @brief Find memory index by ID
  */
 static int find_memory_index(collective_memory_system_t* system, uint64_t memory_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_index: system is NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < system->num_memories; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -162,6 +169,7 @@ static int find_memory_index(collective_memory_system_t* system, uint64_t memory
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_index: validation failed");
     return -1;
 }
 
@@ -169,7 +177,10 @@ static int find_memory_index(collective_memory_system_t* system, uint64_t memory
  * @brief Check if agent has memory
  */
 static bool agent_has_memory(collective_memory_t* memory, uint64_t agent_id) {
-    if (!memory) return false;
+    if (!memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "agent_has_memory: memory is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < memory->num_agents; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -289,6 +300,7 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
         nimcp_free(memory->agent_ids);
         nimcp_free(memory->agent_versions);
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "agent_has_memory: required parameter is NULL (memory->agent_ids, memory->agent_versions)");
         return NULL;
     }
 
@@ -402,14 +414,35 @@ NIMCP_EXPORT collective_memory_config_t collective_memory_default_config(void) {
 
 NIMCP_EXPORT bool collective_memory_config_validate(
     const collective_memory_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_memory_default_config: config is NULL");
+        return false;
+    }
 
-    if (config->sync_interval < 0.0f) return false;
-    if (config->consensus_threshold < 0.0f || config->consensus_threshold > 1.0f) return false;
-    if (config->drift_threshold < 0.0f || config->drift_threshold > 1.0f) return false;
-    if (config->consensus_method >= CONSENSUS_METHOD_COUNT) return false;
-    if (config->propagation_model >= PROPAGATION_MODEL_COUNT) return false;
-    if (config->cultural_threshold < 0.0f || config->cultural_threshold > 1.0f) return false;
+    if (config->sync_interval < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_memory_default_config: validation failed");
+        return false;
+    }
+    if (config->consensus_threshold < 0.0f || config->consensus_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_memory_default_config: validation failed");
+        return false;
+    }
+    if (config->drift_threshold < 0.0f || config->drift_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_memory_default_config: validation failed");
+        return false;
+    }
+    if (config->consensus_method >= CONSENSUS_METHOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_memory_default_config: capacity exceeded");
+        return false;
+    }
+    if (config->propagation_model >= PROPAGATION_MODEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_memory_default_config: capacity exceeded");
+        return false;
+    }
+    if (config->cultural_threshold < 0.0f || config->cultural_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_memory_default_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -435,6 +468,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     if (config) {
         if (!collective_memory_config_validate(config)) {
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: collective_memory_config_validate is NULL");
             return NULL;
         }
         system->config = *config;
@@ -450,6 +484,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     system->entanglement = entangle_graph_create(&entangle_cfg);
     if (!system->entanglement) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->entanglement is NULL");
         return NULL;
     }
 
@@ -459,6 +494,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     if (!system->memories) {
         entangle_graph_destroy(system->entanglement);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->memories is NULL");
         return NULL;
     }
     system->num_memories = 0;
@@ -470,6 +506,7 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
         nimcp_free(system->memories);
         entangle_graph_destroy(system->entanglement);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_memory_default_config: system->agents is NULL");
         return NULL;
     }
     system->num_agents = 0;
@@ -1401,26 +1438,35 @@ NIMCP_EXPORT bool collective_memory_check_cultural_threshold(
     collective_memory_system_t* system,
     uint64_t memory_id) {
 
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
 
     int mem_idx = find_memory_index(system, memory_id);
-    if (mem_idx < 0) return false;
+    if (mem_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return false;
+    }
 
     collective_memory_t* memory = system->memories[mem_idx];
 
     // Check consensus threshold
     if (memory->consensus_strength < system->config.cultural_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: validation failed");
         return false;
     }
 
     // Check minimum sharing (at least 50% of agents)
     float sharing_ratio = (float)memory->num_agents / (float)system->num_agents;
     if (sharing_ratio < 0.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
     // Check sync status
     if (memory->sync_status != SYNC_SYNCED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: validation failed");
         return false;
     }
 
@@ -1447,7 +1493,10 @@ NIMCP_EXPORT collective_memory_t* collective_memory_get(
     }
 
     int mem_idx = find_memory_index(system, memory_id);
-    if (mem_idx < 0) return NULL;
+    if (mem_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
+        return NULL;
+    }
 
     return system->memories[mem_idx];
 }

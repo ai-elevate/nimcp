@@ -110,6 +110,7 @@ gan_bridge_t* gan_bridge_create(const gan_bridge_config_t* config)
     gan_bridge_t* bridge = nimcp_calloc(1, sizeof(gan_bridge_t));
     if (!bridge) {
         set_gan_error("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -163,9 +164,13 @@ void gan_bridge_destroy(gan_bridge_t* bridge)
 
 int gan_bridge_load_model(gan_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_bridge_load_model: bridge is NULL");
+        return -1;
+    }
     if (!bridge->onnx_runtime) {
         set_gan_error("ONNX runtime not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_bridge_load_model: bridge->onnx_runtime is NULL");
         return -1;
     }
 
@@ -218,7 +223,10 @@ int gan_sample_latent(gan_bridge_t* bridge,
                        uint64_t seed,
                        gan_latent_t* latent)
 {
-    if (!bridge || !latent) return -1;
+    if (!bridge || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_sample_latent: required parameter is NULL (bridge, latent)");
+        return -1;
+    }
 
     memset(latent, 0, sizeof(gan_latent_t));
 
@@ -246,6 +254,7 @@ int gan_sample_latent(gan_bridge_t* bridge,
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gan_sample_latent: operation failed");
             return -1;
     }
 
@@ -256,7 +265,10 @@ int gan_sample_latent(gan_bridge_t* bridge,
 
     size_t total_dim = (size_t)dim * num_layers;
     latent->data = nimcp_calloc(total_dim, sizeof(float));
-    if (!latent->data) return -1;
+    if (!latent->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_sample_latent: latent->data is NULL");
+        return -1;
+    }
 
     /* Sample from standard normal */
     uint64_t state = seed;
@@ -283,8 +295,14 @@ int gan_map_z_to_w(gan_bridge_t* bridge,
                     const gan_latent_t* z,
                     gan_latent_t* w)
 {
-    if (!bridge || !z || !w) return -1;
-    if (z->space != LATENT_SPACE_Z) return -1;
+    if (!bridge || !z || !w) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_map_z_to_w: required parameter is NULL (bridge, z, w)");
+        return -1;
+    }
+    if (z->space != LATENT_SPACE_Z) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gan_map_z_to_w: validation failed");
+        return -1;
+    }
 
     memset(w, 0, sizeof(gan_latent_t));
 
@@ -294,7 +312,10 @@ int gan_map_z_to_w(gan_bridge_t* bridge,
     w->owns_data = true;
     w->data = nimcp_calloc(w->dim, sizeof(float));
 
-    if (!w->data) return -1;
+    if (!w->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_map_z_to_w: w->data is NULL");
+        return -1;
+    }
 
     /* In production: run mapping network */
     /* Placeholder: apply simple transformation */
@@ -310,8 +331,14 @@ int gan_truncate_latent(gan_bridge_t* bridge,
                          gan_latent_t* latent,
                          const truncation_params_t* params)
 {
-    if (!bridge || !latent || !params) return -1;
-    if (!bridge->mean_latent.data || !latent->data) return -1;
+    if (!bridge || !latent || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_truncate_latent: required parameter is NULL (bridge, latent, params)");
+        return -1;
+    }
+    if (!bridge->mean_latent.data || !latent->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_truncate_latent: required parameter is NULL (bridge->mean_latent, latent->data)");
+        return -1;
+    }
 
     float psi = params->psi;
     uint32_t cutoff = params->cutoff;
@@ -344,8 +371,14 @@ int gan_interpolate_latent(const gan_latent_t* a,
                             float t,
                             gan_latent_t* result)
 {
-    if (!a || !b || !result) return -1;
-    if (a->space != b->space || a->dim != b->dim) return -1;
+    if (!a || !b || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_interpolate_latent: required parameter is NULL (a, b, result)");
+        return -1;
+    }
+    if (a->space != b->space || a->dim != b->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gan_interpolate_latent: validation failed");
+        return -1;
+    }
 
     memset(result, 0, sizeof(gan_latent_t));
 
@@ -356,7 +389,10 @@ int gan_interpolate_latent(const gan_latent_t* a,
 
     size_t total_dim = (size_t)result->dim * result->num_layers;
     result->data = nimcp_calloc(total_dim, sizeof(float));
-    if (!result->data) return -1;
+    if (!result->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_interpolate_latent: result->data is NULL");
+        return -1;
+    }
 
     t = fmaxf(0.0f, fminf(1.0f, t));
 
@@ -430,6 +466,7 @@ int gan_generate(gan_bridge_t* bridge,
 {
     if (!bridge || !latent || !output) {
         set_gan_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_generate: required parameter is NULL (bridge, latent, output)");
         return -1;
     }
 
@@ -444,6 +481,7 @@ int gan_generate(gan_bridge_t* bridge,
 
     if (!output->pixels) {
         set_gan_error("Failed to allocate output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_generate: output->pixels is NULL");
         return -1;
     }
 
@@ -498,7 +536,10 @@ int gan_generate_random(gan_bridge_t* bridge,
                          uint64_t seed,
                          visual_image_t* output)
 {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_generate_random: required parameter is NULL (bridge, output)");
+        return -1;
+    }
 
     gan_latent_t z, w;
 
@@ -533,9 +574,13 @@ int gan_generate_class(gan_bridge_t* bridge,
                         uint64_t seed,
                         visual_image_t* output)
 {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_generate_class: required parameter is NULL (bridge, output)");
+        return -1;
+    }
     if (class_idx >= bridge->config.num_classes && bridge->config.num_classes > 0) {
         set_gan_error("Invalid class index");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gan_generate_class: capacity exceeded");
         return -1;
     }
 
@@ -576,9 +621,13 @@ int gan_encode(gan_bridge_t* bridge,
                 latent_space_t space,
                 gan_latent_t* latent)
 {
-    if (!bridge || !image || !latent) return -1;
+    if (!bridge || !image || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_encode: required parameter is NULL (bridge, image, latent)");
+        return -1;
+    }
     if (!bridge->encoder) {
         set_gan_error("Encoder not loaded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_encode: bridge->encoder is NULL");
         return -1;
     }
 
@@ -609,7 +658,10 @@ int gan_encode(gan_bridge_t* bridge,
 
     size_t total_dim = (size_t)dim * latent->num_layers;
     latent->data = nimcp_calloc(total_dim, sizeof(float));
-    if (!latent->data) return -1;
+    if (!latent->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_encode: latent->data is NULL");
+        return -1;
+    }
 
     /* Compute simple statistics from image */
     float mean_r = 0, mean_g = 0, mean_b = 0;
@@ -645,7 +697,10 @@ int gan_style_mix(gan_bridge_t* bridge,
                    uint32_t crossover_layer,
                    visual_image_t* output)
 {
-    if (!bridge || !source || !target || !output) return -1;
+    if (!bridge || !source || !target || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_style_mix: required parameter is NULL (bridge, source, target, output)");
+        return -1;
+    }
 
     /* Create mixed latent */
     gan_latent_t mixed;
@@ -659,7 +714,10 @@ int gan_style_mix(gan_bridge_t* bridge,
     size_t per_layer = mixed.dim;
     size_t total_dim = per_layer * mixed.num_layers;
     mixed.data = nimcp_calloc(total_dim, sizeof(float));
-    if (!mixed.data) return -1;
+    if (!mixed.data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_style_mix: mixed is NULL");
+        return -1;
+    }
 
     /* Copy from source for coarse layers, target for fine layers */
     for (uint32_t layer = 0; layer < mixed.num_layers; layer++) {
@@ -693,7 +751,10 @@ int gan_blend_styles(gan_bridge_t* bridge,
                       uint32_t num_layers,
                       gan_latent_t* result)
 {
-    if (!bridge || !latent_a || !latent_b || !layer_weights || !result) return -1;
+    if (!bridge || !latent_a || !latent_b || !layer_weights || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_blend_styles: required parameter is NULL (bridge, latent_a, latent_b, layer_weights, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(gan_latent_t));
 
@@ -705,7 +766,10 @@ int gan_blend_styles(gan_bridge_t* bridge,
     size_t per_layer = result->dim;
     size_t total_dim = per_layer * num_layers;
     result->data = nimcp_calloc(total_dim, sizeof(float));
-    if (!result->data) return -1;
+    if (!result->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_blend_styles: result->data is NULL");
+        return -1;
+    }
 
     for (uint32_t layer = 0; layer < num_layers; layer++) {
         float w = layer_weights[layer];
@@ -740,7 +804,10 @@ int gan_edit_latent(const gan_latent_t* latent,
                      float magnitude,
                      gan_latent_t* result)
 {
-    if (!latent || !direction || !result) return -1;
+    if (!latent || !direction || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_edit_latent: required parameter is NULL (latent, direction, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(gan_latent_t));
 
@@ -751,7 +818,10 @@ int gan_edit_latent(const gan_latent_t* latent,
 
     size_t total_dim = (size_t)result->dim * result->num_layers;
     result->data = nimcp_calloc(total_dim, sizeof(float));
-    if (!result->data) return -1;
+    if (!result->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gan_edit_latent: result->data is NULL");
+        return -1;
+    }
 
     /* Add direction scaled by magnitude */
     for (size_t i = 0; i < total_dim; i++) {
@@ -770,7 +840,10 @@ int gan_generate_batch(gan_bridge_t* bridge,
                         uint32_t num_latents,
                         visual_image_t* outputs)
 {
-    if (!bridge || !latents || !outputs) return -1;
+    if (!bridge || !latents || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_generate_batch: required parameter is NULL (bridge, latents, outputs)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_latents; i++) {
         int rc = gan_generate(bridge, &latents[i], &outputs[i]);
@@ -788,7 +861,10 @@ int gan_generate_interpolation(gan_bridge_t* bridge,
                                 uint32_t num_steps,
                                 visual_image_t* outputs)
 {
-    if (!bridge || !start || !end || !outputs) return -1;
+    if (!bridge || !start || !end || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gan_generate_interpolation: required parameter is NULL (bridge, start, end, outputs)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_steps; i++) {
         float t = (float)i / (float)(num_steps - 1);

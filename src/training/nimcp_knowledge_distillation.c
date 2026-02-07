@@ -293,6 +293,7 @@ void kd_destroy(kd_ctx_t* ctx) {
 
 int kd_register_teacher(kd_ctx_t* ctx, const kd_teacher_t* teacher) {
     if (!ctx || !teacher || !teacher->model || !teacher->forward) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_register_teacher: required parameter is NULL (ctx, teacher, teacher->model, teacher->forward)");
         return -1;
     }
 
@@ -300,6 +301,7 @@ int kd_register_teacher(kd_ctx_t* ctx, const kd_teacher_t* teacher) {
 
     if (ctx->num_teachers >= KD_MAX_TEACHERS) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_register_teacher: capacity exceeded");
         return -1;
     }
 
@@ -330,6 +332,7 @@ int kd_register_teacher(kd_ctx_t* ctx, const kd_teacher_t* teacher) {
 
 int kd_unregister_teacher(kd_ctx_t* ctx, uint32_t teacher_idx) {
     if (!ctx || teacher_idx >= ctx->num_teachers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_unregister_teacher: ctx is NULL");
         return -1;
     }
 
@@ -363,6 +366,7 @@ uint32_t kd_get_teacher_count(const kd_ctx_t* ctx) {
 
 int kd_set_teacher_weights(kd_ctx_t* ctx, const float* weights) {
     if (!ctx || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_set_teacher_weights: required parameter is NULL (ctx, weights)");
         return -1;
     }
 
@@ -398,10 +402,12 @@ int kd_compute_loss(
     float* loss
 ) {
     if (!ctx || !student_logits || !input || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_compute_loss: required parameter is NULL (ctx, student_logits, input, loss)");
         return -1;
     }
 
     if (ctx->num_teachers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_compute_loss: ctx->num_teachers is zero");
         return -1;  /* No teachers registered */
     }
 
@@ -432,6 +438,7 @@ int kd_compute_loss(
         nimcp_tensor_t* teacher_output = nimcp_tensor_clone(student_logits);
         if (!teacher_output) {
             nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kd_compute_loss: teacher_output is NULL");
             return -1;
         }
 
@@ -523,6 +530,7 @@ int kd_compute_loss_with_features(
     float* loss
 ) {
     if (!ctx || !student_logits || !input || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_compute_loss_with_features: required parameter is NULL (ctx, student_logits, input, loss)");
         return -1;
     }
 
@@ -546,6 +554,7 @@ int kd_compute_loss_with_features(
             nimcp_tensor_t* teacher_output = nimcp_tensor_clone(student_logits);
             if (!teacher_output) {
                 nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_compute_loss_with_features: teacher_output is NULL");
                 return -1;
             }
 
@@ -866,6 +875,7 @@ float kd_relational_loss(
 
 int kd_connect_brain_factory(kd_ctx_t* ctx, void* brain_factory) {
     if (!ctx || !brain_factory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_connect_brain_factory: required parameter is NULL (ctx, brain_factory)");
         return -1;
     }
 
@@ -878,6 +888,7 @@ int kd_connect_brain_factory(kd_ctx_t* ctx, void* brain_factory) {
 
 int kd_connect_loss_functions(kd_ctx_t* ctx, nimcp_loss_context_t* loss_ctx) {
     if (!ctx || !loss_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_connect_loss_functions: required parameter is NULL (ctx, loss_ctx)");
         return -1;
     }
 
@@ -894,6 +905,7 @@ int kd_connect_loss_functions(kd_ctx_t* ctx, nimcp_loss_context_t* loss_ctx) {
 
 int kd_get_stats(const kd_ctx_t* ctx, kd_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kd_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -941,21 +953,25 @@ int kd_validate_config(const kd_config_t* config) {
 
     /* Validate method */
     if (config->method >= KD_METHOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate temperature */
     if (config->response.temperature <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_validate_config: validation failed");
         return -1;
     }
 
     /* Validate alpha */
     if (config->response.alpha < 0.0f || config->response.alpha > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kd_validate_config: validation failed");
         return -1;
     }
 
     /* Validate loss type */
     if (config->response.loss_type >= KD_LOSS_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kd_validate_config: capacity exceeded");
         return -1;
     }
 

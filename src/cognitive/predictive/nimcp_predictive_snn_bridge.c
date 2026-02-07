@@ -225,6 +225,7 @@ predictive_snn_bridge_t* predictive_snn_create(const predictive_snn_config_t* co
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > PREDICTIVE_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_create: operation failed");
         return NULL;
     }
 
@@ -325,7 +326,10 @@ void predictive_snn_destroy(predictive_snn_bridge_t* bridge) {
 }
 
 int predictive_snn_reset(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_reset", 0.0f);
@@ -383,8 +387,14 @@ int predictive_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_encod", 0.0f);
@@ -462,7 +472,10 @@ int predictive_snn_encode_error(
     float error,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_encode_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_encod", 0.0f);
@@ -488,7 +501,10 @@ int predictive_snn_encode_model_state(
     float model_state,
     uint32_t hierarchy_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_encode_model_state: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_encod", 0.0f);
@@ -510,7 +526,10 @@ int predictive_snn_encode_free_energy(
     float free_energy,
     uint32_t energy_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_encode_free_energy: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_encod", 0.0f);
@@ -543,8 +562,14 @@ int predictive_snn_encode_free_energy(
 //=============================================================================
 
 int predictive_snn_simulate(predictive_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_simul", 0.0f);
@@ -630,7 +655,10 @@ int predictive_snn_simulate(predictive_snn_bridge_t* bridge, float duration_ms) 
 }
 
 int predictive_snn_step(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_step", 0.0f);
 
@@ -643,16 +671,23 @@ int predictive_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_forwa", 0.0f);
 
 
     int spike_count = predictive_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_forward: validation failed");
+        return -1;
+    }
 
     if (predictive_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_forward: validation failed");
         return -1;
     }
 
@@ -667,7 +702,10 @@ int predictive_snn_get_anticipation(
     predictive_snn_bridge_t* bridge,
     predictive_anticipation_t* anticipation
 ) {
-    if (!bridge || !anticipation) return -1;
+    if (!bridge || !anticipation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_get_anticipation: required parameter is NULL (bridge, anticipation)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_get_a", 0.0f);
@@ -685,8 +723,14 @@ int predictive_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_get_a", 0.0f);
@@ -711,7 +755,10 @@ bool predictive_snn_check_error(
     predictive_snn_bridge_t* bridge,
     float* error_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_check_error: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_check", 0.0f);
@@ -732,7 +779,10 @@ bool predictive_snn_check_anticipation(
     predictive_snn_bridge_t* bridge,
     float* anticipation_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_check_anticipation: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_check", 0.0f);
@@ -753,7 +803,10 @@ bool predictive_snn_check_state_change(
     predictive_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_check", 0.0f);
@@ -792,8 +845,14 @@ int predictive_snn_get_dim_state(
     uint32_t dim,
     predictive_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_get_d", 0.0f);
@@ -810,7 +869,10 @@ int predictive_snn_get_state(
     predictive_snn_bridge_t* bridge,
     predictive_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_get_s", 0.0f);
@@ -844,7 +906,10 @@ int predictive_snn_get_state(
 }
 
 int predictive_snn_get_stats(predictive_snn_bridge_t* bridge, predictive_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_get_s", 0.0f);
@@ -858,7 +923,10 @@ int predictive_snn_get_stats(predictive_snn_bridge_t* bridge, predictive_snn_sta
 }
 
 int predictive_snn_reset_stats(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_reset", 0.0f);
@@ -917,7 +985,10 @@ int predictive_snn_register_error_callback(
     predictive_snn_error_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_register_error_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_regis", 0.0f);
@@ -936,7 +1007,10 @@ int predictive_snn_register_anticipation_callback(
     predictive_snn_anticipation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_register_anticipation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_regis", 0.0f);
@@ -955,7 +1029,10 @@ int predictive_snn_register_high_anticipation_callback(
     predictive_snn_high_anticipation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_register_high_anticipation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_regis", 0.0f);
@@ -974,8 +1051,14 @@ int predictive_snn_register_high_anticipation_callback(
 //=============================================================================
 
 int predictive_snn_bio_async_connect(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_bio_a", 0.0f);
@@ -990,7 +1073,10 @@ int predictive_snn_bio_async_connect(predictive_snn_bridge_t* bridge) {
 }
 
 int predictive_snn_bio_async_disconnect(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_bio_a", 0.0f);
@@ -1004,7 +1090,10 @@ int predictive_snn_bio_async_disconnect(predictive_snn_bridge_t* bridge) {
 }
 
 bool predictive_snn_is_bio_async_connected(predictive_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     predictive_snn_bridge_heartbeat("predictive_s_predictive_snn_is_bi", 0.0f);

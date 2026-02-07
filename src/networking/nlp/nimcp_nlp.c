@@ -521,6 +521,7 @@ nlp_config_t nlp_config_default(void) {
 nlp_node_t nlp_node_create(const nlp_config_t* config) {
     if (!nlp_global_init()) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Global init failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_node_create: nlp_global_init is NULL");
         return NULL;
     }
 
@@ -561,6 +562,7 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
         nimcp_mutex_init(&node->queue_mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to init mutexes");
         nlp_node_destroy(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_node_create: operation failed");
         return NULL;
     }
 
@@ -570,6 +572,7 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     if (!node->burst_buffer) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to allocate burst buffer");
         nlp_node_destroy(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nlp_node_create: node->burst_buffer is NULL");
         return NULL;
     }
     node->burst_buffer_size = NLP_STEALTH_PACKET_SIZE * 64;
@@ -578,6 +581,7 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     if (nlp_crypto_init(node) != 0) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to initialize crypto subsystem");
         nlp_node_destroy(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nlp_node_create: validation failed");
         return NULL;
     }
 
@@ -1883,6 +1887,7 @@ static void* nlp_recv_thread(void* arg) {
     }
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Receive thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_recv_thread: operation failed");
     return NULL;
 }
 
@@ -1929,6 +1934,7 @@ static void* networking_nlp_heartbeat_thread(void* arg) {
     }
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Heartbeat thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "networking_nlp_heartbeat_thread: operation failed");
     return NULL;
 }
 
@@ -1990,6 +1996,7 @@ static void* nlp_stealth_thread(void* arg) {
     }
 
     NIMCP_LOGGING_DEBUG(NLP_MODULE_NAME, "Stealth thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_stealth_thread: operation failed");
     return NULL;
 }
 

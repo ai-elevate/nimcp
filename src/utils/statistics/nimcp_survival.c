@@ -62,11 +62,17 @@ static int compare_obs_time(const void* a, const void* b) {
     const sorted_obs_t* oa = (const sorted_obs_t*)a;
     const sorted_obs_t* ob = (const sorted_obs_t*)b;
 
-    if (oa->time < ob->time) return -1;
+    if (oa->time < ob->time) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_obs_time: validation failed");
+        return -1;
+    }
     if (oa->time > ob->time) return 1;
 
     // Events before censorings at same time
-    if (oa->event && !ob->event) return -1;
+    if (oa->event && !ob->event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compare_obs_time: ob->event is NULL");
+        return -1;
+    }
     if (!oa->event && ob->event) return 1;
 
     return 0;
@@ -126,6 +132,7 @@ bool nimcp_survival_gpu_available(void) {
 #ifdef NIMCP_ENABLE_CUDA
     return true;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_survival_gpu_available: operation failed");
     return false;
 #endif
 }
@@ -139,14 +146,21 @@ void nimcp_survival_set_gpu(bool enable) {
 //=============================================================================
 
 nimcp_survival_data_t* nimcp_survival_data_create(uint32_t n, uint32_t n_covariates) {
-    if (n == 0) return NULL;
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_survival_data_create: n is zero");
+        return NULL;
+    }
 
     nimcp_survival_data_t* data = (nimcp_survival_data_t*)nimcp_calloc(1, sizeof(nimcp_survival_data_t));
-    if (!data) return NULL;
+    if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_survival_data_create: data is NULL");
+        return NULL;
+    }
 
     data->observations = (nimcp_survival_obs_t*)nimcp_calloc(n, sizeof(nimcp_survival_obs_t));
     if (!data->observations) {
         nimcp_free(data);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_survival_data_create: data->observations is NULL");
         return NULL;
     }
 
@@ -158,6 +172,7 @@ nimcp_survival_data_t* nimcp_survival_data_create(uint32_t n, uint32_t n_covaria
         if (!data->covariates) {
             nimcp_free(data->observations);
             nimcp_free(data);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_survival_data_create: data->covariates is NULL");
             return NULL;
         }
     }
@@ -187,7 +202,10 @@ void nimcp_survival_data_destroy(nimcp_survival_data_t* data) {
 
 nimcp_km_estimator_t* nimcp_km_create(void) {
     nimcp_km_estimator_t* km = (nimcp_km_estimator_t*)nimcp_calloc(1, sizeof(nimcp_km_estimator_t));
-    if (!km) return NULL;
+    if (!km) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_km_create: km is NULL");
+        return NULL;
+    }
 
     km->median_survival = NAN;
     km->median_ci_lower = NAN;
@@ -536,11 +554,15 @@ nimcp_survival_result_t nimcp_km_rmst(
 
 nimcp_cox_model_t* nimcp_cox_create(uint32_t n_covariates) {
     if (n_covariates == 0 || n_covariates > NIMCP_SURVIVAL_MAX_COVARIATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cox_create: n_covariates is zero");
         return NULL;
     }
 
     nimcp_cox_model_t* cox = (nimcp_cox_model_t*)nimcp_calloc(1, sizeof(nimcp_cox_model_t));
-    if (!cox) return NULL;
+    if (!cox) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cox_create: cox is NULL");
+        return NULL;
+    }
 
     cox->coefficients = (nimcp_cox_coefficient_t*)nimcp_calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
     cox->variance_matrix = (float*)nimcp_calloc((size_t)n_covariates * n_covariates, sizeof(float));
@@ -549,6 +571,7 @@ nimcp_cox_model_t* nimcp_cox_create(uint32_t n_covariates) {
         nimcp_free(cox->coefficients);
         nimcp_free(cox->variance_matrix);
         nimcp_free(cox);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cox_create: required parameter is NULL (cox->coefficients, cox->variance_matrix)");
         return NULL;
     }
 
@@ -681,7 +704,10 @@ static int cholesky_invert(double* A, uint32_t n) {
                 sum -= A[i * n + k] * A[j * n + k];
             }
             if (i == j) {
-                if (sum <= 0) return -1;  // Not positive definite
+                if (sum <= 0) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_invert: validation failed");
+                    return -1;
+                }
                 A[i * n + i] = sqrt(sum);
             } else {
                 A[i * n + j] = sum / A[j * n + j];
@@ -1536,16 +1562,21 @@ void nimcp_logrank_free(nimcp_logrank_result_t* result) {
 
 nimcp_cif_estimator_t* nimcp_cif_create(uint32_t n_event_types) {
     if (n_event_types == 0 || n_event_types > NIMCP_SURVIVAL_MAX_EVENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cif_create: n_event_types is zero");
         return NULL;
     }
 
     nimcp_cif_estimator_t* cif = (nimcp_cif_estimator_t*)nimcp_calloc(1, sizeof(nimcp_cif_estimator_t));
-    if (!cif) return NULL;
+    if (!cif) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cif_create: cif is NULL");
+        return NULL;
+    }
 
     cif->n_event_types = n_event_types;
     cif->n_events = (uint32_t*)nimcp_calloc(n_event_types, sizeof(uint32_t));
     if (!cif->n_events) {
         nimcp_free(cif);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cif_create: cif->n_events is NULL");
         return NULL;
     }
 
@@ -1733,10 +1764,16 @@ float nimcp_cif_at(const nimcp_cif_estimator_t* cif, float t, uint8_t event_type
 //=============================================================================
 
 nimcp_fine_gray_model_t* nimcp_fine_gray_create(uint32_t n_covariates, uint8_t target_event) {
-    if (n_covariates == 0 || target_event == 0) return NULL;
+    if (n_covariates == 0 || target_event == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_fine_gray_create: n_covariates is zero");
+        return NULL;
+    }
 
     nimcp_fine_gray_model_t* fg = (nimcp_fine_gray_model_t*)nimcp_calloc(1, sizeof(nimcp_fine_gray_model_t));
-    if (!fg) return NULL;
+    if (!fg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_fine_gray_create: fg is NULL");
+        return NULL;
+    }
 
     fg->coefficients = (nimcp_cox_coefficient_t*)nimcp_calloc(n_covariates, sizeof(nimcp_cox_coefficient_t));
     fg->variance_matrix = (float*)nimcp_calloc((size_t)n_covariates * n_covariates, sizeof(float));
@@ -1745,6 +1782,7 @@ nimcp_fine_gray_model_t* nimcp_fine_gray_create(uint32_t n_covariates, uint8_t t
         nimcp_free(fg->coefficients);
         nimcp_free(fg->variance_matrix);
         nimcp_free(fg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fine_gray_create: required parameter is NULL (fg->coefficients, fg->variance_matrix)");
         return NULL;
     }
 

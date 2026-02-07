@@ -340,7 +340,10 @@ int wellbeing_immune_apply_cytokine_effects(wellbeing_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_wellbeing_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_app", 0.0f);
@@ -397,7 +400,10 @@ int wellbeing_immune_apply_inflammation_effects(wellbeing_immune_bridge_t* bridg
 
     }
     if (!bridge->enable_inflammation_distress) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_app", 0.0f);
@@ -525,7 +531,10 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_wellbeing_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_trigger_from_distress: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_tri", 0.0f);
@@ -533,8 +542,35 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
-    /* Get distress assessment */
+    /* Get distress assessment from introspection */
     distress_assessment_t assessment = wellbeing_assess_distress(bridge->introspection_ctx);
+
+    /* Also consider immune system inflammation as a distress source.
+     * WHY:  High inflammation is itself a physiological stressor that
+     *        should be reflected in distress assessment even when
+     *        introspection context reports low distress.
+     * HOW:  Map inflammation level to distress score and take the max. */
+    brain_inflammation_level_t inflammation =
+        brain_immune_get_inflammation_level(bridge->immune_system);
+    if (inflammation >= INFLAMMATION_REGIONAL) {
+        float immune_distress = 0.0f;
+        switch (inflammation) {
+            case INFLAMMATION_REGIONAL:  immune_distress = 0.6f; break;
+            case INFLAMMATION_SYSTEMIC:  immune_distress = 0.8f; break;
+            case INFLAMMATION_STORM:     immune_distress = 1.0f; break;
+            default:                     immune_distress = 0.0f; break;
+        }
+        if (immune_distress > assessment.distress_score) {
+            assessment.distress_score = immune_distress;
+        }
+        if (inflammation >= INFLAMMATION_SYSTEMIC &&
+            assessment.severity < DISTRESS_SEVERITY_SEVERE) {
+            assessment.severity = DISTRESS_SEVERITY_SEVERE;
+        } else if (inflammation >= INFLAMMATION_REGIONAL &&
+                   assessment.severity < DISTRESS_SEVERITY_MODERATE) {
+            assessment.severity = DISTRESS_SEVERITY_MODERATE;
+        }
+    }
 
     /* Update trigger state */
     bridge->wellbeing_trigger.severity = assessment.severity;
@@ -594,7 +630,10 @@ int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* br
 
     }
     if (!bridge->enable_positive_immune_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_boost_from_positive_wellbeing: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_boo", 0.0f);
@@ -655,7 +694,10 @@ int wellbeing_immune_boost_memory_formation(
 
     }
     if (!bridge->enable_flourishing_memory_boost) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_boost_memory_formation: bridge->immune_system is NULL");
+        return -1;
+    }
     if (!bridge->positive_boost.is_flourishing) return 0; /* Only boost when flourishing */
 
     /* Phase 8: Heartbeat at operation start */
@@ -725,7 +767,10 @@ int wellbeing_immune_get_cytokine_effects(
     const wellbeing_immune_bridge_t* bridge,
     cytokine_wellbeing_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->cytokine_effects;
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_get", 0.0f);
@@ -738,7 +783,10 @@ int wellbeing_immune_get_inflammation_state(
     const wellbeing_immune_bridge_t* bridge,
     inflammation_wellbeing_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->inflammation_state;
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_get", 0.0f);
@@ -780,7 +828,10 @@ distress_assessment_t wellbeing_immune_get_distress_assessment(
 }
 
 bool wellbeing_immune_is_inflammation_distress(const wellbeing_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_is_inflammation_distress: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_is_", 0.0f);
 
@@ -800,7 +851,10 @@ float wellbeing_immune_get_life_satisfaction_penalty(
 }
 
 bool wellbeing_immune_is_flourishing(const wellbeing_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_is_flourishing: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_is_", 0.0f);
 
@@ -907,7 +961,10 @@ int wellbeing_immune_disconnect_bio_async(wellbeing_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool wellbeing_immune_is_bio_async_connected(const wellbeing_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wellbeing_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     wellbeing_immune_bridge_heartbeat("wellbeing_im_wellbeing_immune_is_", 0.0f);
 

@@ -64,7 +64,10 @@ static lang_bio_subscription_t* find_subscription(
     language_bio_bridge_t* bridge,
     bio_module_id_t module_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: bridge is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id &&
@@ -72,6 +75,7 @@ static lang_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: bridge is NULL");
     return NULL;
 }
 
@@ -114,7 +118,10 @@ static void init_message_header(
  * ============================================================================ */
 
 int language_bio_bridge_default_config(language_bio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -162,6 +169,7 @@ language_bio_bridge_t* language_bio_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -192,7 +200,10 @@ int language_bio_bridge_connect(
     language_orchestrator_t* orchestrator,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->orchestrator = orchestrator;
     bridge->router = router;
@@ -213,7 +224,10 @@ int language_bio_bridge_connect(
 }
 
 int language_bio_bridge_disconnect(language_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->router && bridge->module_ctx) {
         bio_router_unregister_module(bridge->module_ctx);
@@ -245,7 +259,10 @@ int language_bio_bridge_process_inbox(
     language_bio_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
 
@@ -265,7 +282,10 @@ int language_bio_bridge_update(
     language_bio_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_comprehension_broadcast_ms += delta_ms;
     bridge->time_since_production_broadcast_ms += delta_ms;
@@ -285,7 +305,10 @@ int language_bio_bridge_broadcast_utterance_start(
     language_input_type_t input_type,
     language_mode_t mode
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_utterance_start: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lang_bio_utterance_msg_t msg = {0};
     init_message_header(
@@ -319,7 +342,10 @@ int language_bio_bridge_broadcast_utterance_end(
     language_bio_bridge_t* bridge,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_utterance_end: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lang_bio_utterance_msg_t msg = {0};
     init_message_header(
@@ -353,7 +379,10 @@ int language_bio_bridge_broadcast_phoneme(
     const language_phoneme_t* phoneme,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected || !phoneme) return -1;
+    if (!bridge || !bridge->connected || !phoneme) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_phoneme: required parameter is NULL (bridge, bridge->connected, phoneme)");
+        return -1;
+    }
     if (!bridge->config.enable_phonological_broadcast) return 0;
 
     lang_bio_phoneme_msg_t msg = {0};
@@ -390,7 +419,10 @@ int language_bio_bridge_broadcast_word(
     const language_word_t* word,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected || !word) return -1;
+    if (!bridge || !bridge->connected || !word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_word: required parameter is NULL (bridge, bridge->connected, word)");
+        return -1;
+    }
     if (!bridge->config.enable_comprehension_routing) return 0;
 
     lang_bio_word_msg_t msg = {0};
@@ -429,7 +461,10 @@ int language_bio_bridge_broadcast_concept(
     const language_concept_t* concept,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected || !concept) return -1;
+    if (!bridge || !bridge->connected || !concept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_concept: required parameter is NULL (bridge, bridge->connected, concept)");
+        return -1;
+    }
     if (!bridge->config.enable_semantic_broadcast) return 0;
 
     lang_bio_concept_msg_t msg = {0};
@@ -468,7 +503,10 @@ int language_bio_bridge_broadcast_comprehension_complete(
     language_bio_bridge_t* bridge,
     const language_comprehension_result_t* result
 ) {
-    if (!bridge || !bridge->connected || !result) return -1;
+    if (!bridge || !bridge->connected || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_comprehension_complete: required parameter is NULL (bridge, bridge->connected, result)");
+        return -1;
+    }
     if (!bridge->config.enable_comprehension_routing) return 0;
 
     lang_bio_comprehension_complete_msg_t msg = {0};
@@ -545,7 +583,10 @@ int language_bio_bridge_broadcast_production_complete(
     language_bio_bridge_t* bridge,
     const language_production_plan_t* plan
 ) {
-    if (!bridge || !bridge->connected || !plan) return -1;
+    if (!bridge || !bridge->connected || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_production_complete: required parameter is NULL (bridge, bridge->connected, plan)");
+        return -1;
+    }
     if (!bridge->config.enable_production_routing) return 0;
 
     lang_bio_production_complete_msg_t msg = {0};
@@ -588,7 +629,10 @@ int language_bio_bridge_broadcast_semantic_anomaly(
     float anomaly_magnitude,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_semantic_anomaly: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_anomaly_routing) return 0;
 
     lang_bio_anomaly_msg_t msg = {0};
@@ -631,7 +675,10 @@ int language_bio_bridge_broadcast_syntactic_anomaly(
     float anomaly_magnitude,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_syntactic_anomaly: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_anomaly_routing) return 0;
 
     lang_bio_anomaly_msg_t msg = {0};
@@ -673,7 +720,10 @@ int language_bio_bridge_broadcast_ambiguity(
     uint32_t num_interpretations,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_ambiguity: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_anomaly_routing) return 0;
 
     lang_bio_anomaly_msg_t msg = {0};
@@ -710,7 +760,10 @@ int language_bio_bridge_broadcast_error(
     const char* message,
     lang_region_id_t source_region
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_error: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lang_bio_error_msg_t msg = {0};
     init_message_header(
@@ -752,9 +805,15 @@ int language_bio_bridge_broadcast_semantic_state(
     float context_coherence,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_semantic_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_semantic_broadcast) return 0;
-    if (!concept_ids || !activations || concept_count == 0) return -1;
+    if (!concept_ids || !activations || concept_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_semantic_state: required parameter is NULL (concept_ids, activations)");
+        return -1;
+    }
 
     lang_bio_semantic_broadcast_msg_t msg = {0};
     init_message_header(
@@ -791,7 +850,10 @@ int language_bio_bridge_broadcast_syntactic_state(
     float parse_probability,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_syntactic_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_syntactic_broadcast) return 0;
 
     lang_bio_syntactic_broadcast_msg_t msg = {0};
@@ -833,7 +895,10 @@ int language_bio_bridge_sync_regions(
     uint32_t data_size,
     uint64_t utterance_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_sync_regions: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_region_sync) return 0;
 
     lang_bio_region_sync_msg_t msg = {0};
@@ -867,7 +932,10 @@ int language_bio_bridge_arcuate_transfer(
     const void* data,
     uint32_t data_size
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_arcuate_transfer: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_region_sync) return 0;
 
     lang_region_id_t source = to_broca ? LANG_REGION_WERNICKE : LANG_REGION_BROCA;
@@ -908,7 +976,10 @@ int language_bio_bridge_broadcast_state_change(
     language_state_t new_state,
     language_mode_t mode
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_broadcast_state_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lang_bio_state_change_msg_t msg = {0};
     init_message_header(
@@ -943,7 +1014,10 @@ int language_bio_bridge_subscribe(
     bio_module_id_t module_id,
     uint64_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_subscribe: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     lang_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -983,7 +1057,10 @@ int language_bio_bridge_unsubscribe(
     language_bio_bridge_t* bridge,
     bio_module_id_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_unsubscribe: bridge is NULL");
+        return -1;
+    }
 
     lang_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) {
@@ -1002,7 +1079,10 @@ int language_bio_bridge_update_subscription(
     bio_module_id_t module_id,
     uint64_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     lang_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) {
@@ -1029,14 +1109,20 @@ int language_bio_bridge_get_stats(
     const language_bio_bridge_t* bridge,
     language_bio_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int language_bio_bridge_reset_stats(language_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_bio_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

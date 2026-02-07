@@ -112,12 +112,14 @@ spike_train_t* spike_train_create(uint32_t capacity)
     // Guard: Validate capacity
     if (capacity == 0 || capacity > 1000000) {
         LOG_ERROR("Invalid spike train capacity: %u (must be 1-1000000)", capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spike_train_create: capacity is zero");
         return NULL;
     }
 
     spike_train_t* train = (spike_train_t*)nimcp_calloc(1, sizeof(spike_train_t));
     if (!train) {
         LOG_ERROR("Failed to allocate spike train structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_train_create: train is NULL");
         return NULL;
     }
 
@@ -125,6 +127,7 @@ spike_train_t* spike_train_create(uint32_t capacity)
     if (!train->events) {
         LOG_ERROR("Failed to allocate spike train events buffer (capacity=%u)", capacity);
         nimcp_free(train);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_train_create: train->events is NULL");
         return NULL;
     }
 
@@ -203,6 +206,7 @@ bool spike_train_add(spike_train_t* train, uint64_t timestamp, float amplitude)
     // FIX:  Removed timestamp == 0 check (Issue #SPIKE-003)
     if (!train) {
         LOG_ERROR("spike_train_add: train is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_train_add: train is NULL");
         return false;
     }
 
@@ -280,6 +284,7 @@ bool spike_train_get_spike(const spike_train_t* train, uint32_t index,
 {
     // Guard: Validate inputs
     if (!train || !event || index >= train->count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_train_get_spike: required parameter is NULL (train, event)");
         return false;
     }
 
@@ -382,6 +387,7 @@ spike_queue_t* spike_queue_create(uint32_t capacity, bool gpu_enabled)
 {
     // Guard: Validate capacity
     if (capacity == 0 || capacity > 10000000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_queue_create: capacity is zero");
         return NULL;
     }
 
@@ -398,6 +404,7 @@ spike_queue_t* spike_queue_create(uint32_t capacity, bool gpu_enabled)
     queue->events = (spike_event_t*)nimcp_calloc(capacity, sizeof(spike_event_t));
     if (!queue->events) {
         nimcp_free(queue);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_queue_create: queue->events is NULL");
         return NULL;
     }
 
@@ -453,6 +460,7 @@ bool spike_queue_push(spike_queue_t* queue, const spike_event_t* event)
 {
     // Guard: Validate inputs
     if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_queue_push: required parameter is NULL (queue, event)");
         return false;
     }
 
@@ -463,12 +471,14 @@ bool spike_queue_push(spike_queue_t* queue, const spike_event_t* event)
     if (isnan(event->amplitude) || isinf(event->amplitude)) {
         LOG_WARN("Rejecting spike with invalid amplitude: source=%u target=%u amplitude=%f",
                  event->source_id, event->target_id, event->amplitude);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spike_queue_push: validation failed");
         return false;
     }
 
     // Check if queue is full
     uint32_t current_count = ATOMIC_LOAD(&queue->count);
     if (current_count >= queue->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "spike_queue_push: capacity exceeded");
         return false;  // Queue full
     }
 
@@ -492,6 +502,7 @@ bool spike_queue_pop(spike_queue_t* queue, spike_event_t* event)
 {
     // Guard: Validate inputs
     if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_queue_pop: required parameter is NULL (queue, event)");
         return false;
     }
 
@@ -505,6 +516,7 @@ bool spike_queue_pop(spike_queue_t* queue, spike_event_t* event)
     do {
         old_count = ATOMIC_LOAD(&queue->count);
         if (old_count == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spike_queue_pop: old_count is zero");
             return false;  // Queue empty
         }
     } while (!ATOMIC_COMPARE_EXCHANGE(&queue->count, &old_count, old_count - 1));
@@ -546,11 +558,13 @@ bool spike_queue_sync_gpu(spike_queue_t* queue, bool direction)
 {
     // Guard: Validate queue
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_queue_sync_gpu: queue is NULL");
         return false;
     }
 
     // Guard: Check if GPU enabled
     if (!queue->gpu_enabled || !queue->gpu_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_queue_sync_gpu: required parameter is NULL (queue->gpu_enabled, queue->gpu_ptr)");
         return false;  // GPU not enabled/available
     }
 
@@ -570,6 +584,7 @@ bool spike_queue_sync_gpu(spike_queue_t* queue, bool direction)
     return true;
     #else
     (void)direction;  // Unused
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spike_queue_sync_gpu: operation failed");
     return false;  // CUDA not available
     #endif
 }

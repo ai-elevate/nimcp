@@ -115,6 +115,7 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
         nimcp_free(olfact->mitral_cells);
         nimcp_free(olfact->glomeruli);
         nimcp_free(olfact);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_create: olfact->odor_memories is NULL");
         return NULL;
     }
     olfact->num_memories = 0;
@@ -147,7 +148,10 @@ void olfact_destroy(nimcp_olfactory_t* olfact) {
 }
 
 int olfact_reset(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_reset: olfact is NULL");
+        return -1;
+    }
     memset(olfact->piriform_activation, 0, olfact->num_piriform * sizeof(float));
     olfact->adaptation_level = 0.0f;
     olfact->sniff_state.phase = SNIFF_PHASE_BASELINE;
@@ -160,7 +164,10 @@ int olfact_reset(nimcp_olfactory_t* olfact) {
 }
 
 int olfact_update(nimcp_olfactory_t* olfact, float dt) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_update: olfact is NULL");
+        return -1;
+    }
 
     /* Update sniff cycle */
     if (olfact->config.enable_sniff_coupling) {
@@ -198,7 +205,10 @@ int olfact_process_odor(nimcp_olfactory_t* olfact,
                         const float* receptor_pattern,
                         uint32_t pattern_size,
                         float concentration) {
-    if (!olfact || !receptor_pattern) return -1;
+    if (!olfact || !receptor_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_update: required parameter is NULL (olfact, receptor_pattern)");
+        return -1;
+    }
     if (pattern_size > OLFACT_MAX_RECEPTORS) pattern_size = OLFACT_MAX_RECEPTORS;
 
     olfact->status = OLFACT_STATUS_PROCESSING;
@@ -259,7 +269,10 @@ int olfact_process_odor(nimcp_olfactory_t* olfact,
 }
 
 int olfact_identify_odor(nimcp_olfactory_t* olfact, olfact_odor_id_t* result) {
-    if (!olfact || !result) return -1;
+    if (!olfact || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_identify_odor: required parameter is NULL (olfact, result)");
+        return -1;
+    }
 
     olfact->status = OLFACT_STATUS_IDENTIFYING;
 
@@ -339,7 +352,10 @@ float olfact_compare_odors(nimcp_olfactory_t* olfact,
 }
 
 int olfact_start_sniff(nimcp_olfactory_t* olfact, float strength) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_start_sniff: olfact is NULL");
+        return -1;
+    }
     olfact->sniff_state.sniff_strength = strength;
     olfact->sniff_state.cycle_position = 0.0f;
     olfact->sniff_state.phase = SNIFF_PHASE_INSPIRATION;
@@ -368,8 +384,14 @@ int olfact_store_memory(nimcp_olfactory_t* olfact,
                         float emotional_valence,
                         float emotional_arousal,
                         const char* context) {
-    if (!olfact || !odor) return -1;
-    if (olfact->num_memories >= olfact->max_memories) return -1;
+    if (!olfact || !odor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_get_sniff_modulation: required parameter is NULL (olfact, odor)");
+        return -1;
+    }
+    if (olfact->num_memories >= olfact->max_memories) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "olfact_get_sniff_modulation: capacity exceeded");
+        return -1;
+    }
 
     olfact_memory_t* mem = &olfact->odor_memories[olfact->num_memories];
     mem->memory_id = olfact->num_memories;
@@ -395,21 +417,30 @@ float olfact_get_adaptation_level(nimcp_olfactory_t* olfact) {
 }
 
 int olfact_reset_adaptation(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_reset_adaptation: olfact is NULL");
+        return -1;
+    }
     olfact->adaptation_level = 0.0f;
     return 0;
 }
 
 /* Bridge initialization */
 int olfact_init_prime_resonance_bridge(nimcp_olfactory_t* olfact, void* pr_memory) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_prime_resonance_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->prime_resonance_bridge.pr_memory_ctx = pr_memory;
     olfact->prime_resonance_bridge.initialized = true;
     return 0;
 }
 
 int olfact_init_immune_bridge(nimcp_olfactory_t* olfact, void* immune) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_immune_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->immune_bridge.immune_system = immune;
     olfact->immune_bridge.initialized = true;
     olfact->immune_bridge.health_score = 1.0f;
@@ -417,35 +448,50 @@ int olfact_init_immune_bridge(nimcp_olfactory_t* olfact, void* immune) {
 }
 
 int olfact_init_amygdala_bridge(nimcp_olfactory_t* olfact, void* amygdala) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_amygdala_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->amygdala_bridge.amygdala = amygdala;
     olfact->amygdala_bridge.initialized = true;
     return 0;
 }
 
 int olfact_init_entorhinal_bridge(nimcp_olfactory_t* olfact, void* entorhinal) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_entorhinal_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->entorhinal_bridge.entorhinal = entorhinal;
     olfact->entorhinal_bridge.initialized = true;
     return 0;
 }
 
 int olfact_init_ofc_bridge(nimcp_olfactory_t* olfact, void* ofc) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_ofc_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->ofc_bridge.orbitofrontal = ofc;
     olfact->ofc_bridge.initialized = true;
     return 0;
 }
 
 int olfact_init_hypothalamus_bridge(nimcp_olfactory_t* olfact, void* hypothalamus) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_hypothalamus_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->hypothalamus_bridge.hypothalamus = hypothalamus;
     olfact->hypothalamus_bridge.initialized = true;
     return 0;
 }
 
 int olfact_init_logging_bridge(nimcp_olfactory_t* olfact, void* logger) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_logging_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->logging_bridge.logger = logger;
     olfact->logging_bridge.initialized = true;
     strncpy(olfact->logging_bridge.log_prefix, "OLFACT", sizeof(olfact->logging_bridge.log_prefix) - 1);
@@ -453,7 +499,10 @@ int olfact_init_logging_bridge(nimcp_olfactory_t* olfact, void* logger) {
 }
 
 int olfact_init_snn_bridge(nimcp_olfactory_t* olfact, void* snn) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_snn_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->snn_bridge.snn = snn;
     olfact->snn_bridge.neuron_ids = NULL;
     olfact->snn_bridge.num_mapped_neurons = 0;
@@ -463,7 +512,10 @@ int olfact_init_snn_bridge(nimcp_olfactory_t* olfact, void* snn) {
 }
 
 int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, void* stdp) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_plasticity_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->plasticity_bridge.plasticity_coordinator = plasticity;
     olfact->plasticity_bridge.stdp_context = stdp;
     olfact->plasticity_bridge.learning_rate = 0.01f;
@@ -474,7 +526,10 @@ int olfact_init_plasticity_bridge(nimcp_olfactory_t* olfact, void* plasticity, v
 }
 
 int olfact_init_bio_async_bridge(nimcp_olfactory_t* olfact, void* runtime) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_init_bio_async_bridge: olfact is NULL");
+        return -1;
+    }
     olfact->bio_async_embed.runtime = runtime;
     olfact->bio_async_embed.subscription_mask = 0xFFFFFFFF; /* Subscribe to all */
     olfact->bio_async_embed.messages_sent = 0;
@@ -485,17 +540,26 @@ int olfact_init_bio_async_bridge(nimcp_olfactory_t* olfact, void* runtime) {
 
 /* Bidirectional flow */
 int olfact_process_incoming(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_process_incoming: olfact is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int olfact_send_outgoing(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_send_outgoing: olfact is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int olfact_bidirectional_update(nimcp_olfactory_t* olfact, float dt) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_bidirectional_update: olfact is NULL");
+        return -1;
+    }
     olfact_process_incoming(olfact);
     olfact_update(olfact, dt);
     olfact_send_outgoing(olfact);
@@ -503,21 +567,30 @@ int olfact_bidirectional_update(nimcp_olfactory_t* olfact, float dt) {
 }
 
 int olfact_sync_amygdala(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_sync_amygdala: olfact is NULL");
+        return -1;
+    }
     if (!olfact->amygdala_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with amygdala for emotional associations */
     return 0;
 }
 
 int olfact_sync_entorhinal(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_sync_entorhinal: olfact is NULL");
+        return -1;
+    }
     if (!olfact->entorhinal_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with entorhinal cortex for memory encoding */
     return 0;
 }
 
 int olfact_sync_ofc(nimcp_olfactory_t* olfact) {
-    if (!olfact) return -1;
+    if (!olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_sync_ofc: olfact is NULL");
+        return -1;
+    }
     if (!olfact->ofc_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with orbitofrontal cortex for valuation */
     return 0;
@@ -561,7 +634,10 @@ const char* olfact_status_string(olfact_status_t status) {
 }
 
 int olfact_get_stats(nimcp_olfactory_t* olfact, olfact_stats_t* stats) {
-    if (!olfact || !stats) return -1;
+    if (!olfact || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_get_stats: required parameter is NULL (olfact, stats)");
+        return -1;
+    }
     stats->odors_detected = olfact->updates_processed;
     stats->odors_identified = olfact->num_known_odors;
     stats->memories_stored = olfact->num_memories;
@@ -620,9 +696,15 @@ size_t olfact_get_serialization_size(nimcp_olfactory_t* olfact) {
 }
 
 int olfact_serialize(nimcp_olfactory_t* olfact, uint8_t* buffer, size_t size, size_t* written) {
-    if (!olfact || !buffer || !written) return -1;
+    if (!olfact || !buffer || !written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_serialize: required parameter is NULL (olfact, buffer, written)");
+        return -1;
+    }
     size_t needed = olfact_get_serialization_size(olfact);
-    if (size < needed) return -1;
+    if (size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "olfact_serialize: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(buffer + offset, &olfact->config, sizeof(olfact_config_t));
@@ -642,8 +724,14 @@ int olfact_serialize(nimcp_olfactory_t* olfact, uint8_t* buffer, size_t size, si
 }
 
 nimcp_olfactory_t* olfact_deserialize(const uint8_t* buffer, size_t size, size_t* bytes_read) {
-    if (!buffer || !bytes_read) return NULL;
-    if (size < sizeof(olfact_config_t) + sizeof(uint32_t)) return NULL;
+    if (!buffer || !bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact_deserialize: required parameter is NULL (buffer, bytes_read)");
+        return NULL;
+    }
+    if (size < sizeof(olfact_config_t) + sizeof(uint32_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "olfact_deserialize: validation failed");
+        return NULL;
+    }
 
     size_t offset = 0;
     olfact_config_t config;

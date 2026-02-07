@@ -244,6 +244,7 @@ const brain_kg_node_t* kg_get_node_safe(
     brain_kg_node_id_t id)
 {
     if (!kg_is_available(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_node_safe: kg_is_available is NULL");
         return NULL;
     }
     return brain_kg_get_node(ctx->kg, id);
@@ -252,6 +253,7 @@ const brain_kg_node_t* kg_get_node_safe(
 brain_kg_node_list_t* kg_get_neighbors_safe(const kg_module_context_t* ctx)
 {
     if (!kg_has_node(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_neighbors_safe: kg_has_node is NULL");
         return NULL;
     }
     return brain_kg_get_neighbors(ctx->kg, ctx->self_node_id);
@@ -260,6 +262,7 @@ brain_kg_node_list_t* kg_get_neighbors_safe(const kg_module_context_t* ctx)
 brain_kg_edge_list_t* kg_get_outgoing_safe(const kg_module_context_t* ctx)
 {
     if (!kg_has_node(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_outgoing_safe: kg_has_node is NULL");
         return NULL;
     }
     return brain_kg_get_outgoing(ctx->kg, ctx->self_node_id);
@@ -268,6 +271,7 @@ brain_kg_edge_list_t* kg_get_outgoing_safe(const kg_module_context_t* ctx)
 brain_kg_edge_list_t* kg_get_incoming_safe(const kg_module_context_t* ctx)
 {
     if (!kg_has_node(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_incoming_safe: kg_has_node is NULL");
         return NULL;
     }
     return brain_kg_get_incoming(ctx->kg, ctx->self_node_id);
@@ -278,6 +282,7 @@ bool kg_are_connected_safe(
     brain_kg_node_id_t target)
 {
     if (!kg_has_node(ctx) || target == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_are_connected_safe: kg_has_node is NULL");
         return false;
     }
     return brain_kg_are_connected(ctx->kg, ctx->self_node_id, target);
@@ -288,6 +293,7 @@ brain_kg_node_list_t* kg_get_nodes_by_type_safe(
     brain_kg_node_type_t type)
 {
     if (!kg_is_available(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_nodes_by_type_safe: kg_is_available is NULL");
         return NULL;
     }
     return brain_kg_get_nodes_by_type(ctx->kg, type);
@@ -298,6 +304,7 @@ brain_kg_node_list_t* kg_get_nodes_by_state_safe(
     brain_kg_node_state_t state)
 {
     if (!kg_is_available(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_nodes_by_state_safe: kg_is_available is NULL");
         return NULL;
     }
 
@@ -319,6 +326,7 @@ brain_kg_node_list_t* kg_get_nodes_by_state_safe(
 
     if (matching == 0) {
         brain_kg_node_list_destroy(all_nodes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_get_nodes_by_state_safe: matching is zero");
         return NULL;
     }
 
@@ -326,6 +334,7 @@ brain_kg_node_list_t* kg_get_nodes_by_state_safe(
     brain_kg_node_list_t* result = nimcp_malloc(sizeof(brain_kg_node_list_t));
     if (!result) {
         brain_kg_node_list_destroy(all_nodes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_get_nodes_by_state_safe: result is NULL");
         return NULL;
     }
 
@@ -333,6 +342,7 @@ brain_kg_node_list_t* kg_get_nodes_by_state_safe(
     if (!result->nodes) {
         nimcp_free(result);
         brain_kg_node_list_destroy(all_nodes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_get_nodes_by_state_safe: result->nodes is NULL");
         return NULL;
     }
 
@@ -355,6 +365,7 @@ brain_kg_path_t* kg_find_path_safe(
     brain_kg_node_id_t target)
 {
     if (!kg_has_node(ctx) || target == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_find_path_safe: kg_has_node is NULL");
         return NULL;
     }
     return brain_kg_find_path(ctx->kg, ctx->self_node_id, target);
@@ -365,6 +376,7 @@ brain_kg_node_list_t* kg_get_reachable_safe(
     uint32_t max_depth)
 {
     if (!kg_has_node(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_reachable_safe: kg_has_node is NULL");
         return NULL;
     }
     return brain_kg_get_reachable(ctx->kg, ctx->self_node_id, max_depth);
@@ -435,6 +447,7 @@ int kg_get_stats_safe(
     brain_kg_stats_t* stats)
 {
     if (!kg_is_available(ctx) || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_get_stats_safe: required parameter is NULL (kg_is_available, stats)");
         return -1;
     }
     return brain_kg_get_stats(ctx->kg, stats);

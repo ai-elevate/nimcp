@@ -313,6 +313,7 @@ static bool queue_push(pr_bio_bridge_t bridge, const pr_bio_queue_entry_t* entry
     if (bridge->queue_size >= bridge->queue_capacity) {
         /* Try to grow queue */
         if (bridge->queue_capacity >= bridge->config.max_pending_messages) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
             return false;  /* At max capacity */
         }
         size_t new_cap = bridge->queue_capacity * PR_BIO_QUEUE_GROWTH_FACTOR;
@@ -322,6 +323,7 @@ static bool queue_push(pr_bio_bridge_t bridge, const pr_bio_queue_entry_t* entry
         pr_bio_queue_entry_t* new_queue = (pr_bio_queue_entry_t*)nimcp_realloc(
             bridge->queue, new_cap * sizeof(pr_bio_queue_entry_t));
         if (!new_queue) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "queue_push: new_queue is NULL");
             return false;
         }
         bridge->queue = new_queue;
@@ -339,6 +341,7 @@ static bool queue_push(pr_bio_bridge_t bridge, const pr_bio_queue_entry_t* entry
  */
 static bool queue_pop(pr_bio_bridge_t bridge, pr_bio_queue_entry_t* entry) {
     if (bridge->queue_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_pop: bridge->queue_size is zero");
         return false;
     }
 
@@ -374,11 +377,23 @@ NIMCP_EXPORT pr_bio_bridge_config_t pr_bio_bridge_config_default(void) {
 }
 
 NIMCP_EXPORT bool pr_bio_bridge_config_validate(const pr_bio_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bio_bridge_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->max_pending_messages == 0) return false;
-    if (config->max_subscribers == 0) return false;
-    if (config->batch_process_size == 0) return false;
+    if (config->max_pending_messages == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_bio_bridge_config_validate: config->max_pending_messages is zero");
+        return false;
+    }
+    if (config->max_subscribers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_bio_bridge_config_validate: config->max_subscribers is zero");
+        return false;
+    }
+    if (config->batch_process_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_bio_bridge_config_validate: config->batch_process_size is zero");
+        return false;
+    }
 
     return true;
 }
@@ -395,6 +410,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     if (config) {
         if (!pr_bio_bridge_config_validate(config)) {
             set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bio_bridge_create: pr_bio_bridge_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -423,6 +439,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     if (!bridge->queue) {
         set_error("Failed to allocate message queue");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_bio_bridge_create: bridge->queue is NULL");
         return NULL;
     }
     bridge->queue_size = 0;
@@ -438,6 +455,7 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
         set_error("Failed to allocate subscriber array");
         nimcp_free(bridge->queue);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_bio_bridge_create: bridge->subscribers is NULL");
         return NULL;
     }
     bridge->num_subscribers = 0;
@@ -542,7 +560,10 @@ NIMCP_EXPORT pr_bio_bridge_error_t pr_bio_bridge_disconnect(pr_bio_bridge_t brid
 }
 
 NIMCP_EXPORT bool pr_bio_bridge_is_connected(const pr_bio_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bio_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->is_connected;
 }
 

@@ -257,6 +257,7 @@ int snn_visual_bridge_connect_bio_async(snn_visual_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available for visual bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_visual_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -327,6 +328,7 @@ int snn_visual_bridge_encode(
         height != bridge->config.frame_height ||
         channels != bridge->config.frame_channels) {
         NIMCP_LOGGING_ERROR("Frame dimension mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_visual_bridge_encode: operation failed");
         return -1;
     }
 

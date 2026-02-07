@@ -57,6 +57,7 @@ struct middleware_pipeline_struct {
 middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config) {
     if (!config || !config->stages || config->num_stages == 0) {
         LOG_ERROR(LOG_MODULE, "Invalid pipeline configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_create: required parameter is NULL (config, config->stages)");
         return NULL;
     }
 
@@ -73,6 +74,7 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
     if (!pipeline->stages) {
         nimcp_free(pipeline);
         LOG_ERROR(LOG_MODULE, "Failed to allocate stages");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_create: pipeline->stages is NULL");
         return NULL;
     }
 
@@ -93,6 +95,7 @@ middleware_pipeline_t middleware_pipeline_create(const pipeline_config_t* config
         nimcp_free(pipeline->stages);
         nimcp_free(pipeline);
         LOG_ERROR(LOG_MODULE, "Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "middleware_pipeline_create: validation failed");
         return NULL;
     }
 
@@ -160,6 +163,7 @@ bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
 
     if (!pipeline || !context) {
         LOG_ERROR(LOG_MODULE, "Invalid pipeline or context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, context)");
         return false;
     }
 
@@ -228,10 +232,16 @@ bool middleware_pipeline_execute(middleware_pipeline_t pipeline,
 bool middleware_pipeline_execute_stage(middleware_pipeline_t pipeline,
                                        pipeline_stage_id_t stage_id,
                                        middleware_context_t* context) {
-    if (!pipeline || !context || stage_id >= pipeline->num_stages) return false;
+    if (!pipeline || !context || stage_id >= pipeline->num_stages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, context)");
+        return false;
+    }
 
     pipeline_stage_config_t* stage = &pipeline->stages[stage_id];
-    if (!stage->enabled) return false;
+    if (!stage->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: stage->enabled is NULL");
+        return false;
+    }
 
     return stage->execute(context, stage->stage_data);
 }
@@ -243,7 +253,10 @@ bool middleware_pipeline_execute_stage(middleware_pipeline_t pipeline,
 bool middleware_pipeline_set_stage_enabled(middleware_pipeline_t pipeline,
                                            pipeline_stage_id_t stage_id,
                                            bool enabled) {
-    if (!pipeline || stage_id >= pipeline->num_stages) return false;
+    if (!pipeline || stage_id >= pipeline->num_stages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_pipeline_destroy: pipeline is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pipeline->mutex);
     pipeline->stages[stage_id].enabled = enabled;
@@ -258,7 +271,10 @@ bool middleware_pipeline_set_stage_enabled(middleware_pipeline_t pipeline,
 
 bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
                                    pipeline_stats_t* stats) {
-    if (!pipeline || !stats) return false;
+    if (!pipeline || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: required parameter is NULL (pipeline, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pipeline->mutex);
 
@@ -271,6 +287,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
     stats->stage_execution_counts = nimcp_malloc(pipeline->num_stages * sizeof(uint64_t));
     if (!stats->stage_execution_counts) {
         nimcp_platform_mutex_unlock(&pipeline->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_destroy: stats->stage_execution_counts is NULL");
         return false;
     }
 
@@ -279,6 +296,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
         nimcp_free(stats->stage_execution_counts);
         stats->stage_execution_counts = NULL;
         nimcp_platform_mutex_unlock(&pipeline->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_pipeline_destroy: stats->stage_total_time_us is NULL");
         return false;
     }
 
@@ -289,6 +307,7 @@ bool middleware_pipeline_get_stats(middleware_pipeline_t pipeline,
         stats->stage_execution_counts = NULL;
         stats->stage_total_time_us = NULL;
         nimcp_platform_mutex_unlock(&pipeline->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_pipeline_destroy: stats->stage_avg_time_us is NULL");
         return false;
     }
 
@@ -347,7 +366,10 @@ static bool encoding_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "encoding_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
 
     // Guard: Check if we have active neurons to encode
     if (ctx->num_active_neurons == 0) {
@@ -360,7 +382,10 @@ static bool encoding_stage_execute(middleware_context_t* ctx, void* data) {
     // Allocate features array if not already allocated
     if (!ctx->cached_features) {
         ctx->cached_features = nimcp_calloc(ctx->num_active_neurons, sizeof(float));
-        if (!ctx->cached_features) return false;
+        if (!ctx->cached_features) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "encoding_stage_execute: ctx->cached_features is NULL");
+            return false;
+        }
     }
 
     // Simple rate encoding: Convert active neuron count to population firing rate
@@ -400,7 +425,10 @@ static bool extraction_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context and input
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extraction_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
     if (!ctx->features_valid || ctx->num_cached_features == 0) return true;
 
     // Extract statistical features from rate-coded signals
@@ -444,7 +472,10 @@ static bool detection_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context and input
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detection_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
     if (!ctx->features_valid || ctx->num_cached_features == 0) {
         // No features to process - reset pattern count to avoid stale data
         ctx->num_detected_patterns = 0;
@@ -461,7 +492,10 @@ static bool detection_stage_execute(middleware_context_t* ctx, void* data) {
     if (!ctx->detected_patterns && ctx->num_cached_features > 0) {
         ctx->detected_patterns = nimcp_calloc(ctx->num_cached_features, sizeof(uint32_t));
         ctx->pattern_confidences = nimcp_calloc(ctx->num_cached_features, sizeof(float));
-        if (!ctx->detected_patterns || !ctx->pattern_confidences) return false;
+        if (!ctx->detected_patterns || !ctx->pattern_confidences) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "detection_stage_execute: required parameter is NULL (ctx->detected_patterns, ctx->pattern_confidences)");
+            return false;
+        }
     }
 
     // Simple pattern detection: features above mean (positive z-scores after normalization)
@@ -498,7 +532,10 @@ static bool routing_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
     if (ctx->num_detected_patterns == 0) return true;
 
     // Thalamic routing implementation
@@ -529,7 +566,10 @@ static bool normalization_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context and input
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalization_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
     if (!ctx->features_valid || ctx->num_cached_features == 0) return true;
 
     // Apply normalization to features
@@ -574,7 +614,10 @@ static bool buffering_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffering_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
 
     // Update temporal buffers
     // In full implementation: Use circular_buffer_t and sliding_window_t
@@ -604,7 +647,10 @@ static bool events_stage_execute(middleware_context_t* ctx, void* data) {
     (void)data;
 
     // Guard: Validate context
-    if (!ctx || !ctx->brain) return false;
+    if (!ctx || !ctx->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "events_stage_execute: required parameter is NULL (ctx, ctx->brain)");
+        return false;
+    }
 
     // Generate events for detected patterns
     // In full implementation: Create event_t structures and publish via event_bus

@@ -160,7 +160,10 @@ static float clamp_float(float value, float min_val, float max_val) {
  * @brief Check if string contains injection pattern
  */
 static bool contains_injection_pattern(const char* str, size_t len) {
-    if (!str || len == 0) return false;
+    if (!str || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_injection_pattern: str is NULL");
+        return false;
+    }
 
     for (int i = 0; s_injection_patterns[i] != NULL; i++) {
         if (strstr(str, s_injection_patterns[i]) != NULL) {
@@ -174,12 +177,16 @@ static bool contains_injection_pattern(const char* str, size_t len) {
  * @brief Check if string contains only safe characters for entity names
  */
 static bool is_safe_entity_name(const char* name) {
-    if (!name || name[0] == '\0') return false;
+    if (!name || name[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_entity_name: name is NULL");
+        return false;
+    }
 
     for (size_t i = 0; name[i] != '\0'; i++) {
         char c = name[i];
         /* Allow alphanumeric, underscore, hyphen, period */
         if (!isalnum((unsigned char)c) && c != '_' && c != '-' && c != '.') {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_safe_entity_name: isalnum is NULL");
             return false;
         }
     }
@@ -198,6 +205,7 @@ static sec_kg_private_node_t* find_private_node(
             return &bridge->private_nodes[i];
         }
     }
+    /* Not finding a private node is normal - entity is simply not private */
     return NULL;
 }
 
@@ -313,6 +321,7 @@ security_kg_bridge_t* security_kg_bridge_create(
     if (!bridge->private_nodes) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_kg_bridge_create: bridge->private_nodes is NULL");
         return NULL;
     }
     memset(bridge->private_nodes, 0,
@@ -427,15 +436,16 @@ int security_kg_validate_query(
 
     uint64_t start_time = nimcp_time_monotonic_us();
     *result = SEC_KG_QUERY_VALID;
-    bridge->state.operational_state = SEC_KG_STATE_PROCESSING;
 
-    /* Check lockdown */
+    /* Check lockdown before changing state */
     if (bridge->state.lockdown_active) {
         *result = SEC_KG_QUERY_REJECTED;
         bridge->stats.queries_rejected++;
         BRIDGE_UNLOCK(bridge);
         return 0;
     }
+
+    bridge->state.operational_state = SEC_KG_STATE_PROCESSING;
 
     /* Length check */
     if (query_len > bridge->config.max_query_length) {
@@ -451,6 +461,7 @@ int security_kg_validate_query(
             *result = SEC_KG_QUERY_INJECTION_DETECTED;
             bridge->stats.injections_detected++;
             bridge->stats.queries_rejected++;
+            bridge->stats.queries_validated_total++;
             BRIDGE_UNLOCK(bridge);
             return 0;
         }
@@ -555,6 +566,7 @@ int security_kg_check_traversal_access(
     /* Check lockdown */
     if (bridge->state.lockdown_active || bridge->sec_to_kg.traversals_blocked) {
         *result = SEC_KG_TRAVERSAL_DENIED;
+        bridge->stats.traversals_validated_total++;
         bridge->stats.traversals_denied++;
         BRIDGE_UNLOCK(bridge);
         return 0;
@@ -563,6 +575,7 @@ int security_kg_check_traversal_access(
     /* Depth check */
     if (current_depth > bridge->sec_to_kg.current_traversal_limit) {
         *result = SEC_KG_TRAVERSAL_DEPTH_EXCEEDED;
+        bridge->stats.traversals_validated_total++;
         bridge->stats.depth_limit_violations++;
         bridge->stats.traversals_denied++;
         BRIDGE_UNLOCK(bridge);
@@ -574,6 +587,7 @@ int security_kg_check_traversal_access(
         sec_kg_private_node_t* priv_node = find_private_node(bridge, target_entity);
         if (priv_node && priv_node->privacy_level > bridge->sec_to_kg.min_privacy) {
             *result = SEC_KG_TRAVERSAL_NODE_PRIVATE;
+            bridge->stats.traversals_validated_total++;
             bridge->stats.traversals_denied++;
             bridge->kg_to_sec.private_access_denied++;
             BRIDGE_UNLOCK(bridge);

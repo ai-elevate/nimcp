@@ -234,26 +234,32 @@ NIMCP_EXPORT reconsolidation_config_t reconsolidation_config_test(void) {
 
 NIMCP_EXPORT bool reconsolidation_config_validate(const reconsolidation_config_t* config) {
     if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: validation failed");
         return false;
     }
 
     if (config->lability_duration <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: validation failed");
         return false;
     }
 
     if (config->lability_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: validation failed");
         return false;
     }
 
     if (config->update_threshold < 0.0f || config->update_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: validation failed");
         return false;
     }
 
     if (config->interference_threshold < 0.0f || config->interference_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: validation failed");
         return false;
     }
 
     if (config->max_windows == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_config_validate: config->max_windows is zero");
         return false;
     }
 
@@ -272,6 +278,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
 {
     // Validate required parameters
     if (entanglement == NULL || node_manager == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
 
@@ -279,6 +286,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     reconsolidation_config_t cfg;
     if (config != NULL) {
         if (!reconsolidation_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: reconsolidation_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -316,6 +324,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         cfg.max_windows, sizeof(reconsolidation_window_t));
     if (system->windows == NULL) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
 
@@ -324,6 +333,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     if (system->free_indices == NULL) {
         nimcp_free(system->windows);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
 
@@ -346,6 +356,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
 
@@ -358,6 +369,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
     system->entries_used = 0;
@@ -400,6 +412,7 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
         nimcp_free(system->free_indices);
         nimcp_free(system->windows);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reconsolidation_create: validation failed");
         return NULL;
     }
 
@@ -882,6 +895,7 @@ NIMCP_EXPORT bool reconsolidation_check_interference(
     float* interference_out)
 {
     if (system == NULL || memory == NULL || new_memory == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reconsolidation_check_interference: validation failed");
         return false;
     }
 
@@ -894,6 +908,7 @@ NIMCP_EXPORT bool reconsolidation_check_interference(
     const prime_signature_t* sig2 = pr_memory_node_get_signature(new_memory);
 
     if (sig1 == NULL || sig2 == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_check_interference: validation failed");
         return false;
     }
 
@@ -992,10 +1007,12 @@ NIMCP_EXPORT bool reconsolidation_is_labile(
     pr_memory_node_t* memory)
 {
     if (system == NULL || memory == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reconsolidation_is_labile: validation failed");
         return false;
     }
 
     if (system->magic != RECON_SYSTEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_is_labile: validation failed");
         return false;
     }
 
@@ -1138,6 +1155,7 @@ NIMCP_EXPORT bool reconsolidation_is_synthesis_blocked(
     reconsolidation_system_t* system)
 {
     if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_is_synthesis_blocked: validation failed");
         return false;
     }
 
@@ -1470,10 +1488,12 @@ NIMCP_EXPORT void reconsolidation_print_summary(reconsolidation_system_t* system
 
 NIMCP_EXPORT bool reconsolidation_validate(reconsolidation_system_t* system) {
     if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_validate: validation failed");
         return false;
     }
 
     if (system->magic != RECON_SYSTEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reconsolidation_validate: validation failed");
         return false;
     }
 
@@ -1563,6 +1583,7 @@ static reconsolidation_window_t* find_window_by_memory(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_window_by_memory: validation failed");
     return NULL;
 }
 
@@ -1593,6 +1614,7 @@ static void free_window_index(reconsolidation_system_t* system, size_t index) {
  */
 static bool add_window_to_hash(reconsolidation_system_t* system, uint64_t memory_id, size_t index) {
     if (system->entries_used >= system->entry_pool_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_window_to_hash: capacity exceeded");
         return false;
     }
 

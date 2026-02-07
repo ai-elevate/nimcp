@@ -83,7 +83,10 @@ static void population_coding_on_sleep_state_change(sleep_state_t new_state, voi
 }
 
 int population_coding_sleep_default_config(population_coding_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_precision_modulation = true;
     config->enable_synchrony_modulation = true;
     config->enable_sparsity_modulation = true;
@@ -170,7 +173,10 @@ void population_coding_sleep_bridge_destroy(population_coding_sleep_bridge_t bri
 }
 
 int population_coding_sleep_update(population_coding_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -207,7 +213,10 @@ int population_coding_sleep_get_effects(
     const population_coding_sleep_bridge_t bridge,
     population_coding_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

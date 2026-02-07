@@ -200,6 +200,7 @@ static bool is_protected_status(combatant_status_t status)
         case COMBATANT_STATUS_CHILD:
             return true;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_protected_status: operation failed");
             return false;
     }
 }
@@ -793,6 +794,7 @@ bool ethics_engagement_prohibited(
             return true;
 
         case COMBATANT_STATUS_ACTIVE:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_engagement_prohibited: operation failed");
             return false;
 
         case COMBATANT_STATUS_UNKNOWN:
@@ -1146,6 +1148,7 @@ bool ethics_apply_moral_support(ethics_engine_t engine, const char* support_type
     }
 
     LOG_WARN("Unknown moral support type: %s", support_type);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_apply_moral_support: operation failed");
     return false;
 }
 

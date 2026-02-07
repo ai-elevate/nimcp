@@ -180,13 +180,17 @@ static void set_error(prefrontal_adapter_t* adapter, prefrontal_error_t error) {
  * @brief Find goal by ID
  */
 static prefrontal_goal_t* find_goal(prefrontal_adapter_t* adapter, uint32_t goal_id) {
-    if (!adapter || goal_id == 0) return NULL;
+    if (!adapter || goal_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_goal: adapter is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < adapter->goal_count; i++) {
         if (adapter->goals[i].goal_id == goal_id) {
             return &adapter->goals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
@@ -194,13 +198,17 @@ static prefrontal_goal_t* find_goal(prefrontal_adapter_t* adapter, uint32_t goal
  * @brief Find plan by goal ID
  */
 static action_plan_t* find_plan(prefrontal_adapter_t* adapter, uint32_t goal_id) {
-    if (!adapter || goal_id == 0) return NULL;
+    if (!adapter || goal_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_plan: adapter is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < adapter->plan_count; i++) {
         if (adapter->plans[i].goal_id == goal_id) {
             return &adapter->plans[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_plan: validation failed");
     return NULL;
 }
 
@@ -377,6 +385,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
     prefrontal_adapter_t* adapter = (prefrontal_adapter_t*)nimcp_calloc(1, sizeof(prefrontal_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", PFC_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter is NULL");
         return NULL;
     }
 
@@ -396,6 +405,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
     if (!adapter->goals) {
         LOG_ERROR("[%s] Failed to allocate goals", PFC_LOG_MODULE);
         prefrontal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->goals is NULL");
         return NULL;
     }
     adapter->next_goal_id = 1;
@@ -407,6 +417,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
     if (!adapter->plans) {
         LOG_ERROR("[%s] Failed to allocate plans", PFC_LOG_MODULE);
         prefrontal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->plans is NULL");
         return NULL;
     }
 
@@ -417,6 +428,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
         if (!adapter->plans[i].actions) {
             LOG_ERROR("[%s] Failed to allocate plan actions", PFC_LOG_MODULE);
             prefrontal_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->plans is NULL");
             return NULL;
         }
     }
@@ -428,6 +440,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
     if (!adapter->eval_buffer) {
         LOG_ERROR("[%s] Failed to allocate evaluation buffer", PFC_LOG_MODULE);
         prefrontal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->eval_buffer is NULL");
         return NULL;
     }
 
@@ -438,6 +451,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
         if (!adapter->working_memory) {
             LOG_ERROR("[%s] Failed to allocate working memory", PFC_LOG_MODULE);
             prefrontal_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->working_memory is NULL");
             return NULL;
         }
     }
@@ -450,6 +464,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
         if (!adapter->rules) {
             LOG_ERROR("[%s] Failed to allocate rules", PFC_LOG_MODULE);
             prefrontal_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->rules is NULL");
             return NULL;
         }
     }
@@ -466,6 +481,7 @@ prefrontal_adapter_t* prefrontal_create(const prefrontal_config_t* config) {
     if (!adapter->action_pool) {
         LOG_ERROR("[%s] Failed to create action memory pool", PFC_LOG_MODULE);
         prefrontal_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_create: adapter->action_pool is NULL");
         return NULL;
     }
 
@@ -587,7 +603,10 @@ void prefrontal_destroy(prefrontal_adapter_t* adapter) {
 }
 
 bool prefrontal_reset(prefrontal_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", PFC_LOG_MODULE);
 
@@ -679,10 +698,16 @@ uint32_t prefrontal_activate_goal(prefrontal_adapter_t* adapter,
 bool prefrontal_deactivate_goal(prefrontal_adapter_t* adapter,
                                  uint32_t goal_id,
                                  goal_state_t new_state) {
-    if (!adapter || goal_id == 0) return false;
+    if (!adapter || goal_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_reset: adapter is NULL");
+        return false;
+    }
 
     prefrontal_goal_t* goal = find_goal(adapter, goal_id);
-    if (!goal) return false;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_reset: goal is NULL");
+        return false;
+    }
 
     goal_state_t old_state = goal->state;
     goal->state = new_state;
@@ -713,7 +738,10 @@ bool prefrontal_deactivate_goal(prefrontal_adapter_t* adapter,
 bool prefrontal_get_active_goals(const prefrontal_adapter_t* adapter,
                                   prefrontal_goal_t* goals,
                                   uint32_t* count) {
-    if (!adapter || !goals || !count) return false;
+    if (!adapter || !goals || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_reset: required parameter is NULL (adapter, goals, count)");
+        return false;
+    }
 
     uint32_t active_count = 0;
     for (uint32_t i = 0; i < adapter->goal_count && active_count < *count; i++) {
@@ -729,10 +757,16 @@ bool prefrontal_get_active_goals(const prefrontal_adapter_t* adapter,
 bool prefrontal_update_goal_progress(prefrontal_adapter_t* adapter,
                                       uint32_t goal_id,
                                       float progress) {
-    if (!adapter || goal_id == 0) return false;
+    if (!adapter || goal_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_reset: adapter is NULL");
+        return false;
+    }
 
     prefrontal_goal_t* goal = find_goal(adapter, goal_id);
-    if (!goal) return false;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_reset: goal is NULL");
+        return false;
+    }
 
     goal->progress = progress;
 
@@ -753,12 +787,14 @@ bool prefrontal_generate_plan(prefrontal_adapter_t* adapter,
                                action_plan_t* plan) {
     if (!adapter || goal_id == 0 || !plan) {
         set_error(adapter, PREFRONTAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_reset: required parameter is NULL (adapter, plan)");
         return false;
     }
 
     prefrontal_goal_t* goal = find_goal(adapter, goal_id);
     if (!goal || goal->state != GOAL_STATE_ACTIVE) {
         set_error(adapter, PREFRONTAL_ERROR_PLANNING_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_reset: goal is NULL");
         return false;
     }
 
@@ -769,6 +805,7 @@ bool prefrontal_generate_plan(prefrontal_adapter_t* adapter,
     if (!internal_plan) {
         if (adapter->plan_count >= adapter->plan_capacity) {
             set_error(adapter, PREFRONTAL_ERROR_BUFFER_OVERFLOW);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "prefrontal_reset: capacity exceeded");
             return false;
         }
         internal_plan = &adapter->plans[adapter->plan_count++];
@@ -832,10 +869,14 @@ bool prefrontal_generate_plan(prefrontal_adapter_t* adapter,
 bool prefrontal_get_next_action(prefrontal_adapter_t* adapter,
                                  uint32_t goal_id,
                                  prefrontal_action_t* action) {
-    if (!adapter || goal_id == 0 || !action) return false;
+    if (!adapter || goal_id == 0 || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, action)");
+        return false;
+    }
 
     action_plan_t* plan = find_plan(adapter, goal_id);
     if (!plan || plan->current_step >= plan->action_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: plan is NULL");
         return false;
     }
 
@@ -851,7 +892,10 @@ bool prefrontal_report_action_outcome(prefrontal_adapter_t* adapter,
                                        uint32_t action_id,
                                        bool success,
                                        float outcome) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     adapter->status = PREFRONTAL_STATUS_MONITORING;
 
@@ -887,6 +931,7 @@ bool prefrontal_report_action_outcome(prefrontal_adapter_t* adapter,
     }
 
     adapter->status = PREFRONTAL_STATUS_IDLE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
 }
 
@@ -900,6 +945,7 @@ bool prefrontal_evaluate_options(prefrontal_adapter_t* adapter,
                                   decision_result_t* result) {
     if (!adapter || !options || num_options == 0 || !result) {
         set_error(adapter, PREFRONTAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, options, result)");
         return false;
     }
 
@@ -944,6 +990,7 @@ bool prefrontal_evaluate_options(prefrontal_adapter_t* adapter,
         set_error(adapter, PREFRONTAL_ERROR_DECISION_TIMEOUT);
         adapter->stats.decision_timeouts++;
         adapter->status = PREFRONTAL_STATUS_IDLE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -980,7 +1027,10 @@ bool prefrontal_quick_decision(prefrontal_adapter_t* adapter,
                                 const decision_option_t* options,
                                 uint32_t num_options,
                                 uint32_t* selected) {
-    if (!adapter || !options || num_options == 0 || !selected) return false;
+    if (!adapter || !options || num_options == 0 || !selected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, options, selected)");
+        return false;
+    }
 
     /* Quick decision: just pick highest expected value */
     float best_value = -1e9f;
@@ -999,9 +1049,13 @@ bool prefrontal_quick_decision(prefrontal_adapter_t* adapter,
 bool prefrontal_get_decision_state(const prefrontal_adapter_t* adapter,
                                     uint32_t* conflict_level,
                                     uint32_t* dominant_option) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     if (adapter->status != PREFRONTAL_STATUS_DECISION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;  /* Not in decision process */
     }
 
@@ -1018,7 +1072,10 @@ bool prefrontal_get_decision_state(const prefrontal_adapter_t* adapter,
 bool prefrontal_check_inhibition(prefrontal_adapter_t* adapter,
                                   const prefrontal_action_t* action,
                                   impulse_record_t* record) {
-    if (!adapter || !action || !record) return false;
+    if (!adapter || !action || !record) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, action, record)");
+        return false;
+    }
 
     memset(record, 0, sizeof(impulse_record_t));
     record->impulse_action = *action;
@@ -1075,7 +1132,10 @@ bool prefrontal_check_inhibition(prefrontal_adapter_t* adapter,
 bool prefrontal_suppress_impulse(prefrontal_adapter_t* adapter,
                                   const prefrontal_action_t* action,
                                   const char* reason) {
-    if (!adapter || !action) return false;
+    if (!adapter || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, action)");
+        return false;
+    }
 
     impulse_record_t record;
     memset(&record, 0, sizeof(record));
@@ -1103,7 +1163,10 @@ bool prefrontal_suppress_impulse(prefrontal_adapter_t* adapter,
 bool prefrontal_get_inhibition_stats(const prefrontal_adapter_t* adapter,
                                       float* success_rate,
                                       float* fatigue_level) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     if (success_rate) {
         if (adapter->stats.impulses_detected > 0) {
@@ -1129,7 +1192,10 @@ bool prefrontal_wm_push(prefrontal_adapter_t* adapter,
                          uint32_t item_id,
                          float priority,
                          uint32_t goal_id) {
-    if (!adapter || !adapter->working_memory) return false;
+    if (!adapter || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (adapter, adapter->working_memory)");
+        return false;
+    }
 
     if (adapter->wm_count >= adapter->config.working_memory_slots) {
         /* WM full - evict lowest priority item */
@@ -1153,6 +1219,7 @@ bool prefrontal_wm_push(prefrontal_adapter_t* adapter,
             return true;
         } else {
             set_error(adapter, PREFRONTAL_ERROR_WORKING_MEMORY_FULL);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return false;
         }
     }
@@ -1171,7 +1238,10 @@ bool prefrontal_wm_push(prefrontal_adapter_t* adapter,
 bool prefrontal_wm_update(prefrontal_adapter_t* adapter,
                            uint32_t item_id,
                            float new_priority) {
-    if (!adapter || !adapter->working_memory) return false;
+    if (!adapter || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (adapter, adapter->working_memory)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < adapter->wm_count; i++) {
         if (adapter->working_memory[i].item_id == item_id) {
@@ -1183,6 +1253,7 @@ bool prefrontal_wm_update(prefrontal_adapter_t* adapter,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
     return false;
 }
 
@@ -1190,7 +1261,10 @@ bool prefrontal_wm_get_contents(const prefrontal_adapter_t* adapter,
                                  uint32_t* item_ids,
                                  float* priorities,
                                  uint32_t* count) {
-    if (!adapter || !item_ids || !count || !adapter->working_memory) return false;
+    if (!adapter || !item_ids || !count || !adapter->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (adapter, item_ids, count, adapter->working_memory)");
+        return false;
+    }
 
     uint32_t to_copy = (*count < adapter->wm_count) ? *count : adapter->wm_count;
 
@@ -1212,7 +1286,10 @@ bool prefrontal_wm_get_contents(const prefrontal_adapter_t* adapter,
 bool prefrontal_task_switch(prefrontal_adapter_t* adapter,
                              uint32_t new_task_id,
                              float* switch_cost_out) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     float cost = 0.0f;
 
@@ -1238,11 +1315,18 @@ bool prefrontal_learn_rule(prefrontal_adapter_t* adapter,
                             uint32_t context_size,
                             uint32_t action,
                             float outcome) {
-    if (!adapter || !context || context_size == 0) return false;
-    if (!adapter->config.enable_rule_learning) return false;
+    if (!adapter || !context || context_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, context)");
+        return false;
+    }
+    if (!adapter->config.enable_rule_learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter->config is NULL");
+        return false;
+    }
 
     /* Simplified rule learning: store context-action-outcome association */
     if (adapter->rule_count >= adapter->rule_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
         return false;  /* Rule capacity reached */
     }
 
@@ -1252,7 +1336,10 @@ bool prefrontal_learn_rule(prefrontal_adapter_t* adapter,
     rule->context_size = context_size;
     rule->context_weights = (float*)nimcp_calloc(context_size, sizeof(float));
 
-    if (!rule->context_weights) return false;
+    if (!rule->context_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: rule->context_weights is NULL");
+        return false;
+    }
 
     memcpy(rule->context_weights, context, context_size * sizeof(float));
     rule->confidence = outcome > 0.0f ? outcome : 0.5f;
@@ -1270,7 +1357,10 @@ bool prefrontal_learn_rule(prefrontal_adapter_t* adapter,
 bool prefrontal_set_goal_callback(prefrontal_adapter_t* adapter,
                                    prefrontal_goal_callback_t callback,
                                    void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->goal_callback = callback;
     adapter->goal_callback_data = user_data;
     return true;
@@ -1279,7 +1369,10 @@ bool prefrontal_set_goal_callback(prefrontal_adapter_t* adapter,
 bool prefrontal_set_decision_callback(prefrontal_adapter_t* adapter,
                                        prefrontal_decision_callback_t callback,
                                        void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->decision_callback = callback;
     adapter->decision_callback_data = user_data;
     return true;
@@ -1288,7 +1381,10 @@ bool prefrontal_set_decision_callback(prefrontal_adapter_t* adapter,
 bool prefrontal_set_inhibition_callback(prefrontal_adapter_t* adapter,
                                          prefrontal_inhibition_callback_t callback,
                                          void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->inhibition_callback = callback;
     adapter->inhibition_callback_data = user_data;
     return true;
@@ -1297,7 +1393,10 @@ bool prefrontal_set_inhibition_callback(prefrontal_adapter_t* adapter,
 bool prefrontal_set_action_callback(prefrontal_adapter_t* adapter,
                                      prefrontal_action_callback_t callback,
                                      void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->action_callback = callback;
     adapter->action_callback_data = user_data;
     return true;
@@ -1348,14 +1447,20 @@ const char* prefrontal_status_string(prefrontal_status_t status) {
 
 bool prefrontal_get_stats(const prefrontal_adapter_t* adapter,
                            prefrontal_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_status_string: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool prefrontal_get_config(const prefrontal_adapter_t* adapter,
                             prefrontal_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_status_string: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1391,6 +1496,7 @@ nimcp_bio_future_t prefrontal_request_goal_eval_async(
     const prefrontal_goal_t* goal) {
 
     if (!adapter || !adapter->bio_ctx || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_get_bio_context: required parameter is NULL (adapter, adapter->bio_ctx, goal)");
         return NULL;
     }
 
@@ -1408,6 +1514,7 @@ nimcp_bio_future_t prefrontal_request_goal_eval_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send goal eval request", PFC_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_get_bio_context: promise is NULL");
         return NULL;
     }
 

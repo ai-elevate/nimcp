@@ -174,6 +174,7 @@ static void compute_softmax(const float* similarities, float* attention,
  */
 static int32_t find_pattern_index(const hopfield_memory_t* memory, uint32_t pattern_id) {
     if (!memory->metadata) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_pattern_index: memory->metadata is NULL");
         return -1;
     }
     for (uint32_t i = 0; i < memory->pattern_count; i++) {
@@ -187,6 +188,7 @@ static int32_t find_pattern_index(const hopfield_memory_t* memory, uint32_t patt
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_pattern_index: validation failed");
     return -1;
 }
 
@@ -210,9 +212,11 @@ static inline const float* get_pattern_const(const hopfield_memory_t* memory, ui
 static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batch_size) {
 #ifdef NIMCP_ENABLE_CUDA
     if (!memory || !memory->gpu_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: required parameter is NULL (memory, memory->gpu_initialized)");
         return false;
     }
     if (memory->config.gpu_mode == HOPFIELD_GPU_DISABLED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: validation failed");
         return false;
     }
     if (memory->config.gpu_mode == HOPFIELD_GPU_REQUIRED) {
@@ -228,6 +232,7 @@ static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batc
 #else
     (void)memory;
     (void)batch_size;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "should_use_gpu: validation failed");
     return false;
 #endif
 }
@@ -298,12 +303,14 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
 
     if (hopfield_validate_config(config) != NIMCP_SUCCESS) {
         NIMCP_LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hopfield_memory_create: validation failed");
         return NULL;
     }
 
     hopfield_memory_t* memory = nimcp_calloc(1, sizeof(hopfield_memory_t));
     if (!memory) {
         NIMCP_LOG_ERROR("Failed to allocate Hopfield memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_memory_create: memory is NULL");
         return NULL;
     }
 
@@ -314,6 +321,7 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
     if (!memory->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_memory_create: memory->mutex is NULL");
         return NULL;
     }
 
@@ -369,6 +377,7 @@ hopfield_memory_t* hopfield_memory_create(const hopfield_config_t* config) {
 
 error:
     hopfield_memory_destroy(memory);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hopfield_memory_create: operation failed");
     return NULL;
 }
 
@@ -1143,6 +1152,7 @@ hopfield_retrieval_result_t* hopfield_result_create(uint32_t dim) {
     result->pattern = nimcp_calloc(dim, sizeof(float));
     if (!result->pattern) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_result_create: result->pattern is NULL");
         return NULL;
     }
 
@@ -1179,6 +1189,7 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
     result->results = nimcp_calloc(num_queries, sizeof(hopfield_retrieval_result_t));
     if (!result->results) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hopfield_result_destroy: result->results is NULL");
         return NULL;
     }
 
@@ -1202,6 +1213,7 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
             }
             nimcp_free(result->results);
             nimcp_free(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hopfield_result_destroy: validation failed");
             return NULL;
         }
     }

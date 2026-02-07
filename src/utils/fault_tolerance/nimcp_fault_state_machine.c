@@ -233,6 +233,7 @@ bool nimcp_state_machine_is_valid_transition(
     nimcp_brain_state_t to_state
 ) {
     if (from_state >= NIMCP_STATE_COUNT || to_state >= NIMCP_STATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_state_machine_is_valid_transition: capacity exceeded");
         return false;
     }
     return transition_matrix[from_state][to_state];
@@ -252,11 +253,13 @@ const nimcp_state_transition_t* nimcp_state_machine_get_history(
 ) {
     if (!sm || !count) {
         if (count) *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_state_machine_get_history: validation failed");
         return NULL;
     }
 
     *count = sm->history.count;
     if (*count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_state_machine_get_history: count is zero");
         return NULL;
     }
 

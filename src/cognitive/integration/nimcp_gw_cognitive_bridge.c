@@ -235,6 +235,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     bridge->receivers = nimcp_calloc(bridge->receiver_capacity, sizeof(broadcast_receiver_t));
     if (!bridge->receivers) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_cognitive_bridge_create: bridge->receivers is NULL");
         return NULL;
     }
     bridge->receiver_count = 0;
@@ -245,6 +246,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     if (!bridge->competitors) {
         nimcp_free(bridge->receivers);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_cognitive_bridge_create: bridge->competitors is NULL");
         return NULL;
     }
     bridge->competitor_count = 0;
@@ -255,6 +257,7 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
         nimcp_free(bridge->competitors);
         nimcp_free(bridge->receivers);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -322,6 +325,7 @@ int gw_cognitive_broadcast(
     size_t content_size)
 {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_broadcast: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -338,6 +342,7 @@ int gw_cognitive_broadcast(
         bridge->current_content.data = nimcp_malloc(content_size);
         if (!bridge->current_content.data) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gw_cognitive_broadcast: bridge->current_content is NULL");
             return -1;
         }
         memcpy(bridge->current_content.data, content_data, content_size);
@@ -379,6 +384,7 @@ int gw_cognitive_compete_for_access(
     float priority)
 {
     if (!bridge || !bridge->initialized || !content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_compete_for_access: required parameter is NULL (bridge, bridge->initialized, content)");
         return -1;
     }
 
@@ -391,12 +397,14 @@ int gw_cognitive_compete_for_access(
     /* Check if priority meets threshold */
     if (priority < bridge->config.broadcast_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected - priority too low */
     }
 
     /* Check if priority meets minimum competition priority */
     if (priority < bridge->config.min_competition_priority) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected */
     }
 
@@ -437,6 +445,7 @@ int gw_cognitive_compete_for_access(
     if (slot < 0) {
         /* No room for new competitors */
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_compete_for_access: validation failed");
         return -1;  /* Rejected - competition full */
     }
 
@@ -508,6 +517,7 @@ int gw_cognitive_register_receiver(
     void* user_data)
 {
     if (!bridge || !bridge->initialized || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_register_receiver: required parameter is NULL (bridge, bridge->initialized, callback)");
         return -1;
     }
 
@@ -556,6 +566,7 @@ int gw_cognitive_register_receiver(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_register_receiver: operation failed");
     return -1;  /* No room for more receivers */
 }
 
@@ -564,6 +575,7 @@ int gw_cognitive_unregister_receiver(
     uint32_t module_id)
 {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_unregister_receiver: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -596,6 +608,7 @@ int gw_cognitive_unregister_receiver(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gw_cognitive_unregister_receiver: operation failed");
     return -1;  /* Not found */
 }
 
@@ -604,6 +617,7 @@ int gw_cognitive_get_conscious_content(
     gw_cognitive_conscious_content_t* content_out)
 {
     if (!bridge || !bridge->initialized || !content_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_get_conscious_content: required parameter is NULL (bridge, bridge->initialized, content_out)");
         return -1;
     }
 
@@ -617,6 +631,7 @@ int gw_cognitive_get_conscious_content(
     if (!bridge->current_content.data && bridge->current_content.data_size == 0) {
         content_out->has_content = false;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_get_conscious_content: bridge->current_content is NULL");
         return -1;  /* No content */
     }
 
@@ -649,6 +664,7 @@ int gw_cognitive_get_conscious_content(
 
 int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_resolve_competition: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -783,6 +799,7 @@ int gw_cognitive_get_stats(
     gw_cognitive_stats_t* stats_out)
 {
     if (!bridge || !bridge->initialized || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_get_stats: required parameter is NULL (bridge, bridge->initialized, stats_out)");
         return -1;
     }
 
@@ -804,6 +821,7 @@ int gw_cognitive_get_stats(
 
 int gw_cognitive_reset_stats(gw_cognitive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

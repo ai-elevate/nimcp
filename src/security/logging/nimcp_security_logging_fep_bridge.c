@@ -238,12 +238,18 @@ static float clamp_float(float value, float min_val, float max_val)
  */
 static bool contains_pattern_icase(const char* haystack, const char* needle)
 {
-    if (!haystack || !needle) return false;
+    if (!haystack || !needle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_pattern_icase: required parameter is NULL (haystack, needle)");
+        return false;
+    }
 
     size_t hay_len = strlen(haystack);
     size_t needle_len = strlen(needle);
 
-    if (needle_len > hay_len) return false;
+    if (needle_len > hay_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_pattern_icase: validation failed");
+        return false;
+    }
 
     for (size_t i = 0; i <= hay_len - needle_len; i++) {
         bool match = true;
@@ -268,7 +274,10 @@ static bool contains_pattern_icase(const char* haystack, const char* needle)
  */
 static bool contains_null_byte(const char* str, size_t len)
 {
-    if (!str) return false;
+    if (!str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_null_byte: str is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < len; i++) {
         if (str[i] == '\0') {
@@ -288,7 +297,10 @@ static bool contains_null_byte(const char* str, size_t len)
  */
 static bool contains_newline_injection(const char* str, size_t len)
 {
-    if (!str) return false;
+    if (!str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_newline_injection: str is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < len && str[i] != '\0'; i++) {
         if (str[i] == '\n' || str[i] == '\r') {
@@ -652,6 +664,7 @@ sec_log_fep_bridge_t* sec_log_fep_create(
 
     if (!log_bridge || !fep_system) {
         NIMCP_LOGGING_ERROR("sec_log_fep_create: NULL pointer for required system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_log_fep_create: required parameter is NULL (log_bridge, fep_system)");
         return NULL;
     }
 
@@ -659,6 +672,7 @@ sec_log_fep_bridge_t* sec_log_fep_create(
     sec_log_fep_bridge_t* bridge = nimcp_malloc(sizeof(sec_log_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("sec_log_fep_create: failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_log_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -669,6 +683,7 @@ sec_log_fep_bridge_t* sec_log_fep_create(
                          "security_logging_fep") != 0) {
         NIMCP_LOGGING_ERROR("sec_log_fep_create: failed to initialize base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_log_fep_create: operation failed");
         return NULL;
     }
 
@@ -698,6 +713,7 @@ sec_log_fep_bridge_t* sec_log_fep_create(
         if (bridge->surprise_history) nimcp_free(bridge->surprise_history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_log_fep_create: validation failed");
         return NULL;
     }
 
@@ -834,6 +850,7 @@ int sec_log_fep_get_config(
 )
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -847,6 +864,7 @@ int sec_log_fep_set_config(
 )
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -878,6 +896,7 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -1023,6 +1042,7 @@ int sec_log_fep_analyze_entry(
      */
 
     if (!bridge || !entry || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_analyze_entry: required parameter is NULL (bridge, entry, result)");
         return -1;
     }
 
@@ -1178,6 +1198,7 @@ int sec_log_fep_detect_injection(
      */
 
     if (!bridge || !message || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_detect_injection: required parameter is NULL (bridge, message, result)");
         return -1;
     }
 
@@ -1238,6 +1259,7 @@ int sec_log_fep_detect_deletion(
      */
 
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_detect_deletion: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -1293,6 +1315,7 @@ int sec_log_fep_detect_timestamp_manipulation(
      */
 
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_detect_timestamp_manipulation: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -1372,6 +1395,7 @@ int sec_log_fep_verify_audit_trail(
      */
 
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_verify_audit_trail: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -1586,6 +1610,7 @@ int sec_log_fep_select_protection(
      */
 
     if (!bridge || !action_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_select_protection: required parameter is NULL (bridge, action_out)");
         return -1;
     }
 
@@ -1661,6 +1686,7 @@ int sec_log_fep_execute_protection(
     /* Rate limit protections */
     if (now - bridge->last_protection_time < MIN_PROTECTION_INTERVAL_MS) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_log_fep_execute_protection: validation failed");
         return -1;  /* Rate limited */
     }
 
@@ -1786,6 +1812,7 @@ int sec_log_fep_get_effects(
 )
 {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1799,6 +1826,7 @@ int sec_log_fep_get_security_effects(
 )
 {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_get_security_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1812,6 +1840,7 @@ int sec_log_fep_get_stats(
 )
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_log_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

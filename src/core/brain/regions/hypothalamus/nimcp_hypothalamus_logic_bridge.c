@@ -120,7 +120,10 @@ static float clamp_range(float v, float min_val, float max_val) {
  * or starts with pattern.
  */
 static bool predicate_matches(const char* name, const char* pattern) {
-    if (!name || !pattern) return false;
+    if (!name || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predicate_matches: required parameter is NULL (name, pattern)");
+        return false;
+    }
     return strstr(name, pattern) != NULL;
 }
 
@@ -320,6 +323,7 @@ hypo_logic_bridge_t* hypo_logic_bridge_create(
 {
     if (!drives || !logic) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_logic_bridge: NULL drives or logic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_bridge_create: required parameter is NULL (drives, logic)");
         return NULL;
     }
 
@@ -513,6 +517,7 @@ int hypo_logic_compute_modulation(hypo_logic_bridge_t* bridge) {
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_compute_modulation: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -587,7 +592,10 @@ int hypo_logic_get_modulation(
     const hypo_logic_bridge_t* bridge,
     hypo_logic_modulation_t* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     *modulation = bridge->modulation;
     return 0;
@@ -1049,6 +1057,7 @@ int hypo_logic_generate_predictions(hypo_logic_bridge_t* bridge) {
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_generate_predictions: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -1142,6 +1151,7 @@ int hypo_logic_compute_free_energy(
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_compute_free_energy: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -1367,7 +1377,10 @@ static nimcp_error_t logic_handle_conclusion(
 }
 
 bool hypo_logic_bridge_register_bio(hypo_logic_bridge_t* bridge, bool use_kg_wiring) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring;
@@ -1375,6 +1388,7 @@ bool hypo_logic_bridge_register_bio(hypo_logic_bridge_t* bridge, bool use_kg_wir
     /* Check if router is initialized */
     if (!bio_router_is_initialized()) {
         nimcp_log(LOG_LEVEL_WARN, "hypo_logic_bridge: bio-async router not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypo_logic_bridge_register_bio: bio_router_is_initialized is NULL");
         return false;
     }
 
@@ -1388,6 +1402,7 @@ bool hypo_logic_bridge_register_bio(hypo_logic_bridge_t* bridge, bool use_kg_wir
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_WARN, "hypo_logic_bridge: bio-async not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 
@@ -1415,6 +1430,7 @@ int hypo_logic_broadcast_modulation(hypo_logic_bridge_t* bridge) {
                                               &bridge->modulation,
                                               sizeof(bridge->modulation));
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_broadcast_modulation: validation failed");
         return -1;
     }
 
@@ -1439,6 +1455,7 @@ int hypo_logic_broadcast_conclusion_impact(
 
     nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_broadcast_conclusion_impact: validation failed");
         return -1;
     }
 

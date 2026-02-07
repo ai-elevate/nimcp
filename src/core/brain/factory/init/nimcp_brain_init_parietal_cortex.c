@@ -187,6 +187,7 @@ bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t brain) {
     brain->parietal_cortex = parietal_cortex_adapter_create(&parietal_cfg);
     if (!brain->parietal_cortex) {
         set_error("Failed to create parietal cortex adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_parietal_cortex_subsystem: brain->parietal_cortex is NULL");
         return false;
     }
 
@@ -354,6 +355,7 @@ bool nimcp_brain_factory_init_parietal_cortex_quantum_bridge(brain_t brain) {
 
     if (!brain->parietal_cortex_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create parietal cortex quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_parietal_cortex_quantum_bridge: brain->parietal_cortex_quantum_bridge is NULL");
         return false;
     }
 
@@ -563,6 +565,7 @@ int brain_step_parietal_cortex(brain_t brain, uint64_t delta_t) {
     parietal_cortex_integration_result_t result;
     if (!parietal_cortex_process_integration(brain->parietal_cortex, &result)) {
         LOG_WARN(LOG_MODULE, "Parietal integration step failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_step_parietal_cortex: parietal_cortex_process_integration is NULL");
         return -1;
     }
 

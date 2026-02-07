@@ -340,6 +340,7 @@ memory_immune_integration_t* memory_immune_integration_create(
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Failed to allocate memory links array");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_integration_create: integration->memory_links is NULL");
         return NULL;
     }
     integration->memory_link_count = 0;
@@ -350,6 +351,7 @@ memory_immune_integration_t* memory_immune_integration_create(
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME, "Failed to create mutex");
         nimcp_free(integration->memory_links);
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_integration_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -703,10 +705,14 @@ int memory_immune_consolidate_with_immune_memory(
     memory_immune_integration_t* integration
 ) {
     /* Guard: null checks */
-    if (!integration || !integration->consolidation) return -1;
+    if (!integration || !integration->consolidation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_consolidate_with_immune_memory: required parameter is NULL (integration, integration->consolidation)");
+        return -1;
+    }
 
     /* Guard: disabled */
     if (!integration->config.enable_consolidation_integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_consolidate_with_immune_memory: integration->config is NULL");
         return -1;
     }
 
@@ -775,7 +781,10 @@ int memory_immune_create_memory_link(
     float importance
 ) {
     /* Guard: null checks */
-    if (!integration || !pattern_name) return -1;
+    if (!integration || !pattern_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_create_memory_link: required parameter is NULL (integration, pattern_name)");
+        return -1;
+    }
 
     /* Guard: at capacity */
     /* Phase 8: Heartbeat at operation start */
@@ -785,6 +794,7 @@ int memory_immune_create_memory_link(
     if (integration->memory_link_count >= integration->memory_link_capacity) {
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Memory link array at capacity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_create_memory_link: capacity exceeded");
         return -1;
     }
 
@@ -868,6 +878,7 @@ int memory_immune_reactivate_linked_pattern(
     /* Guard: link not found */
     if (!link) {
         nimcp_mutex_unlock((nimcp_mutex_t*)integration->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_reactivate_linked_pattern: link is NULL");
         return -1;
     }
 
@@ -892,7 +903,10 @@ const immune_cognitive_memory_link_t* memory_immune_get_memory_links(
     size_t* count
 ) {
     /* Guard: null checks */
-    if (!integration || !count) return NULL;
+    if (!integration || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_get_memory_links: required parameter is NULL (integration, count)");
+        return NULL;
+    }
 
     *count = integration->memory_link_count;
     /* Phase 8: Heartbeat at operation start */
@@ -911,7 +925,10 @@ int memory_immune_update_state(
     uint64_t current_time_ms
 ) {
     /* Guard: null checks */
-    if (!integration || !integration->immune_system) return -1;
+    if (!integration || !integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_update_state: required parameter is NULL (integration, integration->immune_system)");
+        return -1;
+    }
 
     /* Guard: not running */
     if (!integration->running) return 0;
@@ -1018,7 +1035,10 @@ int memory_immune_get_metrics(
     memory_immune_metrics_t* metrics
 ) {
     /* Guard: null checks */
-    if (!integration || !metrics) return -1;
+    if (!integration || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_get_metrics: required parameter is NULL (integration, metrics)");
+        return -1;
+    }
 
     /* Copy metrics */
     /* Phase 8: Heartbeat at operation start */
@@ -1037,7 +1057,10 @@ int memory_immune_get_stats(
     memory_immune_stats_t* stats
 ) {
     /* Guard: null checks */
-    if (!integration || !stats) return -1;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_get_stats: required parameter is NULL (integration, stats)");
+        return -1;
+    }
 
     /* Copy stats */
     /* Phase 8: Heartbeat at operation start */
@@ -1195,7 +1218,10 @@ int memory_immune_connect_engram_system(
     engram_system_t* engram_system
 ) {
     /* Guard: null checks */
-    if (!integration || !engram_system) return -1;
+    if (!integration || !engram_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_connect_engram_system: required parameter is NULL (integration, engram_system)");
+        return -1;
+    }
 
     /* Lock mutex */
     /* Phase 8: Heartbeat at operation start */
@@ -1300,8 +1326,14 @@ int memory_immune_check_threat_memory_in_engrams(
     float* affinity
 ) {
     /* Guard: null checks */
-    if (!integration || !integration->immune_system || !integration->engram_system) return -1;
-    if (!engram_id || !affinity) return -1;
+    if (!integration || !integration->immune_system || !integration->engram_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_check_threat_memory_in_engrams: required parameter is NULL (integration, integration->immune_system, integration->engram_system)");
+        return -1;
+    }
+    if (!engram_id || !affinity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_check_threat_memory_in_engrams: required parameter is NULL (engram_id, affinity)");
+        return -1;
+    }
 
     /* Get antigen */
     /* Phase 8: Heartbeat at operation start */
@@ -1351,6 +1383,7 @@ int memory_immune_check_threat_memory_in_engrams(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "memory_immune_check_threat_memory_in_engrams: validation failed");
     return -1;  /* No match found */
 }
 
@@ -1359,8 +1392,14 @@ int memory_immune_trigger_from_engram_recall(
     uint64_t engram_id
 ) {
     /* Guard: null checks */
-    if (!integration || !integration->immune_system) return -1;
-    if (!integration->engram_system) return -1;
+    if (!integration || !integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_trigger_from_engram_recall: required parameter is NULL (integration, integration->immune_system)");
+        return -1;
+    }
+    if (!integration->engram_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_trigger_from_engram_recall: integration->engram_system is NULL");
+        return -1;
+    }
 
     /* Get engram */
     /* Phase 8: Heartbeat at operation start */
@@ -1408,7 +1447,10 @@ int memory_immune_connect_semantic_memory(
     semantic_memory_system_t* semantic_memory
 ) {
     /* Guard: null checks */
-    if (!integration || !semantic_memory) return -1;
+    if (!integration || !semantic_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_connect_semantic_memory: required parameter is NULL (integration, semantic_memory)");
+        return -1;
+    }
 
     /* Lock mutex */
     /* Phase 8: Heartbeat at operation start */
@@ -1434,7 +1476,10 @@ int memory_immune_create_semantic_immune_concept(
     uint64_t* concept_id
 ) {
     /* Guard: null checks */
-    if (!integration || !integration->semantic_memory) return -1;
+    if (!integration || !integration->semantic_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "memory_immune_create_semantic_immune_concept: required parameter is NULL (integration, integration->semantic_memory)");
+        return -1;
+    }
     if (!concept_id) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "concept_id is NULL");
@@ -1477,7 +1522,10 @@ int memory_immune_create_semantic_immune_concept(
         CONCEPT_ABSTRACT  /* Threat concepts are abstract */
     );
 
-    if (*concept_id == 0) return -1;
+    if (*concept_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "memory_immune_create_semantic_immune_concept: concept_id is zero");
+        return -1;
+    }
 
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME,
         "Created semantic concept for immune cell %u", immune_cell_id);
@@ -1553,7 +1601,10 @@ int memory_immune_connect_systems_consolidation(
     systems_consolidation_system_t* systems_consolidation
 ) {
     /* Guard: null checks */
-    if (!integration || !systems_consolidation) return -1;
+    if (!integration || !systems_consolidation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_connect_systems_consolidation: required parameter is NULL (integration, systems_consolidation)");
+        return -1;
+    }
 
     /* Lock mutex */
     /* Phase 8: Heartbeat at operation start */
@@ -1673,7 +1724,10 @@ int memory_immune_connect_wm_transfer(
     wm_transfer_system_t* wm_transfer
 ) {
     /* Guard: null checks */
-    if (!integration || !wm_transfer) return -1;
+    if (!integration || !wm_transfer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_connect_wm_transfer: required parameter is NULL (integration, wm_transfer)");
+        return -1;
+    }
 
     /* Lock mutex */
     /* Phase 8: Heartbeat at operation start */
@@ -1698,7 +1752,10 @@ int memory_immune_modulate_transfer_criteria(
     wm_transfer_criteria_t* modulated_criteria
 ) {
     /* Guard: null checks */
-    if (!integration || !base_criteria || !modulated_criteria) return -1;
+    if (!integration || !base_criteria || !modulated_criteria) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_immune_modulate_transfer_criteria: required parameter is NULL (integration, base_criteria, modulated_criteria)");
+        return -1;
+    }
 
     /* Copy base criteria */
     *modulated_criteria = *base_criteria;

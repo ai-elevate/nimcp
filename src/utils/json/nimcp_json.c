@@ -483,16 +483,20 @@ static void release_lock(JsonContext* ctx)
  */
 static json_t* resolve_json_path(json_t* root, const char* path, json_t** parent, char** last_key)
 {
-    if (!root || !path)
+    if (!root || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resolve_json_path: required parameter is NULL (root, path)");
         return NULL;
+    }
 
     json_t* current = root;
     json_t* prev = NULL;
     // Use nimcp_malloc instead of strdup to match nimcp_free below
     size_t path_len = strlen(path);
     char* path_copy = nimcp_malloc(path_len + 1);
-    if (!path_copy)
+    if (!path_copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resolve_json_path: path_copy is NULL");
         return NULL;
+    }
     strncpy(path_copy, path, path_len);
     path_copy[path_len] = '\0';
     char* saveptr = NULL;

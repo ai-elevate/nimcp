@@ -134,6 +134,7 @@ struct attention_wm_bridge {
  */
 static int find_item_unlocked(const attention_wm_bridge_t* bridge, uint64_t item_id) {
     if (!bridge || !bridge->items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_item_unlocked: required parameter is NULL (bridge, bridge->items)");
         return -1;
     }
 
@@ -148,6 +149,7 @@ static int find_item_unlocked(const attention_wm_bridge_t* bridge, uint64_t item
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_item_unlocked: validation failed");
     return -1;
 }
 
@@ -156,6 +158,7 @@ static int find_item_unlocked(const attention_wm_bridge_t* bridge, uint64_t item
  */
 static int find_lowest_priority_unlocked(const attention_wm_bridge_t* bridge) {
     if (!bridge || !bridge->items || bridge->item_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_lowest_priority_unlocked: required parameter is NULL (bridge, bridge->items)");
         return -1;
     }
 
@@ -182,6 +185,7 @@ static int find_lowest_priority_unlocked(const attention_wm_bridge_t* bridge) {
  */
 static int find_free_slot_unlocked(const attention_wm_bridge_t* bridge) {
     if (!bridge || !bridge->items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot_unlocked: required parameter is NULL (bridge, bridge->items)");
         return -1;
     }
 
@@ -196,6 +200,7 @@ static int find_free_slot_unlocked(const attention_wm_bridge_t* bridge) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot_unlocked: bridge->items is NULL");
     return -1;
 }
 
@@ -293,6 +298,7 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     bridge->items = nimcp_calloc(bridge->item_capacity, sizeof(wm_item_t));
     if (!bridge->items) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_wm_bridge_create: bridge->items is NULL");
         return NULL;
     }
 
@@ -312,6 +318,7 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->items);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_wm_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -365,6 +372,7 @@ int attention_wm_gate_entry(
     float attention_strength
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_gate_entry: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -377,6 +385,7 @@ int attention_wm_gate_entry(
     // Check attention threshold - reject if below threshold
     if (attention_strength < bridge->config.attention_threshold) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_wm_gate_entry: validation failed");
         return -1;  // Rejected due to insufficient attention
     }
 
@@ -399,6 +408,7 @@ int attention_wm_gate_entry(
         slot_idx = find_lowest_priority_unlocked(bridge);
         if (slot_idx < 0) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_wm_gate_entry: validation failed");
             return -1;  // Should not happen, but safety check
         }
 
@@ -430,6 +440,7 @@ int attention_wm_on_focus_shift(
     uint64_t new_focus
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_on_focus_shift: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -475,6 +486,7 @@ int attention_wm_update_priority(
     float new_priority
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_update_priority: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -487,6 +499,7 @@ int attention_wm_update_priority(
     int idx = find_item_unlocked(bridge, item_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_wm_update_priority: validation failed");
         return -1;  // Item not found
     }
 
@@ -508,6 +521,7 @@ int attention_wm_get_attended_items(
     size_t max_count
 ) {
     if (!bridge || !bridge->initialized || !items || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_get_attended_items: required parameter is NULL (bridge, bridge->initialized, items)");
         return -1;
     }
 
@@ -544,6 +558,7 @@ int attention_wm_bridge_get_stats(
     attention_wm_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 

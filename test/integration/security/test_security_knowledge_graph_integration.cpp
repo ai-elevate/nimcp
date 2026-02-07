@@ -413,7 +413,9 @@ TEST_F(SecurityKnowledgeGraphIntegrationTest, ThreatLevelAffectsTraversalLimit) 
 
     /* Manually set traversal depth to simulate threat response */
     security_kg_set_max_traversal_depth(bridge, initial_limit / 2);
-    security_kg_update(bridge);
+    /* Note: Do NOT call security_kg_update() here - it recalculates the
+     * traversal limit from threat level, overwriting our manual set.
+     * The manual set is immediately effective without update. */
 
     security_kg_get_sec_to_kg_effects(bridge, &effects);
     EXPECT_EQ(effects.current_traversal_limit, initial_limit / 2);

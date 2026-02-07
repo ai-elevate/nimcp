@@ -192,6 +192,7 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
         set_error("validate_pool_internal: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_pool_internal: pool is NULL");
         return false;
     }
 
@@ -199,18 +200,21 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (pool->magic != POOL_MAGIC) {
         set_error("validate_pool_internal: Invalid magic 0x%X (expected 0x%X)",
                   pool->magic, POOL_MAGIC);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
         return false;
     }
 
     // Check buffer
     if (!pool->buffer) {
         set_error("validate_pool_internal: NULL buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_pool_internal: pool->buffer is NULL");
         return false;
     }
 
     // Check size
     if (pool->size == 0) {
         set_error("validate_pool_internal: Zero size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: pool->size is zero");
         return false;
     }
 
@@ -218,6 +222,7 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (pool->offset > pool->size) {
         set_error("validate_pool_internal: Offset %zu exceeds size %zu",
                   pool->offset, pool->size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
         return false;
     }
 
@@ -228,6 +233,7 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
         if (entry->magic != ALLOCATION_MAGIC) {
             set_error("validate_pool_internal: Allocation entry corrupted (magic 0x%X)",
                       entry->magic);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_pool_internal: validation failed");
             return false;
         }
 
@@ -235,6 +241,7 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
         if (entry->ptr < (void*)pool->buffer ||
             entry->ptr >= (void*)(pool->buffer + pool->size)) {
             set_error("validate_pool_internal: Allocation pointer outside pool bounds");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool_internal: validation failed");
             return false;
         }
 
@@ -245,6 +252,7 @@ static bool validate_pool_internal(const recovery_pool_t* pool) {
     if (tracked_count != pool->allocation_count) {
         set_error("validate_pool_internal: Allocation count mismatch (tracked %u, reported %u)",
                   tracked_count, pool->allocation_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "validate_pool_internal: validation failed");
         return false;
     }
 
@@ -259,12 +267,14 @@ recovery_pool_t* recovery_pool_create(size_t size_bytes) {
     // Guard: Size validation
     if (size_bytes == 0) {
         set_error("recovery_pool_create: size_bytes is 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_create: size_bytes is zero");
         return NULL;
     }
 
     if (size_bytes > MAX_POOL_SIZE) {
         set_error("recovery_pool_create: size_bytes %zu exceeds maximum %u",
                   size_bytes, MAX_POOL_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_create: validation failed");
         return NULL;
     }
 
@@ -272,6 +282,7 @@ recovery_pool_t* recovery_pool_create(size_t size_bytes) {
     recovery_pool_t* pool = (recovery_pool_t*)nimcp_malloc(sizeof(recovery_pool_t));
     if (!pool) {
         set_error("recovery_pool_create: Failed to allocate pool structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_create: pool is NULL");
         return NULL;
     }
 
@@ -286,6 +297,7 @@ recovery_pool_t* recovery_pool_create(size_t size_bytes) {
     if (!pool->buffer) {
         set_error("recovery_pool_create: Failed to allocate buffer of %zu bytes", size_bytes);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_create: pool->buffer is NULL");
         return NULL;
     }
 
@@ -307,6 +319,7 @@ recovery_pool_t* recovery_pool_create(size_t size_bytes) {
         set_error("recovery_pool_create: Failed to initialize mutex");
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_create: validation failed");
         return NULL;
     }
 
@@ -354,12 +367,14 @@ bool recovery_pool_enter_emergency_mode(recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_enter_emergency_mode: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_enter_emergency_mode: pool is NULL");
         return false;
     }
 
     // Lock mutex
     if (nimcp_mutex_lock(&pool->mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_enter_emergency_mode: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_enter_emergency_mode: validation failed");
         return false;
     }
 
@@ -383,12 +398,14 @@ bool recovery_pool_exit_emergency_mode(recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_exit_emergency_mode: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_exit_emergency_mode: pool is NULL");
         return false;
     }
 
     // Lock mutex
     if (nimcp_mutex_lock(&pool->mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_exit_emergency_mode: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_exit_emergency_mode: validation failed");
         return false;
     }
 
@@ -407,12 +424,14 @@ bool recovery_pool_exit_emergency_mode(recovery_pool_t* pool) {
 bool recovery_pool_is_emergency_mode(const recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_is_emergency_mode: pool is NULL");
         return false;
     }
 
     // Lock mutex
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_is_emergency_mode: validation failed");
         return false;
     }
 
@@ -432,18 +451,21 @@ void* recovery_pool_alloc(recovery_pool_t* pool, size_t size) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_alloc: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_alloc: pool is NULL");
         return NULL;
     }
 
     // Guard: Zero size
     if (size == 0) {
         set_error("recovery_pool_alloc: Zero size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_pool_alloc: size is zero");
         return NULL;
     }
 
     // Lock mutex
     if (nimcp_mutex_lock(&pool->mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_alloc: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_alloc: validation failed");
         return NULL;
     }
 
@@ -461,6 +483,7 @@ void* recovery_pool_alloc(recovery_pool_t* pool, size_t size) {
                             aligned_size, pool->size - pool->offset);
 
         nimcp_mutex_unlock(&pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_alloc: operation failed");
         return NULL;
     }
 
@@ -472,6 +495,7 @@ void* recovery_pool_alloc(recovery_pool_t* pool, size_t size) {
     if (!is_aligned(ptr)) {
         set_error("recovery_pool_alloc: Alignment failure");
         nimcp_mutex_unlock(&pool->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_alloc: is_aligned is NULL");
         return NULL;
     }
 
@@ -512,12 +536,14 @@ void* recovery_pool_calloc(recovery_pool_t* pool, size_t count, size_t size) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_calloc: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_pool_calloc: pool is NULL");
         return NULL;
     }
 
     // Guard: Overflow check
     if (count > 0 && size > SIZE_MAX / count) {
         set_error("recovery_pool_calloc: Size overflow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_pool_calloc: validation failed");
         return NULL;
     }
 
@@ -573,12 +599,14 @@ bool recovery_pool_reset(recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_reset: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_reset: pool is NULL");
         return false;
     }
 
     // Lock mutex
     if (nimcp_mutex_lock(&pool->mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_reset: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_reset: validation failed");
         return false;
     }
 
@@ -614,6 +642,7 @@ bool recovery_pool_get_stats(const recovery_pool_t* pool, recovery_pool_stats_t*
     // Guard: NULL checks
     if (!pool || !stats) {
         set_error("recovery_pool_get_stats: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_get_stats: required parameter is NULL (pool, stats)");
         return false;
     }
 
@@ -621,6 +650,7 @@ bool recovery_pool_get_stats(const recovery_pool_t* pool, recovery_pool_stats_t*
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_get_stats: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_get_stats: validation failed");
         return false;
     }
 
@@ -640,12 +670,14 @@ bool recovery_pool_get_stats(const recovery_pool_t* pool, recovery_pool_stats_t*
 bool recovery_pool_has_space(const recovery_pool_t* pool, size_t required_size) {
     // Guard: NULL check
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_has_space: pool is NULL");
         return false;
     }
 
     // Lock mutex
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_has_space: validation failed");
         return false;
     }
 
@@ -686,6 +718,7 @@ bool recovery_pool_validate(const recovery_pool_t* pool) {
     // Guard: NULL check
     if (!pool) {
         set_error("recovery_pool_validate: NULL pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_pool_validate: pool is NULL");
         return false;
     }
 
@@ -693,6 +726,7 @@ bool recovery_pool_validate(const recovery_pool_t* pool) {
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)&pool->mutex;
     if (nimcp_mutex_lock(mutex) != NIMCP_SUCCESS) {
         set_error("recovery_pool_validate: Failed to lock mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "recovery_pool_validate: validation failed");
         return false;
     }
 

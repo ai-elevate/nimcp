@@ -77,7 +77,10 @@ static minicolumn_spike_pattern_t* create_minicolumn_pattern(
     uint32_t n_neurons
 ) {
     minicolumn_spike_pattern_t* pattern = nimcp_malloc(sizeof(minicolumn_spike_pattern_t));
-    if (!pattern) return NULL;
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_minicolumn_pattern: pattern is NULL");
+        return NULL;
+    }
 
     pattern->minicolumn_id = minicolumn_id;
     pattern->activation_level = 0.0f;
@@ -88,6 +91,7 @@ static minicolumn_spike_pattern_t* create_minicolumn_pattern(
     pattern->neuron_rates = nimcp_malloc(n_neurons * sizeof(float));
     if (!pattern->neuron_rates) {
         nimcp_free(pattern);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_minicolumn_pattern: pattern->neuron_rates is NULL");
         return NULL;
     }
 
@@ -134,6 +138,7 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
     snn_cortical_bridge_t* bridge = nimcp_malloc(sizeof(snn_cortical_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate cortical bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_cortical_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -159,6 +164,7 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
     if (!bridge->minicolumn_patterns) {
         NIMCP_LOGGING_ERROR("Failed to allocate minicolumn patterns");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_cortical_bridge_create: bridge->minicolumn_patterns is NULL");
         return NULL;
     }
 
@@ -173,6 +179,7 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
             }
             nimcp_free(bridge->minicolumn_patterns);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_create: bridge->minicolumn_patterns is NULL");
             return NULL;
         }
     }
@@ -316,7 +323,10 @@ int snn_cortical_bridge_process(
 
     /* Get activation distribution */
     float* activations = nimcp_malloc(bridge->n_minicolumns * sizeof(float));
-    if (!activations) return -1;
+    if (!activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_cortical_bridge_process: activations is NULL");
+        return -1;
+    }
 
     hypercolumn_get_distribution(bridge->hypercolumn, activations, bridge->n_minicolumns);
 

@@ -48,7 +48,10 @@ static int apply_state_configuration(
     plasticity_coordinator_t* coordinator,
     plasticity_coordinator_state_t state
 ) {
-    if (!coordinator) return -1;
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "apply_state_configuration: coordinator is NULL");
+        return -1;
+    }
 
     const plasticity_state_config_t* state_config =
         &coordinator->config.state_configs[state];
@@ -235,6 +238,7 @@ plasticity_coordinator_t* plasticity_coordinator_create(
     } else {
         if (plasticity_coordinator_default_config(&coordinator->config) != 0) {
             nimcp_free(coordinator);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_coordinator_create: validation failed");
             return NULL;
         }
     }
@@ -448,6 +452,7 @@ int plasticity_coordinator_set_mechanism_enabled(
     }
 
     nimcp_platform_mutex_unlock(coordinator->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_coordinator_set_mechanism_enabled: validation failed");
     return -1;
 }
 
@@ -608,6 +613,7 @@ int plasticity_coordinator_update_mechanism(
     }
 
     nimcp_platform_mutex_unlock(coordinator->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_coordinator_update_mechanism: operation failed");
     return -1;
 }
 
@@ -895,6 +901,7 @@ int plasticity_coordinator_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_coordinator_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -968,6 +975,7 @@ bool plasticity_coordinator_is_low_energy(
     const plasticity_coordinator_t* coordinator
 ) {
     if (!coordinator || !coordinator->config.enable_energy_tracking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_coordinator_is_low_energy: required parameter is NULL (coordinator, coordinator->config)");
         return false;
     }
 

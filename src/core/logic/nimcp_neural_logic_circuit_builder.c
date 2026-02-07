@@ -73,7 +73,10 @@ static void skip_whitespace(const char* expr, size_t* pos) {
  * HOW:  Check isupper(), consume character
  */
 static bool try_parse_variable(const char* expr, size_t* pos, char* var_name) {
-    if (!expr || !pos || !var_name) return false;
+    if (!expr || !pos || !var_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "try_parse_variable: required parameter is NULL (expr, pos, var_name)");
+        return false;
+    }
 
     skip_whitespace(expr, pos);
 
@@ -83,6 +86,7 @@ static bool try_parse_variable(const char* expr, size_t* pos, char* var_name) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "try_parse_variable: validation failed");
     return false;
 }
 
@@ -94,7 +98,10 @@ static bool try_parse_variable(const char* expr, size_t* pos, char* var_name) {
  * HOW:  String comparison with multiple aliases
  */
 static bool try_parse_operator(const char* expr, size_t* pos, logic_gate_type_t* gate_type) {
-    if (!expr || !pos || !gate_type) return false;
+    if (!expr || !pos || !gate_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "try_parse_operator: required parameter is NULL (expr, pos, gate_type)");
+        return false;
+    }
 
     skip_whitespace(expr, pos);
     const char* p = expr + *pos;
@@ -149,6 +156,7 @@ static bool try_parse_operator(const char* expr, size_t* pos, logic_gate_type_t*
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "try_parse_operator: validation failed");
     return false;
 }
 
@@ -245,6 +253,7 @@ static ast_node_t* parse_primary(const char* expr, size_t* pos) {
         } else {
             LOG_ERROR("parse_primary: missing closing parenthesis at position %zu", *pos);
             free_ast(node);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_primary: validation failed");
             return NULL;
         }
         return node;
@@ -256,6 +265,7 @@ static ast_node_t* parse_primary(const char* expr, size_t* pos) {
         return create_variable_node(var_name);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parse_primary: validation failed");
     return NULL;
 }
 
@@ -275,6 +285,7 @@ static ast_node_t* parse_factor(const char* expr, size_t* pos) {
             ast_node_t* operand = parse_factor(expr, pos);
             if (!operand) {
                 LOG_ERROR("parse_factor: NOT requires operand at position %zu", *pos);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_factor: operand is NULL");
                 return NULL;
             }
             return create_operator_node(LOGIC_GATE_NOT, operand, NULL);
@@ -312,6 +323,7 @@ static ast_node_t* parse_term(const char* expr, size_t* pos) {
                 if (!right) {
                     LOG_ERROR("parse_term: operator requires right operand at position %zu", *pos);
                     free_ast(left);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_term: right is NULL");
                     return NULL;
                 }
                 left = create_operator_node(gate_type, left, right);
@@ -355,6 +367,7 @@ static ast_node_t* parse_expression(const char* expr, size_t* pos) {
                 if (!right) {
                     LOG_ERROR("parse_expression: operator requires right operand at position %zu", *pos);
                     free_ast(left);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_expression: right is NULL");
                     return NULL;
                 }
                 left = create_operator_node(gate_type, left, right);
@@ -378,18 +391,21 @@ ast_node_t* parse_logic_expression(const char* expression) {
     // Guard: NULL expression
     if (!nimcp_validate_pointer(expression, "expression")) {
         LOG_ERROR("parse_logic_expression: NULL expression");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_logic_expression: nimcp_validate_pointer is NULL");
         return NULL;
     }
 
     // Guard: empty expression
     if (expression[0] == '\0') {
         LOG_ERROR("parse_logic_expression: empty expression");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_logic_expression: validation failed");
         return NULL;
     }
 
     // Guard: expression too long
     if (strlen(expression) >= MAX_EXPRESSION_LENGTH) {
         LOG_ERROR("parse_logic_expression: expression too long (max %d)", MAX_EXPRESSION_LENGTH);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parse_logic_expression: capacity exceeded");
         return NULL;
     }
 
@@ -398,6 +414,7 @@ ast_node_t* parse_logic_expression(const char* expression) {
 
     if (!ast) {
         LOG_ERROR("parse_logic_expression: parse failed for '%s'", expression);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_logic_expression: ast is NULL");
         return NULL;
     }
 
@@ -406,6 +423,7 @@ ast_node_t* parse_logic_expression(const char* expression) {
     if (expression[pos] != '\0') {
         LOG_ERROR("parse_logic_expression: unexpected characters at position %zu", pos);
         free_ast(ast);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_logic_expression: validation failed");
         return NULL;
     }
 
@@ -558,12 +576,14 @@ bool destroy_circuit(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("destroy_circuit: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "destroy_circuit: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("destroy_circuit: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "destroy_circuit: brain_has_neural_logic is NULL");
         return false;
     }
 

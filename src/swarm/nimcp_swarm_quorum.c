@@ -120,6 +120,7 @@ static nimcp_drone_commitment_t* find_commitment(
             return &quorum->commitments[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_commitment: validation failed");
     return NULL;
 }
 
@@ -135,12 +136,14 @@ static nimcp_drone_commitment_t* add_commitment(
         /* Check for overflow before doubling capacity */
         if (quorum->commitment_capacity > UINT32_MAX / 2) {
             LOG_ERROR("Commitment capacity overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_commitment: validation failed");
             return NULL;
         }
         uint32_t new_capacity = quorum->commitment_capacity * 2;
         /* Check for allocation size overflow */
         if (new_capacity > SIZE_MAX / sizeof(nimcp_drone_commitment_t)) {
             LOG_ERROR("Commitment array size overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_commitment: validation failed");
             return NULL;
         }
         nimcp_drone_commitment_t* new_array = (nimcp_drone_commitment_t*)nimcp_realloc(
@@ -149,6 +152,7 @@ static nimcp_drone_commitment_t* add_commitment(
         );
         if (!new_array) {
             LOG_ERROR("Failed to expand commitment array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_commitment: new_array is NULL");
             return NULL;
         }
         quorum->commitments = new_array;
@@ -223,12 +227,14 @@ static bool add_decision(
         /* Check for overflow before doubling capacity */
         if (quorum->decision_capacity > UINT32_MAX / 2) {
             LOG_ERROR("Decision capacity overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_decision: validation failed");
             return false;
         }
         uint32_t new_capacity = quorum->decision_capacity * 2;
         /* Check for allocation size overflow */
         if (new_capacity > SIZE_MAX / sizeof(nimcp_quorum_decision_t)) {
             LOG_ERROR("Decision array size overflow");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_decision: validation failed");
             return false;
         }
         nimcp_quorum_decision_t* new_array = (nimcp_quorum_decision_t*)nimcp_realloc(
@@ -237,6 +243,7 @@ static bool add_decision(
         );
         if (!new_array) {
             LOG_ERROR("Failed to expand decision array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_decision: new_array is NULL");
             return false;
         }
         quorum->decisions = new_array;
@@ -414,6 +421,7 @@ bool nimcp_quorum_broadcast_signal(
 ) {
     if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
         LOG_ERROR("Invalid parameters for signal broadcast");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_broadcast_signal: quorum is NULL");
         return false;
     }
 
@@ -447,6 +455,7 @@ bool nimcp_quorum_receive_signal(
     uint32_t source_drone
 ) {
     if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_receive_signal: quorum is NULL");
         return false;
     }
 
@@ -525,6 +534,7 @@ bool nimcp_quorum_update_commitment(
     double strength
 ) {
     if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_update_commitment: quorum is NULL");
         return false;
     }
 
@@ -538,6 +548,7 @@ bool nimcp_quorum_update_commitment(
         commit = add_commitment(quorum, drone_id);
         if (!commit) {
             nimcp_platform_mutex_unlock(quorum->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_update_commitment: commit is NULL");
             return false;
         }
     }
@@ -581,7 +592,10 @@ const nimcp_drone_commitment_t* nimcp_quorum_get_commitment(
     const nimcp_swarm_quorum_t* quorum,
     uint32_t drone_id
 ) {
-    if (!quorum) return NULL;
+    if (!quorum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_get_commitment: quorum is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < quorum->commitment_count; i++) {
         if (quorum->commitments[i].drone_id == drone_id) {
@@ -589,6 +603,7 @@ const nimcp_drone_commitment_t* nimcp_quorum_get_commitment(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_get_commitment: validation failed");
     return NULL;
 }
 
@@ -596,7 +611,10 @@ bool nimcp_quorum_remove_commitment(
     nimcp_swarm_quorum_t* quorum,
     uint32_t drone_id
 ) {
-    if (!quorum) return false;
+    if (!quorum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_remove_commitment: quorum is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(quorum->mutex);
 
@@ -624,6 +642,7 @@ bool nimcp_quorum_remove_commitment(
     }
 
     nimcp_platform_mutex_unlock(quorum->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_remove_commitment: operation failed");
     return false;
 }
 
@@ -677,6 +696,7 @@ bool nimcp_quorum_check_threshold(
     nimcp_signal_type_t signal
 ) {
     if (!quorum || signal >= NIMCP_SIGNAL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_check_threshold: quorum is NULL");
         return false;
     }
 
@@ -722,6 +742,7 @@ bool nimcp_quorum_make_decision(
     void* decision_data
 ) {
     if (!quorum || decision_type >= NIMCP_DECISION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_make_decision: quorum is NULL");
         return false;
     }
 
@@ -746,6 +767,7 @@ bool nimcp_quorum_make_decision(
         nimcp_platform_mutex_unlock(quorum->mutex);
         LOG_DEBUG("No quorum reached for decision type %s",
                        decision_names[decision_type]);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_make_decision: validation failed");
         return false;
     }
 
@@ -802,6 +824,7 @@ const nimcp_quorum_decision_t* nimcp_quorum_get_last_decision(
     const nimcp_swarm_quorum_t* quorum
 ) {
     if (!quorum || quorum->decision_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_quorum_get_last_decision: quorum is NULL");
         return NULL;
     }
 
@@ -813,6 +836,7 @@ bool nimcp_quorum_finalize_decision(
     uint32_t decision_index
 ) {
     if (!quorum || decision_index >= quorum->decision_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_quorum_finalize_decision: quorum is NULL");
         return false;
     }
 
@@ -974,6 +998,7 @@ bool nimcp_quorum_handle_message(
     const bio_message_header_t* msg
 ) {
     if (!quorum || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_handle_message: required parameter is NULL (quorum, msg)");
         return false;
     }
 
@@ -981,6 +1006,7 @@ bool nimcp_quorum_handle_message(
     /* When integrated with bio-async, would parse based on message type */
     (void)msg->type;  /* Suppress unused warning */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_handle_message: required parameter is NULL (quorum, msg)");
     return false;
 }
 
@@ -989,6 +1015,7 @@ bool nimcp_quorum_register_handlers(
     struct nimcp_brain* brain
 ) {
     if (!quorum || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_quorum_register_handlers: required parameter is NULL (quorum, brain)");
         return false;
     }
 
@@ -1101,6 +1128,7 @@ int quorum_validate_with_logic(
 ) {
     if (!quorum || !logic_cfg) {
         LOG_ERROR("Invalid parameters for logic validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quorum_validate_with_logic: required parameter is NULL (quorum, logic_cfg)");
         return -1;
     }
 
@@ -1305,6 +1333,7 @@ int quorum_check_vote_consistency(
 ) {
     if (!quorum || !contradicting_agents || !count) {
         LOG_ERROR("Invalid parameters for consistency check");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quorum_check_vote_consistency: required parameter is NULL (quorum, contradicting_agents, count)");
         return -1;
     }
 
@@ -1332,6 +1361,7 @@ int quorum_evaluate_implication(
         antecedent_signal >= NIMCP_SIGNAL_COUNT ||
         consequent_signal >= NIMCP_SIGNAL_COUNT) {
         LOG_ERROR("Invalid parameters for implication evaluation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quorum_evaluate_implication: operation failed");
         return -1;
     }
 

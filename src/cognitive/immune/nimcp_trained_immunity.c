@@ -347,6 +347,7 @@ static size_t find_training_slot(trained_immunity_t* system) {
 int trained_immunity_default_config(trained_immunity_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_default_config: config is NULL");
         return -1;
     }
 
@@ -400,6 +401,7 @@ trained_immunity_t* trained_immunity_create(
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trained_immunity_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -476,7 +478,10 @@ int trained_immunity_train(
 
     }
     if (stimulus_type >= TRAINED_STIMULUS_COUNT) return -1;
-    if (intensity <= 0.0f || intensity > 1.0f) return -1;  /* Reject zero intensity */
+    if (intensity <= 0.0f || intensity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trained_immunity_train: validation failed");
+        return -1;
+    }
 
     /* Check minimum threshold */
     /* Phase 8: Heartbeat at operation start */
@@ -634,8 +639,14 @@ bool trained_immunity_check_cross_protection(
     const trained_immunity_t* system,
     const brain_antigen_t* antigen
 ) {
-    if (!system || !antigen) return false;
-    if (!system->config.enable_cross_protection) return false;
+    if (!system || !antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_check_cross_protection: required parameter is NULL (system, antigen)");
+        return false;
+    }
+    if (!system->config.enable_cross_protection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_check_cross_protection: system->config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     trained_immunity_heartbeat("trained_immu_check_cross_protecti", 0.0f);
@@ -663,7 +674,10 @@ int trained_immunity_get_epigenetic_state(
     const trained_immunity_t* system,
     epigenetic_state_t* state
 ) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_get_epigenetic_state: required parameter is NULL (system, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     trained_immunity_heartbeat("trained_immu_get_epigenetic_state", 0.0f);
@@ -677,7 +691,10 @@ int trained_immunity_get_metabolic_reprogramming(
     const trained_immunity_t* system,
     metabolic_reprogramming_t* state
 ) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_get_metabolic_reprogramming: required parameter is NULL (system, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     trained_immunity_heartbeat("trained_immu_get_metabolic_reprog", 0.0f);
@@ -691,7 +708,10 @@ int trained_immunity_get_prr_state(
     const trained_immunity_t* system,
     prr_sensitivity_t* state
 ) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_get_prr_state: required parameter is NULL (system, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     trained_immunity_heartbeat("trained_immu_get_prr_state", 0.0f);
@@ -702,7 +722,10 @@ int trained_immunity_get_prr_state(
 }
 
 bool trained_immunity_is_active(const trained_immunity_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trained_immunity_is_active: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     trained_immunity_heartbeat("trained_immu_is_active", 0.0f);
 

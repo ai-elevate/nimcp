@@ -144,6 +144,7 @@ bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_
 {
     if (!network || neuron_id >= network->num_neurons) {
         LOG_ERROR(LOG_MODULE, "Invalid network or neuron_id %u", neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_normalize_weights: network is NULL");
         return false;
     }
 

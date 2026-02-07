@@ -805,6 +805,7 @@ narrative_event_t* narrative_event_create(uint32_t agent_id, const float* encodi
 {
     narrative_event_t* event = (narrative_event_t*)nimcp_malloc(sizeof(narrative_event_t));
     if (!event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "narrative_event_create: event is NULL");
         return NULL;
     }
 
@@ -818,6 +819,7 @@ narrative_event_t* narrative_event_create(uint32_t agent_id, const float* encodi
     event->event_encoding = (float*)nimcp_malloc(sizeof(float) * encoding_size);
     if (!event->event_encoding) {
         nimcp_free(event);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "narrative_event_create: event->event_encoding is NULL");
         return NULL;
     }
 

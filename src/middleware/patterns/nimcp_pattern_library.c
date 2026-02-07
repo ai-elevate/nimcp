@@ -184,6 +184,7 @@ static pattern_node_t* find_pattern_node(const pattern_library_t* library,
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_jaccard_similarity: validation failed");
     return NULL;
 }
 
@@ -261,6 +262,7 @@ pattern_library_t* pattern_library_create(const pattern_library_config_t* config
     library->knn_temp_pool = memory_pool_create(&pool_config);
     if (!library->knn_temp_pool) {
         pattern_library_destroy(library);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_library_create: library->knn_temp_pool is NULL");
         return NULL;
     }
 
@@ -302,17 +304,22 @@ bool pattern_library_add(pattern_library_t* library,
     if (!library || !data || dimension == 0 ||
         dimension > library->config.max_dimension ||
         library->num_patterns >= library->config.max_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_library_destroy: operation failed");
         return false;
     }
 
     // Allocate pattern node
     pattern_node_t* node = (pattern_node_t*)nimcp_calloc(1, sizeof(pattern_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_library_destroy: node is NULL");
+        return false;
+    }
 
     // Create CoW wrapper for pattern data (Phase 1.4)
     node->pattern_data_cow = pattern_cow_create(data, dimension);
     if (!node->pattern_data_cow) {
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_destroy: node->pattern_data_cow is NULL");
         return false;
     }
 
@@ -357,6 +364,7 @@ bool pattern_library_match(pattern_library_t* library,
                            uint32_t dimension,
                            pattern_match_t* match) {
     if (!library || !data || !match || dimension == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_destroy: required parameter is NULL (library, data, match)");
         return false;
     }
 
@@ -379,6 +387,7 @@ bool pattern_library_match(pattern_library_t* library,
 
     // Check threshold
     if (best_similarity < library->config.similarity_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_library_destroy: validation failed");
         return false;
     }
 
@@ -420,6 +429,7 @@ bool pattern_library_knn(pattern_library_t* library,
                          pattern_match_t* matches,
                          uint32_t* num_found) {
     if (!library || !data || !matches || !num_found || k == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_destroy: required parameter is NULL (library, data, matches, num_found)");
         return false;
     }
 
@@ -433,7 +443,10 @@ bool pattern_library_knn(pattern_library_t* library,
 
     // Use memory pool for temp array (Phase 1.4 - 1.13x faster than malloc)
     sim_pair_t* all_sims = (sim_pair_t*)memory_pool_acquire(library->knn_temp_pool);
-    if (!all_sims) return false;
+    if (!all_sims) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_library_destroy: all_sims is NULL");
+        return false;
+    }
 
     uint32_t valid_count = 0;
 
@@ -483,10 +496,16 @@ bool pattern_library_knn(pattern_library_t* library,
 bool pattern_library_get(const pattern_library_t* library,
                          uint32_t pattern_id,
                          pattern_template_t* pattern) {
-    if (!library || !pattern) return false;
+    if (!library || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (library, pattern)");
+        return false;
+    }
 
     pattern_node_t* node = find_pattern_node(library, pattern_id);
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: node is NULL");
+        return false;
+    }
 
     *pattern = node->pattern;
     return true;
@@ -496,10 +515,14 @@ bool pattern_library_update(pattern_library_t* library,
                             uint32_t pattern_id,
                             const float* data,
                             uint32_t dimension) {
-    if (!library || !data || dimension == 0) return false;
+    if (!library || !data || dimension == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (library, data)");
+        return false;
+    }
 
     pattern_node_t* node = find_pattern_node(library, pattern_id);
     if (!node || node->pattern.dimension != dimension) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: node is NULL");
         return false;
     }
 
@@ -514,7 +537,10 @@ bool pattern_library_update(pattern_library_t* library,
 }
 
 bool pattern_library_remove(pattern_library_t* library, uint32_t pattern_id) {
-    if (!library) return false;
+    if (!library) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_remove: library is NULL");
+        return false;
+    }
 
     uint32_t hash = hash_pattern_id(pattern_id);
     pattern_node_t** prev = &library->hash_table[hash];
@@ -540,13 +566,17 @@ bool pattern_library_remove(pattern_library_t* library, uint32_t pattern_id) {
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_library_remove: operation failed");
     return false;
 }
 
 bool pattern_library_prune(pattern_library_t* library,
                            uint32_t min_usage,
                            uint32_t* num_removed) {
-    if (!library) return false;
+    if (!library) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_remove: library is NULL");
+        return false;
+    }
 
     uint32_t removed = 0;
 
@@ -574,7 +604,10 @@ bool pattern_library_get_stats(const pattern_library_t* library,
                                float* capacity_used,
                                float* avg_dimension,
                                uint64_t* total_matches) {
-    if (!library) return false;
+    if (!library) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_library_remove: library is NULL");
+        return false;
+    }
 
     if (num_patterns) *num_patterns = library->num_patterns;
 

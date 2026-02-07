@@ -87,6 +87,7 @@ bbb_system_t get_global_bbb_system(void)
     if (!g_bbb_mutex_initialized) {
         if (nimcp_platform_mutex_init(&g_bbb_mutex, false) != 0) {
             LOG_ERROR("Failed to initialize BBB mutex");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "get_global_bbb_system: validation failed");
             return NULL;
         }
         g_bbb_mutex_initialized = true;

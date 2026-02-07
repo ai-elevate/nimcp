@@ -71,6 +71,7 @@ bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
     // Allocate embedding vector
     synapse->semantic_embedding = (float*)nimcp_malloc(dim * sizeof(float));
     if (!synapse->semantic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_init_embedding: synapse->semantic_embedding is NULL");
         return false;
     }
 
@@ -144,6 +145,7 @@ bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding,
 
     // Check synapse has embedding
     if (!synapse->semantic_embedding || synapse->embedding_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_update_embedding: synapse->semantic_embedding is NULL");
         return false;
     }
 

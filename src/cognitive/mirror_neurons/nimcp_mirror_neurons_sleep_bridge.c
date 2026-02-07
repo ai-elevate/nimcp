@@ -270,6 +270,7 @@ mirror_neurons_sleep_bridge_t mirror_neurons_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "mirror_neurons_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_neurons_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -506,6 +507,7 @@ int mirror_neurons_sleep_connect_bio_async(mirror_neurons_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_sleep_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -551,6 +553,7 @@ int mirror_neurons_sleep_disconnect_bio_async(mirror_neurons_sleep_bridge_t brid
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_sleep_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -649,13 +652,19 @@ void mirror_neurons_sleep_bridge_set_instance_health_agent(
  * ============================================================================ */
 
 int mirror_neurons_sleep_bridge_pre_training_hook(mirror_neurons_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_sleep_bridge_pre_training_hook: bridge is NULL");
+        return -1;
+    }
     mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_pre_train", 0.0f);
     return 0;
 }
 
 int mirror_neurons_sleep_bridge_post_training_hook(mirror_neurons_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons_sleep_bridge_post_training_hook: bridge is NULL");
+        return -1;
+    }
     mirror_neurons_sleep_bridge_heartbeat_instance(bridge->health_agent, "mirror_neuro_post_train", 1.0f);
     return 0;
 }

@@ -144,6 +144,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
     creative_memory_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_memory_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate memory bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge is NULL");
         return NULL;
     }
 
@@ -160,6 +161,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
     if (!bridge->episodic_memories) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate episodic memories");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->episodic_memories is NULL");
         return NULL;
     }
 
@@ -171,6 +173,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
         LOG_ERROR(LOG_MODULE, "Failed to allocate semantic memories");
         nimcp_free(bridge->episodic_memories);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->semantic_memories is NULL");
         return NULL;
     }
 
@@ -183,6 +186,7 @@ creative_memory_bridge_t* creative_memory_bridge_create(
         nimcp_free(bridge->semantic_memories);
         nimcp_free(bridge->episodic_memories);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_memory_id: bridge->preferences is NULL");
         return NULL;
     }
 
@@ -344,7 +348,10 @@ int creative_memory_update_preference(creative_memory_bridge_t* bridge,
                                        art_modality_t modality,
                                        int32_t archetype_id,
                                        float preference) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_memory_bridge_destroy: bridge is NULL");
+        return -1;
+    }
 
     /* Clamp preference */
     if (preference < -1.0f) preference = -1.0f;
@@ -369,6 +376,7 @@ int creative_memory_update_preference(creative_memory_bridge_t* bridge,
     /* Create new preference */
     if (bridge->preference_count >= bridge->preference_capacity) {
         LOG_WARN(LOG_MODULE, "Preference storage full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "creative_memory_bridge_destroy: capacity exceeded");
         return -1;
     }
 
@@ -482,7 +490,10 @@ int creative_memory_get_preference(const creative_memory_bridge_t* bridge,
                                     art_modality_t modality,
                                     int32_t archetype_id,
                                     creative_preference_t* out) {
-    if (!bridge || !out) return -1;
+    if (!bridge || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, out)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->preference_count; i++) {
         if (bridge->preferences[i].modality == modality &&
@@ -492,6 +503,7 @@ int creative_memory_get_preference(const creative_memory_bridge_t* bridge,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return -1;  /* Not found */
 }
 
@@ -593,7 +605,10 @@ uint32_t creative_memory_forget(creative_memory_bridge_t* bridge,
 int creative_memory_reinforce(creative_memory_bridge_t* bridge,
                                uint64_t memory_id,
                                creative_memory_type_t memory_type) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_memory_consolidate: bridge is NULL");
+        return -1;
+    }
 
     uint64_t now = get_current_time();
 
@@ -619,6 +634,7 @@ int creative_memory_reinforce(creative_memory_bridge_t* bridge,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_memory_consolidate: operation failed");
     return -1;  /* Not found */
 }
 
@@ -639,7 +655,10 @@ void creative_memory_set_semantic_system(creative_memory_bridge_t* bridge,
 }
 
 int creative_memory_sync_external(creative_memory_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_memory_sync_external: bridge is NULL");
+        return -1;
+    }
 
     /* In full implementation, would sync with hippocampus and semantic memory */
     /* For now, just return success */

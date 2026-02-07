@@ -201,7 +201,10 @@ static void generate_archetype_embedding(style_embedding_t* emb, uint32_t dim,
 static int init_literary_archetypes(style_representer_t* repr) {
     repr->num_literary = STYLE_LIT_COUNT;
     repr->literary_archetypes = nimcp_calloc(repr->num_literary, sizeof(archetype_info_t));
-    if (!repr->literary_archetypes) return -1;
+    if (!repr->literary_archetypes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_literary_archetypes: repr->literary_archetypes is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < repr->num_literary; i++) {
         archetype_info_t* info = &repr->literary_archetypes[i];
@@ -225,7 +228,10 @@ static int init_literary_archetypes(style_representer_t* repr) {
 static int init_music_archetypes(style_representer_t* repr) {
     repr->num_music = STYLE_MUSIC_COUNT;
     repr->music_archetypes = nimcp_calloc(repr->num_music, sizeof(archetype_info_t));
-    if (!repr->music_archetypes) return -1;
+    if (!repr->music_archetypes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_music_archetypes: repr->music_archetypes is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < repr->num_music; i++) {
         archetype_info_t* info = &repr->music_archetypes[i];
@@ -249,7 +255,10 @@ static int init_music_archetypes(style_representer_t* repr) {
 static int init_visual_archetypes(style_representer_t* repr) {
     repr->num_visual = STYLE_VIS_COUNT;
     repr->visual_archetypes = nimcp_calloc(repr->num_visual, sizeof(archetype_info_t));
-    if (!repr->visual_archetypes) return -1;
+    if (!repr->visual_archetypes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_visual_archetypes: repr->visual_archetypes is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < repr->num_visual; i++) {
         archetype_info_t* info = &repr->visual_archetypes[i];
@@ -273,7 +282,10 @@ static int init_visual_archetypes(style_representer_t* repr) {
 static int init_cinema_archetypes(style_representer_t* repr) {
     repr->num_cinema = STYLE_CINEMA_COUNT;
     repr->cinema_archetypes = nimcp_calloc(repr->num_cinema, sizeof(archetype_info_t));
-    if (!repr->cinema_archetypes) return -1;
+    if (!repr->cinema_archetypes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_cinema_archetypes: repr->cinema_archetypes is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < repr->num_cinema; i++) {
         archetype_info_t* info = &repr->cinema_archetypes[i];
@@ -313,6 +325,7 @@ style_representer_t* style_representer_create(
     style_representer_t* repr = nimcp_calloc(1, sizeof(style_representer_t));
     if (!repr) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate style representer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "free_archetypes: repr is NULL");
         return NULL;
     }
 
@@ -377,7 +390,10 @@ int style_repr_embed_text(style_representer_t* repr,
                           const char* text, size_t len,
                           art_modality_t modality,
                           style_embedding_t* out) {
-    if (!repr || !text || !out) return -1;
+    if (!repr || !text || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_representer_destroy: required parameter is NULL (repr, text, out)");
+        return -1;
+    }
     (void)modality;
 
     style_embedding_create(out, repr->embedding_dim);
@@ -437,7 +453,10 @@ int style_repr_embed_text(style_representer_t* repr,
 int style_repr_embed_music(style_representer_t* repr,
                            const music_track_t* tracks, uint32_t num_tracks,
                            style_embedding_t* out) {
-    if (!repr || !tracks || !out) return -1;
+    if (!repr || !tracks || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_representer_destroy: required parameter is NULL (repr, tracks, out)");
+        return -1;
+    }
 
     style_embedding_create(out, repr->embedding_dim);
 
@@ -482,7 +501,10 @@ int style_repr_embed_music(style_representer_t* repr,
 int style_repr_embed_visual(style_representer_t* repr,
                             const visual_image_t* image,
                             style_embedding_t* out) {
-    if (!repr || !image || !out) return -1;
+    if (!repr || !image || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_representer_destroy: required parameter is NULL (repr, image, out)");
+        return -1;
+    }
 
     style_embedding_create(out, repr->embedding_dim);
 
@@ -540,7 +562,10 @@ int style_repr_embed_audio(style_representer_t* repr,
                            const float* audio, uint64_t num_samples,
                            uint32_t sample_rate,
                            style_embedding_t* out) {
-    if (!repr || !audio || !out) return -1;
+    if (!repr || !audio || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_representer_destroy: required parameter is NULL (repr, audio, out)");
+        return -1;
+    }
 
     style_embedding_create(out, repr->embedding_dim);
 
@@ -585,7 +610,10 @@ int style_repr_get_archetype_info(const style_representer_t* repr,
                                    art_modality_t modality,
                                    int32_t archetype_id,
                                    archetype_info_t* out) {
-    if (!repr || !out || archetype_id < 0) return -1;
+    if (!repr || !out || archetype_id < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (repr, out)");
+        return -1;
+    }
 
     archetype_info_t* archetypes = NULL;
     uint32_t count = 0;
@@ -604,7 +632,10 @@ int style_repr_get_archetype_info(const style_representer_t* repr,
         count = repr->num_cinema;
     }
 
-    if (!archetypes || (uint32_t)archetype_id >= count) return -1;
+    if (!archetypes || (uint32_t)archetype_id >= count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: archetypes is NULL");
+        return -1;
+    }
 
     /* Copy info (shallow copy of embedding) */
     *out = archetypes[archetype_id];
@@ -616,7 +647,10 @@ int style_repr_get_archetype_embedding(const style_representer_t* repr,
                                         art_modality_t modality,
                                         int32_t archetype_id,
                                         style_embedding_t* out) {
-    if (!repr || !out || archetype_id < 0) return -1;
+    if (!repr || !out || archetype_id < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (repr, out)");
+        return -1;
+    }
 
     archetype_info_t* archetypes = NULL;
     uint32_t count = 0;
@@ -635,7 +669,10 @@ int style_repr_get_archetype_embedding(const style_representer_t* repr,
         count = repr->num_cinema;
     }
 
-    if (!archetypes || (uint32_t)archetype_id >= count) return -1;
+    if (!archetypes || (uint32_t)archetype_id >= count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: archetypes is NULL");
+        return -1;
+    }
 
     return style_embedding_clone(&archetypes[archetype_id].canonical, out);
 }
@@ -675,7 +712,10 @@ int style_repr_find_archetype_by_name(const style_representer_t* repr,
                                        art_modality_t modality,
                                        const char* name,
                                        archetype_info_t* out) {
-    if (!repr || !name || !out) return -1;
+    if (!repr || !name || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (repr, name, out)");
+        return -1;
+    }
 
     archetype_info_t* archetypes = NULL;
     uint32_t count = 0;
@@ -694,7 +734,10 @@ int style_repr_find_archetype_by_name(const style_representer_t* repr,
         count = repr->num_cinema;
     }
 
-    if (!archetypes) return -1;
+    if (!archetypes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: archetypes is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         if (strcasecmp(archetypes[i].name, name) == 0) {
@@ -703,6 +746,7 @@ int style_repr_find_archetype_by_name(const style_representer_t* repr,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return -1;
 }
 
@@ -732,7 +776,10 @@ int style_repr_interpolate(const style_embedding_t* a,
                            const style_embedding_t* b,
                            float t,
                            style_embedding_t* out) {
-    if (!a || !b || !out || a->embedding_dim != b->embedding_dim) return -1;
+    if (!a || !b || !out || a->embedding_dim != b->embedding_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (a, b, out)");
+        return -1;
+    }
 
     style_embedding_create(out, a->embedding_dim);
 
@@ -747,7 +794,10 @@ int style_repr_combine(const style_embedding_t* a,
                        const style_embedding_t* b,
                        float scale_a, float scale_b,
                        style_embedding_t* out) {
-    if (!a || !b || !out || a->embedding_dim != b->embedding_dim) return -1;
+    if (!a || !b || !out || a->embedding_dim != b->embedding_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (a, b, out)");
+        return -1;
+    }
 
     style_embedding_create(out, a->embedding_dim);
 
@@ -762,7 +812,10 @@ int style_repr_combine(const style_embedding_t* a,
 
 int style_repr_negate(const style_embedding_t* style,
                       style_embedding_t* out) {
-    if (!style || !out) return -1;
+    if (!style || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (style, out)");
+        return -1;
+    }
 
     style_embedding_create(out, style->embedding_dim);
 
@@ -776,7 +829,10 @@ int style_repr_negate(const style_embedding_t* style,
 int32_t style_repr_project_to_archetype(const style_representer_t* repr,
                                          const style_embedding_t* style,
                                          style_embedding_t* out) {
-    if (!repr || !style || !out) return -1;
+    if (!repr || !style || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (repr, style, out)");
+        return -1;
+    }
 
     /* Find closest archetype across all modalities */
     float best_sim = -2.0f;
@@ -846,10 +902,14 @@ void style_representer_set_cortical_columns(style_representer_t* repr,
 
 style_embedding_t* style_repr_alloc_embedding(uint32_t dim) {
     style_embedding_t* emb = nimcp_calloc(1, sizeof(style_embedding_t));
-    if (!emb) return NULL;
+    if (!emb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_alloc_embedding: emb is NULL");
+        return NULL;
+    }
 
     if (style_embedding_create(emb, dim) < 0) {
         nimcp_free(emb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_alloc_embedding: validation failed");
         return NULL;
     }
 
@@ -857,13 +917,20 @@ style_embedding_t* style_repr_alloc_embedding(uint32_t dim) {
 }
 
 style_embedding_t* style_repr_clone_embedding(const style_embedding_t* src) {
-    if (!src) return NULL;
+    if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_repr_clone_embedding: src is NULL");
+        return NULL;
+    }
 
     style_embedding_t* clone = nimcp_calloc(1, sizeof(style_embedding_t));
-    if (!clone) return NULL;
+    if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_repr_clone_embedding: clone is NULL");
+        return NULL;
+    }
 
     if (style_embedding_clone(src, clone) < 0) {
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_repr_clone_embedding: validation failed");
         return NULL;
     }
 

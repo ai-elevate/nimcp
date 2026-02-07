@@ -127,6 +127,7 @@ static bool compute_dominant_singular_triplet(
         nimcp_free(v);
         nimcp_free(Av);
         nimcp_free(AtAv);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_dominant_singular_triplet: required parameter is NULL (v, Av, AtAv)");
         return false;
     }
 

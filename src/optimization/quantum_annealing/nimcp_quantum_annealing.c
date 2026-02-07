@@ -454,7 +454,10 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     }
 
     // Guard: invalid configuration
-    if (!validate_config(config)) return NULL;
+    if (!validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: validate_config is NULL");
+        return NULL;
+    }
 
     // Allocate annealer
     // BUGFIX: Use nimcp_malloc for consistency with memory tracking
@@ -474,6 +477,7 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     init_rng(annealer);
     if (!annealer->rng_state) {
         nimcp_free(annealer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: annealer->rng_state is NULL");
         return NULL;
     }
 

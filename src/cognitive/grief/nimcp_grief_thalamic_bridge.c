@@ -120,6 +120,7 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
     if (bridge_base_init(&bridge->base, 0, "grief_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->grief = grief;
@@ -145,7 +146,10 @@ void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
 }
 
 int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_reset", 0.0f);
 
@@ -165,7 +169,10 @@ int grief_thalamic_bridge_reset(grief_thalamic_bridge_t* bridge) {
  * HOW: Create routed_signal_t, apply attention weight, call router
  */
 int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_route_loss: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_route", 0.0f);
@@ -222,6 +229,7 @@ int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thala
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_route_loss: routed_ok is NULL");
             return -1;  /* Routing failed */
         }
     }
@@ -248,7 +256,10 @@ int grief_thalamic_route_loss(grief_thalamic_bridge_t* bridge, const grief_thala
  * HOW: Package stage data, route with appropriate priority
  */
 int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void* stage, float progress) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_route_processing: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_route", 0.0f);
@@ -282,6 +293,7 @@ int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void*
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_route_processing: routed_ok is NULL");
             return -1;
         }
     }
@@ -294,7 +306,10 @@ int grief_thalamic_route_processing(grief_thalamic_bridge_t* bridge, const void*
 }
 
 int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_set_a", 0.0f);
 
@@ -306,7 +321,10 @@ int grief_thalamic_set_attention(grief_thalamic_bridge_t* bridge, float attentio
 }
 
 int grief_thalamic_get_attention(grief_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_grief_thalamic_get_a", 0.0f);
 
@@ -318,7 +336,10 @@ int grief_thalamic_get_attention(grief_thalamic_bridge_t* bridge, float* attenti
 }
 
 int grief_thalamic_bridge_get_stats(grief_thalamic_bridge_t* bridge, grief_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grief_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     grief_thalamic_bridge_heartbeat("grief_thalam_get_stats", 0.0f);
 

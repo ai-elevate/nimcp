@@ -235,6 +235,7 @@ float aesthetic_emotional_response_arousal(const aesthetic_emotional_response_t*
 int style_embedding_create(style_embedding_t* embedding, uint32_t dim) {
     if (!embedding || dim == 0 || dim > 2048) {
         LOG_ERROR(LOG_MODULE, "Invalid embedding or dimension: %u", dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_embedding_create: embedding is NULL");
         return -1;
     }
 
@@ -245,6 +246,7 @@ int style_embedding_create(style_embedding_t* embedding, uint32_t dim) {
     embedding->embedding = nimcp_calloc(dim, sizeof(float));
     if (!embedding->embedding) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate embedding values");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "style_embedding_create: embedding->embedding is NULL");
         return -1;
     }
 
@@ -268,9 +270,13 @@ void style_embedding_destroy(style_embedding_t* embedding) {
 }
 
 int style_embedding_clone(const style_embedding_t* src, style_embedding_t* dst) {
-    if (!src || !dst) return -1;
+    if (!src || !dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_embedding_clone: required parameter is NULL (src, dst)");
+        return -1;
+    }
 
     if (style_embedding_create(dst, src->embedding_dim) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_embedding_clone: validation failed");
         return -1;
     }
 
@@ -311,8 +317,14 @@ int style_embedding_interpolate(const style_embedding_t* a,
                                  const style_embedding_t* b,
                                  float t,
                                  style_embedding_t* result) {
-    if (!a || !b || !result) return -1;
-    if (a->embedding_dim != b->embedding_dim || a->embedding_dim != result->embedding_dim) return -1;
+    if (!a || !b || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_embedding_clone: required parameter is NULL (a, b, result)");
+        return -1;
+    }
+    if (a->embedding_dim != b->embedding_dim || a->embedding_dim != result->embedding_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_embedding_clone: validation failed");
+        return -1;
+    }
 
     /* Clamp t to [0, 1] */
     if (t < 0.0f) t = 0.0f;
@@ -463,16 +475,21 @@ const char* creative_deny_reason_name(creative_deny_reason_t reason) {
 visual_image_t* visual_image_create(uint32_t width, uint32_t height,
                                      uint32_t channels) {
     if (width == 0 || height == 0 || channels == 0 || channels > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: width is zero");
         return NULL;
     }
 
     visual_image_t* image = nimcp_calloc(1, sizeof(visual_image_t));
-    if (!image) return NULL;
+    if (!image) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: image is NULL");
+        return NULL;
+    }
 
     size_t data_size = (size_t)width * height * channels;
     image->pixels = nimcp_calloc(data_size, sizeof(float));
     if (!image->pixels) {
         nimcp_free(image);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_deny_reason_name: image->pixels is NULL");
         return NULL;
     }
 
@@ -493,11 +510,17 @@ void visual_image_destroy(visual_image_t* image) {
 }
 
 visual_image_t* visual_image_clone(const visual_image_t* src) {
-    if (!src) return NULL;
+    if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_image_clone: src is NULL");
+        return NULL;
+    }
 
     visual_image_t* dst = visual_image_create(src->width, src->height,
                                                src->channels);
-    if (!dst) return NULL;
+    if (!dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_image_clone: dst is NULL");
+        return NULL;
+    }
 
     size_t data_size = (size_t)src->width * src->height * src->channels;
     memcpy(dst->pixels, src->pixels, data_size * sizeof(float));
@@ -513,11 +536,15 @@ music_track_t* music_track_create(uint32_t max_notes) {
     if (max_notes == 0) max_notes = 10000;  /* Default */
 
     music_track_t* track = nimcp_calloc(1, sizeof(music_track_t));
-    if (!track) return NULL;
+    if (!track) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_track_create: track is NULL");
+        return NULL;
+    }
 
     track->notes = nimcp_calloc(max_notes, sizeof(music_note_t));
     if (!track->notes) {
         nimcp_free(track);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "music_track_create: track->notes is NULL");
         return NULL;
     }
 
@@ -539,7 +566,10 @@ void music_track_destroy(music_track_t* track) {
 }
 
 int music_track_add_note(music_track_t* track, const music_note_t* note) {
-    if (!track || !note) return -1;
+    if (!track || !note) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "music_track_add_note: required parameter is NULL (track, note)");
+        return -1;
+    }
 
     /* Would need to track capacity - simplified for now */
     /* In full implementation, would realloc if needed */
@@ -601,8 +631,73 @@ void visual_generation_result_free(visual_generation_result_t* result) {
 // Aliased Result Free Functions (for API consistency)
 //=============================================================================
 
+void creative_text_result_free(text_generation_result_t* result) {
+    text_generation_result_free(result);
+}
+
 void creative_music_result_free(music_generation_result_t* result) {
     music_generation_result_free(result);
+}
+
+void creative_visual_result_free(visual_generation_result_t* result) {
+    visual_generation_result_free(result);
+}
+
+void creative_project_spec_free(project_specification_t* spec) {
+    if (!spec) return;
+
+    /* Free dynamically allocated scene data */
+    if (spec->scenes) {
+        for (uint32_t i = 0; i < spec->num_scenes; i++) {
+            if (spec->scenes[i].dialogue) {
+                nimcp_free(spec->scenes[i].dialogue);
+                spec->scenes[i].dialogue = NULL;
+            }
+            if (spec->scenes[i].keyframes) {
+                for (uint32_t j = 0; j < spec->scenes[i].num_keyframes; j++) {
+                    if (spec->scenes[i].keyframes[j].pixels &&
+                        spec->scenes[i].keyframes[j].owns_pixels) {
+                        nimcp_free(spec->scenes[i].keyframes[j].pixels);
+                    }
+                }
+                nimcp_free(spec->scenes[i].keyframes);
+                spec->scenes[i].keyframes = NULL;
+            }
+            if (spec->scenes[i].music_cue) {
+                if (spec->scenes[i].music_cue->notes) {
+                    nimcp_free(spec->scenes[i].music_cue->notes);
+                }
+                nimcp_free(spec->scenes[i].music_cue);
+                spec->scenes[i].music_cue = NULL;
+            }
+        }
+        nimcp_free(spec->scenes);
+        spec->scenes = NULL;
+    }
+    spec->num_scenes = 0;
+
+    /* Free style embeddings */
+    style_embedding_destroy(&spec->visual_style);
+    style_embedding_destroy(&spec->music_style);
+}
+
+void creative_project_output_free(project_output_t* output) {
+    if (!output) return;
+
+    if (output->video_data) {
+        nimcp_free(output->video_data);
+        output->video_data = NULL;
+    }
+    output->video_size = 0;
+
+    /* Free embedded result resources */
+    music_generation_result_free(&output->soundtrack);
+    text_generation_result_free(&output->screenplay);
+}
+
+void creative_style_embedding_free(style_embedding_t* style) {
+    if (!style) return;
+    style_embedding_destroy(style);
 }
 
 void creative_blend_result_free(influence_blend_result_t* result) {

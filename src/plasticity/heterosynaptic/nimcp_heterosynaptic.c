@@ -32,10 +32,16 @@ static hetero_spatial_index_t* create_spatial_index(
     const float world_min[3],
     const float world_max[3])
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_spatial_index: config is NULL");
+        return NULL;
+    }
 
     hetero_spatial_index_t* index = nimcp_malloc(sizeof(hetero_spatial_index_t));
-    if (!index) return NULL;
+    if (!index) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_spatial_index: index is NULL");
+        return NULL;
+    }
 
     index->grid_size = config->spatial_grid_size;
 
@@ -47,6 +53,7 @@ static hetero_spatial_index_t* create_spatial_index(
         NIMCP_LOGGING_ERROR("Spatial grid size %u exceeds maximum (1000)",
                             index->grid_size);
         nimcp_free(index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_spatial_index: validation failed");
         return NULL;
     }
 
@@ -67,6 +74,7 @@ static hetero_spatial_index_t* create_spatial_index(
         nimcp_free(index->cell_counts);
         nimcp_free(index->cell_capacities);
         nimcp_free(index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_spatial_index: required parameter is NULL (index->grid, index->cell_counts, index->cell_capacities)");
         return NULL;
     }
 
@@ -406,7 +414,10 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
  * RISK LEVEL: HIGH - Use with extreme caution in multi-threaded code.
  */
 hetero_synapse_t* hetero_get_synapse(hetero_system_t* system, uint32_t synapse_id) {
-    if (!system) return NULL;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_get_synapse: system is NULL");
+        return NULL;
+    }
 
     /* Lock during search to prevent concurrent modification during lookup.
      * CRITICAL: After unlock, returned pointer stability depends on caller
@@ -615,13 +626,17 @@ int hetero_find_neighbors_copy(
 static hetero_synapse_t* hetero_get_synapse_unlocked(
     hetero_system_t* system, uint32_t synapse_id)
 {
-    if (!system) return NULL;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_get_synapse_unlocked: system is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i < system->num_synapses; i++) {
         if (system->synapses[i].synapse_id == synapse_id) {
             return &system->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_get_synapse_unlocked: validation failed");
     return NULL;
 }
 

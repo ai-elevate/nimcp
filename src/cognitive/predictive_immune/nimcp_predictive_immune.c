@@ -164,6 +164,7 @@ predictive_immune_system_t* predictive_immune_create(
     /* Guard: validate inputs */
     if (!predictive_net || !immune_system) {
         NIMCP_LOGGING_ERROR("Invalid input: predictive_net or immune_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_create: required parameter is NULL (predictive_net, immune_system)");
         return NULL;
     }
 
@@ -211,6 +212,7 @@ predictive_immune_system_t* predictive_immune_create(
         sys->intero_network = predictive_create(&intero_cfg);
         if (!sys->intero_network) {
             nimcp_free(sys);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_immune_create: sys->intero_network is NULL");
             return NULL;
         }
     }
@@ -222,6 +224,7 @@ predictive_immune_system_t* predictive_immune_create(
     if (!sys->region_precisions) {
         if (sys->intero_network) predictive_destroy(sys->intero_network);
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_create: validation failed");
         return NULL;
     }
     memset(sys->region_precisions, 0, sys->region_capacity * sizeof(immune_modulated_precision_t));
@@ -233,6 +236,7 @@ predictive_immune_system_t* predictive_immune_create(
         nimcp_free(sys->region_precisions);
         if (sys->intero_network) predictive_destroy(sys->intero_network);
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_immune_create: validation failed");
         return NULL;
     }
     memset(sys->error_triggers, 0, sys->region_capacity * sizeof(prediction_error_trigger_t));

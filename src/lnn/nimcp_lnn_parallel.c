@@ -58,6 +58,7 @@ static nimcp_mutex_t* lnn_mutex_create(void) {
     if (mutex) {
         if (nimcp_mutex_init(mutex, NULL) != NIMCP_SUCCESS) {
             nimcp_free(mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_mutex_create: validation failed");
             return NULL;
         }
     }
@@ -420,6 +421,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
     /* Guard: Parallel not initialized */
     if (!g_parallel_initialized) {
         NIMCP_LOGGING_ERROR("LNN parallel not initialized, call lnn_parallel_init first");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_batch_parallel_create: g_parallel_initialized is NULL");
         return NULL;
     }
 
@@ -730,6 +732,7 @@ lnn_pipeline_ctx_t* lnn_pipeline_create(
 ) {
     /* Guard: Null network */
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_pipeline_create: network is NULL");
         return NULL;
     }
 
@@ -742,6 +745,7 @@ lnn_pipeline_ctx_t* lnn_pipeline_create(
      */
 
     NIMCP_LOGGING_WARN("Layer pipeline not fully implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_pipeline_create: operation failed");
     return NULL;
 }
 
@@ -810,6 +814,7 @@ bool lnn_parallel_has_avx2(void) {
         return (ebx & (1 << 5)) != 0;  /* AVX2 */
     }
 #endif
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_parallel_has_avx2: validation failed");
     return false;
 }
 
@@ -820,5 +825,6 @@ bool lnn_parallel_has_avx512(void) {
         return (ebx & (1 << 16)) != 0;  /* AVX-512F */
     }
 #endif
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_parallel_has_avx512: validation failed");
     return false;
 }

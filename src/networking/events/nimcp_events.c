@@ -281,8 +281,10 @@ static hash_table_t* create_feature_hash_table(void)
 static bool hash_table_insert_feature(hash_table_t* table, feature_code_t feature_code,
                                       uint32_t neuron_id)
 {
-    if (!table)
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_feature: table is NULL");
         return false;
+    }
 
     neuron_id_value_t value = {.neuron_id = neuron_id};
     return hash_table_insert_uint32(table, feature_code, &value, sizeof(neuron_id_value_t));
@@ -303,8 +305,10 @@ static bool hash_table_lookup_feature(hash_table_t* table, feature_code_t featur
                                       uint32_t* neuron_id)
 {
     // Guard clause: Validate inputs
-    if (!table || !neuron_id)
+    if (!table || !neuron_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_lookup_feature: required parameter is NULL (table, neuron_id)");
         return false;
+    }
 
     neuron_id_value_t* entry = (neuron_id_value_t*) hash_table_lookup_uint32(table, feature_code);
     if (entry) {
@@ -331,8 +335,10 @@ static bool hash_table_lookup_feature(hash_table_t* table, feature_code_t featur
 static bool allocate_feature_storage(event_generator_t gen)
 {
     // Guard clause: Validate input
-    if (!gen)
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_feature_storage: gen is NULL");
         return false;
+    }
 
     gen->neuron_features = nimcp_calloc(MAX_NEURONS, sizeof(feature_code_t));
     return gen->neuron_features != NULL;
@@ -419,8 +425,10 @@ static void* event_worker_thread(void* arg)
     event_generator_t gen = (event_generator_t) arg;
 
     // Guard clause: Validate generator
-    if (!gen || !gen->queue_manager)
+    if (!gen || !gen->queue_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_worker_thread: required parameter is NULL (gen, gen->queue_manager)");
         return NULL;
+    }
 
     // Main processing loop
     while (!gen->shutdown) {
@@ -458,6 +466,7 @@ static void* event_worker_thread(void* arg)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_worker_thread: validation failed");
     return NULL;
 }
 
@@ -502,13 +511,16 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     }
 
     // Guard clause: Check required callback
-    if (!config->callback)
+    if (!config->callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_generator_create: config->callback is NULL");
         return NULL;
+    }
 
     // MEDIUM PRIORITY VALIDATION: Validate configuration parameters
     // Validate node_id (uint32_t field)
     if (!nimcp_validate_integer_field(&config->node_id, sizeof(config->node_id))) {
         NIMCP_LOGGING_ERROR("Invalid node_id in event generator config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_create: nimcp_validate_integer_field is NULL");
         return NULL;
     }
 
@@ -516,12 +528,14 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     if (!nimcp_validate_integer_field(&config->base_feature_code,
                                       sizeof(config->base_feature_code))) {
         NIMCP_LOGGING_ERROR("Invalid base_feature_code in event generator config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_create: nimcp_validate_integer_field is NULL");
         return NULL;
     }
 
     // Validate max_hop_count (uint8_t field)
     if (!nimcp_validate_integer_field(&config->max_hop_count, sizeof(config->max_hop_count))) {
         NIMCP_LOGGING_ERROR("Invalid max_hop_count in event generator config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_create: nimcp_validate_integer_field is NULL");
         return NULL;
     }
 
@@ -545,6 +559,7 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     // Allocate and initialize feature storage
     if (!allocate_feature_storage(gen)) {
         nimcp_free(gen);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_generator_create: allocate_feature_storage is NULL");
         return NULL;
     }
 
@@ -565,6 +580,7 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
     if (result != NIMCP_SUCCESS || !gen->queue_manager) {
         nimcp_free(gen->neuron_features);
         nimcp_free(gen);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_generator_create: gen->queue_manager is NULL");
         return NULL;
     }
 
@@ -574,6 +590,7 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
         nimcp_queue_manager_destroy(gen->queue_manager);
         nimcp_free(gen->neuron_features);
         nimcp_free(gen);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_generator_create: validation failed");
         return NULL;
     }
 
@@ -641,16 +658,22 @@ static bool validate_spike_inputs(event_generator_t generator, neural_network_t 
                                   uint32_t neuron_id)
 {
     // Guard clause: Check generator
-    if (!generator)
+    if (!generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_spike_inputs: generator is NULL");
         return false;
+    }
 
     // Guard clause: Check network
-    if (!network)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_spike_inputs: network is NULL");
         return false;
+    }
 
     // Guard clause: Check neuron ID bounds
-    if (neuron_id >= generator->max_neurons)
+    if (neuron_id >= generator->max_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "validate_spike_inputs: capacity exceeded");
         return false;
+    }
 
     return true;
 }
@@ -779,12 +802,14 @@ bool event_generator_on_spike(event_generator_t generator, neural_network_t netw
 {
     // Guard clause: Validate all inputs
     if (!validate_spike_inputs(generator, network, neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_on_spike: validate_spike_inputs is NULL");
         return false;
     }
 
     // Get neuron state
     float state;
     if (!neural_network_get_neuron_state(network, neuron_id, &state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_on_spike: neural_network_get_neuron_state is NULL");
         return false;
     }
 
@@ -832,6 +857,7 @@ bool event_generator_on_spike(event_generator_t generator, neural_network_t netw
             // Queue full - free the event and drop
             // This is intentional backpressure behavior
             nimcp_free(queued);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_generator_on_spike: validation failed");
             return false;  // Indicate event was dropped
         }
 
@@ -862,12 +888,16 @@ bool event_generator_set_neuron_feature(event_generator_t generator, uint32_t ne
                                         feature_code_t feature_code)
 {
     // Guard clause: Validate generator
-    if (!generator)
+    if (!generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_generator_set_neuron_feature: generator is NULL");
         return false;
+    }
 
     // Guard clause: Check neuron ID bounds
-    if (neuron_id >= generator->max_neurons)
+    if (neuron_id >= generator->max_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_generator_set_neuron_feature: capacity exceeded");
         return false;
+    }
 
     generator->neuron_features[neuron_id] = feature_code;
     return true;
@@ -889,8 +919,10 @@ bool event_generator_set_neuron_feature(event_generator_t generator, uint32_t ne
 static bool allocate_filter_storage(event_receiver_t receiver)
 {
     // Guard clause: Validate input
-    if (!receiver)
+    if (!receiver) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_filter_storage: receiver is NULL");
         return false;
+    }
 
     receiver->filters = nimcp_calloc(receiver->max_filters, sizeof(subscription_filter_t));
 
@@ -953,8 +985,10 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config)
     }
 
     // Guard clause: Check required network
-    if (!config->network)
+    if (!config->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_receiver_create: config->network is NULL");
         return NULL;
+    }
 
     event_receiver_t receiver = nimcp_malloc(sizeof(struct event_receiver_struct));
     // Guard clause: Check allocation
@@ -976,6 +1010,7 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config)
     receiver->feature_table = create_feature_hash_table();
     if (!receiver->feature_table) {
         nimcp_free(receiver);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_receiver_create: receiver->feature_table is NULL");
         return NULL;
     }
 
@@ -983,6 +1018,7 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config)
     if (!allocate_filter_storage(receiver)) {
         hash_table_destroy(receiver->feature_table);
         nimcp_free(receiver);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_receiver_create: allocate_filter_storage is NULL");
         return NULL;
     }
 
@@ -1027,16 +1063,22 @@ void event_receiver_destroy(event_receiver_t receiver)
 static bool validate_packet_inputs(event_receiver_t receiver, const event_packet_t* packet)
 {
     // Guard clause: Check receiver
-    if (!receiver)
+    if (!receiver) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_packet_inputs: receiver is NULL");
         return false;
+    }
 
     // Guard clause: Check packet
-    if (!packet)
+    if (!packet) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_packet_inputs: packet is NULL");
         return false;
+    }
 
     // Guard clause: Validate packet structure
-    if (!event_packet_validate(packet))
+    if (!event_packet_validate(packet)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_packet_inputs: event_packet_validate is NULL");
         return false;
+    }
 
     return true;
 }
@@ -1054,8 +1096,10 @@ static bool validate_packet_inputs(event_receiver_t receiver, const event_packet
 static bool check_subscription_filters(event_receiver_t receiver, const event_packet_t* packet)
 {
     // Guard clause: Validate inputs
-    if (!receiver || !packet)
+    if (!receiver || !packet) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_subscription_filters: required parameter is NULL (receiver, packet)");
         return false;
+    }
 
     // If no filters, accept all packets
     if (receiver->num_filters == 0)
@@ -1068,6 +1112,7 @@ static bool check_subscription_filters(event_receiver_t receiver, const event_pa
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_subscription_filters: validation failed");
     return false;
 }
 
@@ -1086,19 +1131,25 @@ static bool create_neuron_for_feature(event_receiver_t receiver, feature_code_t 
                                       uint32_t* target_neuron)
 {
     // Guard clause: Validate inputs
-    if (!receiver || !target_neuron)
+    if (!receiver || !target_neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_neuron_for_feature: required parameter is NULL (receiver, target_neuron)");
         return false;
+    }
 
     // Create new neuron
     uint32_t neuron_id = neural_network_add_neuron(receiver->network, ACTIVATION_ADAPTIVE);
 
     // Guard clause: Check creation success
-    if (neuron_id == UINT32_MAX)
+    if (neuron_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_neuron_for_feature: validation failed");
         return false;
+    }
 
     // Map feature to new neuron
-    if (!event_receiver_map_feature_to_neuron(receiver, feature_code, neuron_id))
+    if (!event_receiver_map_feature_to_neuron(receiver, feature_code, neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_neuron_for_feature: event_receiver_map_feature_to_neuron is NULL");
         return false;
+    }
 
     *target_neuron = neuron_id;
     return true;
@@ -1119,8 +1170,10 @@ static bool resolve_target_neuron(event_receiver_t receiver, feature_code_t feat
                                   uint32_t* target_neuron)
 {
     // Guard clause: Validate inputs
-    if (!receiver || !target_neuron)
+    if (!receiver || !target_neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resolve_target_neuron: required parameter is NULL (receiver, target_neuron)");
         return false;
+    }
 
     // Try to find existing mapping (O(1) hash lookup)
     if (hash_table_lookup_feature(receiver->feature_table, feature_code, target_neuron)) {
@@ -1128,8 +1181,10 @@ static bool resolve_target_neuron(event_receiver_t receiver, feature_code_t feat
     }
 
     // No mapping exists - check if auto-creation enabled
-    if (!receiver->auto_create_neurons)
+    if (!receiver->auto_create_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resolve_target_neuron: receiver->auto_create_neurons is NULL");
         return false;
+    }
 
     // Create new neuron for this feature
     return create_neuron_for_feature(receiver, feature_code, target_neuron);
@@ -1191,11 +1246,13 @@ bool event_receiver_process_packet(event_receiver_t receiver, const event_packet
 {
     // Step 1: Validate inputs
     if (!validate_packet_inputs(receiver, packet)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_receiver_process_packet: validate_packet_inputs is NULL");
         return false;
     }
 
     // Step 2: Check subscription filters
     if (!check_subscription_filters(receiver, packet)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_receiver_process_packet: check_subscription_filters is NULL");
         return false;
     }
 
@@ -1203,6 +1260,7 @@ bool event_receiver_process_packet(event_receiver_t receiver, const event_packet
     feature_code_t feature_code = EVENT_GET_FEATURE_CODE(packet);
     uint32_t target_neuron;
     if (!resolve_target_neuron(receiver, feature_code, &target_neuron)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_receiver_process_packet: resolve_target_neuron is NULL");
         return false;
     }
 
@@ -1227,16 +1285,22 @@ bool event_receiver_process_packet(event_receiver_t receiver, const event_packet
 bool event_receiver_add_filter(event_receiver_t receiver, const subscription_filter_t* filter)
 {
     // Guard clause: Validate receiver
-    if (!receiver)
+    if (!receiver) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_receiver_add_filter: receiver is NULL");
         return false;
+    }
 
     // Guard clause: Validate filter
-    if (!filter)
+    if (!filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_receiver_add_filter: filter is NULL");
         return false;
+    }
 
     // Guard clause: Check capacity
-    if (receiver->num_filters >= receiver->max_filters)
+    if (receiver->num_filters >= receiver->max_filters) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_receiver_add_filter: capacity exceeded");
         return false;
+    }
 
     memcpy(&receiver->filters[receiver->num_filters], filter, sizeof(subscription_filter_t));
     receiver->num_filters++;
@@ -1257,12 +1321,16 @@ bool event_receiver_add_filter(event_receiver_t receiver, const subscription_fil
 bool event_receiver_remove_filter(event_receiver_t receiver, uint32_t index)
 {
     // Guard clause: Validate receiver
-    if (!receiver)
+    if (!receiver) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_receiver_remove_filter: receiver is NULL");
         return false;
+    }
 
     // Guard clause: Check index bounds
-    if (index >= receiver->num_filters)
+    if (index >= receiver->num_filters) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "event_receiver_remove_filter: capacity exceeded");
         return false;
+    }
 
     // Shift filters down to fill gap (single pass)
     for (uint32_t i = index; i < receiver->num_filters - 1; i++) {
@@ -1288,8 +1356,10 @@ bool event_receiver_map_feature_to_neuron(event_receiver_t receiver, feature_cod
                                           uint32_t neuron_id)
 {
     // Guard clause: Validate receiver
-    if (!receiver)
+    if (!receiver) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_receiver_map_feature_to_neuron: receiver is NULL");
         return false;
+    }
 
     // Insert/update mapping in hash table (O(1))
     return hash_table_insert_feature(receiver->feature_table, feature_code, neuron_id);

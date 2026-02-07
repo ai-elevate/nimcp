@@ -74,7 +74,10 @@ static void cortical_hierarchy_on_sleep_state_change(sleep_state_t new_state, vo
 
 int cortical_hierarchy_sleep_default_config(cortical_hierarchy_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_ff_modulation = true;
     config->enable_fb_modulation = true;
     config->modulation_strength = 1.0f;
@@ -86,7 +89,10 @@ cortical_hierarchy_sleep_bridge_t cortical_hierarchy_sleep_bridge_create(
     cortical_hierarchy_t* hierarchy,
     sleep_system_t sleep)
 {
-    if (!hierarchy || !sleep) return NULL;
+    if (!hierarchy || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_hierarchy_sleep_bridge_create: required parameter is NULL (hierarchy, sleep)");
+        return NULL;
+    }
 
     struct cortical_hierarchy_sleep_bridge_struct* bridge =
         (struct cortical_hierarchy_sleep_bridge_struct*)nimcp_malloc(
@@ -110,6 +116,7 @@ cortical_hierarchy_sleep_bridge_t cortical_hierarchy_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "cortical_hierarchy_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -139,13 +146,19 @@ void cortical_hierarchy_sleep_bridge_destroy(cortical_hierarchy_sleep_bridge_t b
 
 int cortical_hierarchy_sleep_update(cortical_hierarchy_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int cortical_hierarchy_sleep_apply_modulation(cortical_hierarchy_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_apply_modulation: bridge is NULL");
+        return -1;
+    }
     /* Application would modify hierarchy FF/FB connection strengths */
     return 0;
 }
@@ -153,7 +166,10 @@ int cortical_hierarchy_sleep_apply_modulation(cortical_hierarchy_sleep_bridge_t 
 int cortical_hierarchy_sleep_get_effects(const cortical_hierarchy_sleep_bridge_t bridge,
                                          cortical_hierarchy_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -180,7 +196,10 @@ float cortical_hierarchy_sleep_get_fb_strength(const cortical_hierarchy_sleep_br
 
 bool cortical_hierarchy_sleep_is_offline(const cortical_hierarchy_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_hierarchy_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bool offline = bridge->effects.hierarchy_offline;
     nimcp_mutex_unlock(bridge->base.mutex);

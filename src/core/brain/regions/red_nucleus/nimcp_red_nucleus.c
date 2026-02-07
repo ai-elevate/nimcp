@@ -245,6 +245,7 @@ nimcp_red_nucleus_t* rn_create(const rn_config_t* config) {
     if (!rn->command_queue) {
         NIMCP_LOG_ERROR(RN_LOG_TAG, "Failed to allocate command queue");
         nimcp_free(rn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rn_create: rn->command_queue is NULL");
         return NULL;
     }
 
@@ -254,6 +255,7 @@ nimcp_red_nucleus_t* rn_create(const rn_config_t* config) {
         NIMCP_LOG_ERROR(RN_LOG_TAG, "Failed to create mutex");
         nimcp_free(rn->command_queue);
         nimcp_free(rn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rn_create: rn->mutex is NULL");
         return NULL;
     }
 
@@ -392,7 +394,10 @@ int rn_reset(nimcp_red_nucleus_t* rn) {
  *===========================================================================*/
 
 int rn_issue_command(nimcp_red_nucleus_t* rn, const rn_motor_command_t* cmd) {
-    if (!rn || !cmd || !rn->initialized) return -1;
+    if (!rn || !cmd || !rn->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_issue_command: required parameter is NULL (rn, cmd, rn->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -400,6 +405,7 @@ int rn_issue_command(nimcp_red_nucleus_t* rn, const rn_motor_command_t* cmd) {
     if (rn->queue_size >= rn->queue_capacity) {
         nimcp_mutex_unlock(rn->mutex);
         NIMCP_LOG_WARN(RN_LOG_TAG, "Command queue full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_issue_command: capacity exceeded");
         return -1;
     }
 
@@ -431,7 +437,10 @@ int rn_issue_command(nimcp_red_nucleus_t* rn, const rn_motor_command_t* cmd) {
 
 int rn_command_velocity(nimcp_red_nucleus_t* rn, rn_effector_t effector,
                         const rn_vector3_t* velocity, float duration_ms) {
-    if (!rn || !velocity) return -1;
+    if (!rn || !velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_issue_command: required parameter is NULL (rn, velocity)");
+        return -1;
+    }
 
     rn_motor_command_t cmd = {
         .type = RN_CMD_VELOCITY,
@@ -452,7 +461,10 @@ int rn_command_velocity(nimcp_red_nucleus_t* rn, rn_effector_t effector,
 
 int rn_command_force(nimcp_red_nucleus_t* rn, rn_effector_t effector,
                      const rn_vector3_t* force, float duration_ms) {
-    if (!rn || !force) return -1;
+    if (!rn || !force) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_issue_command: required parameter is NULL (rn, force)");
+        return -1;
+    }
 
     rn_motor_command_t cmd = {
         .type = RN_CMD_FORCE,
@@ -472,7 +484,10 @@ int rn_command_force(nimcp_red_nucleus_t* rn, rn_effector_t effector,
 
 int rn_command_position(nimcp_red_nucleus_t* rn, rn_effector_t effector,
                         const rn_vector3_t* position, float duration_ms) {
-    if (!rn || !position) return -1;
+    if (!rn || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_issue_command: required parameter is NULL (rn, position)");
+        return -1;
+    }
 
     rn_motor_command_t cmd = {
         .type = RN_CMD_POSITION,
@@ -491,7 +506,10 @@ int rn_command_position(nimcp_red_nucleus_t* rn, rn_effector_t effector,
 }
 
 int rn_command_trajectory(nimcp_red_nucleus_t* rn, const rn_trajectory_t* trajectory) {
-    if (!rn || !trajectory || trajectory->num_points == 0) return -1;
+    if (!rn || !trajectory || trajectory->num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_command_trajectory: required parameter is NULL (rn, trajectory)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -507,6 +525,7 @@ int rn_command_trajectory(nimcp_red_nucleus_t* rn, const rn_trajectory_t* trajec
     rn->current_trajectory = (rn_trajectory_t*)nimcp_malloc(sizeof(rn_trajectory_t));
     if (!rn->current_trajectory) {
         nimcp_mutex_unlock(rn->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rn_command_trajectory: rn->current_trajectory is NULL");
         return -1;
     }
 
@@ -516,6 +535,7 @@ int rn_command_trajectory(nimcp_red_nucleus_t* rn, const rn_trajectory_t* trajec
         nimcp_free(rn->current_trajectory);
         rn->current_trajectory = NULL;
         nimcp_mutex_unlock(rn->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_command_trajectory: rn->current_trajectory->points is NULL");
         return -1;
     }
 
@@ -540,7 +560,10 @@ int rn_command_trajectory(nimcp_red_nucleus_t* rn, const rn_trajectory_t* trajec
 
 int rn_command_posture(nimcp_red_nucleus_t* rn, const rn_vector3_t* adjustment,
                        float urgency) {
-    if (!rn || !adjustment) return -1;
+    if (!rn || !adjustment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_command_trajectory: required parameter is NULL (rn, adjustment)");
+        return -1;
+    }
 
     rn_motor_command_t cmd = {
         .type = RN_CMD_POSTURE,
@@ -568,7 +591,10 @@ float rn_get_output(const nimcp_red_nucleus_t* rn, rn_effector_t effector) {
 }
 
 int rn_get_all_outputs(const nimcp_red_nucleus_t* rn, float* outputs) {
-    if (!rn || !outputs) return -1;
+    if (!rn || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_get_all_outputs: required parameter is NULL (rn, outputs)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_red_nucleus_t*)rn)->mutex);
     memcpy(outputs, rn->rubrospinal_output, RN_EFFECTOR_COUNT * sizeof(float));
@@ -582,7 +608,10 @@ int rn_get_all_outputs(const nimcp_red_nucleus_t* rn, float* outputs) {
  *===========================================================================*/
 
 int rn_process_error(nimcp_red_nucleus_t* rn, const rn_motor_error_t* error) {
-    if (!rn || !error) return -1;
+    if (!rn || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_process_error: required parameter is NULL (rn, error)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -680,7 +709,10 @@ int rn_report_error(nimcp_red_nucleus_t* rn, rn_effector_t effector,
 
 int rn_get_learning_state(const nimcp_red_nucleus_t* rn, rn_effector_t effector,
                           rn_learning_state_t* state) {
-    if (!rn || !state || effector >= RN_EFFECTOR_COUNT) return -1;
+    if (!rn || !state || effector >= RN_EFFECTOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_process_error: required parameter is NULL (rn, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_red_nucleus_t*)rn)->mutex);
     memcpy(state, &rn->learning[effector], sizeof(rn_learning_state_t));
@@ -713,7 +745,10 @@ int rn_set_learning_modulation(nimcp_red_nucleus_t* rn, float modulation) {
 }
 
 int rn_reset_learning(nimcp_red_nucleus_t* rn, rn_effector_t effector) {
-    if (!rn || effector >= RN_EFFECTOR_COUNT) return -1;
+    if (!rn || effector >= RN_EFFECTOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_reset_learning: rn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -744,7 +779,10 @@ int rn_reset_learning(nimcp_red_nucleus_t* rn, rn_effector_t effector) {
 
 int rn_process_dentate_input(nimcp_red_nucleus_t* rn,
                              const rn_dentate_signal_t* signal) {
-    if (!rn || !signal) return -1;
+    if (!rn || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_reset_learning: required parameter is NULL (rn, signal)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -799,7 +837,10 @@ int rn_process_dentate_input(nimcp_red_nucleus_t* rn,
 
 int rn_get_olivary_output(const nimcp_red_nucleus_t* rn,
                           rn_olivary_output_t* output) {
-    if (!rn || !output) return -1;
+    if (!rn || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_reset_learning: required parameter is NULL (rn, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_red_nucleus_t*)rn)->mutex);
     memcpy(output, &rn->olivary_output, sizeof(rn_olivary_output_t));
@@ -810,7 +851,10 @@ int rn_get_olivary_output(const nimcp_red_nucleus_t* rn,
 
 int rn_get_thalamic_output(const nimcp_red_nucleus_t* rn,
                            rn_thalamic_output_t* output) {
-    if (!rn || !output) return -1;
+    if (!rn || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_reset_learning: required parameter is NULL (rn, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_red_nucleus_t*)rn)->mutex);
     memcpy(output, &rn->thalamic_output, sizeof(rn_thalamic_output_t));
@@ -876,7 +920,10 @@ int rn_process_cerebellar_error(nimcp_red_nucleus_t* rn,
 int rn_set_cortical_input(nimcp_red_nucleus_t* rn,
                           rn_motor_cmd_type_t cmd_type,
                           float input) {
-    if (!rn || cmd_type >= RN_CMD_COUNT) return -1;
+    if (!rn || cmd_type >= RN_CMD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rn_reset_learning: rn is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
     rn->cortical_input[cmd_type] = clamp_float(input, 0.0f, 1.0f);
@@ -897,7 +944,10 @@ float rn_get_cortical_input(const nimcp_red_nucleus_t* rn,
 
 int rn_kg_register(nimcp_red_nucleus_t* rn, struct nimcp_brain_kg* kg,
                    uint64_t admin_token) {
-    if (!rn || !kg) return -1;
+    if (!rn || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_reset_learning: required parameter is NULL (rn, kg)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -957,8 +1007,14 @@ int rn_kg_unregister(nimcp_red_nucleus_t* rn) {
 
 int rn_kg_query(nimcp_red_nucleus_t* rn, const char* query,
                 void* result, size_t result_size) {
-    if (!rn || !query || !result) return -1;
-    if (!rn->kg_state.registered) return -1;
+    if (!rn || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_unregister: required parameter is NULL (rn, query, result)");
+        return -1;
+    }
+    if (!rn->kg_state.registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_unregister: rn->kg_state is NULL");
+        return -1;
+    }
 
     (void)result_size;
 
@@ -971,7 +1027,10 @@ int rn_kg_query(nimcp_red_nucleus_t* rn, const char* query,
 
 int rn_bio_async_connect(nimcp_red_nucleus_t* rn,
                          struct nimcp_bio_router* router) {
-    if (!rn || !router) return -1;
+    if (!rn || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_kg_unregister: required parameter is NULL (rn, router)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -1006,7 +1065,10 @@ int rn_bio_async_disconnect(nimcp_red_nucleus_t* rn) {
 
 int rn_bio_async_broadcast(nimcp_red_nucleus_t* rn, rn_bio_msg_type_t msg_type,
                            const void* payload, size_t payload_size) {
-    if (!rn || !rn->bio_router) return -1;
+    if (!rn || !rn->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_bio_async_disconnect: required parameter is NULL (rn, rn->bio_router)");
+        return -1;
+    }
 
     rn->stats.bio_msgs_sent++;
 
@@ -1019,7 +1081,10 @@ int rn_bio_async_broadcast(nimcp_red_nucleus_t* rn, rn_bio_msg_type_t msg_type,
 }
 
 int rn_bio_async_subscribe(nimcp_red_nucleus_t* rn, uint32_t subscription_mask) {
-    if (!rn || !rn->bio_router) return -1;
+    if (!rn || !rn->bio_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_bio_async_subscribe: required parameter is NULL (rn, rn->bio_router)");
+        return -1;
+    }
 
     (void)subscription_mask;
 
@@ -1243,7 +1308,10 @@ int rn_substrate_connect(nimcp_red_nucleus_t* rn,
  *===========================================================================*/
 
 int rn_update(nimcp_red_nucleus_t* rn, float dt) {
-    if (!rn || !rn->initialized) return -1;
+    if (!rn || !rn->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_update: required parameter is NULL (rn, rn->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -1347,7 +1415,10 @@ int rn_update(nimcp_red_nucleus_t* rn, float dt) {
 }
 
 int rn_get_stats(const nimcp_red_nucleus_t* rn, rn_stats_t* stats) {
-    if (!rn || !stats) return -1;
+    if (!rn || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_get_stats: required parameter is NULL (rn, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((nimcp_red_nucleus_t*)rn)->mutex);
     memcpy(stats, &rn->stats, sizeof(rn_stats_t));
@@ -1408,7 +1479,10 @@ int rn_abort_command(nimcp_red_nucleus_t* rn) {
  *===========================================================================*/
 
 int rn_qmc_optimize_commands(nimcp_red_nucleus_t* rn) {
-    if (!rn || !rn->qmc) return -1;
+    if (!rn || !rn->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_qmc_optimize_commands: required parameter is NULL (rn, rn->qmc)");
+        return -1;
+    }
 
     /* Use QMC for motor command optimization */
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "QMC command optimization requested");
@@ -1420,7 +1494,10 @@ int rn_qmcts_trajectory_search(nimcp_red_nucleus_t* rn,
                                const rn_vector3_t* goal,
                                uint32_t num_iterations,
                                rn_trajectory_t* trajectory) {
-    if (!rn || !start || !goal || !trajectory || !rn->qmc) return -1;
+    if (!rn || !start || !goal || !trajectory || !rn->qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_qmc_optimize_commands: required parameter is NULL (rn, start, goal, trajectory, rn->qmc)");
+        return -1;
+    }
 
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "QMCTS trajectory search: %u iterations",
                     num_iterations);
@@ -1429,7 +1506,10 @@ int rn_qmcts_trajectory_search(nimcp_red_nucleus_t* rn,
     trajectory->num_points = 2;
     trajectory->points = (rn_trajectory_point_t*)nimcp_malloc(
         2 * sizeof(rn_trajectory_point_t));
-    if (!trajectory->points) return -1;
+    if (!trajectory->points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rn_qmc_optimize_commands: trajectory->points is NULL");
+        return -1;
+    }
 
     /* Start point */
     trajectory->points[0].position = *start;

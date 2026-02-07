@@ -274,7 +274,10 @@ float protein_sleep_get_synthesis_rate(
 bool protein_sleep_is_consolidation_window(
     const protein_sleep_bridge_t bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_is_consolidation_window: bridge is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bool is_window = bridge->effects.deep_sleep_consolidation;

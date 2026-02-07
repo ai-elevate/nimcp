@@ -66,6 +66,7 @@ static re_q_entry_t* re_find_q_entry(re_context_t* ctx, uint32_t state) {
             return &ctx->q_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_find_q_entry: validation failed");
     return NULL;
 }
 
@@ -76,7 +77,10 @@ static re_q_entry_t* re_get_or_create_q_entry(re_context_t* ctx, uint32_t state)
     re_q_entry_t* entry = re_find_q_entry(ctx, state);
     if (entry) return entry;
 
-    if (ctx->q_table_size >= RE_MAX_STATES) return NULL;
+    if (ctx->q_table_size >= RE_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "re_get_or_create_q_entry: capacity exceeded");
+        return NULL;
+    }
 
     entry = &ctx->q_table[ctx->q_table_size++];
     entry->state_id = state;
@@ -95,20 +99,20 @@ static float re_calc_fitness(re_context_t* ctx, const re_strategy_t* strategy, c
 
     switch (ctx->config.fitness_criteria) {
         case RE_FIT_RECOVERY_TIME:
-            // Lower time = higher fitness
-            fitness = 1000.0f / (float)(outcome->recovery_time_ms + 1);
+            // Lower time = higher fitness, normalized to [0, 1]
+            fitness = 1.0f / (1.0f + (float)outcome->recovery_time_ms / 1000.0f);
             break;
 
         case RE_FIT_SUCCESS_RATE:
-            fitness = outcome->success ? 100.0f : 0.0f;
+            fitness = outcome->success ? 1.0f : 0.0f;
             break;
 
         case RE_FIT_RESOURCE_USAGE:
-            fitness = 100.0f * (1.0f - outcome->resource_usage);
+            fitness = 1.0f - outcome->resource_usage;
             break;
 
         case RE_FIT_DATA_LOSS:
-            fitness = 100.0f * (1.0f - outcome->data_loss);
+            fitness = 1.0f - outcome->data_loss;
             break;
 
         case RE_FIT_COMPOSITE:
@@ -117,10 +121,10 @@ static float re_calc_fitness(re_context_t* ctx, const re_strategy_t* strategy, c
                      ctx->config.fitness_weights[2] + ctx->config.fitness_weights[3];
             if (w < 0.01f) w = 1.0f;
 
-            float time_score = 1000.0f / (float)(outcome->recovery_time_ms + 1);
-            float success_score = outcome->success ? 100.0f : 0.0f;
-            float resource_score = 100.0f * (1.0f - outcome->resource_usage);
-            float data_score = 100.0f * (1.0f - outcome->data_loss);
+            float time_score = 1.0f / (1.0f + (float)outcome->recovery_time_ms / 1000.0f);
+            float success_score = outcome->success ? 1.0f : 0.0f;
+            float resource_score = 1.0f - outcome->resource_usage;
+            float data_score = 1.0f - outcome->data_loss;
 
             fitness = (ctx->config.fitness_weights[0] * time_score +
                       ctx->config.fitness_weights[1] * success_score +
@@ -184,6 +188,7 @@ re_context_t* re_create(const re_config_t* config) {
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("RE", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "re_create: validation failed");
         return NULL;
     }
 
@@ -208,7 +213,10 @@ void re_destroy(re_context_t* ctx) {
 //=============================================================================
 
 bool re_init_population(re_context_t* ctx) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_init_population: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -248,8 +256,14 @@ bool re_init_population(re_context_t* ctx) {
 }
 
 bool re_add_strategy(re_context_t* ctx, const re_strategy_t* strategy) {
-    if (!ctx || !strategy) return false;
-    if (ctx->population_size >= RE_MAX_POPULATION) return false;
+    if (!ctx || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_add_strategy: required parameter is NULL (ctx, strategy)");
+        return false;
+    }
+    if (ctx->population_size >= RE_MAX_POPULATION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "re_add_strategy: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->population[ctx->population_size++] = *strategy;
@@ -293,8 +307,14 @@ float re_evaluate_fitness(re_context_t* ctx, uint32_t strategy_id, const re_outc
 }
 
 bool re_select_parents(re_context_t* ctx, re_strategy_t* parent1, re_strategy_t* parent2) {
-    if (!ctx || !parent1 || !parent2) return false;
-    if (ctx->population_size < 2) return false;
+    if (!ctx || !parent1 || !parent2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_select_parents: required parameter is NULL (ctx, parent1, parent2)");
+        return false;
+    }
+    if (ctx->population_size < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "re_select_parents: validation failed");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -357,7 +377,10 @@ bool re_select_parents(re_context_t* ctx, re_strategy_t* parent1, re_strategy_t*
 }
 
 bool re_crossover(re_context_t* ctx, const re_strategy_t* parent1, const re_strategy_t* parent2, re_strategy_t* child) {
-    if (!ctx || !parent1 || !parent2 || !child) return false;
+    if (!ctx || !parent1 || !parent2 || !child) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_crossover: required parameter is NULL (ctx, parent1, parent2, child)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -428,7 +451,10 @@ bool re_crossover(re_context_t* ctx, const re_strategy_t* parent1, const re_stra
 }
 
 bool re_mutate(re_context_t* ctx, re_strategy_t* strategy) {
-    if (!ctx || !strategy) return false;
+    if (!ctx || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_mutate: required parameter is NULL (ctx, strategy)");
+        return false;
+    }
 
     bool mutated = false;
 
@@ -539,7 +565,10 @@ uint32_t re_evolve_generation(re_context_t* ctx) {
 }
 
 bool re_get_best_strategy(re_context_t* ctx, re_strategy_t* strategy) {
-    if (!ctx || !strategy || ctx->population_size == 0) return false;
+    if (!ctx || !strategy || ctx->population_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_get_best_strategy: required parameter is NULL (ctx, strategy)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -557,7 +586,10 @@ bool re_get_best_strategy(re_context_t* ctx, re_strategy_t* strategy) {
 }
 
 bool re_get_strategy(re_context_t* ctx, uint32_t strategy_id, re_strategy_t* strategy) {
-    if (!ctx || !strategy) return false;
+    if (!ctx || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_get_strategy: required parameter is NULL (ctx, strategy)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -570,6 +602,7 @@ bool re_get_strategy(re_context_t* ctx, uint32_t strategy_id, re_strategy_t* str
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "re_get_strategy: validation failed");
     return false;
 }
 
@@ -700,7 +733,10 @@ float re_decay_epsilon(re_context_t* ctx) {
 //=============================================================================
 
 bool re_store_experience(re_context_t* ctx, const re_experience_t* experience) {
-    if (!ctx || !experience) return false;
+    if (!ctx || !experience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_store_experience: required parameter is NULL (ctx, experience)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -775,7 +811,10 @@ size_t re_export_knowledge(re_context_t* ctx, void* buffer, size_t buffer_size) 
 }
 
 bool re_import_knowledge(re_context_t* ctx, const void* data, size_t data_size) {
-    if (!ctx || !data || data_size < sizeof(uint32_t)) return false;
+    if (!ctx || !data || data_size < sizeof(uint32_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_import_knowledge: required parameter is NULL (ctx, data)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -784,12 +823,14 @@ bool re_import_knowledge(re_context_t* ctx, const void* data, size_t data_size) 
 
     if (count > RE_MAX_STATES) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "re_import_knowledge: validation failed");
         return false;
     }
 
     size_t expected = sizeof(re_q_entry_t) * count + sizeof(uint32_t);
     if (data_size < expected) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "re_import_knowledge: validation failed");
         return false;
     }
 
@@ -803,7 +844,10 @@ bool re_import_knowledge(re_context_t* ctx, const void* data, size_t data_size) 
 }
 
 bool re_transfer_from(re_context_t* ctx, const re_context_t* source_ctx, float transfer_rate) {
-    if (!ctx || !source_ctx || transfer_rate <= 0.0f || transfer_rate > 1.0f) return false;
+    if (!ctx || !source_ctx || transfer_rate <= 0.0f || transfer_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_transfer_from: required parameter is NULL (ctx, source_ctx)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     nimcp_mutex_lock((nimcp_mutex_t*)&source_ctx->lock);
@@ -879,7 +923,10 @@ uint32_t re_get_action_sequence(re_context_t* ctx, uint32_t fault_type, re_actio
 //=============================================================================
 
 bool re_get_stats(re_context_t* ctx, re_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "re_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -987,60 +1034,60 @@ uint32_t re_encode_state(uint32_t fault_type, uint32_t severity, uint32_t contex
 
 const char* re_algorithm_to_string(re_algorithm_t algo) {
     switch (algo) {
-        case RE_ALGO_GENETIC: return "GENETIC";
-        case RE_ALGO_Q_LEARNING: return "Q_LEARNING";
+        case RE_ALGO_GENETIC: return "Genetic";
+        case RE_ALGO_Q_LEARNING: return "Q-Learning";
         case RE_ALGO_SARSA: return "SARSA";
-        case RE_ALGO_ACTOR_CRITIC: return "ACTOR_CRITIC";
-        case RE_ALGO_HYBRID: return "HYBRID";
+        case RE_ALGO_ACTOR_CRITIC: return "Actor-Critic";
+        case RE_ALGO_HYBRID: return "Hybrid";
         default: return "UNKNOWN";
     }
 }
 
 const char* re_action_to_string(re_action_t action) {
     switch (action) {
-        case RE_ACTION_RETRY: return "RETRY";
-        case RE_ACTION_CHECKPOINT: return "CHECKPOINT";
-        case RE_ACTION_REDUCE_LOAD: return "REDUCE_LOAD";
-        case RE_ACTION_ISOLATE: return "ISOLATE";
-        case RE_ACTION_RESTART: return "RESTART";
-        case RE_ACTION_FAILOVER: return "FAILOVER";
-        case RE_ACTION_DEGRADE: return "DEGRADE";
-        case RE_ACTION_ESCALATE: return "ESCALATE";
-        case RE_ACTION_CACHE_CLEAR: return "CACHE_CLEAR";
+        case RE_ACTION_RETRY: return "Retry";
+        case RE_ACTION_CHECKPOINT: return "Checkpoint";
+        case RE_ACTION_REDUCE_LOAD: return "ReduceLoad";
+        case RE_ACTION_ISOLATE: return "Isolate";
+        case RE_ACTION_RESTART: return "Restart";
+        case RE_ACTION_FAILOVER: return "Failover";
+        case RE_ACTION_DEGRADE: return "Degrade";
+        case RE_ACTION_ESCALATE: return "Escalate";
+        case RE_ACTION_CACHE_CLEAR: return "CacheClear";
         case RE_ACTION_GC: return "GC";
-        case RE_ACTION_REDUCE_LR: return "REDUCE_LR";
-        case RE_ACTION_CLIP_GRADIENT: return "CLIP_GRADIENT";
+        case RE_ACTION_REDUCE_LR: return "ReduceLR";
+        case RE_ACTION_CLIP_GRADIENT: return "ClipGradient";
         default: return "UNKNOWN";
     }
 }
 
 const char* re_selection_to_string(re_selection_t selection) {
     switch (selection) {
-        case RE_SELECT_ROULETTE: return "ROULETTE";
-        case RE_SELECT_TOURNAMENT: return "TOURNAMENT";
-        case RE_SELECT_RANK: return "RANK";
-        case RE_SELECT_ELITISM: return "ELITISM";
+        case RE_SELECT_ROULETTE: return "Roulette";
+        case RE_SELECT_TOURNAMENT: return "Tournament";
+        case RE_SELECT_RANK: return "Rank";
+        case RE_SELECT_ELITISM: return "Elitism";
         default: return "UNKNOWN";
     }
 }
 
 const char* re_crossover_to_string(re_crossover_t crossover) {
     switch (crossover) {
-        case RE_CROSS_SINGLE: return "SINGLE";
-        case RE_CROSS_TWO_POINT: return "TWO_POINT";
-        case RE_CROSS_UNIFORM: return "UNIFORM";
-        case RE_CROSS_BLEND: return "BLEND";
+        case RE_CROSS_SINGLE: return "Single";
+        case RE_CROSS_TWO_POINT: return "TwoPoint";
+        case RE_CROSS_UNIFORM: return "Uniform";
+        case RE_CROSS_BLEND: return "Blend";
         default: return "UNKNOWN";
     }
 }
 
 const char* re_fitness_to_string(re_fitness_criteria_t criteria) {
     switch (criteria) {
-        case RE_FIT_RECOVERY_TIME: return "RECOVERY_TIME";
-        case RE_FIT_SUCCESS_RATE: return "SUCCESS_RATE";
-        case RE_FIT_RESOURCE_USAGE: return "RESOURCE_USAGE";
-        case RE_FIT_DATA_LOSS: return "DATA_LOSS";
-        case RE_FIT_COMPOSITE: return "COMPOSITE";
+        case RE_FIT_RECOVERY_TIME: return "RecoveryTime";
+        case RE_FIT_SUCCESS_RATE: return "SuccessRate";
+        case RE_FIT_RESOURCE_USAGE: return "ResourceUsage";
+        case RE_FIT_DATA_LOSS: return "DataLoss";
+        case RE_FIT_COMPOSITE: return "Composite";
         default: return "UNKNOWN";
     }
 }

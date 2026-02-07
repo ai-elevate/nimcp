@@ -106,7 +106,10 @@ static void matrix_vector_multiply(const float* A, const float* x, float* y,
 static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, float reg) {
     /* Cholesky decomposition with regularization: A = L * L^T */
     float* L = (float*)nimcp_calloc(n * n, sizeof(float));
-    if (!L) return false;
+    if (!L) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "invert_matrix_cholesky: L is NULL");
+        return false;
+    }
 
     /* Add regularization to diagonal */
     float* A_reg = (float*)nimcp_malloc(n * n * sizeof(float));
@@ -128,6 +131,7 @@ static bool invert_matrix_cholesky(const float* A, float* A_inv, uint32_t n, flo
                 if (sum <= 0.0f) {
                     nimcp_free(L);
                     nimcp_free(A_reg);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invert_matrix_cholesky: validation failed");
                     return false;  /* Not positive definite */
                 }
                 L[i * n + j] = sqrtf(sum);

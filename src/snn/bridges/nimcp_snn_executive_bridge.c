@@ -57,6 +57,7 @@ snn_executive_bridge_t* snn_executive_bridge_create(
     snn_executive_bridge_t* bridge = nimcp_malloc(sizeof(snn_executive_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-executive bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_executive_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -111,6 +112,7 @@ int snn_executive_bridge_connect_bio_async(snn_executive_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_executive_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -292,7 +294,10 @@ int snn_executive_bridge_get_state(
     const snn_executive_bridge_t* bridge,
     snn_executive_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -315,7 +320,10 @@ int snn_executive_get_stats(
     float* avg_inhibition,
     float* avg_load
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_get_stats: bridge is NULL");
+        return -1;
+    }
     if (switch_count) *switch_count = bridge->state.switch_count;
     if (avg_inhibition) *avg_inhibition = bridge->state.inhibition_strength;
     if (avg_load) *avg_load = bridge->state.cognitive_load;

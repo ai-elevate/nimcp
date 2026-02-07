@@ -37,6 +37,7 @@
 #include "utils/memory/nimcp_memory.h"  // nimcp_malloc/nimcp_free
 #include "utils/time/nimcp_time.h"       // nimcp_time_monotonic_ms
 #include "utils/algorithms/nimcp_monte_carlo.h"  // Monte Carlo utilities
+#include "utils/exception/nimcp_exception_macros.h"  // NIMCP_THROW_TO_IMMUNE
 
 //=============================================================================
 // Monte Carlo Integration - GPU acceleration with CPU fallback
@@ -55,13 +56,20 @@ static bool g_exec_gpu_init_attempted = false;
 static bool exec_init_gpu_mc(void) {
     if (g_exec_gpu_init_attempted) return g_exec_gpu_rng != NULL;
     g_exec_gpu_init_attempted = true;
-    if (!qmc_gpu_is_available()) return false;
+    if (!qmc_gpu_is_available()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "exec_init_gpu_mc: qmc_gpu_is_available is NULL");
+        return false;
+    }
     g_exec_gpu_ctx = nimcp_gpu_context_create_auto();
-    if (!g_exec_gpu_ctx) return false;
+    if (!g_exec_gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec_init_gpu_mc: g_exec_gpu_ctx is NULL");
+        return false;
+    }
     g_exec_gpu_rng = qmc_gpu_rng_create(g_exec_gpu_ctx, 4096, 0);
     if (!g_exec_gpu_rng) {
         nimcp_gpu_context_destroy(g_exec_gpu_ctx);
         g_exec_gpu_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec_init_gpu_mc: g_exec_gpu_rng is NULL");
         return false;
     }
     return true;
@@ -617,6 +625,7 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task_by_id: validation failed");
     return NULL;
 }
 
@@ -643,7 +652,10 @@ static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t
  */
 static task_descriptor_t* get_highest_priority_task(executive_controller_t* exec)
 {
-    if (!exec || exec->num_tasks == 0) return NULL;
+    if (!exec || exec->num_tasks == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_highest_priority_task: exec is NULL");
+        return NULL;
+    }
 
     task_descriptor_t* best = NULL;
     uint32_t best_idx = 0;
@@ -779,6 +791,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     // Guard: NULL config check
     if (!config) {
         set_error("NULL config provided to executive_create_custom");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: config is NULL");
         return NULL;
     }
 
@@ -789,6 +802,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
 
     if (config->max_tasks == 0 || config->max_tasks > 1024) {
         set_error("Invalid max_tasks: %u (must be 1-1024)", config->max_tasks);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: config->max_tasks is zero");
         return NULL;
     }
 
@@ -800,6 +814,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
     if (!exec) {
         set_error("Failed to allocate executive controller (%zu bytes)",
                   sizeof(executive_controller_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: exec is NULL");
         return NULL;
     }
 
@@ -812,6 +827,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
         set_error("Failed to allocate task queue (%zu bytes)",
                   config->max_tasks * sizeof(task_descriptor_t*));
         nimcp_free(exec);  // Cleanup before return
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_custom: exec->task_queue is NULL");
         return NULL;
     }
 
@@ -837,6 +853,7 @@ executive_controller_t* executive_create_custom(const executive_config_t* config
         set_error("Failed to initialize task queue mutex");
         nimcp_free(exec->task_queue);
         nimcp_free(exec);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_create_custom: validation failed");
         return NULL;
     }
 
@@ -1040,11 +1057,13 @@ static bool broadcast_decision_to_workspace(
 {
     // Guard: Workspace integration not enabled
     if (!exec->workspace_integration_enabled || !exec->workspace || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broadcast_decision_to_workspace: required parameter is NULL (exec->workspace_integration_enabled, exec->workspace, task)");
         return false;
     }
 
     // Guard: Confidence below threshold
     if (confidence < exec->workspace_ignition_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broadcast_decision_to_workspace: validation failed");
         return false;
     }
 
@@ -1221,6 +1240,7 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
 {
     if (!exec) {
         set_error("NULL executive controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_switch_task: exec is NULL");
         return false;
     }
 
@@ -1264,12 +1284,14 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
     if (!target) {
         set_error("Task %u not found", task_id);
         nimcp_mutex_unlock(&exec->task_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_switch_task: target is NULL");
         return false;
     }
 
     if (target->status != TASK_STATUS_PENDING && target->status != TASK_STATUS_SUSPENDED) {
         set_error("Cannot switch to task in status %d", target->status);
         nimcp_mutex_unlock(&exec->task_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_switch_task: validation failed");
         return false;
     }
 
@@ -1341,6 +1363,7 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
 {
     if (!exec) {
         set_error("NULL executive controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_complete_task: exec is NULL");
         return false;
     }
 
@@ -1356,6 +1379,7 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
     if (!exec->active_task) {
         set_error("No active task to complete");
         nimcp_mutex_unlock(&exec->task_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_complete_task: exec->active_task is NULL");
         return false;
     }
 
@@ -1411,7 +1435,10 @@ bool executive_complete_task(executive_controller_t* exec, bool success, uint64_
 
 bool executive_should_inhibit(executive_controller_t* exec, float response_salience, const char* reason)
 {
-    if (!exec) return false;
+    if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_should_inhibit: exec is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     exec_heartbeat("exec_executive_should_inh", 0.0f);
@@ -1445,6 +1472,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
 {
     if (!exec || !goal) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan: required parameter is NULL (exec, goal)");
         return NULL;
     }
 
@@ -1459,6 +1487,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
 
     if (max_steps == 0 || max_steps > exec->config.max_plan_depth) {
         set_error("Invalid max_steps: %u (max: %u)", max_steps, exec->config.max_plan_depth);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_create_plan: max_steps is zero");
         return NULL;
     }
 
@@ -1466,6 +1495,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
     plan_t* plan = nimcp_calloc(1, sizeof(plan_t));
     if (!plan) {
         set_error("Failed to allocate plan (%zu bytes)", sizeof(plan_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan: plan is NULL");
         return NULL;
     }
 
@@ -1475,6 +1505,7 @@ plan_t* executive_create_plan(executive_controller_t* exec, const char* goal, ui
         set_error("Failed to allocate plan steps (%zu bytes)",
                   max_steps * sizeof(plan_step_t));
         nimcp_free(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan: plan->steps is NULL");
         return NULL;
     }
 
@@ -1618,6 +1649,7 @@ bool executive_get_stats(executive_controller_t* exec, executive_stats_t* stats)
 {
     if (!exec || !stats) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_get_stats: required parameter is NULL (exec, stats)");
         return false;
     }
 
@@ -1710,6 +1742,7 @@ bool executive_boost_task_priority(executive_controller_t* exec,
     // Guard: Validate inputs
     if (!exec || !task_name) {
         set_error("NULL parameter in boost_task_priority");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_boost_task_priority: required parameter is NULL (exec, task_name)");
         return false;
     }
 
@@ -1787,6 +1820,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // Guard: Validate parameters
     if (!exec || !file) {
         set_error("Invalid parameters to executive_save");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_save: required parameter is NULL (exec, file)");
         return false;
     }
 
@@ -1800,6 +1834,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     uint32_t version = 1;
     if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to write version marker");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1808,6 +1843,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // HOW:  Binary write of config struct
     if (fwrite(&exec->config, sizeof(executive_config_t), 1, file) != 1) {
         set_error("Failed to write executive configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1816,6 +1852,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // HOW:  Binary write of stats struct
     if (fwrite(&exec->stats, sizeof(executive_stats_t), 1, file) != 1) {
         set_error("Failed to write executive statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1824,16 +1861,19 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // HOW:  Write last_switch_time_ms, next_task_id, total_decisions
     if (fwrite(&exec->last_switch_time_ms, sizeof(uint64_t), 1, file) != 1) {
         set_error("Failed to write last_switch_time_ms");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
     if (fwrite(&exec->next_task_id, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to write next_task_id");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
     if (fwrite(&exec->total_decisions, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to write total_decisions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1842,6 +1882,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     // HOW:  Write num_tasks
     if (fwrite(&exec->num_tasks, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to write task count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1857,6 +1898,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
 
         if (!exec->task_queue[i]) {
             set_error("NULL task in queue at index %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_save: exec->task_queue is NULL");
             return false;
         }
 
@@ -1866,6 +1908,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
 
         if (fwrite(&task_copy, sizeof(task_descriptor_t), 1, file) != 1) {
             set_error("Failed to write task %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
             return false;
         }
     }
@@ -1876,6 +1919,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
     bool has_active_task = (exec->active_task != NULL);
     if (fwrite(&has_active_task, sizeof(bool), 1, file) != 1) {
         set_error("Failed to write active task flag");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
         return false;
     }
 
@@ -1886,6 +1930,7 @@ bool executive_save(executive_controller_t* exec, FILE* file)
 
         if (fwrite(&task_copy, sizeof(task_descriptor_t), 1, file) != 1) {
             set_error("Failed to write active task");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_save: validation failed");
             return false;
         }
     }
@@ -1914,6 +1959,7 @@ executive_controller_t* executive_load(FILE* file)
     // Guard: Validate parameter
     if (!file) {
         set_error("NULL file parameter to executive_load");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_load: file is NULL");
         return NULL;
     }
 
@@ -1927,11 +1973,13 @@ executive_controller_t* executive_load(FILE* file)
     uint32_t version = 0;
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
         set_error("Failed to read version marker");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_load: validation failed");
         return NULL;
     }
 
     if (version != 1) {
         set_error("Unsupported executive save format version %u", version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_load: validation failed");
         return NULL;
     }
 
@@ -1941,6 +1989,7 @@ executive_controller_t* executive_load(FILE* file)
     executive_controller_t* exec = (executive_controller_t*)nimcp_calloc(1, sizeof(executive_controller_t));
     if (!exec) {
         set_error("Failed to allocate executive controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_load: exec is NULL");
         return NULL;
     }
 
@@ -2073,6 +2122,7 @@ cleanup:
         nimcp_free(exec->active_task);
     }
     nimcp_free(exec);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_load: validation failed");
     return NULL;
 }
 
@@ -2110,6 +2160,7 @@ bool executive_is_resource_aware(executive_controller_t* exec)
 {
     // Guard: Null check
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_resource_aware: exec is NULL");
         return false;
     }
 
@@ -2325,11 +2376,13 @@ bool executive_is_immune_impaired(executive_controller_t* exec)
 {
     // Guard: NULL check
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_immune_impaired: exec is NULL");
         return false;
     }
 
     // Guard: Immune integration not enabled
     if (!exec->immune_integration_enabled || !exec->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_is_immune_impaired: required parameter is NULL (exec->immune_integration_enabled, exec->immune_system)");
         return false;
     }
 
@@ -2490,6 +2543,7 @@ void executive_set_sleep_state(executive_controller_t* exec, sleep_state_t state
 bool executive_connect_kg(executive_controller_t* exec, brain_t brain)
 {
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_connect_kg: exec is NULL");
         return false;
     }
 
@@ -2501,6 +2555,7 @@ bool executive_connect_kg(executive_controller_t* exec, brain_t brain)
 
     if (result != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize KG context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_connect_kg: validation failed");
         return false;
     }
 
@@ -2565,10 +2620,12 @@ int executive_query_connected_modules(executive_controller_t* exec)
 bool executive_query_self_capabilities(executive_controller_t* exec)
 {
     if (!exec || !exec->kg_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_query_self_capabilities: required parameter is NULL (exec, exec->kg_connected)");
         return false;
     }
 
     if (!kg_has_node(&exec->kg_context)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_query_self_capabilities: kg_has_node is NULL");
         return false;
     }
 
@@ -2587,6 +2644,7 @@ bool executive_query_self_capabilities(executive_controller_t* exec)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_query_self_capabilities: validation failed");
     return false;
 }
 
@@ -2646,7 +2704,10 @@ task_descriptor_t* executive_select_task_epsilon_greedy_mc(
     executive_controller_t* exec,
     float epsilon
 ) {
-    if (!exec || exec->num_tasks == 0) return NULL;
+    if (!exec || exec->num_tasks == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_select_task_epsilon_greedy_mc: exec is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     exec_heartbeat("exec_executive_select_tas", 0.0f);
@@ -2670,7 +2731,10 @@ task_descriptor_t* executive_select_task_epsilon_greedy_mc(
         }
     }
 
-    if (num_pending == 0) return NULL;
+    if (num_pending == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_select_task_epsilon_greedy_mc: num_pending is zero");
+        return NULL;
+    }
 
     /* Epsilon-greedy selection */
     float r = mc_random_uniform(&g_exec_mc_seed);
@@ -2788,7 +2852,10 @@ task_descriptor_t* executive_select_task_softmax_mc(
     float temperature,
     uint32_t num_rollouts
 ) {
-    if (!exec || exec->num_tasks == 0 || temperature <= 0.0f) return NULL;
+    if (!exec || exec->num_tasks == 0 || temperature <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_select_task_softmax_mc: exec is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     exec_heartbeat("exec_executive_select_tas", 0.0f);
@@ -2832,6 +2899,7 @@ task_descriptor_t* executive_select_task_softmax_mc(
     if (num_pending == 0) {
         nimcp_free(pending);
         nimcp_free(values);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_select_task_softmax_mc: num_pending is zero");
         return NULL;
     }
 
@@ -2993,7 +3061,10 @@ static void* plan_apply_action(const void* state, uint32_t action, void* user_da
     const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
     mcts_plan_context_t* ctx = (mcts_plan_context_t*)user_data;
 
-    if (action >= s->num_actions) return NULL;
+    if (action >= s->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plan_apply_action: capacity exceeded");
+        return NULL;
+    }
 
     mcts_plan_state_t* new_state = nimcp_calloc(1, sizeof(mcts_plan_state_t));
     if (!new_state) {
@@ -3102,6 +3173,7 @@ plan_t* executive_create_plan_mcts(
 {
     if (!exec || !goal) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_create_plan_mcts: required parameter is NULL (exec, goal)");
         return NULL;
     }
 
@@ -3127,6 +3199,7 @@ plan_t* executive_create_plan_mcts(
     mcts_plan_state_t* initial = nimcp_calloc(1, sizeof(mcts_plan_state_t));
     if (!initial) {
         set_error("Failed to allocate initial planning state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan_mcts: initial is NULL");
         return NULL;
     }
 
@@ -3194,6 +3267,7 @@ plan_t* executive_create_plan_mcts(
         set_error("Failed to allocate plan");
         plan_free_state(initial, &ctx);
         mcts_result_free(&mcts_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan_mcts: plan is NULL");
         return NULL;
     }
 
@@ -3203,6 +3277,7 @@ plan_t* executive_create_plan_mcts(
         nimcp_free(plan);
         plan_free_state(initial, &ctx);
         mcts_result_free(&mcts_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_create_plan_mcts: plan->steps is NULL");
         return NULL;
     }
 
@@ -3389,6 +3464,7 @@ plan_t* executive_replan_mcts(
 {
     if (!exec || !current_plan) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_replan_mcts: required parameter is NULL (exec, current_plan)");
         return NULL;
     }
 
@@ -3398,6 +3474,7 @@ plan_t* executive_replan_mcts(
 
     if (current_step >= current_plan->num_steps) {
         set_error("Current step %u exceeds plan length %u", current_step, current_plan->num_steps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_replan_mcts: capacity exceeded");
         return NULL;
     }
 
@@ -3435,6 +3512,7 @@ char* executive_get_best_action_mcts(
 {
     if (!exec || !goal) {
         set_error("NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_get_best_action_mcts: required parameter is NULL (exec, goal)");
         return NULL;
     }
 
@@ -3456,6 +3534,7 @@ char* executive_get_best_action_mcts(
 
     if (!plan || plan->num_steps == 0) {
         if (plan) executive_destroy_plan(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_get_best_action_mcts: validation failed");
         return NULL;
     }
 
@@ -3463,6 +3542,7 @@ char* executive_get_best_action_mcts(
     char* action = nimcp_calloc(128, sizeof(char));
     if (!action) {
         executive_destroy_plan(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_get_best_action_mcts: action is NULL");
         return NULL;
     }
 

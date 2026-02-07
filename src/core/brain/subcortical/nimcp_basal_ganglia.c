@@ -114,7 +114,10 @@ static int basal_ganglia_strengthen_habit_unlocked(basal_ganglia_t* bg,
  */
 static bool basal_ganglia_validate_input(const float* input, uint32_t num_actions) {
     if (!g_basal_ganglia_bbb) return true;  /* BBB not configured, allow */
-    if (!input) return false;
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_validate_input: input is NULL");
+        return false;
+    }
 
     bbb_validation_result_t result;
     bool valid = bbb_validate_input(g_basal_ganglia_bbb, input,
@@ -274,6 +277,7 @@ static void* bg_mcts_apply_action(const void* state, uint32_t action, void* user
         nimcp_free(new_state->cortical_input);
         nimcp_free(new_state->thalamic_values);
         nimcp_free(new_state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_mcts_apply_action: required parameter is NULL (new_state->cortical_input, new_state->thalamic_values)");
         return NULL;
     }
 
@@ -394,6 +398,7 @@ static void* bg_mcts_clone_state(const void* state, void* user_data) {
         nimcp_free(clone->cortical_input);
         nimcp_free(clone->thalamic_values);
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mcts_clone_state: required parameter is NULL (clone->cortical_input, clone->thalamic_values)");
         return NULL;
     }
 
@@ -512,6 +517,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
         globus_pallidus_destroy(bg->gpi);
         striatum_destroy(bg->striatum);
         nimcp_free(bg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_create: bg->snc is NULL");
         return NULL;
     }
 
@@ -525,6 +531,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
         globus_pallidus_destroy(bg->gpi);
         striatum_destroy(bg->striatum);
         nimcp_free(bg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_create: bg->snr is NULL");
         return NULL;
     }
 
@@ -591,6 +598,7 @@ cleanup:
     globus_pallidus_destroy(bg->gpi);
     striatum_destroy(bg->striatum);
     nimcp_free(bg);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_create: validation failed");
     return NULL;
 }
 
@@ -663,7 +671,10 @@ int basal_ganglia_reset(basal_ganglia_t* bg) {
 
 int basal_ganglia_set_action_value(basal_ganglia_t* bg, uint32_t action_id,
                                     float value, float urgency, float cost) {
-    if (!bg || action_id >= bg->num_actions) return -1;
+    if (!bg || action_id >= bg->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basal_ganglia_reset: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -800,7 +811,10 @@ int basal_ganglia_select_action(basal_ganglia_t* bg,
 }
 
 int basal_ganglia_get_thalamic_output(const basal_ganglia_t* bg, float* output) {
-    if (!bg || !output) return -1;
+    if (!bg || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_get_thalamic_output: required parameter is NULL (bg, output)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
     memcpy(output, bg->thalamic_output, bg->num_actions * sizeof(float));
@@ -810,7 +824,10 @@ int basal_ganglia_get_thalamic_output(const basal_ganglia_t* bg, float* output) 
 }
 
 int basal_ganglia_suppress_action(basal_ganglia_t* bg, float suppression_strength) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_suppress_action: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -857,7 +874,10 @@ int basal_ganglia_select_action_mcts(basal_ganglia_t* bg,
                                       const float* cortical_input,
                                       uint32_t num_iterations,
                                       uint32_t* selected_action) {
-    if (!bg || !cortical_input || !selected_action) return -1;
+    if (!bg || !cortical_input || !selected_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_suppress_action: required parameter is NULL (bg, cortical_input, selected_action)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -918,6 +938,7 @@ int basal_ganglia_select_action_mcts(basal_ganglia_t* bg,
         nimcp_free(initial_state.cortical_input);
         nimcp_free(initial_state.thalamic_values);
         nimcp_mutex_unlock(bg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "basal_ganglia_suppress_action: required parameter is NULL (initial_state, initial_state)");
         return -1;
     }
 
@@ -963,6 +984,7 @@ int basal_ganglia_select_action_mcts(basal_ganglia_t* bg,
 
     if (err != NIMCP_MC_OK) {
         nimcp_mutex_unlock(bg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basal_ganglia_suppress_action: validation failed");
         return -1;
     }
 
@@ -998,7 +1020,10 @@ int basal_ganglia_select_action_mcts(basal_ganglia_t* bg,
 
 int basal_ganglia_update_dopamine(basal_ganglia_t* bg, float reward,
                                    float expected_reward) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_suppress_action: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -1032,7 +1057,10 @@ int basal_ganglia_update_dopamine(basal_ganglia_t* bg, float reward,
 }
 
 int basal_ganglia_set_dopamine(basal_ganglia_t* bg, float level) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_set_dopamine: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
     bg->dopamine_level = fmaxf(0.0f, fminf(1.0f, level));
@@ -1068,7 +1096,10 @@ float basal_ganglia_get_rpe(const basal_ganglia_t* bg) {
 
 int basal_ganglia_register_habit(basal_ganglia_t* bg, uint32_t context,
                                   uint32_t action_id, uint32_t* habit_id) {
-    if (!bg || !habit_id || action_id >= bg->num_actions) return -1;
+    if (!bg || !habit_id || action_id >= bg->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_get_rpe: required parameter is NULL (bg, habit_id)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -1108,7 +1139,10 @@ int basal_ganglia_register_habit(basal_ganglia_t* bg, uint32_t context,
 static int basal_ganglia_strengthen_habit_unlocked(basal_ganglia_t* bg,
                                                     uint32_t habit_id,
                                                     bool success) {
-    if (!bg || habit_id >= bg->num_habits) return -1;
+    if (!bg || habit_id >= bg->num_habits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basal_ganglia_get_rpe: bg is NULL");
+        return -1;
+    }
 
     habit_t* habit = &bg->habits[habit_id];
 
@@ -1158,7 +1192,10 @@ int basal_ganglia_strengthen_habit(basal_ganglia_t* bg, uint32_t habit_id,
 
 bool basal_ganglia_check_habit(const basal_ganglia_t* bg, uint32_t context,
                                 uint32_t* action_id) {
-    if (!bg || !action_id) return false;
+    if (!bg || !action_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_get_rpe: required parameter is NULL (bg, action_id)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
 
@@ -1172,6 +1209,7 @@ bool basal_ganglia_check_habit(const basal_ganglia_t* bg, uint32_t context,
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)bg->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basal_ganglia_get_rpe: operation failed");
     return false;
 }
 
@@ -1187,7 +1225,10 @@ float basal_ganglia_get_habit_strength(const basal_ganglia_t* bg,
 }
 
 int basal_ganglia_set_habit_mode(basal_ganglia_t* bg, bool habitual) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_set_habit_mode: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
     bg->habit_mode = habitual;
@@ -1198,7 +1239,10 @@ int basal_ganglia_set_habit_mode(basal_ganglia_t* bg, bool habitual) {
 }
 
 bool basal_ganglia_is_habit_mode(const basal_ganglia_t* bg) {
-    if (!bg) return false;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_is_habit_mode: bg is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
     bool mode = bg->habit_mode;
@@ -1258,7 +1302,10 @@ bg_operating_mode_t basal_ganglia_get_mode(const basal_ganglia_t* bg) {
 //=============================================================================
 
 int basal_ganglia_step(basal_ganglia_t* bg, float dt) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_step: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -1276,7 +1323,10 @@ int basal_ganglia_step(basal_ganglia_t* bg, float dt) {
 }
 
 int basal_ganglia_process_input(basal_ganglia_t* bg, const float* cortical_input) {
-    if (!bg || !cortical_input) return -1;
+    if (!bg || !cortical_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_process_input: required parameter is NULL (bg, cortical_input)");
+        return -1;
+    }
 
     uint32_t selected;
     return basal_ganglia_select_action(bg, cortical_input, &selected);
@@ -1429,7 +1479,10 @@ int basal_ganglia_connect_bio_async(basal_ganglia_t* bg) {
 }
 
 int basal_ganglia_disconnect_bio_async(basal_ganglia_t* bg) {
-    if (!bg) return -1;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_disconnect_bio_async: bg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bg->mutex);
 
@@ -1445,7 +1498,10 @@ int basal_ganglia_disconnect_bio_async(basal_ganglia_t* bg) {
 }
 
 bool basal_ganglia_is_bio_async_connected(const basal_ganglia_t* bg) {
-    if (!bg) return false;
+    if (!bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_is_bio_async_connected: bg is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
     bool connected = bg->bio_async_enabled;
@@ -1460,7 +1516,10 @@ bool basal_ganglia_is_bio_async_connected(const basal_ganglia_t* bg) {
 
 int basal_ganglia_get_stats(const basal_ganglia_t* bg,
                              basal_ganglia_stats_t* stats) {
-    if (!bg || !stats) return -1;
+    if (!bg || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basal_ganglia_is_bio_async_connected: required parameter is NULL (bg, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bg->mutex);
     *stats = bg->stats;

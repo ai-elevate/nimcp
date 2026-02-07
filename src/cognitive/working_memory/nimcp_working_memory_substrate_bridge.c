@@ -116,6 +116,7 @@ int wm_substrate_default_config(wm_substrate_config_t* config)
     /* Guard: Validate input */
     if (!config) {
         NIMCP_LOGGING_ERROR("Cannot set default config: NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_default_config: config is NULL");
         return -1;
     }
 
@@ -281,6 +282,7 @@ int wm_substrate_connect_bio_async(wm_substrate_bridge_t* bridge)
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot connect bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -308,6 +310,7 @@ int wm_substrate_connect_bio_async(wm_substrate_bridge_t* bridge)
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_substrate_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -317,6 +320,7 @@ int wm_substrate_disconnect_bio_async(wm_substrate_bridge_t* bridge)
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot disconnect bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -344,6 +348,7 @@ bool wm_substrate_is_bio_async_connected(const wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
 
@@ -359,6 +364,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     /* Guard: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot update WM-substrate: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_update: bridge is NULL");
         return -1;
     }
 
@@ -369,6 +375,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get metabolic state from substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_substrate_update: validation failed");
         return -1;
     }
 
@@ -379,6 +386,7 @@ int wm_substrate_update(wm_substrate_bridge_t* bridge)
     substrate_physical_state_t physical;
     if (substrate_get_physical_state(bridge->substrate, &physical) != 0) {
         NIMCP_LOGGING_ERROR("Failed to get physical state from substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_substrate_update: validation failed");
         return -1;
     }
 
@@ -637,6 +645,7 @@ int wm_substrate_get_effects(
     /* Guard: Validate inputs */
     if (!bridge || !effects) {
         NIMCP_LOGGING_ERROR("Cannot get effects: NULL bridge or effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_get_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -659,6 +668,7 @@ bool wm_substrate_is_impaired(const wm_substrate_bridge_t* bridge)
 {
     /* Guard: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_is_impaired: bridge is NULL");
         return false;
     }
 
@@ -681,6 +691,7 @@ int wm_substrate_get_stats(
     /* Guard: Validate inputs */
     if (!bridge || !stats) {
         NIMCP_LOGGING_ERROR("Cannot get stats: NULL bridge or stats pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_substrate_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

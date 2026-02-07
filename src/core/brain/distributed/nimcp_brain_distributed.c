@@ -172,6 +172,7 @@ static brain_t allocate_brain_simple(void)
     brain_t brain = nimcp_calloc(1, sizeof(struct brain_struct));
     if (!brain) {
         set_error("Failed to allocate brain structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_brain_simple: brain is NULL");
         return NULL;
     }
 
@@ -184,6 +185,7 @@ static brain_t allocate_brain_simple(void)
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         set_error("Failed to initialize cache mutex");
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "allocate_brain_simple: validation failed");
         return NULL;
     }
 
@@ -236,6 +238,7 @@ static bool ensure_writable_network(brain_t brain)
     // Guard: Validate parameter
     if (!brain) {
         set_error("NULL brain in ensure_writable_network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain is NULL");
         return false;
     }
 
@@ -248,6 +251,7 @@ static bool ensure_writable_network(brain_t brain)
     // For Phase 2, we'll create a full copy of the network
     if (!brain->network) {
         set_error("COW clone has NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain->network is NULL");
         return false;
     }
 
@@ -265,6 +269,7 @@ static bool ensure_writable_network(brain_t brain)
     // Save shared network to temp file
     if (!adaptive_network_save(shared_network, temp_file, SERIALIZE_FORMAT_BINARY)) {
         set_error("Failed to save network for COW copy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensure_writable_network: adaptive_network_save is NULL");
         return false;
     }
 
@@ -278,6 +283,7 @@ static bool ensure_writable_network(brain_t brain)
         // Failed to load - restore shared network and fail
         brain->network = shared_network;
         set_error("Failed to load network copy for COW");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_writable_network: brain->network is NULL");
         return false;
     }
 
@@ -308,11 +314,13 @@ brain_t brain_clone_cow(brain_t original)
 {
     if (!original) {
         set_error("Cannot clone NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_clone_cow: original is NULL");
         return NULL;
     }
 
     if (!original->network) {
         set_error("Cannot clone brain with NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_clone_cow: original->network is NULL");
         return NULL;
     }
 
@@ -469,6 +477,7 @@ brain_t brain_create_distributed(
     // Guard: Validate P2P node
     if (!p2p_node) {
         set_error("NULL p2p_node provided to brain_create_distributed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_distributed: p2p_node is NULL");
         return NULL;
     }
 
@@ -483,6 +492,7 @@ brain_t brain_create_distributed(
     // Enable distributed coordination
     if (!brain_enable_distributed(brain, p2p_node)) {
         brain_destroy(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_distributed: brain_enable_distributed is NULL");
         return NULL;
     }
 
@@ -502,17 +512,20 @@ bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node)
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to brain_enable_distributed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_distributed: brain is NULL");
         return false;
     }
 
     if (!p2p_node) {
         set_error("NULL p2p_node provided to brain_enable_distributed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_distributed: p2p_node is NULL");
         return false;
     }
 
     // Guard: Check if already distributed
     if (brain->distributed) {
         set_error("Brain is already distributed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_distributed: validation failed");
         return false;
     }
 
@@ -532,6 +545,7 @@ bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node)
     brain->distributed = distrib_cognition_create(&config, p2p_node);
     if (!brain->distributed) {
         set_error("Failed to create distributed cognition coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_distributed: brain->distributed is NULL");
         return false;
     }
 
@@ -540,6 +554,7 @@ bool brain_enable_distributed(brain_t brain, p2p_node_t p2p_node)
         set_error("Failed to start distributed cognition");
         distrib_cognition_destroy(brain->distributed);
         brain->distributed = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_distributed: distrib_cognition_start is NULL");
         return false;
     }
 
@@ -564,12 +579,14 @@ bool brain_sync_neuromodulators(brain_t brain)
     // Guard: Validate brain
     if (!brain) {
         set_error("NULL brain provided to brain_sync_neuromodulators");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_sync_neuromodulators: brain is NULL");
         return false;
     }
 
     // Guard: Check if distributed
     if (!brain->distributed) {
         set_error("Brain is not distributed - cannot sync neuromodulators");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_sync_neuromodulators: brain->distributed is NULL");
         return false;
     }
 
@@ -583,6 +600,7 @@ bool brain_sync_neuromodulators(brain_t brain)
 
     if (!success) {
         set_error("Failed to broadcast some neuromodulators");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_sync_neuromodulators: success is NULL");
         return false;
     }
 
@@ -603,23 +621,27 @@ bool brain_get_distributed_stats(
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to brain_get_distributed_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_distributed_stats: brain is NULL");
         return false;
     }
 
     if (!stats) {
         set_error("NULL stats provided to brain_get_distributed_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_distributed_stats: stats is NULL");
         return false;
     }
 
     // Guard: Check if distributed
     if (!brain->distributed) {
         set_error("Brain is not distributed - no stats available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_distributed_stats: brain->distributed is NULL");
         return false;
     }
 
     // Forward to distributed cognition
     if (!distrib_cognition_get_stats(brain->distributed, stats)) {
         set_error("Failed to get distributed cognition stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_distributed_stats: distrib_cognition_get_stats is NULL");
         return false;
     }
 
@@ -635,6 +657,7 @@ bool brain_get_distributed_stats(
 bool brain_is_distributed(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_distributed: brain is NULL");
         return false;
     }
 

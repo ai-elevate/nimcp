@@ -276,6 +276,7 @@ medulla_kg_wiring_t medulla_kg_create(
     if (wiring->root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(MEDULLA_KG_MODULE_NAME, "Failed to create root node");
         medulla_kg_destroy(wiring);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_kg_create: validation failed");
         return NULL;
     }
 
@@ -384,6 +385,7 @@ int medulla_kg_log_state(medulla_kg_wiring_t wiring) {
     /* Get current medulla stats */
     medulla_stats_t stats;
     if (medulla_get_stats(wiring->medulla, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_kg_log_state: validation failed");
         return -1;
     }
 

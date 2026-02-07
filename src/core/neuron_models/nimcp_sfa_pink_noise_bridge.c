@@ -33,6 +33,7 @@ sfa_pink_noise_bridge_t* sfa_pink_noise_create(const sfa_pink_noise_config_t* co
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "sfa_pink_noise_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sfa_pink_noise_create: validation failed");
         return NULL;
     }
 

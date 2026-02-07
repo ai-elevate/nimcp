@@ -223,7 +223,10 @@ mesh_hierarchical_timing_t mesh_timing_create(
 ) {
     mesh_hierarchical_timing_t timing = (mesh_hierarchical_timing_t)nimcp_calloc(
         1, sizeof(struct mesh_hierarchical_timing_internal));
-    if (!timing) return NULL;
+    if (!timing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_timing_create: timing is NULL");
+        return NULL;
+    }
 
     mesh_hierarchical_timing_config_t cfg = config ? *config : mesh_timing_default_config();
 
@@ -562,6 +565,7 @@ bool mesh_timing_validate_pink_noise(
     uint32_t num_samples
 ) {
     if (!timing || level >= MESH_TIMING_NUM_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_timing_validate_pink_noise: timing is NULL");
         return false;
     }
     if (num_samples < MIN_VALIDATION_SAMPLES) {
@@ -570,7 +574,10 @@ bool mesh_timing_validate_pink_noise(
 
     /* Generate samples and check basic statistical properties */
     float* samples = (float*)nimcp_malloc(num_samples * sizeof(float));
-    if (!samples) return false;
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_timing_validate_pink_noise: samples is NULL");
+        return false;
+    }
 
     float sum = 0.0f;
     float sum_sq = 0.0f;

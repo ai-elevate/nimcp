@@ -168,13 +168,17 @@ int immune_persistence_set_encryption_key(
     const uint8_t* key,
     size_t key_len
 ) {
-    if (!config || !key) return -1;
+    if (!config || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_set_encryption_key: required parameter is NULL (config, key)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     immune_persistence_heartbeat("immune_persi_set_encryption_key", 0.0f);
 
 
     if (key_len != 32) {
         NIMCP_LOGGING_ERROR("Encryption key must be 32 bytes for AES-256");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_set_encryption_key: validation failed");
         return -1;
     }
 
@@ -270,9 +274,13 @@ static uint32_t compute_file_checksum(FILE* file, size_t header_size) {
  * @brief Write header to file
  */
 static int write_header(FILE* file, const immune_persistence_header_t* header) {
-    if (!file || !header) return -1;
+    if (!file || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_header: required parameter is NULL (file, header)");
+        return -1;
+    }
     if (fwrite(header, sizeof(*header), 1, file) != 1) {
         NIMCP_LOGGING_ERROR("Failed to write header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_header: validation failed");
         return -1;
     }
     return 0;
@@ -282,9 +290,13 @@ static int write_header(FILE* file, const immune_persistence_header_t* header) {
  * @brief Read header from file
  */
 static int read_header(FILE* file, immune_persistence_header_t* header) {
-    if (!file || !header) return -1;
+    if (!file || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_header: required parameter is NULL (file, header)");
+        return -1;
+    }
     if (fread(header, sizeof(*header), 1, file) != 1) {
         NIMCP_LOGGING_ERROR("Failed to read header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_header: validation failed");
         return -1;
     }
     return 0;
@@ -294,9 +306,13 @@ static int read_header(FILE* file, immune_persistence_header_t* header) {
  * @brief Write counts to file
  */
 static int write_counts(FILE* file, const immune_persistence_counts_t* counts) {
-    if (!file || !counts) return -1;
+    if (!file || !counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_counts: required parameter is NULL (file, counts)");
+        return -1;
+    }
     if (fwrite(counts, sizeof(*counts), 1, file) != 1) {
         NIMCP_LOGGING_ERROR("Failed to write counts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_counts: validation failed");
         return -1;
     }
     return 0;
@@ -306,9 +322,13 @@ static int write_counts(FILE* file, const immune_persistence_counts_t* counts) {
  * @brief Read counts from file
  */
 static int read_counts(FILE* file, immune_persistence_counts_t* counts) {
-    if (!file || !counts) return -1;
+    if (!file || !counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_counts: required parameter is NULL (file, counts)");
+        return -1;
+    }
     if (fread(counts, sizeof(*counts), 1, file) != 1) {
         NIMCP_LOGGING_ERROR("Failed to read counts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_counts: validation failed");
         return -1;
     }
     return 0;
@@ -330,6 +350,7 @@ static int validate_header(const immune_persistence_header_t* header) {
     if (memcmp(header->magic, IMMUNE_PERSISTENCE_MAGIC,
                IMMUNE_PERSISTENCE_MAGIC_LEN) != 0) {
         NIMCP_LOGGING_ERROR("Invalid magic header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_header: operation failed");
         return -1;
     }
 
@@ -337,6 +358,7 @@ static int validate_header(const immune_persistence_header_t* header) {
     if (!immune_persistence_is_version_compatible(header->version)) {
         NIMCP_LOGGING_ERROR("Incompatible version: %u (current: %u)",
             header->version, IMMUNE_PERSISTENCE_VERSION);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_header: immune_persistence_is_version_compatible is NULL");
         return -1;
     }
 
@@ -359,31 +381,37 @@ static int validate_counts(const immune_persistence_counts_t* counts) {
     if (counts->antigen_count > BRAIN_IMMUNE_MAX_ANTIGENS) {
         NIMCP_LOGGING_ERROR("Antigen count %u exceeds max %u",
             counts->antigen_count, BRAIN_IMMUNE_MAX_ANTIGENS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->b_cell_count > BRAIN_IMMUNE_MAX_B_CELLS) {
         NIMCP_LOGGING_ERROR("B cell count %u exceeds max %u",
             counts->b_cell_count, BRAIN_IMMUNE_MAX_B_CELLS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->t_cell_count > BRAIN_IMMUNE_MAX_T_CELLS) {
         NIMCP_LOGGING_ERROR("T cell count %u exceeds max %u",
             counts->t_cell_count, BRAIN_IMMUNE_MAX_T_CELLS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->antibody_count > BRAIN_IMMUNE_MAX_ANTIBODIES) {
         NIMCP_LOGGING_ERROR("Antibody count %u exceeds max %u",
             counts->antibody_count, BRAIN_IMMUNE_MAX_ANTIBODIES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->cytokine_count > BRAIN_IMMUNE_MAX_CYTOKINES) {
         NIMCP_LOGGING_ERROR("Cytokine count %u exceeds max %u",
             counts->cytokine_count, BRAIN_IMMUNE_MAX_CYTOKINES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
     if (counts->inflammation_count > BRAIN_IMMUNE_MAX_INFLAMMATION) {
         NIMCP_LOGGING_ERROR("Inflammation count %u exceeds max %u",
             counts->inflammation_count, BRAIN_IMMUNE_MAX_INFLAMMATION);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_counts: validation failed");
         return -1;
     }
 
@@ -453,7 +481,10 @@ int immune_persistence_save(
     const char* filepath,
     const immune_persistence_config_t* config
 ) {
-    if (!system || !filepath) return -1;
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_save: required parameter is NULL (system, filepath)");
+        return -1;
+    }
 
     /* Use default config if not provided */
     /* Phase 8: Heartbeat at operation start */
@@ -478,6 +509,7 @@ int immune_persistence_save(
     FILE* file = fopen(temp_path, "wb");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open file for writing: %s", temp_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_save: file is NULL");
         return -1;
     }
 
@@ -627,6 +659,7 @@ cleanup:
         if (rename(temp_path, filepath) != 0) {
             NIMCP_LOGGING_ERROR("Failed to rename temp file to %s", filepath);
             remove(temp_path);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_save: validation failed");
             return -1;
         }
     } else {
@@ -652,7 +685,10 @@ int immune_persistence_load(
     const char* filepath,
     const immune_persistence_config_t* config
 ) {
-    if (!system || !filepath) return -1;
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_load: required parameter is NULL (system, filepath)");
+        return -1;
+    }
 
     /* Use default config if not provided */
     /* Phase 8: Heartbeat at operation start */
@@ -668,6 +704,7 @@ int immune_persistence_load(
     FILE* file = fopen(filepath, "rb");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open file for reading: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_load: file is NULL");
         return -1;
     }
 
@@ -785,7 +822,10 @@ int immune_persistence_save_incremental(
     const char* filepath,
     const immune_persistence_config_t* config
 ) {
-    if (!system || !filepath) return -1;
+    if (!system || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_save_incremental: required parameter is NULL (system, filepath)");
+        return -1;
+    }
 
     /* Use memory-only config for incremental saves */
     /* Phase 8: Heartbeat at operation start */
@@ -858,28 +898,33 @@ int immune_persistence_validate_file(
     FILE* file = fopen(filepath, "rb");
     if (!file) {
         NIMCP_LOGGING_ERROR("File not found: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_validate_file: file is NULL");
         return -1;
     }
 
     immune_persistence_header_t header;
     if (read_header(file, &header) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     if (validate_header(&header) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     immune_persistence_counts_t counts;
     if (read_counts(file, &counts) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
     if (validate_counts(&counts) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_validate_file: validation failed");
         return -1;
     }
 
@@ -973,6 +1018,7 @@ int immune_persistence_create_backup(
     if (!dst) {
         fclose(src);
         NIMCP_LOGGING_ERROR("Failed to create backup file: %s", backup_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_create_backup: dst is NULL");
         return -1;
     }
 
@@ -985,6 +1031,7 @@ int immune_persistence_create_backup(
             fclose(dst);
             remove(backup_path);
             NIMCP_LOGGING_ERROR("Failed to write backup");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_persistence_create_backup: validation failed");
             return -1;
         }
     }
@@ -1154,6 +1201,7 @@ int immune_persistence_merge_incremental(
     const immune_persistence_config_t* config
 ) {
     if (!base_filepath || !incremental_filepath || !output_filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_merge_incremental: required parameter is NULL (base_filepath, incremental_filepath, output_filepath)");
         return -1;
     }
 
@@ -1162,6 +1210,7 @@ int immune_persistence_merge_incremental(
 
 
     NIMCP_LOGGING_WARN("Incremental merge not yet implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_persistence_merge_incremental: required parameter is NULL (base_filepath, incremental_filepath, output_filepath)");
     return -1;
 }
 

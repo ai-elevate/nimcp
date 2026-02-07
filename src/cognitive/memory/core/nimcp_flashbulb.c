@@ -164,6 +164,7 @@ flashbulb_config_t flashbulb_config_default(void) {
 
 bool flashbulb_config_validate(const flashbulb_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_config_validate: config is NULL");
         return false;
     }
 
@@ -173,28 +174,35 @@ bool flashbulb_config_validate(const flashbulb_config_t* config) {
 
 
     if (config->arousal_threshold < 0.0f || config->arousal_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->trauma_arousal_threshold < 0.0f || config->trauma_arousal_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->min_vividness_threshold < 0.0f || config->min_vividness_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
 
     // Validate boost factors are positive
     if (config->arousal_boost < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->surprise_boost < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
     if (config->significance_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: validation failed");
         return false;
     }
 
     // Validate capacities
     if (config->max_flashbulb_memories == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_config_validate: config->max_flashbulb_memories is zero");
         return false;
     }
 
@@ -224,6 +232,7 @@ flashbulb_system_t* flashbulb_create(
 
     flashbulb_config_t cfg = config ? *config : flashbulb_config_default();
     if (!flashbulb_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_create: flashbulb_config_validate is NULL");
         return NULL;
     }
 
@@ -247,6 +256,7 @@ flashbulb_system_t* flashbulb_create(
     system->memories = (flashbulb_memory_t*)nimcp_calloc(initial_capacity, sizeof(flashbulb_memory_t));
     if (!system->memories) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_create: system->memories is NULL");
         return NULL;
     }
     system->capacity = initial_capacity;
@@ -261,6 +271,7 @@ flashbulb_system_t* flashbulb_create(
         if (!system->trauma_memories) {
             nimcp_free(system->memories);
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_create: system->trauma_memories is NULL");
             return NULL;
         }
         system->trauma_capacity = trauma_capacity;
@@ -356,11 +367,13 @@ bool flashbulb_detect(
     flashbulb_type_t* detected_type
 ) {
     if (!system || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_detect: required parameter is NULL (system, event)");
         return false;
     }
 
     // Check if event has meaningful content
     if (!event->event_data || event->event_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_detect: event->event_data is NULL");
         return false;
     }
 
@@ -372,6 +385,7 @@ bool flashbulb_detect(
 
     // Primary criterion: arousal must exceed threshold
     if (intensity->arousal < system->config.arousal_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_detect: validation failed");
         return false;
     }
 
@@ -384,6 +398,7 @@ bool flashbulb_detect(
     // Detection threshold (derived from config)
     float detection_threshold = system->config.arousal_threshold * 0.8f;
     if (combined < detection_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flashbulb_detect: validation failed");
         return false;
     }
 
@@ -403,6 +418,7 @@ flashbulb_memory_t* flashbulb_encode(
     flashbulb_type_t type
 ) {
     if (!system || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_encode: required parameter is NULL (system, event)");
         return NULL;
     }
 
@@ -412,6 +428,7 @@ flashbulb_memory_t* flashbulb_encode(
 
 
     if (ensure_capacity(system) != FLASHBULB_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_encode: validation failed");
         return NULL;
     }
 
@@ -449,6 +466,7 @@ flashbulb_memory_t* flashbulb_encode(
 
     if (!fb->memory) {
         // Failed to create PR node
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "flashbulb_encode: fb->memory is NULL");
         return NULL;
     }
 
@@ -707,6 +725,7 @@ flashbulb_memory_t* flashbulb_retrieve_by_content(
     flashbulb_retrieval_result_t* result
 ) {
     if (!system || !query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_retrieve_by_content: required parameter is NULL (system, query)");
         return NULL;
     }
 
@@ -1057,10 +1076,12 @@ bool flashbulb_is_reconsolidating(
     uint64_t current_time_ms
 ) {
     if (!system || !flashbulb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_is_reconsolidating: required parameter is NULL (system, flashbulb)");
         return false;
     }
 
     if (!flashbulb->is_reconsolidating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flashbulb_is_reconsolidating: flashbulb->is_reconsolidating is NULL");
         return false;
     }
 
@@ -1600,6 +1621,7 @@ static flashbulb_memory_t* find_flashbulb_by_id(
             return &system->memories[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_flashbulb_by_id: validation failed");
     return NULL;
 }
 
@@ -1722,6 +1744,7 @@ static bool should_trigger_reconsolidation(
 
     // Already reconsolidating
     if (fb->is_reconsolidating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_reconsolidation: validation failed");
         return false;
     }
 

@@ -156,14 +156,17 @@ static bool entry_matches_filter(const pr_log_entry_t* entry,
 
     /* Time range */
     if (filter->start_time_ns > 0 && entry->timestamp_ns < filter->start_time_ns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: validation failed");
         return false;
     }
     if (filter->end_time_ns > 0 && entry->timestamp_ns > filter->end_time_ns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: validation failed");
         return false;
     }
 
     /* Level filter */
     if (entry->level < filter->min_level || entry->level > filter->max_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: validation failed");
         return false;
     }
 
@@ -171,25 +174,30 @@ static bool entry_matches_filter(const pr_log_entry_t* entry,
     if (filter->category_mask != 0) {
         uint32_t cat_bit = 1u << entry->category;
         if (!(filter->category_mask & cat_bit)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: validation failed");
             return false;
         }
     }
 
     /* Memory filter */
     if (filter->memory_id != 0 && entry->memory_id != filter->memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "safe_strncpy: validation failed");
         return false;
     }
 
     /* Tier filter */
     if (filter->tier != PR_MEMORY_TIER_COUNT && entry->tier != filter->tier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "safe_strncpy: validation failed");
         return false;
     }
 
     /* Metric filter */
     if (!isnan(filter->min_metric) && entry->metric_value < filter->min_metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: isnan is NULL");
         return false;
     }
     if (!isnan(filter->max_metric) && entry->metric_value > filter->max_metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_strncpy: isnan is NULL");
         return false;
     }
 
@@ -284,10 +292,19 @@ NIMCP_EXPORT pr_logging_config_t pr_logging_config_default(void) {
 }
 
 NIMCP_EXPORT bool pr_logging_config_validate(const pr_logging_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_logging_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->buffer_capacity == 0) return false;
-    if (config->min_level >= PR_LOG_LEVEL_COUNT) return false;
+    if (config->buffer_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_logging_config_validate: config->buffer_capacity is zero");
+        return false;
+    }
+    if (config->min_level >= PR_LOG_LEVEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_logging_config_validate: capacity exceeded");
+        return false;
+    }
 
     return true;
 }
@@ -332,6 +349,7 @@ NIMCP_EXPORT pr_logging_bridge_t pr_logging_bridge_create(
     pr_logging_config_t cfg;
     if (config) {
         if (!pr_logging_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_logging_bridge_create: pr_logging_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -354,6 +372,7 @@ NIMCP_EXPORT pr_logging_bridge_t pr_logging_bridge_create(
                                                sizeof(pr_log_entry_t));
     if (!bridge->entries) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_logging_bridge_create: bridge->entries is NULL");
         return NULL;
     }
     bridge->capacity = cfg.buffer_capacity;
@@ -1487,7 +1506,10 @@ NIMCP_EXPORT char* pr_log_entry_to_string(
     char* buffer,
     size_t buffer_size
 ) {
-    if (!entry || !buffer || buffer_size == 0) return NULL;
+    if (!entry || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_log_entry_to_string: required parameter is NULL (entry, buffer)");
+        return NULL;
+    }
 
     char ts_buf[32];
     format_timestamp(entry->timestamp_ns, ts_buf, sizeof(ts_buf));
@@ -1586,12 +1608,30 @@ NIMCP_EXPORT uint64_t pr_log_current_time_ms(void) {
 }
 
 NIMCP_EXPORT bool pr_logging_bridge_validate(const pr_logging_bridge_t bridge) {
-    if (!bridge) return false;
-    if (!bridge->initialized) return false;
-    if (!bridge->entries) return false;
-    if (bridge->capacity == 0) return false;
-    if (bridge->count > bridge->capacity) return false;
-    if (bridge->write_idx >= bridge->capacity) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_logging_bridge_validate: bridge is NULL");
+        return false;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_logging_bridge_validate: bridge->initialized is NULL");
+        return false;
+    }
+    if (!bridge->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_logging_bridge_validate: bridge->entries is NULL");
+        return false;
+    }
+    if (bridge->capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_logging_bridge_validate: bridge->capacity is zero");
+        return false;
+    }
+    if (bridge->count > bridge->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_logging_bridge_validate: validation failed");
+        return false;
+    }
+    if (bridge->write_idx >= bridge->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_logging_bridge_validate: capacity exceeded");
+        return false;
+    }
 
     return true;
 }

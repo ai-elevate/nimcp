@@ -102,6 +102,7 @@ static snn_population_t* snn_population_create_internal(
         nimcp_free(pop->spike_trains);
         nimcp_free(pop->neuron_ids);
         nimcp_free(pop);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_create_internal: validation failed");
         return NULL;
     }
 
@@ -247,6 +248,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     int validate_result = snn_config_validate(config);
     if (validate_result != SNN_SUCCESS) {
         /* Exception already thrown by snn_config_validate */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_network_create: validation failed");
         return NULL;
     }
 
@@ -302,6 +304,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
         nimcp_free(network->populations);
         neural_network_destroy(network->neural_net);
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_network_create: network->sim is NULL");
         return NULL;
     }
 
@@ -311,6 +314,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     if (!network->input_pop) {
         /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_network_create: network->input_pop is NULL");
         return NULL;
     }
     network->populations[0] = network->input_pop;
@@ -322,6 +326,7 @@ snn_network_t* snn_network_create(const snn_config_t* config) {
     if (!network->output_pop) {
         /* Exception already thrown by snn_population_create_internal */
         snn_network_destroy(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_network_create: network->output_pop is NULL");
         return NULL;
     }
     network->populations[1] = network->output_pop;

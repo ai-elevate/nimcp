@@ -268,6 +268,7 @@ semantic_compressor_t* semantic_compressor_create(
     // Guard: validate config
     if (!config || semantic_validate_config(config) != NIMCP_SUCCESS) {
         LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compressor_create: config is NULL");
         return NULL;
     }
 
@@ -289,6 +290,7 @@ semantic_compressor_t* semantic_compressor_create(
     if (!comp->primitives) {
         LOG_ERROR("Failed to allocate primitives");
         nimcp_free(comp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_compressor_create: comp->primitives is NULL");
         return NULL;
     }
 
@@ -302,6 +304,7 @@ semantic_compressor_t* semantic_compressor_create(
             }
             nimcp_free(comp->primitives);
             nimcp_free(comp);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compressor_create: comp->primitives is NULL");
             return NULL;
         }
     }
@@ -314,6 +317,7 @@ semantic_compressor_t* semantic_compressor_create(
     if (!comp->encoding_buffer || !comp->reconstruction_buffer || !comp->active_prims) {
         LOG_ERROR("Failed to allocate internal buffers");
         semantic_compressor_destroy(comp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_compressor_create: required parameter is NULL (comp->encoding_buffer, comp->reconstruction_buffer, comp->active_prims)");
         return NULL;
     }
 
@@ -321,6 +325,7 @@ semantic_compressor_t* semantic_compressor_create(
     if (initialize_random_primitives(comp) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize primitives");
         semantic_compressor_destroy(comp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "semantic_compressor_create: validation failed");
         return NULL;
     }
 

@@ -180,6 +180,7 @@ population_immune_bridge_t* population_immune_bridge_create(
     if (!immune_system || !population_encoder) {
         LOG_MODULE_ERROR("population_immune_bridge",
                   "Cannot create bridge without immune and population systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_immune_bridge_create: required parameter is NULL (immune_system, population_encoder)");
         return NULL;
     }
 
@@ -273,7 +274,10 @@ int population_immune_apply_cytokine_effects(
 
     }
     if (!bridge->enable_cytokine_noise_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -336,7 +340,10 @@ int population_immune_apply_inflammation_effects(
 
     }
     if (!bridge->enable_inflammation_tuning_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -566,7 +573,10 @@ int population_immune_restoration_signal(
 
     }
     if (!bridge->enable_precision_restoration) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_restoration_signal: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -666,7 +676,10 @@ int population_immune_get_cytokine_effects(
     const population_immune_bridge_t* bridge,
     cytokine_population_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(*effects));
@@ -679,7 +692,10 @@ int population_immune_get_inflammation_state(
     const population_immune_bridge_t* bridge,
     inflammation_population_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(*state));
@@ -692,7 +708,10 @@ int population_immune_get_health_metrics(
     const population_immune_bridge_t* bridge,
     population_health_metrics_t* metrics
 ) {
-    if (!bridge || !metrics) return -1;
+    if (!bridge || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_get_health_metrics: required parameter is NULL (bridge, metrics)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(metrics, &bridge->health_metrics, sizeof(*metrics));
@@ -702,7 +721,10 @@ int population_immune_get_health_metrics(
 }
 
 bool population_immune_is_degraded(const population_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_is_degraded: bridge is NULL");
+        return false;
+    }
     return (bridge->health_metrics.overall_health < 0.7f);
 }
 
@@ -725,8 +747,14 @@ int population_immune_modulate_vector_decoding(
     float* noisy_rates_out
 ) {
     /* Guard clauses */
-    if (!bridge || !rates || !noisy_rates_out) return -1;
-    if (num_neurons == 0) return -1;
+    if (!bridge || !rates || !noisy_rates_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_modulate_vector_decoding: required parameter is NULL (bridge, rates, noisy_rates_out)");
+        return -1;
+    }
+    if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_immune_modulate_vector_decoding: num_neurons is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -752,6 +780,7 @@ int population_immune_modulate_synchrony(
 ) {
     /* Guard clauses */
     if (!bridge || !baseline_synchrony || !modulated_synchrony_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_modulate_synchrony: required parameter is NULL (bridge, baseline_synchrony, modulated_synchrony_out)");
         return -1;
     }
 
@@ -786,8 +815,14 @@ int population_immune_modulate_sparse_code(
     bool* noisy_code_out
 ) {
     /* Guard clauses */
-    if (!bridge || !baseline_code || !noisy_code_out) return -1;
-    if (num_neurons == 0) return -1;
+    if (!bridge || !baseline_code || !noisy_code_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_immune_modulate_sparse_code: required parameter is NULL (bridge, baseline_code, noisy_code_out)");
+        return -1;
+    }
+    if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_immune_modulate_sparse_code: num_neurons is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -874,6 +909,9 @@ int population_coding_immune_disconnect_bio_async(population_immune_bridge_t* br
  * @brief Check if bio-async is connected
  */
 bool population_coding_immune_is_bio_async_connected(const population_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

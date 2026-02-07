@@ -482,7 +482,10 @@ int physics_cog_receive_feedback(
     physics_cog_bridge_t* bridge,
     const physics_cog_feedback_t* feedback
 ) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_receive_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
 
     bridge->current_feedback = *feedback;
     bridge->stats.cog_to_physics_count++;
@@ -616,7 +619,10 @@ int physics_cog_get_state(
     const physics_cog_bridge_t* bridge,
     physics_cog_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->current_state;
     return 0;
 }
@@ -625,7 +631,10 @@ int physics_cog_get_capacity(
     const physics_cog_bridge_t* bridge,
     physics_cog_capacity_t* capacity
 ) {
-    if (!bridge || !capacity) return -1;
+    if (!bridge || !capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_get_capacity: required parameter is NULL (bridge, capacity)");
+        return -1;
+    }
     *capacity = bridge->current_capacity;
     return 0;
 }
@@ -634,7 +643,10 @@ int physics_cog_get_feedback(
     const physics_cog_bridge_t* bridge,
     physics_cog_feedback_t* feedback
 ) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_get_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
     *feedback = bridge->current_feedback;
     return 0;
 }
@@ -643,13 +655,19 @@ int physics_cog_get_stats(
     const physics_cog_bridge_t* bridge,
     physics_cog_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 bool physics_cog_is_impaired(const physics_cog_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_cog_is_impaired: bridge is NULL");
+        return false;
+    }
     return bridge->current_capacity.impaired;
 }
 

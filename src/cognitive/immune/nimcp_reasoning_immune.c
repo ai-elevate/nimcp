@@ -360,6 +360,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     if (!immune_system || !reasoning_integration) {
         LOG_MODULE_ERROR("reasoning_immune_bridge",
                   "Cannot create bridge without immune and reasoning systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_immune_bridge_create: required parameter is NULL (immune_system, reasoning_integration)");
         return NULL;
     }
 
@@ -421,6 +422,7 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
     if (!bridge->base.mutex) {
         LOG_MODULE_ERROR("reasoning_immune_bridge", "Mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -557,7 +559,10 @@ int reasoning_immune_get_impairment(
     const reasoning_immune_bridge_t* bridge,
     reasoning_impairment_t* impairment
 ) {
-    if (!bridge || !impairment) return -1;
+    if (!bridge || !impairment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_get_impairment: required parameter is NULL (bridge, impairment)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_immune_heartbeat("reasoning_im_get_impairment", 0.0f);
@@ -772,7 +777,10 @@ int reasoning_immune_get_failure_state(
     const reasoning_immune_bridge_t* bridge,
     reasoning_failure_state_t* failure_state
 ) {
-    if (!bridge || !failure_state) return -1;
+    if (!bridge || !failure_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_get_failure_state: required parameter is NULL (bridge, failure_state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_immune_heartbeat("reasoning_im_get_failure_state", 0.0f);
@@ -789,7 +797,10 @@ int reasoning_immune_get_config(
     const reasoning_immune_bridge_t* bridge,
     reasoning_immune_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_immune_heartbeat("reasoning_im_get_config", 0.0f);
@@ -823,13 +834,28 @@ int reasoning_immune_set_config(
     reasoning_immune_bridge_t* bridge,
     const reasoning_immune_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Validate config */
-    if (config->cytokine_sensitivity < 0.0f || config->cytokine_sensitivity > 2.0f) return -1;
-    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 2.0f) return -1;
-    if (config->max_speed_reduction < 0.0f || config->max_speed_reduction > 1.0f) return -1;
-    if (config->max_accuracy_reduction < 0.0f || config->max_accuracy_reduction > 1.0f) return -1;
+    if (config->cytokine_sensitivity < 0.0f || config->cytokine_sensitivity > 2.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_immune_set_config: validation failed");
+        return -1;
+    }
+    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 2.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_immune_set_config: validation failed");
+        return -1;
+    }
+    if (config->max_speed_reduction < 0.0f || config->max_speed_reduction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_immune_set_config: validation failed");
+        return -1;
+    }
+    if (config->max_accuracy_reduction < 0.0f || config->max_accuracy_reduction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_immune_set_config: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_immune_heartbeat("reasoning_im_set_config", 0.0f);
@@ -863,7 +889,10 @@ int reasoning_immune_get_stats(
     const reasoning_immune_bridge_t* bridge,
     reasoning_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_immune_heartbeat("reasoning_im_get_stats", 0.0f);
@@ -909,6 +938,7 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
     if (!reasoning_integration || !immune_system) {
         LOG_MODULE_ERROR("reasoning_connect_immune",
                   "Cannot connect without reasoning and immune systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_connect_immune: required parameter is NULL (reasoning_integration, immune_system)");
         return NULL;
     }
 

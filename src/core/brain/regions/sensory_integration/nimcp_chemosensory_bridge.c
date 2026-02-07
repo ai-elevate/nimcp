@@ -102,7 +102,10 @@ static float randf(void) {
  * ============================================================================ */
 
 int chemosensory_default_config(chemosensory_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(chemosensory_config_t));
 
@@ -155,7 +158,10 @@ void chemosensory_bridge_destroy(chemosensory_bridge_t* bridge) {
  * ============================================================================ */
 
 int chemosensory_connect(chemosensory_bridge_t* bridge, nimcp_olfactory_t* olfact, nimcp_gustatory_t* gust) {
-    if (!bridge || !olfact || !gust) return -1;
+    if (!bridge || !olfact || !gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_connect: required parameter is NULL (bridge, olfact, gust)");
+        return -1;
+    }
 
     bridge->olfact = olfact;
     bridge->gust = gust;
@@ -166,7 +172,10 @@ int chemosensory_connect(chemosensory_bridge_t* bridge, nimcp_olfactory_t* olfac
 }
 
 int chemosensory_disconnect(chemosensory_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->olfact = NULL;
     bridge->gust = NULL;
@@ -185,14 +194,20 @@ bool chemosensory_is_connected(const chemosensory_bridge_t* bridge) {
 
 int chemosensory_bind_flavor(chemosensory_bridge_t* bridge, const odor_perception_t* odor,
                              const taste_perception_t* taste, chemosensory_flavor_t* flavor) {
-    if (!bridge || !odor || !taste || !flavor) return -1;
+    if (!bridge || !odor || !taste || !flavor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_is_connected: required parameter is NULL (bridge, odor, taste, flavor)");
+        return -1;
+    }
 
     bridge->status = CHEMOSENSORY_STATUS_BINDING;
 
     /* Initialize flavor */
     if (!flavor->flavor_profile) {
         flavor->flavor_profile = (float*)nimcp_calloc(bridge->config.flavor_dim, sizeof(float));
-        if (!flavor->flavor_profile) return -1;
+        if (!flavor->flavor_profile) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemosensory_is_connected: flavor->flavor_profile is NULL");
+            return -1;
+        }
     }
     flavor->profile_dim = bridge->config.flavor_dim;
 
@@ -256,7 +271,10 @@ int chemosensory_bind_flavor(chemosensory_bridge_t* bridge, const odor_perceptio
 }
 
 int chemosensory_update_binding(chemosensory_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_update_binding: bridge is NULL");
+        return -1;
+    }
     (void)dt;
 
     /* Decay binding strength over time */
@@ -266,7 +284,10 @@ int chemosensory_update_binding(chemosensory_bridge_t* bridge, float dt) {
 }
 
 int chemosensory_get_current_flavor(chemosensory_bridge_t* bridge, chemosensory_flavor_t* flavor) {
-    if (!bridge || !flavor) return -1;
+    if (!bridge || !flavor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, flavor)");
+        return -1;
+    }
 
     memcpy(flavor, &bridge->current_flavor, sizeof(chemosensory_flavor_t));
 
@@ -289,8 +310,14 @@ int chemosensory_get_current_flavor(chemosensory_bridge_t* bridge, chemosensory_
 int chemosensory_predict_taste_from_smell(chemosensory_bridge_t* bridge,
                                           const odor_perception_t* odor,
                                           float* predicted_taste) {
-    if (!bridge || !odor || !predicted_taste) return -1;
-    if (!bridge->config.enable_predictions) return -1;
+    if (!bridge || !odor || !predicted_taste) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, odor, predicted_taste)");
+        return -1;
+    }
+    if (!bridge->config.enable_predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: bridge->config is NULL");
+        return -1;
+    }
 
     /* Simple prediction based on odor category */
     predicted_taste[0] = 0.3f;  /* Sweet - default moderate */
@@ -323,8 +350,14 @@ int chemosensory_predict_taste_from_smell(chemosensory_bridge_t* bridge,
 int chemosensory_predict_smell_from_taste(chemosensory_bridge_t* bridge,
                                           const taste_perception_t* taste,
                                           float* predicted_smell) {
-    if (!bridge || !taste || !predicted_smell) return -1;
-    if (!bridge->config.enable_predictions) return -1;
+    if (!bridge || !taste || !predicted_smell) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, taste, predicted_smell)");
+        return -1;
+    }
+    if (!bridge->config.enable_predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: bridge->config is NULL");
+        return -1;
+    }
 
     /* Simple prediction based on dominant taste */
     memset(predicted_smell, 0, 32 * sizeof(float));
@@ -348,7 +381,10 @@ int chemosensory_predict_smell_from_taste(chemosensory_bridge_t* bridge,
 int chemosensory_compute_prediction_error(chemosensory_bridge_t* bridge,
                                           const chemosensory_prediction_t* prediction,
                                           float* error) {
-    if (!bridge || !prediction || !error) return -1;
+    if (!bridge || !prediction || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, prediction, error)");
+        return -1;
+    }
     (void)prediction;
 
     *error = randf() * 0.3f;  /* Placeholder */
@@ -365,7 +401,10 @@ int chemosensory_evaluate_congruence(chemosensory_bridge_t* bridge,
                                      const taste_perception_t* taste,
                                      chemosensory_congruence_t* congruence,
                                      float* score) {
-    if (!bridge || !odor || !taste || !congruence || !score) return -1;
+    if (!bridge || !odor || !taste || !congruence || !score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, odor, taste, congruence, score)");
+        return -1;
+    }
 
     /* Compute congruence based on typical taste-smell pairings */
     float congruence_score = 0.5f;  /* Base neutral */
@@ -415,7 +454,10 @@ int chemosensory_evaluate_congruence(chemosensory_bridge_t* bridge,
 
 int chemosensory_get_congruent_pairs(chemosensory_bridge_t* bridge, uint32_t* pairs,
                                      uint32_t* num_pairs, uint32_t max_pairs) {
-    if (!bridge || !pairs || !num_pairs) return -1;
+    if (!bridge || !pairs || !num_pairs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, pairs, num_pairs)");
+        return -1;
+    }
 
     /* Return known congruent pairs (encoded as taste_id << 16 | odor_id) */
     uint32_t idx = 0;
@@ -436,8 +478,14 @@ int chemosensory_get_congruent_pairs(chemosensory_bridge_t* bridge, uint32_t* pa
 int chemosensory_trigger_memory(chemosensory_bridge_t* bridge,
                                 const chemosensory_flavor_t* flavor,
                                 chemosensory_memory_t* memory) {
-    if (!bridge || !flavor || !memory) return -1;
-    if (!bridge->config.enable_memory_associations) return -1;
+    if (!bridge || !flavor || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemosensory_get_current_flavor: required parameter is NULL (bridge, flavor, memory)");
+        return -1;
+    }
+    if (!bridge->config.enable_memory_associations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemosensory_get_current_flavor: bridge->config is NULL");
+        return -1;
+    }
 
     memory->memory_id = (uint32_t)(randf() * 1000);
     strncpy(memory->food_name, flavor->flavor_name, sizeof(memory->food_name) - 1);
@@ -454,8 +502,14 @@ int chemosensory_learn_association(chemosensory_bridge_t* bridge,
                                    const chemosensory_flavor_t* flavor,
                                    const char* food_name,
                                    float valence) {
-    if (!bridge || !flavor || !food_name) return -1;
-    if (!bridge->config.enable_memory_associations) return -1;
+    if (!bridge || !flavor || !food_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_current_flavor: required parameter is NULL (bridge, flavor, food_name)");
+        return -1;
+    }
+    if (!bridge->config.enable_memory_associations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "chemosensory_get_current_flavor: bridge->config is NULL");
+        return -1;
+    }
     (void)valence;
 
     /* Store association - in full implementation would update memory */
@@ -468,13 +522,19 @@ int chemosensory_learn_association(chemosensory_bridge_t* bridge,
  * ============================================================================ */
 
 int chemosensory_get_stats(const chemosensory_bridge_t* bridge, chemosensory_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(chemosensory_stats_t));
     return 0;
 }
 
 int chemosensory_reset_stats(chemosensory_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chemosensory_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(chemosensory_stats_t));
     return 0;
 }

@@ -712,6 +712,7 @@ nimcp_stream_quantile_t nimcp_stream_quantile_create(
                                                      sizeof(tdigest_centroid_t));
             if (!q->data.tdigest.centroids) {
                 nimcp_free(q);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_quantile_create: q->data is NULL");
                 return NULL;
             }
             q->data.tdigest.n_centroids = 0;
@@ -1199,6 +1200,7 @@ nimcp_stream_stats_result_t nimcp_stream_cov_reset(nimcp_stream_cov_t cov)
 nimcp_stream_cov_matrix_t nimcp_stream_cov_matrix_create(uint32_t n_dims)
 {
     if (n_dims == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_cov_matrix_create: n_dims is zero");
         return NULL;
     }
 
@@ -1220,6 +1222,7 @@ nimcp_stream_cov_matrix_t nimcp_stream_cov_matrix_create(uint32_t n_dims)
         nimcp_free(cov->means);
         nimcp_free(cov->cov);
         nimcp_free(cov);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_cov_matrix_create: required parameter is NULL (cov->means, cov->cov)");
         return NULL;
     }
 
@@ -1367,9 +1370,11 @@ nimcp_stream_stats_result_t nimcp_stream_corr_matrix_get(
 nimcp_stream_pca_t nimcp_stream_pca_create(const nimcp_stream_pca_config_t* config)
 {
     if (!config || config->n_components == 0 || config->n_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_pca_create: config is NULL");
         return NULL;
     }
     if (config->n_components > NIMCP_STREAM_PCA_MAX_COMPONENTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_pca_create: validation failed");
         return NULL;
     }
 
@@ -1397,6 +1402,7 @@ nimcp_stream_pca_t nimcp_stream_pca_create(const nimcp_stream_pca_config_t* conf
         nimcp_free(pca->variance);
         nimcp_free(pca->singular_values);
         nimcp_free(pca);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_pca_create: required parameter is NULL (pca->components, pca->mean, pca->variance, pca->singular_values)");
         return NULL;
     }
 
@@ -1591,6 +1597,7 @@ nimcp_stream_linreg_t nimcp_stream_linreg_create(
     float forgetting_factor)
 {
     if (n_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_stream_linreg_create: n_features is zero");
         return NULL;
     }
 
@@ -1615,6 +1622,7 @@ nimcp_stream_linreg_t nimcp_stream_linreg_create(
         nimcp_free(reg->coefficients);
         nimcp_free(reg->P);
         nimcp_free(reg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stream_linreg_create: required parameter is NULL (reg->coefficients, reg->P)");
         return NULL;
     }
 
@@ -1837,6 +1845,7 @@ nimcp_stream_stats_result_t nimcp_stream_linreg_reset(nimcp_stream_linreg_t reg)
 nimcp_reservoir_t nimcp_reservoir_create(uint32_t reservoir_size)
 {
     if (reservoir_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_reservoir_create: reservoir_size is zero");
         return NULL;
     }
 
@@ -1856,6 +1865,7 @@ nimcp_reservoir_t nimcp_reservoir_create(uint32_t reservoir_size)
     res->samples = nimcp_calloc(reservoir_size, sizeof(float));
     if (!res->samples) {
         nimcp_free(res);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_reservoir_create: res->samples is NULL");
         return NULL;
     }
 
@@ -1978,12 +1988,16 @@ nimcp_stream_stats_result_t nimcp_reservoir_reset(nimcp_reservoir_t reservoir)
 nimcp_reservoir_t nimcp_reservoir_weighted_create(uint32_t reservoir_size)
 {
     nimcp_reservoir_t res = nimcp_reservoir_create(reservoir_size);
-    if (!res) return NULL;
+    if (!res) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_reservoir_weighted_create: res is NULL");
+        return NULL;
+    }
 
     res->weighted = true;
     res->weights = nimcp_calloc(reservoir_size, sizeof(float));
     if (!res->weights) {
         nimcp_reservoir_destroy(res);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_reservoir_weighted_create: res->weights is NULL");
         return NULL;
     }
 
@@ -2048,6 +2062,7 @@ nimcp_stream_stats_result_t nimcp_reservoir_weighted_update(
 nimcp_cms_t nimcp_cms_create(uint32_t width, uint32_t depth)
 {
     if (width == 0 || depth == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cms_create: width is zero");
         return NULL;
     }
 
@@ -2070,6 +2085,7 @@ nimcp_cms_t nimcp_cms_create(uint32_t width, uint32_t depth)
         nimcp_free(cms->counters);
         nimcp_free(cms->hash_seeds);
         nimcp_free(cms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cms_create: required parameter is NULL (cms->counters, cms->hash_seeds)");
         return NULL;
     }
 
@@ -2230,6 +2246,7 @@ nimcp_stream_stats_result_t nimcp_cms_reset(nimcp_cms_t cms)
 nimcp_hll_t nimcp_hll_create(uint32_t precision)
 {
     if (precision < 4 || precision > 18) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hll_create: validation failed");
         return NULL;
     }
 
@@ -2247,6 +2264,7 @@ nimcp_hll_t nimcp_hll_create(uint32_t precision)
     hll->buckets = nimcp_calloc(hll->n_buckets, sizeof(uint8_t));
     if (!hll->buckets) {
         nimcp_free(hll);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hll_create: hll->buckets is NULL");
         return NULL;
     }
 
@@ -2422,6 +2440,7 @@ nimcp_stream_stats_result_t nimcp_hll_reset(nimcp_hll_t hll)
 nimcp_ewma_t nimcp_ewma_create(float alpha)
 {
     if (alpha <= 0.0f || alpha > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ewma_create: validation failed");
         return NULL;
     }
 
@@ -2552,6 +2571,7 @@ bool nimcp_stream_stats_gpu_available(void)
 #ifdef NIMCP_ENABLE_CUDA
     return true;
 #else
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_stream_stats_gpu_available: operation failed");
     return false;
 #endif
 }

@@ -58,11 +58,13 @@ static bool attention_init_gpu_mc(void) {
     g_attention_gpu_init_attempted = true;
 
     if (!qmc_gpu_is_available()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_init_gpu_mc: qmc_gpu_is_available is NULL");
         return false;
     }
 
     g_attention_gpu_ctx = nimcp_gpu_context_create_auto();
     if (!g_attention_gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_init_gpu_mc: g_attention_gpu_ctx is NULL");
         return false;
     }
 
@@ -70,6 +72,7 @@ static bool attention_init_gpu_mc(void) {
     if (!g_attention_gpu_rng) {
         nimcp_gpu_context_destroy(g_attention_gpu_ctx);
         g_attention_gpu_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_init_gpu_mc: g_attention_gpu_rng is NULL");
         return false;
     }
 
@@ -618,6 +621,7 @@ static void apply_thalamic_gate(float* output,
 static bool initialize_weights(attention_head_t head)
 {
     if (!head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_weights: head is NULL");
         return false;
     }
 
@@ -725,6 +729,7 @@ attention_head_t attention_head_create(const attention_head_config_t* config)
      */
     if (!initialize_weights(head)) {
         attention_head_destroy(head);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "attention_head_create: initialize_weights is NULL");
         return NULL;
     }
 
@@ -782,13 +787,18 @@ bool attention_head_forward(attention_head_t head,
     /* WHAT: Validate all inputs
      * WHY:  Early returns prevent crashes
      */
-    if (!head || !query || !key || !value || !output) {
-        NIMCP_LOGGING_ERROR("NULL parameter in attention_head_forward");
+    if (!head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_forward: head is NULL");
+        return false;
+    }
+    if (!query || !key || !value || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_forward: input/output is NULL");
         return false;
     }
 
     if (sequence_length == 0) {
         NIMCP_LOGGING_ERROR("Zero sequence length");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_head_forward: sequence_length is zero");
         return false;
     }
 
@@ -839,6 +849,7 @@ bool attention_head_forward(attention_head_t head,
         free_attention_buffer(output_proj);
         free_attention_buffer(query_rope);
         free_attention_buffer(key_rope);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_head_forward: operation failed");
         return false;
     }
 
@@ -874,6 +885,7 @@ bool attention_head_forward(attention_head_t head,
                 free_attention_buffer(output_proj);
                 free_attention_buffer(query_rope);
                 free_attention_buffer(key_rope);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_head_forward: validation failed");
                 return false;
             }
         }
@@ -966,6 +978,10 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
     /* WHAT: Validate configuration
      * WHY:  Early return prevents allocation if invalid
      */
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_create: config is NULL");
+        return NULL;
+    }
     if (!attention_validate_config(config)) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_create: invalid config");
         NIMCP_LOGGING_ERROR("Invalid multihead attention config");
@@ -1129,13 +1145,18 @@ bool multihead_attention_forward(multihead_attention_t mha,
     /* WHAT: Validate inputs
      * WHY:  Early returns prevent crashes
      */
-    if (!mha || !input || !output) {
-        NIMCP_LOGGING_ERROR("NULL parameter in multihead_attention_forward");
+    if (!mha) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_forward: mha is NULL");
+        return false;
+    }
+    if (!input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_forward: input/output is NULL");
         return false;
     }
 
     if (sequence_length == 0 || sequence_length > mha->config.sequence_length) {
         NIMCP_LOGGING_ERROR("Invalid sequence length");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_forward: sequence_length is zero");
         return false;
     }
 
@@ -1162,6 +1183,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
     if (!head_outputs || !attention_weights) {
         free_attention_buffer(head_outputs);
         free_attention_buffer(attention_weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_forward: required parameter is NULL (head_outputs, attention_weights)");
         return false;
     }
 
@@ -1197,6 +1219,7 @@ bool multihead_attention_forward(multihead_attention_t mha,
         if (!success) {
             free_attention_buffer(head_outputs);
             free_attention_buffer(attention_weights);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_forward: success is NULL");
             return false;
         }
 
@@ -1265,6 +1288,7 @@ bool multihead_attention_set_gate(multihead_attention_t mha, float gate_signal)
      * WHY:  Early return on invalid input
      */
     if (!mha) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_set_gate: mha is NULL");
         return false;
     }
 
@@ -1293,6 +1317,7 @@ bool multihead_attention_get_stats(multihead_attention_t mha, attention_stats_t*
      * WHY:  Early return on invalid input
      */
     if (!mha || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_get_stats: parameter is NULL");
         return false;
     }
 
@@ -1362,6 +1387,7 @@ bool attention_validate_config(const multihead_attention_config_t* config)
      * WHY:  Early return if no config
      */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_validate_config: config is NULL");
         return false;
     }
 
@@ -1369,18 +1395,22 @@ bool attention_validate_config(const multihead_attention_config_t* config)
      * WHY:  Prevent division by zero and invalid allocations
      */
     if (config->num_heads == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: config->num_heads is zero");
         return false;
     }
 
     if (config->input_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: config->input_dim is zero");
         return false;
     }
 
     if (config->output_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: config->output_dim is zero");
         return false;
     }
 
     if (config->sequence_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: config->sequence_length is zero");
         return false;
     }
 
@@ -1388,6 +1418,7 @@ bool attention_validate_config(const multihead_attention_config_t* config)
      * WHY:  Each head needs equal dimension
      */
     if (config->input_dim % config->num_heads != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_validate_config: validation failed");
         return false;
     }
 
@@ -1456,6 +1487,7 @@ bool multihead_attention_set_pe_type(multihead_attention_t mha,
      */
     if (!mha) {
         NIMCP_LOGGING_ERROR("NULL multihead attention in set_pe_type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_set_pe_type: mha is NULL");
         return false;
     }
 
@@ -1465,6 +1497,7 @@ bool multihead_attention_set_pe_type(multihead_attention_t mha,
     if (pe_type != NIMCP_POS_ROTARY && pe_type != NIMCP_POS_ALIBI) {
         NIMCP_LOGGING_ERROR("Unsupported PE type: %d (only RoPE and ALiBi supported)",
                            pe_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_set_pe_type: validation failed");
         return false;
     }
 
@@ -1530,6 +1563,7 @@ bool multihead_attention_set_pe_type(multihead_attention_t mha,
     mha->pos_encoder = nimcp_pos_encoder_create(&pe_config);
     if (!mha->pos_encoder) {
         NIMCP_LOGGING_ERROR("Failed to create positional encoder");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_set_pe_type: mha->pos_encoder is NULL");
         return false;
     }
 
@@ -1568,6 +1602,7 @@ bool multihead_attention_apply_rope(multihead_attention_t mha,
      */
     if (!mha || !query_proj || !key_proj || !query_out || !key_out) {
         NIMCP_LOGGING_ERROR("NULL parameter in apply_rope");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_apply_rope: required parameter is NULL (mha, query_proj, key_proj, query_out, key_out)");
         return false;
     }
 
@@ -1576,11 +1611,13 @@ bool multihead_attention_apply_rope(multihead_attention_t mha,
      */
     if (!mha->pos_encoder) {
         NIMCP_LOGGING_ERROR("No positional encoder initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_apply_rope: mha->pos_encoder is NULL");
         return false;
     }
 
     if (nimcp_pos_get_type(mha->pos_encoder) != NIMCP_POS_ROTARY) {
         NIMCP_LOGGING_ERROR("Encoder is not RoPE type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_apply_rope: validation failed");
         return false;
     }
 
@@ -1605,6 +1642,7 @@ bool multihead_attention_apply_rope(multihead_attention_t mha,
 
         if (result != NIMCP_POS_SUCCESS) {
             NIMCP_LOGGING_ERROR("RoPE application failed at position %u", pos);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_apply_rope: validation failed");
             return false;
         }
     }
@@ -1631,6 +1669,7 @@ bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
      */
     if (!mha || !bias_out) {
         NIMCP_LOGGING_ERROR("NULL parameter in get_alibi_bias");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_get_alibi_bias: required parameter is NULL (mha, bias_out)");
         return false;
     }
 
@@ -1639,11 +1678,13 @@ bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
      */
     if (!mha->pos_encoder) {
         NIMCP_LOGGING_ERROR("No positional encoder initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_get_alibi_bias: mha->pos_encoder is NULL");
         return false;
     }
 
     if (nimcp_pos_get_type(mha->pos_encoder) != NIMCP_POS_ALIBI) {
         NIMCP_LOGGING_ERROR("Encoder is not ALiBi type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_get_alibi_bias: validation failed");
         return false;
     }
 
@@ -1657,6 +1698,7 @@ bool multihead_attention_get_alibi_bias(multihead_attention_t mha,
 
     if (result != NIMCP_POS_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to get ALiBi bias matrix");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_get_alibi_bias: validation failed");
         return false;
     }
 
@@ -1714,11 +1756,13 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
 {
     if (!config) {
         NIMCP_LOGGING_ERROR("COW attention head config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create_cow: config is NULL");
         return NULL;
     }
 
     if (config->input_dim == 0 || config->output_dim == 0) {
         NIMCP_LOGGING_ERROR("Invalid dimensions in COW attention head config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_head_create_cow: config->input_dim is zero");
         return NULL;
     }
 
@@ -1733,6 +1777,7 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
     attention_head_t head = nimcp_malloc(sizeof(struct attention_head_struct));
     if (!head) {
         NIMCP_LOGGING_ERROR("Failed to allocate COW attention head");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create_cow: head is NULL");
         return NULL;
     }
 
@@ -1753,6 +1798,7 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
     if (!head->cow_region) {
         NIMCP_LOGGING_ERROR("Failed to create COW region for attention weights");
         nimcp_free(head);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create_cow: head->cow_region is NULL");
         return NULL;
     }
 
@@ -1762,6 +1808,7 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
         NIMCP_LOGGING_ERROR("Failed to create COW view for attention weights");
         page_cow_region_destroy(head->cow_region);
         nimcp_free(head);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create_cow: head->cow_view is NULL");
         return NULL;
     }
 
@@ -1771,6 +1818,7 @@ attention_head_t attention_head_create_cow(const attention_head_config_t* config
         page_cow_view_destroy(head->cow_view);
         page_cow_region_destroy(head->cow_region);
         nimcp_free(head);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_create_cow: base is NULL");
         return NULL;
     }
 
@@ -1825,11 +1873,13 @@ attention_head_t attention_head_clone_cow(attention_head_t source)
 {
     if (!source) {
         NIMCP_LOGGING_ERROR("Cannot clone NULL attention head");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_clone_cow: source is NULL");
         return NULL;
     }
 
     if (!source->uses_cow || !source->cow_view) {
         NIMCP_LOGGING_ERROR("Cannot COW-clone non-COW attention head");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_clone_cow: required parameter is NULL (source->uses_cow, source->cow_view)");
         return NULL;
     }
 
@@ -1837,6 +1887,7 @@ attention_head_t attention_head_clone_cow(attention_head_t source)
     attention_head_t clone = nimcp_malloc(sizeof(struct attention_head_struct));
     if (!clone) {
         NIMCP_LOGGING_ERROR("Failed to allocate COW clone head");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_clone_cow: clone is NULL");
         return NULL;
     }
 
@@ -1854,6 +1905,7 @@ attention_head_t attention_head_clone_cow(attention_head_t source)
     if (!clone->cow_view) {
         NIMCP_LOGGING_ERROR("Failed to clone COW view");
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_clone_cow: clone->cow_view is NULL");
         return NULL;
     }
 
@@ -1862,6 +1914,7 @@ attention_head_t attention_head_clone_cow(attention_head_t source)
     if (!base) {
         page_cow_view_destroy(clone->cow_view);
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_clone_cow: base is NULL");
         return NULL;
     }
 
@@ -1891,12 +1944,14 @@ page_cow_snapshot_t attention_head_snapshot_weights(attention_head_t head)
 {
     if (!head || !head->uses_cow || !head->cow_view) {
         NIMCP_LOGGING_ERROR("Cannot snapshot non-COW attention head");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_snapshot_weights: required parameter is NULL (head, head->uses_cow, head->cow_view)");
         return NULL;
     }
 
     page_cow_snapshot_t snapshot = page_cow_snapshot_create(head->cow_view);
     if (!snapshot) {
         NIMCP_LOGGING_ERROR("Failed to create weight snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_snapshot_weights: snapshot is NULL");
         return NULL;
     }
 
@@ -1921,6 +1976,7 @@ bool attention_head_restore_weights(attention_head_t head,
                                     page_cow_snapshot_t snapshot)
 {
     if (!head || !head->uses_cow || !head->cow_view || !snapshot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_restore_weights: required parameter is NULL (head, head->uses_cow, head->cow_view, snapshot)");
         return false;
     }
 
@@ -2023,6 +2079,7 @@ int ternary_attention_discretize(
     ternary_attention_state_t* ternary_out)
 {
     if (!ctx || !soft_attention || !ternary_out || seq_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ternary_attention_discretize: required parameter is NULL (ctx, soft_attention, ternary_out)");
         return -1;
     }
 
@@ -2089,6 +2146,7 @@ int ternary_attention_apply(
 {
     if (!ctx || !values || !ternary_attention || !output ||
         seq_length == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ternary_attention_apply: operation failed");
         return -1;
     }
 
@@ -2133,6 +2191,7 @@ int ternary_attention_backward(
 {
     if (!ctx || !grad_output || !soft_attention || !grad_attention ||
         seq_length == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ternary_attention_backward: operation failed");
         return -1;
     }
 
@@ -2190,6 +2249,7 @@ int ternary_attention_get_stats(
     ternary_attention_stats_t* stats)
 {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ternary_attention_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -2204,6 +2264,7 @@ int ternary_attention_top_k(
     ternary_attention_state_t* ternary_out)
 {
     if (!soft_attention || !ternary_out || seq_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ternary_attention_top_k: required parameter is NULL (soft_attention, ternary_out)");
         return -1;
     }
 
@@ -2269,6 +2330,7 @@ int ternary_attention_top_k(
 bool multihead_attention_connect_kg(multihead_attention_t mha, brain_t brain)
 {
     if (!mha) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_connect_kg: mha is NULL");
         return false;
     }
 
@@ -2276,6 +2338,7 @@ bool multihead_attention_connect_kg(multihead_attention_t mha, brain_t brain)
 
     if (result != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize KG context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_connect_kg: validation failed");
         return false;
     }
 
@@ -2336,10 +2399,12 @@ int multihead_attention_query_targets(multihead_attention_t mha)
 bool multihead_attention_query_self_knowledge(multihead_attention_t mha)
 {
     if (!mha || !mha->kg_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multihead_attention_query_self_knowledge: required parameter is NULL (mha, mha->kg_connected)");
         return false;
     }
 
     if (!kg_has_node(&mha->kg_context)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_query_self_knowledge: kg_has_node is NULL");
         return false;
     }
 
@@ -2354,6 +2419,7 @@ bool multihead_attention_query_self_knowledge(multihead_attention_t mha)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_query_self_knowledge: validation failed");
     return false;
 }
 

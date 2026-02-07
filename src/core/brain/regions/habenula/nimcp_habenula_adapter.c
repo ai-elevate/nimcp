@@ -195,6 +195,7 @@ nimcp_habenula_adapter_t nimcp_habenula_adapter_create(
 
     if (nimcp_habenula_init(&adapter->habenula, &adapter->config.habenula_config) != HABENULA_OK) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_habenula_adapter_default_config: validation failed");
         return NULL;
     }
 
@@ -220,7 +221,10 @@ void nimcp_habenula_adapter_destroy(nimcp_habenula_adapter_t adapter) {
 }
 
 int nimcp_habenula_adapter_disconnect(nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_disconnect: adapter is NULL");
+        return -1;
+    }
 
     adapter->connected = false;
     adapter->training_handle = NULL;
@@ -253,11 +257,18 @@ int nimcp_habenula_adapter_send_message(nimcp_habenula_adapter_t adapter,
                                          const char* topic,
                                          const void* data,
                                          size_t size) {
-    if (!adapter || !topic) return -1;
-    if (size > 256) return -1;
+    if (!adapter || !topic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_disconnect: required parameter is NULL (adapter, topic)");
+        return -1;
+    }
+    if (size > 256) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_habenula_adapter_disconnect: validation failed");
+        return -1;
+    }
 
     uint32_t next_tail = (adapter->queue_tail + 1) % MSG_QUEUE_SIZE;
     if (next_tail == adapter->queue_head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_habenula_adapter_disconnect: validation failed");
         return -1; /* Queue full */
     }
 
@@ -275,7 +286,10 @@ int nimcp_habenula_adapter_send_message(nimcp_habenula_adapter_t adapter,
 }
 
 int nimcp_habenula_adapter_process_messages(nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_process_messages: adapter is NULL");
+        return -1;
+    }
 
     while (adapter->queue_head != adapter->queue_tail) {
         message_t* msg = &adapter->message_queue[adapter->queue_head];
@@ -303,8 +317,14 @@ int nimcp_habenula_adapter_register_callback(nimcp_habenula_adapter_t adapter,
                                               const char* topic,
                                               nimcp_habenula_msg_callback_t callback,
                                               void* user_data) {
-    if (!adapter || !topic || !callback) return -1;
-    if (adapter->callback_count >= MAX_CALLBACKS) return -1;
+    if (!adapter || !topic || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_process_messages: required parameter is NULL (adapter, topic, callback)");
+        return -1;
+    }
+    if (adapter->callback_count >= MAX_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_habenula_adapter_process_messages: capacity exceeded");
+        return -1;
+    }
 
     callback_entry_t* entry = &adapter->callbacks[adapter->callback_count];
     strncpy(entry->topic, topic, sizeof(entry->topic) - 1);
@@ -320,7 +340,10 @@ int nimcp_habenula_adapter_register_callback(nimcp_habenula_adapter_t adapter,
  *===========================================================================*/
 
 int nimcp_habenula_adapter_update(nimcp_habenula_adapter_t adapter, float dt_ms) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     /* Update habenula system */
     nimcp_habenula_update(&adapter->habenula, dt_ms);
@@ -356,7 +379,10 @@ int nimcp_habenula_adapter_update(nimcp_habenula_adapter_t adapter, float dt_ms)
 
 int nimcp_habenula_adapter_connect_training(nimcp_habenula_adapter_t adapter,
                                              void* training_handle) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     adapter->training_handle = training_handle;
     return 0;
@@ -365,7 +391,10 @@ int nimcp_habenula_adapter_connect_training(nimcp_habenula_adapter_t adapter,
 int nimcp_habenula_adapter_on_training_event(
     nimcp_habenula_adapter_t adapter,
     const nimcp_habenula_train_event_data_t* event) {
-    if (!adapter || !event) return -1;
+    if (!adapter || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: required parameter is NULL (adapter, event)");
+        return -1;
+    }
 
     adapter->training_events++;
 
@@ -432,7 +461,10 @@ int nimcp_habenula_adapter_on_training_event(
 int nimcp_habenula_adapter_get_training_modulation(
     nimcp_habenula_adapter_t adapter,
     nimcp_habenula_training_modulation_t* modulation) {
-    if (!adapter || !modulation) return -1;
+    if (!adapter || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: required parameter is NULL (adapter, modulation)");
+        return -1;
+    }
 
     *modulation = adapter->current_modulation;
     return 0;
@@ -442,7 +474,10 @@ int nimcp_habenula_adapter_register_training_callback(
     nimcp_habenula_adapter_t adapter,
     nimcp_habenula_training_callback_t callback,
     void* user_data) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     adapter->training_callback = callback;
     adapter->training_callback_data = user_data;
@@ -457,7 +492,10 @@ int nimcp_habenula_adapter_process_reward_outcome(
     nimcp_habenula_adapter_t adapter,
     float expected,
     float received) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     return nimcp_habenula_process_outcome(&adapter->habenula, expected, received);
 }
@@ -465,7 +503,10 @@ int nimcp_habenula_adapter_process_reward_outcome(
 int nimcp_habenula_adapter_process_punishment(
     nimcp_habenula_adapter_t adapter,
     float intensity) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     return nimcp_habenula_apply_aversive(&adapter->habenula, intensity);
 }
@@ -473,7 +514,10 @@ int nimcp_habenula_adapter_process_punishment(
 int nimcp_habenula_adapter_compute_negative_reinforcement(
     nimcp_habenula_adapter_t adapter,
     float* negative_signal) {
-    if (!adapter || !negative_signal) return -1;
+    if (!adapter || !negative_signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: required parameter is NULL (adapter, negative_signal)");
+        return -1;
+    }
 
     /* Combine disappointment, aversion, and helplessness */
     float disappointment = adapter->habenula.lhb.disappointment;
@@ -493,7 +537,10 @@ int nimcp_habenula_adapter_compute_negative_reinforcement(
 int nimcp_habenula_adapter_get_vta_output(
     nimcp_habenula_adapter_t adapter,
     float* inhibition) {
-    if (!adapter || !inhibition) return -1;
+    if (!adapter || !inhibition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: required parameter is NULL (adapter, inhibition)");
+        return -1;
+    }
 
     return nimcp_habenula_get_vta_inhibition(&adapter->habenula, inhibition);
 }
@@ -501,7 +548,10 @@ int nimcp_habenula_adapter_get_vta_output(
 int nimcp_habenula_adapter_apply_vta_input(
     nimcp_habenula_adapter_t adapter,
     float da_level) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: adapter is NULL");
+        return -1;
+    }
 
     if (!adapter->config.enable_vta_coordination) return 0;
 
@@ -515,7 +565,10 @@ int nimcp_habenula_adapter_apply_vta_input(
 int nimcp_habenula_adapter_get_raphe_output(
     nimcp_habenula_adapter_t adapter,
     float* modulation) {
-    if (!adapter || !modulation) return -1;
+    if (!adapter || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_update: required parameter is NULL (adapter, modulation)");
+        return -1;
+    }
 
     return nimcp_habenula_get_raphe_modulation(&adapter->habenula, modulation);
 }
@@ -523,7 +576,10 @@ int nimcp_habenula_adapter_get_raphe_output(
 int nimcp_habenula_adapter_apply_raphe_input(
     nimcp_habenula_adapter_t adapter,
     float ht_level) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return -1;
+    }
 
     if (!adapter->config.enable_raphe_coordination) return 0;
 
@@ -543,7 +599,10 @@ int nimcp_habenula_adapter_apply_raphe_input(
 int nimcp_habenula_adapter_should_stop(
     nimcp_habenula_adapter_t adapter,
     bool* should_stop) {
-    if (!adapter || !should_stop) return -1;
+    if (!adapter || !should_stop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, should_stop)");
+        return -1;
+    }
 
     *should_stop = adapter->current_modulation.suggest_early_stop;
     return 0;
@@ -553,7 +612,10 @@ int nimcp_habenula_adapter_get_depression_state(
     nimcp_habenula_adapter_t adapter,
     float* helplessness,
     bool* is_depressed) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return -1;
+    }
 
     if (helplessness) {
         nimcp_habenula_get_helplessness(&adapter->habenula, helplessness);
@@ -566,12 +628,18 @@ int nimcp_habenula_adapter_get_depression_state(
 }
 
 int nimcp_habenula_adapter_record_failure(nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_record_failure: adapter is NULL");
+        return -1;
+    }
     return nimcp_habenula_record_coping_failure(&adapter->habenula);
 }
 
 int nimcp_habenula_adapter_record_success(nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_record_success: adapter is NULL");
+        return -1;
+    }
     return nimcp_habenula_record_coping_success(&adapter->habenula);
 }
 
@@ -581,7 +649,10 @@ int nimcp_habenula_adapter_record_success(nimcp_habenula_adapter_t adapter) {
 
 int nimcp_habenula_adapter_get_state(nimcp_habenula_adapter_t adapter,
                                       nimcp_habenula_adapter_state_t* state) {
-    if (!adapter || !state) return -1;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_record_success: required parameter is NULL (adapter, state)");
+        return -1;
+    }
 
     state->firing_rate = adapter->habenula.neurons.combined_firing_rate;
     state->disappointment = adapter->habenula.lhb.disappointment;
@@ -603,7 +674,10 @@ int nimcp_habenula_adapter_get_state(nimcp_habenula_adapter_t adapter,
 }
 
 int nimcp_habenula_adapter_reset_stats(nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return -1;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_adapter_reset_stats: adapter is NULL");
+        return -1;
+    }
 
     adapter->messages_sent = 0;
     adapter->messages_received = 0;

@@ -130,7 +130,10 @@ static char* parse_json_string(const char** pos) {
     const char* s = *pos;
     s = skip_ws(s);
 
-    if (*s != '"') return NULL;
+    if (*s != '"') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_json_string: validation failed");
+        return NULL;
+    }
     s++;
 
     /* Find end of string */
@@ -146,7 +149,10 @@ static char* parse_json_string(const char** pos) {
         }
     }
 
-    if (*s != '"') return NULL;
+    if (*s != '"') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_json_string: validation failed");
+        return NULL;
+    }
 
     /* Allocate and copy with escape handling */
     char* result = nimcp_malloc(len + 1);
@@ -200,7 +206,10 @@ static const char* find_json_key(const char* json, const char* key) {
 
     pos += strlen(search);
     pos = skip_ws(pos);
-    if (*pos != ':') return NULL;
+    if (*pos != ':') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_json_key: validation failed");
+        return NULL;
+    }
     pos++;
     return skip_ws(pos);
 }
@@ -210,7 +219,10 @@ static const char* find_json_key(const char* json, const char* key) {
  */
 static int parse_json_string_array(const char* json, char** out_strings, uint32_t max_strings, uint32_t* out_count) {
     const char* pos = skip_ws(json);
-    if (*pos != '[') return -1;
+    if (*pos != '[') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_json_string_array: validation failed");
+        return -1;
+    }
     pos++;
 
     uint32_t count = 0;
@@ -280,6 +292,7 @@ static kg_entity_t* parse_entity(const char* json) {
             nimcp_free(entity->observations[i]);
         }
         nimcp_free(entity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_entity: validation failed");
         return NULL;
     }
 
@@ -331,6 +344,7 @@ static kg_relation_t* parse_relation(const char* json) {
 
     if (relation->from[0] == '\0' || relation->to[0] == '\0') {
         nimcp_free(relation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_relation: validation failed");
         return NULL;
     }
 
@@ -349,6 +363,7 @@ static const char* get_line_type(const char* json) {
     if (strstr(json, "\"relationType\"") && strstr(json, "\"from\"") && strstr(json, "\"to\"")) {
         return "relation";
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_line_type: validation failed");
     return NULL;
 }
 
@@ -370,6 +385,7 @@ static const char* strcasestr_local(const char* haystack, const char* needle) {
         if (!*n) return haystack;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strcasestr_local: validation failed");
     return NULL;
 }
 
@@ -436,6 +452,7 @@ int kg_reader_load(kg_reader_t* reader, const char* file_path) {
     FILE* fp = fopen(path, "r");
     if (!fp) {
         set_error("Failed to open KG file: %s", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_load: fp is NULL");
         return -1;
     }
 
@@ -529,7 +546,10 @@ bool kg_reader_is_modified(const kg_reader_t* reader) {
 
 
     struct stat st;
-    if (stat(reader->file_path, &st) != 0) return false;
+    if (stat(reader->file_path, &st) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_reader_is_modified: validation failed");
+        return false;
+    }
 
     return st.st_mtime > reader->file_mtime;
 }
@@ -539,7 +559,10 @@ bool kg_reader_is_modified(const kg_reader_t* reader) {
  * ============================================================================ */
 
 const kg_entity_t* kg_reader_get_entity(const kg_reader_t* reader, const char* name) {
-    if (!reader || !name) return NULL;
+    if (!reader || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_entity: required parameter is NULL (reader, name)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_entity", 0.0f);
@@ -556,11 +579,15 @@ const kg_entity_t* kg_reader_get_entity(const kg_reader_t* reader, const char* n
             return reader->entities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_reader_get_entity: validation failed");
     return NULL;
 }
 
 kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, const char* entity_type) {
-    if (!reader || !entity_type) return NULL;
+    if (!reader || !entity_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_entities_by_type: required parameter is NULL (reader, entity_type)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_entities_by_type", 0.0f);
@@ -579,6 +606,7 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_entities_by_type: list->entities is NULL");
         return NULL;
     }
 
@@ -629,6 +657,7 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_all_entities: list->entities is NULL");
         return NULL;
     }
 
@@ -648,7 +677,10 @@ kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
 }
 
 kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const char* search_text) {
-    if (!reader || !search_text) return NULL;
+    if (!reader || !search_text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_search_entities: required parameter is NULL (reader, search_text)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_search_entities", 0.0f);
@@ -667,6 +699,7 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     list->entities = nimcp_calloc(list->capacity, sizeof(kg_entity_t*));
     if (!list->entities) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_search_entities: list->entities is NULL");
         return NULL;
     }
 
@@ -733,7 +766,10 @@ void kg_entity_list_destroy(kg_entity_list_t* list) {
  * ============================================================================ */
 
 kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, const char* from_entity) {
-    if (!reader || !from_entity) return NULL;
+    if (!reader || !from_entity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_relations_from: required parameter is NULL (reader, from_entity)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_relations_from", 0.0f);
@@ -752,6 +788,7 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_from: list->relations is NULL");
         return NULL;
     }
 
@@ -777,7 +814,10 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
 }
 
 kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const char* to_entity) {
-    if (!reader || !to_entity) return NULL;
+    if (!reader || !to_entity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_relations_to: required parameter is NULL (reader, to_entity)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_relations_to", 0.0f);
@@ -796,6 +836,7 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_to: list->relations is NULL");
         return NULL;
     }
 
@@ -821,7 +862,10 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
 }
 
 kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, const char* relation_type) {
-    if (!reader || !relation_type) return NULL;
+    if (!reader || !relation_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_relations_by_type: required parameter is NULL (reader, relation_type)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_relations_by_typ", 0.0f);
@@ -840,6 +884,7 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     list->relations = nimcp_calloc(list->capacity, sizeof(kg_relation_t*));
     if (!list->relations) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_reader_get_relations_by_type: list->relations is NULL");
         return NULL;
     }
 
@@ -865,7 +910,10 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
 }
 
 const char* kg_reader_are_connected(const kg_reader_t* reader, const char* from_entity, const char* to_entity) {
-    if (!reader || !from_entity || !to_entity) return NULL;
+    if (!reader || !from_entity || !to_entity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_are_connected: required parameter is NULL (reader, from_entity, to_entity)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < reader->num_relations; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -879,6 +927,7 @@ const char* kg_reader_are_connected(const kg_reader_t* reader, const char* from_
             return r->relation_type;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_reader_are_connected: validation failed");
     return NULL;
 }
 
@@ -898,7 +947,10 @@ void kg_relation_list_destroy(kg_relation_list_t* list) {
 
 const char* kg_reader_get_observation(const kg_reader_t* reader, const char* entity_name, const char* keyword) {
     const kg_entity_t* entity = kg_reader_get_entity(reader, entity_name);
-    if (!entity || !keyword) return NULL;
+    if (!entity || !keyword) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_observation: required parameter is NULL (entity, keyword)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < entity->num_observations; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -911,6 +963,7 @@ const char* kg_reader_get_observation(const kg_reader_t* reader, const char* ent
             return entity->observations[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_observation: validation failed");
     return NULL;
 }
 
@@ -918,6 +971,7 @@ const char* const* kg_reader_get_observations(const kg_reader_t* reader, const c
     const kg_entity_t* entity = kg_reader_get_entity(reader, entity_name);
     if (!entity) {
         if (out_count) *out_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_observations: validation failed");
         return NULL;
     }
 
@@ -933,6 +987,7 @@ const char** kg_reader_get_module_names(const kg_reader_t* reader, uint32_t* out
     kg_entity_list_t* modules = kg_reader_get_entities_by_type(reader, "Module");
     if (!modules) {
         if (out_count) *out_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_module_names: validation failed");
         return NULL;
     }
 
@@ -940,6 +995,7 @@ const char** kg_reader_get_module_names(const kg_reader_t* reader, uint32_t* out
     if (!names) {
         kg_entity_list_destroy(modules);
         if (out_count) *out_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_module_names: validation failed");
         return NULL;
     }
 
@@ -1035,7 +1091,10 @@ int kg_reader_generate_self_description(const kg_reader_t* reader, char* buffer,
  * ============================================================================ */
 
 int kg_reader_get_stats(const kg_reader_t* reader, kg_reader_stats_t* stats) {
-    if (!reader || !stats) return -1;
+    if (!reader || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_reader_get_stats: required parameter is NULL (reader, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     kg_reader_heartbeat("kg_reader_get_stats", 0.0f);

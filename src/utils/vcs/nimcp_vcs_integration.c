@@ -131,6 +131,7 @@ vcs_integration_t* vcs_create(const vcs_config_t* config) {
     vcs->mutex = nimcp_mutex_create(&attr);
     if (!vcs->mutex) {
         nimcp_free(vcs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vcs_create: vcs->mutex is NULL");
         return NULL;
     }
 
@@ -140,6 +141,7 @@ vcs_integration_t* vcs_create(const vcs_config_t* config) {
     if (!vcs->commits) {
         nimcp_mutex_free(vcs->mutex);
         nimcp_free(vcs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vcs_create: vcs->commits is NULL");
         return NULL;
     }
 
@@ -214,6 +216,7 @@ void vcs_destroy(vcs_integration_t* vcs) {
 
 bool vcs_is_ready(const vcs_integration_t* vcs) {
     if (!vcs || vcs->magic != VCS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_is_ready: vcs is NULL");
         return false;
     }
     return vcs->ready;
@@ -881,6 +884,7 @@ const vcs_commit_record_t* vcs_get_commit_record(
     }
 
     nimcp_mutex_unlock(vcs->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs_get_commit_record: validation failed");
     return NULL;
 }
 
@@ -898,10 +902,12 @@ int vcs_get_stats(const vcs_integration_t* vcs, vcs_stats_t* stats) {
 
 bool vcs_has_uncommitted_changes(vcs_integration_t* vcs, const char* file_path) {
     if (!vcs || !file_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs_has_uncommitted_changes: required parameter is NULL (vcs, file_path)");
         return false;
     }
 
     if (vcs->detected_type != VCS_TYPE_GIT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_has_uncommitted_changes: validation failed");
         return false;
     }
 
@@ -910,6 +916,7 @@ bool vcs_has_uncommitted_changes(vcs_integration_t* vcs, const char* file_path) 
     snprintf(cmd, sizeof(cmd), "git status --porcelain \"%s\"", file_path);
 
     if (execute_git_command(vcs, cmd, output, sizeof(output)) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_has_uncommitted_changes: validation failed");
         return false;
     }
 
@@ -928,6 +935,7 @@ bool vcs_is_repo_clean(vcs_integration_t* vcs) {
 
     char output[256];
     if (execute_git_command(vcs, "git status --porcelain", output, sizeof(output)) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vcs_is_repo_clean: validation failed");
         return false;
     }
 
@@ -1030,6 +1038,7 @@ static int execute_git_command(vcs_integration_t* vcs, const char* cmd, char* ou
 static int detect_repo_root(vcs_integration_t* vcs) {
     char output[VCS_MAX_PATH];
     if (execute_git_command(vcs, "git rev-parse --show-toplevel", output, sizeof(output)) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_repo_root: validation failed");
         return -1;
     }
 
@@ -1058,6 +1067,7 @@ static int copy_file(const char* src, const char* dst) {
     FILE* out = fopen(dst, "wb");
     if (!out) {
         fclose(in);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_file: out is NULL");
         return -1;
     }
 
@@ -1067,6 +1077,7 @@ static int copy_file(const char* src, const char* dst) {
         if (fwrite(buf, 1, n, out) != n) {
             fclose(in);
             fclose(out);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "copy_file: validation failed");
             return -1;
         }
     }
@@ -1098,6 +1109,7 @@ static int read_file_lines(const char* path, char*** lines, uint32_t* line_count
     *lines = nimcp_calloc(count + 1, sizeof(char*));
     if (!*lines) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_file_lines: validation failed");
         return -1;
     }
 
@@ -1198,6 +1210,7 @@ static nimcp_error_t vcs_handle_bio_message(
  */
 static int register_vcs_bio_handlers(vcs_integration_t* vcs) {
     if (!vcs || !vcs->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "register_vcs_bio_handlers: required parameter is NULL (vcs, vcs->bio_ctx)");
         return -1;
     }
 
@@ -1224,6 +1237,7 @@ int vcs_broadcast_commit(
     bool success
 ) {
     if (!vcs || !vcs->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs_broadcast_commit: required parameter is NULL (vcs, vcs->bio_ctx)");
         return -1;
     }
 

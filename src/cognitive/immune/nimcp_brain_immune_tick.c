@@ -305,13 +305,17 @@ static void integrate_tick_duration(tick_state_t* state, uint64_t duration_us);
  * This allows extending brain_immune_system_t without modifying its definition.
  */
 static tick_state_t* get_tick_state(brain_immune_system_t* immune) {
-    if (!immune) return NULL;
+    if (!immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_tick_state: immune is NULL");
+        return NULL;
+    }
     /* We store tick state in a dedicated field - use last pointer in struct */
     /* For now, use a simple approach - check if callback_user_data is tick state */
     tick_state_t* state = (tick_state_t*)immune->callback_user_data;
     if (state && state->magic == TICK_STATE_MAGIC) {
         return state;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_tick_state: validation failed");
     return NULL;
 }
 
@@ -691,7 +695,10 @@ static nimcp_exception_recovery_action_t qa_select_recovery_action(
  */
 static pattern_memory_t* pattern_memory_create(void) {
     pattern_memory_t* pm = nimcp_calloc(1, sizeof(pattern_memory_t));
-    if (!pm) return NULL;
+    if (!pm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_memory_create: pm is NULL");
+        return NULL;
+    }
 
     pm->num_patterns = 0;
     pm->mc_seed = mc_seed_from_time();
@@ -746,7 +753,10 @@ static uint32_t epitope_hash(const uint8_t* epitope, size_t len) {
 static bool pattern_memory_record_epitope(pattern_memory_t* pm,
                                           const uint8_t* epitope, size_t len,
                                           float severity, uint64_t timestamp) {
-    if (!pm || !epitope || len == 0) return false;
+    if (!pm || !epitope || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epitope_hash: required parameter is NULL (pm, epitope)");
+        return false;
+    }
 
     uint32_t hash = epitope_hash(epitope, len);
     uint32_t slot = hash % MAX_EPITOPE_PATTERNS;
@@ -784,6 +794,7 @@ static bool pattern_memory_record_epitope(pattern_memory_t* pm,
             slot = (slot + 1) % MAX_EPITOPE_PATTERNS;
             pattern = &pm->patterns[slot];
             if (pattern->is_active) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epitope_hash: validation failed");
                 return false;  /* No room */
             }
         }
@@ -1331,6 +1342,7 @@ int brain_immune_tick_init(brain_immune_system_t* immune,
                            const brain_immune_tick_config_t* config) {
     if (!immune) {
         LOG_ERROR("Cannot initialize tick: immune system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_default_config: immune is NULL");
         return -1;
     }
 
@@ -1426,6 +1438,7 @@ int brain_immune_tick_connect_health_agent(brain_immune_system_t* immune,
     tick_state_t* state = get_tick_state(immune);
     if (!state || !state->initialized) {
         LOG_ERROR("Tick orchestrator not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_default_config: required parameter is NULL (state, state->initialized)");
         return -1;
     }
 
@@ -1516,12 +1529,14 @@ int brain_immune_tick(brain_immune_system_t* immune, uint64_t delta_ms) {
 
     if (!immune) {
         tl_in_immune_tick = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick: immune is NULL");
         return -1;
     }
 
     tick_state_t* state = get_tick_state(immune);
     if (!state || !state->initialized) {
         tl_in_immune_tick = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick: required parameter is NULL (state, state->initialized)");
         return -1;
     }
 
@@ -1593,7 +1608,10 @@ int brain_immune_tick(brain_immune_system_t* immune, uint64_t delta_ms) {
 
 int brain_immune_process_health_message(brain_immune_system_t* immune,
                                          const health_agent_message_t* msg) {
-    if (!immune || !msg) return -1;
+    if (!immune || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick: required parameter is NULL (immune, msg)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_tick_heartbeat("brain_immune_brain_immune_process", 0.0f);
@@ -1690,7 +1708,10 @@ int brain_immune_process_health_message(brain_immune_system_t* immune,
 
 int brain_immune_process_health_queue(brain_immune_system_t* immune,
                                        size_t max_count) {
-    if (!immune) return -1;
+    if (!immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick: immune is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_tick_heartbeat("brain_immune_brain_immune_process", 0.0f);
@@ -1737,7 +1758,10 @@ bool brain_immune_tick_has_health_agent(const brain_immune_system_t* immune) {
 
 int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
                                  brain_immune_tick_stats_t* stats) {
-    if (!stats) return -1;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_has_health_agent: stats is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_tick_heartbeat("brain_immune_get_stats", 0.0f);
@@ -1746,6 +1770,7 @@ int brain_immune_tick_get_stats(const brain_immune_system_t* immune,
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
         memset(stats, 0, sizeof(*stats));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_has_health_agent: state is NULL");
         return -1;
     }
 
@@ -1769,7 +1794,10 @@ void brain_immune_tick_reset_stats(brain_immune_system_t* immune) {
 
 int brain_immune_tick_get_config(const brain_immune_system_t* immune,
                                   brain_immune_tick_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_tick_heartbeat("brain_immune_get_config", 0.0f);
@@ -1778,6 +1806,7 @@ int brain_immune_tick_get_config(const brain_immune_system_t* immune,
     const tick_state_t* state = get_tick_state_const(immune);
     if (!state) {
         brain_immune_tick_default_config(config);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: state is NULL");
         return -1;
     }
 
@@ -1787,14 +1816,20 @@ int brain_immune_tick_get_config(const brain_immune_system_t* immune,
 
 int brain_immune_tick_set_config(brain_immune_system_t* immune,
                                   const brain_immune_tick_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_tick_heartbeat("brain_immune_set_config", 0.0f);
 
 
     tick_state_t* state = get_tick_state(immune);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_tick_reset_stats: state is NULL");
+        return -1;
+    }
 
     tick_mutex_lock(state);
     state->config = *config;

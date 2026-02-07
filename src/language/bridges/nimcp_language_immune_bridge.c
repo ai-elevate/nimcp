@@ -332,6 +332,7 @@ language_immune_bridge_t* language_immune_bridge_create(
     bridge->inflammation_history = (float*)nimcp_calloc(bridge->history_size, sizeof(float));
     if (!bridge->inflammation_history) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_immune_bridge_create: bridge->inflammation_history is NULL");
         return NULL;
     }
 
@@ -356,7 +357,10 @@ void language_immune_bridge_destroy(language_immune_bridge_t* bridge) {
 }
 
 int language_immune_bridge_init(language_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_init: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(language_immune_stats_t));
     bridge->initialized = true;
@@ -366,7 +370,10 @@ int language_immune_bridge_init(language_immune_bridge_t* bridge) {
 }
 
 int language_immune_bridge_start(language_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->active = true;
     LOG_INFO(LOG_MODULE, "Immune bridge started");
@@ -374,7 +381,10 @@ int language_immune_bridge_start(language_immune_bridge_t* bridge) {
 }
 
 int language_immune_bridge_stop(language_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_stop: bridge is NULL");
+        return -1;
+    }
 
     bridge->active = false;
     LOG_INFO(LOG_MODULE, "Immune bridge stopped");
@@ -389,7 +399,10 @@ int language_immune_bridge_connect_orchestrator(
     language_immune_bridge_t* bridge,
     language_orchestrator_t* orchestrator)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
     bridge->orchestrator = orchestrator;
     return 0;
 }
@@ -398,7 +411,10 @@ int language_immune_bridge_connect_brain_immune(
     language_immune_bridge_t* bridge,
     brain_immune_system_t* brain_immune)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_connect_brain_immune: bridge is NULL");
+        return -1;
+    }
     bridge->brain_immune = brain_immune;
     return 0;
 }
@@ -407,7 +423,10 @@ int language_immune_bridge_connect_wernicke(
     language_immune_bridge_t* bridge,
     wernicke_adapter_t* wernicke)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_connect_wernicke: bridge is NULL");
+        return -1;
+    }
     bridge->wernicke = wernicke;
     return 0;
 }
@@ -416,7 +435,10 @@ int language_immune_bridge_connect_broca(
     language_immune_bridge_t* bridge,
     broca_adapter_t* broca)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_connect_broca: bridge is NULL");
+        return -1;
+    }
     bridge->broca = broca;
     return 0;
 }
@@ -425,7 +447,10 @@ int language_immune_bridge_connect_nlp(
     language_immune_bridge_t* bridge,
     nlp_network_t nlp_network)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_connect_nlp: bridge is NULL");
+        return -1;
+    }
     bridge->nlp_network = nlp_network;
     return 0;
 }
@@ -435,8 +460,14 @@ int language_immune_bridge_connect_nlp(
 //=============================================================================
 
 int language_immune_bridge_update_cytokines(language_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_update_cytokines: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_update_cytokines: bridge->active is NULL");
+        return -1;
+    }
 
     /* In production, would fetch from brain_immune system */
     /* For now, compute composite from current levels */
@@ -476,7 +507,10 @@ int language_immune_bridge_get_cytokines(
     const language_immune_bridge_t* bridge,
     language_cytokine_state_t* cytokines)
 {
-    if (!bridge || !cytokines) return -1;
+    if (!bridge || !cytokines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_get_cytokines: required parameter is NULL (bridge, cytokines)");
+        return -1;
+    }
     memcpy(cytokines, &bridge->cytokines, sizeof(language_cytokine_state_t));
     return 0;
 }
@@ -488,7 +522,10 @@ int language_immune_bridge_set_sensitivities(
     float tnfa_sens,
     float il10_sens)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_set_sensitivities: bridge is NULL");
+        return -1;
+    }
 
     bridge->config.il1b_sensitivity = il1b_sens;
     bridge->config.il6_sensitivity = il6_sens;
@@ -544,7 +581,10 @@ bool language_immune_bridge_is_inflamed(
     const language_immune_bridge_t* bridge,
     language_region_t region)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_is_inflamed: bridge is NULL");
+        return false;
+    }
     return language_immune_bridge_get_inflammation(bridge, region) >= LANGUAGE_IMMUNE_MILD_THRESHOLD;
 }
 
@@ -556,7 +596,10 @@ int language_immune_bridge_get_wernicke_effects(
     const language_immune_bridge_t* bridge,
     wernicke_immune_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_get_wernicke_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     memcpy(effects, &bridge->wernicke_effects, sizeof(wernicke_immune_effects_t));
     return 0;
 }
@@ -565,7 +608,10 @@ int language_immune_bridge_get_broca_effects(
     const language_immune_bridge_t* bridge,
     broca_immune_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_get_broca_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     memcpy(effects, &bridge->broca_effects, sizeof(broca_immune_effects_t));
     return 0;
 }
@@ -574,7 +620,10 @@ int language_immune_bridge_get_impairment_summary(
     const language_immune_bridge_t* bridge,
     language_impairment_summary_t* summary)
 {
-    if (!bridge || !summary) return -1;
+    if (!bridge || !summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_get_impairment_summary: required parameter is NULL (bridge, summary)");
+        return -1;
+    }
     memcpy(summary, &bridge->summary, sizeof(language_impairment_summary_t));
     return 0;
 }
@@ -646,7 +695,10 @@ int language_immune_bridge_set_recovery_rate(
     language_immune_bridge_t* bridge,
     float rate)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_set_recovery_rate: bridge is NULL");
+        return -1;
+    }
     bridge->config.recovery_rate = rate;
     return 0;
 }
@@ -659,7 +711,10 @@ int language_immune_bridge_set_aphasia_modeling(
     language_immune_bridge_t* bridge,
     bool enabled)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_set_aphasia_modeling: bridge is NULL");
+        return -1;
+    }
     bridge->config.enable_aphasia_modeling = enabled;
     return 0;
 }
@@ -668,7 +723,10 @@ bool language_immune_bridge_has_symptom(
     const language_immune_bridge_t* bridge,
     aphasia_type_t symptom)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_has_symptom: bridge is NULL");
+        return false;
+    }
 
     switch (symptom) {
         case APHASIA_WERNICKE:
@@ -686,6 +744,7 @@ bool language_immune_bridge_has_symptom(
                     bridge->summary.comprehension_score > 0.7f &&
                     bridge->summary.production_score > 0.7f);
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_immune_bridge_has_symptom: operation failed");
             return false;
     }
 }
@@ -698,7 +757,10 @@ int language_immune_bridge_update(
     language_immune_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->active) return 0;
 
     bridge->stats.last_update_time_ms = current_time_ms;
@@ -762,8 +824,14 @@ int language_immune_bridge_update(
 }
 
 int language_immune_bridge_apply_effects(language_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_apply_effects: bridge->active is NULL");
+        return -1;
+    }
 
     /* This would apply computed effects to actual Wernicke/Broca modules */
     /* For now, effects are computed and stored in the effects structs */
@@ -775,7 +843,10 @@ int language_immune_bridge_get_stats(
     const language_immune_bridge_t* bridge,
     language_immune_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_immune_stats_t));
     return 0;
 }
@@ -788,7 +859,10 @@ int language_immune_bridge_bio_async_register(
     language_immune_bridge_t* bridge,
     bio_router_t* router)
 {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_bio_async_register: required parameter is NULL (bridge, router)");
+        return -1;
+    }
 
     bridge->bio_router = router;
     bridge->bio_async_registered = true;
@@ -798,7 +872,10 @@ int language_immune_bridge_bio_async_register(
 }
 
 int language_immune_bridge_bio_async_unregister(language_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_immune_bridge_bio_async_unregister: bridge is NULL");
+        return -1;
+    }
 
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;

@@ -139,6 +139,7 @@ static omni_module_precision_t* find_module(omni_precision_ctx_t* ctx,
             return &ctx->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_precision_training_end: validation failed");
     return NULL;
 }
 
@@ -157,6 +158,7 @@ static const omni_module_precision_t* find_module_const(
             return &ctx->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module_const: validation failed");
     return NULL;
 }
 
@@ -281,6 +283,7 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
     ctx->edges = nimcp_calloc(ctx->edge_capacity, sizeof(omni_precision_edge_t));
     if (!ctx->edges) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_precision_create: ctx->edges is NULL");
         return NULL;
     }
 
@@ -289,6 +292,7 @@ omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* confi
     if (!ctx->mutex) {
         nimcp_free(ctx->edges);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_precision_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -1082,7 +1086,10 @@ int omni_precision_disconnect_bio_async(omni_precision_ctx_t* ctx) {
 }
 
 bool omni_precision_is_bio_async_connected(const omni_precision_ctx_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_precision_is_bio_async_connected: ctx is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_precision_heartbeat("omni_precisi_is_bio_async_connect", 0.0f);
 

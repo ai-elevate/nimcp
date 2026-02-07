@@ -281,8 +281,11 @@ static bool g_access_control_module_initialized = false;
  */
 static int find_subject_by_id(uint32_t id)
 {
-    if (id == BBB_INVALID_ID)
+    if (id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "find_subject_by_id: invalid ID 0");
         return -1;
+    }
 
     for (uint32_t i = 0; i < BBB_MAX_SUBJECTS; i++) {
         if (g_access_state.subjects[i].active &&
@@ -291,7 +294,9 @@ static int find_subject_by_id(uint32_t id)
         }
     }
 
-    return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+        "find_subject_by_id: subject %u not found", id);
+    return -1;
 }
 
 /**
@@ -308,8 +313,11 @@ static int find_subject_by_id(uint32_t id)
  */
 static int find_object_by_id(uint32_t id)
 {
-    if (id == BBB_INVALID_ID)
+    if (id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "find_object_by_id: invalid ID 0");
         return -1;
+    }
 
     for (uint32_t i = 0; i < BBB_MAX_OBJECTS; i++) {
         if (g_access_state.objects[i].active &&
@@ -318,7 +326,9 @@ static int find_object_by_id(uint32_t id)
         }
     }
 
-    return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+        "find_object_by_id: object %u not found", id);
+    return -1;
 }
 
 /**
@@ -337,7 +347,10 @@ static int find_available_subject_slot(void)
         }
     }
 
-    return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED,
+        "find_available_subject_slot: subject registry full (%u slots)",
+        (unsigned)BBB_MAX_SUBJECTS);
+    return -1;
 }
 
 /**
@@ -356,7 +369,10 @@ static int find_available_object_slot(void)
         }
     }
 
-    return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_CAPACITY_EXCEEDED,
+        "find_available_object_slot: object registry full (%u slots)",
+        (unsigned)BBB_MAX_OBJECTS);
+    return -1;
 }
 
 /**
@@ -558,8 +574,10 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     (void)system;
 
     /* Guard: Null parameters */
-    if (!subject || !object)
+    if (!subject || !object) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_check_access: required parameter is NULL (subject, object)");
         return false;
+    }
 
     ensure_initialized();
 
@@ -569,6 +587,7 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     /* Check privilege level requirement */
     if (subject->privilege_level < object->required_privilege) {
         log_denial("insufficient privilege level", subject->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
         return false;
     }
 
@@ -576,6 +595,7 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     if (object->required_roles != 0) {
         if ((subject->roles & object->required_roles) != object->required_roles) {
             log_denial("missing required roles", subject->id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
             return false;
         }
     }
@@ -588,6 +608,7 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     if (object->required_capabilities != 0) {
         if ((effective_caps & object->required_capabilities) != object->required_capabilities) {
             log_denial("missing required capabilities", subject->id);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
             return false;
         }
     }
@@ -596,6 +617,7 @@ NIMCP_EXPORT bool bbb_check_access(bbb_system_t system,
     uint64_t required_caps = access_type_to_capability(access_type);
     if ((effective_caps & required_caps) != required_caps) {
         log_denial("missing access type capability", subject->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_access: validation failed");
         return false;
     }
 
@@ -633,8 +655,10 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
         }
 
     /* Guard: Invalid subject ID */
-    if (subject->id == BBB_INVALID_ID)
+    if (subject->id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_subject: validation failed");
         return false;
+    }
 
     ensure_initialized();
 
@@ -645,6 +669,7 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
     if (find_subject_by_id(subject->id) >= 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Subject %u already registered\n", subject->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_subject: capacity exceeded");
         return false;
     }
 
@@ -653,6 +678,7 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
     if (slot < 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Subject registry full (max %d)\n", BBB_MAX_SUBJECTS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_subject: validation failed");
         return false;
     }
 
@@ -705,8 +731,10 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
         }
 
     /* Guard: Invalid object ID */
-    if (object->id == BBB_INVALID_ID)
+    if (object->id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_object: validation failed");
         return false;
+    }
 
     ensure_initialized();
 
@@ -717,6 +745,7 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
     if (find_object_by_id(object->id) >= 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Object %u already registered\n", object->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_object: capacity exceeded");
         return false;
     }
 
@@ -725,6 +754,7 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
     if (slot < 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Object registry full (max %d)\n", BBB_MAX_OBJECTS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_register_object: validation failed");
         return false;
     }
 
@@ -766,8 +796,10 @@ NIMCP_EXPORT bool bbb_grant_capability(bbb_system_t system,
     (void)system;
 
     /* Guard: Invalid subject ID */
-    if (subject_id == BBB_INVALID_ID)
+    if (subject_id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_grant_capability: validation failed");
         return false;
+    }
 
     /* Guard: No capability to grant */
     if (capability == 0)
@@ -783,6 +815,7 @@ NIMCP_EXPORT bool bbb_grant_capability(bbb_system_t system,
     if (slot < 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Cannot grant: subject %u not found\n", subject_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_grant_capability: validation failed");
         return false;
     }
 
@@ -815,8 +848,10 @@ NIMCP_EXPORT bool bbb_revoke_capability(bbb_system_t system,
     (void)system;
 
     /* Guard: Invalid subject ID */
-    if (subject_id == BBB_INVALID_ID)
+    if (subject_id == BBB_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_revoke_capability: validation failed");
         return false;
+    }
 
     /* Guard: No capability to revoke */
     if (capability == 0)
@@ -832,6 +867,7 @@ NIMCP_EXPORT bool bbb_revoke_capability(bbb_system_t system,
     if (slot < 0) {
         nimcp_platform_mutex_unlock(&g_access_state_lock);
         fprintf(stderr, "[BBB-AC] Cannot revoke: subject %u not found\n", subject_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_revoke_capability: validation failed");
         return false;
     }
 

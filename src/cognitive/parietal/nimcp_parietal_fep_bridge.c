@@ -417,6 +417,7 @@ parietal_fep_bridge_t* parietal_fep_bridge_create(const parietal_fep_config_t* c
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "parietal_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "parietal_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -466,7 +467,10 @@ void parietal_fep_bridge_destroy(parietal_fep_bridge_t* bridge) {
 }
 
 int parietal_fep_bridge_reset(parietal_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_reset", 0.0f);
@@ -509,7 +513,10 @@ int parietal_fep_bridge_register(
     parietal_lobe_t* parietal,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;  /* parietal can be NULL for standalone testing */
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_register", 0.0f);
@@ -547,6 +554,7 @@ int parietal_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->parietal = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -563,7 +571,10 @@ int parietal_fep_bridge_register(
 }
 
 int parietal_fep_bridge_unregister(parietal_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_unregister", 0.0f);
@@ -592,7 +603,10 @@ int parietal_fep_bridge_unregister(parietal_fep_bridge_t* bridge) {
 }
 
 bool parietal_fep_bridge_is_registered(const parietal_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_is_registered", 0.0f);
@@ -629,13 +643,17 @@ int parietal_fep_update_callback(void* handle) {
 
 
     parietal_fep_bridge_t* bridge = (parietal_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered and have a parietal module */
     if (!bridge->registered || !bridge->parietal) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_update_callback: required parameter is NULL (bridge->registered, bridge->parietal)");
         return -1;
     }
 
@@ -691,7 +709,10 @@ void parietal_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int parietal_fep_bridge_update(parietal_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* If registered with orchestrator and has parietal module, do full update */
     /* Phase 8: Heartbeat at operation start */
@@ -706,11 +727,15 @@ int parietal_fep_bridge_update(parietal_fep_bridge_t* bridge) {
         return parietal_fep_update_callback(bridge);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_fep_bridge_update: validation failed");
     return -1;  /* Cannot update without registration */
 }
 
 int parietal_fep_bridge_force_update(parietal_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* If registered with orchestrator and has parietal module, do full update */
     /* Phase 8: Heartbeat at operation start */
@@ -764,7 +789,10 @@ int parietal_fep_bridge_get_metrics(
     const parietal_fep_bridge_t* bridge,
     parietal_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_metrics", 0.0f);
@@ -782,7 +810,10 @@ int parietal_fep_bridge_get_stats(
     const parietal_fep_bridge_t* bridge,
     parietal_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_stats", 0.0f);
@@ -797,7 +828,10 @@ int parietal_fep_bridge_get_stats(
 }
 
 int parietal_fep_bridge_reset_stats(parietal_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_reset_stats", 0.0f);
@@ -888,7 +922,10 @@ parietal_fep_state_t parietal_fep_bridge_get_state(const parietal_fep_bridge_t* 
 }
 
 bool parietal_fep_bridge_is_degraded(const parietal_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_is_degraded", 0.0f);
@@ -910,7 +947,10 @@ int parietal_fep_bridge_set_high_fe_callback(
     parietal_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_high_fe_callback", 0.0f);
@@ -930,7 +970,10 @@ int parietal_fep_bridge_set_surprise_callback(
     parietal_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_surprise_callbac", 0.0f);
@@ -950,7 +993,10 @@ int parietal_fep_bridge_set_metrics_callback(
     parietal_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_metrics_callback", 0.0f);
@@ -973,7 +1019,10 @@ int parietal_fep_bridge_set_config(
     parietal_fep_bridge_t* bridge,
     const parietal_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_set_config", 0.0f);
@@ -991,7 +1040,10 @@ int parietal_fep_bridge_get_config(
     const parietal_fep_bridge_t* bridge,
     parietal_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_fep_bridge_heartbeat("parietal_fep_get_config", 0.0f);

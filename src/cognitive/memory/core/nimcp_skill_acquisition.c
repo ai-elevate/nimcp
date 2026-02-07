@@ -264,6 +264,7 @@ static skill_acquisition_state_t* find_state(skill_acquisition_t* sa, uint64_t s
             return sa->states[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_state: operation failed");
     return NULL;
 }
 
@@ -330,6 +331,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     state->performance_history = (float*)nimcp_calloc(history_len, sizeof(float));
     if (!state->performance_history) {
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->performance_history is NULL");
         return NULL;
     }
     state->history_len = history_len;
@@ -341,6 +343,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
     if (!state->transfers) {
         nimcp_free(state->performance_history);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->transfers is NULL");
         return NULL;
     }
     state->num_transfers = 0;
@@ -352,6 +355,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
         nimcp_free(state->transfers);
         nimcp_free(state->performance_history);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_power_law: state->plateaus is NULL");
         return NULL;
     }
     state->num_plateaus = 0;
@@ -371,6 +375,7 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
             nimcp_free(state->transfers);
             nimcp_free(state->performance_history);
             nimcp_free(state);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_power_law: required parameter is NULL (state->step_errors, state->step_practice_count, state->step_difficulty)");
             return NULL;
         }
 
@@ -460,6 +465,7 @@ static void update_step_difficulty(skill_acquisition_state_t* state) {
 static bool check_plateau_condition(skill_acquisition_state_t* state,
                                     const skill_acquisition_config_t* config) {
     if (!state || state->history_count < config->min_trials_for_plateau) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_step_difficulty: state is NULL");
         return false;
     }
 
@@ -490,6 +496,7 @@ static bool check_plateau_condition(skill_acquisition_state_t* state,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_step_difficulty: validation failed");
     return false;
 }
 
@@ -719,20 +726,47 @@ NIMCP_EXPORT skill_acquisition_config_t skill_acquisition_config_default(void) {
 }
 
 NIMCP_EXPORT bool skill_acquisition_config_validate(const skill_acquisition_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "skill_acquisition_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->default_initial_performance <= 0) return false;
-    if (config->default_learning_rate <= 0 || config->default_learning_rate > 1) return false;
-    if (config->default_asymptote < 0) return false;
-    if (config->default_history_len == 0) return false;
-    if (config->plateau_threshold < 0 || config->plateau_threshold > 1) return false;
-    if (config->plateau_window == 0) return false;
-    if (config->weak_point_threshold < 0 || config->weak_point_threshold > 1) return false;
+    if (config->default_initial_performance <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
+    if (config->default_learning_rate <= 0 || config->default_learning_rate > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
+    if (config->default_asymptote < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
+    if (config->default_history_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: config->default_history_len is zero");
+        return false;
+    }
+    if (config->plateau_threshold < 0 || config->plateau_threshold > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
+    if (config->plateau_window == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: config->plateau_window is zero");
+        return false;
+    }
+    if (config->weak_point_threshold < 0 || config->weak_point_threshold > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
 
     // Weights should sum to approximately 1.0
     float weight_sum = config->element_weight + config->surface_weight +
                        config->structural_weight + config->signature_weight;
-    if (fabsf(weight_sum - 1.0f) > 0.1f) return false;
+    if (fabsf(weight_sum - 1.0f) > 0.1f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "skill_acquisition_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -749,6 +783,7 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
         cfg = *config;
         if (!skill_acquisition_config_validate(&cfg)) {
             set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "skill_acquisition_create: skill_acquisition_config_validate is NULL");
             return NULL;
         }
     } else {
@@ -758,6 +793,7 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
     skill_acquisition_t* sa = (skill_acquisition_t*)nimcp_calloc(1, sizeof(skill_acquisition_t));
     if (!sa) {
         set_error("Memory allocation failed for skill acquisition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "skill_acquisition_create: sa is NULL");
         return NULL;
     }
 
@@ -768,6 +804,7 @@ NIMCP_EXPORT skill_acquisition_t* skill_acquisition_create(
     if (!sa->states) {
         set_error("Memory allocation failed for states array");
         nimcp_free(sa);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "skill_acquisition_create: sa->states is NULL");
         return NULL;
     }
     sa->num_states = 0;
@@ -1570,10 +1607,16 @@ NIMCP_EXPORT bool skill_acquisition_detect_plateau(
     skill_acquisition_t* sa,
     uint64_t skill_id
 ) {
-    if (!sa) return false;
+    if (!sa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "skill_acquisition_detect_plateau: sa is NULL");
+        return false;
+    }
 
     skill_acquisition_state_t* state = find_state(sa, skill_id);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "skill_acquisition_detect_plateau: state is NULL");
+        return false;
+    }
 
     return (state->current_plateau != NULL);
 }

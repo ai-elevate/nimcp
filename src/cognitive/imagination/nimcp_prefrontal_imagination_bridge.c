@@ -127,30 +127,39 @@ int prefrontal_imagination_validate_config(const prefrontal_imagination_config_t
 
 
     if (config->goal_relevance_threshold < 0.0f || config->goal_relevance_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->goal_constraint_weight < 0.0f || config->goal_constraint_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->exploration_default < 0.0f || config->exploration_default > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->creativity_default < 0.0f || config->creativity_default > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->inhibition_threshold < 0.0f || config->inhibition_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->default_num_options == 0 || config->default_num_options > PFC_IMAG_MAX_OPTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: config->default_num_options is zero");
         return -1;
     }
     if (config->option_diversity_weight < 0.0f || config->option_diversity_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->max_wm_items == 0 || config->max_wm_items > PFC_IMAG_MAX_WM_ITEMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: config->max_wm_items is zero");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -189,6 +198,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -198,6 +208,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
             LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -411,7 +422,10 @@ int prefrontal_imagination_disconnect_imagination(
 bool prefrontal_imagination_is_connected(
     const prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
 
@@ -478,7 +492,10 @@ int prefrontal_imagination_update(
 int prefrontal_imagination_compute_pfc_effects(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge || !bridge->prefrontal) return -1;
+    if (!bridge || !bridge->prefrontal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_compute_pfc_effects: required parameter is NULL (bridge, bridge->prefrontal)");
+        return -1;
+    }
 
     /* Query prefrontal for current executive state */
     /* In full implementation, would call prefrontal adapter APIs */
@@ -512,7 +529,10 @@ int prefrontal_imagination_compute_pfc_effects(
 int prefrontal_imagination_compute_imag_effects(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge || !bridge->imagination) return -1;
+    if (!bridge || !bridge->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_compute_imag_effects: required parameter is NULL (bridge, bridge->imagination)");
+        return -1;
+    }
 
     /* Query imagination engine for current state */
     /* In full implementation, would call imagination engine APIs */
@@ -741,7 +761,10 @@ int prefrontal_imagination_get_options(
     float* risks,
     uint32_t* num_options)
 {
-    if (!bridge || !num_options) return -1;
+    if (!bridge || !num_options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_get_options: required parameter is NULL (bridge, num_options)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
@@ -898,7 +921,10 @@ int prefrontal_imagination_get_stats(
     const prefrontal_imagination_bridge_t* bridge,
     prefrontal_imagination_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -939,7 +965,10 @@ int prefrontal_imagination_get_pfc_effects(
     const prefrontal_imagination_bridge_t* bridge,
     prefrontal_to_imagination_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_get_pfc_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->pfc_to_imag;
     /* Phase 8: Heartbeat at operation start */
@@ -953,7 +982,10 @@ int prefrontal_imagination_get_imag_effects(
     const prefrontal_imagination_bridge_t* bridge,
     imagination_to_prefrontal_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_get_imag_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->imag_to_pfc;
     /* Phase 8: Heartbeat at operation start */
@@ -1018,7 +1050,10 @@ int prefrontal_imagination_disconnect_bio_async(
 bool prefrontal_imagination_is_bio_async_connected(
     const prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_imagination_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     prefrontal_imagination_bridge_heartbeat("prefrontal_i_prefrontal_imaginati", 0.0f);
 

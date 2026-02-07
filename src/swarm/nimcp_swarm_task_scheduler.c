@@ -106,12 +106,14 @@ static bool agent_meets_requirements_internal(
 {
     // Check availability
     if (!profile->is_available) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_meets_requirements_internal: profile->is_available is NULL");
         return false;
     }
 
     // Check required capabilities
     if ((profile->capabilities_mask & req->required_capabilities) !=
         req->required_capabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
         return false;
     }
 
@@ -122,6 +124,7 @@ static bool agent_meets_requirements_internal(
         if (req->required_capabilities & cap_bit) {
             if (i < NIMCP_SWARM_CAP_COUNT &&
                 profile->proficiency[i] < req->min_proficiency[i]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
                 return false;
             }
         }
@@ -129,6 +132,7 @@ static bool agent_meets_requirements_internal(
 
     // Check energy level
     if (profile->energy_level < req->min_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "agent_meets_requirements_internal: validation failed");
         return false;
     }
 
@@ -341,6 +345,7 @@ static int find_next_rr_agent(
         current = (current + 1) % SWARM_SCHEDULER_MAX_AGENTS;
     } while (current != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_next_rr_agent: operation failed");
     return -1;
 }
 
@@ -488,6 +493,7 @@ int swarm_scheduler_register_agent(
     const swarm_agent_profile_t* profile)
 {
     if (!scheduler || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_register_agent: required parameter is NULL (scheduler, profile)");
         return -1;
     }
 
@@ -554,6 +560,7 @@ int swarm_scheduler_unregister_agent(
     uint32_t agent_id)
 {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_unregister_agent: scheduler is NULL");
         return -1;
     }
 
@@ -592,6 +599,7 @@ int swarm_scheduler_update_agent(
     const swarm_agent_profile_t* profile)
 {
     if (!scheduler || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_update_agent: required parameter is NULL (scheduler, profile)");
         return -1;
     }
 
@@ -625,6 +633,7 @@ swarm_task_queue_t* swarm_scheduler_get_agent_queue(
     uint32_t agent_id)
 {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_get_agent_queue: scheduler is NULL");
         return NULL;
     }
 
@@ -650,6 +659,7 @@ int swarm_scheduler_set_agent_available(
     bool is_available)
 {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_set_agent_available: scheduler is NULL");
         return -1;
     }
 
@@ -795,6 +805,7 @@ int swarm_scheduler_schedule_all(
     uint32_t* scheduled_count)
 {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_schedule_all: scheduler is NULL");
         return -1;
     }
 
@@ -832,6 +843,7 @@ int swarm_scheduler_score_agents(
     uint32_t* count)
 {
     if (!scheduler || !scores || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_score_agents: required parameter is NULL (scheduler, scores, count)");
         return -1;
     }
 
@@ -900,6 +912,7 @@ int swarm_scheduler_reassign_task(
     uint32_t new_agent)
 {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_reassign_task: scheduler is NULL");
         return -1;
     }
 
@@ -986,6 +999,7 @@ int swarm_scheduler_set_algorithm(
     swarm_scheduler_algorithm_t algorithm)
 {
     if (!scheduler || algorithm >= SWARM_SCHEDULER_ALGORITHM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "swarm_scheduler_set_algorithm: scheduler is NULL");
         return -1;
     }
 
@@ -1011,6 +1025,7 @@ int swarm_scheduler_set_weights(
     const swarm_scheduler_weights_t* weights)
 {
     if (!scheduler || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_set_weights: required parameter is NULL (scheduler, weights)");
         return -1;
     }
 
@@ -1026,6 +1041,7 @@ int swarm_scheduler_get_stats(
     swarm_scheduler_stats_t* stats)
 {
     if (!scheduler || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_get_stats: required parameter is NULL (scheduler, stats)");
         return -1;
     }
 
@@ -1085,6 +1101,7 @@ int swarm_scheduler_get_capable_agents(
     uint32_t* count)
 {
     if (!scheduler || !agent_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_get_capable_agents: required parameter is NULL (scheduler, agent_ids, count)");
         return -1;
     }
 
@@ -1137,6 +1154,7 @@ bool swarm_scheduler_agent_meets_requirements(
     const swarm_task_requirements_t* requirements)
 {
     if (!profile || !requirements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_scheduler_agent_meets_requirements: required parameter is NULL (profile, requirements)");
         return false;
     }
 

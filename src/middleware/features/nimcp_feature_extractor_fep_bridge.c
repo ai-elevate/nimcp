@@ -77,6 +77,7 @@ feature_extractor_fep_bridge_t* feature_extractor_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "feature_extractor_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         feature_extractor_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -105,7 +106,10 @@ int feature_extractor_fep_bridge_connect_extractor(
     feature_extractor_fep_bridge_t* bridge,
     feature_extractor_t extractor
 ) {
-    if (!bridge || !extractor) return -1;
+    if (!bridge || !extractor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_connect_extractor: required parameter is NULL (bridge, extractor)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->feature_extractor = extractor;
@@ -119,7 +123,10 @@ int feature_extractor_fep_bridge_connect_fep(
     feature_extractor_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -241,7 +248,10 @@ int feature_extractor_fep_report_features(
     feature_extractor_fep_bridge_t* bridge,
     const middleware_features_t* features
 ) {
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_report_features: required parameter is NULL (bridge, features)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.current_features = *features;
@@ -351,7 +361,10 @@ int feature_extractor_fep_bridge_get_state(
     const feature_extractor_fep_bridge_t* bridge,
     feature_extractor_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
@@ -364,7 +377,10 @@ int feature_extractor_fep_bridge_get_stats(
     const feature_extractor_fep_bridge_t* bridge,
     feature_extractor_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -426,6 +442,9 @@ int feature_extractor_fep_bridge_disconnect_bio_async(
 bool feature_extractor_fep_bridge_is_bio_async_connected(
     const feature_extractor_fep_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feature_extractor_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

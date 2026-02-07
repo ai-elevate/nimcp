@@ -157,6 +157,7 @@ nimcp_error_t neuron_model_bio_async_init(void) {
     if (nimcp_platform_mutex_init(&g_neuron_async_ctx.stats_mutex, false) != 0) {
         LOG_ERROR("neuron_model_bio_async_init: Failed to initialize stats mutex");
         nimcp_platform_mutex_unlock(&g_neuron_async_ctx.init_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "neuron_model_bio_async_init: validation failed");
         return -1;
     }
 
@@ -168,6 +169,7 @@ nimcp_error_t neuron_model_bio_async_init(void) {
         LOG_ERROR("neuron_model_bio_async_init: Failed to create memory manager");
         nimcp_platform_mutex_destroy(&g_neuron_async_ctx.stats_mutex);
         nimcp_platform_mutex_unlock(&g_neuron_async_ctx.init_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_model_bio_async_init: g_neuron_async_ctx is NULL");
         return -1;
     }
 
@@ -188,6 +190,7 @@ nimcp_error_t neuron_model_bio_async_init(void) {
         unified_mem_destroy(g_neuron_async_ctx.mem_mgr);
         nimcp_platform_mutex_destroy(&g_neuron_async_ctx.stats_mutex);
         nimcp_platform_mutex_unlock(&g_neuron_async_ctx.init_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_model_bio_async_init: g_neuron_async_ctx is NULL");
         return -1;
     }
 
@@ -306,6 +309,7 @@ static nimcp_error_t neuron_handle_activation_request(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_msg_neuron_activation_request_t)) {
         LOG_ERROR("neuron_handle_activation_request: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuron_handle_activation_request: msg is NULL");
         return -1;
     }
 
@@ -487,6 +491,7 @@ bool neuron_model_bio_async_get_stats(
     uint64_t* messages_received
 ) {
     if (!g_neuron_async_ctx.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "neuron_model_bio_async_get_stats: g_neuron_async_ctx is NULL");
         return false;
     }
 

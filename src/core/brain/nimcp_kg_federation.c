@@ -119,6 +119,7 @@ static kg_federation_peer_t* find_peer(
             return &fed->peers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_peer: validation failed");
     return NULL;
 }
 
@@ -135,6 +136,7 @@ static pending_conflict_t* find_conflict(
             return &fed->conflicts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict: operation failed");
     return NULL;
 }
 
@@ -210,6 +212,7 @@ kg_federation_t* kg_federation_create(
     fed->mutex = nimcp_mutex_create(&attr);
     if (!fed->mutex) {
         nimcp_free(fed);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_federation_create: fed->mutex is NULL");
         return NULL;
     }
 
@@ -248,6 +251,7 @@ int kg_federation_get_config(
     kg_federation_config_t* config
 ) {
     if (!fed || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_get_config: required parameter is NULL (fed, config)");
         return -1;
     }
 
@@ -263,6 +267,7 @@ int kg_federation_set_config(
     const kg_federation_config_t* config
 ) {
     if (!fed || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_set_config: required parameter is NULL (fed, config)");
         return -1;
     }
 
@@ -283,6 +288,7 @@ int kg_federation_add_peer(
     uint16_t port
 ) {
     if (!fed || !host) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_add_peer: required parameter is NULL (fed, host)");
         return -1;
     }
 
@@ -290,6 +296,7 @@ int kg_federation_add_peer(
 
     if (fed->peer_count >= KG_FEDERATION_MAX_PEERS) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_federation_add_peer: capacity exceeded");
         return -1;
     }
 
@@ -317,6 +324,7 @@ int kg_federation_remove_peer(
     const char* peer_id
 ) {
     if (!fed || !peer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_remove_peer: required parameter is NULL (fed, peer_id)");
         return -1;
     }
 
@@ -336,6 +344,7 @@ int kg_federation_remove_peer(
     }
 
     nimcp_mutex_unlock(fed->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_federation_remove_peer: operation failed");
     return -1; /* Not found */
 }
 
@@ -345,6 +354,7 @@ int kg_federation_get_peers(
     uint32_t* count
 ) {
     if (!fed || !peers || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_get_peers: required parameter is NULL (fed, peers, count)");
         return -1;
     }
 
@@ -382,6 +392,7 @@ int kg_federation_get_peer(
     kg_federation_peer_t* peer
 ) {
     if (!fed || !peer_id || !peer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_get_peer: required parameter is NULL (fed, peer_id, peer)");
         return -1;
     }
 
@@ -390,6 +401,7 @@ int kg_federation_get_peer(
     kg_federation_peer_t* found = find_peer((kg_federation_t*)fed, peer_id);
     if (!found) {
         nimcp_mutex_unlock(((kg_federation_t*)fed)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_get_peer: found is NULL");
         return -1;
     }
 
@@ -406,6 +418,7 @@ int kg_federation_set_trust(
     float trust_score
 ) {
     if (!fed || !peer_id || trust_score < 0.0f || trust_score > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_set_trust: required parameter is NULL (fed, peer_id)");
         return -1;
     }
 
@@ -414,6 +427,7 @@ int kg_federation_set_trust(
     kg_federation_peer_t* peer = find_peer(fed, peer_id);
     if (!peer) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_set_trust: peer is NULL");
         return -1;
     }
 
@@ -429,6 +443,7 @@ bool kg_federation_is_peer_connected(
     const char* peer_id
 ) {
     if (!fed || !peer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_is_peer_connected: required parameter is NULL (fed, peer_id)");
         return false;
     }
 
@@ -499,6 +514,7 @@ int kg_federation_sync_with_peer(
     const char* peer_id
 ) {
     if (!fed || !peer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_sync_with_peer: required parameter is NULL (fed, peer_id)");
         return -1;
     }
 
@@ -507,6 +523,7 @@ int kg_federation_sync_with_peer(
     kg_federation_peer_t* peer = find_peer(fed, peer_id);
     if (!peer) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_sync_with_peer: peer is NULL");
         return -1;
     }
 
@@ -521,6 +538,7 @@ int kg_federation_sync_with_peer(
     } else {
         fed->failed_syncs++;
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_federation_sync_with_peer: validation failed");
         return -1;
     }
 
@@ -536,6 +554,7 @@ int kg_federation_push_changes(
     const kg_diff_result_t* changes
 ) {
     if (!fed || !changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_push_changes: required parameter is NULL (fed, changes)");
         return -1;
     }
 
@@ -564,6 +583,7 @@ int kg_federation_pull_changes(
     const char* peer_id
 ) {
     if (!fed || !peer_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_pull_changes: required parameter is NULL (fed, peer_id)");
         return -1;
     }
 
@@ -577,6 +597,7 @@ int kg_federation_pull_changes(
     kg_federation_peer_t* peer = find_peer(fed, peer_id);
     if (!peer || !peer->is_connected) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_pull_changes: required parameter is NULL (peer, peer->is_connected)");
         return -1;
     }
 
@@ -624,6 +645,7 @@ int kg_federation_start_auto_sync(kg_federation_t* fed) {
 
     if (fed->auto_sync_running) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_federation_start_auto_sync: validation failed");
         return -1; /* Already running */
     }
 
@@ -654,6 +676,7 @@ int kg_federation_stop_auto_sync(kg_federation_t* fed) {
 
 bool kg_federation_is_auto_sync_running(const kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_is_auto_sync_running: fed is NULL");
         return false;
     }
 
@@ -675,6 +698,7 @@ int kg_federation_query(
     uint32_t* result_count
 ) {
     if (!fed || !query || !results || !result_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_query: required parameter is NULL (fed, query, results, result_count)");
         return -1;
     }
 
@@ -687,6 +711,7 @@ int kg_federation_query(
 
     if (!result_array) {
         nimcp_mutex_unlock(((kg_federation_t*)fed)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_federation_query: result_array is NULL");
         return -1;
     }
 
@@ -728,6 +753,7 @@ int kg_federation_query_peer(
     kg_federated_result_t* result
 ) {
     if (!fed || !peer_id || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_query_peer: required parameter is NULL (fed, peer_id, query, result)");
         return -1;
     }
 
@@ -743,6 +769,7 @@ int kg_federation_query_peer(
         strncpy(result->error_msg, "Peer not found or not connected",
                 sizeof(result->error_msg) - 1);
         nimcp_mutex_unlock(((kg_federation_t*)fed)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_query_peer: required parameter is NULL (peer, peer->is_connected)");
         return -1;
     }
 
@@ -781,6 +808,7 @@ int kg_federation_get_conflicts(
     uint32_t* count
 ) {
     if (!fed || !conflicts || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_get_conflicts: required parameter is NULL (fed, conflicts, count)");
         return -1;
     }
 
@@ -839,6 +867,7 @@ int kg_federation_resolve_conflict(
     pending_conflict_t* pending = find_conflict(fed, conflict_id);
     if (!pending) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_resolve_conflict: pending is NULL");
         return -1;
     }
 
@@ -889,6 +918,7 @@ int kg_federation_discard_conflict(
     pending_conflict_t* pending = find_conflict(fed, conflict_id);
     if (!pending) {
         nimcp_mutex_unlock(fed->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_discard_conflict: pending is NULL");
         return -1;
     }
 
@@ -938,6 +968,7 @@ int kg_federation_stop_discovery(kg_federation_t* fed) {
 
 bool kg_federation_is_discovery_active(const kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_federation_is_discovery_active: fed is NULL");
         return false;
     }
 

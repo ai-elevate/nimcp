@@ -113,6 +113,7 @@ static nimcp_system_state_t* find_system(
             return &ctx->systems[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_system: validation failed");
     return NULL;
 }
 
@@ -128,6 +129,7 @@ static nimcp_system_state_t* find_system_by_type(
             return &ctx->systems[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_system_by_type: validation failed");
     return NULL;
 }
 
@@ -143,6 +145,7 @@ static nimcp_intero_signal_t* find_signal_in_system(
             return &system->signals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_signal_in_system: validation failed");
     return NULL;
 }
 
@@ -158,6 +161,7 @@ static nimcp_setpoint_t* find_setpoint(
             return &ctx->setpoints[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_setpoint: validation failed");
     return NULL;
 }
 
@@ -476,6 +480,7 @@ nimcp_intero_context_t* nimcp_intero_create(const nimcp_intero_config_t* config)
     nimcp_intero_error_t err = nimcp_intero_init(ctx, config);
     if (err != NIMCP_INTERO_OK) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_intero_create: validation failed");
         return NULL;
     }
 

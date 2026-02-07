@@ -188,6 +188,7 @@ int ofc_security_register(
     if (!bbb_register_subject(bbb, &local_state.ofc_subject)) {
         NIMCP_LOG_ERROR(OFC_SECURITY_MODULE_NAME,
             "Failed to register OFC subject with BBB");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_security_register: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -242,7 +243,10 @@ bool ofc_security_check_access(
     bbb_system_t bbb,
     ofc_security_op_t op
 ) {
-    if (!bbb) return false;
+    if (!bbb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_check_access: bbb is NULL");
+        return false;
+    }
 
     /* Create subject from OFC module */
     bbb_subject_t subject = {
@@ -277,7 +281,10 @@ bool ofc_security_has_capability(
     const ofc_security_state_t* state,
     uint64_t capability
 ) {
-    if (!state || !state->registered) return false;
+    if (!state || !state->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_has_capability: required parameter is NULL (state, state->registered)");
+        return false;
+    }
 
     return (state->ofc_subject.capabilities & capability) == capability;
 }
@@ -290,8 +297,14 @@ bool ofc_security_validate_kg_token(
     const ofc_security_state_t* state,
     uint64_t token
 ) {
-    if (!state || !state->kg_validation_enabled) return false;
-    if (state->admin_token == 0) return false;
+    if (!state || !state->kg_validation_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_validate_kg_token: required parameter is NULL (state, state->kg_validation_enabled)");
+        return false;
+    }
+    if (state->admin_token == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_security_validate_kg_token: state->admin_token is zero");
+        return false;
+    }
 
     /* Constant-time comparison to prevent timing attacks */
     volatile uint64_t result = state->admin_token ^ token;
@@ -328,12 +341,16 @@ int ofc_security_connect_immune(
     void* immune,
     ofc_security_state_t* state
 ) {
-    if (!bbb || !immune) return -1;
+    if (!bbb || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_security_connect_immune: required parameter is NULL (bbb, immune)");
+        return -1;
+    }
 
     /* Connect BBB to immune system */
     if (!bbb_connect_immune(bbb, (brain_immune_system_t*)immune)) {
         NIMCP_LOG_WARN(OFC_SECURITY_MODULE_NAME,
             "Failed to connect BBB to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_security_connect_immune: bbb_connect_immune is NULL");
         return -1;
     }
 

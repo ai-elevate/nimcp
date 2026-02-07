@@ -532,6 +532,7 @@ bool hypo_attn_bridge_connect_gate(
     void* gate) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_attn_bridge_reset: bridge is NULL");
         return false;
     }
 
@@ -554,6 +555,7 @@ bool hypo_attn_bridge_connect_salience(
     void* evaluator) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_attn_bridge_push_to_gate: bridge is NULL");
         return false;
     }
 
@@ -570,6 +572,7 @@ bool hypo_attn_bridge_register_bio(
     bool use_kg_wiring) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_attn_bridge_push_to_gate: bridge is NULL");
         return false;
     }
 
@@ -583,12 +586,14 @@ bool hypo_attn_bridge_register_bio(
 
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_attn_bridge_push_to_gate: bridge->bio_ctx is NULL");
         return false;
     }
 
     /* Register handler for drive state messages */
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_HYPO_DRIVE_STATE,
                                      attn_handle_drive_state) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_attn_bridge_push_to_gate: bridge->bio_ctx is NULL");
         return false;
     }
 

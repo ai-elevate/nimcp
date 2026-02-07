@@ -147,6 +147,7 @@ static event_type_stats_t* find_or_create_event_type_stats(
         return stats;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_or_create_event_type_stats: validation failed");
     return NULL;
 }
 
@@ -334,6 +335,7 @@ shannon_monitor_t* shannon_monitor_create_custom(
     if (!monitor->event_history) {
         LOG_ERROR("Shannon: Failed to allocate event history");
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shannon_monitor_create_custom: monitor->event_history is NULL");
         return NULL;
     }
 
@@ -344,6 +346,7 @@ shannon_monitor_t* shannon_monitor_create_custom(
         LOG_ERROR("Shannon: Failed to allocate response history");
         nimcp_free(monitor->event_history);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shannon_monitor_create_custom: monitor->response_history is NULL");
         return NULL;
     }
 
@@ -352,6 +355,7 @@ shannon_monitor_t* shannon_monitor_create_custom(
         nimcp_free(monitor->response_history);
         nimcp_free(monitor->event_history);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shannon_monitor_create_custom: validation failed");
         return NULL;
     }
 
@@ -567,7 +571,10 @@ float shannon_monitor_detect_bottleneck(
 bool shannon_monitor_is_bottlenecked(
     const shannon_monitor_t* monitor
 ) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shannon_monitor_is_bottlenecked: monitor is NULL");
+        return false;
+    }
     return monitor->metrics.bottleneck_detected;
 }
 

@@ -482,10 +482,12 @@ bool synesthesia_get_grapheme_color(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_grapheme_color: validation failed");
         return false;
     }
 
     if (!module->grapheme_colors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synesthesia_get_grapheme_color: module->grapheme_colors is NULL");
         return false;
     }
 
@@ -501,6 +503,7 @@ bool synesthesia_get_grapheme_color(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_grapheme_color: validation failed");
     return false;
 }
 
@@ -633,6 +636,7 @@ bool synesthesia_get_sound_shape(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_sound_shape: validation failed");
         return false;
     }
 
@@ -663,6 +667,7 @@ bool synesthesia_get_sound_shape(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_sound_shape: validation failed");
     return false;
 }
 
@@ -751,6 +756,7 @@ bool synesthesia_get_taste_touch(
 
     if (module->inhibited) {
         module->stats.inhibited_activations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_taste_touch: validation failed");
         return false;
     }
 
@@ -771,6 +777,7 @@ bool synesthesia_get_taste_touch(
         synesthesia_free_experience(&experience);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_taste_touch: validation failed");
     return false;
 }
 
@@ -947,6 +954,7 @@ bool synesthesia_trigger_experience(
         if (match_counts) nimcp_free(match_counts);
         if (match_modalities) nimcp_free(match_modalities);
         set_error(module, SYNESTHESIA_ERROR_MAPPING_FAILED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_trigger_experience: validation failed");
         return false;
     }
 
@@ -1076,6 +1084,7 @@ bool synesthesia_get_association(
         entry = entry->hash_next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_get_association: operation failed");
     return false;
 }
 
@@ -1117,6 +1126,7 @@ bool synesthesia_update_strength(
     }
 
     set_error(module, SYNESTHESIA_ERROR_ASSOCIATION_NOT_FOUND);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_update_strength: operation failed");
     return false;
 }
 
@@ -1153,6 +1163,7 @@ bool synesthesia_remove_association(
     }
 
     set_error(module, SYNESTHESIA_ERROR_ASSOCIATION_NOT_FOUND);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synesthesia_remove_association: operation failed");
     return false;
 }
 
@@ -1177,6 +1188,7 @@ bool synesthesia_cascade(
     }
 
     if (!module->config.enable_cascade) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synesthesia_cascade: module->config is NULL");
         return false;
     }
 
@@ -1323,7 +1335,10 @@ bool synesthesia_set_inhibition(synesthesia_module_t* module, bool inhibit) {
 }
 
 bool synesthesia_is_inhibited(const synesthesia_module_t* module) {
-    if (!module) return false;
+    if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synesthesia_is_inhibited: module is NULL");
+        return false;
+    }
     return module->inhibited;
 }
 

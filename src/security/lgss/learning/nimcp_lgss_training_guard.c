@@ -167,6 +167,7 @@ static bool reward_history_init(reward_history_t* h, uint32_t capacity) {
     if (!h->values || !h->timestamps) {
         nimcp_free(h->values);
         nimcp_free(h->timestamps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reward_history_init: required parameter is NULL (h->values, h->timestamps)");
         return false;
     }
     h->capacity = capacity;
@@ -191,7 +192,10 @@ static void reward_history_add(reward_history_t* h, float value, uint64_t timest
 
 static bool gradient_history_init(gradient_history_t* h, uint32_t capacity) {
     h->norms = nimcp_calloc(capacity, sizeof(float));
-    if (!h->norms) return false;
+    if (!h->norms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gradient_history_init: h->norms is NULL");
+        return false;
+    }
     h->capacity = capacity;
     h->head = 0;
     h->count = 0;
@@ -229,7 +233,10 @@ static float gradient_history_stddev(gradient_history_t* h) {
 
 static bool loss_history_init(loss_history_t* h, uint32_t capacity) {
     h->values = nimcp_calloc(capacity, sizeof(float));
-    if (!h->values) return false;
+    if (!h->values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "loss_history_init: h->values is NULL");
+        return false;
+    }
     h->capacity = capacity;
     h->head = 0;
     h->count = 0;
@@ -254,7 +261,10 @@ static void loss_history_add(loss_history_t* h, float loss) {
 
 static bool frozen_params_init(frozen_params_t* f, uint32_t capacity) {
     f->indices = nimcp_calloc(capacity, sizeof(uint32_t));
-    if (!f->indices) return false;
+    if (!f->indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "frozen_params_init: f->indices is NULL");
+        return false;
+    }
     f->count = 0;
     f->capacity = capacity;
     return true;
@@ -273,8 +283,14 @@ static bool frozen_params_contains(frozen_params_t* f, uint32_t index) {
 }
 
 static bool frozen_params_add(frozen_params_t* f, uint32_t index) {
-    if (f->count >= f->capacity) return false;
-    if (frozen_params_contains(f, index)) return false;
+    if (f->count >= f->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "frozen_params_add: capacity exceeded");
+        return false;
+    }
+    if (frozen_params_contains(f, index)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "frozen_params_add: validation failed");
+        return false;
+    }
     f->indices[f->count++] = index;
     return true;
 }
@@ -392,6 +408,7 @@ training_guard_t training_guard_create(
     /* Initialize reward history */
     if (!reward_history_init(&guard->reward_history, guard->config.reward_history_size)) {
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_guard_create: reward_history_init is NULL");
         return NULL;
     }
 
@@ -399,6 +416,7 @@ training_guard_t training_guard_create(
     if (!gradient_history_init(&guard->gradient_history, guard->config.anomaly_history_size)) {
         reward_history_destroy(&guard->reward_history);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_guard_create: gradient_history_init is NULL");
         return NULL;
     }
 
@@ -407,6 +425,7 @@ training_guard_t training_guard_create(
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_guard_create: loss_history_init is NULL");
         return NULL;
     }
 
@@ -416,6 +435,7 @@ training_guard_t training_guard_create(
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_guard_create: frozen_params_init is NULL");
         return NULL;
     }
 
@@ -435,6 +455,7 @@ training_guard_t training_guard_create(
         gradient_history_destroy(&guard->gradient_history);
         reward_history_destroy(&guard->reward_history);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_create: guard->checkpoints is NULL");
         return NULL;
     }
     guard->next_checkpoint_id = 1;
@@ -725,19 +746,27 @@ bool training_guard_detect_reward_hacking(
     const reward_state_t* state,
     reward_hacking_result_t* result
 ) {
-    if (!guard || !state || !result) return false;
+    if (!guard || !state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_detect_reward_hacking: required parameter is NULL (guard, state, result)");
+        return false;
+    }
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return false;
+    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_detect_reward_hacking: validation failed");
+        return false;
+    }
 
     memset(result, 0, sizeof(*result));
 
     if (!g->config.enable_reward_hacking_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_detect_reward_hacking: g->config is NULL");
         return false;
     }
 
     /* Need some history to detect anomalies */
     if (g->reward_history.count < 20) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_detect_reward_hacking: validation failed");
         return false;
     }
 
@@ -817,18 +846,26 @@ bool training_guard_detect_goal_drift(
     uint32_t goal_dim,
     goal_drift_result_t* result
 ) {
-    if (!guard || !current_goal || !result) return false;
+    if (!guard || !current_goal || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_detect_goal_drift: required parameter is NULL (guard, current_goal, result)");
+        return false;
+    }
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return false;
+    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_detect_goal_drift: validation failed");
+        return false;
+    }
 
     memset(result, 0, sizeof(*result));
 
     if (!g->config.enable_goal_drift_detection || !g->reference_goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_detect_goal_drift: required parameter is NULL (g->config, g->reference_goal)");
         return false;
     }
 
     if (goal_dim != g->goal_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_detect_goal_drift: validation failed");
         return false;
     }
 
@@ -920,10 +957,16 @@ int32_t training_guard_create_checkpoint(
     size_t model_size,
     const char* metadata
 ) {
-    if (!guard) return -1;
+    if (!guard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_guard_create_checkpoint: guard is NULL");
+        return -1;
+    }
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return -1;
+    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_create_checkpoint: validation failed");
+        return -1;
+    }
 
     /* Placeholder - would save to disk */
     (void)model_data;
@@ -1015,7 +1058,10 @@ int training_guard_unfreeze_parameter(training_guard_t guard, uint32_t param_ind
 bool training_guard_is_parameter_frozen(training_guard_t guard, uint32_t param_index) {
     if (!guard) return false;
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return false;
+    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_guard_is_parameter_frozen: validation failed");
+        return false;
+    }
     return frozen_params_contains(&g->frozen_params, param_index);
 }
 

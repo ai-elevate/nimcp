@@ -107,6 +107,7 @@ directive_fep_bridge_t* directive_fep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_DIRECTIVE_FEP " Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "directive_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -496,6 +497,7 @@ bool directive_fep_bridge_is_bio_async_connected(
     const directive_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "directive_fep_bridge_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

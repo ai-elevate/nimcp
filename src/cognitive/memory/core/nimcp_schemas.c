@@ -203,7 +203,10 @@ static size_t hash_id(uint64_t id, size_t capacity) {
  * @brief Insert into ID hash table
  */
 static bool id_table_insert(schema_system_t system, uint64_t key, size_t value) {
-    if (!system || system->id_table_capacity == 0) return false;
+    if (!system || system->id_table_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_insert: system is NULL");
+        return false;
+    }
 
     size_t idx = hash_id(key, system->id_table_capacity);
     size_t start = idx;
@@ -225,6 +228,7 @@ static bool id_table_insert(schema_system_t system, uint64_t key, size_t value) 
     } while (idx != start);
 
     // Table full
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_insert: validation failed");
     return false;
 }
 
@@ -232,7 +236,10 @@ static bool id_table_insert(schema_system_t system, uint64_t key, size_t value) 
  * @brief Lookup in ID hash table
  */
 static bool id_table_lookup(schema_system_t system, uint64_t key, size_t* value) {
-    if (!system || system->id_table_capacity == 0 || key == 0) return false;
+    if (!system || system->id_table_capacity == 0 || key == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_lookup: system is NULL");
+        return false;
+    }
 
     size_t idx = hash_id(key, system->id_table_capacity);
     size_t start = idx;
@@ -243,11 +250,13 @@ static bool id_table_lookup(schema_system_t system, uint64_t key, size_t* value)
             return true;
         }
         if (system->id_table_keys[idx] == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_lookup: validation failed");
             return false;  // Not found
         }
         idx = (idx + 1) % system->id_table_capacity;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_lookup: validation failed");
     return false;
 }
 
@@ -255,7 +264,10 @@ static bool id_table_lookup(schema_system_t system, uint64_t key, size_t* value)
  * @brief Remove from ID hash table
  */
 static bool id_table_remove(schema_system_t system, uint64_t key) {
-    if (!system || system->id_table_capacity == 0 || key == 0) return false;
+    if (!system || system->id_table_capacity == 0 || key == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_remove: system is NULL");
+        return false;
+    }
 
     size_t idx = hash_id(key, system->id_table_capacity);
     size_t start = idx;
@@ -266,11 +278,13 @@ static bool id_table_remove(schema_system_t system, uint64_t key) {
             return true;
         }
         if (system->id_table_keys[idx] == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_remove: validation failed");
             return false;
         }
         idx = (idx + 1) % system->id_table_capacity;
     } while (idx != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "id_table_remove: validation failed");
     return false;
 }
 
@@ -323,7 +337,10 @@ static void free_schema_contents(schema_t* schema) {
  * @brief Copy slot
  */
 static bool copy_slot(schema_slot_t* dest, const schema_slot_t* src) {
-    if (!dest || !src) return false;
+    if (!dest || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_slot: required parameter is NULL (dest, src)");
+        return false;
+    }
 
     memcpy(dest, src, sizeof(schema_slot_t));
 
@@ -331,7 +348,10 @@ static bool copy_slot(schema_slot_t* dest, const schema_slot_t* src) {
     dest->slot_name = NULL;
     if (src->slot_name) {
         dest->slot_name = str_dup(src->slot_name);
-        if (!dest->slot_name) return false;
+        if (!dest->slot_name) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_slot: dest->slot_name is NULL");
+            return false;
+        }
     }
 
     return true;
@@ -341,7 +361,10 @@ static bool copy_slot(schema_slot_t* dest, const schema_slot_t* src) {
  * @brief Find slot index by name
  */
 static int find_slot_index(const schema_t* schema, const char* slot_name) {
-    if (!schema || !slot_name) return -1;
+    if (!schema || !slot_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_slot_index: required parameter is NULL (schema, slot_name)");
+        return -1;
+    }
 
     for (size_t i = 0; i < schema->num_slots; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -355,6 +378,7 @@ static int find_slot_index(const schema_t* schema, const char* slot_name) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_slot_index: operation failed");
     return -1;
 }
 
@@ -421,6 +445,7 @@ schema_config_t schema_config_default(void) {
 bool schema_config_validate(const schema_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_config_validate: config is NULL");
         return false;
     }
 
@@ -430,26 +455,31 @@ bool schema_config_validate(const schema_config_t* config) {
 
     if (config->min_fit_threshold < 0.0f || config->min_fit_threshold > 1.0f) {
         set_error("min_fit_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
     if (config->inferred_confidence < 0.0f || config->inferred_confidence > 1.0f) {
         set_error("inferred_confidence must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
     if (config->abstraction_threshold < 0.0f || config->abstraction_threshold > 1.0f) {
         set_error("abstraction_threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: validation failed");
         return false;
     }
 
     if (config->max_schemas == 0 || config->max_schemas > 1000000) {
         set_error("max_schemas out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: config->max_schemas is zero");
         return false;
     }
 
     if (config->max_active == 0 || config->max_active > 100000) {
         set_error("max_active out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_config_validate: config->max_active is zero");
         return false;
     }
 
@@ -474,6 +504,7 @@ schema_system_t schema_system_create(
     schema_config_t cfg = config ? *config : schema_config_default();
 
     if (!schema_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_system_create: schema_config_validate is NULL");
         return NULL;  // Error already set
     }
 
@@ -481,6 +512,7 @@ schema_system_t schema_system_create(
     schema_system_t system = (schema_system_t)nimcp_calloc(1, sizeof(struct schema_system_struct));
     if (!system) {
         set_error("Failed to allocate schema system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: system is NULL");
         return NULL;
     }
 
@@ -495,6 +527,7 @@ schema_system_t schema_system_create(
     if (!system->schemas) {
         set_error("Failed to allocate schema array");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: system->schemas is NULL");
         return NULL;
     }
 
@@ -508,6 +541,7 @@ schema_system_t schema_system_create(
         nimcp_free(system->id_table_keys);
         nimcp_free(system->id_table_values);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: required parameter is NULL (system->id_table_keys, system->id_table_values)");
         return NULL;
     }
 
@@ -521,6 +555,7 @@ schema_system_t schema_system_create(
         nimcp_free(system->id_table_keys);
         nimcp_free(system->id_table_values);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_system_create: system->active is NULL");
         return NULL;
     }
 
@@ -590,6 +625,7 @@ void schema_system_destroy(schema_system_t system) {
 bool schema_system_clear(schema_system_t system) {
     if (!system) {
         set_error("NULL system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_system_clear: system is NULL");
         return false;
     }
 
@@ -656,11 +692,13 @@ schema_t* schema_create(
 {
     if (!system) {
         set_error("NULL system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_create: system is NULL");
         return NULL;
     }
 
     if (!name || strlen(name) == 0) {
         set_error("Schema name required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_create: name is NULL");
         return NULL;
     }
 
@@ -670,6 +708,7 @@ schema_t* schema_create(
 
     if (type < 0 || type >= SCHEMA_TYPE_COUNT) {
         set_error("Invalid schema type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: capacity exceeded");
         return NULL;
     }
 
@@ -677,6 +716,7 @@ schema_t* schema_create(
     schema_t* schema = (schema_t*)nimcp_calloc(1, sizeof(schema_t));
     if (!schema) {
         set_error("Failed to allocate schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: schema is NULL");
         return NULL;
     }
 
@@ -686,6 +726,7 @@ schema_t* schema_create(
     if (!schema->schema_name) {
         set_error("Failed to duplicate schema name");
         nimcp_free(schema);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_create: schema->schema_name is NULL");
         return NULL;
     }
 
@@ -700,6 +741,7 @@ schema_t* schema_create(
         set_error("Failed to allocate slots");
         nimcp_free(schema->schema_name);
         nimcp_free(schema);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: schema->slots is NULL");
         return NULL;
     }
 
@@ -711,6 +753,7 @@ schema_t* schema_create(
         nimcp_free(schema->slots);
         nimcp_free(schema->schema_name);
         nimcp_free(schema);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_create: schema->child_schemas is NULL");
         return NULL;
     }
 
@@ -725,6 +768,7 @@ schema_t* schema_create(
 bool schema_destroy(schema_system_t system, schema_t* schema) {
     if (!system || !schema) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_destroy: required parameter is NULL (system, schema)");
         return false;
     }
 
@@ -736,6 +780,7 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
     size_t idx;
     if (!id_table_lookup(system, schema->schema_id, &idx)) {
         set_error("Schema not in system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_destroy: id_table_lookup is NULL");
         return false;
     }
 
@@ -803,6 +848,7 @@ bool schema_destroy(schema_system_t system, schema_t* schema) {
 bool schema_add(schema_system_t system, schema_t* schema) {
     if (!system || !schema) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_add: required parameter is NULL (system, schema)");
         return false;
     }
 
@@ -819,6 +865,7 @@ bool schema_add(schema_system_t system, schema_t* schema) {
         }
         if (new_capacity <= system->num_schemas) {
             set_error("Schema library full");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_add: validation failed");
             return false;
         }
 
@@ -826,6 +873,7 @@ bool schema_add(schema_system_t system, schema_t* schema) {
             system->schemas, new_capacity * sizeof(schema_t*));
         if (!new_schemas) {
             set_error("Failed to grow schema array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_add: new_schemas is NULL");
             return false;
         }
         system->schemas = new_schemas;
@@ -839,6 +887,7 @@ bool schema_add(schema_system_t system, schema_t* schema) {
             nimcp_free(new_keys);
             nimcp_free(new_values);
             set_error("Failed to grow hash table");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_add: required parameter is NULL (new_keys, new_values)");
             return false;
         }
 
@@ -876,6 +925,7 @@ bool schema_add(schema_system_t system, schema_t* schema) {
     if (!id_table_insert(system, schema->schema_id, idx)) {
         system->num_schemas--;
         set_error("Failed to insert into hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_add: id_table_insert is NULL");
         return false;
     }
 
@@ -890,7 +940,10 @@ bool schema_add(schema_system_t system, schema_t* schema) {
 }
 
 schema_t* schema_find_by_id(schema_system_t system, uint64_t schema_id) {
-    if (!system || schema_id == SCHEMA_INVALID_ID) return NULL;
+    if (!system || schema_id == SCHEMA_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_find_by_id: system is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     schemas_heartbeat("schemas_schema_find_by_id", 0.0f);
@@ -902,11 +955,15 @@ schema_t* schema_find_by_id(schema_system_t system, uint64_t schema_id) {
             return system->schemas[idx];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_find_by_id: validation failed");
     return NULL;
 }
 
 schema_t* schema_find_by_name(schema_system_t system, const char* name) {
-    if (!system || !name) return NULL;
+    if (!system || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_find_by_name: required parameter is NULL (system, name)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     schemas_heartbeat("schemas_schema_find_by_name", 0.0f);
@@ -924,6 +981,7 @@ schema_t* schema_find_by_name(schema_system_t system, const char* name) {
             return system->schemas[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_find_by_name: operation failed");
     return NULL;
 }
 
@@ -936,6 +994,7 @@ bool schema_get_by_type(
 {
     if (!system || !schemas || !count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_by_type: required parameter is NULL (system, schemas, count)");
         return false;
     }
 
@@ -967,6 +1026,7 @@ bool schema_define_slot(
 {
     if (!schema || !slot_name || strlen(slot_name) == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_define_slot: required parameter is NULL (schema, slot_name)");
         return false;
     }
 
@@ -976,12 +1036,14 @@ bool schema_define_slot(
 
     if (strlen(slot_name) >= SCHEMA_MAX_SLOT_NAME_LENGTH) {
         set_error("Slot name too long");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "schema_define_slot: capacity exceeded");
         return false;
     }
 
     // Check if slot already exists
     if (find_slot_index(schema, slot_name) >= 0) {
         set_error("Slot already exists: %s", slot_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "schema_define_slot: capacity exceeded");
         return false;
     }
 
@@ -993,6 +1055,7 @@ bool schema_define_slot(
         }
         if (new_capacity <= schema->num_slots) {
             set_error("Too many slots");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_define_slot: validation failed");
             return false;
         }
 
@@ -1000,6 +1063,7 @@ bool schema_define_slot(
             schema->slots, new_capacity * sizeof(schema_slot_t));
         if (!new_slots) {
             set_error("Failed to grow slots array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_define_slot: new_slots is NULL");
             return false;
         }
         schema->slots = new_slots;
@@ -1013,6 +1077,7 @@ bool schema_define_slot(
     slot->slot_name = str_dup(slot_name);
     if (!slot->slot_name) {
         set_error("Failed to duplicate slot name");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_define_slot: slot->slot_name is NULL");
         return false;
     }
 
@@ -1044,6 +1109,7 @@ bool schema_define_slot_constrained(
 {
     // First define the basic slot
     if (!schema_define_slot(schema, slot_name, is_required, default_sig)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_define_slot_constrained: schema_define_slot is NULL");
         return false;
     }
 
@@ -1084,6 +1150,7 @@ bool schema_define_slot_constrained(
 bool schema_remove_slot(schema_t* schema, const char* slot_name) {
     if (!schema || !slot_name) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_remove_slot: required parameter is NULL (schema, slot_name)");
         return false;
     }
 
@@ -1094,6 +1161,7 @@ bool schema_remove_slot(schema_t* schema, const char* slot_name) {
     int idx = find_slot_index(schema, slot_name);
     if (idx < 0) {
         set_error("Slot not found: %s", slot_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_remove_slot: validation failed");
         return false;
     }
 
@@ -1110,14 +1178,20 @@ bool schema_remove_slot(schema_t* schema, const char* slot_name) {
 }
 
 schema_slot_t* schema_get_slot(schema_t* schema, const char* slot_name) {
-    if (!schema || !slot_name) return NULL;
+    if (!schema || !slot_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_slot: required parameter is NULL (schema, slot_name)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     schemas_heartbeat("schemas_schema_get_slot", 0.0f);
 
 
     int idx = find_slot_index(schema, slot_name);
-    if (idx < 0) return NULL;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_slot: validation failed");
+        return NULL;
+    }
 
     return &schema->slots[idx];
 }
@@ -1165,6 +1239,7 @@ schema_instantiation_t* schema_instantiate(
 {
     if (!system || !schema) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_instantiate: required parameter is NULL (system, schema)");
         return NULL;
     }
 
@@ -1180,6 +1255,7 @@ schema_instantiation_t* schema_instantiate(
         }
         if (new_capacity <= system->num_active) {
             set_error("Too many active instantiations");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate: validation failed");
             return NULL;
         }
 
@@ -1187,6 +1263,7 @@ schema_instantiation_t* schema_instantiate(
             system->active, new_capacity * sizeof(schema_instantiation_t*));
         if (!new_active) {
             set_error("Failed to grow active array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate: new_active is NULL");
             return NULL;
         }
         system->active = new_active;
@@ -1198,6 +1275,7 @@ schema_instantiation_t* schema_instantiate(
         1, sizeof(schema_instantiation_t));
     if (!inst) {
         set_error("Failed to allocate instantiation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate: inst is NULL");
         return NULL;
     }
 
@@ -1213,6 +1291,7 @@ schema_instantiation_t* schema_instantiate(
         nimcp_free(inst->filled_slots);
         nimcp_free(inst->inferred_slots);
         nimcp_free(inst);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate: required parameter is NULL (inst->filled_slots, inst->inferred_slots)");
         return NULL;
     }
 
@@ -1293,6 +1372,7 @@ schema_instantiation_t* schema_instantiate_from_memory(
 {
     if (!system || !schema || !memory) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate_from_memory: required parameter is NULL (system, schema, memory)");
         return NULL;
     }
 
@@ -1304,6 +1384,7 @@ schema_instantiation_t* schema_instantiate_from_memory(
     const void* data = pr_memory_node_read(memory);
     if (!data) {
         set_error("Failed to read memory node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_instantiate_from_memory: data is NULL");
         return NULL;
     }
 
@@ -1312,6 +1393,7 @@ schema_instantiation_t* schema_instantiate_from_memory(
     const prime_signature_t* sig = pr_memory_node_get_signature(memory);
     if (!sig) {
         set_error("Memory has no signature");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_instantiate_from_memory: sig is NULL");
         return NULL;
     }
 
@@ -1402,6 +1484,7 @@ schema_instantiation_t* schema_get_instantiation(
             return system->active[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_instantiation: operation failed");
     return NULL;
 }
 
@@ -1413,11 +1496,13 @@ bool schema_instantiation_update_slot(
 {
     if (!instantiation || !slot_name || !filler) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_instantiation_update_slot: required parameter is NULL (instantiation, slot_name, filler)");
         return false;
     }
 
     if (!instantiation->schema) {
         set_error("Instantiation has no schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_instantiation_update_slot: instantiation->schema is NULL");
         return false;
     }
 
@@ -1429,6 +1514,7 @@ bool schema_instantiation_update_slot(
     int schema_idx = find_slot_index(instantiation->schema, slot_name);
     if (schema_idx < 0) {
         set_error("Slot not in schema: %s", slot_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_instantiation_update_slot: validation failed");
         return false;
     }
 
@@ -1453,6 +1539,7 @@ bool schema_instantiation_update_slot(
     if (!copy_slot(&instantiation->filled_slots[instantiation->num_filled],
                    &instantiation->schema->slots[schema_idx])) {
         set_error("Failed to copy slot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_instantiation_update_slot: operation failed");
         return false;
     }
 
@@ -1576,6 +1663,7 @@ bool schema_match(
 {
     if (!system || !result) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_match: required parameter is NULL (system, result)");
         return false;
     }
 
@@ -1631,6 +1719,7 @@ bool schema_match(
     }
 
     set_error("No schema matched above threshold");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_match: operation failed");
     return false;
 }
 
@@ -1645,6 +1734,7 @@ bool schema_match_top_k(
 {
     if (!system || !results || !result_count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_match_top_k: required parameter is NULL (system, results, result_count)");
         return false;
     }
 
@@ -1663,6 +1753,7 @@ bool schema_match_top_k(
     fit_entry_t* entries = (fit_entry_t*)nimcp_malloc(system->num_schemas * sizeof(fit_entry_t));
     if (!entries) {
         set_error("Failed to allocate fit array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_match_top_k: entries is NULL");
         return false;
     }
 
@@ -1793,11 +1884,13 @@ bool schema_infer_slot(
 {
     if (!system || !instantiation || !slot_name || !inferred_value || !confidence) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_infer_slot: required parameter is NULL (system, instantiation, slot_name, inferred_value, confidence)");
         return false;
     }
 
     if (!instantiation->schema) {
         set_error("Instantiation has no schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_infer_slot: instantiation->schema is NULL");
         return false;
     }
 
@@ -1809,6 +1902,7 @@ bool schema_infer_slot(
     schema_slot_t* slot = schema_get_slot(instantiation->schema, slot_name);
     if (!slot) {
         set_error("Slot not in schema: %s", slot_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_infer_slot: slot is NULL");
         return false;
     }
 
@@ -1824,6 +1918,7 @@ bool schema_infer_slot(
     // TODO: Use cooccurrence statistics for better inference
     // For now, cannot infer without default
     set_error("No default value for slot: %s", slot_name);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_infer_slot: operation failed");
     return false;
 }
 
@@ -1836,6 +1931,7 @@ bool schema_get_expectation(
 {
     if (!system || !instantiation || !expectations || !count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_expectation: required parameter is NULL (system, instantiation, expectations, count)");
         return false;
     }
 
@@ -1843,6 +1939,7 @@ bool schema_get_expectation(
 
     if (!instantiation->schema) {
         set_error("Instantiation has no schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_expectation: instantiation->schema is NULL");
         return false;
     }
 
@@ -1898,6 +1995,7 @@ bool schema_learn_from_instance(
 {
     if (!system || !instantiation) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_learn_from_instance: required parameter is NULL (system, instantiation)");
         return false;
     }
 
@@ -1908,6 +2006,7 @@ bool schema_learn_from_instance(
 
     if (!instantiation->schema) {
         set_error("Instantiation has no schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_learn_from_instance: instantiation->schema is NULL");
         return false;
     }
 
@@ -1953,12 +2052,14 @@ schema_t* schema_abstract(
 {
     if (!system || !instantiations || num_instances == 0 || !name) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_abstract: required parameter is NULL (system, instantiations, name)");
         return NULL;
     }
 
     // Find common schema type
     if (!instantiations[0] || !instantiations[0]->schema) {
         set_error("Invalid instantiation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_abstract: required parameter is NULL (instantiations, instantiations)");
         return NULL;
     }
 
@@ -2028,6 +2129,7 @@ schema_t* schema_abstract(
     if (!schema_add(system, abstract)) {
         free_schema_contents(abstract);
         nimcp_free(abstract);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_abstract: schema_add is NULL");
         return NULL;
     }
 
@@ -2043,6 +2145,7 @@ schema_t* schema_specialize(
 {
     if (!system || !parent_schema || !name) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_specialize: required parameter is NULL (system, parent_schema, name)");
         return NULL;
     }
 
@@ -2110,6 +2213,7 @@ schema_t* schema_specialize(
     if (!schema_add(system, child)) {
         free_schema_contents(child);
         nimcp_free(child);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_specialize: schema_add is NULL");
         return NULL;
     }
 
@@ -2124,6 +2228,7 @@ schema_t* schema_merge(
 {
     if (!system || !schema1 || !schema2 || !name) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_merge: required parameter is NULL (system, schema1, schema2, name)");
         return NULL;
     }
 
@@ -2136,6 +2241,7 @@ schema_t* schema_merge(
     if (sim < system->config.abstraction_threshold) {
         set_error("Schemas not similar enough to merge (%.2f < %.2f)",
                   sim, system->config.abstraction_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_merge: validation failed");
         return NULL;
     }
 
@@ -2183,6 +2289,7 @@ schema_t* schema_merge(
     if (!schema_add(system, merged)) {
         free_schema_contents(merged);
         nimcp_free(merged);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_merge: schema_add is NULL");
         return NULL;
     }
 
@@ -2202,6 +2309,7 @@ bool schema_detect_violation(
 {
     if (!system || !instantiation || !slot_name || !value || !violation) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_detect_violation: required parameter is NULL (system, instantiation, slot_name, value, violation)");
         return false;
     }
 
@@ -2213,12 +2321,14 @@ bool schema_detect_violation(
 
     if (!instantiation->schema) {
         set_error("Instantiation has no schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_detect_violation: instantiation->schema is NULL");
         return false;
     }
 
     schema_slot_t* slot = schema_get_slot(instantiation->schema, slot_name);
     if (!slot) {
         set_error("Slot not in schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_detect_violation: slot is NULL");
         return false;
     }
 
@@ -2270,6 +2380,7 @@ bool schema_detect_violation(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_detect_violation: operation failed");
     return false;
 }
 
@@ -2282,6 +2393,7 @@ bool schema_get_violations(
 {
     if (!system || !instantiation || !violations || !count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_violations: required parameter is NULL (system, instantiation, violations, count)");
         return false;
     }
 
@@ -2317,11 +2429,13 @@ bool schema_set_parent(
 {
     if (!system || !child || !parent) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_set_parent: required parameter is NULL (system, child, parent)");
         return false;
     }
 
     if (!system->config.enable_hierarchy) {
         set_error("Hierarchy disabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_set_parent: system->config is NULL");
         return false;
     }
 
@@ -2365,6 +2479,7 @@ bool schema_set_parent(
                 parent_mut->child_schemas, new_cap * sizeof(uint64_t));
             if (!new_children) {
                 set_error("Failed to grow children array");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "schema_set_parent: new_children is NULL");
                 return false;
             }
             parent_mut->child_schemas = new_children;
@@ -2380,8 +2495,14 @@ bool schema_set_parent(
 }
 
 schema_t* schema_get_parent(schema_system_t system, const schema_t* schema) {
-    if (!system || !schema) return NULL;
-    if (schema->parent_schema_id == SCHEMA_INVALID_ID) return NULL;
+    if (!system || !schema) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_parent: required parameter is NULL (system, schema)");
+        return NULL;
+    }
+    if (schema->parent_schema_id == SCHEMA_INVALID_ID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_parent: validation failed");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     schemas_heartbeat("schemas_schema_get_parent", 0.0f);
@@ -2399,6 +2520,7 @@ bool schema_get_children(
 {
     if (!system || !schema || !children || !count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_children: required parameter is NULL (system, schema, children, count)");
         return false;
     }
 
@@ -2429,6 +2551,7 @@ bool schema_get_ancestors(
 {
     if (!system || !schema || !ancestors || !count) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_ancestors: required parameter is NULL (system, schema, ancestors, count)");
         return false;
     }
 
@@ -2456,6 +2579,7 @@ bool schema_get_ancestors(
 bool schema_get_stats(schema_system_t system, schema_stats_t* stats) {
     if (!system || !stats) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 
@@ -2636,10 +2760,14 @@ void schema_instantiation_print(const schema_instantiation_t* instantiation) {
 }
 
 bool schema_validate(const schema_t* schema) {
-    if (!schema) return false;
+    if (!schema) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_validate: schema is NULL");
+        return false;
+    }
 
     // Check name
     if (!schema->schema_name || strlen(schema->schema_name) == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_validate: schema->schema_name is NULL");
         return false;
     }
 
@@ -2649,29 +2777,35 @@ bool schema_validate(const schema_t* schema) {
 
 
     if (schema->type < 0 || schema->type >= SCHEMA_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "schema_validate: capacity exceeded");
         return false;
     }
 
     // Check slots array consistency
     if (schema->num_slots > schema->slots_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 
     if (schema->num_slots > 0 && !schema->slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_validate: schema->slots is NULL");
         return false;
     }
 
     // Check children array consistency
     if (schema->num_children > schema->children_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 
     if (schema->num_children > 0 && !schema->child_schemas) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema_validate: schema->child_schemas is NULL");
         return false;
     }
 
     // Check abstraction level range
     if (schema->abstraction_level < 0.0f || schema->abstraction_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "schema_validate: validation failed");
         return false;
     }
 

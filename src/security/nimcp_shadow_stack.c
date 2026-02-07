@@ -181,8 +181,10 @@ static bool handle_mismatch(
     void* expected,
     void* actual)
 {
-    if (!ss)
+    if (!ss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_mismatch: ss is NULL");
         return false;
+    }
 
     ss->stats.mismatches++;
 
@@ -217,9 +219,11 @@ static bool handle_mismatch(
         case NIMCP_SS_MODE_ENFORCE:
             // In production, this would abort()
             // For testing, return false
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_mismatch: operation failed");
             return false;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_mismatch: operation failed");
             return false;
     }
 }
@@ -594,18 +598,22 @@ nimcp_result_t nimcp_shadow_stack_clear(nimcp_shadow_stack_t* ss)
 
 bool nimcp_shadow_stack_verify(nimcp_shadow_stack_t* ss)
 {
-    if (!ss)
+    if (!ss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_shadow_stack_verify: ss is NULL");
         return false;
+    }
 
     // Check guards
     if (ss->top_guard != NIMCP_SHADOW_STACK_GUARD ||
         ss->bottom_guard != NIMCP_SHADOW_STACK_GUARD) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_shadow_stack_verify: ss is NULL");
         return false;
     }
 
     // Check all canaries
     for (uint32_t i = 0; i < ss->top; i++) {
         if (ss->entries[i].canary == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_shadow_stack_verify: .canary is zero");
             return false;
         }
     }

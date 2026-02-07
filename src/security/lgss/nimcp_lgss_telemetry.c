@@ -204,12 +204,14 @@ lgss_telemetry_t* lgss_telemetry_create(const lgss_telemetry_config_t* config)
 
     if (!config->enabled) {
         TELEM_LOG_INFO("Telemetry disabled by configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_telemetry_create: config->enabled is NULL");
         return NULL;
     }
 
     telem = nimcp_calloc(1, sizeof(lgss_telemetry_t));
     if (!telem) {
         TELEM_LOG_ERROR("Failed to allocate telemetry context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_telemetry_create: telem is NULL");
         return NULL;
     }
 
@@ -223,6 +225,7 @@ lgss_telemetry_t* lgss_telemetry_create(const lgss_telemetry_config_t* config)
         if (!telem->buffer.entries) {
             TELEM_LOG_ERROR("Failed to allocate log buffer");
             nimcp_free(telem);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_telemetry_create: telem->buffer is NULL");
             return NULL;
         }
         telem->buffer.capacity = config->memory_buffer_size;
@@ -743,6 +746,7 @@ int lgss_telemetry_find_chain_break(
     lgss_telemetry_entry_t* entry)
 {
     if (!telemetry || telemetry->magic != NIMCP_LGSS_TELEMETRY_MAGIC || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_telemetry_find_chain_break: required parameter is NULL (telemetry, entry)");
         return -1;
     }
 

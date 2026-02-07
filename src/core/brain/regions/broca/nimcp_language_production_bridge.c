@@ -366,6 +366,7 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
     bridge->token_buffer = nimcp_calloc(bridge->config.max_tokens, sizeof(lpb_token_t));
     if (!bridge->token_buffer) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_default_config: bridge->token_buffer is NULL");
         return NULL;
     }
 
@@ -375,6 +376,7 @@ language_production_bridge_t* lpb_create(const lpb_config_t* config,
     if (!bridge->phoneme_buffer) {
         nimcp_free(bridge->token_buffer);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_default_config: bridge->phoneme_buffer is NULL");
         return NULL;
     }
 
@@ -444,7 +446,10 @@ void lpb_destroy(language_production_bridge_t* bridge) {
 }
 
 bool lpb_reset(language_production_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_reset: bridge is NULL");
+        return false;
+    }
 
     lpb_clear_context(bridge);
 
@@ -473,7 +478,10 @@ bool lpb_reset(language_production_bridge_t* bridge) {
 
 bool lpb_connect_speech_cortex(language_production_bridge_t* bridge,
                                 speech_cortex_t* speech_cortex) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_reset: bridge is NULL");
+        return false;
+    }
 
     if (!bridge->config.enable_wernicke_connection) {
         return lpb_set_error(bridge, LPB_ERROR_NO_SPEECH_CORTEX);
@@ -485,7 +493,10 @@ bool lpb_connect_speech_cortex(language_production_bridge_t* bridge,
 
 bool lpb_connect_nlp(language_production_bridge_t* bridge,
                      nlp_network_t* nlp) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_reset: bridge is NULL");
+        return false;
+    }
 
     if (!bridge->config.enable_nlp_connection) {
         return lpb_set_error(bridge, LPB_ERROR_NO_NLP);
@@ -497,9 +508,13 @@ bool lpb_connect_nlp(language_production_bridge_t* bridge,
 
 bool lpb_connect_working_memory(language_production_bridge_t* bridge,
                                  working_memory_t* wm) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_reset: bridge is NULL");
+        return false;
+    }
 
     if (!bridge->config.enable_working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lpb_reset: bridge->config is NULL");
         return false;
     }
 
@@ -891,14 +906,20 @@ bool lpb_prime_lexical_access(language_production_bridge_t* bridge,
  *===========================================================================*/
 
 bool lpb_set_self_monitoring(language_production_bridge_t* bridge, bool enable) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_set_self_monitoring: bridge is NULL");
+        return false;
+    }
 
     bridge->config.enable_self_monitoring = enable;
     return true;
 }
 
 bool lpb_check_production(language_production_bridge_t* bridge, float* match_score) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_check_production: bridge is NULL");
+        return false;
+    }
 
     if (!bridge->config.enable_self_monitoring) {
         if (match_score) *match_score = 1.0F;
@@ -914,6 +935,7 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
 
     if (!bridge->current_intent.semantic_vector || bridge->token_count == 0) {
         if (match_score) *match_score = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lpb_check_production: validation failed");
         return false;
     }
 
@@ -949,7 +971,10 @@ bool lpb_check_production(language_production_bridge_t* bridge, float* match_sco
 bool lpb_set_motor_callback(language_production_bridge_t* bridge,
                              lpb_motor_output_callback_t callback,
                              void* user_data) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_check_production: bridge is NULL");
+        return false;
+    }
 
     bridge->motor_callback = callback;
     bridge->motor_callback_data = user_data;
@@ -959,7 +984,10 @@ bool lpb_set_motor_callback(language_production_bridge_t* bridge,
 bool lpb_set_event_callback(language_production_bridge_t* bridge,
                              lpb_event_callback_t callback,
                              void* user_data) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_check_production: bridge is NULL");
+        return false;
+    }
 
     bridge->event_callback = callback;
     bridge->event_callback_data = user_data;
@@ -1011,14 +1039,20 @@ const char* lpb_status_string(lpb_status_t status) {
 }
 
 bool lpb_get_stats(const language_production_bridge_t* bridge, lpb_stats_t* stats) {
-    if (!bridge || !stats) return false;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_stats: required parameter is NULL (bridge, stats)");
+        return false;
+    }
 
     *stats = bridge->stats;
     return true;
 }
 
 bool lpb_get_config(const language_production_bridge_t* bridge, lpb_config_t* config) {
-    if (!bridge || !config) return false;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_config: required parameter is NULL (bridge, config)");
+        return false;
+    }
 
     *config = bridge->config;
     return true;
@@ -1045,6 +1079,7 @@ bool language_production_set_pe_config(
     const lpb_pe_config_t* pe_config) {
     /* Guard clause: validate inputs */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_config: bridge is NULL");
         return false;
     }
 
@@ -1054,6 +1089,7 @@ bool language_production_set_pe_config(
 
     if (!bridge->config.enable_positional_encoding) {
         LOG_MODULE_WARN(LOG_MODULE, "%s", "Positional encoding not enabled in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_config: bridge->config is NULL");
         return false;
     }
 
@@ -1170,6 +1206,7 @@ bool language_production_encode_motor_sequence(
     float* output) {
     /* Guard clause: validate inputs */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lpb_get_config: bridge is NULL");
         return false;
     }
 
@@ -1241,6 +1278,7 @@ bool language_production_encode_gesture(
     float* key_out) {
     /* Guard clause: validate inputs */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
@@ -1329,16 +1367,19 @@ bool lpb_trigger_receptor(language_production_bridge_t* bridge,
                           uint64_t timestamp_ms) {
     /* Guard clause: validate inputs */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
     if (!bridge->second_messengers || !bridge->config.enable_second_messengers) {
         LOG_MODULE_WARN(LOG_MODULE, "%s", "Second messenger system not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge->second_messengers, bridge->config)");
         return false;
     }
 
     if (occupancy < 0.0F || occupancy > 1.0F) {
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid receptor occupancy: %.3f (must be [0,1])", (double)occupancy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1386,12 +1427,14 @@ bool lpb_trigger_receptor(language_production_bridge_t* bridge,
         }
     } else {
         LOG_MODULE_ERROR(LOG_MODULE, "Unknown receptor type: %u", receptor_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
     if (result != NIMCP_SUCCESS) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to activate receptor cascade: type=%u, neuron=%u",
                        receptor_type, neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1420,11 +1463,13 @@ bool lpb_get_second_messenger_state(const language_production_bridge_t* bridge,
                                     float* camkii_activity) {
     /* Guard clause: validate inputs */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
     if (!pka_activity || !pkc_activity || !camkii_activity) {
         LOG_MODULE_ERROR(LOG_MODULE, "%s", "NULL output pointers provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (pka_activity, pkc_activity, camkii_activity)");
         return false;
     }
 
@@ -1446,6 +1491,7 @@ bool lpb_get_second_messenger_state(const language_production_bridge_t* bridge,
 
     if (result != NIMCP_SUCCESS) {
         LOG_MODULE_WARN(LOG_MODULE, "Failed to query second messenger state for neuron %u", neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 

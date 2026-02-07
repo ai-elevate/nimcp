@@ -217,6 +217,7 @@ int auto_arch_default_config(auto_arch_config_t* config)
     /* Guard clause: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_default_config: config is NULL");
         return -1;
     }
 
@@ -334,7 +335,10 @@ int auto_arch_default_config(auto_arch_config_t* config)
 int auto_arch_fast_config(auto_arch_config_t* config)
 {
     /* Guard clause */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_fast_config: config is NULL");
+        return -1;
+    }
 
     /* Start with defaults */
     auto_arch_default_config(config);
@@ -360,7 +364,10 @@ int auto_arch_fast_config(auto_arch_config_t* config)
 int auto_arch_thorough_config(auto_arch_config_t* config)
 {
     /* Guard clause */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_thorough_config: config is NULL");
+        return -1;
+    }
 
     /* Start with defaults */
     auto_arch_default_config(config);
@@ -386,7 +393,10 @@ int auto_arch_thorough_config(auto_arch_config_t* config)
 int auto_arch_validate_config(const auto_arch_config_t* config)
 {
     /* Guard clause */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_validate_config: config is NULL");
+        return -1;
+    }
 
     /* Search parameters */
     if (config->max_evaluations == 0) {
@@ -447,12 +457,14 @@ auto_arch_context_t* auto_arch_create(const auto_arch_config_t* config)
     /* Guard clause: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_create: config is NULL");
         return NULL;
     }
 
     /* Validate configuration */
     if (auto_arch_validate_config(config) != 0) {
         NIMCP_LOGGING_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_create: validation failed");
         return NULL;
     }
 
@@ -460,6 +472,7 @@ auto_arch_context_t* auto_arch_create(const auto_arch_config_t* config)
     auto_arch_context_t* ctx = (auto_arch_context_t*)nimcp_malloc(sizeof(auto_arch_context_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_create: ctx is NULL");
         return NULL;
     }
 
@@ -520,6 +533,7 @@ auto_arch_context_t* auto_arch_create(const auto_arch_config_t* config)
     if (result != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize method-specific context");
         auto_arch_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_create: validation failed");
         return NULL;
     }
 
@@ -579,8 +593,14 @@ void auto_arch_destroy(auto_arch_context_t* ctx)
 int auto_arch_set_task(auto_arch_context_t* ctx, const auto_arch_task_t* task)
 {
     /* Guard clauses */
-    if (!ctx) return -1;
-    if (!task) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_set_task: ctx is NULL");
+        return -1;
+    }
+    if (!task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_set_task: task is NULL");
+        return -1;
+    }
 
     /* Copy task specification */
     memcpy(&ctx->task, task, sizeof(auto_arch_task_t));
@@ -781,7 +801,10 @@ auto_arch_result_t* auto_arch_resume(
     const nimcp_tensor_t* val_labels)
 {
     /* Guard clauses */
-    if (!ctx || !checkpoint_path) return NULL;
+    if (!ctx || !checkpoint_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_resume: required parameter is NULL (ctx, checkpoint_path)");
+        return NULL;
+    }
 
     /* TODO: Implement checkpoint loading */
     NIMCP_LOGGING_ERROR("Checkpoint resume not yet implemented");
@@ -803,8 +826,14 @@ int auto_arch_evaluate(
     auto_arch_fitness_t* fitness)
 {
     /* Guard clauses */
-    if (!ctx || !arch || !fitness) return -1;
-    if (!train_data || !train_labels) return -1;
+    if (!ctx || !arch || !fitness) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_evaluate: required parameter is NULL (ctx, arch, fitness)");
+        return -1;
+    }
+    if (!train_data || !train_labels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_evaluate: required parameter is NULL (train_data, train_labels)");
+        return -1;
+    }
 
     /* TODO: Implement actual architecture evaluation
      * This is a stub that returns placeholder fitness */
@@ -875,6 +904,7 @@ auto_arch_architecture_t* auto_arch_random_architecture(auto_arch_context_t* ctx
         arch->n_layers, sizeof(auto_arch_layer_spec_t));
     if (!arch->layers) {
         nimcp_free(arch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_random_architecture: arch->layers is NULL");
         return NULL;
     }
 
@@ -983,7 +1013,10 @@ auto_arch_architecture_t* auto_arch_random_architecture(auto_arch_context_t* ctx
 
 int auto_arch_mutate(auto_arch_architecture_t* arch, float mutation_rate, auto_arch_context_t* ctx)
 {
-    if (!arch || !ctx) return -1;
+    if (!arch || !ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_mutate: required parameter is NULL (arch, ctx)");
+        return -1;
+    }
     /* TODO: Implement mutation */
     return 0;
 }
@@ -993,9 +1026,18 @@ auto_arch_architecture_t* auto_arch_crossover(
     const auto_arch_architecture_t* parent2,
     auto_arch_context_t* ctx)
 {
-    if (!parent1 || !parent2 || !ctx) return NULL;
-    if (!parent1->layers || !parent2->layers) return NULL;
-    if (parent1->n_layers == 0 || parent2->n_layers == 0) return NULL;
+    if (!parent1 || !parent2 || !ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_crossover: required parameter is NULL (parent1, parent2, ctx)");
+        return NULL;
+    }
+    if (!parent1->layers || !parent2->layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_crossover: required parameter is NULL (parent1->layers, parent2->layers)");
+        return NULL;
+    }
+    if (parent1->n_layers == 0 || parent2->n_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "auto_arch_crossover: parent1->n_layers is zero");
+        return NULL;
+    }
 
     /* Allocate child architecture */
     auto_arch_architecture_t* child = (auto_arch_architecture_t*)nimcp_calloc(
@@ -1036,6 +1078,7 @@ auto_arch_architecture_t* auto_arch_crossover(
         child->n_layers, sizeof(auto_arch_layer_spec_t));
     if (!child->layers) {
         nimcp_free(child);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_crossover: child->layers is NULL");
         return NULL;
     }
 
@@ -1152,6 +1195,7 @@ auto_arch_architecture_t* auto_arch_clone(const auto_arch_architecture_t* arch)
             arch->n_layers, sizeof(auto_arch_layer_spec_t));
         if (!clone->layers) {
             nimcp_free(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_clone: clone->layers is NULL");
             return NULL;
         }
 
@@ -1187,7 +1231,10 @@ int auto_arch_validate_architecture(
     const auto_arch_architecture_t* arch,
     const auto_arch_constraints_t* constraints)
 {
-    if (!arch || !constraints) return -1;
+    if (!arch || !constraints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_validate_architecture: required parameter is NULL (arch, constraints)");
+        return -1;
+    }
     /* TODO: Implement validation */
     return 0;
 }
@@ -1206,6 +1253,7 @@ snn_config_t* auto_arch_export_snn(const auto_arch_architecture_t* arch)
 
     }
     /* TODO: Implement SNN export */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_snn: arch is NULL");
     return NULL;
 }
 
@@ -1219,6 +1267,7 @@ lnn_config_t* auto_arch_export_lnn(const auto_arch_architecture_t* arch)
 
     }
     /* TODO: Implement LNN export */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_export_lnn: arch is NULL");
     return NULL;
 }
 
@@ -1232,6 +1281,7 @@ auto_arch_architecture_t* auto_arch_import_snn(const snn_config_t* snn_config)
 
     }
     /* TODO: Implement SNN import */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_snn: snn_config is NULL");
     return NULL;
 }
 
@@ -1245,15 +1295,22 @@ auto_arch_architecture_t* auto_arch_import_lnn(const lnn_config_t* lnn_config)
 
     }
     /* TODO: Implement LNN import */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_import_lnn: lnn_config is NULL");
     return NULL;
 }
 
 int auto_arch_save_json(const auto_arch_architecture_t* arch, const char* filepath)
 {
-    if (!arch || !filepath) return -1;
+    if (!arch || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_save_json: required parameter is NULL (arch, filepath)");
+        return -1;
+    }
 
     FILE* fp = fopen(filepath, "w");
-    if (!fp) return -1;
+    if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_save_json: fp is NULL");
+        return -1;
+    }
 
     /* Write header */
     fprintf(fp, "{\n");
@@ -1369,6 +1426,7 @@ auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
         1, sizeof(auto_arch_architecture_t));
     if (!arch) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_load_json: arch is NULL");
         return NULL;
     }
 
@@ -1381,6 +1439,7 @@ auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
     if (c != '{') {
         nimcp_free(arch);
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_load_json: validation failed");
         return NULL;
     }
 
@@ -1418,6 +1477,7 @@ auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
                 if (!arch->layers) {
                     nimcp_free(arch);
                     fclose(fp);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_load_json: arch->layers is NULL");
                     return NULL;
                 }
             }
@@ -1488,7 +1548,10 @@ auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
 
 int auto_arch_get_stats(const auto_arch_context_t* ctx, auto_arch_stats_t* stats)
 {
-    if (!ctx || !stats) return -1;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_get_stats: required parameter is NULL (ctx, stats)");
+        return -1;
+    }
     memcpy(stats, &ctx->stats, sizeof(auto_arch_stats_t));
     return 0;
 }
@@ -1555,10 +1618,16 @@ void auto_arch_result_destroy(auto_arch_result_t* result)
 
 int auto_arch_result_save(const auto_arch_result_t* result, const char* filepath)
 {
-    if (!result || !filepath) return -1;
+    if (!result || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_result_save: required parameter is NULL (result, filepath)");
+        return -1;
+    }
 
     FILE* fp = fopen(filepath, "w");
-    if (!fp) return -1;
+    if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_result_save: fp is NULL");
+        return -1;
+    }
 
     fprintf(fp, "{\n");
     fprintf(fp, "  \"status\": %d,\n", (int)result->status);
@@ -1648,6 +1717,7 @@ auto_arch_result_t* auto_arch_result_load(const char* filepath)
         1, sizeof(auto_arch_result_t));
     if (!result) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "auto_arch_result_load: result is NULL");
         return NULL;
     }
 
@@ -1660,6 +1730,7 @@ auto_arch_result_t* auto_arch_result_load(const char* filepath)
     if (c != '{') {
         nimcp_free(result);
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "auto_arch_result_load: validation failed");
         return NULL;
     }
 
@@ -1891,15 +1962,24 @@ void auto_arch_result_print(const auto_arch_result_t* result)
  */
 static int init_evolutionary_context(auto_arch_context_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_evolutionary_context: ctx is NULL");
+        return -1;
+    }
 
     const uint32_t pop_size = ctx->config.population_size;
-    if (pop_size == 0) return -1;
+    if (pop_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_evolutionary_context: pop_size is zero");
+        return -1;
+    }
 
     /* Allocate population array */
     ctx->method_ctx.evolutionary.population = (population_member_t*)nimcp_calloc(
         pop_size, sizeof(population_member_t));
-    if (!ctx->method_ctx.evolutionary.population) return -1;
+    if (!ctx->method_ctx.evolutionary.population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_evolutionary_context: ctx->method_ctx is NULL");
+        return -1;
+    }
 
     ctx->method_ctx.evolutionary.generation = 0;
 
@@ -1913,6 +1993,7 @@ static int init_evolutionary_context(auto_arch_context_t* ctx)
             }
             nimcp_free(ctx->method_ctx.evolutionary.population);
             ctx->method_ctx.evolutionary.population = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_evolutionary_context: ctx->method_ctx is NULL");
             return -1;
         }
         ctx->method_ctx.evolutionary.population[i].generation = 0;
@@ -1933,11 +2014,17 @@ static int init_evolutionary_context(auto_arch_context_t* ctx)
  */
 static int init_rl_nas_context(auto_arch_context_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_rl_nas_context: ctx is NULL");
+        return -1;
+    }
 
     /* Initialize RL controller */
     rl_controller_t* controller = (rl_controller_t*)nimcp_calloc(1, sizeof(rl_controller_t));
-    if (!controller) return -1;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_rl_nas_context: controller is NULL");
+        return -1;
+    }
 
     controller->hidden_size = 64;
     controller->learning_rate = 0.001f;
@@ -1949,6 +2036,7 @@ static int init_rl_nas_context(auto_arch_context_t* ctx)
     controller->weights = nimcp_tensor_create(weight_dims, 2, NIMCP_DTYPE_F32);
     if (!controller->weights) {
         nimcp_free(controller);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_rl_nas_context: controller->weights is NULL");
         return -1;
     }
 
@@ -1957,6 +2045,7 @@ static int init_rl_nas_context(auto_arch_context_t* ctx)
     if (!controller->gradients) {
         nimcp_tensor_destroy(controller->weights);
         nimcp_free(controller);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_rl_nas_context: controller->gradients is NULL");
         return -1;
     }
 
@@ -1982,13 +2071,19 @@ static int init_rl_nas_context(auto_arch_context_t* ctx)
  */
 static int init_darts_context(auto_arch_context_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_darts_context: ctx is NULL");
+        return -1;
+    }
 
     const uint32_t n_layers = ctx->config.constraints.max_layers;
     const uint32_t n_ops = 8; /* conv3x3, conv5x5, sep3x3, sep5x5, dil3x3, pool, skip, none */
 
     darts_context_t* darts = (darts_context_t*)nimcp_calloc(1, sizeof(darts_context_t));
-    if (!darts) return -1;
+    if (!darts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_darts_context: darts is NULL");
+        return -1;
+    }
 
     darts->n_layers = n_layers;
 
@@ -1996,6 +2091,7 @@ static int init_darts_context(auto_arch_context_t* ctx)
     darts->alpha = (nimcp_tensor_t**)nimcp_calloc(n_layers, sizeof(nimcp_tensor_t*));
     if (!darts->alpha) {
         nimcp_free(darts);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_darts_context: darts->alpha is NULL");
         return -1;
     }
 
@@ -2009,6 +2105,7 @@ static int init_darts_context(auto_arch_context_t* ctx)
             }
             nimcp_free(darts->alpha);
             nimcp_free(darts);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_darts_context: darts->alpha is NULL");
             return -1;
         }
 
@@ -2035,11 +2132,17 @@ static int init_darts_context(auto_arch_context_t* ctx)
  */
 static int init_pruning_context(auto_arch_context_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_pruning_context: ctx is NULL");
+        return -1;
+    }
 
     /* Create dense initial architecture at maximum size */
     auto_arch_architecture_t* dense_arch = auto_arch_random_architecture(ctx);
-    if (!dense_arch) return -1;
+    if (!dense_arch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_pruning_context: dense_arch is NULL");
+        return -1;
+    }
 
     /* Set all layers to maximum neurons (will prune later) */
     for (uint32_t i = 0; i < dense_arch->n_layers; i++) {
@@ -2369,7 +2472,10 @@ static int update_pareto_frontier(auto_arch_context_t* ctx,
                                   auto_arch_architecture_t* arch,
                                   const auto_arch_fitness_t* fitness)
 {
-    if (!ctx || !arch || !fitness) return -1;
+    if (!ctx || !arch || !fitness) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_pareto_frontier: required parameter is NULL (ctx, arch, fitness)");
+        return -1;
+    }
 
     /* Check if new solution is dominated by any existing solution */
     for (uint32_t i = 0; i < ctx->n_pareto; i++) {
@@ -2431,7 +2537,10 @@ static int record_history(auto_arch_context_t* ctx,
                          auto_arch_architecture_t* arch,
                          const auto_arch_fitness_t* fitness)
 {
-    if (ctx->history_size >= ctx->history_capacity) return -1;
+    if (ctx->history_size >= ctx->history_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "record_history: capacity exceeded");
+        return -1;
+    }
 
     ctx->history[ctx->history_size] = auto_arch_clone(arch);
     ctx->history_fitness[ctx->history_size] = *fitness;

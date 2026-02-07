@@ -131,7 +131,10 @@ void nimcp_raphe_snn_destroy(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_reset(nimcp_raphe_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_reset: b is NULL");
+        return -1;
+    }
     memset(&b->state, 0, sizeof(b->state));
     b->state.state = RAPHE_SNN_STATE_IDLE;
     memset(b->input_spikes, 0, b->spike_buffer_size * sizeof(float));
@@ -141,19 +144,28 @@ int nimcp_raphe_snn_reset(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_connect_raphe(nimcp_raphe_snn_bridge_t* b, nimcp_raphe_adapter_t a) {
-    if (!b || !a) return -1;
+    if (!b || !a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_connect_raphe: required parameter is NULL (b, a)");
+        return -1;
+    }
     b->raphe_adapter = a;
     return 0;
 }
 
 int nimcp_raphe_snn_connect_snn(nimcp_raphe_snn_bridge_t* b, struct nimcp_snn_network* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_connect_snn: required parameter is NULL (b, s)");
+        return -1;
+    }
     b->snn = s;
     return 0;
 }
 
 int nimcp_raphe_snn_encode_ht_state(nimcp_raphe_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_encode_ht_state: b is NULL");
+        return -1;
+    }
     b->state.state = RAPHE_SNN_STATE_ENCODING;
     int spikes = 0;
     float ht = b->state.ht.serotonin_level;
@@ -169,7 +181,10 @@ int nimcp_raphe_snn_encode_ht_state(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_encode_mood(nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_mood_t m, float intensity) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_encode_mood: b is NULL");
+        return -1;
+    }
     b->state.ht.mood = m;
     b->state.ht.mood_valence = (m == RAPHE_SNN_MOOD_POSITIVE) ? intensity :
                                (m == RAPHE_SNN_MOOD_NEGATIVE) ? -intensity : 0.0f;
@@ -178,21 +193,30 @@ int nimcp_raphe_snn_encode_mood(nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_moo
 }
 
 int nimcp_raphe_snn_encode_impulse_control(nimcp_raphe_snn_bridge_t* b, float level) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_encode_impulse_control: b is NULL");
+        return -1;
+    }
     b->state.ht.impulse_control = clamp(level, 0.0f, 1.0f);
     b->current_modulation.inhibition_strength = level;
     return 0;
 }
 
 int nimcp_raphe_snn_encode_temporal_horizon(nimcp_raphe_snn_bridge_t* b, float h) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_encode_temporal_horizon: b is NULL");
+        return -1;
+    }
     b->state.ht.temporal_horizon = h;
     b->current_modulation.temporal_discount = 1.0f / (1.0f + h);
     return 0;
 }
 
 int nimcp_raphe_snn_simulate(nimcp_raphe_snn_bridge_t* b, float duration_ms) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_simulate: b is NULL");
+        return -1;
+    }
     b->state.state = RAPHE_SNN_STATE_SIMULATING;
     for (float t = 0; t < duration_ms; t += b->config.dt_ms) nimcp_raphe_snn_step(b);
     b->state.state = RAPHE_SNN_STATE_IDLE;
@@ -200,7 +224,10 @@ int nimcp_raphe_snn_simulate(nimcp_raphe_snn_bridge_t* b, float duration_ms) {
 }
 
 int nimcp_raphe_snn_step(nimcp_raphe_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_step: b is NULL");
+        return -1;
+    }
     b->stats.total_updates++;
     float total = 0.0f;
     for (uint32_t i = 0; i < b->spike_buffer_size; i++) total += b->input_spikes[i];
@@ -213,7 +240,10 @@ int nimcp_raphe_snn_step(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_get_modulation(nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_modulation_t* m) {
-    if (!b || !m) return -1;
+    if (!b || !m) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_get_modulation: required parameter is NULL (b, m)");
+        return -1;
+    }
     *m = b->current_modulation;
     return 0;
 }
@@ -231,13 +261,19 @@ float nimcp_raphe_snn_get_mood_bias(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_get_state(const nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_bridge_state_t* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_get_state: required parameter is NULL (b, s)");
+        return -1;
+    }
     *s = b->state;
     return 0;
 }
 
 int nimcp_raphe_snn_get_stats(const nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_stats_t* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_get_stats: required parameter is NULL (b, s)");
+        return -1;
+    }
     *s = b->stats;
     return 0;
 }
@@ -247,13 +283,19 @@ void nimcp_raphe_snn_reset_stats(nimcp_raphe_snn_bridge_t* b) {
 }
 
 int nimcp_raphe_snn_connect_bio_async(nimcp_raphe_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_connect_bio_async: b is NULL");
+        return -1;
+    }
     b->state.bio_async_connected = true;
     return 0;
 }
 
 int nimcp_raphe_snn_disconnect_bio_async(nimcp_raphe_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_disconnect_bio_async: b is NULL");
+        return -1;
+    }
     b->state.bio_async_connected = false;
     return 0;
 }
@@ -267,7 +309,10 @@ int nimcp_raphe_snn_set_mood(nimcp_raphe_snn_bridge_t* b, nimcp_raphe_snn_mood_t
 }
 
 int nimcp_raphe_snn_impulse_trigger(nimcp_raphe_snn_bridge_t* b, float u) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_snn_impulse_trigger: b is NULL");
+        return -1;
+    }
     if (b->state.ht.impulse_control < u) b->stats.impulse_inhibitions++;
     return 0;
 }

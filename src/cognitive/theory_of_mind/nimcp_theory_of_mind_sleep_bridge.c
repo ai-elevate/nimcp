@@ -137,7 +137,10 @@ static void tom_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 }
 
 int tom_sleep_default_config(tom_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_default_co", 0.0f);
 
@@ -233,7 +236,10 @@ void tom_sleep_bridge_destroy(tom_sleep_bridge_t bridge) {
 }
 
 int tom_sleep_update(tom_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_update", 0.0f);
@@ -285,7 +291,10 @@ int tom_sleep_update(tom_sleep_bridge_t bridge) {
 }
 
 int tom_sleep_get_effects(const tom_sleep_bridge_t bridge, tom_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_get_effect", 0.0f);
 
@@ -309,7 +318,10 @@ float tom_sleep_get_mentalizing_accuracy(const tom_sleep_bridge_t bridge) {
 }
 
 bool tom_sleep_is_offline(const tom_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     theory_of_mind_sleep_bridge_heartbeat("theory_of_mi_tom_sleep_is_offline", 0.0f);
 

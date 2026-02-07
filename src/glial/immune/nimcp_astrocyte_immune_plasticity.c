@@ -303,6 +303,7 @@ astro_plasticity_bridge_t* astro_plasticity_bridge_create(
 ) {
     if (!immune_system || !astrocyte_system) {
         NIMCP_LOGGING_ERROR("astro_plasticity_bridge_create: NULL required parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astro_plasticity_bridge_create: required parameter is NULL (immune_system, astrocyte_system)");
         return NULL;
     }
 
@@ -320,6 +321,7 @@ astro_plasticity_bridge_t* astro_plasticity_bridge_create(
     if (astro_immune_base_init(&bridge->base, ASTRO_IMMUNE_TYPE_PLASTICITY,
                                &plasticity_ops, immune_system) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_plasticity_bridge_create: operation failed");
         return NULL;
     }
 
@@ -376,7 +378,10 @@ int astro_plasticity_get_dysfunction(
 }
 
 bool astro_plasticity_is_impaired(const astro_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_plasticity_is_impaired: bridge is NULL");
+        return false;
+    }
     return bridge->d_serine_factor < 1.0f || bridge->glu_uptake_factor < 1.0f;
 }
 

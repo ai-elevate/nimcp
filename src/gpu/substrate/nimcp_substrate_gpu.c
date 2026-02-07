@@ -92,7 +92,10 @@ substrate_gpu_config_t substrate_gpu_default_config(void)
 
 static nimcp_gpu_tensor_t* create_tensor_1d(nimcp_gpu_context_t* ctx, uint32_t size)
 {
-    if (!ctx || size == 0) return NULL;
+    if (!ctx || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_tensor_1d: ctx is NULL");
+        return NULL;
+    }
 
     size_t dims[1] = {size};
     nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, 1, NIMCP_GPU_PRECISION_FP32);
@@ -104,7 +107,10 @@ static nimcp_gpu_tensor_t* create_tensor_1d(nimcp_gpu_context_t* ctx, uint32_t s
 
 static nimcp_gpu_tensor_t* create_tensor_2d(nimcp_gpu_context_t* ctx, uint32_t dim0, uint32_t dim1)
 {
-    if (!ctx || dim0 == 0 || dim1 == 0) return NULL;
+    if (!ctx || dim0 == 0 || dim1 == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_tensor_2d: ctx is NULL");
+        return NULL;
+    }
 
     size_t dims[2] = {dim0, dim1};
     nimcp_gpu_tensor_t* tensor = nimcp_gpu_tensor_create(ctx, dims, 2, NIMCP_GPU_PRECISION_FP32);
@@ -578,8 +584,14 @@ int substrate_gpu_axon_step(
     const nimcp_gpu_tensor_t* input_spikes,
     float dt)
 {
-    if (substrate_gpu_axon_propagate(ctx, input_spikes, dt) != 0) return -1;
-    if (substrate_gpu_axon_refractory(ctx, NULL, dt) != 0) return -1;
+    if (substrate_gpu_axon_propagate(ctx, input_spikes, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_axon_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_axon_refractory(ctx, NULL, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_axon_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -706,10 +718,22 @@ int substrate_gpu_dendrite_step(
     const nimcp_gpu_tensor_t* soma_spikes,
     float dt)
 {
-    if (substrate_gpu_dendrite_cable(ctx, inputs, dt) != 0) return -1;
-    if (substrate_gpu_dendrite_nmda(ctx) != 0) return -1;
-    if (substrate_gpu_dendrite_calcium(ctx, dt) != 0) return -1;
-    if (substrate_gpu_dendrite_bap(ctx, soma_spikes, dt) != 0) return -1;
+    if (substrate_gpu_dendrite_cable(ctx, inputs, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_dendrite_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_dendrite_nmda(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_dendrite_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_dendrite_calcium(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_dendrite_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_dendrite_bap(ctx, soma_spikes, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_dendrite_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -796,9 +820,18 @@ int substrate_gpu_myelin_plasticity(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_myelin_step(substrate_gpu_context_t* ctx, float dt)
 {
-    if (substrate_gpu_myelin_g_ratio(ctx) != 0) return -1;
-    if (substrate_gpu_myelin_velocity(ctx) != 0) return -1;
-    if (substrate_gpu_myelin_plasticity(ctx, dt) != 0) return -1;
+    if (substrate_gpu_myelin_g_ratio(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_myelin_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_myelin_velocity(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_myelin_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_myelin_plasticity(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_myelin_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -919,9 +952,18 @@ int substrate_gpu_neuromod_phasic_tonic(
 
 int substrate_gpu_neuromod_step(substrate_gpu_context_t* ctx, float dt)
 {
-    if (substrate_gpu_neuromod_decay(ctx, dt) != 0) return -1;
-    if (substrate_gpu_neuromod_phasic_tonic(ctx, NULL, dt) != 0) return -1;
-    if (substrate_gpu_neuromod_effect(ctx) != 0) return -1;
+    if (substrate_gpu_neuromod_decay(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_neuromod_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_neuromod_phasic_tonic(ctx, NULL, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_neuromod_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_neuromod_effect(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_neuromod_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -1040,10 +1082,22 @@ int substrate_gpu_opc_differentiation(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_glial_step(substrate_gpu_context_t* ctx, float dt)
 {
-    if (substrate_gpu_astrocyte_calcium(ctx, dt) != 0) return -1;
-    if (substrate_gpu_astrocyte_release(ctx) != 0) return -1;
-    if (substrate_gpu_microglia_activation(ctx, dt) != 0) return -1;
-    if (substrate_gpu_opc_differentiation(ctx, dt) != 0) return -1;
+    if (substrate_gpu_astrocyte_calcium(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_glial_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_astrocyte_release(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_glial_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_microglia_activation(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_glial_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_opc_differentiation(ctx, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_glial_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -1114,8 +1168,14 @@ int substrate_gpu_metabolic_step(
     const nimcp_gpu_tensor_t* neural_activity,
     float dt)
 {
-    if (substrate_gpu_metabolic_effects(ctx) != 0) return -1;
-    if (substrate_gpu_metabolic_update(ctx, neural_activity, dt) != 0) return -1;
+    if (substrate_gpu_metabolic_effects(ctx) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_metabolic_step: validation failed");
+        return -1;
+    }
+    if (substrate_gpu_metabolic_update(ctx, neural_activity, dt) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_metabolic_step: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -1140,27 +1200,45 @@ int substrate_gpu_full_step(
 
     // Process each subsystem in order
     if (ctx->axon.n_axons > 0) {
-        if (substrate_gpu_axon_step(ctx, input_spikes, dt) != 0) return -1;
+        if (substrate_gpu_axon_step(ctx, input_spikes, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     if (ctx->dendrite.n_dendrites > 0) {
-        if (substrate_gpu_dendrite_step(ctx, synaptic_inputs, NULL, dt) != 0) return -1;
+        if (substrate_gpu_dendrite_step(ctx, synaptic_inputs, NULL, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     if (ctx->myelin.n_axons > 0) {
-        if (substrate_gpu_myelin_step(ctx, dt) != 0) return -1;
+        if (substrate_gpu_myelin_step(ctx, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     if (ctx->neuromod.n_pools > 0) {
-        if (substrate_gpu_neuromod_step(ctx, dt) != 0) return -1;
+        if (substrate_gpu_neuromod_step(ctx, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     if (ctx->glial.n_astrocytes > 0 || ctx->glial.n_microglia > 0 || ctx->glial.n_opcs > 0) {
-        if (substrate_gpu_glial_step(ctx, dt) != 0) return -1;
+        if (substrate_gpu_glial_step(ctx, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     if (ctx->metabolic.n_regions > 0) {
-        if (substrate_gpu_metabolic_step(ctx, neural_activity, dt) != 0) return -1;
+        if (substrate_gpu_metabolic_step(ctx, neural_activity, dt) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_full_step: validation failed");
+            return -1;
+        }
     }
 
     return 0;

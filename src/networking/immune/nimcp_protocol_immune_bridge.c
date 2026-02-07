@@ -98,6 +98,7 @@ protocol_immune_bridge_t* protocol_immune_bridge_create(
 ) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("protocol_immune_bridge_create: immune_system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protocol_immune_bridge_create: immune_system is NULL");
         return NULL;
     }
 
@@ -163,6 +164,7 @@ void protocol_immune_bridge_destroy(protocol_immune_bridge_t* bridge) {
 
 int protocol_immune_apply_cytokine_effects(protocol_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -203,6 +205,7 @@ int protocol_immune_apply_cytokine_effects(protocol_immune_bridge_t* bridge) {
 
 int protocol_immune_apply_inflammation_effects(protocol_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -229,6 +232,7 @@ int protocol_immune_create_antibody_filter(
     uint32_t antibody_id
 ) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_create_antibody_filter: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -240,6 +244,7 @@ int protocol_immune_create_antibody_filter(
 
     if (bridge->protocol_modulation.filter_count >= bridge->protocol_modulation.filter_capacity) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_immune_create_antibody_filter: capacity exceeded");
         return -1;
     }
 
@@ -265,6 +270,7 @@ bool protocol_immune_message_filtered(
     uint32_t source_node
 ) {
     if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_message_filtered: required parameter is NULL (bridge, message)");
         return false;
     }
 
@@ -286,6 +292,7 @@ bool protocol_immune_message_filtered(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protocol_immune_message_filtered: operation failed");
     return false;
 }
 
@@ -298,6 +305,7 @@ int protocol_immune_update_error_metrics(
     const protocol_error_metrics_t* metrics
 ) {
     if (!bridge || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_update_error_metrics: required parameter is NULL (bridge, metrics)");
         return -1;
     }
 
@@ -312,6 +320,7 @@ int protocol_immune_update_error_metrics(
 
 int protocol_immune_trigger_error_inflammation(protocol_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_trigger_error_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -341,6 +350,7 @@ int protocol_immune_present_violation(
     uint32_t source_node
 ) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_present_violation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -382,6 +392,7 @@ int protocol_immune_present_violation(
 
 int protocol_immune_release_il10_from_recovery(protocol_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_release_il10_from_recovery: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -442,6 +453,7 @@ int protocol_immune_get_cytokine_effects(
     cytokine_protocol_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -457,6 +469,7 @@ int protocol_immune_get_inflammation_state(
     inflammation_protocol_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -469,6 +482,7 @@ int protocol_immune_get_inflammation_state(
 
 bool protocol_immune_has_high_error_rate(const protocol_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_has_high_error_rate: bridge is NULL");
         return false;
     }
     return bridge->protocol_modulation.errors.error_rate >= ERROR_RATE_LOCAL_THRESHOLD;
@@ -490,6 +504,7 @@ float protocol_immune_get_validation_strictness(const protocol_immune_bridge_t* 
 int protocol_immune_connect_bio_async(protocol_immune_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("protocol_immune_connect_bio_async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 

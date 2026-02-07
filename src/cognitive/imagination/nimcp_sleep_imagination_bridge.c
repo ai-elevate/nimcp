@@ -199,25 +199,32 @@ int sleep_imagination_validate_config(const sleep_imagination_config_t* config) 
 
 
     if (config->rem_vividness < 0.0f || config->rem_vividness > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->rem_creativity_boost < 0.0f || config->rem_creativity_boost > 5.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->nrem1_vividness < 0.0f || config->nrem1_vividness > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->lucid_control_threshold < 0.0f || config->lucid_control_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->consolidation_threshold < 0.0f || config->consolidation_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->nightmare_intensity_threshold < 0.0f ||
         config->nightmare_intensity_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -256,6 +263,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -265,6 +273,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
             NIMCP_LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -441,7 +450,10 @@ int sleep_imagination_disconnect_imagination(sleep_imagination_bridge_t* bridge)
 }
 
 bool sleep_imagination_is_connected(const sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
 
@@ -572,7 +584,10 @@ int sleep_imagination_compute_sleep_effects(sleep_imagination_bridge_t* bridge) 
 }
 
 int sleep_imagination_compute_imag_effects(sleep_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->imagination) return -1;
+    if (!bridge || !bridge->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_compute_imag_effects: required parameter is NULL (bridge, bridge->imagination)");
+        return -1;
+    }
 
     /* Default state */
     /* Phase 8: Heartbeat at operation start */
@@ -855,6 +870,7 @@ int sleep_imagination_interrupt_nightmare(sleep_imagination_bridge_t* bridge) {
 
     if (!bridge->imag_to_sleep.nightmare_detected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_interrupt_nightmare: bridge->imag_to_sleep is NULL");
         return -1;
     }
 
@@ -882,7 +898,10 @@ int sleep_imagination_get_sleep_effects(
     const sleep_imagination_bridge_t* bridge,
     sleep_to_imagination_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_get_sleep_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->sleep_to_imag;
     /* Phase 8: Heartbeat at operation start */
@@ -896,7 +915,10 @@ int sleep_imagination_get_imag_effects(
     const sleep_imagination_bridge_t* bridge,
     imagination_to_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_get_imag_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->imag_to_sleep;
     /* Phase 8: Heartbeat at operation start */
@@ -914,7 +936,10 @@ int sleep_imagination_get_stats(
     const sleep_imagination_bridge_t* bridge,
     sleep_imagination_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -954,7 +979,10 @@ uint32_t sleep_imagination_get_dream_count(const sleep_imagination_bridge_t* bri
 }
 
 bool sleep_imagination_is_rem(const sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_is_rem: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
 
@@ -1022,7 +1050,10 @@ int sleep_imagination_disconnect_bio_async(sleep_imagination_bridge_t* bridge) {
 bool sleep_imagination_is_bio_async_connected(
     const sleep_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_imagination_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     sleep_imagination_bridge_heartbeat("sleep_imagin_sleep_imagination_is", 0.0f);
 

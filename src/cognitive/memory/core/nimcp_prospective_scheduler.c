@@ -214,6 +214,7 @@ static void heap_sift_down(priority_heap_node_t* heap, size_t size, size_t index
  */
 static bool heap_insert(prospective_scheduler_t* scheduler, scheduled_intention_t* item) {
     if (scheduler->heap_size >= scheduler->heap_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heap_insert: capacity exceeded");
         return false;
     }
 
@@ -232,6 +233,7 @@ static bool heap_insert(prospective_scheduler_t* scheduler, scheduled_intention_
  */
 static scheduled_intention_t* heap_remove_at(prospective_scheduler_t* scheduler, size_t index) {
     if (index >= scheduler->heap_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heap_remove_at: capacity exceeded");
         return NULL;
     }
 
@@ -356,6 +358,7 @@ static scheduled_intention_t* find_scheduled_by_id(
             return scheduler->all_intentions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_scheduled_by_id: operation failed");
     return NULL;
 }
 
@@ -368,6 +371,7 @@ static scheduled_intention_t* find_scheduled_by_id(
  */
 static bool time_ordered_insert(prospective_scheduler_t* scheduler, scheduled_intention_t* item) {
     if (scheduler->num_time_ordered >= scheduler->time_ordered_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "time_ordered_insert: capacity exceeded");
         return false;
     }
 
@@ -449,6 +453,7 @@ static pr_conflict_group_t* find_conflict_group_for_intention(
             }
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict_group_for_intention: validation failed");
     return NULL;
 }
 
@@ -470,6 +475,7 @@ static pr_conflict_group_t* find_conflict_group_by_id(
             return &scheduler->conflict_groups[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict_group_by_id: validation failed");
     return NULL;
 }
 
@@ -514,6 +520,7 @@ prospective_scheduler_config_t prospective_scheduler_config_default(void) {
 
 bool prospective_scheduler_config_validate(const prospective_scheduler_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_config_validate: config is NULL");
         return false;
     }
 
@@ -523,6 +530,7 @@ bool prospective_scheduler_config_validate(const prospective_scheduler_config_t*
 
 
     if (config->max_intentions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_config_validate: config->max_intentions is zero");
         return false;
     }
 
@@ -531,17 +539,20 @@ bool prospective_scheduler_config_validate(const prospective_scheduler_config_t*
         config->reminder_moderate <= config->reminder_soon ||
         config->reminder_soon <= config->reminder_imminent ||
         config->reminder_imminent <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_config_validate: config->max_intentions is zero");
         return false;
     }
 
     // Check weights are non-negative
     if (config->urgency_weight < 0 || config->importance_weight < 0 ||
         config->recency_weight < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_config_validate: operation failed");
         return false;
     }
 
     // Check time constants
     if (config->urgency_tau <= 0 || config->recency_tau <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_config_validate: validation failed");
         return false;
     }
 
@@ -569,6 +580,7 @@ prospective_scheduler_t* prospective_scheduler_create(
 
     // Validate config
     if (!prospective_scheduler_config_validate(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_create: prospective_scheduler_config_validate is NULL");
         return NULL;
     }
 
@@ -591,6 +603,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         cfg.max_intentions, sizeof(priority_heap_node_t));
     if (!scheduler->heap) {
         nimcp_free(scheduler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_scheduler_create: scheduler->heap is NULL");
         return NULL;
     }
 
@@ -601,6 +614,7 @@ prospective_scheduler_t* prospective_scheduler_create(
     if (!scheduler->time_ordered) {
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_scheduler_create: scheduler->time_ordered is NULL");
         return NULL;
     }
 
@@ -611,6 +625,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         nimcp_free(scheduler->time_ordered);
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_create: scheduler->all_intentions is NULL");
         return NULL;
     }
 
@@ -622,6 +637,7 @@ prospective_scheduler_t* prospective_scheduler_create(
         nimcp_free(scheduler->time_ordered);
         nimcp_free(scheduler->heap);
         nimcp_free(scheduler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_create: scheduler->conflict_groups is NULL");
         return NULL;
     }
 
@@ -1140,6 +1156,7 @@ prospective_intention_t* prospective_scheduler_get_next(
     prospective_scheduler_t* scheduler
 ) {
     if (!scheduler || scheduler->heap_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_get_next: scheduler is NULL");
         return NULL;
     }
 
@@ -1192,6 +1209,7 @@ prospective_intention_t* prospective_scheduler_peek(
     const prospective_scheduler_t* scheduler
 ) {
     if (!scheduler || scheduler->heap_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_scheduler_peek: scheduler is NULL");
         return NULL;
     }
 
@@ -1203,6 +1221,7 @@ prospective_intention_t* prospective_scheduler_peek(
         return scheduler->heap[0].item->intention;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_peek: validation failed");
     return NULL;
 }
 
@@ -1212,6 +1231,7 @@ int prospective_scheduler_get_due(
     size_t max_count
 ) {
     if (!scheduler || !out_intentions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_get_due: required parameter is NULL (scheduler, out_intentions)");
         return -1;
     }
 
@@ -1243,6 +1263,7 @@ int prospective_scheduler_get_in_window(
     size_t max_count
 ) {
     if (!scheduler || !out_intentions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_get_in_window: required parameter is NULL (scheduler, out_intentions)");
         return -1;
     }
 
@@ -1683,6 +1704,7 @@ bool prospective_scheduler_has_conflict(
     uint64_t intention_id
 ) {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_conflict: scheduler is NULL");
         return false;
     }
 
@@ -1693,6 +1715,7 @@ bool prospective_scheduler_has_conflict(
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
     if (!scheduled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_conflict: scheduled is NULL");
         return false;
     }
 
@@ -1901,6 +1924,7 @@ int prospective_scheduler_get_timeline(
     size_t max_entries
 ) {
     if (!scheduler || !out_entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_get_timeline: required parameter is NULL (scheduler, out_entries)");
         return -1;
     }
 
@@ -2062,6 +2086,7 @@ pr_sched_error_t prospective_scheduler_estimate_load(
 
 bool prospective_scheduler_has_capacity(const prospective_scheduler_t* scheduler) {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_has_capacity: scheduler is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -2092,6 +2117,7 @@ int prospective_scheduler_notify_event(
     const prime_signature_t* event_signature
 ) {
     if (!scheduler || !event_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_scheduler_notify_event: required parameter is NULL (scheduler, event_type)");
         return -1;
     }
 

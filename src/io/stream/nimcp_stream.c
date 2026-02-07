@@ -250,6 +250,7 @@ static bool ring_buffer_enqueue(ring_buffer_t* rb, const float* features, uint32
             atomic_fetch_add(&rb->dropped, 1);
         } else {
             atomic_fetch_add(&rb->dropped, 1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_enqueue: validation failed");
             return false;  // Buffer full, drop new input
         }
     }
@@ -315,6 +316,7 @@ static bool ring_buffer_dequeue(ring_buffer_t* rb, float** features, uint32_t* n
      * HOW: Empty when tail == head
      */
     if (tail == head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ring_buffer_dequeue: validation failed");
         return false;  // Buffer empty
     }
 
@@ -434,6 +436,7 @@ static bool validate_stream_config(const stream_config_t* config)
 {
     if (!config) {
         stream_set_error("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_stream_config: config is NULL");
         return false;
     }
 
@@ -444,17 +447,20 @@ static bool validate_stream_config(const stream_config_t* config)
      */
     if (config->buffer_size == 0) {
         stream_set_error("Buffer size cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_stream_config: config->buffer_size is zero");
         return false;
     }
 
     // Mode-specific validation
     if (config->mode == STREAM_MODE_BACKGROUND && config->processing_interval_ms == 0) {
         stream_set_error("Background mode requires non-zero processing interval");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_stream_config: config->processing_interval_ms is zero");
         return false;
     }
 
     if (config->mode == STREAM_MODE_BATCHED && config->batch_size == 0) {
         stream_set_error("Batched mode requires non-zero batch size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_stream_config: config->batch_size is zero");
         return false;
     }
 
@@ -523,6 +529,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     }
 
     if (!validate_stream_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_stream: validate_stream_config is NULL");
         return NULL;  // Error already set
     }
 
@@ -556,6 +563,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
     if (!stream->input_queue) {
         stream_set_error("Failed to create input queue");
         nimcp_free(stream);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_stream: stream->input_queue is NULL");
         return NULL;
     }
 
@@ -595,6 +603,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
             nimcp_mutex_destroy(&stream->decision_lock);
             nimcp_mutex_destroy(&stream->control_lock);
             nimcp_free(stream);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_stream: operation failed");
             return NULL;
         }
 
@@ -627,6 +636,7 @@ brain_stream_t brain_create_stream(brain_t brain, const stream_config_t* config)
                 nimcp_mutex_destroy(&stream->decision_lock);
                 nimcp_mutex_destroy(&stream->control_lock);
                 nimcp_free(stream);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_stream: validation failed");
                 return NULL;
             }
         }
@@ -732,11 +742,13 @@ bool brain_stream_feed(brain_stream_t stream, const float* features, uint32_t nu
      */
     if (!stream) {
         stream_set_error("NULL stream");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_feed: stream is NULL");
         return false;
     }
 
     if (!features) {
         stream_set_error("NULL features");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_feed: features is NULL");
         return false;
     }
 
@@ -749,6 +761,7 @@ bool brain_stream_feed(brain_stream_t stream, const float* features, uint32_t nu
     if (num_features != expected_inputs) {
         stream_set_error("Feature size mismatch: got %u, expected %u",
                         num_features, expected_inputs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stream_feed: validation failed");
         return false;
     }
 
@@ -820,6 +833,7 @@ brain_decision_t* brain_stream_get_decision(brain_stream_t stream)
      *
      * @deprecated This function now always returns NULL. Use callbacks instead.
      */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_get_decision: operation failed");
     return NULL;
 }
 
@@ -839,6 +853,7 @@ float brain_stream_get_salience(brain_stream_t stream)
 bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats)
 {
     if (!stream || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_get_stats: required parameter is NULL (stream, stats)");
         return false;
     }
 
@@ -886,6 +901,7 @@ bool brain_stream_get_stats(brain_stream_t stream, stream_stats_t* stats)
 bool brain_stream_reset_stats(brain_stream_t stream)
 {
     if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_reset_stats: stream is NULL");
         return false;
     }
 
@@ -1077,6 +1093,7 @@ static void* stream_processing_thread(void* arg)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_processing_thread: processed_any is NULL");
     return NULL;
 }
 
@@ -1086,8 +1103,10 @@ static void* stream_processing_thread(void* arg)
 
 bool brain_stream_pause(brain_stream_t stream)
 {
-    if (!stream)
+    if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_pause: stream is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(&stream->control_lock);
     stream->paused = true;
@@ -1098,8 +1117,10 @@ bool brain_stream_pause(brain_stream_t stream)
 
 bool brain_stream_resume(brain_stream_t stream)
 {
-    if (!stream)
+    if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_resume: stream is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(&stream->control_lock);
     stream->paused = false;
@@ -1110,8 +1131,10 @@ bool brain_stream_resume(brain_stream_t stream)
 
 bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms)
 {
-    if (!stream)
+    if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_flush: stream is NULL");
         return false;
+    }
 
     /**
      * WHAT: Wait for queue to drain
@@ -1123,6 +1146,7 @@ bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms)
 
     while (ring_buffer_size(stream->input_queue) > 0) {
         if (timeout_ms > 0 && elapsed >= timeout_ms) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stream_flush: capacity exceeded");
             return false;  // Timeout
         }
 
@@ -1135,8 +1159,10 @@ bool brain_stream_flush(brain_stream_t stream, uint32_t timeout_ms)
 
 bool brain_stream_clear(brain_stream_t stream)
 {
-    if (!stream)
+    if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_clear: stream is NULL");
         return false;
+    }
 
     /**
      * WHAT: Drop all pending inputs
@@ -1233,6 +1259,7 @@ uint32_t stream_get_security_module_id(void)
 bool brain_stream_get_extended_stats(brain_stream_t stream, stream_extended_stats_t* stats)
 {
     if (!stream || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stream_get_extended_stats: required parameter is NULL (stream, stats)");
         return false;
     }
 
@@ -1240,6 +1267,7 @@ bool brain_stream_get_extended_stats(brain_stream_t stream, stream_extended_stat
 
     // Get base statistics
     if (!brain_stream_get_stats(stream, &stats->base)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_stream_get_extended_stats: brain_stream_get_stats is NULL");
         return false;
     }
 

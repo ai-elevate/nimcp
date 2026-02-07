@@ -721,6 +721,7 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
     bcm_stats_t bcm_stats;
     if (!bcm_compute_stats(synapses, num_synapses, &bcm_stats)) {
         nimcp_free(stats);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_set_sleep_state: bcm_compute_stats is NULL");
         return NULL;
     }
 

@@ -91,6 +91,7 @@ routing_immune_bridge_t* routing_immune_create(
     const routing_immune_config_t* config
 ) {
     if (!immune_system || !thalamic_router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_create: required parameter is NULL (immune_system, thalamic_router)");
         return NULL;
     }
 
@@ -113,6 +114,7 @@ routing_immune_bridge_t* routing_immune_create(
     bridge->anomalies = nimcp_malloc(sizeof(routing_anomaly_t) * ROUTING_IMMUNE_MAX_ANOMALIES);
     if (!bridge->anomalies) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "routing_immune_create: bridge->anomalies is NULL");
         return NULL;
     }
 
@@ -127,6 +129,7 @@ routing_immune_bridge_t* routing_immune_create(
     if (!bridge->base.mutex) {
         nimcp_free(bridge->anomalies);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "routing_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -155,6 +158,7 @@ bool routing_immune_apply_inflammation_effect(
     brain_inflammation_level_t inflammation_level
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_apply_inflammation_effect: bridge is NULL");
         return false;
     }
 
@@ -196,10 +200,12 @@ bool routing_immune_apply_cytokine_effect(
     float concentration
 ) {
     if (!bridge || !bridge->attention_gate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_apply_cytokine_effect: required parameter is NULL (bridge, bridge->attention_gate)");
         return false;
     }
 
     if (concentration < 0.0f || concentration > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_immune_apply_cytokine_effect: validation failed");
         return false;
     }
 
@@ -226,6 +232,7 @@ bool routing_immune_apply_cytokine_effect(
 
         default:
             nimcp_platform_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_immune_apply_cytokine_effect: operation failed");
             return false;
     }
 
@@ -245,6 +252,7 @@ bool routing_immune_set_strategy_from_phase(
     brain_immune_phase_t immune_phase
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_set_strategy_from_phase: bridge is NULL");
         return false;
     }
 
@@ -296,6 +304,7 @@ bool routing_immune_detect_anomaly(
     routing_anomaly_type_t* anomaly_type
 ) {
     if (!bridge || !stats || !anomaly_detected || !anomaly_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_detect_anomaly: required parameter is NULL (bridge, stats, anomaly_detected, anomaly_type)");
         return false;
     }
 
@@ -339,6 +348,7 @@ bool routing_immune_present_anomaly(
     uint32_t* antigen_id
 ) {
     if (!bridge || !anomaly || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_present_anomaly: required parameter is NULL (bridge, anomaly, antigen_id)");
         return false;
     }
 
@@ -374,6 +384,7 @@ bool routing_immune_present_anomaly(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_immune_present_anomaly: result is zero");
     return false;
 }
 
@@ -382,6 +393,7 @@ bool routing_immune_record_anomaly(
     const routing_anomaly_t* anomaly
 ) {
     if (!bridge || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_record_anomaly: required parameter is NULL (bridge, anomaly)");
         return false;
     }
 
@@ -420,6 +432,7 @@ bool routing_immune_publish_event(
     const void* data
 ) {
     if (!bridge || !bridge->event_bus || !bridge->config.enable_immune_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_publish_event: required parameter is NULL (bridge, bridge->event_bus, bridge->config)");
         return false;
     }
 
@@ -446,6 +459,7 @@ bool routing_immune_subscribe_routing_events(
     routing_immune_bridge_t* bridge
 ) {
     if (!bridge || !bridge->event_bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_subscribe_routing_events: required parameter is NULL (bridge, bridge->event_bus)");
         return false;
     }
 
@@ -478,6 +492,7 @@ bool routing_immune_update(
     uint64_t delta_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_update: bridge is NULL");
         return false;
     }
 
@@ -492,6 +507,7 @@ bool routing_immune_update(
     // Get current routing stats
     routing_stats_t routing_stats;
     if (!thalamic_router_get_stats(bridge->thalamic_router, &routing_stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_immune_update: thalamic_router_get_stats is NULL");
         return false;
     }
 
@@ -543,12 +559,14 @@ bool routing_immune_get_stats(
     routing_immune_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_immune_get_stats: required parameter is NULL (bridge, stats)");
         return false;
     }
 
     /* P1 fix: Check if mutex exists and lock succeeded before accessing stats */
     if (bridge->base.mutex) {
         if (nimcp_platform_mutex_lock(bridge->base.mutex) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "routing_immune_get_stats: validation failed");
             return false;  /* Failed to acquire lock */
         }
         *stats = bridge->stats;

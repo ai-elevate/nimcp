@@ -321,6 +321,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
     v1->gabor_filters = nimcp_calloc(num_orientations, sizeof(float*));
     if (!v1->gabor_filters) {
         nimcp_free(v1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "set_error: v1->gabor_filters is NULL");
         return NULL;
     }
 
@@ -330,6 +331,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
             for (uint32_t j = 0; j < i; j++) nimcp_free(v1->gabor_filters[j]);
             nimcp_free(v1->gabor_filters);
             nimcp_free(v1);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "set_error: v1->gabor_filters is NULL");
             return NULL;
         }
 
@@ -368,6 +370,7 @@ static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
         if (v1->contrast_map) nimcp_free(v1->contrast_map);
         if (v1->edges) nimcp_free(v1->edges);
         nimcp_free(v1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "set_error: validation failed");
         return NULL;
     }
 
@@ -392,7 +395,10 @@ static void v1_destroy(v1_processor_t* v1) {
 static bool v1_process(v1_processor_t* v1, const float* input,
                        uint32_t width, uint32_t height, uint32_t channels,
                        const occipital_adapter_t* adapter) {
-    if (!v1 || !input) return false;
+    if (!v1 || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v1_destroy: required parameter is NULL (v1, input)");
+        return false;
+    }
 
     v1->edge_count = 0;
 
@@ -485,6 +491,7 @@ static v2_processor_t* v2_create(uint32_t width, uint32_t height) {
         if (v2->contour_strength) nimcp_free(v2->contour_strength);
         if (v2->contours) nimcp_free(v2->contours);
         nimcp_free(v2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v2_create: validation failed");
         return NULL;
     }
 
@@ -503,7 +510,10 @@ static void v2_destroy(v2_processor_t* v2) {
 static bool v2_process(v2_processor_t* v2, const v1_processor_t* v1,
                        uint32_t width, uint32_t height,
                        const occipital_adapter_t* adapter) {
-    if (!v2 || !v1) return false;
+    if (!v2 || !v1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v2_destroy: required parameter is NULL (v2, v1)");
+        return false;
+    }
 
     v2->contour_count = 0;
 
@@ -573,6 +583,7 @@ static v4_processor_t* v4_create(uint32_t width, uint32_t height, uint32_t color
         if (v4->color_percepts) nimcp_free(v4->color_percepts);
         if (v4->complex_forms) nimcp_free(v4->complex_forms);
         nimcp_free(v4);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v4_create: validation failed");
         return NULL;
     }
 
@@ -590,7 +601,10 @@ static void v4_destroy(v4_processor_t* v4) {
 static bool v4_process(v4_processor_t* v4, const float* input,
                        uint32_t width, uint32_t height, uint32_t channels,
                        const occipital_adapter_t* adapter) {
-    if (!v4 || !input || channels < 3) return false;
+    if (!v4 || !input || channels < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v4_destroy: required parameter is NULL (v4, input)");
+        return false;
+    }
 
     v4->color_count = 0;
     v4->form_count = 0;
@@ -673,6 +687,7 @@ static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t nu
         if (v5->optic_flow_x) nimcp_free(v5->optic_flow_x);
         if (v5->optic_flow_y) nimcp_free(v5->optic_flow_y);
         nimcp_free(v5);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5_create: validation failed");
         return NULL;
     }
 
@@ -685,6 +700,7 @@ static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t nu
             nimcp_free(v5->optic_flow_x);
             nimcp_free(v5->optic_flow_y);
             nimcp_free(v5);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5_create: v5->frame_buffer is NULL");
             return NULL;
         }
     }
@@ -710,7 +726,10 @@ static void v5_destroy(v5_mt_processor_t* v5) {
 static bool v5_process(v5_mt_processor_t* v5, const float* input,
                        uint32_t width, uint32_t height, uint32_t channels,
                        const occipital_adapter_t* adapter) {
-    if (!v5 || !input) return false;
+    if (!v5 || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5_destroy: required parameter is NULL (v5, input)");
+        return false;
+    }
 
     /* Store current frame (grayscale) */
     float* current_frame = v5->frame_buffer[v5->current_frame_idx];
@@ -946,6 +965,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     occipital_adapter_t* adapter = nimcp_calloc(1, sizeof(occipital_adapter_t));
     if (!adapter) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to allocate adapter memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter is NULL");
         return NULL;
     }
 
@@ -969,6 +989,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->v1) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create V1 processor");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->v1 is NULL");
         return NULL;
     }
 
@@ -978,6 +999,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->v2) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create V2 processor");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->v2 is NULL");
         return NULL;
     }
 
@@ -987,6 +1009,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->v3) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create V3 processor");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->v3 is NULL");
         return NULL;
     }
 
@@ -996,6 +1019,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->v4) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create V4 processor");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->v4 is NULL");
         return NULL;
     }
 
@@ -1005,6 +1029,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->v5) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create V5/MT processor");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->v5 is NULL");
         return NULL;
     }
 
@@ -1014,6 +1039,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->input_buffer) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to allocate input buffer");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->input_buffer is NULL");
         return NULL;
     }
 
@@ -1030,6 +1056,7 @@ occipital_adapter_t* occipital_create(const occipital_config_t* config) {
     if (!adapter->descriptor_pool) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to create descriptor pool");
         occipital_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_create: adapter->descriptor_pool is NULL");
         return NULL;
     }
 
@@ -1175,6 +1202,7 @@ bool occipital_reset(occipital_adapter_t* adapter) {
 bool occipital_set_input(occipital_adapter_t* adapter, const visual_input_t* input) {
     if (!adapter || !input || !input->data) {
         set_error(adapter, OCCIPITAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_set_input: required parameter is NULL (adapter, input, input->data)");
         return false;
     }
 
@@ -1187,6 +1215,7 @@ bool occipital_set_input(occipital_adapter_t* adapter, const visual_input_t* inp
                   adapter->config.color_channels,
                   input->width, input->height, input->channels);
         set_error(adapter, OCCIPITAL_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_set_input: operation failed");
         return false;
     }
 
@@ -1210,6 +1239,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
 
     if (!adapter->has_input) {
         set_error(adapter, OCCIPITAL_ERROR_NO_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_process: adapter->has_input is NULL");
         return false;
     }
 
@@ -1225,6 +1255,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
     if (!v1_process(adapter->v1, adapter->input_buffer, width, height, channels, adapter)) {
         set_error(adapter, OCCIPITAL_ERROR_V1_FAILURE);
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process: validation failed");
         return false;
     }
     local_result.v1_processed = true;
@@ -1243,6 +1274,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
     if (!v2_process(adapter->v2, adapter->v1, width, height, adapter)) {
         set_error(adapter, OCCIPITAL_ERROR_V2_FAILURE);
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process: validation failed");
         return false;
     }
     local_result.v2_processed = true;
@@ -1258,6 +1290,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
         if (!v4_process(adapter->v4, adapter->input_buffer, width, height, channels, adapter)) {
             set_error(adapter, OCCIPITAL_ERROR_V4_FAILURE);
             if (result) *result = local_result;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process: validation failed");
             return false;
         }
         local_result.v4_processed = true;
@@ -1274,6 +1307,7 @@ bool occipital_process(occipital_adapter_t* adapter, visual_processing_result_t*
         if (!v5_process(adapter->v5, adapter->input_buffer, width, height, channels, adapter)) {
             set_error(adapter, OCCIPITAL_ERROR_V5_FAILURE);
             if (result) *result = local_result;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_process: validation failed");
             return false;
         }
         local_result.v5_processed = true;
@@ -1468,6 +1502,7 @@ bool occipital_get_features(const occipital_adapter_t* adapter, visual_area_t ar
             break;
         default:
             *count = 0;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_get_feature_count: validation failed");
             return false;
     }
 
@@ -1762,6 +1797,7 @@ nimcp_bio_future_t occipital_request_lgn_input_async(occipital_adapter_t* adapte
 
     if (!promise) {
         LOG_ERROR(OCCIPITAL_LOG_MODULE, "Failed to send LGN input request");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_request_lgn_input_async: promise is NULL");
         return NULL;
     }
 

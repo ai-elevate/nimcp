@@ -213,6 +213,7 @@ int bgsc_register_chunk(bgsc_system_t* system,
     if (slot == UINT32_MAX) {
         NIMCP_LOGGING_WARN("No free chunk slots");
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_reset: validation failed");
         return -1;
     }
 
@@ -236,6 +237,7 @@ int bgsc_register_chunk(bgsc_system_t* system,
     if (!chunk->actions) {
         chunk->chunk_id = UINT32_MAX;
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgsc_reset: chunk->actions is NULL");
         return -1;
     }
 
@@ -262,12 +264,14 @@ int bgsc_add_action(bgsc_system_t* system,
     bgsc_chunk_t* chunk = &system->chunks[chunk_id];
     if (chunk->chunk_id == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_reset: validation failed");
         return -1;
     }
 
     if (chunk->sequence_length >= chunk->max_length) {
         NIMCP_LOGGING_WARN("Chunk %u sequence full", chunk_id);
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_reset: capacity exceeded");
         return -1;
     }
 
@@ -319,7 +323,10 @@ int bgsc_unregister_chunk(bgsc_system_t* system, uint32_t chunk_id) {
 bool bgsc_check_trigger(bgsc_system_t* system,
                          uint32_t context,
                          uint32_t* chunk_id) {
-    if (!system || !chunk_id) return false;
+    if (!system || !chunk_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_unregister_chunk: required parameter is NULL (system, chunk_id)");
+        return false;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -335,6 +342,7 @@ bool bgsc_check_trigger(bgsc_system_t* system,
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_unregister_chunk: operation failed");
     return false;
 }
 
@@ -348,6 +356,7 @@ int bgsc_initiate(bgsc_system_t* system, uint32_t chunk_id) {
     bgsc_chunk_t* chunk = &system->chunks[chunk_id];
     if (chunk->chunk_id == UINT32_MAX || chunk->sequence_length == 0) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_initiate: chunk->sequence_length is zero");
         return -1;
     }
 
@@ -389,12 +398,14 @@ int bgsc_get_current_action(bgsc_system_t* system,
 
     if (!system->is_executing || system->executing_chunk_id == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_initiate: system->is_executing is NULL");
         return -1;
     }
 
     bgsc_chunk_t* chunk = &system->chunks[system->executing_chunk_id];
     if (chunk->current_step >= chunk->sequence_length) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_initiate: capacity exceeded");
         return -1;
     }
 
@@ -419,6 +430,7 @@ int bgsc_action_completed(bgsc_system_t* system,
 
     if (!system->is_executing || system->executing_chunk_id == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_initiate: system->is_executing is NULL");
         return -1;
     }
 
@@ -522,7 +534,10 @@ int bgsc_abort(bgsc_system_t* system) {
 }
 
 bool bgsc_is_executing(const bgsc_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_is_executing: system is NULL");
+        return false;
+    }
     return system->is_executing;
 }
 
@@ -734,6 +749,7 @@ int bgsc_strengthen_chunk(bgsc_system_t* system, uint32_t chunk_id, float reward
     bgsc_chunk_t* chunk = &system->chunks[chunk_id];
     if (chunk->chunk_id == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_strengthen_chunk: validation failed");
         return -1;
     }
 
@@ -770,6 +786,7 @@ int bgsc_weaken_chunk(bgsc_system_t* system, uint32_t chunk_id) {
     bgsc_chunk_t* chunk = &system->chunks[chunk_id];
     if (chunk->chunk_id == UINT32_MAX) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgsc_weaken_chunk: validation failed");
         return -1;
     }
 
@@ -797,7 +814,10 @@ float bgsc_get_automaticity(const bgsc_system_t* system, uint32_t chunk_id) {
 }
 
 bool bgsc_is_automatized(const bgsc_system_t* system, uint32_t chunk_id) {
-    if (!system || chunk_id >= system->max_chunks) return false;
+    if (!system || chunk_id >= system->max_chunks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_is_automatized: system is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     bool is_auto = system->chunks[chunk_id].stage == BGSC_STAGE_CHUNKED;
@@ -811,8 +831,14 @@ bool bgsc_is_automatized(const bgsc_system_t* system, uint32_t chunk_id) {
 //=============================================================================
 
 const bgsc_chunk_t* bgsc_get_chunk(const bgsc_system_t* system, uint32_t chunk_id) {
-    if (!system || chunk_id >= system->max_chunks) return NULL;
-    if (system->chunks[chunk_id].chunk_id == UINT32_MAX) return NULL;
+    if (!system || chunk_id >= system->max_chunks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgsc_get_chunk: system is NULL");
+        return NULL;
+    }
+    if (system->chunks[chunk_id].chunk_id == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgsc_get_chunk: validation failed");
+        return NULL;
+    }
     return &system->chunks[chunk_id];
 }
 

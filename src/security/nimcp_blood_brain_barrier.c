@@ -339,6 +339,21 @@ void bbb_system_inc_threats(bbb_system_t system)
     nimcp_mutex_unlock(&system->mutex);
 }
 
+/**
+ * @brief Get max string length from system config
+ *
+ * WHAT: Thread-safe accessor for system's max_string_length config
+ * WHY:  Allow sub-modules to access system config without exposing struct
+ */
+size_t bbb_system_get_max_string_length(bbb_system_t system)
+{
+    if (!system) return 0;
+    nimcp_mutex_lock(&system->mutex);
+    size_t max_len = system->config.input.max_string_length;
+    nimcp_mutex_unlock(&system->mutex);
+    return max_len;
+}
+
 //=============================================================================
 // System Lifecycle
 //=============================================================================
@@ -842,6 +857,7 @@ NIMCP_EXPORT void bbb_clear_threat_reports(bbb_system_t system)
 NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, size_t size)
 {
     if (!system || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_is_quarantined: required parameter is NULL (system, address)");
         return false;
     }
 
@@ -879,6 +895,7 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
     }
 
     nimcp_mutex_unlock(&system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_is_quarantined: validation failed");
     return false;
 }
 
@@ -901,6 +918,7 @@ NIMCP_EXPORT bool bbb_is_quarantined(bbb_system_t system, const void* address, s
 NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* address, size_t size, bool acquire_ref)
 {
     if (!system || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_is_quarantined_safe: required parameter is NULL (system, address)");
         return false;
     }
 
@@ -947,6 +965,7 @@ NIMCP_EXPORT bool bbb_is_quarantined_safe(bbb_system_t system, const void* addre
     }
 
     nimcp_mutex_unlock(&system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_is_quarantined_safe: validation failed");
     return false;
 }
 
@@ -1014,6 +1033,7 @@ NIMCP_EXPORT bool bbb_quarantine_region(bbb_system_t system, void* address, size
 
     if (!found) {
         nimcp_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_quarantine_region: found is NULL");
         return false;
     }
 
@@ -1108,6 +1128,7 @@ NIMCP_EXPORT bool bbb_release_quarantine(bbb_system_t system, void* address)
                 LOG_WARN("bbb_release_quarantine: Cannot release region %p with %d active references",
                          address, ref);
                 nimcp_mutex_unlock(&system->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_release_quarantine: validation failed");
                 return false;  /* Cannot release while references are held */
             }
             system->quarantine[i].active = false;
@@ -1209,18 +1230,30 @@ NIMCP_EXPORT void bbb_print_threat_report(const bbb_threat_report_t* report)
 /* Forward declarations for internal reset functions in sub-modules */
 extern void bbb_access_control_reset_internal(void);
 extern void bbb_memory_boundary_reset_internal(void);
+extern void bbb_input_gate_reset_internal(void);
+extern void bbb_code_signing_reset_internal(void);
 
 /**
  * @brief Reset all BBB subsystem state for testing
  *
- * WHAT: Clear all registered subjects, objects, memory regions, etc.
- * WHY:  Enable test isolation by resetting between test cases
+ * WHAT: Clear all registered subjects, objects, memory regions, signing keys, etc.
+ * WHY:  Enable test isolation by resetting ALL BBB subsystem state between tests
  * HOW:  Call internal reset functions for each subsystem
  *
- * NOTE: This is a unified reset to avoid DRY violations
+ * SUBSYSTEMS RESET:
+ * - Access Control: Clears registered subjects, objects, counters
+ * - Memory Boundary: Clears registered memory regions
+ * - Input Gate: Resets input gate state
+ * - Code Signing: Clears signing key and key store
+ *
+ * NOTE: This is the canonical test reset function. All BBB tests should call
+ *       this instead of individual *_reset_internal() functions to ensure
+ *       complete state isolation.
  */
 void bbb_reset_test_state(void)
 {
     bbb_access_control_reset_internal();
     bbb_memory_boundary_reset_internal();
+    bbb_input_gate_reset_internal();
+    bbb_code_signing_reset_internal();
 }

@@ -327,12 +327,14 @@ int init_signal_filter_module(PyObject* module) {
     // Initialize SignalFilter type
     if (PyType_Ready(&SignalFilterType) < 0) {
         LOG_MODULE_ERROR("bindings.python.signal_filter", "Failed to initialize SignalFilter type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_signal_filter_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&SignalFilterType);
     if (PyModule_AddObject(module, "SignalFilter", (PyObject*)&SignalFilterType) < 0) {
         Py_DECREF(&SignalFilterType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_signal_filter_module: validation failed");
         return -1;
     }
 

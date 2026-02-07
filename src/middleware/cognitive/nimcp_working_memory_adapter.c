@@ -53,7 +53,10 @@ working_memory_adapter_config_t working_memory_adapter_default_config(void) {
 working_memory_adapter_t working_memory_adapter_create(
     const working_memory_adapter_config_t* config
 ) {
-    if (!config || config->num_channels == 0) return NULL;
+    if (!config || config->num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_adapter_create: config is NULL");
+        return NULL;
+    }
 
     struct working_memory_adapter_struct* adapter =
         nimcp_calloc(1, sizeof(struct working_memory_adapter_struct));
@@ -73,6 +76,7 @@ working_memory_adapter_t working_memory_adapter_create(
     adapter->mutex = nimcp_mutex_create(NULL);
     if (!adapter->mutex) {
         working_memory_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_adapter_create: adapter->mutex is NULL");
         return NULL;
     }
 
@@ -81,6 +85,7 @@ working_memory_adapter_t working_memory_adapter_create(
     );
     if (!adapter->buffer) {
         working_memory_adapter_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_adapter_create: adapter->buffer is NULL");
         return NULL;
     }
 
@@ -91,6 +96,7 @@ working_memory_adapter_t working_memory_adapter_create(
         );
         if (!adapter->normalizer) {
             working_memory_adapter_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_adapter_create: adapter->normalizer is NULL");
             return NULL;
         }
     }
@@ -101,6 +107,7 @@ working_memory_adapter_t working_memory_adapter_create(
         );
         if (!adapter->spike_extractor) {
             working_memory_adapter_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_adapter_create: adapter->spike_extractor is NULL");
             return NULL;
         }
     }

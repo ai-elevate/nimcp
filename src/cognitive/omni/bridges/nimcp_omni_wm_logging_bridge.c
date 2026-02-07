@@ -380,9 +380,15 @@ static void free_buffers(omni_wm_logging_bridge_t* bridge) {
  * @brief Determine if prediction should be sampled (for rate limiting)
  */
 static bool should_sample_prediction(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_sample_prediction: bridge is NULL");
+        return false;
+    }
     if (bridge->config.prediction_sample_rate >= 1.0f) return true;
-    if (bridge->config.prediction_sample_rate <= 0.0f) return false;
+    if (bridge->config.prediction_sample_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_sample_prediction: validation failed");
+        return false;
+    }
 
     /* Simple deterministic sampling based on sequence number */
     float threshold = bridge->config.prediction_sample_rate;
@@ -687,6 +693,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
     omni_wm_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_logging_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate WM logging bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_effects: bridge is NULL");
         return NULL;
     }
 
@@ -695,6 +702,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
                          "wm_logging_bridge") != 0) {
         LOG_ERROR("Failed to initialize bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_effects: operation failed");
         return NULL;
     }
 
@@ -710,6 +718,7 @@ omni_wm_logging_bridge_t* omni_wm_logging_bridge_create(
         LOG_ERROR("Failed to allocate logging buffers");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "update_effects: validation failed");
         return NULL;
     }
 
@@ -889,7 +898,10 @@ nimcp_error_t omni_wm_logging_bridge_connect_audit(
 }
 
 bool omni_wm_logging_bridge_is_connected(const omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_logging_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_logging_bridge_heartbeat("omni_wm_logg_is_connected", 0.0f);
 
@@ -910,6 +922,13 @@ nimcp_error_t omni_wm_logging_bridge_update(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+    /* Validate dt - negative timesteps are invalid */
+    if (dt < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "omni_wm_logging_bridge_update: negative dt (%.4f)", dt);
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     (void)dt;
 
     uint64_t start_time = get_current_time_us();
@@ -980,6 +999,10 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "log_prediction: input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "log_prediction: output is NULL");
+    NIMCP_CHECK_THROW(input_dim > 0, NIMCP_ERROR_INVALID_PARAM, "log_prediction: input_dim is zero");
+    NIMCP_CHECK_THROW(output_dim > 0, NIMCP_ERROR_INVALID_PARAM, "log_prediction: output_dim is zero");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
     if (!bridge->logging_active) return NIMCP_SUCCESS;
 
@@ -1113,6 +1136,7 @@ nimcp_error_t omni_wm_logging_bridge_log_training_step(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(metrics, NIMCP_ERROR_INVALID_PARAM, "log_training_step: metrics is NULL");
     if (!bridge->config.enable_training_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1449,6 +1473,7 @@ nimcp_error_t omni_wm_logging_bridge_log(
 
 
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_INVALID_PARAM, "log: message is NULL");
     if (!bridge->logging_active) return NIMCP_SUCCESS;
 
     /* Check severity filter */

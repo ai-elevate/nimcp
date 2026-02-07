@@ -179,6 +179,7 @@ int microglia_sleep_default_config(microglia_sleep_config_t* config)
     /* Guard clause: Validate config pointer */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -263,6 +264,7 @@ microglia_sleep_bridge_t microglia_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for microglia-sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -346,6 +348,7 @@ int microglia_sleep_update(microglia_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_update: bridge is NULL");
         return -1;
     }
 
@@ -372,10 +375,12 @@ int microglia_sleep_get_effects(const microglia_sleep_bridge_t bridge,
     /* Guard clauses: Validate inputs */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_get_effects: bridge is NULL");
         return -1;
     }
     if (!effects) {
         NIMCP_LOGGING_ERROR("NULL effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_get_effects: effects is NULL");
         return -1;
     }
 
@@ -429,7 +434,10 @@ float microglia_sleep_get_surveillance_activity(const microglia_sleep_bridge_t b
 bool microglia_sleep_is_glymphatic_active(const microglia_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_is_glymphatic_active: bridge is NULL");
+        return false;
+    }
 
     /* WHAT: Thread-safe read of glymphatic status
      * WHY:  Determine if waste clearance is active
@@ -445,7 +453,10 @@ bool microglia_sleep_is_glymphatic_active(const microglia_sleep_bridge_t bridge)
 bool microglia_sleep_is_enhanced(const microglia_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_is_enhanced: bridge is NULL");
+        return false;
+    }
 
     /* WHAT: Thread-safe read of enhanced mode status
      * WHY:  Determine if microglia are in peak activity mode
@@ -540,6 +551,7 @@ int microglia_sleep_connect_bio_async(microglia_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -567,6 +579,7 @@ int microglia_sleep_connect_bio_async(microglia_sleep_bridge_t bridge)
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_sleep_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -576,6 +589,7 @@ int microglia_sleep_disconnect_bio_async(microglia_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -602,7 +616,10 @@ int microglia_sleep_disconnect_bio_async(microglia_sleep_bridge_t bridge)
 bool microglia_sleep_is_bio_async_connected(const microglia_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* WHAT: Return bio-async connection status
      * WHY:  Allow conditional bio-async usage

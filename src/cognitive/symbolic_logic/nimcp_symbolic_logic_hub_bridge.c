@@ -143,6 +143,7 @@ symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "symbolic_logic_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_hub_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -570,7 +571,10 @@ bool symbolic_logic_hub_bridge_is_bio_async_connected(
 static int on_memory_access(const cognitive_event_data_t* event, void* user_data) {
     (void)event;
     symbolic_logic_hub_bridge_t* bridge = (symbolic_logic_hub_bridge_t*)user_data;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "on_memory_access: bridge is NULL");
+        return -1;
+    }
 
     /* Memory access may provide new facts to incorporate */
     nimcp_mutex_lock(bridge->base.mutex);
@@ -585,7 +589,10 @@ static int on_memory_access(const cognitive_event_data_t* event, void* user_data
 static int on_attention_shift(const cognitive_event_data_t* event, void* user_data) {
     (void)event;
     symbolic_logic_hub_bridge_t* bridge = (symbolic_logic_hub_bridge_t*)user_data;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "on_attention_shift: bridge is NULL");
+        return -1;
+    }
 
     /* Attention shift may redirect inference focus */
     nimcp_mutex_lock(bridge->base.mutex);
@@ -599,7 +606,10 @@ static int on_attention_shift(const cognitive_event_data_t* event, void* user_da
 static int on_learning_complete(const cognitive_event_data_t* event, void* user_data) {
     (void)event;
     symbolic_logic_hub_bridge_t* bridge = (symbolic_logic_hub_bridge_t*)user_data;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "on_learning_complete: bridge is NULL");
+        return -1;
+    }
 
     /* Learning completion may trigger knowledge consolidation */
     nimcp_mutex_lock(bridge->base.mutex);

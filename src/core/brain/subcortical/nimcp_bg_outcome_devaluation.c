@@ -167,6 +167,7 @@ bg_outcome_deval_t* bgod_create(const bgod_config_t* config) {
 
 cleanup:
     bgod_destroy(deval);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_create: operation failed");
     return NULL;
 }
 
@@ -186,7 +187,10 @@ void bgod_destroy(bg_outcome_deval_t* deval) {
 }
 
 int bgod_reset(bg_outcome_deval_t* deval) {
-    if (!deval) return -1;
+    if (!deval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_reset: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -230,12 +234,16 @@ int bgod_reset(bg_outcome_deval_t* deval) {
 int bgod_register_outcome(bg_outcome_deval_t* deval,
                            const bgod_outcome_t* outcome,
                            uint32_t* out_id) {
-    if (!deval || !outcome) return -1;
+    if (!deval || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_reset: required parameter is NULL (deval, outcome)");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
     if (deval->num_outcomes >= deval->config.max_outcomes) {
         nimcp_mutex_unlock(deval->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
         return -1;
     }
 
@@ -257,7 +265,10 @@ int bgod_register_outcome(bg_outcome_deval_t* deval,
 int bgod_set_outcome_value(bg_outcome_deval_t* deval,
                             uint32_t outcome_id,
                             float value) {
-    if (!deval || outcome_id >= deval->num_outcomes) return -1;
+    if (!deval || outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
     deval->outcomes[outcome_id].base_value = value;
@@ -276,15 +287,25 @@ int bgod_register_association(bg_outcome_deval_t* deval,
                                uint32_t action_id,
                                uint32_t outcome_id,
                                float strength) {
-    if (!deval) return -1;
-    if (outcome_id >= deval->num_outcomes) return -1;
-    if (action_id >= deval->config.max_actions) return -1;
+    if (!deval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_reset: deval is NULL");
+        return -1;
+    }
+    if (outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: capacity exceeded");
+        return -1;
+    }
+    if (action_id >= deval->config.max_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
     uint32_t max_assoc = deval->config.max_outcomes * deval->config.max_actions;
     if (deval->num_associations >= max_assoc) {
         nimcp_mutex_unlock(deval->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_reset: capacity exceeded");
         return -1;
     }
 
@@ -309,7 +330,10 @@ int bgod_register_association(bg_outcome_deval_t* deval,
 int bgod_devalue_by_satiety(bg_outcome_deval_t* deval,
                              uint32_t outcome_id,
                              float consumption_amount) {
-    if (!deval || outcome_id >= deval->num_outcomes) return -1;
+    if (!deval || outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -333,7 +357,10 @@ int bgod_devalue_by_satiety(bg_outcome_deval_t* deval,
 int bgod_devalue_by_aversion(bg_outcome_deval_t* deval,
                               uint32_t outcome_id,
                               float aversion_strength) {
-    if (!deval || outcome_id >= deval->num_outcomes) return -1;
+    if (!deval || outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_reset: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -353,8 +380,14 @@ int bgod_devalue_by_aversion(bg_outcome_deval_t* deval,
 }
 
 int bgod_revalue_outcome(bg_outcome_deval_t* deval, uint32_t outcome_id) {
-    if (!deval || outcome_id >= deval->num_outcomes) return -1;
-    if (!deval->config.enable_revaluation) return -1;
+    if (!deval || outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_revalue_outcome: deval is NULL");
+        return -1;
+    }
+    if (!deval->config.enable_revaluation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_revalue_outcome: deval->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -398,9 +431,18 @@ int bgod_run_test(bg_outcome_deval_t* deval,
                    uint32_t outcome_id,
                    bgod_method_t method,
                    bgod_test_result_t* result) {
-    if (!deval || !result) return -1;
-    if (action_id >= deval->config.max_actions) return -1;
-    if (outcome_id >= deval->num_outcomes) return -1;
+    if (!deval || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_revalue_outcome: required parameter is NULL (deval, result)");
+        return -1;
+    }
+    if (action_id >= deval->config.max_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_revalue_outcome: capacity exceeded");
+        return -1;
+    }
+    if (outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_revalue_outcome: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -416,6 +458,7 @@ int bgod_run_test(bg_outcome_deval_t* deval,
 
     if (!assoc) {
         nimcp_mutex_unlock(deval->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_revalue_outcome: assoc is NULL");
         return -1;
     }
 
@@ -517,7 +560,10 @@ float bgod_get_sensitivity(const bg_outcome_deval_t* deval,
  * ============================================================================ */
 
 int bgod_step(bg_outcome_deval_t* deval, float dt_ms) {
-    if (!deval || dt_ms <= 0) return -1;
+    if (!deval || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_step: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -575,7 +621,10 @@ int bgod_step(bg_outcome_deval_t* deval, float dt_ms) {
 int bgod_record_consumption(bg_outcome_deval_t* deval,
                              uint32_t outcome_id,
                              float amount) {
-    if (!deval || outcome_id >= deval->num_outcomes) return -1;
+    if (!deval || outcome_id >= deval->num_outcomes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgod_step: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
 
@@ -590,7 +639,10 @@ int bgod_record_consumption(bg_outcome_deval_t* deval,
 }
 
 int bgod_record_response(bg_outcome_deval_t* deval, uint32_t action_id) {
-    if (!deval || action_id >= deval->config.max_actions) return -1;
+    if (!deval || action_id >= deval->config.max_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bgod_record_response: deval is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(deval->mutex);
     deval->action_response_counts[action_id]++;
@@ -599,7 +651,10 @@ int bgod_record_response(bg_outcome_deval_t* deval, uint32_t action_id) {
 }
 
 int bgod_get_stats(const bg_outcome_deval_t* deval, bgod_stats_t* stats) {
-    if (!deval || !stats) return -1;
+    if (!deval || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_get_stats: required parameter is NULL (deval, stats)");
+        return -1;
+    }
     *stats = deval->stats;
     return 0;
 }
@@ -611,7 +666,10 @@ int bgod_get_stats(const bg_outcome_deval_t* deval, bgod_stats_t* stats) {
 int bgod_modulate_action_values(const bg_outcome_deval_t* deval,
                                  float* action_values,
                                  uint32_t num_actions) {
-    if (!deval || !action_values) return -1;
+    if (!deval || !action_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgod_get_stats: required parameter is NULL (deval, action_values)");
+        return -1;
+    }
 
     for (uint32_t a = 0; a < num_actions && a < deval->config.max_actions; a++) {
         float modulation = bgod_get_action_value(deval, a);

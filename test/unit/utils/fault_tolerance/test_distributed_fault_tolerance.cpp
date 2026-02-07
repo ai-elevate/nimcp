@@ -452,11 +452,11 @@ TEST_F(DistributedFaultToleranceTest, GetInfoForNonexistentPeer) {
 }
 
 TEST_F(DistributedFaultToleranceTest, MaxPeers) {
-    // Try to add more than max peers
+    // Try to add more than max peers (loop starts at 2, so capacity reached at i = DFT_MAX_PEERS + 1)
     for (uint32_t i = 2; i <= DFT_MAX_PEERS + 5; i++) {
         bool added = dft_add_peer(ctx, i, nullptr);
-        if (i > DFT_MAX_PEERS) {
-            EXPECT_FALSE(added);
+        if (i > DFT_MAX_PEERS + 1) {
+            EXPECT_FALSE(added) << "Peer " << i << " should have been rejected (capacity)";
         }
     }
 }

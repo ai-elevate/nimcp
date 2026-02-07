@@ -103,7 +103,10 @@ static utils_bio_subscription_t* find_subscription(
     utils_bio_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge || !bridge->subscriptions) return NULL;
+    if (!bridge || !bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id &&
@@ -111,6 +114,7 @@ static utils_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (bridge, bridge->subscriptions)");
     return NULL;
 }
 
@@ -146,7 +150,10 @@ static void safe_strncpy(char* dest, const char* src, size_t n) {
  * ============================================================================ */
 
 int utils_bio_bridge_default_config(utils_bio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -222,6 +229,7 @@ utils_bio_bridge_t* utils_bio_bridge_create(
 
     if (utils_bio_bridge_init(bridge, config) != 0) {
         UTILS_FREE(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "utils_bio_bridge_create: validation failed");
         return NULL;
     }
 
@@ -232,12 +240,16 @@ int utils_bio_bridge_init(
     utils_bio_bridge_t* bridge,
     const utils_bio_bridge_config_t* config
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_init: bridge is NULL");
+        return -1;
+    }
 
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) {
         if (utils_bio_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "utils_bio_bridge_init: validation failed");
             return -1;
         }
         bridge->config = *config;
@@ -252,6 +264,7 @@ int utils_bio_bridge_init(
     );
 
     if (!bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_init: bridge->subscriptions is NULL");
         return -1;
     }
 
@@ -279,7 +292,10 @@ void utils_bio_bridge_destroy(utils_bio_bridge_t* bridge) {
 }
 
 int utils_bio_bridge_reset(utils_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Preserve config, reset state */
     if (bridge->connected) {
@@ -327,7 +343,10 @@ int utils_bio_bridge_connect(
 }
 
 int utils_bio_bridge_disconnect(utils_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->router = NULL;
     bridge->connected = false;
@@ -348,6 +367,7 @@ int utils_bio_bridge_process_inbox(
     uint32_t max_messages
 ) {
     if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -362,7 +382,10 @@ int utils_bio_bridge_update(
     utils_bio_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
     bridge->time_since_heartbeat_ms += delta_ms;
@@ -407,7 +430,10 @@ int utils_bio_bridge_broadcast_memory_alloc(
     uint32_t pool_id,
     const char* tag
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_memory_alloc: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_memory_alloc_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -446,7 +472,10 @@ int utils_bio_bridge_broadcast_memory_free(
     size_t size,
     uint32_t pool_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_memory_free: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_memory_free_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -484,7 +513,10 @@ int utils_bio_bridge_send_memory_pressure(
     float utilization,
     uint32_t severity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_send_memory_pressure: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_memory_pressure_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -522,7 +554,10 @@ int utils_bio_bridge_broadcast_pool_status(
     size_t capacity,
     size_t allocated
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "utils_bio_bridge_broadcast_pool_status: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_memory_pool_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -552,7 +587,10 @@ int utils_bio_bridge_broadcast_timer_event(
     uint64_t scheduled_us,
     bool is_periodic
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_timer_event: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_timer_event_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -581,7 +619,10 @@ int utils_bio_bridge_broadcast_timer_schedule(
     uint64_t fire_time_us,
     uint32_t interval_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_timer_schedule: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_timer_schedule_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -626,7 +667,10 @@ int utils_bio_bridge_broadcast_log_ex(
     uint32_t line,
     const char* function
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_log_ex: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Check minimum log level */
     if (level < bridge->config.min_log_level) {
@@ -694,8 +738,14 @@ int utils_bio_bridge_broadcast_metrics(
     const utils_bio_metric_entry_t* metrics,
     uint32_t metric_count
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!metrics || metric_count == 0) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_metrics: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!metrics || metric_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "utils_bio_bridge_broadcast_metrics: metrics is NULL");
+        return -1;
+    }
 
     if (metric_count > UTILS_BIO_MAX_METRICS_ENTRIES) {
         metric_count = UTILS_BIO_MAX_METRICS_ENTRIES;
@@ -733,7 +783,10 @@ int utils_bio_bridge_broadcast_service_status(
     utils_service_status_t status,
     float health_score
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_broadcast_service_status: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_service_status_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -759,7 +812,10 @@ int utils_bio_bridge_register_service(
     const char* service_type,
     uint32_t capabilities
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_register_service: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_service_register_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -787,7 +843,10 @@ int utils_bio_bridge_send_heartbeat(
     utils_service_status_t status,
     float load
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_send_heartbeat: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     utils_bio_heartbeat_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -858,7 +917,10 @@ int utils_bio_bridge_unsubscribe_module(
     utils_bio_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     utils_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) return UTILS_BIO_ERROR_SERVICE_NOT_FOUND;
@@ -875,7 +937,10 @@ int utils_bio_bridge_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     utils_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) return UTILS_BIO_ERROR_SERVICE_NOT_FOUND;
@@ -911,14 +976,20 @@ int utils_bio_bridge_get_stats(
     const utils_bio_bridge_t* bridge,
     utils_bio_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int utils_bio_bridge_reset_stats(utils_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utils_bio_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Preserve subscription counts */
     uint32_t active = bridge->stats.active_subscriptions;

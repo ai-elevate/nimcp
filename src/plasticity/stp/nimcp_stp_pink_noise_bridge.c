@@ -673,7 +673,10 @@ int stp_pink_noise_enable(stp_pink_noise_bridge_t* bridge, bool enable) {
  * HOW:  Check any enable flag
  */
 bool stp_pink_noise_is_enabled(const stp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_is_enabled: bridge is NULL");
+        return false;
+    }
 
     return bridge->config.enable_u_modulation ||
            bridge->config.enable_tau_d_modulation ||
@@ -716,6 +719,7 @@ int stp_pink_noise_connect_bio_async(stp_pink_noise_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stp_pink_noise_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -751,6 +755,9 @@ int stp_pink_noise_disconnect_bio_async(stp_pink_noise_bridge_t* bridge) {
 bool stp_pink_noise_is_bio_async_connected(
     const stp_pink_noise_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_pink_noise_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

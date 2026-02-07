@@ -69,6 +69,7 @@ static bge_goal_t* find_goal(bge_bridge_t* bridge, uint32_t goal_id) {
             return &bridge->goals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
@@ -145,7 +146,10 @@ void bge_bridge_destroy(bge_bridge_t* bridge) {
 }
 
 int bge_bridge_reset(bge_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->num_goals = 0;
 
@@ -171,7 +175,10 @@ int bge_bridge_reset(bge_bridge_t* bridge) {
  * ============================================================================ */
 
 int bge_bridge_connect_bg(bge_bridge_t* bridge, basal_ganglia_t* bg) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_connect_bg: bridge is NULL");
+        return -1;
+    }
     bridge->bg = bg;
     return 0;
 }
@@ -180,13 +187,19 @@ int bge_bridge_connect_executive(
     bge_bridge_t* bridge,
     executive_controller_t* exec
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_connect_executive: bridge is NULL");
+        return -1;
+    }
     bridge->exec = exec;
     return 0;
 }
 
 bool bge_bridge_is_connected(const bge_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bg != NULL && bridge->exec != NULL;
 }
 
@@ -201,7 +214,10 @@ int bge_bridge_register_goal(
     float value,
     uint32_t* goal_id
 ) {
-    if (!bridge || bridge->num_goals >= BGE_MAX_ACTIVE_GOALS) return -1;
+    if (!bridge || bridge->num_goals >= BGE_MAX_ACTIVE_GOALS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bge_bridge_register_goal: bridge is NULL");
+        return -1;
+    }
 
     bge_goal_t* goal = &bridge->goals[bridge->num_goals];
 
@@ -222,10 +238,16 @@ int bge_bridge_register_goal(
 }
 
 int bge_bridge_goal_achieved(bge_bridge_t* bridge, uint32_t goal_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_goal_achieved: bridge is NULL");
+        return -1;
+    }
 
     bge_goal_t* goal = find_goal(bridge, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_goal_achieved: goal is NULL");
+        return -1;
+    }
 
     goal->state = BGE_GOAL_ACHIEVED;
     if (bridge->state.active_goal_count > 0) {
@@ -236,10 +258,16 @@ int bge_bridge_goal_achieved(bge_bridge_t* bridge, uint32_t goal_id) {
 }
 
 int bge_bridge_abandon_goal(bge_bridge_t* bridge, uint32_t goal_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_abandon_goal: bridge is NULL");
+        return -1;
+    }
 
     bge_goal_t* goal = find_goal(bridge, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_abandon_goal: goal is NULL");
+        return -1;
+    }
 
     goal->state = BGE_GOAL_ABANDONED;
     if (bridge->state.active_goal_count > 0) {
@@ -291,7 +319,10 @@ int bge_bridge_update_control(
     bge_bridge_t* bridge,
     uint64_t current_time_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_update_control: bridge is NULL");
+        return -1;
+    }
 
     /* Read cognitive load from executive if connected */
     if (bridge->exec) {
@@ -355,7 +386,10 @@ int bge_bridge_apply_control(
     float* action_values,
     uint32_t num_actions
 ) {
-    if (!bridge || !action_values) return -1;
+    if (!bridge || !action_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_apply_control: required parameter is NULL (bridge, action_values)");
+        return -1;
+    }
 
     bridge->stats.total_decisions++;
 
@@ -416,7 +450,10 @@ bge_control_mode_t bge_bridge_get_mode(const bge_bridge_t* bridge) {
 }
 
 int bge_bridge_set_mode(bge_bridge_t* bridge, bge_control_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_set_mode: bridge is NULL");
+        return -1;
+    }
     bridge->state.mode = mode;
     return 0;
 }
@@ -435,7 +472,10 @@ int bge_bridge_inhibit_action(
     uint32_t action_id,
     float strength
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_inhibit_action: bridge is NULL");
+        return -1;
+    }
 
     bridge->inhibited_action = action_id;
     bridge->inhibition_level = clamp(strength, 0.0f, 1.0f);
@@ -447,7 +487,10 @@ int bge_bridge_release_inhibition(
     bge_bridge_t* bridge,
     uint32_t action_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_release_inhibition: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->inhibited_action == action_id) {
         bridge->inhibition_level = 0.0f;
@@ -460,12 +503,18 @@ bool bge_bridge_is_inhibited(
     const bge_bridge_t* bridge,
     uint32_t action_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_is_inhibited: bridge is NULL");
+        return false;
+    }
     return bridge->inhibited_action == action_id && bridge->inhibition_level > 0.0f;
 }
 
 int bge_bridge_global_stop(bge_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_global_stop: bridge is NULL");
+        return -1;
+    }
 
     bridge->inhibition_level = 1.0f;
     bridge->state.mode = BGE_CONTROL_SUPPRESSED;
@@ -487,7 +536,10 @@ bool bge_bridge_detect_conflict(
     bge_conflict_type_t* conflict_type,
     float* conflict_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_detect_conflict: bridge is NULL");
+        return false;
+    }
 
     float level = 0.0f;
     bge_conflict_type_t type = BGE_CONFLICT_NONE;
@@ -567,7 +619,10 @@ int bge_bridge_task_switch(
     uint32_t new_task_id,
     uint64_t current_time_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_task_switch: bridge is NULL");
+        return -1;
+    }
 
     bridge->last_switch_time_ms = current_time_ms;
     bridge->in_switch_cost = bridge->config.enable_switch_cost;
@@ -585,7 +640,10 @@ int bge_bridge_task_switch(
 }
 
 bool bge_bridge_in_switch_cost(const bge_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_in_switch_cost: bridge is NULL");
+        return false;
+    }
     return bridge->in_switch_cost;
 }
 
@@ -609,7 +667,10 @@ int bge_bridge_get_state(
     const bge_bridge_t* bridge,
     bge_control_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -632,7 +693,10 @@ int bge_bridge_get_stats(
     const bge_bridge_t* bridge,
     bge_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

@@ -314,6 +314,7 @@ hemispheric_sleep_bridge_t* hemispheric_sleep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_sleep_create: mutex allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_sleep_create: bridge->base is NULL");
         return NULL;
     }
     nimcp_mutex_init(bridge->base.mutex, NULL);
@@ -519,6 +520,7 @@ bool hemispheric_sleep_is_dreaming(
     hemisphere_id_t hemisphere
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_sleep_is_dreaming: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 

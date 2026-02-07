@@ -251,10 +251,14 @@ static motor_vec3_t lerp_vec3(const motor_vec3_t* a, const motor_vec3_t* b, floa
  *                Use enqueue_command() for the public thread-safe version.
  */
 static bool enqueue_command_unlocked(motor_adapter_t* adapter, const motor_command_t* command) {
-    if (!adapter || !command) return false;
+    if (!adapter || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enqueue_command_unlocked: required parameter is NULL (adapter, command)");
+        return false;
+    }
 
     if (adapter->queue_count >= adapter->queue_capacity) {
         LOG_WARN("[%s] Command queue full", MOTOR_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_command_unlocked: capacity exceeded");
         return false;
     }
 
@@ -274,7 +278,10 @@ static bool enqueue_command_unlocked(motor_adapter_t* adapter, const motor_comma
  *                Uses in_callback flag to prevent callback re-entrance.
  */
 static bool enqueue_command(motor_adapter_t* adapter, const motor_command_t* command) {
-    if (!adapter || !command) return false;
+    if (!adapter || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enqueue_command: required parameter is NULL (adapter, command)");
+        return false;
+    }
 
     /* Copy callback info while holding lock, invoke after releasing */
     motor_command_callback_t callback = NULL;
@@ -453,6 +460,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->effectors) {
         LOG_ERROR("[%s] Failed to allocate effector array", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->effectors is NULL");
         return NULL;
     }
 
@@ -473,6 +481,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->programs) {
         LOG_ERROR("[%s] Failed to allocate program storage", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->programs is NULL");
         return NULL;
     }
     adapter->next_program_id = 1;
@@ -485,6 +494,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->trajectories) {
         LOG_ERROR("[%s] Failed to allocate trajectory array", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->trajectories is NULL");
         return NULL;
     }
 
@@ -497,6 +507,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->command_queue) {
         LOG_ERROR("[%s] Failed to allocate command queue", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->command_queue is NULL");
         return NULL;
     }
 
@@ -505,6 +516,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->queue_mutex) {
         LOG_ERROR("[%s] Failed to create command queue mutex", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->queue_mutex is NULL");
         return NULL;
     }
 
@@ -524,6 +536,7 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     if (!adapter->waypoint_pool) {
         LOG_ERROR("[%s] Failed to create waypoint memory pool", MOTOR_LOG_MODULE);
         motor_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_create: adapter->waypoint_pool is NULL");
         return NULL;
     }
 
@@ -779,6 +792,7 @@ bool motor_get_program(const motor_adapter_t* adapter,
     NIMCP_CHECK_NULL_BOOL(info, "info");
     if (program_id == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_reset: program_id is zero");
         return false;
     }
 
@@ -793,6 +807,7 @@ bool motor_get_program(const motor_adapter_t* adapter,
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_reset: validation failed");
     return false;
 }
 
@@ -800,6 +815,7 @@ bool motor_delete_program(motor_adapter_t* adapter, uint32_t program_id) {
     NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
     if (program_id == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_delete_program: program_id is zero");
         return false;
     }
 
@@ -819,6 +835,7 @@ bool motor_delete_program(motor_adapter_t* adapter, uint32_t program_id) {
         pp = &(*pp)->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_delete_program: validation failed");
     return false;
 }
 
@@ -829,11 +846,13 @@ bool motor_delete_program(motor_adapter_t* adapter, uint32_t program_id) {
 bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
     if (!adapter) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: adapter is NULL");
         return false;
     }
     if (!goal) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: goal");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: goal is NULL");
         return false;
     }
 
@@ -843,6 +862,7 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
     uint32_t effector_id = (uint32_t)goal->region;
     if (effector_id >= adapter->num_effectors) {
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_plan_movement: capacity exceeded");
         return false;
     }
 
@@ -869,6 +889,7 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
     /* Create simple trajectory with start and end */
     if (adapter->num_trajectories >= adapter->config.max_trajectories) {
         set_error(adapter, MOTOR_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "motor_plan_movement: capacity exceeded");
         return false;
     }
 
@@ -876,6 +897,7 @@ bool motor_plan_movement(motor_adapter_t* adapter, const motor_goal_t* goal) {
     traj->waypoints = (trajectory_waypoint_t*)nimcp_calloc(2, sizeof(trajectory_waypoint_t));
     if (!traj->waypoints) {
         set_error(adapter, MOTOR_ERROR_INTERNAL);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_plan_movement: traj->waypoints is NULL");
         return false;
     }
     /* Only increment after successful allocation to avoid memory leak on error path */
@@ -914,21 +936,25 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
                             uint32_t num_waypoints) {
     if (!adapter) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: adapter is NULL");
         return false;
     }
     if (!waypoints) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: waypoints");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: waypoints is NULL");
         return false;
     }
     if (num_waypoints < 2) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: num_waypoints must be >= 2");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_plan_movement: validation failed");
         return false;
     }
 
     if (adapter->num_trajectories >= adapter->config.max_trajectories) {
         set_error(adapter, MOTOR_ERROR_BUFFER_OVERFLOW);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "motor_plan_movement: capacity exceeded");
         return false;
     }
 
@@ -942,6 +968,7 @@ bool motor_plan_trajectory(motor_adapter_t* adapter,
         num_waypoints, sizeof(trajectory_waypoint_t));
     if (!traj->waypoints) {
         set_error(adapter, MOTOR_ERROR_INTERNAL);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "motor_plan_movement: traj->waypoints is NULL");
         return false;
     }
     /* Only increment after successful allocation to avoid memory leak on error path */
@@ -966,11 +993,13 @@ bool motor_plan_program_execution(motor_adapter_t* adapter,
                                    float speed_factor) {
     if (!adapter) {
         NIMCP_ERROR_SET(NIMCP_ERROR_NULL_POINTER, "NULL pointer: adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: adapter is NULL");
         return false;
     }
     if (program_id == 0) {
         NIMCP_ERROR_SET(NIMCP_ERROR_INVALID_PARAMETER, "Invalid parameter: program_id cannot be 0");
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_plan_movement: program_id is zero");
         return false;
     }
 
@@ -985,6 +1014,7 @@ bool motor_plan_program_execution(motor_adapter_t* adapter,
 
     if (!node) {
         set_error(adapter, MOTOR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_plan_movement: node is NULL");
         return false;
     }
 
@@ -1011,6 +1041,7 @@ bool motor_plan_program_execution(motor_adapter_t* adapter,
 
         if (!enqueue_command(adapter, &cmd)) {
             set_error(adapter, MOTOR_ERROR_BUFFER_OVERFLOW);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_plan_movement: enqueue_command is NULL");
             return false;
         }
     }
@@ -1030,6 +1061,7 @@ bool motor_begin_execution(motor_adapter_t* adapter) {
 
     if (adapter->status != MOTOR_STATUS_PREPARING) {
         LOG_WARN("[%s] Cannot begin execution from status %d", MOTOR_LOG_MODULE, adapter->status);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_begin_execution: validation failed");
         return false;
     }
 
@@ -1048,6 +1080,7 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
     NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
     if (adapter->status != MOTOR_STATUS_EXECUTING &&
         adapter->status != MOTOR_STATUS_CORRECTING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_update_execution: operation failed");
         return false;
     }
 
@@ -1109,6 +1142,7 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
             emit_event(adapter, 3 /* MOTOR_EVENT_EXECUTION_COMPLETE */, &adapter->last_result);
             adapter->stats.successful_movements++;
 
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_update_execution: operation failed");
             return false;  /* Execution complete */
         }
 
@@ -1149,6 +1183,7 @@ bool motor_update_execution(motor_adapter_t* adapter, float dt_ms) {
 
     /* No more work */
     adapter->status = MOTOR_STATUS_COMPLETE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_update_execution: validation failed");
     return false;
 }
 
@@ -1222,6 +1257,7 @@ bool motor_get_result(const motor_adapter_t* adapter, motor_result_t* result) {
 
     if (adapter->status != MOTOR_STATUS_COMPLETE &&
         adapter->status != MOTOR_STATUS_ERROR) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_get_result: operation failed");
         return false;
     }
 
@@ -1241,6 +1277,7 @@ bool motor_update_feedback(motor_adapter_t* adapter,
     if (effector_id >= adapter->num_effectors) {
         NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
                        effector_id, adapter->num_effectors);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_get_result: capacity exceeded");
         return false;
     }
 
@@ -1284,6 +1321,7 @@ bool motor_update_visual_feedback(motor_adapter_t* adapter,
     if (effector_id >= adapter->num_effectors) {
         NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
                        effector_id, adapter->num_effectors);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_get_result: capacity exceeded");
         return false;
     }
 
@@ -1331,6 +1369,7 @@ bool motor_receive_cerebellar_correction(motor_adapter_t* adapter,
     if (effector_id >= adapter->num_effectors) {
         NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
                        effector_id, adapter->num_effectors);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_get_result: capacity exceeded");
         return false;
     }
 
@@ -1360,7 +1399,10 @@ bool motor_train_movement(motor_adapter_t* adapter,
                            float learning_rate) {
     NIMCP_CHECK_NULL_BOOL(adapter, "adapter");
     NIMCP_CHECK_NULL_BOOL(target_position, "target_position");
-    if (!adapter->config.enable_training) return false;
+    if (!adapter->config.enable_training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_get_result: adapter->config is NULL");
+        return false;
+    }
 
     if (learning_rate <= 0.0f) {
         learning_rate = adapter->config.learning_rate;
@@ -1503,6 +1545,7 @@ bool motor_get_effector_state(const motor_adapter_t* adapter,
     if (effector_id >= adapter->num_effectors) {
         NIMCP_ERROR_SET(NIMCP_ERROR_OUT_OF_RANGE, "Out of bounds: effector_id (%u >= %u)",
                        effector_id, adapter->num_effectors);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_get_config: capacity exceeded");
         return false;
     }
     *state = adapter->effectors[effector_id];
@@ -1586,6 +1629,7 @@ nimcp_bio_future_t motor_request_movement_async(
     NIMCP_CHECK_NULL_PTR(goal, "goal");
     if (!adapter->bio_ctx) {
         LOG_WARNING("[%s] Cannot request movement: bio_ctx not initialized", MOTOR_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "motor_process_bio_messages: adapter->bio_ctx is NULL");
         return NULL;
     }
 

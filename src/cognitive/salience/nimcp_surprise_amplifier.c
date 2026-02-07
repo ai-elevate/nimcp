@@ -1036,7 +1036,10 @@ float surprise_amplifier_get_current_level(const surprise_amplifier_t* amp) {
 }
 
 bool surprise_amplifier_is_in_refractory(const surprise_amplifier_t* amp) {
-    if (!amp) return false;
+    if (!amp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surprise_amplifier_is_in_refractory: amp is NULL");
+        return false;
+    }
 
     uint64_t now_ms = get_time_ms();
     nimcp_mutex_lock((nimcp_mutex_t*)amp->mutex);
@@ -1130,7 +1133,10 @@ surprise_amplifier_stats_t surprise_amplifier_get_stats(
 }
 
 bool surprise_amplifier_is_bio_async_connected(const surprise_amplifier_t* amp) {
-    if (!amp) return false;
+    if (!amp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surprise_amplifier_is_bio_async_connected: amp is NULL");
+        return false;
+    }
     return amp->bio_async_enabled;
 }
 

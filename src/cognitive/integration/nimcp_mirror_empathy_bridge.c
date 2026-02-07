@@ -326,6 +326,7 @@ static int mirror_empathy_on_event(
     void* user_data
 ) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -527,6 +528,7 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "mirror_empathy") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_empathy_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -536,6 +538,7 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     if (!bridge->agents) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_empathy_bridge_create: bridge->agents is NULL");
         return NULL;
     }
 
@@ -601,6 +604,7 @@ int mirror_empathy_bridge_register_with_hub(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !bridge->initialized || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_register_with_hub: required parameter is NULL (bridge, bridge->initialized, hub)");
         return -1;
     }
 
@@ -613,6 +617,7 @@ int mirror_empathy_bridge_register_with_hub(
     /* Check if already registered */
     if (bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_empathy_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -634,6 +639,7 @@ int mirror_empathy_bridge_register_with_hub(
         nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_empathy_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -687,6 +693,7 @@ int mirror_empathy_bridge_register_with_hub(
 
 int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_unregister_from_hub: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -698,6 +705,7 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_unregister_from_hub: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -731,6 +739,7 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
 
 bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_is_registered: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -757,6 +766,7 @@ int mirror_empathy_publish_mirrored_action(
     const mirror_empathy_action_t* action
 ) {
     if (!bridge || !bridge->initialized || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_mirrored_action: required parameter is NULL (bridge, bridge->initialized, action)");
         return -1;
     }
 
@@ -768,6 +778,7 @@ int mirror_empathy_publish_mirrored_action(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_mirrored_action: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -803,6 +814,7 @@ int mirror_empathy_publish_emotional_resonance(
     const mirror_empathy_resonance_t* resonance
 ) {
     if (!bridge || !bridge->initialized || !resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_emotional_resonance: required parameter is NULL (bridge, bridge->initialized, resonance)");
         return -1;
     }
 
@@ -814,6 +826,7 @@ int mirror_empathy_publish_emotional_resonance(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_emotional_resonance: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -858,6 +871,7 @@ int mirror_empathy_request_empathetic_response(
     mirror_empathy_response_t* response_out
 ) {
     if (!bridge || !bridge->initialized || !response_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_request_empathetic_response: required parameter is NULL (bridge, bridge->initialized, response_out)");
         return -1;
     }
 
@@ -869,6 +883,7 @@ int mirror_empathy_request_empathetic_response(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_request_empathetic_response: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -947,6 +962,7 @@ int mirror_empathy_notify_action_intention(
     const mirror_empathy_intention_t* intention
 ) {
     if (!bridge || !bridge->initialized || !intention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_notify_action_intention: required parameter is NULL (bridge, bridge->initialized, intention)");
         return -1;
     }
 
@@ -958,6 +974,7 @@ int mirror_empathy_notify_action_intention(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_notify_action_intention: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -999,6 +1016,7 @@ int mirror_empathy_publish_social_understanding(
     const mirror_empathy_social_t* understanding
 ) {
     if (!bridge || !bridge->initialized || !understanding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_social_understanding: required parameter is NULL (bridge, bridge->initialized, understanding)");
         return -1;
     }
 
@@ -1010,6 +1028,7 @@ int mirror_empathy_publish_social_understanding(
 
     if (!bridge->registered || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_publish_social_understanding: required parameter is NULL (bridge->registered, bridge->hub)");
         return -1;
     }
 
@@ -1051,6 +1070,7 @@ int mirror_empathy_set_action_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_set_action_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1072,6 +1092,7 @@ int mirror_empathy_set_resonance_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_set_resonance_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1093,6 +1114,7 @@ int mirror_empathy_set_response_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_set_response_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1119,6 +1141,7 @@ int mirror_empathy_get_agent_state(
     mirror_emotion_type_t* last_emotion
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_get_agent_state: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1171,6 +1194,7 @@ int mirror_empathy_bridge_get_stats(
     mirror_empathy_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1190,6 +1214,7 @@ int mirror_empathy_bridge_get_stats(
 
 int mirror_empathy_bridge_reset_stats(mirror_empathy_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_empathy_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

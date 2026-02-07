@@ -152,6 +152,7 @@ swarm_conflict_resolver_t conflict_resolver_create(
     if (!resolver->active_conflicts) {
         LOG_ERROR("Failed to allocate active conflicts array");
         nimcp_free(resolver);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "conflict_resolver_default_config: resolver->active_conflicts is NULL");
         return NULL;
     }
 
@@ -162,6 +163,7 @@ swarm_conflict_resolver_t conflict_resolver_create(
         LOG_ERROR("Failed to allocate history array");
         nimcp_free(resolver->active_conflicts);
         nimcp_free(resolver);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "conflict_resolver_default_config: resolver->history is NULL");
         return NULL;
     }
 
@@ -173,6 +175,7 @@ swarm_conflict_resolver_t conflict_resolver_create(
         nimcp_free(resolver->history);
         nimcp_free(resolver->active_conflicts);
         nimcp_free(resolver);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "conflict_resolver_default_config: resolver->negotiations is NULL");
         return NULL;
     }
 
@@ -1608,6 +1611,7 @@ static negotiation_state_t* find_negotiation(
             return &resolver->negotiations[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conflict_stats_print: validation failed");
     return NULL;
 }
 
@@ -1620,6 +1624,7 @@ static conflict_t* find_active_conflict(
             return &resolver->active_conflicts[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conflict_stats_print: validation failed");
     return NULL;
 }
 

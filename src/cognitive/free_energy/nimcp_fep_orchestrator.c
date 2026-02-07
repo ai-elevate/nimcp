@@ -122,6 +122,7 @@ static fep_bridge_entry_t* find_bridge_by_id(
             return &orchestrator->bridges[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bridge_by_id: validation failed");
     return NULL;
 }
 
@@ -134,7 +135,10 @@ static bool category_needs_update(
     uint64_t current_time_ms
 ) {
     const fep_category_config_t* cat_cfg = &orchestrator->config.categories[category];
-    if (!cat_cfg->enabled) return false;
+    if (!cat_cfg->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "category_needs_update: cat_cfg->enabled is NULL");
+        return false;
+    }
     
     uint64_t elapsed = current_time_ms - cat_cfg->last_update_time;
     return elapsed >= cat_cfg->update_interval_ms;
@@ -257,6 +261,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
         orchestrator->bridge_capacity, sizeof(fep_bridge_entry_t));
     if (!orchestrator->bridges) {
         nimcp_free(orchestrator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_orchestrator_create: orchestrator->bridges is NULL");
         return NULL;
     }
     
@@ -265,6 +270,7 @@ fep_orchestrator_t* fep_orchestrator_create(const fep_orchestrator_config_t* con
     if (!orchestrator->mutex) {
         nimcp_free(orchestrator->bridges);
         nimcp_free(orchestrator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_orchestrator_create: orchestrator->mutex is NULL");
         return NULL;
     }
     
@@ -637,6 +643,7 @@ const fep_bridge_entry_t* fep_orchestrator_get_bridge(
             return &orchestrator->bridges[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_orchestrator_get_bridge: validation failed");
     return NULL;
 }
 
@@ -1073,6 +1080,7 @@ int fep_orchestrator_connect_internal_kg(
     /* Initialize KG context */
     if (kg_module_init(&orchestrator->kg_context, brain, "fep_orchestrator") != 0) {
         nimcp_platform_mutex_unlock(orchestrator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fep_orchestrator_connect_internal_kg: validation failed");
         return -1;
     }
 
@@ -1181,6 +1189,7 @@ int fep_orchestrator_get_topology_summary(
     size_t summary_size)
 {
     if (!orchestrator || !summary || summary_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_orchestrator_get_topology_summary: required parameter is NULL (orchestrator, summary)");
         return -1;
     }
 

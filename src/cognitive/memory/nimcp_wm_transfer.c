@@ -223,6 +223,7 @@ wm_transfer_system_t* wm_transfer_create(void) {
         LOG_ERROR("Failed to allocate attention weights");
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_transfer_create: validation failed");
         return NULL;
     }
 
@@ -564,9 +565,18 @@ bool wm_transfer_force_item(
     uint32_t wm_slot)
 {
     // Guard clauses
-    if (!system) return false;
-    if (!system->working_memory) return false;
-    if (!system->engram_system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_transfer_force_item: system is NULL");
+        return false;
+    }
+    if (!system->working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_transfer_force_item: system->working_memory is NULL");
+        return false;
+    }
+    if (!system->engram_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_transfer_force_item: system->engram_system is NULL");
+        return false;
+    }
 
     // Placeholder: Would extract features from working memory slot
     // and encode directly to engram system

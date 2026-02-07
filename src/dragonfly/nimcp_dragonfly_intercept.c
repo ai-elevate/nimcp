@@ -106,11 +106,26 @@ intercept_config_t intercept_default_config(void) {
 }
 
 bool intercept_validate_config(const intercept_config_t* config) {
-    if (!config) return false;
-    if (config->pn_gain < 1.0f || config->pn_gain > 10.0f) return false;
-    if (config->min_intercept_time_s < 0.0f) return false;
-    if (config->max_intercept_time_s <= config->min_intercept_time_s) return false;
-    if (config->safety_margin < 1.0f) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intercept_validate_config: config is NULL");
+        return false;
+    }
+    if (config->pn_gain < 1.0f || config->pn_gain > 10.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
+        return false;
+    }
+    if (config->min_intercept_time_s < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_intercept_time_s <= config->min_intercept_time_s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
+        return false;
+    }
+    if (config->safety_margin < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "intercept_validate_config: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -157,7 +172,10 @@ void dragonfly_interceptor_destroy(dragonfly_interceptor_t* interceptor) {
 }
 
 int dragonfly_interceptor_reset(dragonfly_interceptor_t* interceptor) {
-    if (!interceptor) return -1;
+    if (!interceptor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_interceptor_reset: interceptor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(interceptor->mutex);
     memset(&interceptor->last_solution, 0, sizeof(interceptor->last_solution));
@@ -386,7 +404,10 @@ int dragonfly_intercept_compute(
     const target_state_t* target,
     intercept_solution_t* solution
 ) {
-    if (!interceptor || !self || !target || !solution) return -1;
+    if (!interceptor || !self || !target || !solution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_intercept_compute: required parameter is NULL (interceptor, self, target, solution)");
+        return -1;
+    }
 
     nimcp_mutex_lock(interceptor->mutex);
 
@@ -500,7 +521,10 @@ int dragonfly_intercept_compute_strategy(
     intercept_strategy_t strategy,
     intercept_solution_t* solution
 ) {
-    if (!interceptor || !self || !target || !solution) return -1;
+    if (!interceptor || !self || !target || !solution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_intercept_compute_strategy: required parameter is NULL (interceptor, self, target, solution)");
+        return -1;
+    }
 
     nimcp_mutex_lock(interceptor->mutex);
 
@@ -576,7 +600,10 @@ int dragonfly_intercept_get_command(
     const target_state_t* target,
     float accel_cmd[3]
 ) {
-    if (!interceptor || !self || !target || !accel_cmd) return -1;
+    if (!interceptor || !self || !target || !accel_cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_intercept_get_command: required parameter is NULL (interceptor, self, target, accel_cmd)");
+        return -1;
+    }
 
     intercept_solution_t solution;
     int result = dragonfly_intercept_compute(interceptor, self, target, &solution);
@@ -596,7 +623,10 @@ int dragonfly_intercept_plan_trajectory(
     const target_state_t* target,
     intercept_trajectory_t* trajectory
 ) {
-    if (!interceptor || !self || !target || !trajectory) return -1;
+    if (!interceptor || !self || !target || !trajectory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_intercept_plan_trajectory: required parameter is NULL (interceptor, self, target, trajectory)");
+        return -1;
+    }
 
     intercept_solution_t solution;
     int result = dragonfly_intercept_compute(interceptor, self, target, &solution);
@@ -645,8 +675,14 @@ int dragonfly_intercept_get_waypoint(
     float time_s,
     intercept_waypoint_t* waypoint
 ) {
-    if (!trajectory || !waypoint) return -1;
-    if (trajectory->num_waypoints == 0) return -1;
+    if (!trajectory || !waypoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_intercept_get_waypoint: required parameter is NULL (trajectory, waypoint)");
+        return -1;
+    }
+    if (trajectory->num_waypoints == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_intercept_get_waypoint: trajectory->num_waypoints is zero");
+        return -1;
+    }
 
     /* Find bracketing waypoints and interpolate */
     for (uint32_t i = 0; i < trajectory->num_waypoints; i++) {
@@ -771,7 +807,10 @@ int dragonfly_interceptor_get_stats(
     const dragonfly_interceptor_t* interceptor,
     intercept_stats_t* stats
 ) {
-    if (!interceptor || !stats) return -1;
+    if (!interceptor || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_interceptor_get_stats: required parameter is NULL (interceptor, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)interceptor->mutex);
     *stats = interceptor->stats;
@@ -781,7 +820,10 @@ int dragonfly_interceptor_get_stats(
 }
 
 int dragonfly_interceptor_reset_stats(dragonfly_interceptor_t* interceptor) {
-    if (!interceptor) return -1;
+    if (!interceptor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_interceptor_reset_stats: interceptor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(interceptor->mutex);
     memset(&interceptor->stats, 0, sizeof(interceptor->stats));
@@ -794,8 +836,14 @@ int dragonfly_interceptor_set_config(
     dragonfly_interceptor_t* interceptor,
     const intercept_config_t* config
 ) {
-    if (!interceptor || !config) return -1;
-    if (!intercept_validate_config(config)) return -1;
+    if (!interceptor || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_interceptor_set_config: required parameter is NULL (interceptor, config)");
+        return -1;
+    }
+    if (!intercept_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_interceptor_set_config: intercept_validate_config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(interceptor->mutex);
     interceptor->config = *config;
@@ -808,7 +856,10 @@ int dragonfly_interceptor_get_config(
     const dragonfly_interceptor_t* interceptor,
     intercept_config_t* config
 ) {
-    if (!interceptor || !config) return -1;
+    if (!interceptor || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_interceptor_get_config: required parameter is NULL (interceptor, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)interceptor->mutex);
     *config = interceptor->config;

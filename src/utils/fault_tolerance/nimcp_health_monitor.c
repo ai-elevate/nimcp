@@ -274,7 +274,10 @@ static operation_metric_t* find_or_create_operation(
     health_monitor_t monitor,
     const char* operation
 ) {
-    if (!monitor || !operation) return NULL;
+    if (!monitor || !operation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_operation: required parameter is NULL (monitor, operation)");
+        return NULL;
+    }
 
     // Search for existing operation
     for (uint32_t i = 0; i < monitor->num_operations; i++) {
@@ -285,6 +288,7 @@ static operation_metric_t* find_or_create_operation(
 
     // Create new operation if space available
     if (monitor->num_operations >= HEALTH_MONITOR_MAX_OPERATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_operation: capacity exceeded");
         return NULL;
     }
 
@@ -303,7 +307,10 @@ static error_metric_t* find_or_create_error(
     health_monitor_t monitor,
     const char* error_type
 ) {
-    if (!monitor || !error_type) return NULL;
+    if (!monitor || !error_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_error: required parameter is NULL (monitor, error_type)");
+        return NULL;
+    }
 
     // Search for existing error type
     for (uint32_t i = 0; i < monitor->num_error_types; i++) {
@@ -314,6 +321,7 @@ static error_metric_t* find_or_create_error(
 
     // Create new error type if space available
     if (monitor->num_error_types >= HEALTH_MONITOR_MAX_ERROR_TYPES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_error: capacity exceeded");
         return NULL;
     }
 
@@ -332,7 +340,10 @@ static error_metric_t* find_or_create_error(
  * @brief Detect memory leak anomaly
  */
 static bool detect_memory_leak(health_monitor_t monitor, anomaly_t* anomaly) {
-    if (!monitor->baseline_established) return false;
+    if (!monitor->baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_memory_leak: monitor->baseline_established is NULL");
+        return false;
+    }
 
     double trend = calculate_trend(&monitor->memory_history);
     double mean = calculate_mean(&monitor->memory_history);
@@ -356,6 +367,7 @@ static bool detect_memory_leak(health_monitor_t monitor, anomaly_t* anomaly) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_memory_leak: operation failed");
     return false;
 }
 
@@ -366,7 +378,10 @@ static bool detect_performance_degradation(
     health_monitor_t monitor,
     anomaly_t* anomaly
 ) {
-    if (!monitor->baseline_established) return false;
+    if (!monitor->baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_performance_degradation: monitor->baseline_established is NULL");
+        return false;
+    }
 
     double trend = calculate_trend(&monitor->latency_history);
     double mean = calculate_mean(&monitor->latency_history);
@@ -393,6 +408,7 @@ static bool detect_performance_degradation(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_performance_degradation: operation failed");
     return false;
 }
 
@@ -400,7 +416,10 @@ static bool detect_performance_degradation(
  * @brief Detect error spike
  */
 static bool detect_error_spike(health_monitor_t monitor, anomaly_t* anomaly) {
-    if (!monitor->baseline_established || monitor->num_error_types == 0) return false;
+    if (!monitor->baseline_established || monitor->num_error_types == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_error_spike: monitor->baseline_established is NULL");
+        return false;
+    }
 
     double mean = calculate_mean(&monitor->error_history);
 
@@ -431,6 +450,7 @@ static bool detect_error_spike(health_monitor_t monitor, anomaly_t* anomaly) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_error_spike: operation failed");
     return false;
 }
 
@@ -438,7 +458,10 @@ static bool detect_error_spike(health_monitor_t monitor, anomaly_t* anomaly) {
  * @brief Detect cache thrashing
  */
 static bool detect_cache_thrashing(health_monitor_t monitor, anomaly_t* anomaly) {
-    if (!monitor->baseline_established) return false;
+    if (!monitor->baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_cache_thrashing: monitor->baseline_established is NULL");
+        return false;
+    }
 
     double hit_rate = monitor->cache.hit_rate;
     double avg_hit_rate = monitor->cache.avg_hit_rate;
@@ -463,6 +486,7 @@ static bool detect_cache_thrashing(health_monitor_t monitor, anomaly_t* anomaly)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cache_thrashing: operation failed");
     return false;
 }
 
@@ -470,7 +494,10 @@ static bool detect_cache_thrashing(health_monitor_t monitor, anomaly_t* anomaly)
  * @brief Detect throughput drop
  */
 static bool detect_throughput_drop(health_monitor_t monitor, anomaly_t* anomaly) {
-    if (!monitor->baseline_established) return false;
+    if (!monitor->baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_throughput_drop: monitor->baseline_established is NULL");
+        return false;
+    }
 
     double current_ops = monitor->throughput.operations_per_sec;
     double avg_ops = monitor->throughput.avg_ops_per_sec;
@@ -495,6 +522,7 @@ static bool detect_throughput_drop(health_monitor_t monitor, anomaly_t* anomaly)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_throughput_drop: operation failed");
     return false;
 }
 
@@ -524,6 +552,7 @@ static bool detect_thread_contention(health_monitor_t monitor, anomaly_t* anomal
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_thread_contention: operation failed");
     return false;
 }
 
@@ -766,6 +795,7 @@ static void* monitoring_thread_func(void* arg) {
     }
 
     NIMCP_LOGGING_INFO("Health monitor stopped for brain '%s'", monitor->brain_id);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitoring_thread_func: operation failed");
     return NULL;
 }
 
@@ -815,6 +845,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
         if (err_hist) nimcp_free(err_hist);
         nimcp_mutex_destroy(&monitor->mutex);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_create: validation failed");
         return NULL;
     }
 
@@ -1588,6 +1619,7 @@ bool health_monitor_get_operation_stats(
     }
 
     nimcp_mutex_unlock(&monitor->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_monitor_get_operation_stats: validation failed");
     return false;
 }
 

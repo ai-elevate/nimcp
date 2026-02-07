@@ -416,7 +416,10 @@ int multimodal_nlp_immune_get_inflammation_state(
 bool multimodal_nlp_immune_has_integration_deficit(
     const multimodal_nlp_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "multimodal_nlp_immune_has_integration_deficit: bridge is NULL");
+        return false;
+    }
     float capacity = multimodal_nlp_immune_compute_integration_capacity(bridge);
     return capacity < 0.7f;
 }

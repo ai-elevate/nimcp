@@ -277,6 +277,7 @@ static void connect_guardian_to_executive(
  */
 bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_guardian_subsystem: brain is NULL");
         return false;
     }
 
@@ -291,6 +292,7 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     if (!brain->mental_health_monitor) {
         fprintf(stderr, LOG_TAG " ERROR: Mental health monitor not initialized\n");
         brain->mental_health_guardian = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_guardian_subsystem: brain->mental_health_monitor is NULL");
         return false;
     }
 
@@ -310,6 +312,7 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
     if (!guardian) {
         fprintf(stderr, LOG_TAG " ERROR: Failed to create guardian\n");
         brain->mental_health_guardian = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_mental_health_guardian_subsystem: guardian is NULL");
         return false;
     }
 
@@ -398,6 +401,7 @@ mental_health_guardian_t* brain_get_mental_health_guardian(brain_t brain) {
  */
 bool brain_start_mental_health_guardian(brain_t brain) {
     if (!brain || !brain->mental_health_guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_start_mental_health_guardian: required parameter is NULL (brain, brain->mental_health_guardian)");
         return false;
     }
     return mental_health_guardian_start(brain->mental_health_guardian);
@@ -411,6 +415,7 @@ bool brain_start_mental_health_guardian(brain_t brain) {
  */
 bool brain_stop_mental_health_guardian(brain_t brain) {
     if (!brain || !brain->mental_health_guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_stop_mental_health_guardian: required parameter is NULL (brain, brain->mental_health_guardian)");
         return false;
     }
     return mental_health_guardian_stop(brain->mental_health_guardian);
@@ -428,6 +433,7 @@ bool brain_get_mental_health_guardian_status(
     mental_health_guardian_status_t* status)
 {
     if (!brain || !brain->mental_health_guardian || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_mental_health_guardian_status: required parameter is NULL (brain, brain->mental_health_guardian, status)");
         return false;
     }
     return mental_health_guardian_get_status(brain->mental_health_guardian, status);

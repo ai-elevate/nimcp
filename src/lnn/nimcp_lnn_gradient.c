@@ -1307,11 +1307,13 @@ int lnn_gradient_clip(lnn_gradient_ctx_t* ctx, float max_norm) {
 bool lnn_gradient_check_health(const lnn_gradient_ctx_t* ctx) {
     // Guard: check NULL
     if (!ctx || !ctx->grad_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_gradient_check_health: required parameter is NULL (ctx, ctx->grad_params)");
         return false;
     }
 
     // Check tensor health
     if (!check_tensor_health(ctx->grad_params)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_gradient_check_health: check_tensor_health is NULL");
         return false;
     }
 
@@ -1319,6 +1321,7 @@ bool lnn_gradient_check_health(const lnn_gradient_ctx_t* ctx) {
     float norm = lnn_gradient_norm(ctx);
     if (norm > GRADIENT_HEALTH_THRESHOLD) {
         NIMCP_LOGGING_WARN("Gradient norm %f exceeds health threshold %f", norm, GRADIENT_HEALTH_THRESHOLD);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_gradient_check_health: validation failed");
         return false;
     }
 
@@ -1698,6 +1701,7 @@ static int accumulate_parameter_gradients(
  */
 static bool check_tensor_health(const nimcp_tensor_t* t) {
     if (!t) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_tensor_health: t is NULL");
         return false;
     }
 
@@ -1706,6 +1710,7 @@ static bool check_tensor_health(const nimcp_tensor_t* t) {
 
     for (size_t i = 0; i < numel; i++) {
         if (isnan(data[i]) || isinf(data[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_tensor_health: validation failed");
             return false;
         }
     }

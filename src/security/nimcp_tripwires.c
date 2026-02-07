@@ -56,6 +56,7 @@ static inline bool safe_uint64_add(uint64_t* dest, uint64_t addend) {
     if (*dest > UINT64_MAX - addend) {
         /* Overflow would occur - clamp to maximum */
         *dest = UINT64_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_uint64_add: validation failed");
         return false;
     }
     *dest += addend;
@@ -69,6 +70,7 @@ static inline bool safe_uint64_add(uint64_t* dest, uint64_t addend) {
  */
 static inline bool safe_uint32_inc(uint32_t* dest) {
     if (*dest == UINT32_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "safe_uint32_inc: validation failed");
         return false;  /* Already at max */
     }
     (*dest)++;
@@ -390,6 +392,7 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
     if (!system) {
         NIMCP_LOGGING_ERROR("%s Failed to allocate tripwire system",
                            TRIPWIRE_LOG_PREFIX);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tripwire_create: system is NULL");
         return NULL;
     }
 
@@ -411,6 +414,7 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
         NIMCP_LOGGING_ERROR("%s Failed to allocate behavior distributions",
                            TRIPWIRE_LOG_PREFIX);
         tripwire_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tripwire_create: required parameter is NULL (system->behavior, system->behavior)");
         return NULL;
     }
 
@@ -484,6 +488,7 @@ tripwire_system_t* tripwire_create(const tripwire_config_t* config) {
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("%s Failed to create mutex", TRIPWIRE_LOG_PREFIX);
         tripwire_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tripwire_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -1186,6 +1191,7 @@ static network_endpoint_t* network_find_or_create_endpoint(
 {
     /* Guard: Validate tracker */
     if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_find_or_create_endpoint: tracker is NULL");
         return NULL;
     }
 
@@ -1219,6 +1225,7 @@ static network_endpoint_t* network_find_or_create_endpoint(
      */
     if (tracker->endpoint_count == 0) {
         /* Should never happen, but handle gracefully */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "network_find_or_create_endpoint: tracker->endpoint_count is zero");
         return NULL;
     }
 

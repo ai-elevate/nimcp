@@ -195,7 +195,10 @@ static float update_avg(float current_avg, float new_value, uint64_t count) {
  *=============================================================================*/
 
 int wernicke_quantum_default_config(wernicke_quantum_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_default_config: config is NULL");
+        return -1;
+    }
 
     *config = (wernicke_quantum_config_t){
         .default_algo = WERNICKE_QA_HYBRID,
@@ -265,7 +268,10 @@ void wernicke_quantum_bridge_destroy(wernicke_quantum_bridge_t* bridge) {
 }
 
 bool wernicke_quantum_is_enabled(const wernicke_quantum_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: bridge is NULL");
+        return false;
+    }
     return bridge->enabled;
 }
 
@@ -284,13 +290,19 @@ int wernicke_quantum_search_lexicon(wernicke_quantum_bridge_t* bridge,
                                      uint32_t pattern_len,
                                      uint32_t lexicon_size,
                                      quantum_search_result_t* result) {
-    if (!bridge || !phoneme_pattern || !result || lexicon_size == 0) return -1;
+    if (!bridge || !phoneme_pattern || !result || lexicon_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: required parameter is NULL (bridge, phoneme_pattern, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(quantum_search_result_t));
 
     /* Initialize uniform superposition */
     float* amplitudes = nimcp_calloc(lexicon_size, sizeof(float));
-    if (!amplitudes) return -1;
+    if (!amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_quantum_is_enabled: amplitudes is NULL");
+        return -1;
+    }
 
     float initial_amp = 1.0f / sqrtf((float)lexicon_size);
     for (uint32_t i = 0; i < lexicon_size; i++) {
@@ -361,7 +373,10 @@ int wernicke_quantum_search_concepts(wernicke_quantum_bridge_t* bridge,
                                       uint32_t target_dim,
                                       uint32_t num_concepts,
                                       quantum_search_result_t* result) {
-    if (!bridge || !semantic_target || !result || num_concepts == 0) return -1;
+    if (!bridge || !semantic_target || !result || num_concepts == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: required parameter is NULL (bridge, semantic_target, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(quantum_search_result_t));
 
@@ -374,7 +389,10 @@ int wernicke_quantum_search_concepts(wernicke_quantum_bridge_t* bridge,
 
     /* Initialize superposition */
     float* amplitudes = nimcp_calloc(num_concepts, sizeof(float));
-    if (!amplitudes) return -1;
+    if (!amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_quantum_is_enabled: amplitudes is NULL");
+        return -1;
+    }
 
     float initial_amp = 1.0f / sqrtf((float)num_concepts);
     for (uint32_t i = 0; i < num_concepts; i++) {
@@ -422,12 +440,18 @@ int wernicke_quantum_walk_init(wernicke_quantum_bridge_t* bridge,
                                 uint32_t start_concept,
                                 uint32_t graph_size,
                                 quantum_walk_state_t* state) {
-    if (!bridge || !state || graph_size == 0) return -1;
+    if (!bridge || !state || graph_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     memset(state, 0, sizeof(quantum_walk_state_t));
 
     state->node_amplitudes = nimcp_calloc(graph_size, sizeof(float));
-    if (!state->node_amplitudes) return -1;
+    if (!state->node_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_quantum_is_enabled: state->node_amplitudes is NULL");
+        return -1;
+    }
 
     state->num_nodes = graph_size;
     state->current_node = start_concept;
@@ -444,13 +468,19 @@ int wernicke_quantum_walk_init(wernicke_quantum_bridge_t* bridge,
 
 int wernicke_quantum_walk_step(wernicke_quantum_bridge_t* bridge,
                                 quantum_walk_state_t* state) {
-    if (!bridge || !state || !state->node_amplitudes) return -1;
+    if (!bridge || !state || !state->node_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_is_enabled: required parameter is NULL (bridge, state, state->node_amplitudes)");
+        return -1;
+    }
 
     uint32_t n = state->num_nodes;
 
     /* Allocate temporary buffer */
     float* new_amps = nimcp_calloc(n, sizeof(float));
-    if (!new_amps) return -1;
+    if (!new_amps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_quantum_is_enabled: new_amps is NULL");
+        return -1;
+    }
 
     /* Simplified quantum walk: each node spreads to neighbors
      * Assume ring topology for simplicity */
@@ -499,12 +529,16 @@ int wernicke_quantum_walk_step(wernicke_quantum_bridge_t* bridge,
 int wernicke_quantum_walk_run(wernicke_quantum_bridge_t* bridge,
                                quantum_walk_state_t* state,
                                uint32_t max_steps) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     uint32_t steps = 0;
     while (steps < max_steps &&
            state->mixing_progress < bridge->config.walk_mixing_threshold) {
         if (wernicke_quantum_walk_step(bridge, state) < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return -1;
         }
         steps++;
@@ -518,7 +552,10 @@ int wernicke_quantum_walk_run(wernicke_quantum_bridge_t* bridge,
 int wernicke_quantum_walk_measure(wernicke_quantum_bridge_t* bridge,
                                    const quantum_walk_state_t* state,
                                    quantum_spreading_result_t* result) {
-    if (!bridge || !state || !result) return -1;
+    if (!bridge || !state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, state, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(quantum_spreading_result_t));
 
@@ -541,6 +578,7 @@ int wernicke_quantum_walk_measure(wernicke_quantum_bridge_t* bridge,
     if (!result->activated_concepts || !result->activation_levels) {
         nimcp_free(result->activated_concepts);
         nimcp_free(result->activation_levels);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (result->activated_concepts, result->activation_levels)");
         return -1;
     }
 
@@ -582,7 +620,10 @@ int wernicke_quantum_disambiguate(wernicke_quantum_bridge_t* bridge,
                                    const float* context_embedding,
                                    uint32_t context_dim,
                                    quantum_disambig_result_t* result) {
-    if (!bridge || !word || !result) return -1;
+    if (!bridge || !word || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, word, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(quantum_disambig_result_t));
 
@@ -591,11 +632,13 @@ int wernicke_quantum_disambiguate(wernicke_quantum_bridge_t* bridge,
     memset(&state, 0, sizeof(state));
 
     if (wernicke_quantum_superpose_senses(bridge, word, &state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     if (state.num_concepts == 0) {
         wernicke_quantum_state_free(&state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: state.num_concepts is zero");
         return -1;
     }
 
@@ -644,7 +687,10 @@ int wernicke_quantum_disambiguate(wernicke_quantum_bridge_t* bridge,
 int wernicke_quantum_superpose_senses(wernicke_quantum_bridge_t* bridge,
                                        const char* word,
                                        quantum_concept_state_t* state) {
-    if (!bridge || !word || !state) return -1;
+    if (!bridge || !word || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, word, state)");
+        return -1;
+    }
 
     memset(state, 0, sizeof(quantum_concept_state_t));
 
@@ -661,6 +707,7 @@ int wernicke_quantum_superpose_senses(wernicke_quantum_bridge_t* bridge,
 
     if (!state->concept_ids || !state->amplitudes || !state->phases) {
         wernicke_quantum_state_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (state->concept_ids, state->amplitudes, state->phases)");
         return -1;
     }
 
@@ -683,7 +730,10 @@ int32_t wernicke_quantum_collapse(wernicke_quantum_bridge_t* bridge,
                                    quantum_concept_state_t* state,
                                    const float* context_embedding,
                                    uint32_t context_dim) {
-    if (!bridge || !state || state->num_concepts == 0) return -1;
+    if (!bridge || !state || state->num_concepts == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Bias amplitudes by context similarity */
     if (context_embedding && context_dim > 0) {
@@ -742,11 +792,15 @@ int wernicke_quantum_spreading_activation(
     uint32_t graph_size,
     quantum_spreading_result_t* result
 ) {
-    if (!bridge || !seed_concepts || !result || graph_size == 0) return -1;
+    if (!bridge || !seed_concepts || !result || graph_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_spreading_activation: required parameter is NULL (bridge, seed_concepts, result)");
+        return -1;
+    }
 
     /* Initialize walk with multiple seeds */
     quantum_walk_state_t state;
     if (wernicke_quantum_walk_init(bridge, 0, graph_size, &state) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wernicke_quantum_spreading_activation: validation failed");
         return -1;
     }
 
@@ -787,7 +841,10 @@ int wernicke_quantum_get_related(wernicke_quantum_bridge_t* bridge,
                                   uint32_t* related_ids,
                                   float* similarities,
                                   uint32_t* num_related) {
-    if (!bridge || !related_ids || !similarities || !num_related) return -1;
+    if (!bridge || !related_ids || !similarities || !num_related) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_spreading_activation: required parameter is NULL (bridge, related_ids, similarities, num_related)");
+        return -1;
+    }
 
     *num_related = 0;
 
@@ -801,6 +858,7 @@ int wernicke_quantum_get_related(wernicke_quantum_bridge_t* bridge,
     if (wernicke_quantum_spreading_activation(bridge,
                                                &seed, &seed_act, 1,
                                                graph_size, &spreading) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_quantum_spreading_activation: operation failed");
         return -1;
     }
 
@@ -825,7 +883,10 @@ int wernicke_quantum_get_related(wernicke_quantum_bridge_t* bridge,
 
 int wernicke_quantum_get_stats(const wernicke_quantum_bridge_t* bridge,
                                 wernicke_quantum_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_spreading_activation: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -837,7 +898,10 @@ void wernicke_quantum_reset_stats(wernicke_quantum_bridge_t* bridge) {
 
 int wernicke_quantum_get_config(const wernicke_quantum_bridge_t* bridge,
                                  wernicke_quantum_config_t* config) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_quantum_reset_stats: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

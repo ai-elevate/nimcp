@@ -148,6 +148,7 @@ parietal_quantum_bridge_t* parietal_quantum_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_PARIETAL_QUANTUM, "parietal_quantum") != 0) {
         set_error("Failed to initialize bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "parietal_quantum_bridge_create: validation failed");
         return NULL;
     }
 
@@ -535,7 +536,10 @@ int parietal_quantum_get_stats(
     const parietal_quantum_bridge_t* bridge,
     parietal_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     cog_parietal_quantum_heartbeat("parietal_qua_parietal_quantum_get", 0.0f);

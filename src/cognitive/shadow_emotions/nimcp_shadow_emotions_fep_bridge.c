@@ -280,19 +280,28 @@ void shadow_emotions_fep_bridge_set_instance_health_agent(nimcp_health_agent_t* 
  * ============================================================================ */
 
 int shadow_emotions_fep_bridge_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_fep_bridge_training_begin: ctx is NULL");
+        return -1;
+    }
     shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_begin", 0.0f);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_fep_bridge_training_end: ctx is NULL");
+        return -1;
+    }
     shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_end", 1.0f);
     return 0;
 }
 
 int shadow_emotions_fep_bridge_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shadow_emotions_fep_bridge_training_step: ctx is NULL");
+        return -1;
+    }
     shadow_emotions_fep_bridge_heartbeat_instance(g_shadow_emotions_fep_bridge_instance_health_agent, "shadow_fep_training_step", progress);
     return 0;
 }

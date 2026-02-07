@@ -167,7 +167,10 @@ static inline uint32_t hash_task_id(uint64_t task_id, uint32_t capacity) {
  * @brief Find task slot by ID
  */
 static int32_t find_task_slot(pr_meta_bridge_t bridge, uint64_t task_id) {
-    if (!bridge || bridge->task_count == 0) return -1;
+    if (!bridge || bridge->task_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_task_slot: bridge is NULL");
+        return -1;
+    }
 
     uint32_t hash = hash_task_id(task_id, bridge->index_capacity);
     uint32_t start = hash;
@@ -177,11 +180,13 @@ static int32_t find_task_slot(pr_meta_bridge_t bridge, uint64_t task_id) {
             return (int32_t)bridge->task_slot_index[hash];
         }
         if (bridge->task_id_index[hash] == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_task_slot: validation failed");
             return -1;  /* Empty slot, task not found */
         }
         hash = (hash + 1) % bridge->index_capacity;
     } while (hash != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_task_slot: validation failed");
     return -1;
 }
 
@@ -206,6 +211,7 @@ static bool insert_task_index(
         hash = (hash + 1) % bridge->index_capacity;
     } while (hash != start);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insert_task_index: operation failed");
     return false;  /* Index full */
 }
 
@@ -236,7 +242,10 @@ static int compare_recalls(const void* a, const void* b) {
     const pr_meta_recall_t* ra = (const pr_meta_recall_t*)a;
     const pr_meta_recall_t* rb = (const pr_meta_recall_t*)b;
     if (rb->similarity > ra->similarity) return 1;
-    if (rb->similarity < ra->similarity) return -1;
+    if (rb->similarity < ra->similarity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_recalls: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -337,14 +346,26 @@ pr_meta_config_t pr_meta_config_default(void) {
 }
 
 bool pr_meta_config_validate(const pr_meta_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_config_validate: config is NULL");
+        return false;
+    }
 
     /* Learning rate validation */
-    if (config->inner_lr <= 0.0f) return false;
-    if (config->outer_lr <= 0.0f) return false;
+    if (config->inner_lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
+        return false;
+    }
+    if (config->outer_lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
+        return false;
+    }
 
     /* Step count validation */
-    if (config->inner_steps == 0) return false;
+    if (config->inner_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: config->inner_steps is zero");
+        return false;
+    }
 
     /* Threshold validation */
     /* Phase 8: Heartbeat at operation start */
@@ -352,18 +373,27 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
 
 
     if (config->resonance_threshold < 0.0f || config->resonance_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
     if (config->transfer_threshold < 0.0f || config->transfer_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
     if (config->transfer_weight < 0.0f || config->transfer_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
 
     /* Memory validation */
-    if (config->max_task_memory == 0) return false;
-    if (config->max_recall == 0) return false;
+    if (config->max_task_memory == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_config_validate: config->max_task_memory is zero");
+        return false;
+    }
+    if (config->max_recall == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: config->max_recall is zero");
+        return false;
+    }
 
     /* Tier rate validation */
     for (int t = 0; t < PR_META_NUM_TIERS; t++) {
@@ -373,11 +403,15 @@ bool pr_meta_config_validate(const pr_meta_config_t* config) {
                              (float)(t + 1) / (float)PR_META_NUM_TIERS);
         }
 
-        if (config->tier_adaptation_rate[t] <= 0.0f) return false;
+        if (config->tier_adaptation_rate[t] <= 0.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
+            return false;
+        }
     }
 
     /* Quaternion rate validation */
     if (config->adapt_quaternion && config->quat_adaptation_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_config_validate: validation failed");
         return false;
     }
 
@@ -406,6 +440,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     if (config) {
         if (!pr_meta_config_validate(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_create: pr_meta_config_validate is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -416,6 +451,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_meta") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_meta_bridge_create: validation failed");
         return NULL;
     }
 
@@ -425,6 +461,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     if (!bridge->task_memory) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_bridge_create: bridge->task_memory is NULL");
         return NULL;
     }
     bridge->task_count = 0;
@@ -439,6 +476,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_memory);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "pr_meta_bridge_create: validation failed");
         return NULL;
     }
 
@@ -451,6 +489,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_memory);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_create: bridge->recall_cache is NULL");
         return NULL;
     }
     bridge->recall_cache_task_id = 0;
@@ -511,7 +550,10 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
 }
 
 int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_reset", 0.0f);
@@ -576,7 +618,10 @@ int pr_meta_maml_inner_loop(
     void* model,
     pr_meta_result_t* result)
 {
-    if (!bridge || !task || !result) return -1;
+    if (!bridge || !task || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_maml_inner_loop: required parameter is NULL (bridge, task, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_inner_l", 0.0f);
@@ -740,7 +785,10 @@ int pr_meta_maml_outer_step(
     void* model,
     float* avg_query_loss)
 {
-    if (!bridge || !tasks || num_tasks == 0) return -1;
+    if (!bridge || !tasks || num_tasks == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_maml_outer_step: required parameter is NULL (bridge, tasks)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_maml_outer_s", 0.0f);
@@ -793,7 +841,10 @@ int pr_meta_memory_init(
     uint32_t num_params,
     float* init_params)
 {
-    if (!bridge || !task || !base_params || !init_params) return -1;
+    if (!bridge || !task || !base_params || !init_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_memory_init: required parameter is NULL (bridge, task, base_params, init_params)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, base_params, sizeof(*base_params));
     if (num_params == 0) return 0;
 
@@ -962,7 +1013,10 @@ int pr_meta_task_embedding(
     float* embedding,
     uint32_t embed_dim)
 {
-    if (!bridge || !task || !embedding || embed_dim == 0) return -1;
+    if (!bridge || !task || !embedding || embed_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_task_embedding: required parameter is NULL (bridge, task, embedding)");
+        return -1;
+    }
 
     /* Simple embedding from quaternion + signature hash */
     /* Phase 8: Heartbeat at operation start */
@@ -1019,7 +1073,10 @@ int pr_meta_recall_similar_tasks(
     pr_meta_recall_t* recalls,
     uint32_t* num_found)
 {
-    if (!bridge || !task || !recalls || !num_found) return -1;
+    if (!bridge || !task || !recalls || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_recall_similar_tasks: required parameter is NULL (bridge, task, recalls, num_found)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_recall_simil", 0.0f);
@@ -1048,6 +1105,7 @@ int pr_meta_recall_similar_tasks(
     pr_meta_recall_t* all_recalls = nimcp_calloc(bridge->task_count, sizeof(pr_meta_recall_t));
     if (!all_recalls) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_meta_recall_similar_tasks: all_recalls is NULL");
         return -1;
     }
 
@@ -1123,7 +1181,10 @@ int pr_meta_adapt_quaternion(
     const pr_meta_result_t* result,
     nimcp_quaternion_t* adapted_quat)
 {
-    if (!bridge || !task || !result || !adapted_quat) return -1;
+    if (!bridge || !task || !result || !adapted_quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_adapt_quaternion: required parameter is NULL (bridge, task, result, adapted_quat)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_adapt_quater", 0.0f);
@@ -1183,7 +1244,10 @@ int pr_meta_task_to_quaternion(
     const pr_meta_task_t* task,
     nimcp_quaternion_t* quat)
 {
-    if (!bridge || !task || !quat) return -1;
+    if (!bridge || !task || !quat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_task_to_quaternion: required parameter is NULL (bridge, task, quat)");
+        return -1;
+    }
 
     /* Default initialization based on tier */
     /* Phase 8: Heartbeat at operation start */
@@ -1255,7 +1319,10 @@ int pr_meta_quaternion_to_lr(
     float* inner_lr,
     float* outer_lr)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_quaternion_to_lr: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_quaternion_t", 0.0f);
@@ -1296,7 +1363,10 @@ int pr_meta_blend_quaternions(
     uint32_t count,
     nimcp_quaternion_t* result)
 {
-    if (!bridge || !quats || !result || count == 0) return -1;
+    if (!bridge || !quats || !result || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_blend_quaternions: required parameter is NULL (bridge, quats, result)");
+        return -1;
+    }
 
     /* Use quaternion blending function */
     *result = quat_blend_memories(quats, weights, count);
@@ -1554,8 +1624,14 @@ int pr_meta_get_tier_params(
     pr_meta_tier_t tier,
     pr_meta_tier_params_t* params)
 {
-    if (!bridge || !params) return -1;
-    if (tier >= PR_META_NUM_TIERS) return -1;
+    if (!bridge || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_get_tier_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
+    if (tier >= PR_META_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_get_tier_params: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_get_tier_par", 0.0f);
@@ -1630,8 +1706,14 @@ int pr_meta_move_tier(
     uint64_t task_id,
     pr_meta_tier_t new_tier)
 {
-    if (!bridge) return -1;
-    if (new_tier >= PR_META_NUM_TIERS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_move_tier: bridge is NULL");
+        return -1;
+    }
+    if (new_tier >= PR_META_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_move_tier: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_move_tier", 0.0f);
@@ -1642,6 +1724,7 @@ int pr_meta_move_tier(
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_move_tier: validation failed");
         return -1;
     }
 
@@ -1674,7 +1757,10 @@ int pr_meta_store_task_memory(
     const pr_meta_task_t* task,
     const pr_meta_result_t* result)
 {
-    if (!bridge || !task) return -1;
+    if (!bridge || !task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_store_task_memory: required parameter is NULL (bridge, task)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_store_task_m", 0.0f);
@@ -1731,6 +1817,7 @@ int pr_meta_store_task_memory(
 
     if (slot >= bridge->task_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_meta_store_task_memory: capacity exceeded");
         return -1;
     }
 
@@ -1775,7 +1862,10 @@ bool pr_meta_recall_task(
     pr_meta_task_t* task,
     pr_meta_result_t* result)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_recall_task: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_recall_task", 0.0f);
@@ -1786,6 +1876,7 @@ bool pr_meta_recall_task(
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_recall_task: validation failed");
         return false;
     }
 
@@ -1816,7 +1907,10 @@ bool pr_meta_forget_task(
     pr_meta_bridge_t bridge,
     uint64_t task_id)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_forget_task: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_forget_task", 0.0f);
@@ -1827,6 +1921,7 @@ bool pr_meta_forget_task(
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_forget_task: validation failed");
         return false;
     }
 
@@ -1976,7 +2071,10 @@ int pr_meta_get_stats(
     pr_meta_bridge_t bridge,
     pr_meta_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_get_stats", 0.0f);
@@ -1990,7 +2088,10 @@ int pr_meta_get_stats(
 }
 
 int pr_meta_reset_stats(pr_meta_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_reset_stats", 0.0f);
@@ -2074,7 +2175,10 @@ int pr_meta_connect_meta_ctx(
     pr_meta_bridge_t bridge,
     meta_ctx_t* meta_ctx)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_connect_meta_ctx: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_connect_meta", 0.0f);
@@ -2091,7 +2195,10 @@ int pr_meta_connect_graph(
     pr_meta_bridge_t bridge,
     entangle_graph_t graph)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_connect_graph: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_pr_meta_connect_grap", 0.0f);
@@ -2108,7 +2215,10 @@ int pr_meta_bridge_update(
     pr_meta_bridge_t bridge,
     float dt_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_meta_bridge_heartbeat("pr_meta_brid_update", 0.0f);
@@ -2235,9 +2345,18 @@ void pr_meta_result_print(const pr_meta_result_t* result) {
 }
 
 bool pr_meta_task_validate(const pr_meta_task_t* task) {
-    if (!task) return false;
-    if (task->task_id == 0) return false;
-    if (task->tier >= PR_META_NUM_TIERS) return false;
+    if (!task) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_meta_task_validate: task is NULL");
+        return false;
+    }
+    if (task->task_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_task_validate: task->task_id is zero");
+        return false;
+    }
+    if (task->tier >= PR_META_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_task_validate: capacity exceeded");
+        return false;
+    }
 
     /* Quaternion should be normalized (or close) */
     /* Phase 8: Heartbeat at operation start */
@@ -2249,6 +2368,7 @@ bool pr_meta_task_validate(const pr_meta_task_t* task) {
                 task->quaternion.y * task->quaternion.y +
                 task->quaternion.z * task->quaternion.z;
     if (fabsf(mag - 1.0f) > 0.1f && mag > PR_META_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_meta_task_validate: validation failed");
         return false;  /* Not normalized */
     }
 

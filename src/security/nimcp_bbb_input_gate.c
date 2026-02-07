@@ -90,9 +90,10 @@ void bbb_input_gate_mesh_unregister(void) {
 // Internal Function Declarations (from core BBB module)
 //=============================================================================
 
-/* Statistics update functions from nimcp_blood_brain_barrier.c */
+/* Statistics and config accessor functions from nimcp_blood_brain_barrier.c */
 extern void bbb_system_inc_validations(bbb_system_t system);
 extern void bbb_system_inc_threats(bbb_system_t system);
+extern size_t bbb_system_get_max_string_length(bbb_system_t system);
 
 //=============================================================================
 // Constants
@@ -200,13 +201,18 @@ static const char* format_patterns[] = {
  */
 static const char* case_insensitive_strstr(const char* text, const char* pattern)
 {
-    if (!text || !pattern) return NULL;
+    if (!text || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "case_insensitive_strstr: required parameter is NULL (text, pattern)");
+        return NULL;
+    }
     if (!*pattern) return text;
 
     size_t pattern_len = strlen(pattern);
     size_t text_len = strlen(text);
 
-    if (pattern_len > text_len) return NULL;
+    if (pattern_len > text_len) {
+        return NULL;  /* Normal: pattern can't be in shorter text */
+    }
 
     for (size_t i = 0; i <= text_len - pattern_len; i++) {
         size_t j;
@@ -220,7 +226,7 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
             return &text[i];
         }
     }
-    return NULL;
+    return NULL;  /* Normal: no match found */
 }
 
 /**
@@ -236,7 +242,10 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
  */
 static bool check_patterns(const char* input, const char* patterns[])
 {
-    if (!input || !patterns) return false;
+    if (!input || !patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
+        return false;
+    }
 
     for (int i = 0; patterns[i] != NULL; i++) {
         if (case_insensitive_strstr(input, patterns[i])) {
@@ -259,7 +268,10 @@ static bool check_patterns(const char* input, const char* patterns[])
  */
 static bool detect_shellcode(const void* data, size_t size)
 {
-    if (!data || size == 0) return false;
+    if (!data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_shellcode: data is NULL");
+        return false;
+    }
 
     const uint8_t* bytes = (const uint8_t*)data;
     int nop_count = 0;
@@ -299,7 +311,7 @@ static bool detect_shellcode(const void* data, size_t size)
         return true;
     }
 
-    return false;
+    return false;  /* Normal: no shellcode detected */
 }
 
 /**
@@ -426,6 +438,17 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
     memset(result, 0, sizeof(bbb_validation_result_t));
     result->valid = true;
 
+    /* Guard: NULL system is invalid for input validation */
+    if (!system) {
+        result->valid = false;
+        result->threat = BBB_THREAT_UNAUTHORIZED_ACCESS;
+        result->severity = BBB_SEVERITY_HIGH;
+        snprintf(result->reason, sizeof(result->reason),
+                 "NULL BBB system - validation requires system context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_input: system is NULL");
+        return false;
+    }
+
     /* Update validation statistics (always count validation attempts) */
     bbb_system_inc_validations(system);
 
@@ -435,6 +458,7 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         result->threat = BBB_THREAT_BUFFER_OVERFLOW;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL data pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_input: data is NULL");
         return false;
     }
 
@@ -518,6 +542,17 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
     memset(result, 0, sizeof(bbb_validation_result_t));
     result->valid = true;
 
+    /* Guard: NULL system requires system context for full validation */
+    if (!system) {
+        result->valid = false;
+        result->threat = BBB_THREAT_UNAUTHORIZED_ACCESS;
+        result->severity = BBB_SEVERITY_MEDIUM;
+        snprintf(result->reason, sizeof(result->reason),
+                 "NULL BBB system - string validation requires system context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_string: system is NULL");
+        return false;
+    }
+
     /* Update validation statistics */
     bbb_system_inc_validations(system);
 
@@ -527,6 +562,7 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
         result->threat = BBB_THREAT_BUFFER_OVERFLOW;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL string pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_string: str is NULL");
         return false;
     }
 
@@ -535,15 +571,19 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
         return true;
     }
 
-    /* Length check - get config from system or use default */
-    bbb_config_t cfg = bbb_default_config();
+    /* Length check - use system config if available, otherwise default */
+    size_t max_string_length = bbb_system_get_max_string_length(system);
+    if (max_string_length == 0) {
+        bbb_config_t cfg = bbb_default_config();
+        max_string_length = cfg.input.max_string_length;
+    }
     size_t len = strlen(str);
-    if (len > cfg.input.max_string_length) {
+    if (len > max_string_length) {
         result->valid = false;
         result->threat = BBB_THREAT_BUFFER_OVERFLOW;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason),
-                 "String exceeds max length (%zu > %zu)", len, cfg.input.max_string_length);
+                 "String exceeds max length (%zu > %zu)", len, max_string_length);
         bbb_report_threat(system, BBB_THREAT_BUFFER_OVERFLOW, BBB_SEVERITY_HIGH,
                           result->reason, str, str, len);
         return false;
@@ -645,7 +685,16 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
     memset(result, 0, sizeof(bbb_validation_result_t));
     result->valid = true;
 
-    (void)system;  /* Available for future configuration */
+    /* Guard: NULL system */
+    if (!system) {
+        result->valid = false;
+        result->threat = BBB_THREAT_UNAUTHORIZED_ACCESS;
+        result->severity = BBB_SEVERITY_MEDIUM;
+        snprintf(result->reason, sizeof(result->reason),
+                 "NULL BBB system - integer validation requires system context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_integer: system is NULL");
+        return false;
+    }
 
     /* Check for extreme values that often indicate overflow */
     /* INT64_MAX and INT64_MIN often result from overflow */
@@ -681,15 +730,27 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
 bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
                           size_t expected_size, bbb_validation_result_t* result)
 {
-    /* Create local result if caller doesn't want one */
-    bbb_validation_result_t local_result;
-    bbb_validation_result_t* res = result ? result : &local_result;
+    /* Require valid result pointer */
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: result is NULL");
+        return false;
+    }
+    bbb_validation_result_t* res = result;
 
     /* Initialize result */
     memset(res, 0, sizeof(bbb_validation_result_t));
     res->valid = true;
 
-    (void)system;  /* Available for future configuration */
+    /* Guard: NULL system */
+    if (!system) {
+        res->valid = false;
+        res->threat = BBB_THREAT_UNAUTHORIZED_ACCESS;
+        res->severity = BBB_SEVERITY_MEDIUM;
+        snprintf(res->reason, sizeof(res->reason),
+                 "NULL BBB system - pointer validation requires system context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: system is NULL");
+        return false;
+    }
 
     /* NULL pointer check */
     if (!ptr) {
@@ -698,6 +759,7 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
         res->severity = BBB_SEVERITY_HIGH;
         snprintf(res->reason, sizeof(res->reason),
                  "NULL pointer detected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: ptr is NULL");
         return false;
     }
 
@@ -791,4 +853,26 @@ ssize_t bbb_sanitize_string(bbb_system_t system, const char* input,
     output[out_idx] = '\0';
 
     return (ssize_t)out_idx;
+}
+
+//=============================================================================
+// Test Reset Support
+//=============================================================================
+
+/**
+ * @brief Reset input gate state for test isolation
+ *
+ * WHAT: Clear any accumulated input gate state between tests
+ * WHY:  Prevent validation statistics and cached state from leaking between tests
+ * HOW:  Reset is minimal since input gate has no significant mutable global state
+ *       beyond mesh registration (which is not test-sensitive)
+ *
+ * NOTE: Called by bbb_reset_test_state() for unified BBB reset
+ */
+void bbb_input_gate_reset_internal(void)
+{
+    /* Input gate has no significant mutable global state that affects tests.
+     * Mesh registration and health agent state are intentionally preserved.
+     * This function exists for completeness and forward-compatibility
+     * if input gate gains test-sensitive state in the future. */
 }

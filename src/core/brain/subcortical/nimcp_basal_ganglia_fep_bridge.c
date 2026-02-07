@@ -275,17 +275,41 @@ void bg_fep_default_config(bg_fep_config_t* config) {
 }
 
 bool bg_fep_validate_config(const bg_fep_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->default_model >= BG_FEP_NUM_POLICY_MODELS) return false;
-    if (config->precision_mode > BG_FEP_PRECISION_HIERARCHICAL) return false;
+    if (config->default_model >= BG_FEP_NUM_POLICY_MODELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: capacity exceeded");
+        return false;
+    }
+    if (config->precision_mode > BG_FEP_PRECISION_HIERARCHICAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->action_precision < 0.0f) return false;
-    if (config->outcome_precision < 0.0f) return false;
-    if (config->selection_temperature <= 0.0f) return false;
+    if (config->action_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
+    if (config->outcome_precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
+    if (config->selection_temperature <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->reward_learning_rate < 0.0f || config->reward_learning_rate > 1.0f) return false;
-    if (config->transition_learning_rate < 0.0f || config->transition_learning_rate > 1.0f) return false;
+    if (config->reward_learning_rate < 0.0f || config->reward_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
+    if (config->transition_learning_rate < 0.0f || config->transition_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -308,6 +332,7 @@ bg_fep_bridge_t* bg_fep_create(const bg_fep_config_t* config) {
     if (config) {
         if (!bg_fep_validate_config(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_create: bg_fep_validate_config is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -354,7 +379,10 @@ void bg_fep_destroy(bg_fep_bridge_t* bridge) {
 }
 
 int bg_fep_reset(bg_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset to initial state while preserving config */
     bg_fep_config_t saved_config = bridge->config;
@@ -399,8 +427,14 @@ int bg_fep_compute_errors(
     float expected_reward,
     bg_fep_errors_t* errors
 ) {
-    if (!bridge || !errors) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge || !errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_compute_errors: required parameter is NULL (bridge, errors)");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_compute_errors: capacity exceeded");
+        return -1;
+    }
 
     memset(errors, 0, sizeof(bg_fep_errors_t));
 
@@ -453,8 +487,14 @@ int bg_fep_update_precision(
     uint32_t action_id,
     float prediction_error
 ) {
-    if (!bridge) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_update_precision: bridge is NULL");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_update_precision: capacity exceeded");
+        return -1;
+    }
 
     float lr = bridge->config.precision_learning_rate;
     float pe_sq = prediction_error * prediction_error;
@@ -484,7 +524,10 @@ int bg_fep_evaluate_actions(
     uint32_t num_actions,
     bg_fep_action_eval_t* evaluations
 ) {
-    if (!bridge || !action_values || !evaluations) return -1;
+    if (!bridge || !action_values || !evaluations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_evaluate_actions: required parameter is NULL (bridge, action_values, evaluations)");
+        return -1;
+    }
     if (num_actions > BG_FEP_MAX_ACTIONS) num_actions = BG_FEP_MAX_ACTIONS;
 
     bridge->num_actions = num_actions;
@@ -538,8 +581,14 @@ int bg_fep_select_action(
     uint32_t num_actions,
     uint32_t* selected
 ) {
-    if (!bridge || !evaluations || !selected) return -1;
-    if (num_actions == 0) return -1;
+    if (!bridge || !evaluations || !selected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_select_action: required parameter is NULL (bridge, evaluations, selected)");
+        return -1;
+    }
+    if (num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_select_action: num_actions is zero");
+        return -1;
+    }
 
     /* Find action with highest posterior probability */
     uint32_t best = 0;
@@ -596,7 +645,10 @@ int bg_fep_get_inference_state(
     const bg_fep_bridge_t* bridge,
     bg_fep_inference_t* inference
 ) {
-    if (!bridge || !inference) return -1;
+    if (!bridge || !inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_get_inference_state: required parameter is NULL (bridge, inference)");
+        return -1;
+    }
 
     memset(inference, 0, sizeof(bg_fep_inference_t));
 
@@ -620,8 +672,14 @@ int bg_fep_get_inference_state(
 //=============================================================================
 
 int bg_fep_set_model(bg_fep_bridge_t* bridge, bg_fep_model_t model) {
-    if (!bridge) return -1;
-    if (model >= BG_FEP_NUM_POLICY_MODELS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_set_model: bridge is NULL");
+        return -1;
+    }
+    if (model >= BG_FEP_NUM_POLICY_MODELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_fep_set_model: capacity exceeded");
+        return -1;
+    }
 
     if (bridge->current_model != model) {
         bridge->stats.model_switches++;
@@ -663,8 +721,14 @@ int bg_fep_update_outcome_model(
     float outcome_cost,
     bool success
 ) {
-    if (!bridge) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_update_outcome_model: bridge is NULL");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_update_outcome_model: capacity exceeded");
+        return -1;
+    }
 
     bg_fep_outcome_model_t* model = &bridge->outcome_models[action_id];
     float lr = bridge->config.reward_learning_rate;
@@ -697,8 +761,14 @@ int bg_fep_predict_outcome(
     uint32_t action_id,
     bg_fep_outcome_model_t* outcome
 ) {
-    if (!bridge || !outcome) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_predict_outcome: required parameter is NULL (bridge, outcome)");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_predict_outcome: capacity exceeded");
+        return -1;
+    }
 
     *outcome = bridge->outcome_models[action_id];
     return 0;
@@ -713,8 +783,14 @@ int bg_fep_set_habit(
     uint32_t action_id,
     float strength
 ) {
-    if (!bridge) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_set_habit: bridge is NULL");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_set_habit: capacity exceeded");
+        return -1;
+    }
 
     bridge->habit_strength[action_id] = clamp(strength, 0.0f, 1.0f);
 
@@ -745,8 +821,14 @@ float bg_fep_get_habit_prior(
 }
 
 int bg_fep_clear_habit(bg_fep_bridge_t* bridge, uint32_t action_id) {
-    if (!bridge) return -1;
-    if (action_id >= BG_FEP_MAX_ACTIONS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_clear_habit: bridge is NULL");
+        return -1;
+    }
+    if (action_id >= BG_FEP_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_fep_clear_habit: capacity exceeded");
+        return -1;
+    }
 
     bridge->habit_strength[action_id] = 0.0f;
     bridge->habit_prior[action_id] = 1.0f;
@@ -755,7 +837,10 @@ int bg_fep_clear_habit(bg_fep_bridge_t* bridge, uint32_t action_id) {
 }
 
 bool bg_fep_is_habit_mode(const bg_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_is_habit_mode: bridge is NULL");
+        return false;
+    }
     return bridge->current_model == BG_FEP_MODEL_HABIT;
 }
 
@@ -764,7 +849,10 @@ bool bg_fep_is_habit_mode(const bg_fep_bridge_t* bridge) {
 //=============================================================================
 
 int bg_fep_set_dopamine(bg_fep_bridge_t* bridge, float dopamine_level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_set_dopamine: bridge is NULL");
+        return -1;
+    }
 
     bridge->dopamine_level = clamp(dopamine_level, 0.0f, 1.0f);
 
@@ -787,7 +875,10 @@ float bg_fep_get_dopamine_precision(const bg_fep_bridge_t* bridge) {
 }
 
 int bg_fep_process_rpe(bg_fep_bridge_t* bridge, float rpe) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_process_rpe: bridge is NULL");
+        return -1;
+    }
 
     bridge->recent_rpe = rpe;
 
@@ -843,7 +934,10 @@ int bg_fep_connect_basal_ganglia(
     bg_fep_bridge_t* bridge,
     basal_ganglia_t* bg
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_connect_basal_ganglia: bridge is NULL");
+        return -1;
+    }
     bridge->connected_bg = bg;
     return 0;
 }
@@ -852,7 +946,10 @@ int bg_fep_connect_orchestrator(
     bg_fep_bridge_t* bridge,
     void* orchestrator
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
     bridge->connected_orchestrator = orchestrator;
     return 0;
 }
@@ -862,7 +959,10 @@ int bg_fep_connect_orchestrator(
 //=============================================================================
 
 int bg_fep_update(bg_fep_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_update: bridge is NULL");
+        return -1;
+    }
 
     (void)dt;  /* Time-based updates could be added here */
 
@@ -891,7 +991,10 @@ int bg_fep_update(bg_fep_bridge_t* bridge, float dt) {
 }
 
 int bg_fep_sync_with_bg(bg_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->connected_bg) return -1;
+    if (!bridge || !bridge->connected_bg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_sync_with_bg: required parameter is NULL (bridge, bridge->connected_bg)");
+        return -1;
+    }
 
     basal_ganglia_t* bg = bridge->connected_bg;
 
@@ -921,13 +1024,19 @@ int bg_fep_get_stats(
     const bg_fep_bridge_t* bridge,
     bg_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int bg_fep_reset_stats(bg_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_fep_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bg_fep_stats_t));
     return 0;
 }

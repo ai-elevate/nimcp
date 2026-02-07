@@ -151,7 +151,10 @@ void creative_bridge_config_defaults(creative_bridge_config_t* config)
 creative_bridge_t* creative_bridge_create(const creative_bridge_config_t* config)
 {
     creative_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -448,7 +451,10 @@ int creative_bridge_validate(creative_bridge_t* bridge,
                               art_modality_t modality,
                               validation_pipeline_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_validate: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(validation_pipeline_result_t));
 
@@ -609,7 +615,10 @@ int creative_bridge_check_quality(creative_bridge_t* bridge,
                                    art_modality_t modality,
                                    stage_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_check_quality: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(stage_result_t));
 
@@ -632,7 +641,10 @@ int creative_bridge_check_copyright(creative_bridge_t* bridge,
                                      art_modality_t modality,
                                      stage_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_check_copyright: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(stage_result_t));
 
@@ -655,7 +667,10 @@ int creative_bridge_check_ethics(creative_bridge_t* bridge,
                                   art_modality_t modality,
                                   stage_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_check_ethics: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(stage_result_t));
 
@@ -678,7 +693,10 @@ int creative_bridge_check_originality(creative_bridge_t* bridge,
                                        art_modality_t modality,
                                        stage_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_check_originality: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(stage_result_t));
 
@@ -706,17 +724,26 @@ int creative_bridge_add_copyrighted_work(creative_bridge_t* bridge,
                                           const style_embedding_t* embedding,
                                           uint64_t content_hash)
 {
-    if (!bridge || !title || !creator) return -1;
+    if (!bridge || !title || !creator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_add_copyrighted_work: required parameter is NULL (bridge, title, creator)");
+        return -1;
+    }
 
     copyright_db_t* db = (copyright_db_t*)bridge->copyright_db;
-    if (!db) return -1;
+    if (!db) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_bridge_add_copyrighted_work: db is NULL");
+        return -1;
+    }
 
     /* Expand capacity if needed */
     if (db->num_entries >= db->capacity) {
         uint32_t new_capacity = db->capacity * 2;
         copyright_entry_t* new_entries = nimcp_calloc(new_capacity,
                                                       sizeof(copyright_entry_t));
-        if (!new_entries) return -1;
+        if (!new_entries) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_bridge_add_copyrighted_work: new_entries is NULL");
+            return -1;
+        }
 
         memcpy(new_entries, db->entries,
                db->num_entries * sizeof(copyright_entry_t));

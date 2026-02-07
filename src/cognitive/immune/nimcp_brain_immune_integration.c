@@ -212,6 +212,7 @@ nimcp_immune_integration_t* nimcp_immune_integration_create(
     integration = (nimcp_immune_integration_t*)nimcp_calloc(1, sizeof(*integration));
     if (!integration) {
         integration_error("Failed to allocate integration structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_immune_integration_create: integration is NULL");
         return NULL;
     }
 
@@ -388,6 +389,7 @@ nimcp_immune_integration_t* nimcp_immune_integration_create(
 
 cleanup:
     nimcp_immune_integration_destroy(integration);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_create: validation failed");
     return NULL;
 }
 
@@ -431,8 +433,14 @@ void nimcp_immune_integration_destroy(nimcp_immune_integration_t* integration) {
 }
 
 int nimcp_immune_integration_start(nimcp_immune_integration_t* integration) {
-    if (!integration) return -1;
-    if (!integration->immune_system) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_start: integration is NULL");
+        return -1;
+    }
+    if (!integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_start: integration->immune_system is NULL");
+        return -1;
+    }
     if (integration->running) return 0;  /* Already running */
 
     /* Phase 8: Heartbeat at operation start */
@@ -450,8 +458,14 @@ int nimcp_immune_integration_start(nimcp_immune_integration_t* integration) {
 }
 
 int nimcp_immune_integration_stop(nimcp_immune_integration_t* integration) {
-    if (!integration) return -1;
-    if (!integration->immune_system) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_stop: integration is NULL");
+        return -1;
+    }
+    if (!integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_stop: integration->immune_system is NULL");
+        return -1;
+    }
     if (!integration->running) return 0;  /* Already stopped */
 
     /* Phase 8: Heartbeat at operation start */
@@ -476,9 +490,18 @@ int nimcp_immune_integration_tick(
     nimcp_immune_integration_t* integration,
     uint64_t delta_ms
 ) {
-    if (!integration) return -1;
-    if (!integration->immune_system) return -1;
-    if (!integration->running) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration is NULL");
+        return -1;
+    }
+    if (!integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration->immune_system is NULL");
+        return -1;
+    }
+    if (!integration->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_tick: integration->running is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_t", 0.0f);
@@ -512,8 +535,14 @@ int nimcp_immune_integration_connect_health_agent(
     nimcp_immune_integration_t* integration,
     nimcp_health_agent_t* agent
 ) {
-    if (!integration) return -1;
-    if (!integration->immune_system) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_connect_health_agent: integration is NULL");
+        return -1;
+    }
+    if (!integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_connect_health_agent: integration->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_c", 0.0f);
@@ -530,7 +559,10 @@ int nimcp_immune_integration_set_recovery_context(
     void* ra_ctx,
     const char* checkpoint_dir
 ) {
-    if (!integration) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_set_recovery_context: integration is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_s", 0.0f);
@@ -552,7 +584,10 @@ int nimcp_immune_integration_set_recovery_context(
 brain_immune_system_t* nimcp_immune_integration_get_immune_system(
     nimcp_immune_integration_t* integration
 ) {
-    if (!integration) return NULL;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_get_immune_system: integration is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_g", 0.0f);
 
@@ -563,7 +598,10 @@ brain_immune_system_t* nimcp_immune_integration_get_immune_system(
 bool nimcp_immune_integration_is_running(
     const nimcp_immune_integration_t* integration
 ) {
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_is_running: integration is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_i", 0.0f);
 
@@ -575,7 +613,10 @@ int nimcp_immune_integration_get_stats(
     const nimcp_immune_integration_t* integration,
     nimcp_immune_integration_stats_t* stats
 ) {
-    if (!integration || !stats) return -1;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_immune_integration_get_stats: required parameter is NULL (integration, stats)");
+        return -1;
+    }
 
     /* Copy local stats */
     /* Phase 8: Heartbeat at operation start */
@@ -639,7 +680,10 @@ int nimcp_immune_integration_diagnose(
     char* buffer,
     size_t buffer_size
 ) {
-    if (!buffer || buffer_size == 0) return -1;
+    if (!buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_immune_integration_diagnose: buffer is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_integration_heartbeat("brain_immune_immune_integration_d", 0.0f);

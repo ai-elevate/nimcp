@@ -207,6 +207,7 @@ static int validate_tree_recursive(
             snprintf(result->explanation, sizeof(result->explanation),
                      "Node %u blocked: p_harm=%.2f exceeds threshold",
                      node->node_id, adjusted_p_harm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_tree_recursive: validation failed");
             return -1;  /* Signal early termination */
         }
     } else if (node_result == LGSS_RESULT_ESCALATE) {
@@ -281,6 +282,7 @@ planning_safety_bridge_t* planning_safety_bridge_create_custom(
     planning_safety_bridge_t* bridge = nimcp_malloc(sizeof(planning_safety_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate planning_safety_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "planning_safety_bridge_create_custom: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(planning_safety_bridge_t));
@@ -298,6 +300,7 @@ planning_safety_bridge_t* planning_safety_bridge_create_custom(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, LGSS_PLAN_MODULE_ID, "lgss_planning_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "planning_safety_bridge_create_custom: validation failed");
         return NULL;
     }
 
@@ -770,6 +773,7 @@ int planning_safety_connect_aix(
 
 bool planning_safety_is_connected(const planning_safety_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planning_safety_is_connected: bridge is NULL");
         return false;
     }
     return bridge->base.system_a_connected;
@@ -791,6 +795,7 @@ int planning_safety_disconnect_bio_async(planning_safety_bridge_t* bridge) {
 
 bool planning_safety_is_bio_async_connected(const planning_safety_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planning_safety_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge_base_is_bio_async_connected(&bridge->base);

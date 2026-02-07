@@ -142,6 +142,7 @@ bool deserialize_request_vote(
     nimcp_request_vote_t* req
 ) {
     if (!buffer || !req || buffer_size < sizeof(nimcp_rpc_type_t) + sizeof(nimcp_request_vote_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_request_vote: required parameter is NULL (buffer, req)");
         return false;
     }
 
@@ -188,6 +189,7 @@ bool deserialize_request_vote_response(
     nimcp_request_vote_response_t* resp
 ) {
     if (!buffer || !resp || buffer_size < sizeof(nimcp_rpc_type_t) + sizeof(nimcp_request_vote_response_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_request_vote_response: required parameter is NULL (buffer, resp)");
         return false;
     }
 
@@ -262,6 +264,7 @@ bool deserialize_append_entries(
     }
 
     if (buffer_size < sizeof(nimcp_rpc_type_t) + sizeof(nimcp_append_entries_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_append_entries: validation failed");
         return false;
     }
 
@@ -280,6 +283,7 @@ bool deserialize_append_entries(
 
         size_t entries_size = req->entry_count * entry_size;
         if (buffer_size < offset + entries_size) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_append_entries: validation failed");
             return false;
         }
 
@@ -322,6 +326,7 @@ bool deserialize_append_entries_response(
     nimcp_append_entries_response_t* resp
 ) {
     if (!buffer || !resp || buffer_size < sizeof(nimcp_rpc_type_t) + sizeof(nimcp_append_entries_response_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_append_entries_response: required parameter is NULL (buffer, resp)");
         return false;
     }
 

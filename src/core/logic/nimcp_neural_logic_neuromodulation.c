@@ -120,12 +120,14 @@ bool apply_dopamine_modulation(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("apply_dopamine_modulation: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_dopamine_modulation: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("apply_dopamine_modulation: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_dopamine_modulation: brain_has_neural_logic is NULL");
         return false;
     }
 
@@ -145,6 +147,7 @@ bool apply_dopamine_modulation(
 
     if (!neural_logic_get_state(network, gate_id, &state)) {
         LOG_ERROR("apply_dopamine_modulation: invalid gate_id %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_dopamine_modulation: neural_logic_get_state is NULL");
         return false;
     }
 
@@ -178,12 +181,14 @@ bool apply_acetylcholine_modulation(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("apply_acetylcholine_modulation: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_acetylcholine_modulation: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: no logic network
     if (!brain_has_neural_logic(brain)) {
         LOG_ERROR("apply_acetylcholine_modulation: brain has no logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_acetylcholine_modulation: brain_has_neural_logic is NULL");
         return false;
     }
 
@@ -203,6 +208,7 @@ bool apply_acetylcholine_modulation(
 
     if (!neural_logic_get_state(network, gate_id, &state)) {
         LOG_ERROR("apply_acetylcholine_modulation: invalid gate_id %u", gate_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_acetylcholine_modulation: neural_logic_get_state is NULL");
         return false;
     }
 
@@ -317,12 +323,14 @@ bool get_modulated_threshold(
     // Guard: NULL brain
     if (!nimcp_validate_pointer(brain, "brain")) {
         LOG_ERROR("get_modulated_threshold: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_modulated_threshold: nimcp_validate_pointer is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!nimcp_validate_pointer(modulated_threshold, "modulated_threshold")) {
         LOG_ERROR("get_modulated_threshold: NULL modulated_threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_modulated_threshold: nimcp_validate_pointer is NULL");
         return false;
     }
 

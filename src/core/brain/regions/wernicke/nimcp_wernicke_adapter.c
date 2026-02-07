@@ -250,6 +250,7 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
         adapter->lexicon_table = (lexicon_entry_t**)nimcp_calloc(cfg.lexicon_size, sizeof(lexicon_entry_t*));
         if (!adapter->lexicon_table) {
             nimcp_free(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_create: adapter->lexicon_table is NULL");
             return NULL;
         }
         adapter->lexicon_count = 0;
@@ -269,6 +270,7 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     if (!adapter->phoneme_buffer.events) {
         if (adapter->lexicon_table) nimcp_free(adapter->lexicon_table);
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_create: validation failed");
         return NULL;
     }
     adapter->phoneme_buffer.count = 0;
@@ -319,7 +321,10 @@ void wernicke_destroy(wernicke_adapter_t* adapter)
 
 bool wernicke_reset(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_reset: adapter is NULL");
+        return false;
+    }
 
     adapter->status = WERNICKE_STATUS_IDLE;
     adapter->last_error = WERNICKE_ERROR_NONE;
@@ -349,6 +354,7 @@ bool wernicke_process_audio(
 {
     if (!adapter || !audio || !phonemes || !num_detected) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_process_audio: validation failed");
         return false;
     }
 
@@ -388,11 +394,13 @@ bool wernicke_process_phonemes(
 {
     if (!adapter || !phonemes || count == 0) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_process_phonemes: validation failed");
         return false;
     }
 
     if (count > adapter->phoneme_buffer.capacity) {
         adapter->last_error = WERNICKE_ERROR_BUFFER_OVERFLOW;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_process_phonemes: validation failed");
         return false;
     }
 
@@ -428,6 +436,7 @@ bool wernicke_recognize_word(
 {
     if (!adapter || !phonemes || count == 0 || !result) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_recognize_word: validation failed");
         return false;
     }
 
@@ -477,6 +486,7 @@ bool wernicke_recognize_word(
     adapter->last_error = WERNICKE_ERROR_WORD_NOT_FOUND;
     adapter->stats.lexical_misses++;
     adapter->status = WERNICKE_STATUS_IDLE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_recognize_word: operation failed");
     return false;
 }
 
@@ -486,11 +496,13 @@ bool wernicke_add_word(
 {
     if (!adapter || !word || word->phoneme_count == 0) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_add_word: validation failed");
         return false;
     }
 
     if (!adapter->lexicon_table) {
         adapter->last_error = WERNICKE_ERROR_INTERNAL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_add_word: adapter->lexicon_table is NULL");
         return false;
     }
 
@@ -501,6 +513,7 @@ bool wernicke_add_word(
     lexicon_entry_t* entry = (lexicon_entry_t*)nimcp_malloc(sizeof(lexicon_entry_t));
     if (!entry) {
         adapter->last_error = WERNICKE_ERROR_INTERNAL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_add_word: entry is NULL");
         return false;
     }
 
@@ -521,10 +534,12 @@ bool wernicke_lookup_word(
     wernicke_word_t* entry)
 {
     if (!adapter || !word_str || !entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_lookup_word: required parameter is NULL (adapter, word_str, entry)");
         return false;
     }
 
     if (!adapter->lexicon_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_lookup_word: adapter->lexicon_table is NULL");
         return false;
     }
 
@@ -543,6 +558,7 @@ bool wernicke_lookup_word(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_lookup_word: validation failed");
     return false;
 }
 
@@ -553,6 +569,7 @@ bool wernicke_predict_next_word(
 {
     if (!adapter || !prediction) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_predict_next_word: validation failed");
         return false;
     }
 
@@ -573,6 +590,7 @@ bool wernicke_get_meaning(
 {
     if (!adapter || !word || !concept_out) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_get_meaning: validation failed");
         return false;
     }
 
@@ -608,6 +626,7 @@ bool wernicke_disambiguate(
 {
     if (!adapter || !word || !concept_out) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_disambiguate: validation failed");
         return false;
     }
 
@@ -626,6 +645,7 @@ bool wernicke_spread_activation(
 {
     if (!adapter || !activated || !num_activated) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_spread_activation: validation failed");
         return false;
     }
 
@@ -647,6 +667,7 @@ bool wernicke_comprehend(
 {
     if (!adapter || !audio || !result) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_comprehend: validation failed");
         return false;
     }
 
@@ -660,6 +681,7 @@ bool wernicke_comprehend(
     if (!wernicke_process_audio(adapter, audio, num_samples, sample_rate,
                                 phonemes, adapter->phoneme_buffer.capacity, &num_phonemes)) {
         adapter->last_error = WERNICKE_ERROR_PHONOLOGICAL_FAILURE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_comprehend: operation failed");
         return false;
     }
     result->phoneme_count = num_phonemes;
@@ -697,6 +719,7 @@ bool wernicke_parse_sentence(
 {
     if (!adapter || !words || !parse) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_parse_sentence: validation failed");
         return false;
     }
 
@@ -754,6 +777,7 @@ bool wernicke_integrate_audiovisual(
 {
     if (!adapter || !audio_phonemes || !fused_phonemes || !num_fused) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_integrate_audiovisual: validation failed");
         return false;
     }
 
@@ -774,7 +798,10 @@ bool wernicke_connect_broca(
     wernicke_adapter_t* adapter,
     broca_adapter_t* broca)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_connect_broca: adapter is NULL");
+        return false;
+    }
 
     adapter->broca = broca;
     NIMCP_LOG_INFO("wernicke", "Connected to Broca's area (arcuate fasciculus)");
@@ -787,11 +814,13 @@ bool wernicke_send_to_broca(
 {
     if (!adapter || !comprehension) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_send_to_broca: validation failed");
         return false;
     }
 
     if (!adapter->broca) {
         adapter->last_error = WERNICKE_ERROR_BROCA_DISCONNECTED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_send_to_broca: adapter->broca is NULL");
         return false;
     }
 
@@ -806,6 +835,7 @@ bool wernicke_receive_efference_copy(
 {
     if (!adapter || !efference) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_receive_efference_copy: validation failed");
         return false;
     }
 
@@ -826,11 +856,13 @@ bool wernicke_wm_store(
 {
     if (!adapter || !phonemes) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_wm_store: validation failed");
         return false;
     }
 
     if (adapter->working_memory.count + count > adapter->working_memory.capacity) {
         adapter->last_error = WERNICKE_ERROR_WORKING_MEMORY_FULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_wm_store: validation failed");
         return false;
     }
 
@@ -845,7 +877,10 @@ bool wernicke_wm_store(
 
 bool wernicke_wm_rehearse(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_wm_rehearse: adapter is NULL");
+        return false;
+    }
 
     /* Reset decay timer */
     /* Phase 3 will implement proper rehearsal with re-activation */
@@ -863,6 +898,7 @@ bool wernicke_wm_get_contents(
     uint32_t* count)
 {
     if (!adapter || !phonemes || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_wm_get_contents: required parameter is NULL (adapter, phonemes, count)");
         return false;
     }
 
@@ -894,7 +930,10 @@ bool wernicke_set_word_callback(
     wernicke_word_callback_t callback,
     void* user_data)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_set_word_callback: adapter is NULL");
+        return false;
+    }
 
     adapter->word_callback = callback;
     adapter->word_callback_data = user_data;
@@ -906,7 +945,10 @@ bool wernicke_set_concept_callback(
     wernicke_concept_callback_t callback,
     void* user_data)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_set_concept_callback: adapter is NULL");
+        return false;
+    }
 
     adapter->concept_callback = callback;
     adapter->concept_callback_data = user_data;
@@ -918,7 +960,10 @@ bool wernicke_set_comprehension_callback(
     wernicke_comprehension_callback_t callback,
     void* user_data)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_set_comprehension_callback: adapter is NULL");
+        return false;
+    }
 
     adapter->comprehension_callback = callback;
     adapter->comprehension_callback_data = user_data;
@@ -930,7 +975,10 @@ bool wernicke_set_event_callback(
     wernicke_event_callback_t callback,
     void* user_data)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_set_event_callback: adapter is NULL");
+        return false;
+    }
 
     adapter->event_callback = callback;
     adapter->event_callback_data = user_data;
@@ -950,6 +998,7 @@ bool wernicke_train_word(
 {
     if (!adapter || !phonemes || !target_word) {
         if (adapter) adapter->last_error = WERNICKE_ERROR_INVALID_INPUT;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_train_word: validation failed");
         return false;
     }
 
@@ -985,6 +1034,7 @@ bool wernicke_train_semantic(
     float strength)
 {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_train_semantic: adapter is NULL");
         return false;
     }
 
@@ -1044,7 +1094,10 @@ const char* wernicke_status_string(wernicke_status_t status)
 
 bool wernicke_get_stats(const wernicke_adapter_t* adapter, wernicke_stats_t* stats)
 {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
 
     *stats = adapter->stats;
     return true;
@@ -1052,7 +1105,10 @@ bool wernicke_get_stats(const wernicke_adapter_t* adapter, wernicke_stats_t* sta
 
 bool wernicke_get_config(const wernicke_adapter_t* adapter, wernicke_config_t* config)
 {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
 
     *config = adapter->config;
     return true;
@@ -1116,7 +1172,10 @@ syntactic_comprehension_t* wernicke_get_syntactic_comprehension(wernicke_adapter
 
 bio_module_context_t wernicke_get_bio_context(wernicke_adapter_t* adapter)
 {
-    if (!adapter || !adapter->bio_async_enabled) return NULL;
+    if (!adapter || !adapter->bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_get_bio_context: required parameter is NULL (adapter, adapter->bio_async_enabled)");
+        return NULL;
+    }
     return adapter->bio_ctx;
 }
 
@@ -1134,9 +1193,13 @@ nimcp_bio_future_t wernicke_request_word_async(
     uint32_t count)
 {
     (void)count;
-    if (!adapter || !phonemes) return NULL;
+    if (!adapter || !phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_request_word_async: required parameter is NULL (adapter, phonemes)");
+        return NULL;
+    }
 
     /* Phase 3 will implement async word recognition */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_request_word_async: required parameter is NULL (adapter, phonemes)");
     return NULL;
 }
 
@@ -1168,7 +1231,10 @@ bool wernicke_register_kg(
     wernicke_adapter_t* adapter,
     brain_kg_t* kg)
 {
-    if (!adapter || !kg) return false;
+    if (!adapter || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_register_kg: required parameter is NULL (adapter, kg)");
+        return false;
+    }
 
     adapter->kg = kg;
 
@@ -1185,7 +1251,10 @@ bool wernicke_connect_semantic_memory(
     wernicke_adapter_t* adapter,
     semantic_memory_t* semantic)
 {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_connect_semantic_memory: adapter is NULL");
+        return false;
+    }
 
     adapter->semantic_memory = semantic;
     NIMCP_LOG_INFO("wernicke", "Connected to semantic memory");

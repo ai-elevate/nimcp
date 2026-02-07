@@ -419,8 +419,10 @@ static uint64_t compute_input_hash(const char* input)
 static bool validation_cache_lookup(const char* input, nimcp_input_validation_t* result,
                                     nimcp_threat_level_t* threat_level)
 {
-    if (!input || !result || !threat_level)
+    if (!input || !result || !threat_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validation_cache_lookup: required parameter is NULL (input, result, threat_level)");
         return false;
+    }
 
     /* WHAT: Compute hash and find cache slot
      * WHY:  Hash & (SIZE-1) is fast modulo for power-of-2 sizes.
@@ -440,6 +442,7 @@ static bool validation_cache_lookup(const char* input, nimcp_input_validation_t*
     }
 
     validation_cache.misses++;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validation_cache_lookup: validation failed");
     return false;
 }
 
@@ -689,8 +692,10 @@ static void ac_build_automaton()
  */
 static bool ac_search(const char* text)
 {
-    if (!text)
+    if (!text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ac_search: text is NULL");
         return false;
+    }
 
     /* WHAT: Build automaton on first use (lazy initialization)
      * WHY:  Defers construction cost until first validation.
@@ -733,6 +738,7 @@ static bool ac_search(const char* text)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ac_search: validation failed");
     return false;  // No patterns found
 }
 
@@ -749,8 +755,10 @@ static bool ac_search(const char* text)
  */
 static bool contains_pattern(const char* text, const char* pattern)
 {
-    if (!text || !pattern)
+    if (!text || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_pattern: required parameter is NULL (text, pattern)");
         return false;
+    }
 
     const char* text_pos = text;
     while (*text_pos) {
@@ -768,6 +776,7 @@ static bool contains_pattern(const char* text, const char* pattern)
         text_pos++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_pattern: validation failed");
     return false;
 }
 
@@ -979,8 +988,10 @@ nimcp_result_t nimcp_directive_lock(nimcp_directive_system_t* system)
  */
 bool nimcp_directive_verify(nimcp_directive_system_t* system, uint32_t directive_index)
 {
-    if (!system || directive_index >= system->num_directives)
+    if (!system || directive_index >= system->num_directives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_verify: system is NULL");
         return false;
+    }
 
     nimcp_core_directive_t* directive = &system->directives[directive_index];
 
@@ -1028,16 +1039,20 @@ bool nimcp_directive_verify(nimcp_directive_system_t* system, uint32_t directive
  */
 bool nimcp_directive_verify_all(nimcp_directive_system_t* system)
 {
-    if (!system)
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_directive_verify_all: system is NULL");
         return false;
+    }
 
     /* WHAT: Verify each directive sequentially
      * WHY:  Stops at first failure to avoid unnecessary work, but logs
      *       the specific directive that failed for forensic analysis.
      */
     for (uint32_t i = 0; i < system->num_directives; i++) {
-        if (!nimcp_directive_verify(system, i))
+        if (!nimcp_directive_verify(system, i)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_directive_verify_all: nimcp_directive_verify is NULL");
             return false;
+        }
     }
 
     return true;
@@ -1058,15 +1073,19 @@ bool nimcp_directive_verify_all(nimcp_directive_system_t* system)
  */
 const char* nimcp_directive_get(nimcp_directive_system_t* system, uint32_t directive_index)
 {
-    if (!system || directive_index >= system->num_directives)
+    if (!system || directive_index >= system->num_directives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: system is NULL");
         return NULL;
+    }
 
     /* WHAT: Verify integrity before returning text
      * WHY:  Defense-in-depth: never return potentially tampered directive.
      *       If verification fails, returns NULL to prevent use.
      */
-    if (!nimcp_directive_verify(system, directive_index))
+    if (!nimcp_directive_verify(system, directive_index)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "nimcp_directive_get: nimcp_directive_verify is NULL");
         return NULL;
+    }
 
     return system->directives[directive_index].text;
 }
@@ -2172,11 +2191,13 @@ bool nimcp_security_validate_weight_change(
         security_stats.threats_detected++;
         LOG_WARN("Weight validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_delta=%.3f)",
                  old_weight, new_weight, max_delta);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
     // Guard: Invalid delta
     if (max_delta <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
@@ -2187,6 +2208,7 @@ bool nimcp_security_validate_weight_change(
     if (delta > max_delta) {
         // Suspicious weight change detected
         security_stats.threats_detected++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_weight_change: validation failed");
         return false;
     }
 
@@ -2218,17 +2240,20 @@ bool nimcp_security_validate_neuromodulator_change(
         security_stats.threats_detected++;
         LOG_WARN("Neuromodulator validation failed: NaN/Inf detected (old=%.3f, new=%.3f, max_rate=%.3f)",
                  old_level, new_level, max_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 
     // Guard: Invalid levels
     if (old_level < 0.0F || old_level > 1.0F ||
         new_level < 0.0F || new_level > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: operation failed");
         return false;
     }
 
     // Guard: Invalid rate
     if (max_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 
@@ -2239,6 +2264,7 @@ bool nimcp_security_validate_neuromodulator_change(
     if (rate > max_rate) {
         // Suspicious neuromodulator hijacking detected
         security_stats.threats_detected++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_security_validate_neuromodulator_change: validation failed");
         return false;
     }
 

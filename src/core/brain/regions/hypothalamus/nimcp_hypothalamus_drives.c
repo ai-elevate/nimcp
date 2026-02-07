@@ -252,7 +252,10 @@ static void log_alignment_access(hypo_drive_system_handle_t* system,
  * @brief Check if setpoint modification is permitted
  */
 static bool can_modify_setpoint(const hypo_drive_system_handle_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "can_modify_setpoint: system is NULL");
+        return false;
+    }
 
     hypo_lock_state_t lock = system->config.setpoints.setpoints_lock;
     return lock == HYPO_LOCK_UNLOCKED;
@@ -262,7 +265,10 @@ static bool can_modify_setpoint(const hypo_drive_system_handle_t* system) {
  * @brief Check if alignment weight modification is permitted
  */
 static bool can_modify_alignment(const hypo_drive_system_handle_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "can_modify_alignment: system is NULL");
+        return false;
+    }
 
     hypo_lock_state_t lock = system->config.setpoints.alignment_lock;
     return lock == HYPO_LOCK_UNLOCKED;
@@ -338,6 +344,7 @@ hypo_drive_system_handle_t* hypo_drive_create(const hypo_drive_config_t* config)
         1, sizeof(hypo_drive_system_handle_t));
     if (!system) {
         LOG_ERROR(DRIVE_LOG_MODULE, "Failed to allocate drive system memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_drive_create: system is NULL");
         return NULL;
     }
 
@@ -1088,6 +1095,7 @@ bool hypo_drive_check_alignment(const hypo_drive_system_handle_t* system,
                                  float* alignment_score) {
     if (!system) {
         if (alignment_score) *alignment_score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1233,6 +1241,9 @@ const char* hypo_lock_state_string(hypo_lock_state_t state) {
  *===========================================================================*/
 
 nimcp_mutex_t* hypo_drive_get_mutex(hypo_drive_system_handle_t* system) {
-    if (!system) return NULL;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_mutex: system is NULL");
+        return NULL;
+    }
     return system->mutex;
 }

@@ -275,13 +275,28 @@ pr_loss_config_t pr_loss_config_fine_tuning(void) {
 }
 
 bool pr_loss_config_validate(const pr_loss_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_config_validate: config is NULL");
+        return false;
+    }
 
     /* Weight validation */
-    if (config->geodesic_weight < 0.0f) return false;
-    if (config->triplet_weight < 0.0f) return false;
-    if (config->consolidation_weight < 0.0f) return false;
-    if (config->entanglement_lambda < 0.0f) return false;
+    if (config->geodesic_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
+    if (config->triplet_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
+    if (config->consolidation_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
+    if (config->entanglement_lambda < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
 
     /* At least one component should be active */
     /* Phase 8: Heartbeat at operation start */
@@ -290,13 +305,22 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
 
     float total_weight = config->geodesic_weight + config->triplet_weight +
                         config->consolidation_weight + config->entanglement_lambda;
-    if (total_weight <= 0.0f) return false;
+    if (total_weight <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
 
     /* Triplet margin must be positive */
-    if (config->triplet_margin <= 0.0f) return false;
+    if (config->triplet_margin <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
 
     /* Consolidation power must be positive */
-    if (config->consolidation_power <= 0.0f) return false;
+    if (config->consolidation_power <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
+        return false;
+    }
 
     /* Tier weight validation */
     for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
@@ -307,6 +331,7 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
         }
 
         if (config->tier_weights[t] < 0.0f || config->tier_weights[t] > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_config_validate: validation failed");
             return false;
         }
     }
@@ -336,6 +361,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     if (config) {
         if (!pr_loss_config_validate(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_bridge_create: pr_loss_config_validate is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -346,6 +372,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_loss") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_loss_bridge_create: validation failed");
         return NULL;
     }
 
@@ -358,6 +385,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     if (!bridge->loss_cache) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_loss_bridge_create: bridge->loss_cache is NULL");
         return NULL;
     }
 
@@ -388,7 +416,10 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
 }
 
 int pr_loss_bridge_reset(pr_loss_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_reset", 0.0f);
@@ -409,9 +440,15 @@ int pr_loss_bridge_set_config(
     pr_loss_bridge_t bridge,
     const pr_loss_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, config, sizeof(*config));
-    if (!pr_loss_config_validate(config)) return -1;
+    if (!pr_loss_config_validate(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_bridge_set_config: pr_loss_config_validate is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_set_config", 0.0f);
@@ -428,7 +465,10 @@ int pr_loss_bridge_get_config(
     pr_loss_bridge_t bridge,
     pr_loss_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_bridge_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_get_config", 0.0f);
@@ -569,7 +609,10 @@ int pr_loss_gradient_geodesic(
     nimcp_quaternion_t q2,
     pr_loss_quat_gradient_t* grad)
 {
-    if (!grad) return -1;
+    if (!grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_gradient_geodesic: grad is NULL");
+        return -1;
+    }
 
     /* Normalize */
     /* Phase 8: Heartbeat at operation start */
@@ -642,7 +685,10 @@ int pr_loss_gradient_geodesic_batch(
     size_t count,
     pr_loss_quat_gradient_t* grads)
 {
-    if (!quats1 || !quats2 || !grads || count == 0) return -1;
+    if (!quats1 || !quats2 || !grads || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_gradient_geodesic_batch: required parameter is NULL (quats1, quats2, grads)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_geo", 0.0f);
@@ -839,7 +885,10 @@ int pr_loss_gradient_triplet(
     nimcp_quaternion_t negative,
     pr_loss_triplet_gradient_t* grads)
 {
-    if (!grads) return -1;
+    if (!grads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_gradient_triplet: grads is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_tri", 0.0f);
@@ -1114,7 +1163,10 @@ int pr_loss_gradient_entanglement(
     size_t max_edges)
 {
     BRIDGE_BBB_VALIDATE(bridge, edge_gradients, sizeof(*edge_gradients));
-    if (!graph || !edge_gradients || max_edges == 0) return -1;
+    if (!graph || !edge_gradients || max_edges == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_gradient_entanglement: required parameter is NULL (graph, edge_gradients)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_gradient_ent", 0.0f);
@@ -1243,8 +1295,14 @@ int pr_loss_set_tier_weight(
     pr_memory_tier_t tier,
     float weight)
 {
-    if (!bridge || tier >= PR_LOSS_NUM_TIERS) return -1;
-    if (weight < 0.0f || weight > 1.0f) return -1;
+    if (!bridge || tier >= PR_LOSS_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_set_tier_weight: bridge is NULL");
+        return -1;
+    }
+    if (weight < 0.0f || weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_loss_set_tier_weight: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_set_tier_wei", 0.0f);
@@ -1270,7 +1328,10 @@ int pr_loss_combined(
     size_t count,
     pr_loss_result_t* result)
 {
-    if (!bridge || !predictions || !targets || !result) return -1;
+    if (!bridge || !predictions || !targets || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_combined: required parameter is NULL (bridge, predictions, targets, result)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_combined", 0.0f);
 
@@ -1449,7 +1510,10 @@ int pr_loss_get_stats(
     pr_loss_bridge_t bridge,
     pr_loss_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_get_stats", 0.0f);
@@ -1463,7 +1527,10 @@ int pr_loss_get_stats(
 }
 
 int pr_loss_reset_stats(pr_loss_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_loss_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_loss_bridge_heartbeat("pr_loss_brid_pr_loss_reset_stats", 0.0f);

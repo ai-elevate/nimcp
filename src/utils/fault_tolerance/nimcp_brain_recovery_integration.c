@@ -100,13 +100,17 @@ static recovery_pattern_t* find_pattern(
     brain_recovery_context_t ctx,
     const char* signature
 ) {
-    if (!ctx || !signature) return NULL;
+    if (!ctx || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern: required parameter is NULL (ctx, signature)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < ctx->pattern_count; i++) {
         if (strcmp(ctx->patterns[i].failure_signature, signature) == 0) {
             return &ctx->patterns[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_pattern: validation failed");
     return NULL;
 }
 
@@ -182,6 +186,7 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
     if (!ctx->history) {
         LOG_ERROR("Failed to allocate recovery history");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_recovery_init: ctx->history is NULL");
         return NULL;
     }
 
@@ -192,6 +197,7 @@ brain_recovery_context_t brain_recovery_init(brain_t brain) {
         LOG_ERROR("Failed to allocate pattern storage");
         nimcp_free(ctx->history);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_recovery_init: ctx->patterns is NULL");
         return NULL;
     }
 
@@ -236,6 +242,7 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
 ) {
     if (!ctx || !diagnosis) {
         LOG_ERROR("Invalid parameters for strategy selection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_select_strategy: required parameter is NULL (ctx, diagnosis)");
         return NULL;
     }
 
@@ -510,7 +517,10 @@ bool brain_recovery_get_stats(
     brain_recovery_context_t ctx,
     recovery_history_stats_t* stats
 ) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     memset(stats, 0, sizeof(recovery_history_stats_t));
 
@@ -582,7 +592,10 @@ bool brain_recovery_register_pipeline(
     brain_recovery_context_t ctx,
     brain_t brain
 ) {
-    if (!ctx || !brain) return false;
+    if (!ctx || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_register_pipeline: required parameter is NULL (ctx, brain)");
+        return false;
+    }
 
     // In full implementation, would register callbacks with:
     // - Executive function for decision integration
@@ -609,11 +622,15 @@ bool brain_recovery_save(
     brain_recovery_context_t ctx,
     const char* filepath
 ) {
-    if (!ctx || !filepath) return false;
+    if (!ctx || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_save: required parameter is NULL (ctx, filepath)");
+        return false;
+    }
 
     FILE* f = fopen(filepath, "wb");
     if (!f) {
         LOG_ERROR("Failed to open file for writing: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_save: f is NULL");
         return false;
     }
 
@@ -641,7 +658,10 @@ brain_recovery_context_t brain_recovery_load(
     brain_t brain,
     const char* filepath
 ) {
-    if (!brain || !filepath) return NULL;
+    if (!brain || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_load: required parameter is NULL (brain, filepath)");
+        return NULL;
+    }
 
     FILE* f = fopen(filepath, "rb");
     if (!f) {
@@ -656,6 +676,7 @@ brain_recovery_context_t brain_recovery_load(
     if (fread(&version, sizeof(uint32_t), 1, f) != 1 || version != 1) {
         LOG_ERROR("Invalid or unsupported file version");
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_recovery_load: validation failed");
         return NULL;
     }
 
@@ -727,7 +748,10 @@ int32_t brain_recovery_export_json(
     char* json_buffer,
     size_t buffer_size
 ) {
-    if (!ctx || !json_buffer || buffer_size == 0) return -1;
+    if (!ctx || !json_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_recovery_export_json: required parameter is NULL (ctx, json_buffer)");
+        return -1;
+    }
 
     int written = snprintf(json_buffer, buffer_size,
         "{\n"

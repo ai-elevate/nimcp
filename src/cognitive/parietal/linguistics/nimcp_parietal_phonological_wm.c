@@ -419,14 +419,35 @@ phonological_wm_config_t phonological_wm_default_config(void) {
 }
 
 bool phonological_wm_validate_config(const phonological_wm_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_wm_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->buffer_capacity < 1 || config->buffer_capacity > LINGUISTICS_PHONOLOGICAL_BUFFER_SIZE) return false;
-    if (config->decay_time_ms < 100) return false;
-    if (config->rehearsal_rate < 0.1f || config->rehearsal_rate > 20.0f) return false;
-    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) return false;
-    if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) return false;
-    if (config->arousal_sensitivity < 0.0f || config->arousal_sensitivity > 1.0f) return false;
+    if (config->buffer_capacity < 1 || config->buffer_capacity > LINGUISTICS_PHONOLOGICAL_BUFFER_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
+    if (config->decay_time_ms < 100) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
+    if (config->rehearsal_rate < 0.1f || config->rehearsal_rate > 20.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
+    if (config->inflammation_sensitivity < 0.0f || config->inflammation_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
+    if (config->fatigue_sensitivity < 0.0f || config->fatigue_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
+    if (config->arousal_sensitivity < 0.0f || config->arousal_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -666,7 +687,10 @@ int phonological_wm_rehearse_item(
 }
 
 bool phonological_wm_needs_rehearsal(const phonological_wm_t* pwm) {
-    if (!pwm || pwm->count == 0) return false;
+    if (!pwm || pwm->count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_needs_rehearsal: pwm is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < pwm->count; i++) {
         if (pwm->buffer[i].activation < 0.5f) {
@@ -674,6 +698,7 @@ bool phonological_wm_needs_rehearsal(const phonological_wm_t* pwm) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phonological_wm_needs_rehearsal: validation failed");
     return false;
 }
 

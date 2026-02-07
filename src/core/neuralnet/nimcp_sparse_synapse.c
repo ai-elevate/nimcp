@@ -117,6 +117,7 @@ static inline int find_size_class(uint32_t capacity) {
             return i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_size_class: validation failed");
     return -1;  // Capacity exceeds maximum size class
 }
 
@@ -149,6 +150,7 @@ static inline bool validate_pool(const sparse_synapse_pool_t pool) {
     // HOW: Early guard clause
     if (pool == NULL) {
         LOG_ERROR("Sparse synapse pool is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool: validation failed");
         return false;
     }
 
@@ -158,6 +160,7 @@ static inline bool validate_pool(const sparse_synapse_pool_t pool) {
     if (pool->magic != SPARSE_SYNAPSE_MAGIC) {
         LOG_ERROR("Sparse synapse pool has invalid magic number: 0x%X (expected 0x%X)",
                   pool->magic, SPARSE_SYNAPSE_MAGIC);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool: validation failed");
         return false;
     }
 
@@ -168,6 +171,7 @@ static inline bool validate_pool(const sparse_synapse_pool_t pool) {
         bbb_validation_result_t result = {0};
         if (!bbb_validate_pointer(pool->bbb_system, pool, sizeof(sparse_synapse_pool_struct_t), &result)) {
             LOG_ERROR("BBB validation failed for pool pointer: %s", result.reason);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_pool: bbb_validate_pointer is NULL");
             return false;
         }
     }
@@ -188,6 +192,7 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     // HOW: Early guard clause
     if (storage == NULL) {
         LOG_ERROR("Sparse synapse storage is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -197,6 +202,7 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->embedded_count > SPARSE_SYNAPSE_EMBEDDED_CAPACITY) {
         LOG_ERROR("Embedded count %u exceeds capacity %u",
                   storage->embedded_count, SPARSE_SYNAPSE_EMBEDDED_CAPACITY);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -206,6 +212,7 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->overflow_count > storage->overflow_capacity) {
         LOG_ERROR("Overflow count %u exceeds capacity %u",
                   storage->overflow_count, storage->overflow_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -215,6 +222,7 @@ static inline bool validate_storage(const sparse_synapse_storage_t* storage) {
     if (storage->overflow_capacity > 0 && storage->overflow == NULL) {
         LOG_ERROR("Overflow capacity %u but overflow pointer is NULL",
                   storage->overflow_capacity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_storage: validation failed");
         return false;
     }
 
@@ -254,6 +262,7 @@ static inline void pool_unlock(sparse_synapse_pool_t pool) {
 static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t capacity,
                                            uint32_t* actual_capacity) {
     if (!validate_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool_unlock: validate_pool is NULL");
         return NULL;
     }
 
@@ -265,6 +274,7 @@ static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t 
         if (pool->config.enable_statistics) {
             atomic_fetch_add(&pool->failed_allocations, 1);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_unlock: validation failed");
         return NULL;
     }
 
@@ -291,6 +301,7 @@ static synapse_handle_t* allocate_overflow(sparse_synapse_pool_t pool, uint32_t 
             if (pool->config.enable_statistics) {
                 atomic_fetch_add(&pool->failed_allocations, 1);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_unlock: validation failed");
             return NULL;
         }
         LOG_DEBUG("Overflow allocated via nimcp_malloc fallback (class %d exhausted)", class_idx);
@@ -378,6 +389,7 @@ static void free_overflow(sparse_synapse_pool_t pool, synapse_handle_t* overflow
  */
 static int grow_overflow(sparse_synapse_pool_t pool, sparse_synapse_storage_t* storage) {
     if (!validate_pool(pool) || !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "grow_overflow: required parameter is NULL (validate_pool, validate_storage)");
         return -1;
     }
 
@@ -393,6 +405,7 @@ static int grow_overflow(sparse_synapse_pool_t pool, sparse_synapse_storage_t* s
     synapse_handle_t* new_overflow = allocate_overflow(pool, desired_capacity, &actual_capacity);
     if (new_overflow == NULL) {
         LOG_ERROR("Failed to grow overflow array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "grow_overflow: validation failed");
         return -1;
     }
 
@@ -441,6 +454,7 @@ sparse_synapse_pool_t sparse_synapse_pool_create(
     // HOW: Check against maximum reasonable pool size
     if (cfg->pool_size == 0 || cfg->pool_size > 100000000) {
         LOG_ERROR("Invalid pool size: %zu (must be 1..100000000)", cfg->pool_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_pool_create: cfg->pool_size is zero");
         return NULL;
     }
 
@@ -450,6 +464,7 @@ sparse_synapse_pool_t sparse_synapse_pool_create(
     sparse_synapse_pool_t pool = (sparse_synapse_pool_t)nimcp_malloc(sizeof(sparse_synapse_pool_struct_t));
     if (pool == NULL) {
         LOG_ERROR("Failed to allocate pool structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_pool_create: validation failed");
         return NULL;
     }
 
@@ -518,6 +533,7 @@ sparse_synapse_pool_t sparse_synapse_pool_create(
                 bbb_system_destroy(pool->bbb_system);
             }
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_pool_create: validation failed");
             return NULL;
         }
     }
@@ -655,6 +671,7 @@ int sparse_synapse_add(
     // WHY: Prevent corruption and crashes
     // HOW: Use validation helpers
     if (!validate_pool(pool) || !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add: required parameter is NULL (validate_pool, validate_storage)");
         return -1;
     }
 
@@ -663,6 +680,7 @@ int sparse_synapse_add(
     // HOW: Check against maximum reasonable neuron ID
     if (!bbb_validate_range_u(target_neuron_id, 0, 100000000, "sparse_synapse_add")) {
         LOG_ERROR("BBB validation failed for target_neuron_id: %u", target_neuron_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_add: bbb_validate_range_u is NULL");
         return -1;
     }
 
@@ -671,6 +689,7 @@ int sparse_synapse_add(
     // HOW: Check with isfinite()
     if (!isfinite(weight)) {
         LOG_ERROR("Invalid weight (NaN or Inf): %f", weight);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sparse_synapse_add: isfinite is NULL");
         return -1;
     }
 
@@ -710,6 +729,7 @@ int sparse_synapse_add(
         uint32_t actual_capacity = 0;
         storage->overflow = allocate_overflow(pool, SIZE_CLASS_MIN_HANDLES, &actual_capacity);
         if (storage->overflow == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add: validation failed");
             return -1;
         }
         storage->overflow_capacity = actual_capacity;
@@ -717,6 +737,7 @@ int sparse_synapse_add(
     } else if (storage->overflow_count >= storage->overflow_capacity) {
         // Need to grow overflow
         if (grow_overflow(pool, storage) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add: validation failed");
             return -1;
         }
     }
@@ -757,12 +778,14 @@ int sparse_synapse_remove(
     uint32_t index
 ) {
     if (!validate_pool(pool) || !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_remove: required parameter is NULL (validate_pool, validate_storage)");
         return -1;
     }
 
     uint32_t total = storage->embedded_count + storage->overflow_count;
     if (index >= total) {
         LOG_ERROR("Invalid synapse index %u (total=%u)", index, total);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_remove: capacity exceeded");
         return -1;
     }
 
@@ -809,12 +832,14 @@ synapse_handle_t* sparse_synapse_get(
     uint32_t index
 ) {
     if (!validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_get: validate_storage is NULL");
         return NULL;
     }
 
     uint32_t total = storage->embedded_count + storage->overflow_count;
     if (index >= total) {
         LOG_ERROR("Invalid synapse index %u (total=%u)", index, total);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_get: capacity exceeded");
         return NULL;
     }
 
@@ -899,6 +924,7 @@ void sparse_synapse_iterator_init(
 
 synapse_handle_t* sparse_synapse_iterator_next(sparse_synapse_iterator_t* it) {
     if (it == NULL || it->storage == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sparse_synapse_iterator_next: validation failed");
         return NULL;
     }
 
@@ -920,11 +946,13 @@ synapse_handle_t* sparse_synapse_iterator_next(sparse_synapse_iterator_t* it) {
     }
 
     // End of iteration
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_iterator_next: validation failed");
     return NULL;
 }
 
 bool sparse_synapse_iterator_has_next(const sparse_synapse_iterator_t* it) {
     if (it == NULL || it->storage == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_iterator_has_next: validation failed");
         return false;
     }
 
@@ -954,6 +982,7 @@ int sparse_synapse_pool_get_stats(
     sparse_synapse_stats_t* stats
 ) {
     if (!validate_pool(pool) || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_pool_get_stats: validate_pool is NULL");
         return -1;
     }
 
@@ -1241,6 +1270,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
     // Validate pool size
     if (cfg.pool_size == 0 || cfg.pool_size > 100000000) {
         LOG_ERROR("Invalid metadata pool size: %zu", cfg.pool_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synapse_metadata_pool_create: cfg.pool_size is zero");
         return NULL;
     }
 
@@ -1249,6 +1279,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
         nimcp_calloc(1, sizeof(synapse_metadata_pool_struct_t));
     if (pool == NULL) {
         LOG_ERROR("Failed to allocate metadata pool structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
         return NULL;
     }
 
@@ -1261,6 +1292,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
     if (pool->synapses == NULL) {
         LOG_ERROR("Failed to allocate synapse array");
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
         return NULL;
     }
 
@@ -1270,6 +1302,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
         LOG_ERROR("Failed to allocate free list");
         nimcp_free(pool->synapses);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_create: validation failed");
         return NULL;
     }
 
@@ -1286,6 +1319,7 @@ synapse_metadata_pool_t synapse_metadata_pool_create(
             nimcp_free(pool->free_list);
             nimcp_free(pool->synapses);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "synapse_metadata_pool_create: validation failed");
             return NULL;
         }
     }
@@ -1405,17 +1439,20 @@ synapse_t* synapse_metadata_pool_get(
     uint32_t index
 ) {
     if (!validate_metadata_pool(pool)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_metadata_pool_get: validate_metadata_pool is NULL");
         return NULL;
     }
 
     // Handle no-metadata sentinel
     if (index == SPARSE_SYNAPSE_NO_METADATA) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "synapse_metadata_pool_get: validation failed");
         return NULL;
     }
 
     // Validate index
     if (index >= pool->pool_size) {
         LOG_WARN("Invalid metadata index: %u", index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synapse_metadata_pool_get: capacity exceeded");
         return NULL;
     }
 
@@ -1457,6 +1494,7 @@ int sparse_synapse_add_with_metadata(
     // Validate inputs
     if (!validate_pool(handle_pool) || !validate_metadata_pool(metadata_pool) ||
         !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_with_metadata: required parameter is NULL (validate_pool, validate_metadata_pool)");
         return -1;
     }
 
@@ -1464,6 +1502,7 @@ int sparse_synapse_add_with_metadata(
     uint32_t metadata_index = synapse_metadata_pool_allocate(metadata_pool);
     if (metadata_index == SPARSE_SYNAPSE_NO_METADATA) {
         LOG_ERROR("Failed to allocate metadata slot for synapse");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "sparse_synapse_add_with_metadata: validation failed");
         return -1;
     }
 
@@ -1472,6 +1511,7 @@ int sparse_synapse_add_with_metadata(
     if (sparse_synapse_add(handle_pool, storage, target_neuron_id, weight) != 0) {
         // Rollback metadata allocation
         synapse_metadata_pool_free(metadata_pool, metadata_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_with_metadata: validation failed");
         return -1;
     }
 
@@ -1481,6 +1521,7 @@ int sparse_synapse_add_with_metadata(
     if (handle == NULL) {
         LOG_ERROR("Failed to get handle after add");
         synapse_metadata_pool_free(metadata_pool, metadata_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_with_metadata: validation failed");
         return -1;
     }
 
@@ -1558,12 +1599,14 @@ int sparse_synapse_remove_with_metadata(
     uint32_t index
 ) {
     if (!validate_pool(handle_pool) || !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_remove_with_metadata: required parameter is NULL (validate_pool, validate_storage)");
         return -1;
     }
 
     // Get handle before removal to check for metadata
     synapse_handle_t* handle = sparse_synapse_get(storage, index);
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_remove_with_metadata: validation failed");
         return -1;
     }
 
@@ -1590,6 +1633,7 @@ int sparse_synapse_add_ternary(
     trit_t ternary_weight
 ) {
     if (!validate_pool(pool) || !validate_storage(storage)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_ternary: required parameter is NULL (validate_pool, validate_storage)");
         return -1;
     }
 
@@ -1602,11 +1646,13 @@ int sparse_synapse_add_ternary(
     // Get the newly added handle and set ternary fields
     uint32_t count = sparse_synapse_count(storage);
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_ternary: count is zero");
         return -1;
     }
 
     synapse_handle_t* handle = sparse_synapse_get(storage, count - 1);
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_synapse_add_ternary: validation failed");
         return -1;
     }
 

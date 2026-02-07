@@ -797,7 +797,7 @@ TEST_F(GeniusE2ETest, BrainCreationFromProfile) {
         genius_type_t type = static_cast<genius_type_t>(i);
 
         // This may return NULL if brain infrastructure isn't available
-        nimcp_brain_t* brain = genius_brain_create(type);
+        brain_t brain = genius_brain_create(type);
 
         if (brain != nullptr) {
             // If creation succeeded, we should have a valid brain

@@ -344,6 +344,7 @@ bool emotional_prosody_generate_contour(
     if (!contour->points) {
         processor->last_error = PROSODY_ERROR_INTERNAL;
         processor->status = PROSODY_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: contour->points is NULL");
         return false;
     }
 

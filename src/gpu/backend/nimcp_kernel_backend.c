@@ -1258,6 +1258,7 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("CUDA backend initialization failed, trying next...");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
             return false;
 
         case NIMCP_BACKEND_ROCM:
@@ -1268,6 +1269,7 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("ROCm backend initialization failed, trying next...");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
             return false;
 
         case NIMCP_BACKEND_OPENCL:
@@ -1278,9 +1280,11 @@ static bool try_init_gpu_backend(nimcp_backend_type_t type)
                 return true;
             }
             LOG_DEBUG("OpenCL backend initialization failed, trying next...");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
             return false;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "try_init_gpu_backend: validation failed");
             return false;
     }
 }

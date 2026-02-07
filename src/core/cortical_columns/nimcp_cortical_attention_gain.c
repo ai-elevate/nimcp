@@ -108,6 +108,7 @@ int cortical_attention_default_config(cortical_attention_config_t* config) {
      */
     if (!config) {
         NIMCP_LOGGING_ERROR("cortical_attention_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_default_config: config is NULL");
         return -1;
     }
 
@@ -185,6 +186,7 @@ cortical_attention_gain_t* cortical_attention_create(
     if (!attention->minicolumn_gains) {
         NIMCP_LOGGING_ERROR("cortical_attention_create: gain state allocation failed");
         nimcp_free(attention);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_attention_create: attention->minicolumn_gains is NULL");
         return NULL;
     }
 
@@ -351,6 +353,7 @@ int cortical_attention_set_spotlight(
     }
     if (radius <= 0.0f || intensity < 0.0f || intensity > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid spotlight parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_set_spotlight: validation failed");
         return -1;
     }
 
@@ -434,6 +437,7 @@ int cortical_attention_add_spotlight(
 
     }
     if (radius <= 0.0f || intensity < 0.0f || intensity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_add_spotlight: validation failed");
         return -1;
     }
 
@@ -458,6 +462,7 @@ int cortical_attention_add_spotlight(
             nimcp_mutex_unlock(attention->mutex);
         }
         NIMCP_LOGGING_ERROR("Failed to add spotlight");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "cortical_attention_add_spotlight: validation failed");
         return -1;
     }
 
@@ -749,7 +754,10 @@ int cortical_attention_apply_gain_to_hypercolumn(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention || !attention->hypercolumn) return -1;
+    if (!attention || !attention->hypercolumn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_apply_gain_to_hypercolumn: required parameter is NULL (attention, attention->hypercolumn)");
+        return -1;
+    }
 
     /* WHAT: Update gains first
      * WHY:  Ensure gains are current
@@ -775,7 +783,10 @@ int cortical_attention_connect_fep(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention || !fep_system) return -1;
+    if (!attention || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_connect_fep: required parameter is NULL (attention, fep_system)");
+        return -1;
+    }
 
     /* WHAT: Store FEP system
      * WHY:  Enable precision coupling
@@ -867,6 +878,7 @@ int cortical_attention_get_minicolumn_gain(
      * WHY:  Guard clause
      */
     if (!attention || !gain_state || minicolumn_idx >= attention->num_minicolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_get_minicolumn_gain: required parameter is NULL (attention, gain_state)");
         return -1;
     }
 
@@ -887,6 +899,7 @@ bool cortical_attention_is_attended(
      * WHY:  Guard clause
      */
     if (!attention || minicolumn_idx >= attention->num_minicolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_is_attended: attention is NULL");
         return false;
     }
 
@@ -903,7 +916,10 @@ int cortical_attention_get_stats(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention || !stats) return -1;
+    if (!attention || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_get_stats: required parameter is NULL (attention, stats)");
+        return -1;
+    }
 
     /* WHAT: Copy statistics
      * WHY:  Return accumulated stats
@@ -966,6 +982,7 @@ int cortical_attention_connect_bio_async(cortical_attention_gain_t* attention) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_attention_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -1009,7 +1026,10 @@ bool cortical_attention_is_bio_async_connected(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return false;
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_is_bio_async_connected: attention is NULL");
+        return false;
+    }
 
     /* WHAT: Return connection status
      * WHY:  Query bio-async state

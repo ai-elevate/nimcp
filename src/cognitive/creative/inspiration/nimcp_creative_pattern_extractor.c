@@ -547,6 +547,7 @@ creative_pattern_extractor_t* creative_pattern_extractor_create(
     creative_pattern_extractor_t* ext = nimcp_calloc(1, sizeof(creative_pattern_extractor_t));
     if (!ext) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate pattern extractor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: ext is NULL");
         return NULL;
     }
 
@@ -562,6 +563,7 @@ creative_pattern_extractor_t* creative_pattern_extractor_create(
     if (!ext->known_patterns) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate known patterns");
         nimcp_free(ext);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: ext->known_patterns is NULL");
         return NULL;
     }
 
@@ -594,7 +596,10 @@ int creative_pattern_extract_text(creative_pattern_extractor_t* ext,
                                    const char* text, size_t len,
                                    art_modality_t modality,
                                    pattern_extraction_result_t* result) {
-    if (!ext || !text || !result) return -1;
+    if (!ext || !text || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_pattern_extractor_destroy: required parameter is NULL (ext, text, result)");
+        return -1;
+    }
     (void)modality;
 
     memset(result, 0, sizeof(pattern_extraction_result_t));
@@ -618,7 +623,10 @@ int creative_pattern_extract_text(creative_pattern_extractor_t* ext,
 int creative_pattern_extract_music(creative_pattern_extractor_t* ext,
                                     const music_track_t* tracks, uint32_t num_tracks,
                                     pattern_extraction_result_t* result) {
-    if (!ext || !tracks || !result) return -1;
+    if (!ext || !tracks || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_pattern_extractor_destroy: required parameter is NULL (ext, tracks, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(pattern_extraction_result_t));
 
@@ -641,7 +649,10 @@ int creative_pattern_extract_music(creative_pattern_extractor_t* ext,
 int creative_pattern_extract_visual(creative_pattern_extractor_t* ext,
                                      const visual_image_t* image,
                                      pattern_extraction_result_t* result) {
-    if (!ext || !image || !result) return -1;
+    if (!ext || !image || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_pattern_extractor_destroy: required parameter is NULL (ext, image, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(pattern_extraction_result_t));
 
@@ -725,10 +736,14 @@ float creative_pattern_compare(const creative_pattern_extractor_t* ext,
 
 int32_t creative_pattern_db_add(creative_pattern_extractor_t* ext,
                                  const extracted_pattern_t* pattern) {
-    if (!ext || !pattern) return -1;
+    if (!ext || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_pattern_extractor_destroy: required parameter is NULL (ext, pattern)");
+        return -1;
+    }
 
     if (ext->num_known_patterns >= ext->known_capacity) {
         LOG_WARN(LOG_MODULE, "Pattern database full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "creative_pattern_extractor_destroy: capacity exceeded");
         return -1;
     }
 

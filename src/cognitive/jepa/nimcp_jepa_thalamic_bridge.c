@@ -221,7 +221,10 @@ int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_th
  * ============================================================================ */
 
 bool jepa_thalamic_bridge_register_bio_async(jepa_thalamic_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_registered) return false;
+    if (!bridge || bridge->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_thalamic_bridge_register_bio_async: bridge is NULL");
+        return false;
+    }
 
     bridge->bio_async_registered = true;
     bridge->handler_id = 0;

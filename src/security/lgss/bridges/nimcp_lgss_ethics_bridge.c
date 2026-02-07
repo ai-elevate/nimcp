@@ -145,6 +145,7 @@ lgss_ethics_bridge_t* lgss_ethics_bridge_create(
 
     if (!lgss) {
         ETHICS_BRIDGE_LOG_ERROR("LGSS context is required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_ethics_bridge_create: lgss is NULL");
         return NULL;
     }
 
@@ -156,6 +157,7 @@ lgss_ethics_bridge_t* lgss_ethics_bridge_create(
     bridge = nimcp_calloc(1, sizeof(lgss_ethics_bridge_t));
     if (!bridge) {
         ETHICS_BRIDGE_LOG_ERROR("Failed to allocate ethics bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_ethics_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -441,6 +443,7 @@ int lgss_ethics_bridge_set_lgss_enabled(
 bool lgss_ethics_bridge_is_lgss_enabled(const lgss_ethics_bridge_t* bridge)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_ethics_bridge_is_lgss_enabled: bridge is NULL");
         return false;
     }
     return bridge->lgss_enabled;
@@ -464,6 +467,7 @@ int lgss_ethics_bridge_set_ethics_enabled(
 bool lgss_ethics_bridge_is_ethics_enabled(const lgss_ethics_bridge_t* bridge)
 {
     if (!bridge || bridge->magic != NIMCP_LGSS_ETHICS_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_ethics_bridge_is_ethics_enabled: bridge is NULL");
         return false;
     }
     return bridge->ethics_enabled;

@@ -66,21 +66,25 @@ bool nimcp_msg_header_validate(const nimcp_msg_header_t* header) {
     /* Check magic bytes */
     if (header->magic[0] != NIMCP_MSG_MAGIC_0 ||
         header->magic[1] != NIMCP_MSG_MAGIC_1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: operation failed");
         return false;
     }
 
     /* Check version */
     if (header->version != NIMCP_MSG_VERSION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 
     /* Check payload length */
     if (header->payload_len > NIMCP_MSG_MAX_PAYLOAD) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 
     /* Fast path messages must have 16-byte payload */
     if (nimcp_msg_is_fast_path(header) && header->payload_len != NIMCP_MSG_FAST_PAYLOAD) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_validate: validation failed");
         return false;
     }
 
@@ -315,7 +319,10 @@ int nimcp_msg_header_deserialize(
     const uint8_t* data,
     nimcp_msg_header_t* header
 ) {
-    if (!data || !header) return -1;
+    if (!data || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_msg_header_deserialize: required parameter is NULL (data, header)");
+        return -1;
+    }
 
     /* Magic bytes */
     header->magic[0] = data[0];
@@ -334,6 +341,7 @@ int nimcp_msg_header_deserialize(
     /* Validate */
     if (!nimcp_msg_header_validate(header)) {
         atomic_fetch_add(&g_parse_errors, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_msg_header_deserialize: nimcp_msg_header_validate is NULL");
         return -1;
     }
 
@@ -365,16 +373,21 @@ int nimcp_fast_msg_deserialize(
     const uint8_t* data,
     nimcp_fast_msg_t* msg
 ) {
-    if (!data || !msg) return -1;
+    if (!data || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fast_msg_deserialize: required parameter is NULL (data, msg)");
+        return -1;
+    }
 
     /* Deserialize header */
     if (nimcp_msg_header_deserialize(data, &msg->header) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fast_msg_deserialize: validation failed");
         return -1;
     }
 
     /* Verify it's a fast path message */
     if (!nimcp_msg_is_fast_path(&msg->header)) {
         atomic_fetch_add(&g_parse_errors, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_fast_msg_deserialize: nimcp_msg_is_fast_path is NULL");
         return -1;
     }
 

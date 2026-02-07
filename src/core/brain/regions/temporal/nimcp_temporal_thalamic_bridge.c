@@ -133,6 +133,7 @@ temporal_thalamic_bridge_t* temporal_thalamic_bridge_create(
     if (!bridge->routed_signal_buffer) {
         LOG_ERROR("[%s] Failed to allocate routing buffer", LOG_MODULE);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_thalamic_bridge_create: bridge->routed_signal_buffer is NULL");
         return NULL;
     }
 
@@ -231,6 +232,7 @@ int temporal_thalamic_route_signal(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -349,6 +351,7 @@ int temporal_thalamic_set_attention(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_thalamic_set_attention: operation failed");
             return -1;
     }
 

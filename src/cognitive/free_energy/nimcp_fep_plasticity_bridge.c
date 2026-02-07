@@ -136,6 +136,7 @@ static synapse_entry_t* find_synapse(fep_plasticity_bridge_t* bridge, uint32_t s
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -151,6 +152,7 @@ static synapse_entry_t* find_free_slot(fep_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -224,6 +226,7 @@ fep_plasticity_bridge_t* fep_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "fep_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fep_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -233,6 +236,7 @@ fep_plasticity_bridge_t* fep_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -273,7 +277,10 @@ void fep_plasticity_destroy(fep_plasticity_bridge_t* bridge) {
 }
 
 int fep_plasticity_reset(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_reset", 0.0f);
@@ -324,7 +331,10 @@ int fep_plasticity_register_synapse(
     fep_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_regis", 0.0f);
@@ -335,6 +345,7 @@ int fep_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -342,6 +353,7 @@ int fep_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -371,7 +383,10 @@ int fep_plasticity_unregister_synapse(
     fep_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_unreg", 0.0f);
@@ -382,6 +397,7 @@ int fep_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -397,7 +413,10 @@ int fep_plasticity_get_synapse(
     uint32_t synapse_id,
     fep_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_get_s", 0.0f);
@@ -408,6 +427,7 @@ int fep_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -422,7 +442,10 @@ int fep_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_prote", 0.0f);
@@ -433,6 +456,7 @@ int fep_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -453,7 +477,10 @@ int fep_plasticity_learn(
     uint32_t synapse_id,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_learn", 0.0f);
@@ -466,6 +493,7 @@ int fep_plasticity_learn(
     if (!entry) {
         bridge->state = FEP_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -640,7 +668,10 @@ int fep_plasticity_apply_pred_error(
     fep_plasticity_bridge_t* bridge,
     float pred_error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_apply_pred_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_apply", 0.0f);
@@ -683,8 +714,14 @@ int fep_plasticity_update_bcm(
     fep_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_updat", 0.0f);
@@ -720,7 +757,10 @@ int fep_plasticity_homeostatic_update(
     fep_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_homeo", 0.0f);
@@ -785,7 +825,10 @@ int fep_plasticity_update_traces(
     fep_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_updat", 0.0f);
@@ -812,7 +855,10 @@ int fep_plasticity_update_traces(
 }
 
 int fep_plasticity_consolidate(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_conso", 0.0f);
@@ -911,7 +957,10 @@ int fep_plasticity_get_inference_state(
     fep_plasticity_bridge_t* bridge,
     fep_inference_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_get_inference_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_get_i", 0.0f);
@@ -928,7 +977,10 @@ int fep_plasticity_get_state(
     fep_plasticity_bridge_t* bridge,
     fep_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_get_s", 0.0f);
@@ -974,7 +1026,10 @@ int fep_plasticity_get_stats(
     fep_plasticity_bridge_t* bridge,
     fep_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_get_s", 0.0f);
@@ -988,7 +1043,10 @@ int fep_plasticity_get_stats(
 }
 
 int fep_plasticity_reset_stats(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_reset", 0.0f);
@@ -1010,7 +1068,10 @@ int fep_plasticity_register_learn_callback(
     fep_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_regis", 0.0f);
@@ -1029,7 +1090,10 @@ int fep_plasticity_register_inference_callback(
     fep_plasticity_inference_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_register_inference_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_regis", 0.0f);
@@ -1048,8 +1112,14 @@ int fep_plasticity_register_inference_callback(
 //=============================================================================
 
 int fep_plasticity_bio_async_connect(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_bio_a", 0.0f);
@@ -1064,7 +1134,10 @@ int fep_plasticity_bio_async_connect(fep_plasticity_bridge_t* bridge) {
 }
 
 int fep_plasticity_bio_async_disconnect(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_bio_a", 0.0f);
@@ -1078,7 +1151,10 @@ int fep_plasticity_bio_async_disconnect(fep_plasticity_bridge_t* bridge) {
 }
 
 bool fep_plasticity_is_bio_async_connected(fep_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_plasticity_bridge_heartbeat("fep_plastici_fep_plasticity_is_bi", 0.0f);

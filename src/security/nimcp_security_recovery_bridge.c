@@ -178,11 +178,14 @@ nimcp_security_recovery_bridge_t* nimcp_srb_create(void)
 {
     nimcp_security_recovery_bridge_t* bridge = nimcp_calloc(1,
         sizeof(nimcp_security_recovery_bridge_t));
-    if (!bridge)
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_srb_create: bridge is NULL");
         return NULL;
+    }
 
     if (nimcp_mutex_init(&bridge->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_srb_create: validation failed");
         return NULL;
     }
     return bridge;
@@ -868,8 +871,10 @@ int32_t nimcp_srb_register_callback(
     nimcp_srb_callback_t callback,
     void* user_data)
 {
-    if (!bridge || !callback)
+    if (!bridge || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_srb_register_callback: required parameter is NULL (bridge, callback)");
         return -1;
+    }
 
     nimcp_mutex_lock(&bridge->lock);
 

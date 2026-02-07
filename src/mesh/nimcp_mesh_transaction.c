@@ -70,7 +70,10 @@ static tx_entry_t* find_tx_entry(
     mesh_tx_manager_t* manager,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!manager || !tx_id) return NULL;
+    if (!manager || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tx_entry: required parameter is NULL (manager, tx_id)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < manager->capacity; i++) {
         if (manager->entries[i].is_active &&
@@ -79,6 +82,7 @@ static tx_entry_t* find_tx_entry(
             return &manager->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tx_entry: required parameter is NULL (manager, tx_id)");
     return NULL;
 }
 
@@ -86,13 +90,17 @@ static tx_entry_t* find_tx_entry(
  * @brief Find free slot
  */
 static tx_entry_t* find_free_slot(mesh_tx_manager_t* manager) {
-    if (!manager) return NULL;
+    if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: manager is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i < manager->capacity; i++) {
         if (!manager->entries[i].is_active) {
             return &manager->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: manager->entries is NULL");
     return NULL;
 }
 
@@ -194,6 +202,7 @@ mesh_tx_manager_t* mesh_tx_manager_create(
     mesh_tx_manager_t* manager = nimcp_calloc(1, sizeof(*manager));
     if (!manager) {
         LOG_ERROR("Failed to allocate transaction manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_tx_manager_create: manager is NULL");
         return NULL;
     }
 
@@ -202,6 +211,7 @@ mesh_tx_manager_t* mesh_tx_manager_create(
     if (!manager->entries) {
         LOG_ERROR("Failed to allocate transaction entries");
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_tx_manager_create: manager->entries is NULL");
         return NULL;
     }
 
@@ -210,6 +220,7 @@ mesh_tx_manager_t* mesh_tx_manager_create(
         LOG_ERROR("Failed to create manager mutex");
         nimcp_free(manager->entries);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_tx_manager_create: manager->mutex is NULL");
         return NULL;
     }
 
@@ -258,6 +269,7 @@ mesh_transaction_t* mesh_transaction_create(
     mesh_transaction_t* tx = nimcp_calloc(1, sizeof(*tx));
     if (!tx) {
         LOG_ERROR("Failed to allocate transaction");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_transaction_create: tx is NULL");
         return NULL;
     }
 
@@ -709,7 +721,10 @@ const mesh_transaction_t* mesh_tx_get(
     mesh_tx_manager_t* manager,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!validate_manager(manager) || !tx_id) return NULL;
+    if (!validate_manager(manager) || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_tx_get: required parameter is NULL (validate_manager, tx_id)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(manager->mutex);
     tx_entry_t* entry = find_tx_entry(manager, tx_id);
@@ -773,13 +788,17 @@ mesh_tx_batch_t* mesh_tx_batch_create(
     size_t capacity
 ) {
     mesh_tx_batch_t* batch = nimcp_calloc(1, sizeof(*batch));
-    if (!batch) return NULL;
+    if (!batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_tx_batch_create: batch is NULL");
+        return NULL;
+    }
 
     batch->channel = channel;
     batch->capacity = capacity > 0 ? capacity : MESH_MAX_BATCH_SIZE;
     batch->transactions = nimcp_calloc(batch->capacity, sizeof(mesh_transaction_t*));
     if (!batch->transactions) {
         nimcp_free(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_tx_batch_create: batch->transactions is NULL");
         return NULL;
     }
 

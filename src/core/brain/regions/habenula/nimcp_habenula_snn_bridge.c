@@ -127,7 +127,10 @@ void nimcp_habenula_snn_destroy(nimcp_habenula_snn_bridge_t* b) {
 }
 
 int nimcp_habenula_snn_reset(nimcp_habenula_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_reset: b is NULL");
+        return -1;
+    }
     memset(&b->state, 0, sizeof(b->state));
     b->state.state = HABENULA_SNN_STATE_IDLE;
     memset(b->input_spikes, 0, b->spike_buffer_size * sizeof(float));
@@ -137,19 +140,28 @@ int nimcp_habenula_snn_reset(nimcp_habenula_snn_bridge_t* b) {
 }
 
 int nimcp_habenula_snn_connect_habenula(nimcp_habenula_snn_bridge_t* b, nimcp_habenula_adapter_t a) {
-    if (!b || !a) return -1;
+    if (!b || !a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_connect_habenula: required parameter is NULL (b, a)");
+        return -1;
+    }
     b->habenula_adapter = a;
     return 0;
 }
 
 int nimcp_habenula_snn_connect_snn(nimcp_habenula_snn_bridge_t* b, struct nimcp_snn_network* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_connect_snn: required parameter is NULL (b, s)");
+        return -1;
+    }
     b->snn = s;
     return 0;
 }
 
 int nimcp_habenula_snn_encode_state(nimcp_habenula_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_state: b is NULL");
+        return -1;
+    }
     b->state.state = HABENULA_SNN_STATE_ENCODING;
     int spikes = 0;
     float aversive = b->state.habenula.aversive_level;
@@ -165,7 +177,10 @@ int nimcp_habenula_snn_encode_state(nimcp_habenula_snn_bridge_t* b) {
 }
 
 int nimcp_habenula_snn_encode_aversive(nimcp_habenula_snn_bridge_t* b, nimcp_habenula_snn_aversive_t event, float intensity) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_aversive: b is NULL");
+        return -1;
+    }
     b->state.habenula.event_type = event;
     b->state.habenula.aversive_level = clamp(intensity, 0.0f, 1.0f);
     b->state.habenula.last_aversive_us = b->current_time_us;
@@ -174,21 +189,30 @@ int nimcp_habenula_snn_encode_aversive(nimcp_habenula_snn_bridge_t* b, nimcp_hab
 }
 
 int nimcp_habenula_snn_encode_negative_rpe(nimcp_habenula_snn_bridge_t* b, float neg_rpe) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_negative_rpe: b is NULL");
+        return -1;
+    }
     b->state.habenula.negative_rpe = clamp(neg_rpe, 0.0f, 1.0f);
     b->current_modulation.error_signal = neg_rpe * b->config.error_amplification;
     return nimcp_habenula_snn_encode_state(b);
 }
 
 int nimcp_habenula_snn_encode_disappointment(nimcp_habenula_snn_bridge_t* b, float expected, float actual) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_disappointment: b is NULL");
+        return -1;
+    }
     float disappointment = clamp(expected - actual, 0.0f, 1.0f);
     b->state.habenula.disappointment = disappointment;
     return nimcp_habenula_snn_encode_aversive(b, HABENULA_SNN_AVERSIVE_DISAPPOINTMENT, disappointment);
 }
 
 int nimcp_habenula_snn_encode_relief(nimcp_habenula_snn_bridge_t* b, float relief) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_encode_relief: b is NULL");
+        return -1;
+    }
     b->state.habenula.relief = clamp(relief, 0.0f, 1.0f);
     b->state.habenula.aversive_level *= (1.0f - relief * b->config.relief_suppression);
     b->stats.relief_events++;
@@ -196,7 +220,10 @@ int nimcp_habenula_snn_encode_relief(nimcp_habenula_snn_bridge_t* b, float relie
 }
 
 int nimcp_habenula_snn_simulate(nimcp_habenula_snn_bridge_t* b, float duration_ms) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_simulate: b is NULL");
+        return -1;
+    }
     b->state.state = HABENULA_SNN_STATE_SIMULATING;
     for (float t = 0; t < duration_ms; t += b->config.dt_ms) nimcp_habenula_snn_step(b);
     b->state.state = HABENULA_SNN_STATE_IDLE;
@@ -204,7 +231,10 @@ int nimcp_habenula_snn_simulate(nimcp_habenula_snn_bridge_t* b, float duration_m
 }
 
 int nimcp_habenula_snn_step(nimcp_habenula_snn_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_habenula_snn_step: b is NULL");
+        return -1;
+    }
     b->stats.total_updates++;
     b->current_time_us++;
     float total = 0.0f;

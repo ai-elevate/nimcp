@@ -121,6 +121,7 @@ dendrite_orchestrator_bridge_t* dendrite_orchestrator_bridge_create(
     /* Guard clauses */
     if (!orchestrator) {
         NIMCP_LOGGING_ERROR("dendrite_orchestrator_bridge_create: NULL orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_orchestrator_bridge_create: orchestrator is NULL");
         return NULL;
     }
     /* Allow NULL dendrite_network for testing - will operate with reduced functionality */
@@ -134,6 +135,7 @@ dendrite_orchestrator_bridge_t* dendrite_orchestrator_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("dendrite_orchestrator_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_orchestrator_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -160,6 +162,7 @@ dendrite_orchestrator_bridge_t* dendrite_orchestrator_bridge_create(
     if (!bridge->mappings) {
         NIMCP_LOGGING_ERROR("dendrite_orchestrator_bridge_create: mapping allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_orchestrator_bridge_create: bridge->mappings is NULL");
         return NULL;
     }
     bridge->mapping_capacity = capacity;
@@ -233,12 +236,14 @@ static spine_synapse_mapping_t* find_mapping(
             return &bridge->mappings[idx];
         }
         if (!bridge->mappings[idx].valid) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_mapping: bridge->mappings is NULL");
             return NULL;
         }
         idx = (idx + 1) % bridge->mapping_capacity;
         attempts++;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_mapping: bridge->mappings is NULL");
     return NULL;
 }
 
@@ -248,6 +253,7 @@ static int grow_mappings(dendrite_orchestrator_bridge_t* bridge) {
         new_capacity = DENDRITE_ORCH_MAX_MAPPINGS;
         if (bridge->mapping_count >= new_capacity) {
             NIMCP_LOGGING_ERROR("dendrite_orchestrator: mapping table full");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "grow_mappings: capacity exceeded");
             return -1;
         }
     }
@@ -350,6 +356,7 @@ int dendrite_orchestrator_map_spine(
             if ((bridge->base.mutex != NULL)) {
                 nimcp_mutex_unlock(bridge->base.mutex);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dendrite_orchestrator_map_spine: validation failed");
             return -1;
         }
     }
@@ -369,6 +376,7 @@ int dendrite_orchestrator_map_spine(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dendrite_orchestrator_map_spine: validation failed");
         return -1;
     }
 
@@ -411,6 +419,7 @@ int dendrite_orchestrator_unmap_spine(
         if ((bridge->base.mutex != NULL)) {
             nimcp_mutex_unlock(bridge->base.mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dendrite_orchestrator_unmap_spine: validation failed");
         return -1;
     }
 
@@ -483,6 +492,7 @@ int dendrite_orchestrator_sync_weight_to_spine(
     /* Get weight from orchestrator */
     float weight = plasticity_orchestrator_get_weight(bridge->orchestrator, synapse_id);
     if (isnan(weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_orchestrator_sync_weight_to_spine: validation failed");
         return -1;
     }
 
@@ -727,6 +737,7 @@ int dendrite_orchestrator_get_stats(
     dendrite_orchestrator_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_orchestrator_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -783,6 +794,7 @@ int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* brid
 
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("dendrite_orchestrator: bio-async router not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "dendrite_orchestrator_connect_bio_async: bio_router_is_initialized is NULL");
         return -1;
     }
 
@@ -802,6 +814,7 @@ int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* brid
     }
 
     NIMCP_LOGGING_ERROR("dendrite_orchestrator: failed to register with bio-async");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_orchestrator_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -831,6 +844,7 @@ bool dendrite_orchestrator_is_bio_async_connected(
     const dendrite_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_orchestrator_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;

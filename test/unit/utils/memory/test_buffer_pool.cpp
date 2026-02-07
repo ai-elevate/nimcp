@@ -30,6 +30,8 @@
 // Headers have their own extern "C" guards
 #include "utils/memory/nimcp_buffer_pool.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_handlers.h"
 
 //=============================================================================
 // Test Fixture
@@ -41,19 +43,33 @@ protected:
 
     void SetUp() override {
         nimcp_memory_init();
-        // Get baseline stats AFTER initialization (includes infrastructure allocations)
+        // Warm up exception handler system (one-time mutex allocation)
+        {
+            nimcp_exception_t* warmup = nimcp_exception_create(
+                NIMCP_ERROR_NULL_POINTER, EXCEPTION_SEVERITY_DEBUG,
+                __FILE__, __LINE__, __func__, "warmup");
+            if (warmup) {
+                nimcp_exception_dispatch(warmup);
+                nimcp_exception_unref(warmup);
+            }
+            nimcp_exception_clear_current();
+        }
+        // Get baseline stats AFTER initialization
         nimcp_memory_get_stats(&baseline_stats);
     }
 
     void TearDown() override {
+        // Release any exception held as "current" by the dispatch system
+        nimcp_exception_clear_current();
+
         // Check that we're back to baseline (only infrastructure allocations remain)
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
         EXPECT_EQ(stats.current_allocated, baseline_stats.current_allocated)
             << "Memory leak detected: " << (stats.current_allocated - baseline_stats.current_allocated) << " bytes leaked";
 
-        // Cleanup memory system for next test
-        nimcp_memory_cleanup();
+        // Note: don't call nimcp_memory_cleanup() between tests as it
+        // destroys subsystem state (exception handler mutex) causing deadlocks
     }
 
     // Helper: Create default config

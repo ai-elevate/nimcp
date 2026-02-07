@@ -67,7 +67,10 @@ static inline float distance_squared(const float a[3], const float b[3]) {
 static int compare_points_x(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[0] < pb->point[0]) return -1;
+    if (pa->point[0] < pb->point[0]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_x: validation failed");
+        return -1;
+    }
     if (pa->point[0] > pb->point[0]) return 1;
     return 0;
 }
@@ -75,7 +78,10 @@ static int compare_points_x(const void* a, const void* b) {
 static int compare_points_y(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[1] < pb->point[1]) return -1;
+    if (pa->point[1] < pb->point[1]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_y: validation failed");
+        return -1;
+    }
     if (pa->point[1] > pb->point[1]) return 1;
     return 0;
 }
@@ -83,7 +89,10 @@ static int compare_points_y(const void* a, const void* b) {
 static int compare_points_z(const void* a, const void* b) {
     const kdtree_build_point_t* pa = (const kdtree_build_point_t*)a;
     const kdtree_build_point_t* pb = (const kdtree_build_point_t*)b;
-    if (pa->point[2] < pb->point[2]) return -1;
+    if (pa->point[2] < pb->point[2]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_z: validation failed");
+        return -1;
+    }
     if (pa->point[2] > pb->point[2]) return 1;
     return 0;
 }
@@ -96,6 +105,7 @@ static int compare_points_z(const void* a, const void* b) {
 static kdtree_node_t* build_recursive(kdtree_build_point_t* points,
                                        uint32_t count, uint8_t depth) {
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_points_z: count is zero");
         return NULL;
     }
 
@@ -211,6 +221,7 @@ void kdtree_destroy(kdtree_t* tree) {
 bool kdtree_build(kdtree_t* tree, const kdtree_point_t* points,
                   void** user_data, uint32_t count) {
     if (!tree || !points || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kdtree_destroy: required parameter is NULL (tree, points)");
         return false;
     }
 
@@ -221,6 +232,7 @@ bool kdtree_build(kdtree_t* tree, const kdtree_point_t* points,
     kdtree_build_point_t* build_points = (kdtree_build_point_t*)
         nimcp_malloc(count * sizeof(kdtree_build_point_t));
     if (!build_points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kdtree_destroy: build_points is NULL");
         return false;
     }
 
@@ -250,6 +262,7 @@ void kdtree_clear(kdtree_t* tree) {
 void* kdtree_nearest(const kdtree_t* tree, const kdtree_point_t query,
                      float* dist_sq) {
     if (!tree || !tree->root) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kdtree_clear: required parameter is NULL (tree, tree->root)");
         return NULL;
     }
 

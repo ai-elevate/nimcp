@@ -100,7 +100,10 @@ static void lnn_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 }
 
 int lnn_sleep_default_config(lnn_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     /* Enable all modulations by default */
     config->enable_tau_modulation = true;
@@ -123,7 +126,10 @@ lnn_sleep_bridge_t lnn_sleep_bridge_create(
 
     struct lnn_sleep_bridge_struct* bridge =
         (struct lnn_sleep_bridge_struct*)nimcp_malloc(sizeof(struct lnn_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_sleep_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(struct lnn_sleep_bridge_struct));
 
@@ -146,6 +152,7 @@ lnn_sleep_bridge_t lnn_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "lnn_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -194,7 +201,10 @@ void lnn_sleep_bridge_destroy(lnn_sleep_bridge_t bridge) {
 }
 
 int lnn_sleep_update(lnn_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -233,7 +243,10 @@ int lnn_sleep_update(lnn_sleep_bridge_t bridge) {
 }
 
 int lnn_sleep_get_effects(const lnn_sleep_bridge_t bridge, lnn_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
@@ -319,7 +332,10 @@ float lnn_sleep_lr_for_state(sleep_state_t state) {
 int lnn_sleep_bridge_connect_bio_async(lnn_sleep_bridge_t bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
@@ -351,7 +367,10 @@ int lnn_sleep_bridge_connect_bio_async(lnn_sleep_bridge_t bridge)
 int lnn_sleep_bridge_disconnect_bio_async(lnn_sleep_bridge_t bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */
@@ -376,7 +395,10 @@ int lnn_sleep_bridge_disconnect_bio_async(lnn_sleep_bridge_t bridge)
 bool lnn_sleep_bridge_is_bio_async_connected(const lnn_sleep_bridge_t bridge)
 {
     /* Guard clause */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_sleep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->base.bio_async_enabled;
 }

@@ -125,6 +125,7 @@ static void vector_add(float *result, const float *a, const float *b, uint32_t d
 poincare_point_t* poincare_point_create(uint32_t dim, const float *coords, float curvature) {
     // Validate dimension
     if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "poincare_point_create: dim is zero");
         return NULL;
     }
 
@@ -140,6 +141,7 @@ poincare_point_t* poincare_point_create(uint32_t dim, const float *coords, float
     point->coords = (float*)nimcp_malloc(dim * sizeof(float));
     if (!point->coords) {
         nimcp_free(point);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "poincare_point_create: point->coords is NULL");
         return NULL;
     }
 
@@ -257,6 +259,7 @@ float poincare_distance(const poincare_point_t *x, const poincare_point_t *y) {
 
 poincare_point_t* poincare_exp_map(const poincare_point_t *base, const float *tangent_vec) {
     if (!base || !base->coords || !tangent_vec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_exp_map: required parameter is NULL (base, base->coords, tangent_vec)");
         return NULL;
     }
 
@@ -303,6 +306,7 @@ poincare_point_t* poincare_exp_map(const poincare_point_t *base, const float *ta
 
 float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *point) {
     if (!base || !point || !base->coords || !point->coords || base->dim != point->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_log_map: required parameter is NULL (base, point, base->coords, point->coords)");
         return NULL;
     }
 
@@ -340,6 +344,7 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     float *tangent = (float*)nimcp_malloc(base->dim * sizeof(float));
     if (!tangent) {
         poincare_point_destroy(diff);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "poincare_log_map: tangent is NULL");
         return NULL;
     }
 
@@ -372,6 +377,7 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
 
 poincare_point_t* poincare_mobius_add(const poincare_point_t *x, const poincare_point_t *y) {
     if (!x || !y || !x->coords || !y->coords || x->dim != y->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_mobius_add: required parameter is NULL (x, y, x->coords, y->coords)");
         return NULL;
     }
 
@@ -414,6 +420,7 @@ poincare_point_t* poincare_mobius_add(const poincare_point_t *x, const poincare_
 
 poincare_point_t* poincare_mobius_scalar_mult(float r, const poincare_point_t *x) {
     if (!x || !x->coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_mobius_scalar_mult: required parameter is NULL (x, x->coords)");
         return NULL;
     }
 
@@ -458,6 +465,7 @@ poincare_point_t* poincare_mobius_scalar_mult(float r, const poincare_point_t *x
 
 float* poincare_riemannian_gradient(const poincare_point_t *point, const float *euclidean_grad) {
     if (!point || !point->coords || !euclidean_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_riemannian_gradient: required parameter is NULL (point, point->coords, euclidean_grad)");
         return NULL;
     }
 
@@ -482,12 +490,14 @@ float* poincare_riemannian_gradient(const poincare_point_t *point, const float *
 
 bool poincare_sgd_step(poincare_point_t *point, const float *euclidean_grad, float learning_rate) {
     if (!point || !euclidean_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_sgd_step: required parameter is NULL (point, euclidean_grad)");
         return false;
     }
 
     // Compute Riemannian gradient
     float *riem_grad = poincare_riemannian_gradient(point, euclidean_grad);
     if (!riem_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_sgd_step: riem_grad is NULL");
         return false;
     }
 
@@ -495,6 +505,7 @@ bool poincare_sgd_step(poincare_point_t *point, const float *euclidean_grad, flo
     float *step = (float*)nimcp_malloc(point->dim * sizeof(float));
     if (!step) {
         nimcp_free(riem_grad);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "poincare_sgd_step: step is NULL");
         return false;
     }
     vector_scale(step, -learning_rate, riem_grad, point->dim);
@@ -504,6 +515,7 @@ bool poincare_sgd_step(poincare_point_t *point, const float *euclidean_grad, flo
     poincare_point_t *new_point = poincare_exp_map(point, step);
     nimcp_free(step);
     if (!new_point) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_sgd_step: new_point is NULL");
         return false;
     }
 
@@ -567,17 +579,20 @@ void poincare_point_print(const poincare_point_t *point, const char *label) {
 
 bool poincare_point_is_valid(const poincare_point_t *point) {
     if (!point || !point->coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "poincare_point_is_valid: required parameter is NULL (point, point->coords)");
         return false;
     }
 
     // Check dimension
     if (point->dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "poincare_point_is_valid: point->dim is zero");
         return false;
     }
 
     // Check all coordinates are finite
     for (uint32_t i = 0; i < point->dim; i++) {
         if (!isfinite(point->coords[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "poincare_point_is_valid: isfinite is NULL");
             return false;
         }
     }
@@ -585,6 +600,7 @@ bool poincare_point_is_valid(const poincare_point_t *point) {
     // Check norm is within ball
     float norm = poincare_norm(point);
     if (norm >= 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "poincare_point_is_valid: capacity exceeded");
         return false;
     }
 

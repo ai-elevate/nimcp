@@ -75,7 +75,10 @@ static void cortical_predictive_coding_on_sleep_state_change(sleep_state_t new_s
 
 int cortical_predictive_coding_sleep_default_config(cortical_predictive_coding_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_coding_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_error_modulation = true;
     config->enable_learning_modulation = true;
     config->modulation_strength = 1.0f;
@@ -87,7 +90,10 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
     void* predictive_coding_module,
     sleep_system_t sleep)
 {
-    if (!predictive_coding_module || !sleep) return NULL;
+    if (!predictive_coding_module || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_predictive_coding_sleep_bridge_create: required parameter is NULL (predictive_coding_module, sleep)");
+        return NULL;
+    }
 
     struct cortical_predictive_coding_sleep_bridge_struct* bridge =
         (struct cortical_predictive_coding_sleep_bridge_struct*)nimcp_malloc(
@@ -111,6 +117,7 @@ cortical_predictive_coding_sleep_bridge_t cortical_predictive_coding_sleep_bridg
     if (bridge_base_init(&bridge->base, 0, "cortical_predictive_coding_sle") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_coding_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -138,7 +145,10 @@ void cortical_predictive_coding_sleep_bridge_destroy(cortical_predictive_coding_
 
 int cortical_predictive_coding_sleep_update(cortical_predictive_coding_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_predictive_coding_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 

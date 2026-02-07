@@ -251,11 +251,15 @@ int32_t nimcp_coverage_register_region(
     nimcp_protection_level_t protection,
     const char* name)
 {
-    if (!coverage || !base || size == 0)
+    if (!coverage || !base || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_register_region: required parameter is NULL (coverage, base)");
         return -1;
+    }
 
-    if (coverage->num_regions >= NIMCP_MAX_PROTECTED_REGIONS)
+    if (coverage->num_regions >= NIMCP_MAX_PROTECTED_REGIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_region: capacity exceeded");
         return -1;
+    }
 
     int32_t region_id = (int32_t)coverage->num_regions;
     nimcp_protected_region_t* region = &coverage->regions[region_id];
@@ -321,13 +325,17 @@ bool nimcp_coverage_verify_region(
     nimcp_security_coverage_t* coverage,
     int32_t region_id)
 {
-    if (!coverage || region_id < 0 || (uint32_t)region_id >= coverage->num_regions)
+    if (!coverage || region_id < 0 || (uint32_t)region_id >= coverage->num_regions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_verify_region: coverage is NULL");
         return false;
+    }
 
     nimcp_protected_region_t* region = &coverage->regions[region_id];
 
-    if (!region->active)
+    if (!region->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_verify_region: region->active is NULL");
         return false;
+    }
 
     // Compute current hash
     uint8_t current_hash[NIMCP_COVERAGE_HASH_SIZE];
@@ -357,8 +365,10 @@ bool nimcp_coverage_verify_region(
 
 bool nimcp_coverage_verify_all_regions(nimcp_security_coverage_t* coverage)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_verify_all_regions: coverage is NULL");
         return false;
+    }
 
     bool all_intact = true;
 
@@ -412,8 +422,10 @@ bool nimcp_coverage_record_code_path(
     uint32_t path_id,
     void* return_address)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_record_code_path: coverage is NULL");
         return false;
+    }
 
     // Find the path
     nimcp_code_path_t* path = NULL;
@@ -424,8 +436,10 @@ bool nimcp_coverage_record_code_path(
         }
     }
 
-    if (!path)
+    if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_record_code_path: path is NULL");
         return false;
+    }
 
     path->call_count++;
 
@@ -441,6 +455,7 @@ bool nimcp_coverage_record_code_path(
             "CFI violation: unexpected return address"
         );
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_record_code_path: operation failed");
         return false;
     }
 
@@ -459,11 +474,15 @@ int32_t nimcp_coverage_register_input_channel(
     const char* name,
     bool validation_enabled)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_register_input_channel: coverage is NULL");
         return -1;
+    }
 
-    if (coverage->num_channels >= NIMCP_MAX_CHANNELS)
+    if (coverage->num_channels >= NIMCP_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_input_channel: capacity exceeded");
         return -1;
+    }
 
     int32_t channel_id = (int32_t)coverage->num_channels;
     nimcp_channel_t* channel = &coverage->channels[channel_id];
@@ -494,11 +513,15 @@ int32_t nimcp_coverage_register_output_channel(
     bool sanitization_enabled,
     bool rate_limited)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_register_output_channel: coverage is NULL");
         return -1;
+    }
 
-    if (coverage->num_channels >= NIMCP_MAX_CHANNELS)
+    if (coverage->num_channels >= NIMCP_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_output_channel: capacity exceeded");
         return -1;
+    }
 
     int32_t channel_id = (int32_t)coverage->num_channels;
     nimcp_channel_t* channel = &coverage->channels[channel_id];
@@ -559,11 +582,15 @@ int32_t nimcp_coverage_register_ipc_endpoint(
     bool encrypted,
     uint32_t capability_mask)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_register_ipc_endpoint: coverage is NULL");
         return -1;
+    }
 
-    if (coverage->num_ipc_endpoints >= NIMCP_MAX_IPC_ENDPOINTS)
+    if (coverage->num_ipc_endpoints >= NIMCP_MAX_IPC_ENDPOINTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_coverage_register_ipc_endpoint: capacity exceeded");
         return -1;
+    }
 
     int32_t endpoint_id = (int32_t)coverage->num_ipc_endpoints;
     nimcp_ipc_endpoint_t* endpoint = &coverage->ipc_endpoints[endpoint_id];
@@ -718,12 +745,16 @@ nimcp_result_t nimcp_coverage_verify_dimension(
 
 bool nimcp_coverage_is_complete(nimcp_security_coverage_t* coverage)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_is_complete: coverage is NULL");
         return false;
+    }
 
     nimcp_coverage_report_t report;
-    if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS)
+    if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_is_complete: validation failed");
         return false;
+    }
 
     return report.all_dimensions_full;
 }
@@ -750,6 +781,7 @@ void** nimcp_coverage_find_memory_gaps(
 {
     if (!coverage || !gap_count) {
         if (gap_count) *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_find_memory_gaps: validation failed");
         return NULL;
     }
 
@@ -763,12 +795,14 @@ void** nimcp_coverage_find_memory_gaps(
 
     if (count == 0) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_find_memory_gaps: count is zero");
         return NULL;
     }
 
     void** gaps = (void**)nimcp_calloc(count, sizeof(void*));
     if (!gaps) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_coverage_find_memory_gaps: gaps is NULL");
         return NULL;
     }
 
@@ -789,6 +823,7 @@ uint32_t* nimcp_coverage_find_code_path_gaps(
 {
     if (!coverage || !gap_count) {
         if (gap_count) *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_find_code_path_gaps: validation failed");
         return NULL;
     }
 
@@ -802,12 +837,14 @@ uint32_t* nimcp_coverage_find_code_path_gaps(
 
     if (count == 0) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_find_code_path_gaps: count is zero");
         return NULL;
     }
 
     uint32_t* gaps = (uint32_t*)nimcp_calloc(count, sizeof(uint32_t));
     if (!gaps) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_coverage_find_code_path_gaps: gaps is NULL");
         return NULL;
     }
 
@@ -828,6 +865,7 @@ int32_t* nimcp_coverage_find_channel_gaps(
 {
     if (!coverage || !gap_count) {
         if (gap_count) *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_find_channel_gaps: validation failed");
         return NULL;
     }
 
@@ -843,12 +881,14 @@ int32_t* nimcp_coverage_find_channel_gaps(
 
     if (count == 0) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_find_channel_gaps: count is zero");
         return NULL;
     }
 
     int32_t* gaps = (int32_t*)nimcp_calloc(count, sizeof(int32_t));
     if (!gaps) {
         *gap_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_coverage_find_channel_gaps: gaps is NULL");
         return NULL;
     }
 
@@ -896,8 +936,10 @@ bool nimcp_coverage_check_temporal(
     nimcp_security_coverage_t* coverage,
     uint64_t max_gap_ms)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_check_temporal: coverage is NULL");
         return false;
+    }
 
     uint64_t now = get_timestamp_ms();
     uint64_t current_gap = now - coverage->last_heartbeat;
@@ -917,6 +959,7 @@ bool nimcp_coverage_check_temporal(
             msg
         );
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_check_temporal: operation failed");
         return false;
     }
 
@@ -975,12 +1018,16 @@ int32_t nimcp_coverage_generate_report(
     char* buffer,
     size_t buffer_size)
 {
-    if (!coverage || !buffer || buffer_size < 256)
+    if (!coverage || !buffer || buffer_size < 256) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_coverage_generate_report: required parameter is NULL (coverage, buffer)");
         return -1;
+    }
 
     nimcp_coverage_report_t report;
-    if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS)
+    if (nimcp_coverage_verify_all(coverage, &report) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_coverage_generate_report: validation failed");
         return -1;
+    }
 
     int offset = 0;
     int remaining = (int)buffer_size;

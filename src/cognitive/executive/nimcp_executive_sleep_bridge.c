@@ -129,7 +129,10 @@ static void executive_on_sleep_state_change(sleep_state_t new_state, void* user_
 }
 
 int executive_sleep_default_config(executive_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_defa", 0.0f);
 
@@ -226,7 +229,10 @@ void executive_sleep_bridge_destroy(executive_sleep_bridge_t bridge) {
 }
 
 int executive_sleep_update(executive_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_upda", 0.0f);
@@ -274,7 +280,10 @@ int executive_sleep_get_effects(
     const executive_sleep_bridge_t bridge,
     executive_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_get_", 0.0f);
 
@@ -298,7 +307,10 @@ float executive_sleep_get_inhibition(const executive_sleep_bridge_t bridge) {
 }
 
 bool executive_sleep_is_offline(const executive_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_sleep_bridge_heartbeat("executive_sl_executive_sleep_is_o", 0.0f);
 

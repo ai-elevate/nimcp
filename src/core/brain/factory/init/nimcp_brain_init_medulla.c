@@ -132,6 +132,7 @@ void brain_init_medulla_mesh_unregister(void) {
 bool nimcp_brain_factory_init_medulla_subsystem(brain_t brain) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("Null brain in init_medulla_subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_medulla_subsystem: brain is NULL");
         return false;
     }
 
@@ -367,6 +368,7 @@ bool nimcp_brain_is_medulla_emergency(brain_t brain) {
 
     medulla_stats_t stats;
     if (medulla_get_stats(brain->medulla, &stats) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_is_medulla_emergency: validation failed");
         return false;
     }
 

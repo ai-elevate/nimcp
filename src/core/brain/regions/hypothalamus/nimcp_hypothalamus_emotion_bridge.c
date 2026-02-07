@@ -458,7 +458,10 @@ static nimcp_error_t emotion_handle_hpa_request(
 }
 
 bool hypo_emotion_bridge_register_bio(hypo_emotion_bridge_t* bridge, bool use_kg_wiring) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring;  /* Future KG wiring integration */
@@ -473,6 +476,7 @@ bool hypo_emotion_bridge_register_bio(hypo_emotion_bridge_t* bridge, bool use_kg
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_emotion_bridge: failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 

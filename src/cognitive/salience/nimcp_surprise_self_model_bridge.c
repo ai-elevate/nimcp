@@ -153,6 +153,7 @@ static capability_entry_t* find_capability(
             return &bridge->capabilities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_capability: operation failed");
     return NULL;
 }
 

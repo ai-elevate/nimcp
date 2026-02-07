@@ -27,7 +27,10 @@ static uint64_t get_time_us(void) {
 }
 
 int vae_visual_bridge_default_config(vae_visual_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_visual_bridge_default_config: config is NULL");
+        return -1;
+    }
     memset(config, 0, sizeof(*config));
 
     uint32_t dims[] = {VAE_VISUAL_V1_LATENT_DIM, VAE_VISUAL_V2_LATENT_DIM,
@@ -59,7 +62,10 @@ int vae_visual_bridge_default_config(vae_visual_bridge_config_t* config) {
 
 vae_visual_bridge_t* vae_visual_bridge_create(const vae_visual_bridge_config_t* config) {
     vae_visual_bridge_t* bridge = (vae_visual_bridge_t*)nimcp_calloc(1, sizeof(vae_visual_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_visual_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     if (config) memcpy(&bridge->config, config, sizeof(vae_visual_bridge_config_t));
     else vae_visual_bridge_default_config(&bridge->config);

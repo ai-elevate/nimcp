@@ -98,7 +98,10 @@ static brain_kg_edge_id_t create_entorhinal_edge(
 //=============================================================================
 
 int entorhinal_kg_default_config(entorhinal_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_grid_cells = true;
     config->register_border_cells = true;
@@ -121,7 +124,10 @@ int entorhinal_kg_register_all(
     entorhinal_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     entorhinal_kg_config_t local_config;
     if (config) {
@@ -142,6 +148,7 @@ int entorhinal_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(ENTORHINAL_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -296,7 +303,10 @@ int entorhinal_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     state->registered = false;
     state->node_count = 0;

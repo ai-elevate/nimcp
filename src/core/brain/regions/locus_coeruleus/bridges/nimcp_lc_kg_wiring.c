@@ -98,7 +98,10 @@ static brain_kg_edge_id_t create_lc_edge(
 //=============================================================================
 
 int lc_kg_default_config(lc_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_noradrenergic_neurons = true;
     config->register_arousal_regulation = true;
@@ -120,7 +123,10 @@ int lc_kg_register_all(
     lc_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     lc_kg_config_t local_config;
     if (config) {
@@ -141,6 +147,7 @@ int lc_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(LC_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lc_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -279,7 +286,10 @@ int lc_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lc_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     state->registered = false;
     state->node_count = 0;

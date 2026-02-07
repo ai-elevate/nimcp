@@ -111,6 +111,7 @@ static circuit_entry_t* find_circuit(circuit_id_t id) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_circuit: validation failed");
     return NULL;
 }
 
@@ -119,6 +120,7 @@ static circuit_entry_t* create_circuit(const char* rule_str) {
 
     if (g_circuits.count >= g_circuits.capacity) {
         LOG_ERROR("circuit_compilation: Circuit store full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_circuit: capacity exceeded");
         return NULL;
     }
 
@@ -201,6 +203,7 @@ bool optimize_circuit(brain_t brain, circuit_id_t circuit_id) {
     circuit_entry_t* circuit = find_circuit(circuit_id);
     if (!circuit) {
         LOG_ERROR("circuit_compilation: Circuit %u not found", circuit_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "optimize_circuit: circuit is NULL");
         return false;
     }
 
@@ -232,6 +235,7 @@ bool verify_circuit_correctness(brain_t brain, circuit_id_t circuit_id,
     circuit_entry_t* circuit = find_circuit(circuit_id);
     if (!circuit) {
         LOG_ERROR("circuit_compilation: Circuit %u not found", circuit_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "optimize_circuit: circuit is NULL");
         return false;
     }
 

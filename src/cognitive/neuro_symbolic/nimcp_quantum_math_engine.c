@@ -282,6 +282,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
     qme_math_simulation_t* sim = nimcp_calloc(1, sizeof(qme_math_simulation_t));
     if (!sim) {
         NIMCP_LOG_ERROR("Failed to allocate quantum math engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim is NULL");
         return NULL;
     }
 
@@ -304,6 +305,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
     sim->sample_buffer = nimcp_calloc(sim->sample_buffer_size * 16, sizeof(float));
     if (!sim->sample_buffer) {
         nimcp_free(sim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->sample_buffer is NULL");
         return NULL;
     }
 
@@ -312,6 +314,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
     if (!sim->work_buffer) {
         nimcp_free(sim->sample_buffer);
         nimcp_free(sim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->work_buffer is NULL");
         return NULL;
     }
 
@@ -323,6 +326,7 @@ NIMCP_API qme_math_simulation_t* qme_math_create(
         nimcp_free(sim->work_buffer);
         nimcp_free(sim->sample_buffer);
         nimcp_free(sim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "random_normal: sim->mutex is NULL");
         return NULL;
     }
 
@@ -1109,7 +1113,10 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
     const float* lower,
     const float* upper) {
 
-    if (!lower || !upper || dim == 0) return NULL;
+    if (!lower || !upper || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (lower, upper)");
+        return NULL;
+    }
 
     qme_domain_t* domain = nimcp_calloc(1, sizeof(qme_domain_t));
     if (!domain) {
@@ -1130,6 +1137,7 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
         nimcp_free(domain->lower_bounds);
         nimcp_free(domain->upper_bounds);
         nimcp_free(domain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (domain->lower_bounds, domain->upper_bounds)");
         return NULL;
     }
 
@@ -1144,7 +1152,10 @@ NIMCP_API qme_domain_t* qme_domain_create_ball(
     const float* center,
     float radius) {
 
-    if (!center || dim == 0 || dim > 16 || radius <= 0.0f) return NULL;
+    if (!center || dim == 0 || dim > 16 || radius <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: center is NULL");
+        return NULL;
+    }
 
     qme_domain_t* domain = nimcp_calloc(1, sizeof(qme_domain_t));
     if (!domain) {

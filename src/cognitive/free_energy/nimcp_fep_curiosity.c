@@ -222,6 +222,7 @@ fep_curiosity_system_t* fep_curiosity_create(const fep_curiosity_config_t* confi
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         fep_curiosity_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_curiosity_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -464,7 +465,10 @@ int fep_curiosity_modulate_efe(
     fep_system_t* fep,
     fep_efe_t* efe
 ) {
-    if (!sys || !fep || !efe) return -1;
+    if (!sys || !fep || !efe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_modulate_efe: required parameter is NULL (sys, fep, efe)");
+        return -1;
+    }
 
     /* Modulate EFE with curiosity bonus */
     /* G'(π) = G(π) - α·EpistemicValue - β·Empowerment - γ·Novelty */
@@ -489,7 +493,10 @@ int fep_curiosity_select_action(
     fep_system_t* fep,
     uint32_t* action
 ) {
-    if (!sys || !fep || !action) return -1;
+    if (!sys || !fep || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_select_action: required parameter is NULL (sys, fep, action)");
+        return -1;
+    }
 
     /* Select action with curiosity bonus */
     /* For now, return action 0 with exploration bonus */
@@ -511,7 +518,10 @@ int fep_curiosity_record_observation(
     const float* observation,
     size_t dim
 ) {
-    if (!sys || !observation || dim == 0) return -1;
+    if (!sys || !observation || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_record_observation: required parameter is NULL (sys, observation)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_record_observation", 0.0f);
@@ -586,7 +596,10 @@ int fep_curiosity_get_state(
     const fep_curiosity_system_t* sys,
     fep_curiosity_state_t* state
 ) {
-    if (!sys || !state) return -1;
+    if (!sys || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_get_state: required parameter is NULL (sys, state)");
+        return -1;
+    }
 
     *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
@@ -600,7 +613,10 @@ int fep_curiosity_get_stats(
     const fep_curiosity_system_t* sys,
     fep_curiosity_stats_t* stats
 ) {
-    if (!sys || !stats) return -1;
+    if (!sys || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_get_stats: required parameter is NULL (sys, stats)");
+        return -1;
+    }
 
     *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -622,7 +638,10 @@ int fep_curiosity_connect(
     fep_curiosity_system_t* curiosity,
     fep_system_t* fep
 ) {
-    if (!curiosity || !fep) return -1;
+    if (!curiosity || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_connect: required parameter is NULL (curiosity, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_connect", 0.0f);
@@ -706,7 +725,10 @@ int fep_curiosity_disconnect_bio_async(fep_curiosity_system_t* sys) {
 }
 
 bool fep_curiosity_is_bio_async_connected(const fep_curiosity_system_t* sys) {
-    if (!sys) return false;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_is_bio_async_connected: sys is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_is_bio_async_connect", 0.0f);
 
@@ -817,7 +839,10 @@ int fep_curiosity_compute_total(
     size_t dim,
     fep_curiosity_result_t* result
 ) {
-    if (!sys || !state || !result) return -1;
+    if (!sys || !state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_curiosity_compute_total: required parameter is NULL (sys, state, result)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_curiosity_instance_heartbeat("fep_curiosit_compute_total", 0.0f);

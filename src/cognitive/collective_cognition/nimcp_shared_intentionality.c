@@ -150,6 +150,7 @@ static si_instance_t* find_instance(
             return &si->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
     return NULL;
 }
 
@@ -165,6 +166,7 @@ static si_instance_t* find_free_instance_slot(shared_intentionality_t* si) {
             return &si->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_instance_slot: si->instances is NULL");
     return NULL;
 }
 
@@ -187,6 +189,7 @@ static shared_goal_t* find_goal(
             return &si->goals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
@@ -202,6 +205,7 @@ static shared_goal_t* find_free_goal_slot(shared_intentionality_t* si) {
             return &si->goals[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_free_goal_slot: .goal_id is zero");
     return NULL;
 }
 
@@ -220,6 +224,7 @@ static goal_commitment_t* find_commitment(
             return &goal->commitments[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_commitment: validation failed");
     return NULL;
 }
 
@@ -265,6 +270,7 @@ static joint_attention_t* find_attention(
             return &si->attentions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_attention: validation failed");
     return NULL;
 }
 
@@ -280,6 +286,7 @@ static joint_attention_t* find_free_attention_slot(shared_intentionality_t* si) 
             return &si->attentions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_free_attention_slot: .attention_id is zero");
     return NULL;
 }
 
@@ -443,7 +450,10 @@ void shared_intentionality_destroy(shared_intentionality_t* si) {
 }
 
 int shared_intentionality_reset(shared_intentionality_t* si) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_reset: si is NULL");
+        return -1;
+    }
 
     /* Clear instances */
     /* Phase 8: Heartbeat at operation start */
@@ -484,17 +494,26 @@ int shared_intentionality_register_instance(
     shared_intentionality_t* si,
     uint32_t instance_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_register_instance: si is NULL");
+        return -1;
+    }
 
     /* Check if already registered */
-    if (find_instance(si, instance_id)) return -1;
+    if (find_instance(si, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_register_instance: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_register_instance", 0.0f);
 
 
     si_instance_t* slot = find_free_instance_slot(si);
-    if (!slot) return -1;
+    if (!slot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_register_instance: slot is NULL");
+        return -1;
+    }
 
     slot->instance_id = instance_id;
     slot->active = true;
@@ -509,14 +528,20 @@ int shared_intentionality_unregister_instance(
     shared_intentionality_t* si,
     uint32_t instance_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_unregister_instance: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_unregister_instance", 0.0f);
 
 
     si_instance_t* inst = find_instance(si, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_unregister_instance: inst is NULL");
+        return -1;
+    }
 
     inst->active = false;
     si->instance_count--;
@@ -583,21 +608,33 @@ int shared_intentionality_commit_to_goal(
     uint32_t instance_id,
     float commitment
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_commit_to_goal: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_commit_to_goal", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_commit_to_goal: goal is NULL");
+        return -1;
+    }
 
-    if (!find_instance(si, instance_id)) return -1;
+    if (!find_instance(si, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_commit_to_goal: find_instance is NULL");
+        return -1;
+    }
 
     /* Find or create commitment */
     goal_commitment_t* c = find_commitment(goal, instance_id);
     if (!c) {
-        if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) return -1;
+        if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_commit_to_goal: capacity exceeded");
+            return -1;
+        }
         c = &goal->commitments[goal->commitment_count++];
         c->instance_id = instance_id;
         c->committed_at_us = get_timestamp_us();
@@ -624,14 +661,20 @@ int shared_intentionality_withdraw_from_goal(
     uint32_t goal_id,
     uint32_t instance_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_withdraw_from_goal: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_withdraw_from_goal", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_withdraw_from_goal: goal is NULL");
+        return -1;
+    }
 
     /* Find and remove commitment */
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
@@ -664,6 +707,7 @@ int shared_intentionality_withdraw_from_goal(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_withdraw_from_goal: operation failed");
     return -1;  /* Not found */
 }
 
@@ -672,14 +716,20 @@ int shared_intentionality_update_goal_progress(
     uint32_t goal_id,
     float progress
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_update_goal_progress: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_update_goal_progress", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_update_goal_progress: goal is NULL");
+        return -1;
+    }
 
     goal->progress = progress;
 
@@ -702,14 +752,20 @@ int shared_intentionality_complete_goal(
     shared_intentionality_t* si,
     uint32_t goal_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_complete_goal: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_complete_goal", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_complete_goal: goal is NULL");
+        return -1;
+    }
 
     /* Already completed - nothing to do */
     if (goal->state == GOAL_STATE_COMPLETED) {
@@ -730,14 +786,20 @@ int shared_intentionality_fail_goal(
     shared_intentionality_t* si,
     uint32_t goal_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_fail_goal: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_fail_goal", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_fail_goal: goal is NULL");
+        return -1;
+    }
 
     shared_goal_state_t old_state = goal->state;
     goal->state = GOAL_STATE_FAILED;
@@ -753,14 +815,20 @@ int shared_intentionality_get_goal(
     uint32_t goal_id,
     shared_goal_t* goal
 ) {
-    if (!si || !goal) return -1;
+    if (!si || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_goal: required parameter is NULL (si, goal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_get_goal", 0.0f);
 
 
     shared_goal_t* found = find_goal((shared_intentionality_t*)si, goal_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_goal: found is NULL");
+        return -1;
+    }
 
     *goal = *found;
     return 0;
@@ -833,22 +901,34 @@ int shared_intentionality_join_attention(
     uint32_t attention_id,
     uint32_t instance_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_join_attention: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_join_attention", 0.0f);
 
 
     joint_attention_t* att = find_attention(si, attention_id);
-    if (!att) return -1;
+    if (!att) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_join_attention: att is NULL");
+        return -1;
+    }
 
-    if (!find_instance(si, instance_id)) return -1;
+    if (!find_instance(si, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_join_attention: find_instance is NULL");
+        return -1;
+    }
 
     /* Check if already attending */
     if (is_attending(att, instance_id)) return 0;
 
     /* Add to attending list */
-    if (att->attending_count >= COLLECTIVE_MAX_INSTANCES) return -1;
+    if (att->attending_count >= COLLECTIVE_MAX_INSTANCES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_join_attention: capacity exceeded");
+        return -1;
+    }
     att->attending_instances[att->attending_count++] = instance_id;
 
     /* Update agreement level */
@@ -868,14 +948,20 @@ int shared_intentionality_leave_attention(
     uint32_t attention_id,
     uint32_t instance_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_leave_attention: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_leave_attention", 0.0f);
 
 
     joint_attention_t* att = find_attention(si, attention_id);
-    if (!att) return -1;
+    if (!att) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_leave_attention: att is NULL");
+        return -1;
+    }
 
     /* Find and remove */
     for (uint32_t i = 0; i < att->attending_count; i++) {
@@ -906,6 +992,7 @@ int shared_intentionality_leave_attention(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_leave_attention: att->attending_count is zero");
     return -1;
 }
 
@@ -914,14 +1001,20 @@ int shared_intentionality_get_attention(
     uint32_t attention_id,
     joint_attention_t* attention
 ) {
-    if (!si || !attention) return -1;
+    if (!si || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_attention: required parameter is NULL (si, attention)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_get_attention", 0.0f);
 
 
     joint_attention_t* found = find_attention((shared_intentionality_t*)si, attention_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_attention: found is NULL");
+        return -1;
+    }
 
     *attention = *found;
     return 0;
@@ -957,22 +1050,34 @@ int shared_intentionality_assign_role(
     uint32_t instance_id,
     role_type_t role
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_assign_role: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_assign_role", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_assign_role: goal is NULL");
+        return -1;
+    }
 
     /* Verify instance is registered */
-    if (!find_instance(si, instance_id)) return -1;
+    if (!find_instance(si, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_assign_role: find_instance is NULL");
+        return -1;
+    }
 
     goal_commitment_t* c = find_commitment(goal, instance_id);
     if (!c) {
         /* Auto-create commitment if assigning role before explicit commit */
-        if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) return -1;
+        if (goal->commitment_count >= COLLECTIVE_MAX_INSTANCES) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "shared_intentionality_assign_role: capacity exceeded");
+            return -1;
+        }
         c = &goal->commitments[goal->commitment_count++];
         c->instance_id = instance_id;
         c->strength = 0.0f;  /* Will be set when commit_to_goal is called */
@@ -990,14 +1095,20 @@ int shared_intentionality_negotiate_roles(
     shared_intentionality_t* si,
     uint32_t goal_id
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_negotiate_roles: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_negotiate_roles", 0.0f);
 
 
     shared_goal_t* goal = find_goal(si, goal_id);
-    if (!goal || goal->commitment_count == 0) return -1;
+    if (!goal || goal->commitment_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shared_intentionality_negotiate_roles: goal is NULL");
+        return -1;
+    }
 
     /* Simple role assignment: first committer is leader, rest are executors */
     for (uint32_t i = 0; i < goal->commitment_count; i++) {
@@ -1026,17 +1137,26 @@ int shared_intentionality_get_role(
     uint32_t instance_id,
     role_assignment_t* assignment
 ) {
-    if (!si || !assignment) return -1;
+    if (!si || !assignment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_role: required parameter is NULL (si, assignment)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_get_role", 0.0f);
 
 
     shared_goal_t* goal = find_goal((shared_intentionality_t*)si, goal_id);
-    if (!goal) return -1;
+    if (!goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_role: goal is NULL");
+        return -1;
+    }
 
     goal_commitment_t* c = find_commitment(goal, instance_id);
-    if (!c) return -1;
+    if (!c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_role: c is NULL");
+        return -1;
+    }
 
     assignment->goal_id = goal_id;
     assignment->instance_id = instance_id;
@@ -1057,7 +1177,10 @@ int shared_intentionality_get_we_mode(
     const shared_intentionality_t* si,
     we_mode_state_t* state
 ) {
-    if (!si || !state) return -1;
+    if (!si || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_we_mode: required parameter is NULL (si, state)");
+        return -1;
+    }
     *state = si->we_mode;
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_get_we_mode", 0.0f);
@@ -1069,7 +1192,10 @@ int shared_intentionality_get_we_mode(
 bool shared_intentionality_is_we_mode_active(
     const shared_intentionality_t* si
 ) {
-    if (!si) return false;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_is_we_mode_active: si is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_is_we_mode_active", 0.0f);
 
@@ -1078,7 +1204,10 @@ bool shared_intentionality_is_we_mode_active(
 }
 
 int shared_intentionality_enter_we_mode(shared_intentionality_t* si) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_enter_we_mode: si is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_enter_we_mode", 0.0f);
 
@@ -1090,7 +1219,10 @@ int shared_intentionality_enter_we_mode(shared_intentionality_t* si) {
 }
 
 int shared_intentionality_exit_we_mode(shared_intentionality_t* si) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_exit_we_mode: si is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_exit_we_mode", 0.0f);
@@ -1110,7 +1242,10 @@ int shared_intentionality_exit_we_mode(shared_intentionality_t* si) {
  *===========================================================================*/
 
 int shared_intentionality_update(shared_intentionality_t* si) {
-    if (!si || !si->initialized) return -1;
+    if (!si || !si->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_update: required parameter is NULL (si, si->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_update", 0.0f);
@@ -1190,7 +1325,10 @@ int shared_intentionality_set_goal_callback(
     goal_state_callback_fn callback,
     void* user_data
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_set_goal_callback: si is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_set_goal_callback", 0.0f);
 
@@ -1205,7 +1343,10 @@ int shared_intentionality_set_attention_callback(
     attention_callback_fn callback,
     void* user_data
 ) {
-    if (!si) return -1;
+    if (!si) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_set_attention_callback: si is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_set_attention_callba", 0.0f);
 
@@ -1223,7 +1364,10 @@ int shared_intentionality_get_stats(
     const shared_intentionality_t* si,
     shared_intentionality_stats_t* stats
 ) {
-    if (!si || !stats) return -1;
+    if (!si || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shared_intentionality_get_stats: required parameter is NULL (si, stats)");
+        return -1;
+    }
     *stats = si->stats;
     /* Phase 8: Heartbeat at operation start */
     shared_intentionality_heartbeat("shared_inten_get_stats", 0.0f);

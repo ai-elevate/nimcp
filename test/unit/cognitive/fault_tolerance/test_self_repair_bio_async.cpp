@@ -20,6 +20,8 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Test Fixture
@@ -45,7 +47,12 @@ protected:
             router_initialized = true;
         }
 
-        // Capture baseline AFTER router init
+        // Force-initialize exception system singletons so their allocations
+        // are part of the baseline (handler mutex, exception mutex, etc.)
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "warmup");
+        nimcp_exception_clear_current();
+
+        // Capture baseline AFTER router init and exception warmup
         nimcp_memory_stats_t baseline_stats;
         nimcp_memory_get_stats(&baseline_stats);
         baseline_allocated = baseline_stats.current_allocated;
@@ -56,6 +63,10 @@ protected:
             self_repair_destroy(coordinator);
             coordinator = nullptr;
         }
+
+        // Clear thread-local exception state (exceptions from BBB not being
+        // initialized leave a ref in tl_current_exception that appears as a leak)
+        nimcp_exception_clear_current();
 
         // Memory leak check BEFORE router shutdown (skip for tests that change router)
         if (!skip_memory_check) {
@@ -283,6 +294,9 @@ TEST_F(SelfRepairBioAsyncTest, ConcurrentBroadcast) {
                     success_count++;
                 }
             }
+            // Clear this thread's exception state (each thread has its own
+            // tl_current_exception from failed BBB calls)
+            nimcp_exception_clear_current();
         });
     }
 

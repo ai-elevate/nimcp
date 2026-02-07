@@ -184,6 +184,7 @@ static cognitive_event_priority_t urgency_to_priority(hypo_urgency_t urgency) {
  */
 static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cog_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -341,6 +342,7 @@ static int hypo_cog_query_handler(
     void* context
 ) {
     if (!query || !result || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cog_query_handler: required parameter is NULL (query, result, context)");
         return -1;
     }
 
@@ -361,6 +363,7 @@ static int hypo_cog_query_handler(
         strncpy(result->error_message, "Orchestrator not connected",
                 sizeof(result->error_message) - 1);
         result->status = -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cog_query_handler: orch is NULL");
         return -1;
     }
 
@@ -468,6 +471,7 @@ static int hypo_cog_query_handler(
  */
 static int hypo_cog_on_orch_event(const hypo_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cog_on_orch_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -616,6 +620,7 @@ hypo_cognitive_hub_bridge_t* hypo_cognitive_hub_create(
     if (bridge_base_init(&bridge->base, 0, "hypothalamus_cognitive_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_cognitive_hub_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -681,6 +686,7 @@ void hypo_cognitive_hub_destroy(hypo_cognitive_hub_bridge_t* bridge) {
 
 int hypo_cognitive_hub_reset(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_reset: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -711,6 +717,7 @@ int hypo_cognitive_hub_connect(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !bridge->initialized || !orch || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_connect: required parameter is NULL (bridge, bridge->initialized, orch, hub)");
         return -1;
     }
 
@@ -719,6 +726,7 @@ int hypo_cognitive_hub_connect(
     /* Check if already connected */
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_cognitive_hub_connect: validation failed");
         return -1;
     }
 
@@ -742,6 +750,7 @@ int hypo_cognitive_hub_connect(
         bridge->orch = NULL;
         bridge->cog_hub = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_cognitive_hub_connect: validation failed");
         return -1;
     }
 
@@ -874,6 +883,7 @@ int hypo_cognitive_hub_connect(
 
 int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_disconnect: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -881,6 +891,7 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_disconnect: bridge->connected is NULL");
         return -1;
     }
 
@@ -934,6 +945,7 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
 
 bool hypo_cognitive_hub_is_connected(const hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -956,6 +968,7 @@ int hypo_cognitive_hub_update(
     uint64_t delta_ms
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_update: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1004,6 +1017,7 @@ int hypo_cognitive_hub_update(
 
 int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_broadcast_drives: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1011,6 +1025,7 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
 
     if (!bridge->connected || !bridge->orch || !bridge->cog_hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_broadcast_drives: required parameter is NULL (bridge->connected, bridge->orch, bridge->cog_hub)");
         return -1;
     }
 
@@ -1023,6 +1038,7 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
     /* Get current drive state from orchestrator */
     hypo_unified_drive_state_t drive_state;
     if (hypo_orch_get_drive_state(orch, &drive_state) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_cognitive_hub_broadcast_drives: validation failed");
         return -1;
     }
 
@@ -1071,6 +1087,7 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
 
 int hypo_cognitive_hub_receive_cognitive_state(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_receive_cognitive_state: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1100,6 +1117,7 @@ int hypo_cognitive_hub_modulate_curiosity(
     float info_gain
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_curiosity: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1107,6 +1125,7 @@ int hypo_cognitive_hub_modulate_curiosity(
 
     if (!bridge->connected || !bridge->orch) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_curiosity: required parameter is NULL (bridge->connected, bridge->orch)");
         return -1;
     }
 
@@ -1136,6 +1155,7 @@ int hypo_cognitive_hub_modulate_social(
     float social_reward
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_social: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1143,6 +1163,7 @@ int hypo_cognitive_hub_modulate_social(
 
     if (!bridge->connected || !bridge->orch) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_social: required parameter is NULL (bridge->connected, bridge->orch)");
         return -1;
     }
 
@@ -1172,6 +1193,7 @@ int hypo_cognitive_hub_modulate_competence(
     float skill_acquisition
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_competence: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1179,6 +1201,7 @@ int hypo_cognitive_hub_modulate_competence(
 
     if (!bridge->connected || !bridge->orch) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_modulate_competence: required parameter is NULL (bridge->connected, bridge->orch)");
         return -1;
     }
 
@@ -1212,6 +1235,7 @@ int hypo_cognitive_hub_propagate_stress(
     float stress_level
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_propagate_stress: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1219,6 +1243,7 @@ int hypo_cognitive_hub_propagate_stress(
 
     if (!bridge->connected || !bridge->cog_hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_propagate_stress: required parameter is NULL (bridge->connected, bridge->cog_hub)");
         return -1;
     }
 
@@ -1285,6 +1310,7 @@ int hypo_cognitive_hub_propagate_fatigue(
     float fatigue_level
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_propagate_fatigue: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1292,6 +1318,7 @@ int hypo_cognitive_hub_propagate_fatigue(
 
     if (!bridge->connected || !bridge->cog_hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_propagate_fatigue: required parameter is NULL (bridge->connected, bridge->cog_hub)");
         return -1;
     }
 
@@ -1360,6 +1387,7 @@ int hypo_cognitive_hub_set_emotion_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_set_emotion_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1377,6 +1405,7 @@ int hypo_cognitive_hub_set_attention_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_set_attention_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1394,6 +1423,7 @@ int hypo_cognitive_hub_set_decision_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_set_decision_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1411,6 +1441,7 @@ int hypo_cognitive_hub_set_learning_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_set_learning_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1431,6 +1462,7 @@ int hypo_cognitive_hub_connect_bio_async(
     bio_router_t router
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_connect_bio_async: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1438,6 +1470,7 @@ int hypo_cognitive_hub_connect_bio_async(
 
     if (bridge->bio_async_connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_cognitive_hub_connect_bio_async: validation failed");
         return -1;  /* Already connected */
     }
 
@@ -1446,6 +1479,7 @@ int hypo_cognitive_hub_connect_bio_async(
     /* Get router - use global if not provided */
     if (!router) {
         if (!bio_router_is_initialized()) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "hypo_cognitive_hub_connect_bio_async: bio_router_is_initialized is NULL");
             return -1;  /* No router available */
         }
         router = bio_router_get_global();
@@ -1482,6 +1516,7 @@ int hypo_cognitive_hub_connect_bio_async(
 
 int hypo_cognitive_hub_disconnect_bio_async(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_disconnect_bio_async: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1489,6 +1524,7 @@ int hypo_cognitive_hub_disconnect_bio_async(hypo_cognitive_hub_bridge_t* bridge)
 
     if (!bridge->bio_async_connected || !bridge->bio_ctx) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_disconnect_bio_async: required parameter is NULL (bridge->bio_async_connected, bridge->bio_ctx)");
         return -1;
     }
 
@@ -1511,6 +1547,7 @@ bool hypo_cognitive_hub_bio_async_connected(
     const hypo_cognitive_hub_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_bio_async_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -1533,6 +1570,7 @@ int hypo_cognitive_hub_get_cognitive_state(
     hypo_cognitive_hub_state_t* state
 ) {
     if (!bridge || !bridge->initialized || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_get_cognitive_state: required parameter is NULL (bridge, bridge->initialized, state)");
         return -1;
     }
 
@@ -1551,6 +1589,7 @@ int hypo_cognitive_hub_get_config(
     hypo_cognitive_hub_config_t* config
 ) {
     if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_get_config: required parameter is NULL (bridge, bridge->initialized, config)");
         return -1;
     }
 
@@ -1573,6 +1612,7 @@ int hypo_cognitive_hub_get_stats(
     hypo_cognitive_hub_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1588,6 +1628,7 @@ int hypo_cognitive_hub_get_stats(
 
 int hypo_cognitive_hub_reset_stats(hypo_cognitive_hub_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_cognitive_hub_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

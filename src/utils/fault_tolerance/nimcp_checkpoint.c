@@ -179,10 +179,12 @@ static bool write_full(FILE* fp, const void* data, size_t size) {
         if (n == 0) {
             if (ferror(fp)) {
                 set_error("Write error: %s", strerror(errno));
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_full: validation failed");
                 return false;
             }
             // EOF on write shouldn't happen, but handle it
             set_error("Unexpected EOF during write");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_full: validation failed");
             return false;
         }
         written += n;
@@ -212,10 +214,12 @@ static bool read_full(FILE* fp, void* data, size_t size) {
         if (n == 0) {
             if (feof(fp)) {
                 set_error("Unexpected EOF (expected %zu bytes, got %zu)", size, nread);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_full: validation failed");
                 return false;
             }
             if (ferror(fp)) {
                 set_error("Read error: %s", strerror(errno));
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_full: validation failed");
                 return false;
             }
         }
@@ -258,6 +262,7 @@ static bool write_checkpoint_header(FILE* fp, uint32_t flags, uint32_t data_size
 
     // Write header
     if (!write_full(fp, &header, sizeof(header))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_checkpoint_header: write_full is NULL");
         return false;
     }
 
@@ -279,17 +284,20 @@ static bool read_checkpoint_header(FILE* fp, checkpoint_header_t* header) {
     // Guard: NULL check
     if (!fp || !header) {
         set_error("read_checkpoint_header: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_checkpoint_header: required parameter is NULL (fp, header)");
         return false;
     }
 
     // Read header
     if (!read_full(fp, header, sizeof(*header))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_checkpoint_header: read_full is NULL");
         return false;
     }
 
     // Validate magic
     if (strncmp(header->magic, CHECKPOINT_MAGIC, strlen(CHECKPOINT_MAGIC)) != 0) {
         set_error("Invalid magic bytes (not a checkpoint file)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_checkpoint_header: validation failed");
         return false;
     }
 
@@ -298,6 +306,7 @@ static bool read_checkpoint_header(FILE* fp, checkpoint_header_t* header) {
         set_error("Unsupported version %u.%u (current: %u.%u)",
                   header->version_major, header->version_minor,
                   CHECKPOINT_VERSION_MAJOR, CHECKPOINT_VERSION_MINOR);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_checkpoint_header: validation failed");
         return false;
     }
 
@@ -515,6 +524,7 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
                     // Integer overflow would occur, abort
                     set_error("Invalid synapse count causes integer overflow");
                     brain_destroy(new_brain);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: validation failed");
                     return false;
                 }
                 size_t skip_size = (size_t)skip * synapse_size;
@@ -563,7 +573,10 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
 static int compare_checkpoint_timestamp_desc(const void* a, const void* b) {
     const checkpoint_info_t* ca = (const checkpoint_info_t*)a;
     const checkpoint_info_t* cb = (const checkpoint_info_t*)b;
-    if (ca->timestamp > cb->timestamp) return -1;
+    if (ca->timestamp > cb->timestamp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_checkpoint_timestamp_desc: validation failed");
+        return -1;
+    }
     if (ca->timestamp < cb->timestamp) return 1;
     return 0;
 }
@@ -610,6 +623,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
     uint8_t* data_buffer = NULL;
     size_t data_size = 0;
     if (!serialize_brain_state(brain, &data_buffer, &data_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_save_ex: serialize_brain_state is NULL");
         return false;
     }
 
@@ -624,6 +638,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
     if (!fp) {
         set_error("Failed to open checkpoint file: %s", strerror(errno));
         nimcp_free(data_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_save_ex: fp is NULL");
         return false;
     }
 
@@ -642,6 +657,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
         fclose(fp);
         unlink(temp_path);
         nimcp_free(data_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_save_ex: write_full is NULL");
         return false;
     }
 
@@ -650,6 +666,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
         fclose(fp);
         unlink(temp_path);
         nimcp_free(data_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_save_ex: write_full is NULL");
         return false;
     }
 
@@ -663,6 +680,7 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
     if (rename(temp_path, path) != 0) {
         set_error("Failed to rename checkpoint: %s", strerror(errno));
         unlink(temp_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_save_ex: validation failed");
         return false;
     }
 
@@ -703,6 +721,7 @@ bool checkpoint_validate(const char* path) {
     FILE* fp = fopen(path, "rb");
     if (!fp) {
         set_error("Failed to open checkpoint: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_validate: fp is NULL");
         return false;
     }
 
@@ -710,6 +729,7 @@ bool checkpoint_validate(const char* path) {
     checkpoint_header_t header;
     if (!read_checkpoint_header(fp, &header)) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: read_checkpoint_header is NULL");
         return false;
     }
 
@@ -720,6 +740,7 @@ bool checkpoint_validate(const char* path) {
         if (header.crc32 != 0) {
             set_error("CRC32 mismatch for empty data (expected 0x00000000, got 0x%08X)",
                       header.crc32);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: validation failed");
             return false;
         }
         return true;
@@ -737,6 +758,7 @@ bool checkpoint_validate(const char* path) {
     if (!read_full(fp, data, header.data_size)) {
         nimcp_free(data);
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: read_full is NULL");
         return false;
     }
 
@@ -748,6 +770,7 @@ bool checkpoint_validate(const char* path) {
     if (calculated_crc != header.crc32) {
         set_error("CRC32 mismatch (expected 0x%08X, got 0x%08X)",
                   header.crc32, calculated_crc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_validate: validation failed");
         return false;
     }
 
@@ -765,18 +788,21 @@ bool checkpoint_load(brain_t* brain, const char* path) {
 
     // Validate checkpoint first
     if (!checkpoint_validate(path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: checkpoint_validate is NULL");
         return false;
     }
 
     FILE* fp = fopen(path, "rb");
     if (!fp) {
         set_error("Failed to open checkpoint: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_load: fp is NULL");
         return false;
     }
 
     checkpoint_header_t header;
     if (!read_checkpoint_header(fp, &header)) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: read_checkpoint_header is NULL");
         return false;
     }
 
@@ -798,6 +824,7 @@ bool checkpoint_load(brain_t* brain, const char* path) {
     if (!read_full(fp, data, header.data_size)) {
         nimcp_free(data);
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: read_full is NULL");
         return false;
     }
     fclose(fp);
@@ -807,12 +834,14 @@ bool checkpoint_load(brain_t* brain, const char* path) {
     if (crc != header.crc32) {
         set_error("CRC32 mismatch");
         nimcp_free(data);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: validation failed");
         return false;
     }
 
     // Deserialize
     if (!deserialize_brain_state(data, header.data_size, brain)) {
         nimcp_free(data);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: deserialize_brain_state is NULL");
         return false;
     }
 
@@ -838,6 +867,7 @@ bool checkpoint_list(const char* dir, checkpoint_info_t** list, uint32_t* count)
     DIR* d = opendir(dir);
     if (!d) {
         set_error("Failed to open directory %s: %s", dir, strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_list: d is NULL");
         return false;
     }
 
@@ -927,6 +957,7 @@ bool checkpoint_cleanup_old(const char* dir, uint32_t keep_count) {
     checkpoint_info_t* list = NULL;
     uint32_t count = 0;
     if (!checkpoint_list(dir, &list, &count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_cleanup_old: checkpoint_list is NULL");
         return false;
     }
 
@@ -992,6 +1023,7 @@ bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
     checkpoint_info_t* list = NULL;
     uint32_t count = 0;
     if (!checkpoint_list(checkpoint_dir, &list, &count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_auto_restore: checkpoint_list is NULL");
         return false;
     }
 
@@ -1021,6 +1053,7 @@ bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
     // No valid checkpoint could be loaded
     set_error("All checkpoints failed to load");
     nimcp_free(list);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_auto_restore: operation failed");
     return false;
 }
 
@@ -1034,6 +1067,7 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
     // Load checkpoint
     brain_t restored = NULL;
     if (!checkpoint_load(&restored, checkpoint_path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_rollback: checkpoint_load is NULL");
         return false;
     }
 
@@ -1125,6 +1159,7 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
     checkpoint_header_t header;
     if (!read_checkpoint_header(fp, &header)) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_partial: read_checkpoint_header is NULL");
         return false;
     }
     *recovery_level = 1;  // Header valid

@@ -375,7 +375,7 @@ TEST_F(EncryptedAuditRegressionTest, ExportFileHeader) {
     file.read(reinterpret_cast<char*>(&magic), sizeof(magic));
     file.read(reinterpret_cast<char*>(&version), sizeof(version));
 
-    EXPECT_EQ(magic, NIMCP_ENCRYPTED_AUDIT_MAGIC);
+    EXPECT_EQ(magic, NIMCP_ENCRYPTED_AUDIT_FILE_MAGIC);
     EXPECT_EQ(version, NIMCP_ENCRYPTED_AUDIT_VERSION);
 
     file.close();

@@ -162,6 +162,7 @@ hypo_pred_fep_bridge_t* hypo_pred_fep_create(
     /* Validate required parameters */
     if (!drive_system || !fep_system) {
         NIMCP_LOGGING_ERROR("Hypo Predictive FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_create: required parameter is NULL (drive_system, fep_system)");
         return NULL;
     }
 
@@ -171,6 +172,7 @@ hypo_pred_fep_bridge_t* hypo_pred_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Hypo Predictive FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_pred_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -193,6 +195,7 @@ hypo_pred_fep_bridge_t* hypo_pred_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo Predictive FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_create: bridge->base is NULL");
         return NULL;
     }
 

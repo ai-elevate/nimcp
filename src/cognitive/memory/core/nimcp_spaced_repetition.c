@@ -277,26 +277,31 @@ NIMCP_EXPORT sr_fsrs_params_t sr_fsrs_params_default(void) {
 
 NIMCP_EXPORT bool sr_config_validate(const sr_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_config_validate: config is NULL");
         return false;
     }
 
     // Validate retention target
     if (config->target_retention <= 0.0f || config->target_retention >= 1.0f) {
         sr_set_error("Invalid target_retention: must be in (0, 1)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: capacity exceeded");
         return false;
     }
 
     // Validate intervals
     if (config->max_interval_days <= 0.0f) {
         sr_set_error("Invalid max_interval_days: must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->min_interval_days < 0.0f) {
         sr_set_error("Invalid min_interval_days: must be non-negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->min_interval_days >= config->max_interval_days) {
         sr_set_error("min_interval_days must be less than max_interval_days");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sr_config_validate: capacity exceeded");
         return false;
     }
 
@@ -304,24 +309,29 @@ NIMCP_EXPORT bool sr_config_validate(const sr_config_t* config) {
     const sr_fsrs_params_t* p = &config->fsrs_params;
     if (p->param_a <= 0.0f || p->param_b < 0.0f || p->param_c < 0.0f || p->param_d < 0.0f) {
         sr_set_error("Invalid FSRS parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (p->initial_stability <= 0.0f) {
         sr_set_error("Invalid initial_stability: must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sr_config_validate: validation failed");
         return false;
     }
 
     // Validate modifiers
     if (config->easy_bonus < 1.0f) {
         sr_set_error("Invalid easy_bonus: must be >= 1.0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->hard_penalty <= 0.0f || config->hard_penalty > 1.0f) {
         sr_set_error("Invalid hard_penalty: must be in (0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
     if (config->interval_modifier <= 0.0f) {
         sr_set_error("Invalid interval_modifier: must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_config_validate: validation failed");
         return false;
     }
 
@@ -362,6 +372,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
     if (config) {
         cfg = *config;
         if (!sr_config_validate(&cfg)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_create_integrated: sr_config_validate is NULL");
             return NULL;
         }
     } else {
@@ -371,6 +382,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
     sr_system_t system = (sr_system_t)nimcp_calloc(1, sizeof(struct sr_system_struct));
     if (!system) {
         sr_set_error("Failed to allocate system structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_create_integrated: system is NULL");
         return NULL;
     }
 
@@ -384,6 +396,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
     if (!system->items_table) {
         sr_set_error("Failed to allocate hash table");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_create_integrated: system->items_table is NULL");
         return NULL;
     }
 
@@ -394,6 +407,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
         sr_set_error("Failed to allocate heap");
         nimcp_free(system->items_table);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_create_integrated: system->heap is NULL");
         return NULL;
     }
 
@@ -408,6 +422,7 @@ NIMCP_EXPORT sr_system_t sr_system_create_integrated(
         nimcp_free(system->heap);
         nimcp_free(system->items_table);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_create_integrated: required parameter is NULL (system->daily_review_counts, system->daily_retention_rates)");
         return NULL;
     }
 
@@ -636,6 +651,7 @@ NIMCP_EXPORT sr_spaced_item_t* sr_system_get_item_by_memory(
     const pr_memory_node_t* memory
 ) {
     if (!system || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sr_system_get_item_by_memory: required parameter is NULL (system, memory)");
         return NULL;
     }
 
@@ -659,6 +675,7 @@ NIMCP_EXPORT sr_spaced_item_t* sr_system_get_item_by_memory(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_get_item_by_memory: operation failed");
     return NULL;
 }
 
@@ -793,6 +810,7 @@ NIMCP_EXPORT size_t sr_system_unbury_all(sr_system_t system) {
 
 NIMCP_EXPORT sr_spaced_item_t* sr_system_get_next(sr_system_t system) {
     if (!system || system->heap_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_system_get_next: system is NULL");
         return NULL;
     }
 
@@ -801,6 +819,7 @@ NIMCP_EXPORT sr_spaced_item_t* sr_system_get_next(sr_system_t system) {
     // Check if top item is due
     sr_spaced_item_t* top = system->heap[0]->entry.item;
     if (top->due_time > current_time) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_get_next: validation failed");
         return NULL;  // Nothing due yet
     }
 
@@ -2177,6 +2196,7 @@ NIMCP_EXPORT sr_system_t sr_system_deserialize(
 ) {
     if (!buffer || buffer_size < sizeof(uint32_t) * 2) {
         sr_set_error("Invalid buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sr_system_deserialize: buffer is NULL");
         return NULL;
     }
 
@@ -2187,6 +2207,7 @@ NIMCP_EXPORT sr_system_t sr_system_deserialize(
     ptr += sizeof(uint32_t);
     if (magic != 0x53525300) {
         sr_set_error("Invalid magic number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_deserialize: validation failed");
         return NULL;
     }
 
@@ -2194,6 +2215,7 @@ NIMCP_EXPORT sr_system_t sr_system_deserialize(
     ptr += sizeof(uint32_t);
     if (version != 1) {
         sr_set_error("Unsupported version");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_system_deserialize: validation failed");
         return NULL;
     }
 
@@ -2410,6 +2432,7 @@ NIMCP_EXPORT const char* sr_error_string(sr_error_t error) {
 
 NIMCP_EXPORT const char* sr_get_last_error(void) {
     if (sr_error_buffer[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr_get_last_error: validation failed");
         return NULL;
     }
     return sr_error_buffer;
@@ -2559,6 +2582,7 @@ static sr_spaced_item_t* hash_lookup(sr_system_t system, uint64_t item_id) {
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_lookup: validation failed");
     return NULL;
 }
 
@@ -2593,6 +2617,7 @@ static sr_spaced_item_t* item_create(sr_system_t system, pr_memory_node_t* memor
     sr_spaced_item_t* item = (sr_spaced_item_t*)nimcp_calloc(1, sizeof(sr_spaced_item_t));
     if (!item) {
         sr_set_error("Failed to allocate item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "item_create: item is NULL");
         return NULL;
     }
 
@@ -2863,6 +2888,7 @@ static void heap_insert(sr_system_t system, sr_spaced_item_t* item) {
 
 static sr_spaced_item_t* heap_extract_min(sr_system_t system) {
     if (system->heap_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heap_extract_min: system->heap_size is zero");
         return NULL;
     }
 

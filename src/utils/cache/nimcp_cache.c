@@ -142,6 +142,7 @@ static uint32_t hash_pointer(const void* ptr) {
 static cache_tracking_table_t* tracking_table_create(void) {
     cache_tracking_table_t* table = nimcp_malloc(sizeof(cache_tracking_table_t));
     if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tracking_table_create: table is NULL");
         return NULL;
     }
 
@@ -149,6 +150,7 @@ static cache_tracking_table_t* tracking_table_create(void) {
                                    sizeof(cache_tracking_entry_t*));
     if (!table->buckets) {
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tracking_table_create: table->buckets is NULL");
         return NULL;
     }
 
@@ -197,6 +199,7 @@ static void tracking_table_destroy(cache_tracking_table_t* table) {
 static bool tracking_table_insert(cache_tracking_table_t* table, void* user_ptr,
                                    nimcp_cache_header_t* header) {
     if (!table || !user_ptr || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracking_table_destroy: required parameter is NULL (table, user_ptr, header)");
         return false;
     }
 
@@ -217,6 +220,7 @@ static bool tracking_table_insert(cache_tracking_table_t* table, void* user_ptr,
     // Create new entry
     cache_tracking_entry_t* entry = nimcp_malloc(sizeof(cache_tracking_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tracking_table_destroy: entry is NULL");
         return false;
     }
 
@@ -241,6 +245,7 @@ static bool tracking_table_insert(cache_tracking_table_t* table, void* user_ptr,
 static nimcp_cache_header_t* tracking_table_lookup(cache_tracking_table_t* table,
                                                     const void* user_ptr) {
     if (!table || !user_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracking_table_destroy: required parameter is NULL (table, user_ptr)");
         return NULL;
     }
 
@@ -255,6 +260,7 @@ static nimcp_cache_header_t* tracking_table_lookup(cache_tracking_table_t* table
         current = current->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracking_table_destroy: validation failed");
     return NULL;
 }
 
@@ -269,6 +275,7 @@ static nimcp_cache_header_t* tracking_table_lookup(cache_tracking_table_t* table
  */
 static bool tracking_table_remove(cache_tracking_table_t* table, const void* user_ptr) {
     if (!table || !user_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracking_table_remove: required parameter is NULL (table, user_ptr)");
         return false;
     }
 
@@ -294,6 +301,7 @@ static bool tracking_table_remove(cache_tracking_table_t* table, const void* use
         current = current->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tracking_table_remove: operation failed");
     return false;
 }
 
@@ -357,7 +365,10 @@ static inline uint32_t* get_end_canary(nimcp_cache_header_t* header) {
  */
 __attribute__((no_sanitize("address")))
 static bool validate_cache_header(nimcp_cache_header_t* header) {
-    if (!header) return false;
+    if (!header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_cache_header: header is NULL");
+        return false;
+    }
 
     // Check magic number
     if (header->magic != NIMCP_CACHE_MAGIC) {
@@ -558,11 +569,13 @@ void* nimcp_cache_alloc(size_t size) {
     }
 
     if (size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cache_alloc: size is zero");
         return NULL;
     }
 
     // Check limits
     if (!check_allocation_limit(size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cache_alloc: check_allocation_limit is NULL");
         return NULL;
     }
 
@@ -638,6 +651,7 @@ void* nimcp_cache_reference(void* ptr) {
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_reference: validate_cache_header is NULL");
         return NULL;
     }
 
@@ -668,6 +682,7 @@ void* nimcp_cache_make_writable(void* ptr) {
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_make_writable: validate_cache_header is NULL");
         return NULL;
     }
 
@@ -681,6 +696,7 @@ void* nimcp_cache_make_writable(void* ptr) {
     // Need to copy - allocate new cached memory
     void* new_ptr = nimcp_cache_alloc(header->size);
     if (!new_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cache_make_writable: new_ptr is NULL");
         return NULL;  // Allocation failed, return NULL
     }
 
@@ -745,17 +761,24 @@ void nimcp_cache_release(void* ptr) {
 
 __attribute__((no_sanitize("address")))
 bool nimcp_cache_is_cached(const void* ptr) {
-    if (!ptr) return false;
+    if (!ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_is_cached: ptr is NULL");
+        return false;
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     return validate_cache_header(header);
 }
 
 bool nimcp_cache_is_shared(const void* ptr) {
-    if (!ptr) return false;
+    if (!ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_is_shared: ptr is NULL");
+        return false;
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cache_is_shared: validate_cache_header is NULL");
         return false;
     }
 
@@ -790,7 +813,10 @@ size_t nimcp_cache_get_size(const void* ptr) {
 //=============================================================================
 
 bool nimcp_cache_get_stats(nimcp_cache_stats_t* stats) {
-    if (!stats) return false;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_get_stats: stats is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&g_cache_state.mutex);
     *stats = g_cache_state.stats;
@@ -922,6 +948,7 @@ void* nimcp_cache_force_copy(void* ptr) {
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_force_copy: validate_cache_header is NULL");
         return NULL;
     }
 
@@ -943,13 +970,17 @@ void* nimcp_cache_force_copy(void* ptr) {
 }
 
 bool nimcp_cache_are_shared(const void* ptr1, const void* ptr2) {
-    if (!ptr1 || !ptr2) return false;
+    if (!ptr1 || !ptr2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cache_are_shared: required parameter is NULL (ptr1, ptr2)");
+        return false;
+    }
     if (ptr1 == ptr2) return true;
 
     nimcp_cache_header_t* header1 = get_cache_header(ptr1);
     nimcp_cache_header_t* header2 = get_cache_header(ptr2);
 
     if (!validate_cache_header(header1) || !validate_cache_header(header2)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cache_are_shared: required parameter is NULL (validate_cache_header, validate_cache_header)");
         return false;
     }
 
@@ -958,10 +989,14 @@ bool nimcp_cache_are_shared(const void* ptr1, const void* ptr2) {
 }
 
 bool nimcp_cache_get_info(const void* ptr, char* buffer, size_t buffer_size) {
-    if (!ptr || !buffer || buffer_size == 0) return false;
+    if (!ptr || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_cache_get_info: required parameter is NULL (ptr, buffer)");
+        return false;
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_cache_get_info: validate_cache_header is NULL");
         return false;
     }
 

@@ -78,6 +78,7 @@ static glial_bio_subscription_t* glial_find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_find_subscription: validation failed");
     return NULL;
 }
 
@@ -86,7 +87,10 @@ static glial_bio_subscription_t* glial_find_subscription(
  * ============================================================================ */
 
 int glial_bio_async_default_config(glial_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->state_broadcast_interval_ms = GLIAL_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -128,6 +132,7 @@ glial_bio_async_bridge_t* glial_bio_async_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "glial_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -157,7 +162,10 @@ int glial_bio_async_connect(
     glial_integration_t* glial_integration,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->glial_integration = glial_integration;
     bridge->router = router;
@@ -167,7 +175,10 @@ int glial_bio_async_connect(
 }
 
 int glial_bio_async_disconnect(glial_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->glial_integration = NULL;
     bridge->router = NULL;
@@ -188,7 +199,10 @@ int glial_bio_async_process_inbox(
     glial_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -201,7 +215,10 @@ int glial_bio_async_update(
     glial_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -223,7 +240,10 @@ int glial_bio_async_broadcast_astrocyte_signal(
     float calcium_level,
     float activity_level
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_astrocyte_signal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_astrocyte_routing) return 0;
 
     glial_bio_astrocyte_msg_t msg = {0};
@@ -251,7 +271,10 @@ int glial_bio_async_broadcast_calcium_wave(
     uint32_t source_astrocyte,
     float wave_amplitude
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_calcium_wave: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_astrocyte_routing) return 0;
 
     glial_bio_calcium_wave_msg_t msg = {0};
@@ -280,7 +303,10 @@ int glial_bio_async_broadcast_myelination(
     uint32_t neuron_id,
     float myelination_factor
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_myelination: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_myelination_routing) return 0;
 
     glial_bio_myelination_msg_t msg = {0};
@@ -309,7 +335,10 @@ int glial_bio_async_broadcast_prune_event(
     uint32_t synapse_id,
     float synapse_weight_before
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_prune_event: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_pruning_routing) return 0;
 
     glial_bio_prune_msg_t msg = {0};
@@ -337,7 +366,10 @@ int glial_bio_async_broadcast_surveillance(
     uint32_t region_id,
     float threat_detected
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_surveillance: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_pruning_routing) return 0;
 
     glial_bio_surveillance_msg_t msg = {0};
@@ -369,7 +401,10 @@ int glial_bio_async_broadcast_metabolic_support(
     uint32_t target_neuron_id,
     float atp_delivered
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_metabolic_support: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_metabolic_routing) return 0;
 
     glial_bio_metabolic_msg_t msg = {0};
@@ -404,7 +439,10 @@ int glial_bio_async_broadcast_inflammation(
     float inflammation_level,
     bool is_acute
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_broadcast_inflammation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     glial_bio_inflammation_msg_t msg = {0};
     msg.header.type = BIO_MSG_INFLAMMATION_CHANGE;
@@ -439,7 +477,10 @@ int glial_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     glial_bio_subscription_t* existing = glial_find_subscription(bridge, module_id);
     if (existing) {
@@ -448,6 +489,7 @@ int glial_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "glial_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -470,7 +512,10 @@ int glial_bio_async_unsubscribe_module(
     glial_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -480,6 +525,7 @@ int glial_bio_async_unsubscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
@@ -510,13 +556,19 @@ int glial_bio_async_get_stats(
     const glial_bio_async_bridge_t* bridge,
     glial_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int glial_bio_async_reset_stats(glial_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;

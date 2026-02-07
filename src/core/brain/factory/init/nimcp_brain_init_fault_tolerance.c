@@ -304,6 +304,7 @@ bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain) {
         fprintf(stderr, "[FAULT-TOLERANCE] ERROR: Failed to create recovery executive\n");
         brain->recovery_executive = NULL;
         brain->fault_tolerance_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_fault_tolerance_subsystem: exec is NULL");
         return false;
     }
 

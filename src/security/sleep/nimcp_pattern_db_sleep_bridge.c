@@ -121,7 +121,10 @@ static void pattern_db_on_sleep_state_change(sleep_state_t new_state, void* user
 
 int pattern_db_sleep_default_config(pattern_db_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_confidence_modulation = true;
     config->enable_priority_modulation = true;
@@ -198,7 +201,10 @@ void pattern_db_sleep_bridge_destroy(pattern_db_sleep_bridge_t bridge)
 
 int pattern_db_sleep_update(pattern_db_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.sleep_pressure = sleep_get_pressure(bridge->sleep_system);
@@ -210,7 +216,10 @@ int pattern_db_sleep_update(pattern_db_sleep_bridge_t bridge)
 int pattern_db_sleep_get_effects(const pattern_db_sleep_bridge_t bridge,
                                   pattern_db_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(pattern_db_sleep_effects_t));
@@ -247,7 +256,10 @@ float pattern_db_sleep_get_priority_threshold(const pattern_db_sleep_bridge_t br
 
 bool pattern_db_sleep_is_consolidating(const pattern_db_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_db_sleep_is_consolidating: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool consolidating = bridge->effects.consolidating;

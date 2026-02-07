@@ -297,7 +297,10 @@ int physics_percept_process_batch(
     physics_percept_output_t* outputs,
     uint32_t count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_process_batch: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     int processed = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -344,13 +347,19 @@ int physics_percept_get_binding(
     const physics_percept_bridge_t* bridge,
     physics_percept_binding_t* binding
 ) {
-    if (!bridge || !binding) return -1;
+    if (!bridge || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_get_binding: required parameter is NULL (bridge, binding)");
+        return -1;
+    }
     *binding = bridge->binding;
     return 0;
 }
 
 bool physics_percept_is_binding_active(const physics_percept_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_is_binding_active: bridge is NULL");
+        return false;
+    }
     return bridge->binding.binding_active;
 }
 
@@ -362,8 +371,14 @@ int physics_percept_apply_attention(
     physics_percept_bridge_t* bridge,
     const physics_percept_attention_t* attention
 ) {
-    if (!bridge || !attention) return -1;
-    if (attention->target_modality >= 4) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_apply_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
+    if (attention->target_modality >= 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_percept_apply_attention: capacity exceeded");
+        return -1;
+    }
 
     bridge->attention[attention->target_modality] = *attention;
     update_gains(bridge);
@@ -380,8 +395,14 @@ int physics_percept_get_attention(
     physics_percept_modality_t modality,
     physics_percept_attention_t* attention
 ) {
-    if (!bridge || !attention) return -1;
-    if (modality >= 4) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
+    if (modality >= 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_percept_get_attention: capacity exceeded");
+        return -1;
+    }
 
     *attention = bridge->attention[modality];
     return 0;
@@ -496,7 +517,10 @@ int physics_percept_get_stats(
     const physics_percept_bridge_t* bridge,
     physics_percept_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_percept_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

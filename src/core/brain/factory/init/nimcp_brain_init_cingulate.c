@@ -154,6 +154,7 @@ bool nimcp_brain_factory_init_cingulate_subsystem(brain_t brain) {
     brain->cingulate = cingulate_create(&cingulate_cfg);
     if (!brain->cingulate) {
         set_error("Failed to create cingulate adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_cingulate_subsystem: brain->cingulate is NULL");
         return false;
     }
 
@@ -250,6 +251,7 @@ bool nimcp_brain_factory_init_cingulate_quantum_bridge(brain_t brain) {
 
     if (!brain->cingulate_quantum_bridge) {
         LOG_WARNING(LOG_MODULE, "Failed to create cingulate quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_cingulate_quantum_bridge: brain->cingulate_quantum_bridge is NULL");
         return false;
     }
 

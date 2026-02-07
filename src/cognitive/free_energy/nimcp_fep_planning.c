@@ -100,7 +100,10 @@ static float compute_ucb(const mcts_node_t* node, uint32_t parent_visits, float 
 
 /* Allocate new MCTS node */
 static mcts_node_t* alloc_node(fep_planning_system_t* sys) {
-    if (!sys || sys->num_nodes >= sys->max_nodes) return NULL;
+    if (!sys || sys->num_nodes >= sys->max_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "alloc_node: sys is NULL");
+        return NULL;
+    }
 
     mcts_node_t* node = (mcts_node_t*)nimcp_calloc(1, sizeof(mcts_node_t));
     if (!node) {
@@ -179,6 +182,7 @@ fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) 
     sys->tree_nodes = (mcts_node_t**)nimcp_calloc(sys->max_nodes, sizeof(mcts_node_t*));
     if (!sys->tree_nodes) {
         fep_planning_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_planning_create: sys->tree_nodes is NULL");
         return NULL;
     }
 
@@ -186,6 +190,7 @@ fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) 
     mcts_node_t* root = alloc_node(sys);
     if (!root) {
         fep_planning_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_planning_create: root is NULL");
         return NULL;
     }
     sys->root_id = root->node_id;
@@ -194,6 +199,7 @@ fep_planning_system_t* fep_planning_create(const fep_planning_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         fep_planning_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_planning_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -239,7 +245,10 @@ void fep_planning_destroy(fep_planning_system_t* sys) {
 }
 
 int fep_planning_reset(fep_planning_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_reset: sys is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_reset", 0.0f);
@@ -277,7 +286,10 @@ int fep_planning_reset(fep_planning_system_t* sys) {
  * ============================================================================ */
 
 int fep_planning_connect(fep_planning_system_t* planning, fep_system_t* fep) {
-    if (!planning || !fep) return -1;
+    if (!planning || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_connect: required parameter is NULL (planning, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_connect", 0.0f);
@@ -293,7 +305,10 @@ int fep_planning_connect(fep_planning_system_t* planning, fep_system_t* fep) {
 }
 
 int fep_planning_disconnect(fep_planning_system_t* planning) {
-    if (!planning) return -1;
+    if (!planning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_disconnect: planning is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_disconnect", 0.0f);
@@ -312,14 +327,20 @@ int fep_planning_disconnect(fep_planning_system_t* planning) {
  * ============================================================================ */
 
 int fep_mcts_select(fep_planning_system_t* sys, uint32_t node_id, uint32_t* action) {
-    if (!sys || !action || node_id >= sys->num_nodes) return -1;
+    if (!sys || !action || node_id >= sys->num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_mcts_select: required parameter is NULL (sys, action)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_fep_mcts_select", 0.0f);
 
 
     mcts_node_t* node = sys->tree_nodes[node_id];
-    if (!node || node->num_children == 0) return -1;
+    if (!node || node->num_children == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_mcts_select: node is NULL");
+        return -1;
+    }
 
     /* Find child with highest UCB value */
     float best_ucb = -FLT_MAX;
@@ -352,14 +373,20 @@ int fep_mcts_select(fep_planning_system_t* sys, uint32_t node_id, uint32_t* acti
 }
 
 int fep_mcts_expand(fep_planning_system_t* sys, uint32_t node_id) {
-    if (!sys || node_id >= sys->num_nodes) return -1;
+    if (!sys || node_id >= sys->num_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_mcts_expand: sys is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_fep_mcts_expand", 0.0f);
 
 
     mcts_node_t* node = sys->tree_nodes[node_id];
-    if (!node) return -1;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_mcts_expand: node is NULL");
+        return -1;
+    }
     if (node->state_type == MCTS_NODE_TERMINAL) return 0;
 
     /* Get number of available actions */
@@ -370,7 +397,10 @@ int fep_mcts_expand(fep_planning_system_t* sys, uint32_t node_id) {
 
     /* Allocate children array */
     node->children_ids = (uint32_t*)nimcp_calloc(num_actions, sizeof(uint32_t));
-    if (!node->children_ids) return -1;
+    if (!node->children_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_mcts_expand: node->children_ids is NULL");
+        return -1;
+    }
 
     /* Create child for each action */
     uint32_t created = 0;
@@ -409,14 +439,20 @@ int fep_mcts_simulate(
     uint32_t node_id,
     float* value
 ) {
-    if (!sys || !value) return -1;
+    if (!sys || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_mcts_simulate: required parameter is NULL (sys, value)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_fep_mcts_simulate", 0.0f);
 
 
     mcts_node_t* node = sys->tree_nodes[node_id];
-    if (!node) return -1;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_mcts_simulate: node is NULL");
+        return -1;
+    }
 
     /* Simulate rollout from this node */
     float total_value = 0.0f;
@@ -449,7 +485,10 @@ int fep_mcts_simulate(
 }
 
 int fep_mcts_backpropagate(fep_planning_system_t* sys, uint32_t node_id, float value) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_mcts_backpropagate: sys is NULL");
+        return -1;
+    }
 
     /* Backpropagate value up the tree */
     /* Phase 8: Heartbeat at operation start */
@@ -518,7 +557,10 @@ int fep_planning_generate_plan(
     size_t state_dim,
     fep_plan_t* plan
 ) {
-    if (!sys || !plan) return -1;
+    if (!sys || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_generate_plan: required parameter is NULL (sys, plan)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_generate_plan", 0.0f);
@@ -636,7 +678,10 @@ int fep_planning_evaluate_plan(
     const fep_plan_t* plan,
     float* value
 ) {
-    if (!sys || !plan || !value) return -1;
+    if (!sys || !plan || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_evaluate_plan: required parameter is NULL (sys, plan, value)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_evaluate_plan", 0.0f);
@@ -680,7 +725,10 @@ int fep_planning_replan(
  * ============================================================================ */
 
 int fep_plan_create(fep_plan_t* plan, size_t max_length) {
-    if (!plan) return -1;
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plan_create: plan is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_fep_plan_create", 0.0f);
@@ -694,6 +742,7 @@ int fep_plan_create(fep_plan_t* plan, size_t max_length) {
 
     if (!plan->action_sequence || !plan->step_values || !plan->step_efe) {
         fep_plan_destroy(plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_plan_create: required parameter is NULL (plan->action_sequence, plan->step_values, plan->step_efe)");
         return -1;
     }
 
@@ -715,8 +764,14 @@ void fep_plan_destroy(fep_plan_t* plan) {
 }
 
 int fep_plan_get_next_action(const fep_plan_t* plan, uint32_t step, uint32_t* action) {
-    if (!plan || !action) return -1;
-    if (step >= plan->sequence_length) return -1;
+    if (!plan || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plan_get_next_action: required parameter is NULL (plan, action)");
+        return -1;
+    }
+    if (step >= plan->sequence_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_plan_get_next_action: capacity exceeded");
+        return -1;
+    }
 
     *action = plan->action_sequence[step];
     /* Phase 8: Heartbeat at operation start */
@@ -727,7 +782,10 @@ int fep_plan_get_next_action(const fep_plan_t* plan, uint32_t step, uint32_t* ac
 }
 
 int fep_plan_copy(fep_plan_t* dest, const fep_plan_t* src) {
-    if (!dest || !src) return -1;
+    if (!dest || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_plan_copy: required parameter is NULL (dest, src)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_fep_plan_copy", 0.0f);
@@ -776,7 +834,10 @@ bool fep_plan_is_valid(const fep_plan_t* plan) {
  * ============================================================================ */
 
 int fep_planning_get_stats(const fep_planning_system_t* sys, fep_planning_stats_t* stats) {
-    if (!sys || !stats) return -1;
+    if (!sys || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_get_stats: required parameter is NULL (sys, stats)");
+        return -1;
+    }
     *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_planning_heartbeat("fep_planning_get_stats", 0.0f);
@@ -820,7 +881,10 @@ uint32_t fep_planning_get_tree_depth(const fep_planning_system_t* sys) {
  * ============================================================================ */
 
 int fep_planning_connect_bio_async(fep_planning_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_connect_bio_async: sys is NULL");
+        return -1;
+    }
     if (sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -845,7 +909,10 @@ int fep_planning_connect_bio_async(fep_planning_system_t* sys) {
 }
 
 int fep_planning_disconnect_bio_async(fep_planning_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_planning_disconnect_bio_async: sys is NULL");
+        return -1;
+    }
     if (!sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */

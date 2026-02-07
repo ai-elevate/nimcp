@@ -260,6 +260,7 @@ static const mesh_bio_priority_policy_t* get_priority_policy(
             return &integration->priority_policies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_priority_policy: validation failed");
     return NULL;
 }
 
@@ -379,6 +380,7 @@ mesh_bio_integration_t* mesh_bio_integration_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create bio integration without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_integration_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -391,6 +393,7 @@ mesh_bio_integration_t* mesh_bio_integration_create(
     mesh_bio_integration_t* integration = nimcp_calloc(1, sizeof(*integration));
     if (!integration) {
         LOG_ERROR("Failed to allocate bio integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_integration_create: integration is NULL");
         return NULL;
     }
 
@@ -407,6 +410,7 @@ mesh_bio_integration_t* mesh_bio_integration_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_integration_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -426,6 +430,7 @@ mesh_bio_integration_t* mesh_bio_integration_create(
         LOG_ERROR("Failed to allocate pending callbacks");
         nimcp_mutex_destroy(integration->mutex);
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_bio_integration_create: integration->pending_callbacks is NULL");
         return NULL;
     }
 
@@ -534,14 +539,20 @@ nimcp_error_t mesh_bio_integration_disconnect(
 bool mesh_bio_integration_is_connected(
     const mesh_bio_integration_t* integration
 ) {
-    if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) return false;
+    if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration_is_connected: integration is NULL");
+        return false;
+    }
     return integration->connected;
 }
 
 bool mesh_bio_integration_mesh_available(
     const mesh_bio_integration_t* integration
 ) {
-    if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) return false;
+    if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_bio_integration_mesh_available: integration is NULL");
+        return false;
+    }
     return integration->mesh_integration != NULL && integration->enabled;
 }
 
@@ -1023,6 +1034,7 @@ mesh_bio_routing_hook_t mesh_bio_integration_get_hook(
     mesh_bio_integration_t* integration
 ) {
     if (!integration || integration->magic != BIO_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_bio_integration_get_hook: integration is NULL");
         return NULL;
     }
     return mesh_bio_routing_hook_impl;

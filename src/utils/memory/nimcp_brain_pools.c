@@ -278,6 +278,7 @@ brain_pools_t brain_pools_create(const brain_pools_config_t* config) {
     /* Initialize mutex (non-recursive) */
     if (nimcp_platform_mutex_init(&pools->mutex, false) != 0) {
         nimcp_free(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_pools_create: validation failed");
         return NULL;
     }
 
@@ -391,7 +392,10 @@ void brain_pools_destroy(brain_pools_t pools) {
 //=============================================================================
 
 void* brain_pools_acquire_decision(brain_pools_t pools) {
-    if (!pools || !pools->decision_pool) return NULL;
+    if (!pools || !pools->decision_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_acquire_decision: required parameter is NULL (pools, pools->decision_pool)");
+        return NULL;
+    }
 
     uint64_t start_ns = get_time_ns();
 
@@ -495,7 +499,10 @@ void brain_pools_release_activation(brain_pools_t pools, float* activation) {
 //=============================================================================
 
 void* brain_pools_acquire_spike_event(brain_pools_t pools) {
-    if (!pools || !pools->spike_pool) return NULL;
+    if (!pools || !pools->spike_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_acquire_spike_event: required parameter is NULL (pools, pools->spike_pool)");
+        return NULL;
+    }
 
     uint64_t start_ns = get_time_ns();
 
@@ -606,7 +613,10 @@ void* brain_pools_acquire_feature_buffer(
     size_t min_bytes,
     size_t* actual_size)
 {
-    if (!pools || min_bytes == 0) return NULL;
+    if (!pools || min_bytes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_pools_acquire_feature_buffer: pools is NULL");
+        return NULL;
+    }
 
     uint64_t start_ns = get_time_ns();
 
@@ -758,7 +768,10 @@ void brain_pools_cow_release(brain_pools_t pools, void* handle) {
 //=============================================================================
 
 bool brain_pools_get_metrics(brain_pools_t pools, brain_pools_metrics_t* metrics) {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_get_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -858,7 +871,10 @@ void brain_pools_reset_metrics(brain_pools_t pools) {
 }
 
 bool brain_pools_get_shannon_metrics(brain_pools_t pools, shannon_metrics_t* shannon) {
-    if (!pools || !shannon) return false;
+    if (!pools || !shannon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_get_shannon_metrics: required parameter is NULL (pools, shannon)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -880,7 +896,10 @@ bool brain_pools_get_shannon_metrics(brain_pools_t pools, shannon_metrics_t* sha
 }
 
 bool brain_pools_get_queuing_metrics(brain_pools_t pools, queuing_metrics_t* queuing) {
-    if (!pools || !queuing) return false;
+    if (!pools || !queuing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_get_queuing_metrics: required parameter is NULL (pools, queuing)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -898,10 +917,16 @@ bool brain_pools_get_queuing_metrics(brain_pools_t pools, queuing_metrics_t* que
 }
 
 bool brain_pools_is_performant(brain_pools_t pools) {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_is_performant: pools is NULL");
+        return false;
+    }
 
     brain_pools_metrics_t metrics;
-    if (!brain_pools_get_metrics(pools, &metrics)) return false;
+    if (!brain_pools_get_metrics(pools, &metrics)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_pools_is_performant: brain_pools_get_metrics is NULL");
+        return false;
+    }
 
     /* Check against targets */
     bool acquire_ok = metrics.avg_acquire_ns < (float)BRAIN_POOL_TARGET_ACQUIRE_NS;
@@ -914,7 +939,10 @@ bool brain_pools_get_recommended_config(
     brain_pools_t pools,
     brain_pools_config_t* recommended)
 {
-    if (!pools || !recommended) return false;
+    if (!pools || !recommended) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_pools_get_recommended_config: required parameter is NULL (pools, recommended)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 

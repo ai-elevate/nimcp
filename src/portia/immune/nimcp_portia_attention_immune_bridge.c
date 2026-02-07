@@ -141,6 +141,7 @@ int portia_attention_immune_default_config(portia_attention_immune_config_t* con
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_default_config: config is NULL");
         return -1;
     }
 
@@ -213,6 +214,7 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_attention_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -259,6 +261,7 @@ int portia_attention_immune_apply_cytokine_effects(portia_attention_immune_bridg
     /* Guard clause */
     if (!bridge || !bridge->attention_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->attention_system)");
         return -1;
     }
 
@@ -294,6 +297,7 @@ int portia_attention_immune_apply_inflammation_effects(
     /* Guard clause */
     if (!bridge || !bridge->attention_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->attention_system)");
         return -1;
     }
 
@@ -376,6 +380,7 @@ static int portia_attention_immune_trigger_depletion_suppression_unlocked(
     /* Get resource availability */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_immune_trigger_depletion_suppression_unlocked: validation failed");
         return -1;
     }
 
@@ -411,6 +416,7 @@ static int portia_attention_immune_trigger_scarcity_stress_unlocked(
     /* Get resource state */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_immune_trigger_scarcity_stress_unlocked: validation failed");
         return -1;
     }
 
@@ -450,6 +456,7 @@ static int portia_attention_immune_trigger_preemption_inflammation_unlocked(
     /* Check preemption count */
     portia_attention_stats_t stats;
     if (portia_attention_get_stats(bridge->attention_system, &stats) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_attention_immune_trigger_preemption_inflammation_unlocked: validation failed");
         return -1;
     }
 
@@ -488,6 +495,7 @@ int portia_attention_immune_trigger_depletion_suppression(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_trigger_depletion_suppression: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -506,6 +514,7 @@ int portia_attention_immune_trigger_scarcity_stress(portia_attention_immune_brid
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_trigger_scarcity_stress: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -526,6 +535,7 @@ int portia_attention_immune_trigger_preemption_inflammation(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_trigger_preemption_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -551,6 +561,7 @@ int portia_attention_immune_update(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_update: bridge is NULL");
         return -1;
     }
 
@@ -600,6 +611,7 @@ int portia_attention_immune_get_cytokine_effects(
     /* Guard clause */
     if (!bridge || !effects) {
         NIMCP_LOGGING_ERROR("Null bridge or effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -614,6 +626,7 @@ int portia_attention_immune_get_inflammation_state(
     /* Guard clause */
     if (!bridge || !state) {
         NIMCP_LOGGING_ERROR("Null bridge or state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -626,6 +639,7 @@ bool portia_attention_immune_has_resource_deficit(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_has_resource_deficit: bridge is NULL");
         return false;
     }
 
@@ -653,6 +667,7 @@ int portia_attention_immune_connect_bio_async(portia_attention_immune_bridge_t* 
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -669,6 +684,7 @@ int portia_attention_immune_disconnect_bio_async(portia_attention_immune_bridge_
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -690,6 +706,7 @@ bool portia_attention_immune_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_attention_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

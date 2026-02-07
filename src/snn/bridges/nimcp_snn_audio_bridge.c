@@ -268,6 +268,7 @@ int snn_audio_bridge_connect_bio_async(snn_audio_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available for audio bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_audio_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

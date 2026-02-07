@@ -88,6 +88,7 @@ static int find_phoneme_entry(language_cerebellum_bridge_t* bridge, const char* 
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_phoneme_entry: validation failed");
     return -1;
 }
 
@@ -151,6 +152,7 @@ language_cerebellum_bridge_t* language_cerebellum_bridge_create(
     const language_cerebellum_config_t* config)
 {
     if (!language || !cerebellum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_bridge_create: required parameter is NULL (language, cerebellum)");
         return NULL;
     }
 
@@ -246,10 +248,12 @@ int language_cerebellum_get_timing_pattern(
     timing_pattern_t* pattern)
 {
     if (!bridge || !pattern || syllable_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_get_timing_pattern: required parameter is NULL (bridge, pattern)");
         return -1;
     }
 
     if (!bridge->config.enable_timing_control) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_get_timing_pattern: bridge->config is NULL");
         return -1;
     }
 
@@ -263,6 +267,7 @@ int language_cerebellum_get_timing_pattern(
         if (pattern->durations_ms) nimcp_free(pattern->durations_ms);
         if (pattern->onset_times_ms) nimcp_free(pattern->onset_times_ms);
         bridge->state = LC_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cerebellum_get_timing_pattern: validation failed");
         return -1;
     }
 
@@ -318,10 +323,12 @@ int language_cerebellum_start_rhythm(
     float tempo_bpm)
 {
     if (!bridge || type >= RHYTHM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_cerebellum_start_rhythm: bridge is NULL");
         return -1;
     }
 
     if (!bridge->config.enable_rhythm_generation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_start_rhythm: bridge->config is NULL");
         return -1;
     }
 
@@ -357,6 +364,7 @@ int language_cerebellum_get_rhythm_state(
     rhythm_state_t* state)
 {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_get_rhythm_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -369,11 +377,13 @@ int language_cerebellum_sync_to_beat(
     float* next_beat_ms)
 {
     if (!bridge || !next_beat_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_sync_to_beat: required parameter is NULL (bridge, next_beat_ms)");
         return -1;
     }
 
     if (!bridge->rhythm_active) {
         *next_beat_ms = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_sync_to_beat: bridge->rhythm_active is NULL");
         return -1;
     }
 
@@ -392,6 +402,7 @@ int language_cerebellum_predict_duration(
     float* predicted_ms)
 {
     if (!bridge || !phoneme || !predicted_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_predict_duration: required parameter is NULL (bridge, phoneme, predicted_ms)");
         return -1;
     }
 
@@ -428,6 +439,7 @@ int language_cerebellum_report_actual(
     timing_prediction_t* result)
 {
     if (!bridge || !phoneme || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_report_actual: required parameter is NULL (bridge, phoneme, result)");
         return -1;
     }
 
@@ -472,6 +484,7 @@ int language_cerebellum_update_model(
     const timing_prediction_t* feedback)
 {
     if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_update_model: required parameter is NULL (bridge, feedback)");
         return -1;
     }
 
@@ -486,6 +499,7 @@ int language_cerebellum_get_stats(
     language_cerebellum_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cerebellum_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

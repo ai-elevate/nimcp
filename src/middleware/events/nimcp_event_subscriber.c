@@ -78,7 +78,10 @@ static bool event_matches_subscription(const event_t* event,
                 break;
             }
         }
-        if (!type_match) return false;
+        if (!type_match) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: type_match is NULL");
+            return false;
+        }
     }
 
     // Check source filter
@@ -90,12 +93,16 @@ static bool event_matches_subscription(const event_t* event,
                 break;
             }
         }
-        if (!source_match) return false;
+        if (!source_match) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: source_match is NULL");
+            return false;
+        }
     }
 
     // Check custom predicate
     if (config->predicate) {
         if (!config->predicate(event, config->predicate_context)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_get_last_error: config->predicate is NULL");
             return false;
         }
     }
@@ -125,6 +132,7 @@ subscriber_manager_t subscriber_manager_create(void) {
     if (nimcp_platform_mutex_init(&manager->mutex, false) != 0) {
         nimcp_free(manager);
         set_error("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "subscriber_manager_create: validation failed");
         return NULL;
     }
 
@@ -211,7 +219,10 @@ subscription_handle_t subscriber_subscribe(subscriber_manager_t manager,
 }
 
 bool subscriber_unsubscribe(subscriber_manager_t manager, subscription_handle_t handle) {
-    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) return false;
+    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_unsubscribe: manager is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 
@@ -237,11 +248,15 @@ bool subscriber_unsubscribe(subscriber_manager_t manager, subscription_handle_t 
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_unsubscribe: operation failed");
     return false;
 }
 
 bool subscriber_pause(subscriber_manager_t manager, subscription_handle_t handle) {
-    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) return false;
+    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_pause: manager is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 
@@ -256,11 +271,15 @@ bool subscriber_pause(subscriber_manager_t manager, subscription_handle_t handle
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_pause: validation failed");
     return false;
 }
 
 bool subscriber_resume(subscriber_manager_t manager, subscription_handle_t handle) {
-    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) return false;
+    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_resume: manager is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 
@@ -275,6 +294,7 @@ bool subscriber_resume(subscriber_manager_t manager, subscription_handle_t handl
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_resume: validation failed");
     return false;
 }
 
@@ -320,7 +340,10 @@ uint32_t subscriber_dispatch_event(subscriber_manager_t manager, const event_t* 
 
 bool subscriber_get_stats(subscriber_manager_t manager, subscription_handle_t handle,
                           subscriber_stats_t* stats) {
-    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID || !stats) return false;
+    if (!manager || handle == SUBSCRIPTION_HANDLE_INVALID || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subscriber_dispatch_event: required parameter is NULL (manager, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 
@@ -335,6 +358,7 @@ bool subscriber_get_stats(subscriber_manager_t manager, subscription_handle_t ha
     }
 
     nimcp_platform_mutex_unlock(&manager->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subscriber_dispatch_event: validation failed");
     return false;
 }
 

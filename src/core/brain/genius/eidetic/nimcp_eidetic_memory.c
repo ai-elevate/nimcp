@@ -44,34 +44,43 @@ const char* eidetic_error_string(eidetic_error_t error) {
 
 bool eidetic_config_is_valid(const eidetic_memory_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eidetic_config_is_valid: config is NULL");
         return false;
     }
 
     /* Check modality strengths are in valid range [0.0, 3.0] */
     if (config->visual_eidetic < 0.0f || config->visual_eidetic > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->auditory_eidetic < 0.0f || config->auditory_eidetic > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->spatial_eidetic < 0.0f || config->spatial_eidetic > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->verbal_eidetic < 0.0f || config->verbal_eidetic > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
 
     /* Check global characteristics are non-negative */
     if (config->encoding_speed < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->decay_resistance < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->retrieval_accuracy < 0.0f || config->retrieval_accuracy > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
     if (config->detail_granularity < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eidetic_config_is_valid: validation failed");
         return false;
     }
 

@@ -266,6 +266,7 @@ executive_immune_bridge_t* executive_immune_bridge_create(
     if (!immune_system || !executive_controller) {
         LOG_MODULE_ERROR("executive_immune_bridge",
                   "Cannot create bridge without immune and executive systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_immune_bridge_create: required parameter is NULL (immune_system, executive_controller)");
         return NULL;
     }
 
@@ -349,7 +350,10 @@ int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_executive_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_app", 0.0f);
@@ -444,7 +448,10 @@ int executive_immune_apply_inflammation_effects(executive_immune_bridge_t* bridg
 
     }
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_app", 0.0f);
@@ -553,7 +560,10 @@ int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_executive_immune_trigger) return 0;
-    if (!bridge->immune_system || !bridge->executive_controller) return -1;
+    if (!bridge->immune_system || !bridge->executive_controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_trigger_from_overload: required parameter is NULL (bridge->immune_system, bridge->executive_controller)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_tri", 0.0f);
@@ -600,7 +610,10 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
 
     }
     if (!bridge->enable_executive_immune_trigger) return 0;
-    if (!bridge->immune_system || !bridge->executive_controller) return -1;
+    if (!bridge->immune_system || !bridge->executive_controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_amplify_from_frustration: required parameter is NULL (bridge->immune_system, bridge->executive_controller)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_amp", 0.0f);
@@ -614,6 +627,7 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
     executive_stats_t stats;
     if (!executive_get_stats(bridge->executive_controller, &stats)) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_immune_amplify_from_frustration: executive_get_stats is NULL");
         return -1;
     }
 
@@ -646,7 +660,10 @@ int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_overload_monitoring) return 0;
-    if (!bridge->immune_system || !bridge->executive_controller) return -1;
+    if (!bridge->immune_system || !bridge->executive_controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_detect_burnout: required parameter is NULL (bridge->immune_system, bridge->executive_controller)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_det", 0.0f);
@@ -706,7 +723,10 @@ int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_success_immune_boost) return 0;
-    if (!bridge->immune_system || !bridge->executive_controller) return -1;
+    if (!bridge->immune_system || !bridge->executive_controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_boost_from_success: required parameter is NULL (bridge->immune_system, bridge->executive_controller)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_boo", 0.0f);
@@ -720,6 +740,7 @@ int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
     executive_stats_t stats;
     if (!executive_get_stats(bridge->executive_controller, &stats)) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "executive_immune_boost_from_success: executive_get_stats is NULL");
         return -1;
     }
 
@@ -817,7 +838,10 @@ int executive_immune_get_cytokine_effects(
     const executive_immune_bridge_t* bridge,
     cytokine_executive_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
@@ -834,7 +858,10 @@ int executive_immune_get_inflammation_state(
     const executive_immune_bridge_t* bridge,
     inflammation_executive_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_get", 0.0f);
@@ -848,7 +875,10 @@ int executive_immune_get_inflammation_state(
 }
 
 bool executive_immune_is_cognitive_fog(const executive_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_cognitive_fog: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
 
@@ -866,7 +896,10 @@ float executive_immune_get_cognitive_fog_severity(const executive_immune_bridge_
 }
 
 bool executive_immune_is_burnout(const executive_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_burnout: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
 
@@ -955,7 +988,10 @@ int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool executive_immune_is_bio_async_connected(const executive_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     executive_immune_bridge_heartbeat("executive_im_executive_immune_is_", 0.0f);
 

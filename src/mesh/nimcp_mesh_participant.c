@@ -66,7 +66,10 @@ static bool validate_registration_bbb(
     const mesh_participant_interface_t* interface,
     const mesh_participant_config_t* config
 ) {
-    if (!interface || !config) return false;
+    if (!interface || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_registration_bbb: required parameter is NULL (interface, config)");
+        return false;
+    }
 
     bbb_system_t bbb = atomic_load(&g_mesh_participant_bbb);
     if (!bbb) return true;  /* BBB not configured, allow */
@@ -144,7 +147,10 @@ static participant_entry_t* find_entry_by_id(
     mesh_participant_registry_t* registry,
     mesh_participant_id_t id
 ) {
-    if (!registry || !registry->entries) return NULL;
+    if (!registry || !registry->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_id: required parameter is NULL (registry, registry->entries)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < registry->capacity; i++) {
         if (registry->entries[i].is_active &&
@@ -152,6 +158,7 @@ static participant_entry_t* find_entry_by_id(
             return &registry->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_id: required parameter is NULL (registry, registry->entries)");
     return NULL;
 }
 
@@ -162,7 +169,10 @@ static participant_entry_t* find_entry_by_name(
     mesh_participant_registry_t* registry,
     const char* name
 ) {
-    if (!registry || !registry->entries || !name) return NULL;
+    if (!registry || !registry->entries || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_name: required parameter is NULL (registry, registry->entries, name)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < registry->capacity; i++) {
         if (registry->entries[i].is_active &&
@@ -170,6 +180,7 @@ static participant_entry_t* find_entry_by_name(
             return &registry->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry_by_name: required parameter is NULL (registry, registry->entries, name)");
     return NULL;
 }
 
@@ -177,13 +188,17 @@ static participant_entry_t* find_entry_by_name(
  * @brief Find free slot in registry
  */
 static participant_entry_t* find_free_slot(mesh_participant_registry_t* registry) {
-    if (!registry || !registry->entries) return NULL;
+    if (!registry || !registry->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: required parameter is NULL (registry, registry->entries)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < registry->capacity; i++) {
         if (!registry->entries[i].is_active) {
             return &registry->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: registry->entries is NULL");
     return NULL;
 }
 
@@ -282,6 +297,7 @@ mesh_participant_registry_t* mesh_registry_create(
     mesh_participant_registry_t* registry = nimcp_calloc(1, sizeof(*registry));
     if (!registry) {
         LOG_ERROR("Failed to allocate registry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_registry_create: registry is NULL");
         return NULL;
     }
 
@@ -290,6 +306,7 @@ mesh_participant_registry_t* mesh_registry_create(
     if (!registry->entries) {
         LOG_ERROR("Failed to allocate registry entries");
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_registry_create: registry->entries is NULL");
         return NULL;
     }
 
@@ -298,6 +315,7 @@ mesh_participant_registry_t* mesh_registry_create(
         LOG_ERROR("Failed to create registry mutex");
         nimcp_free(registry->entries);
         nimcp_free(registry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_registry_create: registry->mutex is NULL");
         return NULL;
     }
 
@@ -464,7 +482,10 @@ const mesh_participant_interface_t* mesh_participant_get(
     mesh_participant_registry_t* registry,
     mesh_participant_id_t id
 ) {
-    if (!validate_registry(registry)) return NULL;
+    if (!validate_registry(registry)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_get: validate_registry is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(registry->mutex);
     participant_entry_t* entry = find_entry_by_id(registry, id);
@@ -477,7 +498,10 @@ const mesh_participant_interface_t* mesh_participant_get_by_name(
     mesh_participant_registry_t* registry,
     const char* name
 ) {
-    if (!validate_registry(registry) || !name) return NULL;
+    if (!validate_registry(registry) || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_get_by_name: required parameter is NULL (validate_registry, name)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(registry->mutex);
     participant_entry_t* entry = find_entry_by_name(registry, name);
@@ -585,13 +609,17 @@ bool mesh_participant_is_in_channel(
     mesh_participant_id_t id,
     mesh_channel_id_t channel
 ) {
-    if (!validate_registry(registry)) return false;
+    if (!validate_registry(registry)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_participant_is_in_channel: validate_registry is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(registry->mutex);
 
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry) {
         nimcp_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_is_in_channel: entry is NULL");
         return false;
     }
 
@@ -603,6 +631,7 @@ bool mesh_participant_is_in_channel(
     }
 
     nimcp_mutex_unlock(registry->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_participant_is_in_channel: validation failed");
     return false;
 }
 
@@ -672,13 +701,17 @@ const credential_t* mesh_participant_get_credential(
     mesh_participant_registry_t* registry,
     mesh_participant_id_t id
 ) {
-    if (!validate_registry(registry)) return NULL;
+    if (!validate_registry(registry)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_get_credential: validate_registry is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(registry->mutex);
 
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry || !entry->has_credential) {
         nimcp_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_get_credential: required parameter is NULL (entry, entry->has_credential)");
         return NULL;
     }
 
@@ -690,13 +723,17 @@ bool mesh_participant_validate_credential(
     mesh_participant_registry_t* registry,
     mesh_participant_id_t id
 ) {
-    if (!validate_registry(registry)) return false;
+    if (!validate_registry(registry)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_participant_validate_credential: validate_registry is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(registry->mutex);
 
     participant_entry_t* entry = find_entry_by_id(registry, id);
     if (!entry || !entry->has_credential) {
         nimcp_mutex_unlock(registry->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_participant_validate_credential: required parameter is NULL (entry, entry->has_credential)");
         return false;
     }
 

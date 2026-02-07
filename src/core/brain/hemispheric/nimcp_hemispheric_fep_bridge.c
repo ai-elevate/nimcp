@@ -291,6 +291,7 @@ hemispheric_fep_bridge_t* hemispheric_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_fep_create: mutex allocation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_fep_create: bridge->base is NULL");
         return NULL;
     }
     nimcp_mutex_init(bridge->base.mutex, NULL);

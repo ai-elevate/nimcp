@@ -212,6 +212,7 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
     system->detected_in_others = (other_detection_t*)nimcp_calloc(max_others_tracked, sizeof(other_detection_t));
     if (!system->detected_in_others) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shadow_system_create: system->detected_in_others is NULL");
         return NULL;
     }
 
@@ -946,7 +947,10 @@ bool shadow_get_detected_in_other(const shadow_emotion_system_t* system,
                                   float* out_jealousy,
                                   float* out_narcissism,
                                   float* out_greed) {
-    if (!system || !system->detected_in_others) return false;
+    if (!system || !system->detected_in_others) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->detected_in_others)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
         if (system->detected_in_others[i].person_id == person_id) {
@@ -957,12 +961,16 @@ bool shadow_get_detected_in_other(const shadow_emotion_system_t* system,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
 bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
                                        uint32_t person_id) {
-    if (!system || !system->detected_in_others) return false;
+    if (!system || !system->detected_in_others) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, system->detected_in_others)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < system->max_others_tracked; i++) {
         if (system->detected_in_others[i].person_id == person_id) {
@@ -970,6 +978,7 @@ bool shadow_should_maintain_boundaries(const shadow_emotion_system_t* system,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
@@ -988,8 +997,14 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
      * THEORY: CBT (Beck, 1976), ACT (Hayes et al., 1999)
      */
     
-    if (!system) return false;
-    if (strategy >= SHADOW_INTERVENTION_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
+    if (strategy >= SHADOW_INTERVENTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        return false;
+    }
 
     intervention_record_t* intervention = &system->interventions[strategy];
     intervention->target_emotion = emotion;
@@ -1086,6 +1101,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
             return false;
     }
 
@@ -1097,6 +1113,7 @@ bool shadow_apply_intervention(shadow_emotion_system_t* system,
         return true;
     } else {
         system->failed_interventions++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
         return false;
     }
 }
@@ -1108,7 +1125,10 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
      * HOW:  Identify strongest shadow emotion, apply best-fit strategy
      */
     
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
 
     // Find strongest shadow emotion
     shadow_emotion_type_t strongest = SHADOW_JEALOUSY;
@@ -1138,6 +1158,7 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
     // Only intervene if above threshold
     if (max_intensity < 0.5F) {
         system->in_self_correction = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1175,7 +1196,10 @@ bool shadow_auto_intervene(shadow_emotion_system_t* system,
 
 bool shadow_is_active(const shadow_emotion_system_t* system,
                       shadow_emotion_type_t emotion) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
 
     switch (emotion) {
         case SHADOW_JEALOUSY: return system->jealousy.active;

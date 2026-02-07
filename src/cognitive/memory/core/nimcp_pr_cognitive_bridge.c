@@ -225,7 +225,10 @@ static int hub_event_handler(
     void* user_data
 ) {
     pr_cognitive_bridge_t bridge = (pr_cognitive_bridge_t)user_data;
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub_event_handler: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub.events_received++;
@@ -302,23 +305,36 @@ pr_cognitive_config_t pr_cognitive_bridge_default_config(void) {
 }
 
 bool pr_cognitive_bridge_validate_config(const pr_cognitive_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cognitive_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     // Validate ranges
     /* Phase 8: Heartbeat at operation start */
     pr_cognitive_bridge_heartbeat("pr_cognitive_validate_config", 0.0f);
 
 
-    if (config->attention_strength < 0.0f || config->attention_strength > 1.0f)
+    if (config->attention_strength < 0.0f || config->attention_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
-    if (config->emotion_strength < 0.0f || config->emotion_strength > 1.0f)
+    }
+    if (config->emotion_strength < 0.0f || config->emotion_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
-    if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f)
+    }
+    if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
-    if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f)
+    }
+    if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
-    if (config->max_wm_slots > PR_COG_MAX_WM_SLOTS)
+    }
+    if (config->max_wm_slots > PR_COG_MAX_WM_SLOTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cognitive_bridge_validate_config: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -346,7 +362,10 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
 
     pr_cognitive_config_t cfg;
     if (config) {
-        if (!pr_cognitive_bridge_validate_config(config)) return NULL;
+        if (!pr_cognitive_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_cognitive_bridge_create: pr_cognitive_bridge_validate_config is NULL");
+            return NULL;
+        }
         cfg = *config;
     } else {
         cfg = pr_cognitive_bridge_default_config();
@@ -365,6 +384,7 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
     // Initialize base bridge infrastructure
     if (bridge_base_init(&bridge->base, 0, "pr_cognitive") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_cognitive_bridge_create: validation failed");
         return NULL;
     }
 
@@ -1558,7 +1578,10 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
 }
 
 bool pr_cognitive_bridge_is_connected(pr_cognitive_bridge_t bridge) {
-    if (!bridge || !bridge->initialized) return false;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cognitive_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_cognitive_bridge_heartbeat("pr_cognitive_is_connected", 0.0f);

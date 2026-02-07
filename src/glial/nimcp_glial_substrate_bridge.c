@@ -174,7 +174,10 @@ int glial_substrate_connect_astrocytes(
     glial_substrate_bridge_t* bridge,
     astrocyte_network_t* astro_network
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_connect_astrocytes: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->astrocyte_network = astro_network;
@@ -191,7 +194,10 @@ int glial_substrate_connect_oligodendrocytes(
     glial_substrate_bridge_t* bridge,
     oligodendrocyte_network_t* oligo_network
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_connect_oligodendrocytes: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->oligo_network = oligo_network;
@@ -208,7 +214,10 @@ int glial_substrate_connect_microglia(
     glial_substrate_bridge_t* bridge,
     microglia_network_t* micro_network
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_connect_microglia: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->microglia_network = micro_network;
@@ -225,7 +234,10 @@ int glial_substrate_connect_myelin(
     glial_substrate_bridge_t* bridge,
     myelin_sheath_network_t* myelin_network
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_connect_myelin: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->myelin_network = myelin_network;
@@ -243,7 +255,10 @@ int glial_substrate_connect_myelin(
  * ============================================================================ */
 
 int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -261,6 +276,7 @@ int glial_substrate_connect_bio_async(glial_substrate_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "glial_substrate_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -287,7 +303,10 @@ bool glial_substrate_is_bio_async_connected(const glial_substrate_bridge_t* brid
  * ============================================================================ */
 
 int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_update_astrocyte_effects: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     if (!bridge->config.enable_astrocyte_substrate) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -342,7 +361,10 @@ int glial_substrate_update_astrocyte_effects(glial_substrate_bridge_t* bridge) {
 }
 
 int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_update_oligodendrocyte_effects: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     if (!bridge->config.enable_oligo_substrate) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -397,7 +419,10 @@ int glial_substrate_update_oligodendrocyte_effects(glial_substrate_bridge_t* bri
 }
 
 int glial_substrate_update_microglia_effects(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_update_microglia_effects: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     if (!bridge->config.enable_microglia_substrate) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -449,7 +474,10 @@ int glial_substrate_update_microglia_effects(glial_substrate_bridge_t* bridge) {
 }
 
 int glial_substrate_update_myelin_effects(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_update_myelin_effects: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     if (!bridge->config.enable_myelin_substrate) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -510,7 +538,10 @@ int glial_substrate_update_myelin_effects(glial_substrate_bridge_t* bridge) {
  * ============================================================================ */
 
 int glial_substrate_compute_astrocyte_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->astrocyte_network) return -1;
+    if (!bridge || !bridge->astrocyte_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_compute_astrocyte_support: required parameter is NULL (bridge, bridge->astrocyte_network)");
+        return -1;
+    }
     if (!bridge->config.enable_lactate_shuttle) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -544,7 +575,10 @@ int glial_substrate_compute_astrocyte_support(glial_substrate_bridge_t* bridge) 
 }
 
 int glial_substrate_compute_oligodendrocyte_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->oligo_network) return -1;
+    if (!bridge || !bridge->oligo_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_compute_oligodendrocyte_support: required parameter is NULL (bridge, bridge->oligo_network)");
+        return -1;
+    }
     if (!bridge->config.enable_lactate_shuttle) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -576,7 +610,10 @@ int glial_substrate_compute_oligodendrocyte_support(glial_substrate_bridge_t* br
 }
 
 int glial_substrate_compute_myelin_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->myelin_network) return -1;
+    if (!bridge || !bridge->myelin_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_compute_myelin_support: required parameter is NULL (bridge, bridge->myelin_network)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -603,7 +640,10 @@ int glial_substrate_compute_myelin_support(glial_substrate_bridge_t* bridge) {
 }
 
 int glial_substrate_compute_microglia_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->microglia_network) return -1;
+    if (!bridge || !bridge->microglia_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_compute_microglia_support: required parameter is NULL (bridge, bridge->microglia_network)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -623,7 +663,10 @@ int glial_substrate_compute_microglia_support(glial_substrate_bridge_t* bridge) 
 }
 
 int glial_substrate_apply_glial_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_apply_glial_support: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -660,7 +703,10 @@ int glial_substrate_apply_glial_support(glial_substrate_bridge_t* bridge) {
  * ============================================================================ */
 
 int glial_substrate_update_all_effects(glial_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_update_all_effects: bridge is NULL");
+        return -1;
+    }
 
     int result = 0;
 
@@ -684,7 +730,10 @@ int glial_substrate_update_all_effects(glial_substrate_bridge_t* bridge) {
 }
 
 int glial_substrate_compute_all_support(glial_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_compute_all_support: bridge is NULL");
+        return -1;
+    }
 
     int result = 0;
 
@@ -712,7 +761,10 @@ int glial_substrate_bridge_update(
     glial_substrate_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.total_updates++;
@@ -749,7 +801,10 @@ int glial_substrate_get_astrocyte_effects(
     const glial_substrate_bridge_t* bridge,
     substrate_astrocyte_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_astrocyte_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->astro_effects;
@@ -762,7 +817,10 @@ int glial_substrate_get_oligodendrocyte_effects(
     const glial_substrate_bridge_t* bridge,
     substrate_oligodendrocyte_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_oligodendrocyte_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->oligo_effects;
@@ -775,7 +833,10 @@ int glial_substrate_get_microglia_effects(
     const glial_substrate_bridge_t* bridge,
     substrate_microglia_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_microglia_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->micro_effects;
@@ -788,7 +849,10 @@ int glial_substrate_get_myelin_effects(
     const glial_substrate_bridge_t* bridge,
     substrate_myelin_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_myelin_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->myelin_effects;
@@ -801,7 +865,10 @@ int glial_substrate_get_support(
     const glial_substrate_bridge_t* bridge,
     glial_substrate_support_t* support
 ) {
-    if (!bridge || !support) return -1;
+    if (!bridge || !support) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_support: required parameter is NULL (bridge, support)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *support = bridge->glial_support;
@@ -824,7 +891,10 @@ int glial_substrate_get_stats(
     const glial_substrate_bridge_t* bridge,
     glial_substrate_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_substrate_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;

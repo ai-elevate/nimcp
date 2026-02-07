@@ -41,24 +41,60 @@ static inline float clamp_f(float value, float min_val, float max_val) {
  * HOW:  Range checks on all parameters
  */
 static bool validate_config(const population_pink_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_config: config is NULL");
+        return false;
+    }
 
     // Noise parameters
-    if (config->alpha < 0.0f || config->alpha > 3.0f) return false;
-    if (config->amplitude <= 0.0f) return false;
-    if (config->min_frequency <= 0.0f) return false;
-    if (config->max_frequency <= config->min_frequency) return false;
-    if (config->sample_rate < 2.0f * config->max_frequency) return false;
+    if (config->alpha < 0.0f || config->alpha > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->amplitude <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->min_frequency <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->max_frequency <= config->min_frequency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->sample_rate < 2.0f * config->max_frequency) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
 
     // Strength parameters
-    if (config->rate_modulation_strength < 0.0f || config->rate_modulation_strength > 1.0f) return false;
-    if (config->tuning_modulation_strength < 0.0f || config->tuning_modulation_strength > 1.0f) return false;
-    if (config->position_modulation_strength < 0.0f || config->position_modulation_strength > 1.0f) return false;
-    if (config->correlation_factor < 0.0f || config->correlation_factor > 1.0f) return false;
+    if (config->rate_modulation_strength < 0.0f || config->rate_modulation_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->tuning_modulation_strength < 0.0f || config->tuning_modulation_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->position_modulation_strength < 0.0f || config->position_modulation_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->correlation_factor < 0.0f || config->correlation_factor > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
 
     // Tuning limits
-    if (config->min_tuning_width <= 0.0f) return false;
-    if (config->max_tuning_width <= config->min_tuning_width) return false;
+    if (config->min_tuning_width <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
+    if (config->max_tuning_width <= config->min_tuning_width) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -113,11 +149,13 @@ population_pink_bridge_t* population_pink_bridge_create(
 ) {
     // Guard: validate inputs
     if (num_neurons == 0 || num_neurons > POPULATION_PINK_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_create: num_neurons is zero");
         return NULL;
     }
 
     population_pink_config_t cfg = config ? *config : population_pink_bridge_default_config();
     if (!validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: validate_config is NULL");
         return NULL;
     }
 
@@ -139,10 +177,12 @@ population_pink_bridge_t* population_pink_bridge_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_pink_bridge_create: bridge->base is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "population_pink_bridge_create: validation failed");
         return NULL;
     }
 
@@ -160,6 +200,7 @@ population_pink_bridge_t* population_pink_bridge_create(
     if (!bridge->global_generator) {
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_pink_bridge_create: bridge->global_generator is NULL");
         return NULL;
     }
 
@@ -172,6 +213,7 @@ population_pink_bridge_t* population_pink_bridge_create(
             pink_noise_destroy(bridge->global_generator);
             nimcp_mutex_free(bridge->base.mutex);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: bridge->per_neuron_generators is NULL");
             return NULL;
         }
 
@@ -188,6 +230,7 @@ population_pink_bridge_t* population_pink_bridge_create(
                 pink_noise_destroy(bridge->global_generator);
                 nimcp_mutex_free(bridge->base.mutex);
                 nimcp_free(bridge);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: bridge->per_neuron_generators is NULL");
                 return NULL;
             }
         }
@@ -205,6 +248,7 @@ population_pink_bridge_t* population_pink_bridge_create(
         pink_noise_destroy(bridge->global_generator);
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_create: validation failed");
         return NULL;
     }
     memset(bridge->current_noise_values, 0, num_neurons * sizeof(float));
@@ -250,7 +294,10 @@ int population_pink_bridge_connect_encoder(
     population_coding_encoder_t encoder
 ) {
     // Guard: validate inputs
-    if (!bridge || !encoder) return -1;
+    if (!bridge || !encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_connect_encoder: required parameter is NULL (bridge, encoder)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoder = encoder;
@@ -261,7 +308,10 @@ int population_pink_bridge_connect_encoder(
 
 int population_pink_bridge_disconnect(population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoder = NULL;
@@ -276,7 +326,10 @@ int population_pink_bridge_disconnect(population_pink_bridge_t* bridge) {
 
 int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_update_noise: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_noise) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -284,6 +337,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
     // Generate global noise sample
     if (!pink_noise_generate_sample(bridge->global_generator, &bridge->global_noise_value)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_update_noise: pink_noise_generate_sample is NULL");
         return -1;
     }
 
@@ -302,6 +356,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
                 float local_noise;
                 if (!pink_noise_generate_sample(bridge->per_neuron_generators[i], &local_noise)) {
                     nimcp_mutex_unlock(bridge->base.mutex);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_update_noise: pink_noise_generate_sample is NULL");
                     return -1;
                 }
                 bridge->current_noise_values[i] = local_noise;
@@ -317,6 +372,7 @@ int population_pink_bridge_update_noise(population_pink_bridge_t* bridge) {
                     float local_noise;
                     if (!pink_noise_generate_sample(bridge->per_neuron_generators[i], &local_noise)) {
                         nimcp_mutex_unlock(bridge->base.mutex);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_update_noise: pink_noise_generate_sample is NULL");
                         return -1;
                     }
                     bridge->current_noise_values[i] = corr * bridge->global_noise_value + inv_corr * local_noise;
@@ -373,8 +429,14 @@ int population_pink_bridge_modulate_rates(
     float* rates_out
 ) {
     // Guard: validate inputs
-    if (!bridge || !rates_in || !rates_out) return -1;
-    if (num_neurons != bridge->num_neurons) return -1;
+    if (!bridge || !rates_in || !rates_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_modulate_rates: required parameter is NULL (bridge, rates_in, rates_out)");
+        return -1;
+    }
+    if (num_neurons != bridge->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_modulate_rates: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_noise) {
         // If noise disabled, just copy input to output
         if (rates_in != rates_out) {
@@ -420,8 +482,14 @@ int population_pink_bridge_modulate_tuning(
     tuning_curve_t* tuning_out
 ) {
     // Guard: validate inputs
-    if (!bridge || !tuning_in || !tuning_out) return -1;
-    if (num_neurons != bridge->num_neurons) return -1;
+    if (!bridge || !tuning_in || !tuning_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_modulate_tuning: required parameter is NULL (bridge, tuning_in, tuning_out)");
+        return -1;
+    }
+    if (num_neurons != bridge->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_modulate_tuning: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_noise) {
         // If noise disabled, just copy
         if (tuning_in != tuning_out) {
@@ -462,8 +530,14 @@ int population_pink_bridge_modulate_positions(
     vector3d_t* positions_out
 ) {
     // Guard: validate inputs
-    if (!bridge || !positions_in || !positions_out) return -1;
-    if (num_neurons != bridge->num_neurons) return -1;
+    if (!bridge || !positions_in || !positions_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_modulate_positions: required parameter is NULL (bridge, positions_in, positions_out)");
+        return -1;
+    }
+    if (num_neurons != bridge->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_modulate_positions: validation failed");
+        return -1;
+    }
     if (!bridge->config.enable_noise) {
         // If noise disabled, just copy
         if (positions_in != positions_out) {
@@ -501,7 +575,10 @@ int population_pink_bridge_modulate_positions(
 
 int population_pink_bridge_enable(population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_enable: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise = true;
@@ -512,7 +589,10 @@ int population_pink_bridge_enable(population_pink_bridge_t* bridge) {
 
 int population_pink_bridge_disable(population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_disable: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise = false;
@@ -523,7 +603,10 @@ int population_pink_bridge_disable(population_pink_bridge_t* bridge) {
 
 bool population_pink_bridge_is_enabled(const population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_is_enabled: bridge is NULL");
+        return false;
+    }
 
     return bridge->config.enable_noise;
 }
@@ -533,7 +616,10 @@ int population_pink_bridge_reset(
     uint32_t new_seed
 ) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -542,6 +628,7 @@ int population_pink_bridge_reset(
     // Reset global generator
     if (!pink_noise_reset(bridge->global_generator, seed)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_reset: pink_noise_reset is NULL");
         return -1;
     }
 
@@ -551,6 +638,7 @@ int population_pink_bridge_reset(
             uint32_t neuron_seed = (seed == 0) ? 0 : seed + i + 1;
             if (!pink_noise_reset(bridge->per_neuron_generators[i], neuron_seed)) {
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_reset: pink_noise_reset is NULL");
                 return -1;
             }
         }
@@ -573,7 +661,10 @@ int population_pink_bridge_set_amplitude(
     float amplitude
 ) {
     // Guard: validate inputs
-    if (!bridge || amplitude <= 0.0f) return -1;
+    if (!bridge || amplitude <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_set_amplitude: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.amplitude = amplitude;
@@ -587,7 +678,10 @@ int population_pink_bridge_set_alpha(
     float alpha
 ) {
     // Guard: validate inputs
-    if (!bridge || alpha < 0.0f || alpha > 3.0f) return -1;
+    if (!bridge || alpha < 0.0f || alpha > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_set_alpha: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.alpha = alpha;
@@ -601,7 +695,10 @@ int population_pink_bridge_set_correlation(
     float correlation
 ) {
     // Guard: validate inputs
-    if (!bridge || correlation < 0.0f || correlation > 1.0f) return -1;
+    if (!bridge || correlation < 0.0f || correlation > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_set_correlation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.correlation_factor = correlation;
@@ -615,7 +712,10 @@ int population_pink_bridge_set_rate_modulation(
     float strength
 ) {
     // Guard: validate inputs
-    if (!bridge || strength < 0.0f || strength > 1.0f) return -1;
+    if (!bridge || strength < 0.0f || strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "population_pink_bridge_set_rate_modulation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.rate_modulation_strength = strength;
@@ -633,7 +733,10 @@ int population_pink_bridge_get_stats(
     population_pink_stats_t* stats
 ) {
     // Guard: validate inputs
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
@@ -641,7 +744,10 @@ int population_pink_bridge_get_stats(
 
 int population_pink_bridge_reset_stats(population_pink_bridge_t* bridge) {
     // Guard: validate input
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_pink_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(population_pink_stats_t));

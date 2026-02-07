@@ -192,6 +192,7 @@ bool nimcp_brain_factory_init_introspection_subsystem(brain_t brain)
 
     if (!brain->introspection) {
         set_error("Failed to create introspection context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_introspection_subsystem: brain->introspection is NULL");
         return false;
     }
 
@@ -356,6 +357,7 @@ bool nimcp_brain_factory_init_ethics_engine_subsystem(brain_t brain)
 
     if (!brain->ethics) {
         set_error("Failed to create ethics engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_ethics_engine_subsystem: brain->ethics is NULL");
         return false;
     }
 
@@ -418,6 +420,7 @@ bool nimcp_brain_factory_init_empathy_network_subsystem(brain_t brain)
 
     if (!brain->empathy_network) {
         set_error("Failed to create empathy network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_empathy_network_subsystem: brain->empathy_network is NULL");
         return false;
     }
 
@@ -475,6 +478,7 @@ bool nimcp_brain_factory_init_empathetic_response_subsystem(brain_t brain)
 
     if (!brain->empathetic_response_engine) {
         set_error("Failed to create empathetic response engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_empathetic_response_subsystem: brain->empathetic_response_engine is NULL");
         return false;
     }
 
@@ -528,6 +532,7 @@ bool nimcp_brain_factory_init_self_model_subsystem(brain_t brain)
 
     if (!brain->self_model) {
         set_error("Failed to create self-model system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_self_model_subsystem: brain->self_model is NULL");
         return false;
     }
 
@@ -535,6 +540,7 @@ bool nimcp_brain_factory_init_self_model_subsystem(brain_t brain)
     if (brain->personality) {
         if (!self_model_set_personality(brain->self_model, brain->personality)) {
             set_error("Failed to wire personality into self-model");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_self_model_subsystem: self_model_set_personality is NULL");
             return false;
         }
     }

@@ -311,8 +311,10 @@ float ethics_evaluate_all_policies(ethics_engine_t engine, const action_context_
 bool ethics_add_policy(ethics_engine_t engine, const ethics_policy_t* policy)
 {
     // Guard clause: Validate inputs
-    if (!engine || !policy)
+    if (!engine || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_add_policy: required parameter is NULL (engine, policy)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_policies_heartbeat("ethics_polic_ethics_add_policy", 0.0f);

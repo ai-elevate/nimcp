@@ -30,7 +30,10 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(pattern_cow)
 //=============================================================================
 
 pattern_cow_t* pattern_cow_create(const float* data, uint32_t dimension) {
-    if (!data || dimension == 0) return NULL;
+    if (!data || dimension == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cow_create: data is NULL");
+        return NULL;
+    }
 
     // Allocate CoW wrapper
     pattern_cow_t* cow = (pattern_cow_t*)nimcp_malloc(sizeof(pattern_cow_t));
@@ -46,6 +49,7 @@ pattern_cow_t* pattern_cow_create(const float* data, uint32_t dimension) {
     cow->data = (float*)nimcp_malloc(dimension * sizeof(float));
     if (!cow->data) {
         nimcp_free(cow);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_cow_create: cow->data is NULL");
         return NULL;
     }
 

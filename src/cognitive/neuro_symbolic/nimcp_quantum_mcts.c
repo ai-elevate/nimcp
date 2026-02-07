@@ -969,11 +969,13 @@ NIMCP_API const qmcts_node_t* quantum_mcts_get_node(
     uint32_t node_id)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_mcts_get_node: qmcts is NULL");
         return NULL;
     }
 
     int idx = find_node_index(qmcts, node_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_mcts_get_node: validation failed");
         return NULL;
     }
 
@@ -983,6 +985,7 @@ NIMCP_API const qmcts_node_t* quantum_mcts_get_node(
 NIMCP_API const qmcts_node_t* quantum_mcts_get_root(const quantum_mcts_t* qmcts)
 {
     if (!qmcts || qmcts->root_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "quantum_mcts_get_root: qmcts is NULL");
         return NULL;
     }
 
@@ -1508,6 +1511,7 @@ static int find_node_index(const quantum_mcts_t* qmcts, uint32_t node_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_node_index: validation failed");
     return -1;
 }
 
@@ -1542,6 +1546,7 @@ static uint64_t compute_state_hash(const float* state, uint32_t dim)
 static qmcts_cache_entry_t* cache_lookup(quantum_mcts_t* qmcts, uint64_t hash)
 {
     if (!qmcts->cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_lookup: qmcts->cache is NULL");
         return NULL;
     }
 
@@ -1552,6 +1557,7 @@ static qmcts_cache_entry_t* cache_lookup(quantum_mcts_t* qmcts, uint64_t hash)
         return &qmcts->cache[idx];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_lookup: validation failed");
     return NULL;
 }
 

@@ -153,7 +153,10 @@ void meta_engine_destroy(meta_engine_t* engine) {
 }
 
 meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_t* problem) {
-    if (!engine || !problem) return NULL;
+    if (!engine || !problem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_select_strategy: required parameter is NULL (engine, problem)");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_select_strategy", 0.0f);
@@ -214,7 +217,10 @@ meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_
 
 int meta_evaluate_strategies(meta_engine_t* engine, const meta_problem_t* problem,
     meta_strategy_t* strategies, uint32_t max_strategies, uint32_t* num_found) {
-    if (!engine || !problem || !strategies || !num_found) return -1;
+    if (!engine || !problem || !strategies || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_select_strategy: required parameter is NULL (engine, problem, strategies, num_found)");
+        return -1;
+    }
 
     *num_found = 0;
     /* Phase 8: Heartbeat at operation start */
@@ -238,8 +244,14 @@ int meta_evaluate_strategies(meta_engine_t* engine, const meta_problem_t* proble
 
 int meta_switch_strategy(meta_engine_t* engine, meta_reasoning_chain_t* chain,
     const meta_strategy_t* new_strategy) {
-    if (!engine || !chain || !new_strategy) return -1;
-    if (!engine->config.enable_strategy_switching) return -1;
+    if (!engine || !chain || !new_strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_select_strategy: required parameter is NULL (engine, chain, new_strategy)");
+        return -1;
+    }
+    if (!engine->config.enable_strategy_switching) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_select_strategy: engine->config is NULL");
+        return -1;
+    }
 
     /* Update current step with new strategy */
     /* Phase 8: Heartbeat at operation start */
@@ -283,7 +295,10 @@ float meta_estimate_accuracy(meta_engine_t* engine, float stated_confidence) {
 }
 
 int meta_update_calibration(meta_engine_t* engine, float prediction, float actual) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_update_calibration: engine is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_update_calibrat", 0.0f);
@@ -301,7 +316,10 @@ int meta_update_calibration(meta_engine_t* engine, float prediction, float actua
 
 int meta_monitor_reasoning(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
     meta_anomaly_t* anomalies, uint32_t max_anomalies, uint32_t* num_found) {
-    if (!engine || !chain || !anomalies || !num_found) return -1;
+    if (!engine || !chain || !anomalies || !num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_update_calibration: required parameter is NULL (engine, chain, anomalies, num_found)");
+        return -1;
+    }
     if (!engine->config.enable_anomaly_detection) { *num_found = 0; return 0; }
 
     *num_found = 0;
@@ -344,7 +362,10 @@ int meta_monitor_reasoning(meta_engine_t* engine, const meta_reasoning_chain_t* 
 
 int meta_get_state(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
     meta_state_t* state) {
-    if (!engine || !chain || !state) return -1;
+    if (!engine || !chain || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_update_calibration: required parameter is NULL (engine, chain, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_get_state", 0.0f);
@@ -369,14 +390,20 @@ float meta_estimate_progress(meta_engine_t* engine, const meta_reasoning_chain_t
 
 int meta_learn_from_outcome(meta_engine_t* engine, const meta_problem_t* problem,
     const meta_strategy_t* strategy, bool success, float performance) {
-    if (!engine || !problem || !strategy) return -1;
+    if (!engine || !problem || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_estimate_progress: required parameter is NULL (engine, problem, strategy)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_learn_from_outc", 0.0f);
 
 
     int type = (int)strategy->type;
-    if (type < 0 || type >= 8) return -1;
+    if (type < 0 || type >= 8) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_estimate_progress: capacity exceeded");
+        return -1;
+    }
 
     /* Update success rate for this strategy */
     float update = success ? 1.0f : 0.0f;
@@ -396,7 +423,10 @@ int meta_learn_from_outcome(meta_engine_t* engine, const meta_problem_t* problem
 
 int meta_learn_from_chain(meta_engine_t* engine, const meta_reasoning_chain_t* chain,
     bool success) {
-    if (!engine || !chain) return -1;
+    if (!engine || !chain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_estimate_progress: required parameter is NULL (engine, chain)");
+        return -1;
+    }
 
     /* Update calibration based on overall outcome */
     /* Phase 8: Heartbeat at operation start */
@@ -427,7 +457,10 @@ void meta_free_chain(meta_reasoning_chain_t* chain) {
 }
 
 int meta_set_inflammation(meta_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_set_inflammation: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_set_inflammatio", 0.0f);
 
@@ -437,7 +470,10 @@ int meta_set_inflammation(meta_engine_t* engine, float level) {
 }
 
 int meta_set_fatigue(meta_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_set_fatigue: engine is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_set_fatigue", 0.0f);
 
@@ -447,7 +483,10 @@ int meta_set_fatigue(meta_engine_t* engine, float level) {
 }
 
 int meta_get_stats(const meta_engine_t* engine, meta_stats_t* stats) {
-    if (!engine || !stats) return -1;
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_get_stats: required parameter is NULL (engine, stats)");
+        return -1;
+    }
     *stats = engine->stats;
     /* Phase 8: Heartbeat at operation start */
     meta_reasoning_heartbeat("meta_reasoni_meta_get_stats", 0.0f);

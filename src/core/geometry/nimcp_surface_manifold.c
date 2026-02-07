@@ -75,13 +75,19 @@ float surface_vec3_magnitude(const surface_vec3_t* v)
 
 int surface_vec3_normalize(surface_vec3_t* v)
 {
-    if (!v) return -1;
+    if (!v) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_vec3_normalize: v is NULL");
+        return -1;
+    }
 
     float mag = surface_vec3_magnitude(v);
 
     /* NUMERICAL STABILITY: Use dedicated magnitude epsilon, not circumference threshold.
      * Check against epsilon before division to avoid NaN/Inf. */
-    if (mag < SURFACE_VEC_MAGNITUDE_EPSILON) return -1;
+    if (mag < SURFACE_VEC_MAGNITUDE_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_vec3_normalize: validation failed");
+        return -1;
+    }
 
     /* Use (1/mag) multiplication instead of division for stability with very small mag.
      * This avoids division-by-zero-adjacent issues near epsilon. */
@@ -150,8 +156,14 @@ float surface_vec3_distance(const surface_vec3_t* a, const surface_vec3_t* b)
 
 int surface_compute_chi(float circumference, float distance, float* chi)
 {
-    if (!chi) return -1;
-    if (distance < SURFACE_MIN_CIRCUMFERENCE) return -1;
+    if (!chi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_chi: chi is NULL");
+        return -1;
+    }
+    if (distance < SURFACE_MIN_CIRCUMFERENCE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_compute_chi: validation failed");
+        return -1;
+    }
 
     *chi = circumference / distance;
     return 0;
@@ -159,8 +171,14 @@ int surface_compute_chi(float circumference, float distance, float* chi)
 
 int surface_compute_rho(float w_prime, float w, float* rho)
 {
-    if (!rho) return -1;
-    if (w < SURFACE_MIN_CIRCUMFERENCE) return -1;
+    if (!rho) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_rho: rho is NULL");
+        return -1;
+    }
+    if (w < SURFACE_MIN_CIRCUMFERENCE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_compute_rho: validation failed");
+        return -1;
+    }
 
     *rho = w_prime / w;
     return 0;
@@ -168,8 +186,14 @@ int surface_compute_rho(float w_prime, float w, float* rho)
 
 int surface_compute_lambda(float link_length, float circumference, float* lambda)
 {
-    if (!lambda) return -1;
-    if (circumference < SURFACE_MIN_CIRCUMFERENCE) return -1;
+    if (!lambda) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_lambda: lambda is NULL");
+        return -1;
+    }
+    if (circumference < SURFACE_MIN_CIRCUMFERENCE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_compute_lambda: validation failed");
+        return -1;
+    }
 
     *lambda = link_length / circumference;
     return 0;
@@ -180,7 +204,10 @@ int surface_compute_solid_angle(
     uint32_t num_directions,
     float* solid_angle)
 {
-    if (!directions || !solid_angle) return -1;
+    if (!directions || !solid_angle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_solid_angle: required parameter is NULL (directions, solid_angle)");
+        return -1;
+    }
     if (num_directions < 2) {
         *solid_angle = 0.0f;
         return 0;
@@ -205,7 +232,10 @@ int surface_compute_steering_angle(
     float rho_threshold,
     float* steering_angle)
 {
-    if (!steering_angle) return -1;
+    if (!steering_angle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_steering_angle: steering_angle is NULL");
+        return -1;
+    }
 
     if (rho < rho_threshold) {
         /* Sprouting regime: orthogonal (no steering) */
@@ -245,6 +275,7 @@ surface_manifold_t* surface_manifold_create(
     manifold->charts = nimcp_malloc(max_charts * sizeof(surface_chart_t));
     if (!manifold->charts) {
         nimcp_free(manifold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_manifold_create: manifold->charts is NULL");
         return NULL;
     }
     memset(manifold->charts, 0, max_charts * sizeof(surface_chart_t));
@@ -257,6 +288,7 @@ surface_manifold_t* surface_manifold_create(
     if (!manifold->branch_points) {
         nimcp_free(manifold->charts);
         nimcp_free(manifold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_manifold_create: manifold->branch_points is NULL");
         return NULL;
     }
     memset(manifold->branch_points, 0,
@@ -287,7 +319,10 @@ void surface_manifold_destroy(surface_manifold_t* manifold)
 
 int surface_manifold_reset(surface_manifold_t* manifold)
 {
-    if (!manifold) return -1;
+    if (!manifold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_manifold_reset: manifold is NULL");
+        return -1;
+    }
 
     if (manifold->charts) {
         memset(manifold->charts, 0,
@@ -327,8 +362,14 @@ int surface_manifold_add_chart(
     float circumference,
     uint32_t* chart_id)
 {
-    if (!manifold || !chart_id) return -1;
-    if (manifold->num_charts >= manifold->capacity_charts) return -1;
+    if (!manifold || !chart_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_manifold_add_chart: required parameter is NULL (manifold, chart_id)");
+        return -1;
+    }
+    if (manifold->num_charts >= manifold->capacity_charts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_manifold_add_chart: capacity exceeded");
+        return -1;
+    }
 
     uint32_t id = manifold->num_charts;
     surface_chart_t* chart = &manifold->charts[id];
@@ -356,10 +397,22 @@ int surface_manifold_connect_charts(
     uint32_t chart2_id,
     uint32_t boundary_index)
 {
-    if (!manifold) return -1;
-    if (chart1_id >= manifold->num_charts) return -1;
-    if (chart2_id >= manifold->num_charts) return -1;
-    if (boundary_index >= 4) return -1;
+    if (!manifold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_manifold_connect_charts: manifold is NULL");
+        return -1;
+    }
+    if (chart1_id >= manifold->num_charts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_manifold_connect_charts: capacity exceeded");
+        return -1;
+    }
+    if (chart2_id >= manifold->num_charts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_manifold_connect_charts: capacity exceeded");
+        return -1;
+    }
+    if (boundary_index >= 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "surface_manifold_connect_charts: capacity exceeded");
+        return -1;
+    }
 
     surface_chart_t* chart1 = &manifold->charts[chart1_id];
     chart1->boundary_chart_ids[boundary_index] = chart2_id;
@@ -380,7 +433,10 @@ int surface_compute_metric_tensor(
     void* user_data,
     surface_metric_tensor_t* metric)
 {
-    if (!position_fn || !sigma || !metric) return -1;
+    if (!position_fn || !sigma || !metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_metric_tensor: required parameter is NULL (position_fn, sigma, metric)");
+        return -1;
+    }
 
     const float h = 1e-4f;  /* Finite difference step */
 
@@ -439,7 +495,10 @@ int surface_compute_metric_cylinder(
     const surface_sigma_t* sigma,
     surface_metric_tensor_t* metric)
 {
-    if (!params || !sigma || !metric) return -1;
+    if (!params || !sigma || !metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_metric_cylinder: required parameter is NULL (params, sigma, metric)");
+        return -1;
+    }
 
     /* For cylinder: gamma = [[1, 0], [0, r^2]] */
     float r = params->radius;
@@ -467,7 +526,10 @@ int surface_compute_metric_cone(
     const surface_sigma_t* sigma,
     surface_metric_tensor_t* metric)
 {
-    if (!params || !sigma || !metric) return -1;
+    if (!params || !sigma || !metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_metric_cone: required parameter is NULL (params, sigma, metric)");
+        return -1;
+    }
 
     /* For cone with varying radius */
     float t = sigma->sigma0 / params->length;  /* Normalized position */
@@ -501,12 +563,16 @@ int surface_metric_inverse(
     const surface_metric_tensor_t* metric,
     float inverse[2][2])
 {
-    if (!metric || !inverse) return -1;
+    if (!metric || !inverse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_metric_inverse: required parameter is NULL (metric, inverse)");
+        return -1;
+    }
 
     float det = metric->gamma[0][0] * metric->gamma[1][1] -
                 metric->gamma[0][1] * metric->gamma[1][0];
 
     if (fabsf(det) < SURFACE_MIN_DETERMINANT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_metric_inverse: validation failed");
         return -1;  /* Singular matrix */
     }
 
@@ -530,7 +596,10 @@ int surface_compute_chart_area(
     void* user_data,
     float* area)
 {
-    if (!chart || !position_fn || !area) return -1;
+    if (!chart || !position_fn || !area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_chart_area: required parameter is NULL (chart, position_fn, area)");
+        return -1;
+    }
 
     /* Use numerical integration */
     float total_area = 0.0f;
@@ -565,7 +634,10 @@ int surface_compute_cylinder_area(
     const surface_cylinder_params_t* params,
     float* area)
 {
-    if (!params || !area) return -1;
+    if (!params || !area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_cylinder_area: required parameter is NULL (params, area)");
+        return -1;
+    }
 
     /* For cylinder: S = 2*pi*r*L */
     *area = 2.0f * M_PI * params->radius * params->length;
@@ -576,7 +648,10 @@ int surface_compute_cone_area(
     const surface_cone_params_t* params,
     float* area)
 {
-    if (!params || !area) return -1;
+    if (!params || !area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_cone_area: required parameter is NULL (params, area)");
+        return -1;
+    }
 
     /* Lateral surface area of truncated cone */
     float r1 = params->radius_start;
@@ -593,7 +668,10 @@ int surface_compute_manifold_area(
     surface_manifold_t* manifold,
     float* total_area)
 {
-    if (!manifold || !total_area) return -1;
+    if (!manifold || !total_area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_manifold_area: required parameter is NULL (manifold, total_area)");
+        return -1;
+    }
 
     float area = 0.0f;
 
@@ -639,7 +717,10 @@ int surface_compute_nambu_goto_action(
     const surface_manifold_t* manifold,
     float* action)
 {
-    if (!manifold || !action) return -1;
+    if (!manifold || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_nambu_goto_action: required parameter is NULL (manifold, action)");
+        return -1;
+    }
 
     /* Nambu-Goto action is identical to surface area (T=1) */
     *action = manifold->total_surface_area;
@@ -650,7 +731,10 @@ int surface_apply_strebel_constraint(
     surface_chart_t* chart,
     const float boundary_circumferences[4])
 {
-    if (!chart || !boundary_circumferences) return -1;
+    if (!chart || !boundary_circumferences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_apply_strebel_constraint: required parameter is NULL (chart, boundary_circumferences)");
+        return -1;
+    }
 
     /* Strebel's theorem: In the absence of boundary conditions,
      * the minimal surface is exactly cylindrical.
@@ -668,7 +752,10 @@ int surface_map_branch_to_feynman(
     const surface_branch_point_t* branch,
     surface_feynman_vertex_t* vertex)
 {
-    if (!branch || !vertex) return -1;
+    if (!branch || !vertex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_map_branch_to_feynman: required parameter is NULL (branch, vertex)");
+        return -1;
+    }
 
     memset(vertex, 0, sizeof(*vertex));
 
@@ -689,7 +776,10 @@ int surface_construct_feynman_diagram(
     const surface_manifold_t* manifold,
     surface_feynman_diagram_t* diagram)
 {
-    if (!manifold || !diagram) return -1;
+    if (!manifold || !diagram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_construct_feynman_diagram: required parameter is NULL (manifold, diagram)");
+        return -1;
+    }
 
     memset(diagram, 0, sizeof(*diagram));
 
@@ -701,7 +791,10 @@ int surface_construct_feynman_diagram(
     diagram->vertices = nimcp_malloc(
         manifold->num_branch_points * sizeof(surface_feynman_vertex_t)
     );
-    if (!diagram->vertices) return -1;
+    if (!diagram->vertices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_construct_feynman_diagram: diagram->vertices is NULL");
+        return -1;
+    }
 
     /* Map each branch point to a vertex */
     for (uint32_t i = 0; i < manifold->num_branch_points; i++) {
@@ -741,7 +834,10 @@ int surface_gauss_init(
     surface_gauss_quadrature_t* quad,
     uint32_t num_points)
 {
-    if (!quad) return -1;
+    if (!quad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_gauss_init: quad is NULL");
+        return -1;
+    }
     if (num_points > SURFACE_GAUSS_POINTS) {
         num_points = SURFACE_GAUSS_POINTS;
     }
@@ -774,7 +870,10 @@ int surface_integrate_2d(
     void* user_data,
     float* result)
 {
-    if (!integrand || !result) return -1;
+    if (!integrand || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_integrate_2d: required parameter is NULL (integrand, result)");
+        return -1;
+    }
 
     const int n = 8;  /* Quadrature points per dimension */
     float total = 0.0f;
@@ -801,7 +900,10 @@ int surface_integrate_2d(
 int surface_adaptive_quadrature_default_config(
     surface_adaptive_quadrature_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_adaptive_quadrature_default_config: config is NULL");
+        return -1;
+    }
 
     config->enabled = true;
     config->min_points = SURFACE_GAUSS_POINTS_MIN;
@@ -848,7 +950,10 @@ int surface_integrate_2d_adaptive(
     const surface_adaptive_quadrature_config_t* config,
     float* result)
 {
-    if (!integrand || !result) return -1;
+    if (!integrand || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_integrate_2d_adaptive: required parameter is NULL (integrand, result)");
+        return -1;
+    }
 
     /* Use default config if none provided */
     surface_adaptive_quadrature_config_t default_config;

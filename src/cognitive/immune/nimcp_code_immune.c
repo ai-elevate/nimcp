@@ -295,6 +295,7 @@ static code_antigen_t* find_antigen_by_id(code_immune_system_t* system, uint64_t
             return &system->antigens[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen_by_id: validation failed");
     return NULL;
 }
 
@@ -320,6 +321,7 @@ static code_b_cell_t* find_b_cell_by_id(code_immune_system_t* system, uint64_t i
             return &system->b_cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_b_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -345,6 +347,7 @@ static code_antibody_t* find_antibody_by_id(code_immune_system_t* system, uint64
             return &system->antibodies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_by_id: validation failed");
     return NULL;
 }
 
@@ -461,7 +464,10 @@ static void decay_antibodies(code_immune_system_t* system, uint64_t delta_ms) {
  * @brief Get default configuration
  */
 int code_immune_default_config(code_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_default_config", 0.0f);
@@ -576,6 +582,7 @@ code_immune_system_t* code_immune_create_with_config(
 
 cleanup:
     code_immune_destroy(system);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_create_with_config: validation failed");
     return NULL;
 }
 
@@ -620,7 +627,10 @@ void code_immune_destroy(code_immune_system_t* system) {
  * @brief Start code immune system
  */
 int code_immune_start(code_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_start: system is NULL");
+        return -1;
+    }
 
     /* Check auto-load settings before starting */
     /* Phase 8: Heartbeat at operation start */
@@ -657,7 +667,10 @@ int code_immune_start(code_immune_system_t* system) {
  * @brief Stop code immune system
  */
 int code_immune_stop(code_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_stop: system is NULL");
+        return -1;
+    }
 
     /* Disconnect from signal handler */
     /* Phase 8: Heartbeat at operation start */
@@ -749,7 +762,10 @@ static void code_immune_signal_callback(int sig) {
  * @brief Connect to signal handler
  */
 int code_immune_connect_signal_handler(code_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_connect_signal_handler: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_connect_signal_handl", 0.0f);
@@ -777,7 +793,10 @@ int code_immune_connect_signal_handler(code_immune_system_t* system) {
  * @brief Disconnect from signal handler
  */
 int code_immune_disconnect_signal_handler(code_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_disconnect_signal_handler: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_disconnect_signal_ha", 0.0f);
@@ -809,7 +828,10 @@ int code_immune_present_crash(
     void* ucontext,
     void* fault_addr
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_present_crash: system is NULL");
+        return -1;
+    }
 
     /* Try to get lock - if can't, we're likely in nested signal */
     /* Phase 8: Heartbeat at operation start */
@@ -817,11 +839,13 @@ int code_immune_present_crash(
 
 
     if (nimcp_platform_mutex_trylock((nimcp_platform_mutex_t*)system->mutex) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "code_immune_present_crash: validation failed");
         return -1;
     }
 
     if (system->antigen_count >= system->antigen_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_present_crash: capacity exceeded");
         return -1;
     }
 
@@ -906,7 +930,10 @@ int code_immune_present_crash_detailed(
     int backtrace_depth,
     uint64_t* antigen_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_present_crash_detailed: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_present_crash_detail", 0.0f);
@@ -916,6 +943,7 @@ int code_immune_present_crash_detailed(
 
     if (system->antigen_count >= system->antigen_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_present_crash_detailed: capacity exceeded");
         return -1;
     }
 
@@ -1002,7 +1030,10 @@ int code_immune_find_matching_b_cell(
     uint64_t antigen_id,
     uint64_t* b_cell_id
 ) {
-    if (!system || !b_cell_id) return -1;
+    if (!system || !b_cell_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_find_matching_b_cell: required parameter is NULL (system, b_cell_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_find_matching_b_cell", 0.0f);
@@ -1013,6 +1044,7 @@ int code_immune_find_matching_b_cell(
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_find_matching_b_cell: antigen is NULL");
         return -1;
     }
 
@@ -1046,6 +1078,7 @@ int code_immune_find_matching_b_cell(
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_find_matching_b_cell: validation failed");
     return -1;
 }
 
@@ -1057,7 +1090,10 @@ int code_immune_activate_b_cell(
     uint64_t b_cell_id,
     uint64_t antigen_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_activate_b_cell: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_activate_b_cell", 0.0f);
@@ -1070,6 +1106,7 @@ int code_immune_activate_b_cell(
 
     if (!b_cell || !antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_activate_b_cell: required parameter is NULL (b_cell, antigen)");
         return -1;
     }
 
@@ -1104,7 +1141,10 @@ int code_immune_create_b_cell(
     uint64_t antigen_id,
     uint64_t* b_cell_id
 ) {
-    if (!system || !b_cell_id) return -1;
+    if (!system || !b_cell_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_create_b_cell: required parameter is NULL (system, b_cell_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_create_b_cell", 0.0f);
@@ -1114,12 +1154,14 @@ int code_immune_create_b_cell(
 
     if (system->b_cell_count >= system->b_cell_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_create_b_cell: capacity exceeded");
         return -1;
     }
 
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_create_b_cell: antigen is NULL");
         return -1;
     }
 
@@ -1160,7 +1202,10 @@ int code_immune_form_memory(
     code_immune_system_t* system,
     uint64_t b_cell_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_form_memory: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_form_memory", 0.0f);
@@ -1171,6 +1216,7 @@ int code_immune_form_memory(
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_form_memory: b_cell is NULL");
         return -1;
     }
 
@@ -1178,6 +1224,7 @@ int code_immune_form_memory(
     if (b_cell->state != CODE_B_CELL_ACTIVATED &&
         b_cell->state != CODE_B_CELL_PLASMA) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_form_memory: b_cell is NULL");
         return -1;
     }
 
@@ -1185,6 +1232,7 @@ int code_immune_form_memory(
     if (b_cell->successful_fixes < 1 &&
         b_cell->affinity < system->config.memory_formation_threshold) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_form_memory: operation failed");
         return -1;
     }
 
@@ -1215,7 +1263,10 @@ int code_immune_set_fix_template(
     uint64_t b_cell_id,
     const char* fix_template
 ) {
-    if (!system || !fix_template) return -1;
+    if (!system || !fix_template) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_set_fix_template: required parameter is NULL (system, fix_template)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_set_fix_template", 0.0f);
@@ -1226,6 +1277,7 @@ int code_immune_set_fix_template(
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_set_fix_template: b_cell is NULL");
         return -1;
     }
 
@@ -1248,7 +1300,10 @@ int code_immune_produce_antibody(
     code_antibody_class_t ab_class,
     uint64_t* antibody_id
 ) {
-    if (!system || !antibody_id) return -1;
+    if (!system || !antibody_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_produce_antibody: required parameter is NULL (system, antibody_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_produce_antibody", 0.0f);
@@ -1258,12 +1313,14 @@ int code_immune_produce_antibody(
 
     if (system->antibody_count >= system->antibody_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_produce_antibody: capacity exceeded");
         return -1;
     }
 
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_produce_antibody: b_cell is NULL");
         return -1;
     }
 
@@ -1271,6 +1328,7 @@ int code_immune_produce_antibody(
     if (b_cell->state == CODE_B_CELL_NAIVE ||
         b_cell->state == CODE_B_CELL_APOPTOTIC) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_produce_antibody: b_cell is NULL");
         return -1;
     }
 
@@ -1331,7 +1389,10 @@ int code_immune_validate_antibody(
     code_immune_system_t* system,
     uint64_t antibody_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_validate_antibody: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_validate_antibody", 0.0f);
@@ -1342,6 +1403,7 @@ int code_immune_validate_antibody(
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_validate_antibody: antibody is NULL");
         return -1;
     }
 
@@ -1388,7 +1450,10 @@ int code_immune_apply_antibody(
     code_immune_system_t* system,
     uint64_t antibody_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_apply_antibody: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_apply_antibody", 0.0f);
@@ -1399,12 +1464,14 @@ int code_immune_apply_antibody(
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_apply_antibody: antibody is NULL");
         return -1;
     }
 
     /* Check validation requirement */
     if (system->config.require_validation && !antibody->validated) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_apply_antibody: antibody->validated is NULL");
         return -1;
     }
 
@@ -1471,7 +1538,10 @@ int code_immune_apoptosis(
     code_immune_system_t* system,
     uint64_t antibody_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_apoptosis: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_apoptosis", 0.0f);
@@ -1482,6 +1552,7 @@ int code_immune_apoptosis(
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_apoptosis: antibody is NULL");
         return -1;
     }
 
@@ -1513,7 +1584,10 @@ int code_immune_upgrade_antibody(
     uint64_t antibody_id,
     code_antibody_class_t new_class
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_upgrade_antibody: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_upgrade_antibody", 0.0f);
@@ -1524,6 +1598,7 @@ int code_immune_upgrade_antibody(
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_upgrade_antibody: antibody is NULL");
         return -1;
     }
 
@@ -1551,7 +1626,10 @@ int code_immune_sync_to_brain(
     code_immune_system_t* system,
     uint64_t antigen_id
 ) {
-    if (!system || !system->parent_immune) return -1;
+    if (!system || !system->parent_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_sync_to_brain: required parameter is NULL (system, system->parent_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_sync_to_brain", 0.0f);
@@ -1562,6 +1640,7 @@ int code_immune_sync_to_brain(
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_sync_to_brain: antigen is NULL");
         return -1;
     }
 
@@ -1602,7 +1681,10 @@ int code_immune_request_cytokine(
     brain_cytokine_type_t cytokine_type,
     float concentration
 ) {
-    if (!system || !system->parent_immune) return -1;
+    if (!system || !system->parent_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_request_cytokine: required parameter is NULL (system, system->parent_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_request_cytokine", 0.0f);
@@ -1628,7 +1710,10 @@ int code_immune_set_crash_callback(
     code_immune_crash_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_set_crash_callback: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_set_crash_callback", 0.0f);
 
@@ -1645,7 +1730,10 @@ int code_immune_set_patch_callback(
     code_immune_patch_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_set_patch_callback: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_set_patch_callback", 0.0f);
 
@@ -1662,7 +1750,10 @@ int code_immune_set_memory_callback(
     code_immune_memory_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_set_memory_callback: system is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_set_memory_callback", 0.0f);
 
@@ -1685,7 +1776,10 @@ int code_immune_update(
     code_immune_system_t* system,
     uint64_t delta_ms
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_update: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_update", 0.0f);
@@ -1730,7 +1824,10 @@ int code_immune_get_stats(
     code_immune_system_t* system,
     code_immune_stats_t* stats
 ) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_get_stats", 0.0f);
@@ -1828,7 +1925,10 @@ bool code_immune_has_memory_for(
     code_immune_system_t* system,
     code_crash_type_t crash_type
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_has_memory_for: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_has_memory_for", 0.0f);
@@ -1852,6 +1952,7 @@ bool code_immune_has_memory_for(
     }
 
     nimcp_mutex_unlock(system->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_has_memory_for: operation failed");
     return false;
 }
 
@@ -1870,7 +1971,10 @@ int code_immune_compute_epitope(
     int backtrace_depth,
     char* epitope
 ) {
-    if (!epitope) return -1;
+    if (!epitope) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_compute_epitope: epitope is NULL");
+        return -1;
+    }
 
     /* Simple hash combining signal, addresses, and top backtrace frames */
     /* Phase 8: Heartbeat at operation start */
@@ -2003,9 +2107,13 @@ static uint32_t compute_persist_checksum(const uint8_t* data, size_t len) {
  * @brief Write header to file
  */
 static int write_persist_header(FILE* file, const code_immune_persist_header_t* header) {
-    if (!file || !header) return -1;
+    if (!file || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_persist_header: required parameter is NULL (file, header)");
+        return -1;
+    }
     if (fwrite(header, sizeof(*header), 1, file) != 1) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_persist_header: validation failed");
         return -1;
     }
     return 0;
@@ -2015,9 +2123,13 @@ static int write_persist_header(FILE* file, const code_immune_persist_header_t* 
  * @brief Read header from file
  */
 static int read_persist_header(FILE* file, code_immune_persist_header_t* header) {
-    if (!file || !header) return -1;
+    if (!file || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_persist_header: required parameter is NULL (file, header)");
+        return -1;
+    }
     if (fread(header, sizeof(*header), 1, file) != 1) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_persist_header: validation failed");
         return -1;
     }
     return 0;
@@ -2027,9 +2139,13 @@ static int read_persist_header(FILE* file, code_immune_persist_header_t* header)
  * @brief Write counts to file
  */
 static int write_persist_counts(FILE* file, const code_immune_persist_counts_t* counts) {
-    if (!file || !counts) return -1;
+    if (!file || !counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_persist_counts: required parameter is NULL (file, counts)");
+        return -1;
+    }
     if (fwrite(counts, sizeof(*counts), 1, file) != 1) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write counts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_persist_counts: validation failed");
         return -1;
     }
     return 0;
@@ -2039,9 +2155,13 @@ static int write_persist_counts(FILE* file, const code_immune_persist_counts_t* 
  * @brief Read counts from file
  */
 static int read_persist_counts(FILE* file, code_immune_persist_counts_t* counts) {
-    if (!file || !counts) return -1;
+    if (!file || !counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_persist_counts: required parameter is NULL (file, counts)");
+        return -1;
+    }
     if (fread(counts, sizeof(*counts), 1, file) != 1) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to read counts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_persist_counts: validation failed");
         return -1;
     }
     return 0;
@@ -2051,12 +2171,16 @@ static int read_persist_counts(FILE* file, code_immune_persist_counts_t* counts)
  * @brief Validate header contents
  */
 static int validate_persist_header(const code_immune_persist_header_t* header) {
-    if (!header) return -1;
+    if (!header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_persist_header: header is NULL");
+        return -1;
+    }
 
     /* Check magic */
     if (memcmp(header->magic, CODE_IMMUNE_PERSIST_MAGIC,
                CODE_IMMUNE_PERSIST_MAGIC_LEN) != 0) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Invalid magic header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_persist_header: header is NULL");
         return -1;
     }
 
@@ -2065,6 +2189,7 @@ static int validate_persist_header(const code_immune_persist_header_t* header) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
             "Incompatible version: %u (current: %u)",
             header->version, CODE_IMMUNE_PERSIST_VERSION);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_persist_header: code_immune_is_version_compatible is NULL");
         return -1;
     }
 
@@ -2075,18 +2200,23 @@ static int validate_persist_header(const code_immune_persist_header_t* header) {
  * @brief Validate counts against capacity limits
  */
 static int validate_persist_counts(const code_immune_persist_counts_t* counts) {
-    if (!counts) return -1;
+    if (!counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_persist_counts: counts is NULL");
+        return -1;
+    }
 
     if (counts->b_cell_count > CODE_IMMUNE_MAX_B_CELLS) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
             "B cell count %u exceeds max %u",
             counts->b_cell_count, CODE_IMMUNE_MAX_B_CELLS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_persist_counts: validation failed");
         return -1;
     }
     if (counts->antibody_count > CODE_IMMUNE_MAX_ANTIBODIES) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
             "Antibody count %u exceeds max %u",
             counts->antibody_count, CODE_IMMUNE_MAX_ANTIBODIES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_persist_counts: validation failed");
         return -1;
     }
 
@@ -2100,7 +2230,10 @@ static code_b_cell_t* find_b_cell_by_receptor(
     code_immune_system_t* system,
     const char* receptor
 ) {
-    if (!system || !receptor) return NULL;
+    if (!system || !receptor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_b_cell_by_receptor: required parameter is NULL (system, receptor)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < system->b_cell_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -2113,6 +2246,7 @@ static code_b_cell_t* find_b_cell_by_receptor(
             return &system->b_cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_b_cell_by_receptor: validation failed");
     return NULL;
 }
 
@@ -2124,7 +2258,10 @@ static code_b_cell_t* find_b_cell_by_receptor(
  * @brief Get default persistence configuration
  */
 int code_immune_persist_default_config(code_immune_persist_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_persist_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_persist_default_conf", 0.0f);
@@ -2175,7 +2312,10 @@ int code_immune_persist_default_config(code_immune_persist_config_t* config) {
  * @brief Get default memory file path
  */
 int code_immune_get_default_memory_path(char* path_out, bool create_dir) {
-    if (!path_out) return -1;
+    if (!path_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_default_memory_path: path_out is NULL");
+        return -1;
+    }
 
     /* Get home directory */
     /* Phase 8: Heartbeat at operation start */
@@ -2191,6 +2331,7 @@ int code_immune_get_default_memory_path(char* path_out, bool create_dir) {
     int len = snprintf(path_out, CODE_IMMUNE_PERSIST_MAX_PATH,
                        "%s/.nimcp/%s", home, CODE_IMMUNE_PERSIST_DEFAULT_FILE);
     if (len < 0 || len >= CODE_IMMUNE_PERSIST_MAX_PATH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "code_immune_get_default_memory_path: capacity exceeded");
         return -1;
     }
 
@@ -2214,7 +2355,10 @@ static int resolve_persist_path(
     const code_immune_persist_config_t* config,
     char* resolved_path
 ) {
-    if (!resolved_path) return -1;
+    if (!resolved_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resolve_persist_path: resolved_path is NULL");
+        return -1;
+    }
 
     if (filepath && filepath[0] != '\0') {
         strncpy(resolved_path, filepath, CODE_IMMUNE_PERSIST_MAX_PATH - 1);
@@ -2252,7 +2396,10 @@ bool code_immune_is_version_compatible(uint32_t file_version) {
  * @brief Validate persistence file
  */
 int code_immune_validate_memory_file(const char* filepath, bool verify_checksum) {
-    if (!filepath) return -1;
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_validate_memory_file: filepath is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_validate_memory_file", 0.0f);
@@ -2261,28 +2408,33 @@ int code_immune_validate_memory_file(const char* filepath, bool verify_checksum)
     FILE* file = fopen(filepath, "rb");
     if (!file) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "File not found: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_validate_memory_file: file is NULL");
         return -1;
     }
 
     code_immune_persist_header_t header;
     if (read_persist_header(file, &header) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     if (validate_persist_header(&header) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     code_immune_persist_counts_t counts;
     if (read_persist_counts(file, &counts) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
     if (validate_persist_counts(&counts) != 0) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
         return -1;
     }
 
@@ -2294,6 +2446,7 @@ int code_immune_validate_memory_file(const char* filepath, bool verify_checksum)
                 "Checksum mismatch: expected 0x%08X, got 0x%08X",
                 header.checksum, computed);
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_validate_memory_file: validation failed");
             return -1;
         }
     }
@@ -2310,14 +2463,20 @@ int code_immune_get_memory_file_info(
     code_immune_persist_header_t* header,
     code_immune_persist_counts_t* counts
 ) {
-    if (!filepath) return -1;
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_memory_file_info: filepath is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_get_memory_file_info", 0.0f);
 
 
     FILE* file = fopen(filepath, "rb");
-    if (!file) return -1;
+    if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_memory_file_info: file is NULL");
+        return -1;
+    }
 
     int result = -1;
 
@@ -2347,7 +2506,10 @@ cleanup:
  * @brief Create backup of persistence file
  */
 int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
-    if (!filepath) return -1;
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_create_backup: filepath is NULL");
+        return -1;
+    }
 
     /* Check if source file exists */
     /* Phase 8: Heartbeat at operation start */
@@ -2368,6 +2530,7 @@ int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
         fclose(src);
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
                         "Failed to create backup file: %s", backup_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_create_backup: dst is NULL");
         return -1;
     }
 
@@ -2380,6 +2543,7 @@ int code_immune_create_backup(const char* filepath, const char* backup_suffix) {
             fclose(dst);
             remove(backup_path);
             LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME, "Failed to write backup");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_create_backup: validation failed");
             return -1;
         }
     }
@@ -2403,7 +2567,10 @@ int code_immune_save_memory(
     const char* filepath,
     const code_immune_persist_config_t* config
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_save_memory: system is NULL");
+        return -1;
+    }
 
     /* Use default config if not provided */
     /* Phase 8: Heartbeat at operation start */
@@ -2419,6 +2586,7 @@ int code_immune_save_memory(
     /* Resolve filepath */
     char resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH];
     if (resolve_persist_path(filepath, config, resolved_path) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_save_memory: validation failed");
         return -1;
     }
 
@@ -2435,6 +2603,7 @@ int code_immune_save_memory(
     if (!file) {
         LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
                         "Failed to open file for writing: %s", temp_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_save_memory: file is NULL");
         return -1;
     }
 
@@ -2604,6 +2773,7 @@ cleanup:
             LOG_MODULE_ERROR(CODE_IMMUNE_MODULE_NAME,
                             "Failed to rename temp file to %s", resolved_path);
             remove(temp_path);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
             return -1;
         }
     } else {
@@ -2622,7 +2792,10 @@ int code_immune_save_memory_ex(
     const code_immune_persist_config_t* config,
     code_immune_persist_result_t* result
 ) {
-    if (!result) return -1;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_save_memory_ex: result is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_save_memory_ex", 0.0f);
@@ -2656,7 +2829,10 @@ int code_immune_load_memory(
     const char* filepath,
     const code_immune_persist_config_t* config
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_load_memory: system is NULL");
+        return -1;
+    }
 
     /* Use default config if not provided */
     /* Phase 8: Heartbeat at operation start */
@@ -2672,6 +2848,7 @@ int code_immune_load_memory(
     /* Resolve filepath */
     char resolved_path[CODE_IMMUNE_PERSIST_MAX_PATH];
     if (resolve_persist_path(filepath, config, resolved_path) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_load_memory: validation failed");
         return -1;
     }
 
@@ -2791,7 +2968,10 @@ int code_immune_load_memory_ex(
     const code_immune_persist_config_t* config,
     code_immune_persist_result_t* result
 ) {
-    if (!result) return -1;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_load_memory_ex: result is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_load_memory_ex", 0.0f);
@@ -2834,7 +3014,10 @@ int code_immune_consolidate_memory(
     const code_immune_persist_config_t* config,
     uint32_t* items_pruned
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_consolidate_memory: system is NULL");
+        return -1;
+    }
 
     /* Use default config if not provided */
     /* Phase 8: Heartbeat at operation start */
@@ -2937,7 +3120,10 @@ int code_immune_enable_auto_save(
     bool enable,
     const char* filepath
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_enable_auto_save: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_enable_auto_save", 0.0f);
@@ -2971,7 +3157,10 @@ int code_immune_enable_auto_load(
     bool enable,
     const char* filepath
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_enable_auto_load: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_enable_auto_load", 0.0f);
@@ -3011,7 +3200,10 @@ int code_immune_connect_self_repair(
     code_immune_system_t* system,
     self_repair_coordinator_t* coordinator
 ) {
-    if (!system || !coordinator) return -1;
+    if (!system || !coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_connect_self_repair: required parameter is NULL (system, coordinator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_connect_self_repair", 0.0f);
@@ -3034,7 +3226,10 @@ int code_immune_connect_self_repair(
  * @brief Disconnect from self-repair coordinator
  */
 int code_immune_disconnect_self_repair(code_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_disconnect_self_repair: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_disconnect_self_repa", 0.0f);
@@ -3055,7 +3250,10 @@ int code_immune_disconnect_self_repair(code_immune_system_t* system) {
  * @brief Check if self-repair is connected
  */
 bool code_immune_is_self_repair_connected(const code_immune_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_is_self_repair_connected: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_is_self_repair_conne", 0.0f);
 
@@ -3085,7 +3283,10 @@ int code_immune_get_antigen_diagnostic(
     uint64_t antigen_id,
     diagnostic_result_t* diag
 ) {
-    if (!system || !diag) return -1;
+    if (!system || !diag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_antigen_diagnostic: required parameter is NULL (system, diag)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_get_antigen_diagnost", 0.0f);
@@ -3096,6 +3297,7 @@ int code_immune_get_antigen_diagnostic(
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_antigen_diagnostic: antigen is NULL");
         return -1;
     }
 
@@ -3165,9 +3367,18 @@ bool code_immune_check_auto_repair_eligible(
     code_immune_system_t* system,
     uint64_t antigen_id
 ) {
-    if (!system) return false;
-    if (!system->config.auto_repair.enabled) return false;
-    if (!system->self_repair) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system is NULL");
+        return false;
+    }
+    if (!system->config.auto_repair.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system->config is NULL");
+        return false;
+    }
+    if (!system->self_repair) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: system->self_repair is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_check_auto_repair_el", 0.0f);
@@ -3178,6 +3389,7 @@ bool code_immune_check_auto_repair_eligible(
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_check_auto_repair_eligible: antigen is NULL");
         return false;
     }
 
@@ -3188,30 +3400,35 @@ bool code_immune_check_auto_repair_eligible(
     if (system->last_repair_trigger_ms > 0 &&
         (now - system->last_repair_trigger_ms) < cfg->cooldown_ms) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: operation failed");
         return false;
     }
 
     /* Check crash count */
     if (antigen->recurrence_count < cfg->min_crash_count) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Check severity */
     if (antigen->severity < cfg->min_severity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Check confidence */
     if (antigen->confidence < cfg->min_confidence) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
     /* Already neutralized? */
     if (antigen->neutralized) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_check_auto_repair_eligible: validation failed");
         return false;
     }
 
@@ -3261,7 +3478,10 @@ int code_immune_trigger_repair(
     uint64_t antigen_id,
     uint64_t* repair_id
 ) {
-    if (!system || !system->self_repair) return -1;
+    if (!system || !system->self_repair) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_trigger_repair: required parameter is NULL (system, system->self_repair)");
+        return -1;
+    }
 
     /* Convert antigen to diagnostic */
     /* Phase 8: Heartbeat at operation start */
@@ -3270,6 +3490,7 @@ int code_immune_trigger_repair(
 
     diagnostic_result_t diag;
     if (code_immune_get_antigen_diagnostic(system, antigen_id, &diag) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_trigger_repair: validation failed");
         return -1;
     }
 
@@ -3343,7 +3564,10 @@ int code_immune_handle_repair_outcome(
     code_immune_system_t* system,
     const code_immune_repair_outcome_t* outcome
 ) {
-    if (!system || !outcome) return -1;
+    if (!system || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_handle_repair_outcome: required parameter is NULL (system, outcome)");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -3420,7 +3644,10 @@ int code_immune_get_repair_stats(
     uint64_t* successful,
     uint64_t* failed
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_repair_stats: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     code_immune_heartbeat("code_immune_get_repair_stats", 0.0f);

@@ -140,6 +140,7 @@ static synapse_entry_t* find_synapse(parietal_plasticity_bridge_t* bridge, uint3
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -155,6 +156,7 @@ static synapse_entry_t* find_free_slot(parietal_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -228,6 +230,7 @@ parietal_plasticity_bridge_t* parietal_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "parietal_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "parietal_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -237,6 +240,7 @@ parietal_plasticity_bridge_t* parietal_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -276,7 +280,10 @@ void parietal_plasticity_destroy(parietal_plasticity_bridge_t* bridge) {
 }
 
 int parietal_plasticity_reset(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -325,7 +332,10 @@ int parietal_plasticity_register_synapse(
     parietal_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -336,6 +346,7 @@ int parietal_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -343,6 +354,7 @@ int parietal_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -372,7 +384,10 @@ int parietal_plasticity_unregister_synapse(
     parietal_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -383,6 +398,7 @@ int parietal_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -398,7 +414,10 @@ int parietal_plasticity_get_synapse(
     uint32_t synapse_id,
     parietal_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -410,6 +429,7 @@ int parietal_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -424,7 +444,10 @@ int parietal_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -435,6 +458,7 @@ int parietal_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -455,7 +479,10 @@ int parietal_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -468,6 +495,7 @@ int parietal_plasticity_learn(
     if (!entry) {
         bridge->state = PARIETAL_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -629,7 +657,10 @@ int parietal_plasticity_apply_reward(
     parietal_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -670,8 +701,14 @@ int parietal_plasticity_update_bcm(
     parietal_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -707,7 +744,10 @@ int parietal_plasticity_homeostatic_update(
     parietal_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -780,7 +820,10 @@ int parietal_plasticity_update_traces(
     parietal_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -807,7 +850,10 @@ int parietal_plasticity_update_traces(
 }
 
 int parietal_plasticity_consolidate(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -894,7 +940,10 @@ int parietal_plasticity_get_spatial_state(
     parietal_plasticity_bridge_t* bridge,
     parietal_spatial_learning_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_get_spatial_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -912,7 +961,10 @@ int parietal_plasticity_get_state(
     parietal_plasticity_bridge_t* bridge,
     parietal_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -959,7 +1011,10 @@ int parietal_plasticity_get_stats(
     parietal_plasticity_bridge_t* bridge,
     parietal_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -974,7 +1029,10 @@ int parietal_plasticity_get_stats(
 }
 
 int parietal_plasticity_reset_stats(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -996,7 +1054,10 @@ int parietal_plasticity_register_learn_callback(
     parietal_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -1016,7 +1077,10 @@ int parietal_plasticity_register_spatial_callback(
     parietal_plasticity_spatial_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_register_spatial_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -1036,8 +1100,14 @@ int parietal_plasticity_register_spatial_callback(
 //=============================================================================
 
 int parietal_plasticity_bio_async_connect(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -1052,7 +1122,10 @@ int parietal_plasticity_bio_async_connect(parietal_plasticity_bridge_t* bridge) 
 }
 
 int parietal_plasticity_bio_async_disconnect(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);
@@ -1066,7 +1139,10 @@ int parietal_plasticity_bio_async_disconnect(parietal_plasticity_bridge_t* bridg
 }
 
 bool parietal_plasticity_is_bio_async_connected(parietal_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     parietal_plasticity_bridge_heartbeat("parietal_pla_parietal_plasticity_", 0.0f);

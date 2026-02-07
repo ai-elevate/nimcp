@@ -319,6 +319,7 @@ static request_entry_t* find_request_unlocked(
         }
         current = current->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_request_unlocked: validation failed");
     return NULL;
 }
 
@@ -346,6 +347,7 @@ static bool validate_auth_token(
     if (request->auth_token_size == 0) {
         LOG_WARN("%s: Authentication required but no token provided",
                  MODULE_NAME);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_auth_token: request->auth_token_size is zero");
         return false;
     }
 

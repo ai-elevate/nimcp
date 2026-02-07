@@ -159,6 +159,7 @@ security_imagination_bridge_t* security_imagination_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_IMAGINATION_BRIDGE,
                          "security_imagination_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_bridge_create: operation failed");
         return NULL;
     }
 
@@ -179,6 +180,7 @@ security_imagination_bridge_t* security_imagination_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to allocate sandbox array");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_imagination_bridge_create: bridge->sandboxes is NULL");
         return NULL;
     }
 
@@ -265,6 +267,7 @@ int security_imagination_connect_workspace(
  */
 bool security_imagination_is_connected(const security_imagination_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_is_connected: bridge is NULL");
         return false;
     }
     /* Minimum: either engine or workspace */
@@ -327,6 +330,8 @@ int security_imagination_sandbox_workspace(
     bridge->sandbox_count++;
     bridge->state.active_sandbox_count = (uint32_t)bridge->sandbox_count;
     bridge->security_effects.active_sandboxes = (uint32_t)bridge->sandbox_count;
+    bridge->security_effects.sandbox_quota_reached =
+        (bridge->sandbox_count >= bridge->sandbox_capacity);
     bridge->stats.sandboxes_created++;
 
     if (sandbox_id) {
@@ -501,6 +506,7 @@ bool security_imagination_enforce_bounds(
     uint32_t requested_depth
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_enforce_bounds: bridge is NULL");
         return false;
     }
 
@@ -515,6 +521,7 @@ bool security_imagination_enforce_bounds(
     size_t index;
     if (find_sandbox_by_id(bridge, sandbox_id, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "security_imagination_enforce_bounds: validation failed");
         return false;
     }
 
@@ -550,6 +557,7 @@ bool security_imagination_check_depth(
     uint32_t current_depth
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_check_depth: bridge is NULL");
         return false;
     }
 
@@ -1138,6 +1146,7 @@ bool security_imagination_is_restricted(
     const security_imagination_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_imagination_is_restricted: bridge is NULL");
         return false;
     }
     return bridge->state.imagination_restricted;

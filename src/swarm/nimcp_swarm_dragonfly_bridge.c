@@ -223,9 +223,15 @@ swarm_dragonfly_bridge_config_t swarm_dragonfly_bridge_default_config(void) {
 bool swarm_dragonfly_bridge_validate_config(
     const swarm_dragonfly_bridge_config_t* config
 ) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->local_drone_id >= config->swarm_size) return false;
+    if (config->local_drone_id >= config->swarm_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: capacity exceeded");
+        return false;
+    }
     if (config->swarm_size == 0 ||
         config->swarm_size > COLLECTIVE_WORKSPACE_MAX_SWARM_SIZE) return false;
 
@@ -234,12 +240,21 @@ bool swarm_dragonfly_bridge_validate_config(
     if (config->salience_boost < 0.0f ||
         config->salience_boost > 1.0f) return false;
 
-    if (config->max_pursuit_distance_m <= 0.0f) return false;
+    if (config->max_pursuit_distance_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
+        return false;
+    }
     if (config->min_intercept_probability < 0.0f ||
         config->min_intercept_probability > 1.0f) return false;
 
-    if (config->formation_spread_m <= 0.0f) return false;
-    if (config->handoff_threshold_s <= 0.0f) return false;
+    if (config->formation_spread_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->handoff_threshold_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -258,6 +273,7 @@ swarm_dragonfly_bridge_t* swarm_dragonfly_bridge_create(
         swarm_dragonfly_bridge_default_config();
 
     if (!swarm_dragonfly_bridge_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_create: swarm_dragonfly_bridge_validate_config is NULL");
         return NULL;
     }
 
@@ -279,6 +295,7 @@ swarm_dragonfly_bridge_t* swarm_dragonfly_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "swarm_dragonfly") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -297,7 +314,10 @@ void swarm_dragonfly_bridge_destroy(swarm_dragonfly_bridge_t* bridge) {
 }
 
 int swarm_dragonfly_bridge_reset(swarm_dragonfly_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -328,6 +348,7 @@ static target_record_t* find_target(swarm_dragonfly_bridge_t* bridge, uint32_t t
             return &bridge->targets[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_target: operation failed");
     return NULL;
 }
 
@@ -340,6 +361,7 @@ static target_record_t* find_free_slot(swarm_dragonfly_bridge_t* bridge) {
             return &bridge->targets[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->targets is NULL");
     return NULL;
 }
 
@@ -402,7 +424,10 @@ int swarm_dragonfly_bridge_share_target(
     swarm_dragonfly_bridge_t* bridge,
     const shared_target_t* target
 ) {
-    if (!bridge || !target) return -1;
+    if (!bridge || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_share_target: required parameter is NULL (bridge, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -412,6 +437,7 @@ int swarm_dragonfly_bridge_share_target(
         record = find_free_slot(bridge);
         if (!record) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_share_target: record is NULL");
             return -1;  /* No space */
         }
         bridge->num_targets++;
@@ -454,10 +480,16 @@ int swarm_dragonfly_bridge_share_track(
     uint32_t track_id,
     float priority
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_share_track: bridge is NULL");
+        return -1;
+    }
 
     /* Get track from dragonfly system */
-    if (!bridge->dragonfly) return -1;
+    if (!bridge->dragonfly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_share_track: bridge->dragonfly is NULL");
+        return -1;
+    }
 
     /* TODO: Get track info from dragonfly system */
     /* For now, create basic shared target */
@@ -480,13 +512,17 @@ int swarm_dragonfly_bridge_update_target(
     const float velocity[3],
     swarm_target_status_t status
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_update_target: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_update_target: record is NULL");
         return -1;
     }
 
@@ -524,13 +560,17 @@ int swarm_dragonfly_bridge_remove_target(
     uint32_t target_id,
     swarm_target_status_t reason
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_remove_target: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_remove_target: record is NULL");
         return -1;
     }
 
@@ -554,7 +594,10 @@ int swarm_dragonfly_bridge_remove_target(
 //=============================================================================
 
 int swarm_dragonfly_bridge_process_updates(swarm_dragonfly_bridge_t* bridge) {
-    if (!bridge || !bridge->workspace) return -1;
+    if (!bridge || !bridge->workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_process_updates: required parameter is NULL (bridge, bridge->workspace)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -622,7 +665,10 @@ int swarm_dragonfly_bridge_get_shared_targets(
     uint32_t max_targets,
     uint32_t* num_targets
 ) {
-    if (!bridge || !targets || !num_targets) return -1;
+    if (!bridge || !targets || !num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_shared_targets: required parameter is NULL (bridge, targets, num_targets)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -644,7 +690,10 @@ int swarm_dragonfly_bridge_get_target(
     uint32_t target_id,
     shared_target_t* target
 ) {
-    if (!bridge || !target) return -1;
+    if (!bridge || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_target: required parameter is NULL (bridge, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -659,6 +708,7 @@ int swarm_dragonfly_bridge_get_target(
 
     if (!record) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_target: record is NULL");
         return -1;
     }
 
@@ -677,7 +727,10 @@ bool swarm_dragonfly_bridge_get_assignment(
     const swarm_dragonfly_bridge_t* bridge,
     swarm_target_assignment_t* assignment
 ) {
-    if (!bridge || !assignment) return false;
+    if (!bridge || !assignment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_assignment: required parameter is NULL (bridge, assignment)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -696,7 +749,10 @@ bool swarm_dragonfly_bridge_request_assignment(
     uint32_t target_id,
     float urgency
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_request_assignment: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -704,6 +760,7 @@ bool swarm_dragonfly_bridge_request_assignment(
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_request_assignment: record is NULL");
         return false;
     }
 
@@ -712,6 +769,7 @@ bool swarm_dragonfly_bridge_request_assignment(
         float dist = vec3_distance(bridge->local_position, record->target.position);
         if (dist > bridge->config.max_pursuit_distance_m) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_dragonfly_bridge_request_assignment: validation failed");
             return false;
         }
     }
@@ -742,7 +800,10 @@ int swarm_dragonfly_bridge_release_assignment(
     swarm_dragonfly_bridge_t* bridge,
     swarm_target_status_t reason
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_release_assignment: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -786,7 +847,10 @@ int swarm_dragonfly_bridge_report_intercept(
     uint32_t target_id,
     bool success
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_report_intercept: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -919,7 +983,10 @@ int swarm_dragonfly_bridge_leave_formation(
     swarm_dragonfly_bridge_t* bridge,
     uint32_t formation_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_leave_formation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -955,7 +1022,10 @@ bool swarm_dragonfly_bridge_get_formation(
     const swarm_dragonfly_bridge_t* bridge,
     formation_state_t* state
 ) {
-    if (!bridge || !state) return false;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_formation: required parameter is NULL (bridge, state)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -974,7 +1044,10 @@ int swarm_dragonfly_bridge_update_formation_position(
     const float position[3],
     const float velocity[3]
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_update_formation_position: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1002,13 +1075,17 @@ int swarm_dragonfly_bridge_initiate_handoff(
     uint32_t target_id,
     uint16_t receiving_drone
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_initiate_handoff: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_initiate_handoff: record is NULL");
         return -1;
     }
 
@@ -1030,13 +1107,17 @@ bool swarm_dragonfly_bridge_accept_handoff(
     uint32_t target_id,
     uint16_t sending_drone
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_accept_handoff: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_accept_handoff: record is NULL");
         return false;
     }
 
@@ -1083,7 +1164,10 @@ int swarm_dragonfly_bridge_get_stats(
     const swarm_dragonfly_bridge_t* bridge,
     swarm_dragonfly_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -1093,7 +1177,10 @@ int swarm_dragonfly_bridge_get_stats(
 }
 
 int swarm_dragonfly_bridge_reset_stats(swarm_dragonfly_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -1117,7 +1204,10 @@ uint32_t swarm_dragonfly_bridge_target_count(
 bool swarm_dragonfly_bridge_in_formation(
     const swarm_dragonfly_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_bridge_in_formation: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool result = bridge->in_formation;
@@ -1204,7 +1294,10 @@ int swarm_dragonfly_compute_formation_positions(
     uint8_t num_drones,
     float offsets[][3]
 ) {
-    if (!target_pos || !offsets || num_drones == 0) return -1;
+    if (!target_pos || !offsets || num_drones == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_dragonfly_compute_formation_positions: required parameter is NULL (target_pos, offsets)");
+        return -1;
+    }
 
     /* Compute approach direction (opposite to target velocity) */
     float approach[3] = {0.0f, 1.0f, 0.0f};  /* Default forward */

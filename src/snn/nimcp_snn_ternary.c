@@ -83,6 +83,7 @@ snn_ternary_weight_matrix_t* snn_ternary_create(
     weights->weights = trit_matrix_create(pre_size, post_size, cfg.pack_mode);
     if (!weights->weights) {
         nimcp_free(weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_ternary_create: weights->weights is NULL");
         return NULL;
     }
 
@@ -92,6 +93,7 @@ snn_ternary_weight_matrix_t* snn_ternary_create(
     if (!weights->accumulated_delta) {
         trit_matrix_destroy(weights->weights);
         nimcp_free(weights);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_ternary_create: weights->accumulated_delta is NULL");
         return NULL;
     }
 
@@ -128,7 +130,10 @@ snn_ternary_weight_matrix_t* snn_ternary_from_floats(
     }
 
     snn_ternary_weight_matrix_t* weights = snn_ternary_create(pre_size, post_size, config);
-    if (!weights) return NULL;
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_ternary_from_floats: weights is NULL");
+        return NULL;
+    }
 
     /* Quantize float weights to ternary */
     for (uint32_t pre = 0; pre < pre_size; pre++) {
@@ -258,8 +263,14 @@ int snn_ternary_stdp_update(
     uint32_t post_idx,
     float delta
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (pre_idx >= weights->pre_size || post_idx >= weights->post_size) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_stdp_update: weights is NULL");
+        return -1;
+    }
+    if (pre_idx >= weights->pre_size || post_idx >= weights->post_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_stdp_update: capacity exceeded");
+        return -1;
+    }
 
     size_t idx = (size_t)pre_idx * weights->post_size + post_idx;
     weights->accumulated_delta[idx] += delta;
@@ -309,8 +320,14 @@ int snn_ternary_stdp_batch(
     snn_ternary_weight_matrix_t* weights,
     const float* deltas
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (!deltas) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_stdp_batch: weights is NULL");
+        return -1;
+    }
+    if (!deltas) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_ternary_stdp_batch: deltas is NULL");
+        return -1;
+    }
 
     int n_changes = 0;
     for (uint32_t pre = 0; pre < weights->pre_size; pre++) {
@@ -340,7 +357,10 @@ void snn_ternary_decay(
 }
 
 int snn_ternary_discretize(snn_ternary_weight_matrix_t* weights) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_discretize: weights is NULL");
+        return -1;
+    }
 
     int n_changes = 0;
     for (uint32_t pre = 0; pre < weights->pre_size; pre++) {
@@ -393,8 +413,14 @@ int snn_ternary_get_stats(
     const snn_ternary_weight_matrix_t* weights,
     snn_ternary_stats_t* stats
 ) {
-    if (!weights || weights->magic != SNN_TERNARY_MAGIC) return -1;
-    if (!stats) return -1;
+    if (!weights || weights->magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_get_stats: weights is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_ternary_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(snn_ternary_stats_t));
 
@@ -511,6 +537,7 @@ snn_ternary_weight_matrix_t* snn_ternary_deserialize(
     size_t buffer_size
 ) {
     if (!buffer || buffer_size < sizeof(uint32_t) * 4 + sizeof(float) * 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_ternary_deserialize: buffer is NULL");
         return NULL;
     }
 
@@ -523,7 +550,10 @@ snn_ternary_weight_matrix_t* snn_ternary_deserialize(
     memcpy(&post_size, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
     memcpy(&mode, ptr, sizeof(uint32_t)); ptr += sizeof(uint32_t);
 
-    if (magic != SNN_TERNARY_MAGIC) return NULL;
+    if (magic != SNN_TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_ternary_deserialize: validation failed");
+        return NULL;
+    }
 
     /* Read scales and thresholds */
     float pos_scale, neg_scale, ltp_thresh, ltd_thresh;
@@ -542,7 +572,10 @@ snn_ternary_weight_matrix_t* snn_ternary_deserialize(
     config.ltd_threshold = ltd_thresh;
 
     snn_ternary_weight_matrix_t* weights = snn_ternary_create(pre_size, post_size, &config);
-    if (!weights) return NULL;
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_ternary_deserialize: weights is NULL");
+        return NULL;
+    }
 
     /* Read weight data */
     size_t numel = (size_t)pre_size * post_size;

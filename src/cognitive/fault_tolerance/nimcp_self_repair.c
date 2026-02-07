@@ -214,6 +214,7 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     coord->mutex = nimcp_mutex_create(&attr);
     if (!coord->mutex) {
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_create_with_deps: coord->mutex is NULL");
         return NULL;
     }
 
@@ -223,6 +224,7 @@ self_repair_coordinator_t* self_repair_create_with_deps(
     if (!coord->records) {
         nimcp_mutex_free(coord->mutex);
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_create_with_deps: coord->records is NULL");
         return NULL;
     }
 
@@ -313,6 +315,7 @@ void self_repair_destroy(self_repair_coordinator_t* coordinator) {
 
 bool self_repair_is_ready(const self_repair_coordinator_t* coordinator) {
     if (!coordinator || coordinator->magic != SELF_REPAIR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_is_ready: coordinator is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -332,10 +335,12 @@ int self_repair_initiate(
     self_repair_result_t* result
 ) {
     if (!coordinator || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_initiate: required parameter is NULL (coordinator, request, result)");
         return -1;
     }
 
     if (!self_repair_is_ready(coordinator)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_initiate: self_repair_is_ready is NULL");
         return -1;
     }
 
@@ -634,6 +639,7 @@ int self_repair_cancel(
     uint64_t repair_id
 ) {
     if (!coordinator || coordinator->magic != SELF_REPAIR_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_cancel: coordinator is NULL");
         return -1;
     }
 
@@ -667,12 +673,14 @@ int self_repair_cancel(
             }
             /* Already completed or failed - cannot cancel */
             nimcp_mutex_unlock(coordinator->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_cancel: operation failed");
             return -1;
         }
     }
 
     nimcp_mutex_unlock(coordinator->mutex);
     /* Repair ID not found */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_cancel: operation failed");
     return -1;
 }
 
@@ -686,6 +694,7 @@ int self_repair_analyze_code(
     code_analysis_result_t* analysis
 ) {
     if (!coordinator || !diagnosis || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_analyze_code: required parameter is NULL (coordinator, diagnosis, analysis)");
         return -1;
     }
 
@@ -698,10 +707,12 @@ int self_repair_analyze_code(
         struct stat st;
         if (stat(diagnosis->stack_trace[0].file_name, &st) != 0) {
             /* File doesn't exist */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_analyze_code: validation failed");
             return -1;
         }
         if (!S_ISREG(st.st_mode)) {
             /* Not a regular file */
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_analyze_code: S_ISREG is NULL");
             return -1;
         }
     }
@@ -730,10 +741,12 @@ int self_repair_generate_fix(
     generated_fix_t* fix
 ) {
     if (!coordinator || !diagnosis || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_generate_fix: required parameter is NULL (coordinator, diagnosis, fix)");
         return -1;
     }
 
     if (!coordinator->code_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_generate_fix: coordinator->code_gen is NULL");
         return -1;
     }
 
@@ -763,6 +776,7 @@ int self_repair_generate_fix(
     int ret = code_gen_generate_candidates(coordinator->code_gen, &request, &result);
 
     if (ret != 0 || !result.success || result.candidates.count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_generate_fix: result is NULL");
         return -1;
     }
 
@@ -777,6 +791,7 @@ int self_repair_validate_fix(
     void* validation_result
 ) {
     if (!coordinator || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_validate_fix: required parameter is NULL (coordinator, fix)");
         return -1;
     }
 
@@ -793,6 +808,7 @@ int self_repair_validate_fix(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_repair_validate_fix: operation failed");
     return -1;
 }
 
@@ -802,11 +818,13 @@ int self_repair_deploy_hot_patch(
     uint64_t* patch_id
 ) {
     if (!coordinator || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_deploy_hot_patch: required parameter is NULL (coordinator, fix)");
         return -1;
     }
 
     if (!coordinator->hot_inject) {
         /* Hot injection not available */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_deploy_hot_patch: coordinator->hot_inject is NULL");
         return -1;
     }
 
@@ -831,11 +849,13 @@ int self_repair_deploy_source(
     size_t commit_hash_size
 ) {
     if (!coordinator || !fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_deploy_source: required parameter is NULL (coordinator, fix)");
         return -1;
     }
 
     if (!coordinator->vcs) {
         /* VCS not available */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_deploy_source: coordinator->vcs is NULL");
         return -1;
     }
 
@@ -890,6 +910,7 @@ int self_repair_rollback(
 
     if (!record || !record->can_rollback) {
         nimcp_mutex_unlock(coordinator->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_rollback: required parameter is NULL (record, record->can_rollback)");
         return -1;
     }
 
@@ -1055,6 +1076,7 @@ const self_repair_record_t* self_repair_get_record(
     }
 
     nimcp_mutex_unlock(coordinator->mutex);
+    /* Record not found is a normal "not found" result, not an error */
     return NULL;
 }
 
@@ -1099,6 +1121,7 @@ int self_repair_get_stats(
     self_repair_stats_t* stats
 ) {
     if (!coordinator || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_get_stats: required parameter is NULL (coordinator, stats)");
         return -1;
     }
 
@@ -1292,6 +1315,7 @@ static nimcp_error_t self_repair_handle_bio_message(
  */
 static int register_bio_handlers(self_repair_coordinator_t* coord) {
     if (!coord || !coord->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "register_bio_handlers: required parameter is NULL (coord, coord->bio_ctx)");
         return -1;
     }
 
@@ -1316,6 +1340,7 @@ int self_repair_broadcast_stage_change(
     repair_stage_t new_stage
 ) {
     if (!coordinator || !coordinator->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_broadcast_stage_change: required parameter is NULL (coordinator, coordinator->bio_ctx)");
         return -1;
     }
 
@@ -1353,6 +1378,7 @@ int self_repair_broadcast_result(
     repair_status_t status
 ) {
     if (!coordinator || !coordinator->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_broadcast_result: required parameter is NULL (coordinator, coordinator->bio_ctx)");
         return -1;
     }
 
@@ -1507,6 +1533,7 @@ int self_repair_notify_health_agent_failure(
  */
 bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_has_health_agent: coordinator is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

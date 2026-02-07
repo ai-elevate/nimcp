@@ -207,7 +207,10 @@ static semantic_concept_t* find_concept_by_id(
     semantic_memory_system_t* system,
     uint64_t id)
 {
-    if (!system || id == 0) return NULL;
+    if (!system || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_concept_by_id: system is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < system->concept_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -221,6 +224,7 @@ static semantic_concept_t* find_concept_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_concept_by_id: validation failed");
     return NULL;
 }
 
@@ -294,6 +298,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
     if (!system->concepts) {
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
 
@@ -309,6 +314,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
         else nimcp_free(system->concepts);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
 
@@ -336,6 +342,7 @@ semantic_memory_system_t* semantic_memory_create(void) {
         else nimcp_free(system->concepts);
         if (system->mem_manager) unified_mem_destroy(system->mem_manager);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_create: validation failed");
         return NULL;
     }
 
@@ -729,7 +736,10 @@ const semantic_concept_t* semantic_memory_get_concept(
     const semantic_memory_system_t* system,
     uint64_t concept_id)
 {
-    if (!system || concept_id == 0) return NULL;
+    if (!system || concept_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_memory_get_concept: system is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     semantic_memory_heartbeat("semantic_mem_get_concept", 0.0f);
@@ -748,6 +758,7 @@ const semantic_concept_t* semantic_memory_get_concept(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_get_concept: validation failed");
     return NULL;
 }
 
@@ -773,7 +784,10 @@ semantic_query_result_t* semantic_memory_find_similar(
 
     }
     if (!features || feature_dim == 0) return NULL;
-    if (system->concept_count == 0) return NULL;
+    if (system->concept_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_memory_find_similar: system->concept_count is zero");
+        return NULL;
+    }
 
     // Allocate result
     /* Phase 8: Heartbeat at operation start */
@@ -806,6 +820,7 @@ semantic_query_result_t* semantic_memory_find_similar(
         nimcp_free(temp_ids);
         nimcp_free(temp_sims);
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_find_similar: required parameter is NULL (temp_ids, temp_sims)");
         return NULL;
     }
 
@@ -842,6 +857,7 @@ semantic_query_result_t* semantic_memory_find_similar(
         nimcp_free(temp_ids);
         nimcp_free(temp_sims);
         semantic_memory_free_result(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_memory_find_similar: required parameter is NULL (result->concept_ids, result->activation_levels)");
         return NULL;
     }
 
@@ -1091,7 +1107,10 @@ semantic_query_result_t* semantic_memory_activate(
     float initial_activation)
 {
     // Guard clauses
-    if (!system || concept_id == 0) return NULL;
+    if (!system || concept_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_memory_activate: system is NULL");
+        return NULL;
+    }
 
     // Find concept
     /* Phase 8: Heartbeat at operation start */
@@ -1159,6 +1178,7 @@ semantic_query_result_t* semantic_memory_activate(
 
     if (!result->concept_ids || !result->activation_levels) {
         semantic_memory_free_result(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_memory_activate: required parameter is NULL (result->concept_ids, result->activation_levels)");
         return NULL;
     }
 
@@ -1220,6 +1240,7 @@ semantic_query_result_t* semantic_memory_query(
 
     if (!similar || similar->count == 0) {
         if (similar) semantic_memory_free_result(similar);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_memory_query: validation failed");
         return NULL;
     }
 

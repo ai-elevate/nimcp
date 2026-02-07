@@ -121,6 +121,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
         config->latent_dim > JEPA_LATENT_MAX_DIM) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Invalid latent_dim: %u (must be %u-%u)",
                            config->latent_dim, JEPA_LATENT_MIN_DIM, JEPA_LATENT_MAX_DIM);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_latent_create: operation failed");
         return NULL;
     }
 
@@ -128,6 +129,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
     jepa_latent_t* latent = nimcp_malloc(sizeof(jepa_latent_t));
     if (!latent) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate latent structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent is NULL");
         return NULL;
     }
     memset(latent, 0, sizeof(jepa_latent_t));
@@ -137,6 +139,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
     if (!latent->embedding) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate embedding array");
         nimcp_free(latent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent->embedding is NULL");
         return NULL;
     }
     memset(latent->embedding, 0, config->latent_dim * sizeof(float));
@@ -148,6 +151,7 @@ jepa_latent_t* jepa_latent_create(const jepa_latent_config_t* config) {
             NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate variance array");
             nimcp_free(latent->embedding);
             nimcp_free(latent);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_latent_create: latent->variance is NULL");
             return NULL;
         }
         /* Initialize variance to 1.0 (unit variance) */
@@ -330,6 +334,7 @@ int jepa_latent_set_embedding(jepa_latent_t* latent, const float* values, uint32
 
 int jepa_latent_get_embedding(const jepa_latent_t* latent, float* values, uint32_t max_dim) {
     if (!latent || !values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_latent_get_embedding: required parameter is NULL (latent, values)");
         return -1;
     }
 

@@ -266,6 +266,7 @@ static int serialize_brain_state(brain_t brain, void* buffer, size_t buffer_size
                                   size_t* out_size)
 {
     if (!brain || !buffer || !out_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: required parameter is NULL (brain, buffer, out_size)");
         return -1;
     }
 
@@ -277,21 +278,30 @@ static int serialize_brain_state(brain_t brain, void* buffer, size_t buffer_size
     size_t offset = 0;
 
     // Magic bytes
-    if (offset + 4 > buffer_size) return -1;
+    if (offset + 4 > buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_brain_state: validation failed");
+        return -1;
+    }
     ptr[offset++] = 'N';
     ptr[offset++] = 'I';
     ptr[offset++] = 'M';
     ptr[offset++] = 'P';
 
     // Format version
-    if (offset + 4 > buffer_size) return -1;
+    if (offset + 4 > buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_brain_state: validation failed");
+        return -1;
+    }
     uint32_t version = KG_SNAPSHOT_FORMAT_VERSION;
     memcpy(ptr + offset, &version, 4);
     offset += 4;
 
     // Brain config size and data
     size_t config_size = sizeof(brain_config_t);
-    if (offset + 4 + config_size > buffer_size) return -1;
+    if (offset + 4 + config_size > buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_brain_state: validation failed");
+        return -1;
+    }
     uint32_t config_size32 = (uint32_t)config_size;
     memcpy(ptr + offset, &config_size32, 4);
     offset += 4;
@@ -299,7 +309,10 @@ static int serialize_brain_state(brain_t brain, void* buffer, size_t buffer_size
     offset += config_size;
 
     // Network info placeholder (actual implementation would serialize network)
-    if (offset + 8 > buffer_size) return -1;
+    if (offset + 8 > buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_brain_state: validation failed");
+        return -1;
+    }
     uint32_t neuron_count = brain->network ? adaptive_network_get_num_neurons(brain->network) : 0;
     uint32_t synapse_count = 0;  // Would need to count synapses
     memcpy(ptr + offset, &neuron_count, 4);
@@ -328,6 +341,7 @@ static int serialize_brain_state(brain_t brain, void* buffer, size_t buffer_size
 static brain_t deserialize_brain_state(const void* buffer, size_t size)
 {
     if (!buffer || size < 16) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: buffer is NULL");
         return NULL;
     }
 
@@ -337,6 +351,7 @@ static brain_t deserialize_brain_state(const void* buffer, size_t size)
     // Verify magic bytes
     if (ptr[0] != 'N' || ptr[1] != 'I' || ptr[2] != 'M' || ptr[3] != 'P') {
         NIMCP_LOG_ERROR(LOG_TAG, "Invalid snapshot magic bytes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_brain_state: validation failed");
         return NULL;
     }
     offset += 4;
@@ -348,6 +363,7 @@ static brain_t deserialize_brain_state(const void* buffer, size_t size)
 
     if (version > KG_SNAPSHOT_FORMAT_VERSION) {
         NIMCP_LOG_ERROR(LOG_TAG, "Unsupported snapshot format version: %u", version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_brain_state: validation failed");
         return NULL;
     }
 
@@ -358,6 +374,7 @@ static brain_t deserialize_brain_state(const void* buffer, size_t size)
 
     if (config_size != sizeof(brain_config_t) || offset + config_size > size) {
         NIMCP_LOG_ERROR(LOG_TAG, "Invalid config size in snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: validation failed");
         return NULL;
     }
 
@@ -370,6 +387,7 @@ static brain_t deserialize_brain_state(const void* buffer, size_t size)
     brain_t brain = brain_create_custom(&config);
     if (!brain) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to create brain from snapshot config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_brain_state: brain is NULL");
         return NULL;
     }
 
@@ -416,6 +434,7 @@ int kg_snapshot_create_schema(kg_persistence_t* p)
 {
     if (!p) {
         NIMCP_LOG_ERROR(LOG_TAG, "NULL persistence context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_snapshot_create_schema: p is NULL");
         return -1;
     }
 
@@ -450,6 +469,7 @@ int brain_save_snapshot_kg_ex(brain_t brain, const char* name,
     if (!brain || !name || !p) {
         NIMCP_LOG_ERROR(LOG_TAG, "Invalid parameters: brain=%p, name=%s, p=%p",
                         (void*)brain, name ? name : "NULL", (void*)p);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_snapshot_kg_ex: required parameter is NULL (brain, name, p)");
         return -1;
     }
 
@@ -475,6 +495,7 @@ int brain_save_snapshot_kg_ex(brain_t brain, const char* name,
     void* state_buffer = nimcp_malloc(max_size);
     if (!state_buffer) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate serialization buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_save_snapshot_kg_ex: state_buffer is NULL");
         return -1;
     }
 
@@ -483,6 +504,7 @@ int brain_save_snapshot_kg_ex(brain_t brain, const char* name,
     if (serialize_brain_state(brain, state_buffer, max_size, &state_size) != 0) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to serialize brain state");
         nimcp_free(state_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save_snapshot_kg_ex: validation failed");
         return -1;
     }
 
@@ -536,6 +558,7 @@ brain_t brain_restore_snapshot_kg(const char* name, kg_persistence_t* p)
 {
     if (!name || !p) {
         NIMCP_LOG_ERROR(LOG_TAG, "Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot_kg: required parameter is NULL (name, p)");
         return NULL;
     }
 
@@ -548,6 +571,7 @@ brain_t brain_restore_snapshot_kg(const char* name, kg_persistence_t* p)
     // For now, return NULL as this requires database connection
     NIMCP_LOG_WARN(LOG_TAG, "KG snapshot restore not yet fully implemented");
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_restore_snapshot_kg: operation failed");
     return NULL;
 }
 
@@ -555,6 +579,7 @@ brain_t brain_restore_snapshot_kg_by_id(const char* snapshot_id, kg_persistence_
 {
     if (!snapshot_id || !p) {
         NIMCP_LOG_ERROR(LOG_TAG, "Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot_kg_by_id: required parameter is NULL (snapshot_id, p)");
         return NULL;
     }
 
@@ -566,6 +591,7 @@ brain_t brain_restore_snapshot_kg_by_id(const char* snapshot_id, kg_persistence_
     // For now, return NULL as this requires database connection
     NIMCP_LOG_WARN(LOG_TAG, "KG snapshot restore not yet fully implemented");
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot_kg_by_id: operation failed");
     return NULL;
 }
 
@@ -573,6 +599,7 @@ int brain_list_snapshots_kg(kg_persistence_t* p, brain_kg_snapshot_info_t* infos
                             uint32_t max_count, uint32_t* out_count)
 {
     if (!p || !infos || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_snapshots_kg: required parameter is NULL (p, infos, out_count)");
         return -1;
     }
 
@@ -592,6 +619,7 @@ int brain_list_snapshots_kg_by_brain(kg_persistence_t* p, const char* brain_id,
                                      uint32_t max_count, uint32_t* out_count)
 {
     if (!p || !brain_id || !infos || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_snapshots_kg_by_brain: required parameter is NULL (p, brain_id, infos, out_count)");
         return -1;
     }
 
@@ -609,6 +637,7 @@ int brain_list_snapshots_kg_by_brain(kg_persistence_t* p, const char* brain_id,
 int brain_delete_snapshot_kg(const char* name, kg_persistence_t* p)
 {
     if (!name || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_delete_snapshot_kg: required parameter is NULL (name, p)");
         return -1;
     }
 
@@ -627,6 +656,7 @@ int brain_delete_snapshot_kg(const char* name, kg_persistence_t* p)
 int brain_delete_snapshot_kg_by_id(const char* snapshot_id, kg_persistence_t* p)
 {
     if (!snapshot_id || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_delete_snapshot_kg_by_id: required parameter is NULL (snapshot_id, p)");
         return -1;
     }
 
@@ -649,6 +679,7 @@ int brain_create_linked_checkpoint(brain_t brain, const char* label,
                                    kg_persistence_t* p)
 {
     if (!brain || !label || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_linked_checkpoint: required parameter is NULL (brain, label, p)");
         return -1;
     }
 
@@ -658,6 +689,7 @@ int brain_create_linked_checkpoint(brain_t brain, const char* label,
     int result = kg_persistence_create_checkpoint(p, label);
     if (result != 0) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to create KG checkpoint for '%s'", label);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_linked_checkpoint: validation failed");
         return -1;
     }
 
@@ -670,6 +702,7 @@ int brain_create_linked_checkpoint(brain_t brain, const char* label,
     if (result != 0) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to save brain snapshot for linked checkpoint '%s'",
                         label);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_linked_checkpoint: validation failed");
         return -1;
     }
 
@@ -681,6 +714,7 @@ brain_t brain_restore_linked_checkpoint(brain_t brain, const char* label,
                                         kg_persistence_t* p)
 {
     if (!label || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_linked_checkpoint: required parameter is NULL (label, p)");
         return NULL;
     }
 
@@ -691,6 +725,7 @@ brain_t brain_restore_linked_checkpoint(brain_t brain, const char* label,
     int result = kg_persistence_restore_checkpoint(p, label, kg);
     if (result != 0) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to restore KG checkpoint '%s'", label);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_linked_checkpoint: validation failed");
         return NULL;
     }
 
@@ -699,6 +734,7 @@ brain_t brain_restore_linked_checkpoint(brain_t brain, const char* label,
     if (!restored) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to restore brain snapshot for checkpoint '%s'",
                         label);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_linked_checkpoint: restored is NULL");
         return NULL;
     }
 
@@ -711,6 +747,7 @@ int brain_list_linked_checkpoints(kg_persistence_t* p, char** labels,
                                   uint32_t* out_count)
 {
     if (!p || !labels || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_linked_checkpoints: required parameter is NULL (p, labels, out_count)");
         return -1;
     }
 
@@ -726,6 +763,7 @@ int brain_list_linked_checkpoints(kg_persistence_t* p, char** labels,
 int brain_delete_linked_checkpoint(const char* label, kg_persistence_t* p)
 {
     if (!label || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_delete_linked_checkpoint: required parameter is NULL (label, p)");
         return -1;
     }
 
@@ -750,6 +788,7 @@ int brain_delete_linked_checkpoint(const char* label, kg_persistence_t* p)
 int brain_verify_snapshot_kg(const char* snapshot_id, kg_persistence_t* p)
 {
     if (!snapshot_id || !p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_verify_snapshot_kg: required parameter is NULL (snapshot_id, p)");
         return -1;
     }
 
@@ -766,6 +805,7 @@ int brain_get_snapshot_info_kg(const char* snapshot_id, kg_persistence_t* p,
                                brain_kg_snapshot_info_t* info)
 {
     if (!snapshot_id || !p || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_snapshot_info_kg: required parameter is NULL (snapshot_id, p, info)");
         return -1;
     }
 
@@ -781,6 +821,7 @@ int brain_prune_snapshots_kg(kg_persistence_t* p, uint32_t max_age_days,
                              uint32_t* deleted_count)
 {
     if (!p || !deleted_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_prune_snapshots_kg: required parameter is NULL (p, deleted_count)");
         return -1;
     }
 

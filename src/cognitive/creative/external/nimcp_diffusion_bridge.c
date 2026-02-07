@@ -136,6 +136,7 @@ diffusion_bridge_t* diffusion_bridge_create(const diffusion_bridge_config_t* con
     diffusion_bridge_t* bridge = nimcp_calloc(1, sizeof(diffusion_bridge_t));
     if (!bridge) {
         set_diffusion_error("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "diffusion_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -218,11 +219,15 @@ void diffusion_bridge_destroy(diffusion_bridge_t* bridge)
 
 int diffusion_bridge_load_model(diffusion_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_bridge_load_model: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->config.backend == DIFFUSION_BACKEND_ONNX) {
         if (!bridge->onnx_runtime) {
             set_diffusion_error("ONNX runtime not initialized");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_bridge_load_model: bridge->onnx_runtime is NULL");
             return -1;
         }
 
@@ -374,6 +379,7 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
 {
     if (!bridge || !prompt || !output) {
         set_diffusion_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_text_to_image: required parameter is NULL (bridge, prompt, output)");
         return -1;
     }
 
@@ -395,6 +401,7 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
     output->pixels = nimcp_calloc(width * height * 3, sizeof(uint8_t));
     if (!output->pixels) {
         set_diffusion_error("Failed to allocate output image");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "diffusion_text_to_image: output->pixels is NULL");
         return -1;
     }
 
@@ -413,6 +420,7 @@ int diffusion_text_to_image(diffusion_bridge_t* bridge,
         nimcp_free(output->pixels);
         output->pixels = NULL;
         set_diffusion_error("Failed to allocate latent");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "diffusion_text_to_image: required parameter is NULL (latent, noise_pred)");
         return -1;
     }
 
@@ -507,6 +515,7 @@ int diffusion_img2img(diffusion_bridge_t* bridge,
 {
     if (!bridge || !init_image || !prompt || !output) {
         set_diffusion_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_img2img: required parameter is NULL (bridge, init_image, prompt, output)");
         return -1;
     }
 
@@ -543,6 +552,7 @@ int diffusion_inpaint(diffusion_bridge_t* bridge,
 {
     if (!bridge || !image || !mask || !prompt || !output) {
         set_diffusion_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_inpaint: required parameter is NULL (bridge, image, mask, prompt, output)");
         return -1;
     }
 
@@ -590,6 +600,7 @@ int diffusion_controlnet(diffusion_bridge_t* bridge,
 {
     if (!bridge || !prompt || !control_image || !output) {
         set_diffusion_error("Invalid arguments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_controlnet: required parameter is NULL (bridge, prompt, control_image, output)");
         return -1;
     }
 
@@ -645,7 +656,10 @@ int diffusion_generate_batch(diffusion_bridge_t* bridge,
                               uint32_t batch_size,
                               visual_image_t* outputs)
 {
-    if (!bridge || !prompt || !seeds || !outputs) return -1;
+    if (!bridge || !prompt || !seeds || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_generate_batch: required parameter is NULL (bridge, prompt, seeds, outputs)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < batch_size; i++) {
         int rc = diffusion_text_to_image(bridge, prompt, negative_prompt,
@@ -667,7 +681,10 @@ int diffusion_load_lora(diffusion_bridge_t* bridge,
                          const char* lora_path,
                          float scale)
 {
-    if (!bridge || !lora_path) return -1;
+    if (!bridge || !lora_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_load_lora: required parameter is NULL (bridge, lora_path)");
+        return -1;
+    }
 
     /* Placeholder: would load LoRA weights from file */
     bridge->lora_scale = scale;
@@ -694,7 +711,10 @@ void diffusion_unload_lora(diffusion_bridge_t* bridge)
 int diffusion_set_scheduler(diffusion_bridge_t* bridge,
                              diffusion_scheduler_t scheduler)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_set_scheduler: bridge is NULL");
+        return -1;
+    }
 
     bridge->config.scheduler = scheduler;
 
@@ -717,7 +737,10 @@ diffusion_scheduler_t diffusion_get_scheduler(const diffusion_bridge_t* bridge)
 
 bool diffusion_bridge_ready(const diffusion_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diffusion_bridge_ready: bridge is NULL");
+        return false;
+    }
 
     /* For API backends, check credentials */
     if (bridge->config.backend == DIFFUSION_BACKEND_API_STABILITY ||

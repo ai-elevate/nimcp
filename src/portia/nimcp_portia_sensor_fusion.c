@@ -151,18 +151,21 @@ portia_fusion_config_t portia_fusion_default_config(void) {
 static bool validate_fusion_ctx(const portia_fusion_ctx_t* ctx) {
     if (!ctx) {
         LOG_ERROR("Invalid fusion context pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_fusion_ctx: ctx is NULL");
         return false;
     }
 
     // Check mutex first - if NULL, context is being/was destroyed
     if (!ctx->mutex) {
         LOG_ERROR("Fusion context mutex is NULL (context destroyed?)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_fusion_ctx: ctx->mutex is NULL");
         return false;
     }
 
     if (ctx->magic != FUSION_CTX_MAGIC) {
         LOG_ERROR("Invalid fusion context magic: 0x%08X", ctx->magic);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "invalid_magic", "invalid fusion context magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_fusion_ctx: validation failed");
         return false;
     }
 
@@ -296,6 +299,7 @@ static bool is_outlier(const portia_fusion_ctx_t* ctx, const sensor_reading_t* r
 
     // Need at least 3 samples to detect outliers
     if (history->sample_count < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_outlier: validation failed");
         return false;
     }
 
@@ -438,6 +442,7 @@ static bool process_weighted_average(portia_fusion_ctx_t* ctx) {
 
     if (sum_weights < 1e-6F) {
         LOG_WARN("No valid sensor data for fusion");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_weighted_average: validation failed");
         return false;
     }
 
@@ -511,6 +516,7 @@ static bool process_kalman_filter(portia_fusion_ctx_t* ctx) {
 
     if (update_count == 0) {
         LOG_WARN("No valid sensor data for Kalman update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_kalman_filter: update_count is zero");
         return false;
     }
 
@@ -555,12 +561,14 @@ portia_fusion_ctx_t* portia_fusion_init(
     if (config->fusion_rate_hz < 1 || config->fusion_rate_hz > 1000) {
         LOG_ERROR("Invalid fusion rate: %u Hz", config->fusion_rate_hz);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid fusion rate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_init: validation failed");
         return NULL;
     }
 
     if (config->outlier_threshold < 1.0F || config->outlier_threshold > 10.0F) {
         LOG_ERROR("Invalid outlier threshold: %.2f", config->outlier_threshold);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid outlier threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_init: validation failed");
         return NULL;
     }
 
@@ -584,6 +592,7 @@ portia_fusion_ctx_t* portia_fusion_init(
         LOG_ERROR("Failed to initialize fusion mutex");
         if (ctx->mutex) nimcp_free(ctx->mutex);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "portia_fusion_init: validation failed");
         return NULL;
     }
 
@@ -661,23 +670,27 @@ bool portia_fusion_update_sensor(
     const sensor_reading_t* reading
 ) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_update_sensor: validate_fusion_ctx is NULL");
         return false;
     }
 
     if (!reading) {
         LOG_ERROR("Invalid reading pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_update_sensor: reading is NULL");
         return false;
     }
 
     if (reading->type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", reading->type);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_update_sensor: capacity exceeded");
         return false;
     }
 
     if (reading->confidence < 0.0F || reading->confidence > 1.0F) {
         LOG_ERROR("Invalid confidence: %.3f", reading->confidence);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor confidence");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_update_sensor: validation failed");
         return false;
     }
 
@@ -687,6 +700,7 @@ bool portia_fusion_update_sensor(
     if (!ctx->config.sensors[reading->type].enabled) {
         LOG_DEBUG("Ignoring disabled sensor: %s", portia_fusion_sensor_name(reading->type));
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_update_sensor: ctx->config is NULL");
         return false;
     }
 
@@ -695,6 +709,7 @@ bool portia_fusion_update_sensor(
         ctx->stats.outliers_rejected++;
         LOG_DEBUG("Rejected outlier from %s", portia_fusion_sensor_name(reading->type));
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_update_sensor: validation failed");
         return false;
     }
 
@@ -719,6 +734,7 @@ bool portia_fusion_update_sensor(
  */
 bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_process: validate_fusion_ctx is NULL");
         return false;
     }
 
@@ -741,6 +757,7 @@ bool portia_fusion_process(portia_fusion_ctx_t* ctx) {
         LOG_WARN("Insufficient active sensors: %u < %u", active_count, ctx->config.min_sensors);
         ctx->current_state.confidence = MIN_CONFIDENCE;
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_process: validation failed");
         return false;
     }
 
@@ -776,11 +793,13 @@ bool portia_fusion_get_state(
     fused_state_t* state
 ) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_get_state: validate_fusion_ctx is NULL");
         return false;
     }
 
     if (!state) {
         LOG_ERROR("Invalid state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_get_state: state is NULL");
         return false;
     }
 
@@ -800,17 +819,20 @@ bool portia_fusion_set_weight(
     float weight
 ) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_set_weight: validate_fusion_ctx is NULL");
         return false;
     }
 
     if (type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_set_weight: capacity exceeded");
         return false;
     }
 
     if (weight < 0.0F || weight > 1.0F) {
         LOG_ERROR("Invalid weight: %.3f", weight);
         bbb_audit_log(BBB_AUDIT_WARNING, LOG_MODULE, "validation_failed", "Invalid sensor weight");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_set_weight: validation failed");
         return false;
     }
 
@@ -832,11 +854,13 @@ bool portia_fusion_enable_sensor(
     bool enabled
 ) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_enable_sensor: validate_fusion_ctx is NULL");
         return false;
     }
 
     if (type >= SENSOR_TYPE_COUNT) {
         LOG_ERROR("Invalid sensor type: %d", type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_fusion_enable_sensor: capacity exceeded");
         return false;
     }
 
@@ -874,11 +898,13 @@ bool portia_fusion_get_stats(
     portia_fusion_stats_t* stats
 ) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_get_stats: validate_fusion_ctx is NULL");
         return false;
     }
 
     if (!stats) {
         LOG_ERROR("Invalid stats pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_fusion_get_stats: stats is NULL");
         return false;
     }
 
@@ -894,6 +920,7 @@ bool portia_fusion_get_stats(
  */
 bool portia_fusion_reset(portia_fusion_ctx_t* ctx) {
     if (!validate_fusion_ctx(ctx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_fusion_reset: validate_fusion_ctx is NULL");
         return false;
     }
 

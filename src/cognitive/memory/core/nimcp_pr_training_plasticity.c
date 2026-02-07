@@ -246,6 +246,7 @@ static int allocate_buffers(pr_training_plasticity_t tp) {
     tp->stdp_buffer_capacity = tp->config.max_gradients_per_step;
     tp->stdp_buffer = nimcp_calloc(tp->stdp_buffer_capacity, sizeof(pr_stdp_timing_t));
     if (!tp->stdp_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_buffers: tp->stdp_buffer is NULL");
         return -1;
     }
 
@@ -256,6 +257,7 @@ static int allocate_buffers(pr_training_plasticity_t tp) {
     if (!tp->pseudo_grad_buffer) {
         nimcp_free(tp->stdp_buffer);
         tp->stdp_buffer = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_buffers: tp->pseudo_grad_buffer is NULL");
         return -1;
     }
 
@@ -387,30 +389,66 @@ pr_training_plasticity_config_t pr_training_plasticity_config_default(void) {
 bool pr_training_plasticity_config_validate(
     const pr_training_plasticity_config_t* config)
 {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_config_validate: config is NULL");
+        return false;
+    }
 
     /* Mode must be valid */
-    if (config->mode >= PR_TRAINING_MODE_COUNT) return false;
+    if (config->mode >= PR_TRAINING_MODE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_training_plasticity_config_validate: capacity exceeded");
+        return false;
+    }
 
     /* Weights must be valid */
-    if (config->gradient_weight < 0.0f || config->gradient_weight > 1.0f) return false;
-    if (config->plasticity_weight < 0.0f || config->plasticity_weight > 1.0f) return false;
-    if (config->gradient_weight + config->plasticity_weight < PR_TRAIN_EPSILON) return false;
+    if (config->gradient_weight < 0.0f || config->gradient_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->plasticity_weight < 0.0f || config->plasticity_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->gradient_weight + config->plasticity_weight < PR_TRAIN_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Timing scale must be positive */
-    if (config->timing_scale <= 0.0f) return false;
+    if (config->timing_scale <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* STDP delta range must be valid */
-    if (config->min_stdp_delta < 0.0f) return false;
-    if (config->max_stdp_delta <= config->min_stdp_delta) return false;
+    if (config->min_stdp_delta < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->max_stdp_delta <= config->min_stdp_delta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Pseudo learning rate must be positive */
-    if (config->pseudo_learning_rate <= 0.0f) return false;
+    if (config->pseudo_learning_rate <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Loss weights must be valid */
-    if (config->supervised_weight < 0.0f) return false;
-    if (config->unsupervised_weight < 0.0f) return false;
-    if (config->supervised_weight + config->unsupervised_weight < PR_TRAIN_EPSILON) return false;
+    if (config->supervised_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->unsupervised_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->supervised_weight + config->unsupervised_weight < PR_TRAIN_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Alternation period must be positive if alternating */
     /* Phase 8: Heartbeat at operation start */
@@ -418,12 +456,19 @@ bool pr_training_plasticity_config_validate(
 
 
     if (config->mode == PR_TRAINING_ALTERNATING && config->alternation_period == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: config->alternation_period is zero");
         return false;
     }
 
     /* Buffer sizes must be reasonable */
-    if (config->max_gradients_per_step == 0) return false;
-    if (config->max_events_per_step == 0) return false;
+    if (config->max_gradients_per_step == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: config->max_gradients_per_step is zero");
+        return false;
+    }
+    if (config->max_events_per_step == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_plasticity_config_validate: config->max_events_per_step is zero");
+        return false;
+    }
 
     return true;
 }
@@ -452,6 +497,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     if (config) {
         if (!pr_training_plasticity_config_validate(config)) {
             nimcp_free(tp);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_create: pr_training_plasticity_config_validate is NULL");
             return NULL;
         }
         tp->config = *config;
@@ -464,6 +510,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     tp->mutex = nimcp_mutex_create(&mutex_attr);
     if (!tp->mutex) {
         nimcp_free(tp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_plasticity_create: tp->mutex is NULL");
         return NULL;
     }
 
@@ -471,6 +518,7 @@ pr_training_plasticity_t pr_training_plasticity_create(
     if (allocate_buffers(tp) != 0) {
         nimcp_mutex_free(tp->mutex);
         nimcp_free(tp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -517,7 +565,10 @@ void pr_training_plasticity_destroy(pr_training_plasticity_t tp) {
 }
 
 int pr_training_plasticity_reset(pr_training_plasticity_t tp) {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_reset: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__reset", 0.0f);
@@ -555,7 +606,10 @@ int pr_training_plasticity_connect(
     pr_training_plasticity_t tp,
     pr_plasticity_bridge_t plasticity_bridge)
 {
-    if (!tp || !plasticity_bridge) return -1;
+    if (!tp || !plasticity_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_connect: required parameter is NULL (tp, plasticity_bridge)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__connect", 0.0f);
@@ -573,7 +627,10 @@ int pr_training_plasticity_connect_z_ladder(
     pr_training_plasticity_t tp,
     z_ladder_t z_ladder)
 {
-    if (!tp || !z_ladder) return -1;
+    if (!tp || !z_ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_connect_z_ladder: required parameter is NULL (tp, z_ladder)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__connect_z_ladder", 0.0f);
@@ -591,7 +648,10 @@ int pr_training_plasticity_connect_graph(
     pr_training_plasticity_t tp,
     entangle_graph_t graph)
 {
-    if (!tp || !graph) return -1;
+    if (!tp || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_connect_graph: required parameter is NULL (tp, graph)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__connect_graph", 0.0f);
@@ -617,7 +677,10 @@ int pr_training_gradient_to_stdp(
     size_t max_timing,
     size_t* timing_count)
 {
-    if (!tp || !gradients || !timing || !timing_count) return -1;
+    if (!tp || !gradients || !timing || !timing_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_gradient_to_stdp: required parameter is NULL (tp, gradients, timing, timing_count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_gradient", 0.0f);
@@ -729,7 +792,10 @@ int pr_training_plasticity_to_grad(
     size_t max_grads,
     size_t* grad_count)
 {
-    if (!tp || !events || !pseudo_grads || !grad_count) return -1;
+    if (!tp || !events || !pseudo_grads || !grad_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_plasticity_to_grad: required parameter is NULL (tp, events, pseudo_grads, grad_count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__to_grad", 0.0f);
@@ -927,7 +993,10 @@ int pr_training_unified_step(
     size_t memory_count,
     pr_training_step_result_t* result)
 {
-    if (!tp || !model || !batch) return -1;
+    if (!tp || !model || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_unified_step: required parameter is NULL (tp, model, batch)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_unified_", 0.0f);
@@ -954,6 +1023,7 @@ int pr_training_unified_step(
         sizeof(pr_gradient_element_t));
     if (!gradients) {
         nimcp_mutex_unlock(tp->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_unified_step: gradients is NULL");
         return -1;
     }
 
@@ -1232,7 +1302,10 @@ int pr_training_alternating_step(
     bool is_gradient_phase,
     pr_training_step_result_t* result)
 {
-    if (!tp || !model || !batch) return -1;
+    if (!tp || !model || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_alternating_step: required parameter is NULL (tp, model, batch)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_alternat", 0.0f);
@@ -1259,6 +1332,7 @@ int pr_training_alternating_step(
             sizeof(pr_gradient_element_t));
         if (!gradients) {
             nimcp_mutex_unlock(tp->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_alternating_step: gradients is NULL");
             return -1;
         }
 
@@ -1379,7 +1453,10 @@ int pr_training_hybrid_loss(
     float unsupervised_loss,
     pr_hybrid_loss_t* loss)
 {
-    if (!tp || !loss) return -1;
+    if (!tp || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_hybrid_loss: required parameter is NULL (tp, loss)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_hybrid_l", 0.0f);
@@ -1424,7 +1501,10 @@ int pr_training_compute_unsupervised_loss(
     pr_training_plasticity_t tp,
     float* loss)
 {
-    if (!tp || !loss) return -1;
+    if (!tp || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_compute_unsupervised_loss: required parameter is NULL (tp, loss)");
+        return -1;
+    }
 
     /* Note: In full implementation, would query actual plasticity state */
     /* For now, compute placeholder values */
@@ -1550,7 +1630,10 @@ int pr_training_update_loss_weights(
     const float* recent_loss,
     size_t loss_count)
 {
-    if (!tp || !recent_loss || loss_count == 0) return -1;
+    if (!tp || !recent_loss || loss_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_update_loss_weights: required parameter is NULL (tp, recent_loss)");
+        return -1;
+    }
     if (!tp->config.adaptive_loss_weights) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1626,7 +1709,10 @@ int pr_training_epoch_consolidate(
     pr_training_plasticity_t tp,
     pr_epoch_consolidation_result_t* result)
 {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_epoch_consolidate: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_co", 0.0f);
@@ -1717,7 +1803,10 @@ int pr_training_epoch_start(
     pr_training_plasticity_t tp,
     uint32_t epoch_number)
 {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_epoch_start: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_st", 0.0f);
@@ -1740,7 +1829,10 @@ int pr_training_epoch_end(
     pr_training_plasticity_t tp,
     bool trigger_consolidation)
 {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_epoch_end: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_epoch_en", 0.0f);
@@ -1775,8 +1867,14 @@ int pr_training_set_mode(
     pr_training_plasticity_t tp,
     pr_training_mode_t mode)
 {
-    if (!tp) return -1;
-    if (mode >= PR_TRAINING_MODE_COUNT) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_set_mode: tp is NULL");
+        return -1;
+    }
+    if (mode >= PR_TRAINING_MODE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_training_set_mode: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_set_mode", 0.0f);
@@ -1812,7 +1910,10 @@ int pr_training_get_stats(
     pr_training_plasticity_t tp,
     pr_training_stats_t* stats)
 {
-    if (!tp || !stats) return -1;
+    if (!tp || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_get_stats: required parameter is NULL (tp, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_get_stat", 0.0f);
@@ -1826,7 +1927,10 @@ int pr_training_get_stats(
 }
 
 int pr_training_reset_stats(pr_training_plasticity_t tp) {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_reset_stats: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_reset_st", 0.0f);
@@ -1843,7 +1947,10 @@ int pr_training_get_config(
     pr_training_plasticity_t tp,
     pr_training_plasticity_config_t* config)
 {
-    if (!tp || !config) return -1;
+    if (!tp || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_get_config: required parameter is NULL (tp, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_get_conf", 0.0f);
@@ -1860,8 +1967,14 @@ int pr_training_set_config(
     pr_training_plasticity_t tp,
     const pr_training_plasticity_config_t* config)
 {
-    if (!tp || !config) return -1;
-    if (!pr_training_plasticity_config_validate(config)) return -1;
+    if (!tp || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_set_config: required parameter is NULL (tp, config)");
+        return -1;
+    }
+    if (!pr_training_plasticity_config_validate(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_training_set_config: pr_training_plasticity_config_validate is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_set_conf", 0.0f);
@@ -1885,6 +1998,7 @@ int pr_training_set_config(
             tp->config.max_events_per_step = (uint32_t)old_event_cap;
             allocate_buffers(tp);
             nimcp_mutex_unlock(tp->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_training_set_config: validation failed");
             return -1;
         }
     }
@@ -1899,7 +2013,10 @@ int pr_training_set_config(
 //=============================================================================
 
 int pr_training_sync_all(pr_training_plasticity_t tp) {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_sync_all: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_sync_all", 0.0f);
@@ -1914,7 +2031,10 @@ int pr_training_sync_all(pr_training_plasticity_t tp) {
 }
 
 int pr_training_sync_plasticity(pr_training_plasticity_t tp) {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_sync_plasticity: tp is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_sync_pla", 0.0f);
@@ -1932,7 +2052,10 @@ int pr_training_sync_plasticity(pr_training_plasticity_t tp) {
 }
 
 int pr_training_sync_z_ladder(pr_training_plasticity_t tp) {
-    if (!tp) return -1;
+    if (!tp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_sync_z_ladder: tp is NULL");
+        return -1;
+    }
 
     /* Z-Ladder doesn't have explicit sync, just validate */
     /* Phase 8: Heartbeat at operation start */
@@ -2090,16 +2213,28 @@ void pr_training_print_consolidation_result(
 }
 
 bool pr_training_validate_model_interface(const pr_model_interface_t* model) {
-    if (!model) return false;
+    if (!model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_validate_model_interface: model is NULL");
+        return false;
+    }
 
     /* At minimum need model handle and some operations */
-    if (!model->model_handle) return false;
+    if (!model->model_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_validate_model_interface: model->model_handle is NULL");
+        return false;
+    }
 
     /* Need at least gradient or loss computation */
-    if (!model->get_gradients && !model->compute_loss) return false;
+    if (!model->get_gradients && !model->compute_loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_validate_model_interface: required parameter is NULL (model->get_gradients, model->compute_loss)");
+        return false;
+    }
 
     /* Need apply_updates to do anything useful */
-    if (!model->apply_updates) return false;
+    if (!model->apply_updates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_training_validate_model_interface: model->apply_updates is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_training_plasticity_heartbeat("pr_training__pr_training_validate", 0.0f);

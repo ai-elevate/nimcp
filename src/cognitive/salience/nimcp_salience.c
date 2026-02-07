@@ -185,12 +185,15 @@ typedef struct {
 static history_buffer_t* history_buffer_create(uint32_t capacity)
 {
     history_buffer_t* hist = nimcp_calloc(1, sizeof(history_buffer_t));
-    if (!hist)
+    if (!hist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "history_buffer_create: hist is NULL");
         return NULL;
+    }
 
     hist->entries = nimcp_calloc(capacity, sizeof(history_entry_t));
     if (!hist->entries) {
         nimcp_free(hist);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "history_buffer_create: hist->entries is NULL");
         return NULL;
     }
 
@@ -608,12 +611,15 @@ typedef struct {
 static predictor_t* predictor_create(uint32_t num_features)
 {
     predictor_t* pred = nimcp_calloc(1, sizeof(predictor_t));
-    if (!pred)
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictor_create: pred is NULL");
         return NULL;
+    }
 
     pred->prediction = nimcp_calloc(num_features, sizeof(float));
     if (!pred->prediction) {
         nimcp_free(pred);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictor_create: pred->prediction is NULL");
         return NULL;
     }
 
@@ -1085,16 +1091,19 @@ static bool validate_salience_config(const salience_config_t* config)
 {
     if (!config) {
         salience_set_error("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_salience_config: config is NULL");
         return false;
     }
 
     if (config->history_size == 0 && config->enable_novelty) {
         salience_set_error("Novelty requires non-zero history size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_salience_config: config->history_size is zero");
         return false;
     }
 
     if (config->history_size > 10000) {
         salience_set_error("History size too large (max 10000)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_salience_config: validation failed");
         return false;
     }
 
@@ -1364,6 +1373,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
             predictor_destroy(eval->predictor);
         nimcp_mutex_destroy(&eval->eval_lock);
         nimcp_free(eval);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_evaluator_create: validation failed");
         return NULL;
     }
 
@@ -1834,8 +1844,10 @@ bool salience_set_weights(salience_evaluator_t eval, float novelty_weight, float
         bio_router_process_inbox(eval->bio_ctx, 5);
     }
 
-    if (!eval)
+    if (!eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_set_weights: eval is NULL");
         return false;
+    }
 
     nimcp_mutex_lock(&eval->eval_lock);
 
@@ -1852,8 +1864,10 @@ bool salience_set_thresholds(salience_evaluator_t eval, float high_salience_thre
                              float high_novelty_threshold, float high_surprise_threshold,
                              float high_urgency_threshold)
 {
-    if (!eval)
+    if (!eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_set_thresholds: eval is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_heartbeat("salience_set_thresholds", 0.0f);
@@ -1873,8 +1887,10 @@ bool salience_set_thresholds(salience_evaluator_t eval, float high_salience_thre
 bool salience_register_callback(salience_evaluator_t eval, salience_event_callback_fn callback,
                                 void* context)
 {
-    if (!eval)
+    if (!eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_register_callback: eval is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_heartbeat("salience_register_callback", 0.0f);
@@ -1891,8 +1907,10 @@ bool salience_register_callback(salience_evaluator_t eval, salience_event_callba
 
 bool salience_clear_history(salience_evaluator_t eval)
 {
-    if (!eval || !eval->history)
+    if (!eval || !eval->history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_clear_history: required parameter is NULL (eval, eval->history)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_heartbeat("salience_clear_history", 0.0f);
@@ -1904,8 +1922,10 @@ bool salience_clear_history(salience_evaluator_t eval)
 
 bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats)
 {
-    if (!eval || !stats)
+    if (!eval || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_get_stats: required parameter is NULL (eval, stats)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_heartbeat("salience_get_stats", 0.0f);
@@ -1961,6 +1981,7 @@ bool salience_get_stats(salience_evaluator_t eval, salience_stats_t* stats)
 bool salience_reset_stats(salience_evaluator_t eval)
 {
     if (!eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_reset_stats: eval is NULL");
         return false;
     }
 
@@ -2198,6 +2219,7 @@ bool salience_register_modality(salience_evaluator_t evaluator, salience_modalit
     // Guard: Validate evaluator
     if (!evaluator) {
         salience_set_error("NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_register_modality: evaluator is NULL");
         return false;
     }
 
@@ -2208,6 +2230,7 @@ bool salience_register_modality(salience_evaluator_t evaluator, salience_modalit
 
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_register_modality: capacity exceeded");
         return false;
     }
 
@@ -2588,6 +2611,7 @@ bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modal
     // Guard: Validate evaluator
     if (!evaluator) {
         salience_set_error("NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_set_modality_weight: evaluator is NULL");
         return false;
     }
 
@@ -2598,6 +2622,7 @@ bool salience_set_modality_weight(salience_evaluator_t evaluator, salience_modal
 
     if (modality < 0 || modality >= SALIENCE_MODALITY_COUNT) {
         salience_set_error("Invalid modality: %d", modality);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "salience_set_modality_weight: capacity exceeded");
         return false;
     }
 
@@ -2679,6 +2704,7 @@ bool salience_set_fusion_strategy(salience_evaluator_t evaluator,
     // Guard: Validate evaluator
     if (!evaluator) {
         salience_set_error("NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_set_fusion_strategy: evaluator is NULL");
         return false;
     }
 
@@ -2689,6 +2715,7 @@ bool salience_set_fusion_strategy(salience_evaluator_t evaluator,
 
     if (strategy < SALIENCE_FUSION_MAX || strategy > SALIENCE_FUSION_LEARNED) {
         salience_set_error("Invalid fusion strategy: %d", strategy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_set_fusion_strategy: validation failed");
         return false;
     }
 

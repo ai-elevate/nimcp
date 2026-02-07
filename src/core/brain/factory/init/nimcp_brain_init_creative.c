@@ -176,6 +176,7 @@ bool nimcp_brain_factory_init_creative_subsystem(brain_t brain) {
     brain->creative_orchestrator = creative_orchestrator_create(&creative_cfg);
     if (!brain->creative_orchestrator) {
         LOG_ERROR(LOG_MODULE, "Failed to create creative orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_subsystem: brain->creative_orchestrator is NULL");
         return false;
     }
 
@@ -276,7 +277,10 @@ bool nimcp_brain_factory_init_creative_subsystem(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_appreciation(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_appreciation: brain is NULL");
+        return false;
+    }
 
     /* Create aesthetic evaluator */
     aesthetic_evaluator_config_t eval_cfg;
@@ -314,7 +318,10 @@ bool nimcp_brain_factory_init_creative_appreciation(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_inspiration(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_inspiration: brain is NULL");
+        return false;
+    }
 
     /* Create style representation */
     style_representer_config_t style_cfg;
@@ -352,7 +359,10 @@ bool nimcp_brain_factory_init_creative_inspiration(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_generation(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_generation: brain is NULL");
+        return false;
+    }
 
     /* Create text generator */
     text_generator_config_t text_cfg;
@@ -398,7 +408,10 @@ bool nimcp_brain_factory_init_creative_generation(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_neural_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_neural_bridge: brain is NULL");
+        return false;
+    }
 
     creative_neural_bridge_config_t cfg;
     creative_neural_bridge_config_defaults(&cfg);
@@ -412,6 +425,7 @@ bool nimcp_brain_factory_init_creative_neural_bridge(brain_t brain) {
     brain->creative_neural_bridge = creative_neural_bridge_create(&cfg);
     if (!brain->creative_neural_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create neural bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_neural_bridge: brain->creative_neural_bridge is NULL");
         return false;
     }
 
@@ -419,7 +433,10 @@ bool nimcp_brain_factory_init_creative_neural_bridge(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_ethics_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_ethics_bridge: brain is NULL");
+        return false;
+    }
 
     creative_ethics_bridge_config_t cfg;
     creative_ethics_bridge_config_defaults(&cfg);
@@ -436,6 +453,7 @@ bool nimcp_brain_factory_init_creative_ethics_bridge(brain_t brain) {
     brain->creative_ethics_bridge = creative_ethics_bridge_create(&cfg);
     if (!brain->creative_ethics_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create ethics bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_ethics_bridge: brain->creative_ethics_bridge is NULL");
         return false;
     }
 
@@ -448,7 +466,10 @@ bool nimcp_brain_factory_init_creative_ethics_bridge(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_training_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_training_bridge: brain is NULL");
+        return false;
+    }
 
     creative_training_bridge_config_t cfg;
     creative_training_bridge_config_defaults(&cfg);
@@ -456,6 +477,7 @@ bool nimcp_brain_factory_init_creative_training_bridge(brain_t brain) {
     brain->creative_training_bridge = creative_training_bridge_create(&cfg);
     if (!brain->creative_training_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create training bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_training_bridge: brain->creative_training_bridge is NULL");
         return false;
     }
 
@@ -463,7 +485,10 @@ bool nimcp_brain_factory_init_creative_training_bridge(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_creative_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_bridge: brain is NULL");
+        return false;
+    }
 
     creative_bridge_config_t cfg;
     creative_bridge_config_defaults(&cfg);
@@ -480,6 +505,7 @@ bool nimcp_brain_factory_init_creative_bridge(brain_t brain) {
     brain->creative_bridge = creative_bridge_create(&cfg);
     if (!brain->creative_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create creative bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_creative_bridge: brain->creative_bridge is NULL");
         return false;
     }
 

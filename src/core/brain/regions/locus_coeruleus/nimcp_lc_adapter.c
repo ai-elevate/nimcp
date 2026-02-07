@@ -112,9 +112,13 @@ struct nimcp_lc_adapter_struct {
 //=============================================================================
 
 static int enqueue_message(nimcp_lc_adapter_t adapter, const nimcp_lc_message_t* msg) {
-    if (!adapter || !msg) return -1;
+    if (!adapter || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enqueue_message: required parameter is NULL (adapter, msg)");
+        return -1;
+    }
 
     if (adapter->queue_count >= LC_ADAPTER_MSG_QUEUE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_message: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -126,9 +130,13 @@ static int enqueue_message(nimcp_lc_adapter_t adapter, const nimcp_lc_message_t*
 }
 
 static int dequeue_message(nimcp_lc_adapter_t adapter, nimcp_lc_message_t* msg) {
-    if (!adapter || !msg) return -1;
+    if (!adapter || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dequeue_message: required parameter is NULL (adapter, msg)");
+        return -1;
+    }
 
     if (adapter->queue_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_message: adapter->queue_count is zero");
         return -1;  /* Queue empty */
     }
 
@@ -203,6 +211,7 @@ nimcp_lc_adapter_t nimcp_lc_adapter_create(const nimcp_lc_adapter_config_t* conf
     nimcp_lc_error_t err = nimcp_lc_init(&adapter->lc, &adapter->config.lc_config);
     if (err != LC_OK) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_create: validation failed");
         return NULL;
     }
 
@@ -259,6 +268,7 @@ void nimcp_lc_adapter_destroy(nimcp_lc_adapter_t adapter) {
 
 int nimcp_lc_adapter_connect_brain(nimcp_lc_adapter_t adapter, nimcp_brain_t* brain) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_connect_brain: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -271,6 +281,7 @@ int nimcp_lc_adapter_connect_brain(nimcp_lc_adapter_t adapter, nimcp_brain_t* br
 
 int nimcp_lc_adapter_disconnect(nimcp_lc_adapter_t adapter) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_disconnect: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -287,16 +298,19 @@ int nimcp_lc_adapter_disconnect(nimcp_lc_adapter_t adapter) {
 
 nimcp_module_interface_t* nimcp_lc_adapter_get_interface(nimcp_lc_adapter_t adapter) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_interface: required parameter is NULL (adapter, adapter->initialized)");
         return NULL;
     }
 
     /* Interface would be implemented based on brain module system */
     /* For now, return NULL as placeholder */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_interface: required parameter is NULL (adapter, adapter->initialized)");
     return NULL;
 }
 
 nimcp_lc_system_t* nimcp_lc_adapter_get_lc(nimcp_lc_adapter_t adapter) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_lc: required parameter is NULL (adapter, adapter->initialized)");
         return NULL;
     }
 
@@ -309,6 +323,7 @@ nimcp_lc_system_t* nimcp_lc_adapter_get_lc(nimcp_lc_adapter_t adapter) {
 
 int nimcp_lc_adapter_set_router(nimcp_lc_adapter_t adapter, nimcp_bio_router_t* router) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_set_router: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -320,6 +335,7 @@ int nimcp_lc_adapter_set_router(nimcp_lc_adapter_t adapter, nimcp_bio_router_t* 
 
 int nimcp_lc_adapter_send_message(nimcp_lc_adapter_t adapter, const nimcp_lc_message_t* message) {
     if (!adapter || !adapter->initialized || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_send_message: required parameter is NULL (adapter, adapter->initialized, message)");
         return -1;
     }
 
@@ -340,6 +356,7 @@ int nimcp_lc_adapter_send_message(nimcp_lc_adapter_t adapter, const nimcp_lc_mes
 
 int nimcp_lc_adapter_process_messages(nimcp_lc_adapter_t adapter, uint32_t max_messages) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_process_messages: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -382,14 +399,17 @@ int nimcp_lc_adapter_register_callback(
     void* user_data
 ) {
     if (!adapter || !adapter->initialized || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_register_callback: required parameter is NULL (adapter, adapter->initialized, callback)");
         return -1;
     }
 
     if (msg_type >= LC_MSG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_adapter_register_callback: capacity exceeded");
         return -1;
     }
 
     if (adapter->callback_counts[msg_type] >= LC_ADAPTER_MAX_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_adapter_register_callback: capacity exceeded");
         return -1;  /* Too many callbacks */
     }
 
@@ -407,6 +427,7 @@ int nimcp_lc_adapter_register_callback(
 
 int nimcp_lc_adapter_connect_immune(nimcp_lc_adapter_t adapter, nimcp_immune_sensor_t* sensor) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_connect_immune: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -424,6 +445,7 @@ int nimcp_lc_adapter_process_immune(
     uint32_t num_cytokines
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_process_immune: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -453,6 +475,7 @@ int nimcp_lc_adapter_process_immune(
 
 int nimcp_lc_adapter_apply_thalamic_gate(nimcp_lc_adapter_t adapter, float gate_level) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_apply_thalamic_gate: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -468,6 +491,7 @@ int nimcp_lc_adapter_apply_thalamic_gate(nimcp_lc_adapter_t adapter, float gate_
 
 int nimcp_lc_adapter_update(nimcp_lc_adapter_t adapter, float dt) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_update: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -484,6 +508,7 @@ int nimcp_lc_adapter_update(nimcp_lc_adapter_t adapter, float dt) {
     /* Update LC system */
     nimcp_lc_error_t err = nimcp_lc_update(&adapter->lc, dt);
     if (err != LC_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_lc_adapter_update: validation failed");
         return -1;
     }
 
@@ -528,6 +553,7 @@ int nimcp_lc_adapter_process_input(
     uint32_t input_size
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_process_input: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -556,10 +582,12 @@ int nimcp_lc_adapter_process_input(
 
 int nimcp_lc_adapter_get_state(nimcp_lc_adapter_t adapter, nimcp_lc_adapter_state_t* state) {
     if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_state: required parameter is NULL (adapter, state)");
         return -1;
     }
 
     if (!adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_state: adapter->initialized is NULL");
         return -1;
     }
 
@@ -569,6 +597,7 @@ int nimcp_lc_adapter_get_state(nimcp_lc_adapter_t adapter, nimcp_lc_adapter_stat
 
 int nimcp_lc_adapter_reset_stats(nimcp_lc_adapter_t adapter) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_reset_stats: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -646,6 +675,7 @@ int nimcp_lc_adapter_connect_training(
     struct nimcp_training_hub* training_hub
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_connect_training: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -661,6 +691,7 @@ int nimcp_lc_adapter_on_training_event(
     const nimcp_lc_training_state_t* state
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_on_training_event: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -739,6 +770,7 @@ int nimcp_lc_adapter_get_training_modulation(
     nimcp_lc_training_modulation_t* modulation
 ) {
     if (!adapter || !adapter->initialized || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_get_training_modulation: required parameter is NULL (adapter, adapter->initialized, modulation)");
         return -1;
     }
 
@@ -757,6 +789,7 @@ int nimcp_lc_adapter_register_training_callback(
     void* user_data
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_register_training_callback: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -772,6 +805,7 @@ int nimcp_lc_adapter_compute_attention_gain(
     float* gain
 ) {
     if (!adapter || !adapter->initialized || !gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_compute_attention_gain: required parameter is NULL (adapter, adapter->initialized, gain)");
         return -1;
     }
 
@@ -796,6 +830,7 @@ int nimcp_lc_adapter_process_novelty(
     float novelty_score
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_process_novelty: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 
@@ -824,6 +859,7 @@ int nimcp_lc_adapter_process_training_stress(
     float stress_level
 ) {
     if (!adapter || !adapter->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_adapter_process_training_stress: required parameter is NULL (adapter, adapter->initialized)");
         return -1;
     }
 

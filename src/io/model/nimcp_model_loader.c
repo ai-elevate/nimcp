@@ -742,11 +742,13 @@ bool nimcp_model_version_compatible(uint16_t major, uint16_t minor)
 {
     // Major version must match exactly for compatibility
     if (major > NIMCP_MODEL_VERSION_MAJOR) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_model_version_compatible: validation failed");
         return false;
     }
 
     // If major version is older but within minimum, it's compatible
     if (major < NIMCP_MODEL_MIN_MAJOR) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_model_version_compatible: validation failed");
         return false;
     }
 

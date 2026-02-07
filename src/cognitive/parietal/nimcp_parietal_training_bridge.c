@@ -285,6 +285,7 @@ parietal_training_bridge_t* parietal_training_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, 0, "parietal_training") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_training_create: validation failed");
         return NULL;
     }
 
@@ -296,6 +297,7 @@ parietal_training_bridge_t* parietal_training_create(
         if (!bridge->pending_updates) {
             nimcp_mutex_destroy(bridge->base.mutex);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_training_create: bridge->pending_updates is NULL");
             return NULL;
         }
     }
@@ -358,6 +360,7 @@ int parietal_training_connect(
     nimcp_brain_training_ctx_t* training
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC || !training) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_training_connect: required parameter is NULL (bridge, training)");
         return -1;
     }
 
@@ -386,6 +389,7 @@ int parietal_training_connect(
 
 int parietal_training_disconnect(parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_disconnect: bridge is NULL");
         return -1;
     }
 
@@ -418,6 +422,7 @@ int parietal_training_connect_plasticity(
     parietal_plasticity_bridge_t* plasticity
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_connect_plasticity: bridge is NULL");
         return -1;
     }
 
@@ -438,6 +443,7 @@ int parietal_training_connect_bio_async(
     bio_router_t router
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -549,6 +555,7 @@ int parietal_training_update_weights(
     float learning_rate
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_update_weights: bridge is NULL");
         return -1;
     }
 
@@ -557,6 +564,7 @@ int parietal_training_update_weights(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_update_weights: capacity exceeded");
         return -1;
     }
 
@@ -594,6 +602,7 @@ static int flush_batch_unlocked(parietal_training_bridge_t* bridge) {
 
 int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_flush_batch: bridge is NULL");
         return -1;
     }
 
@@ -614,6 +623,7 @@ int parietal_training_set_domain_lr(
     float learning_rate
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_set_domain_lr: bridge is NULL");
         return -1;
     }
 
@@ -622,6 +632,7 @@ int parietal_training_set_domain_lr(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT || learning_rate < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_set_domain_lr: capacity exceeded");
         return -1;
     }
 
@@ -638,6 +649,7 @@ int parietal_training_set_domain_enabled(
     bool enabled
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_set_domain_enabled: bridge is NULL");
         return -1;
     }
 
@@ -646,6 +658,7 @@ int parietal_training_set_domain_enabled(
 
 
     if (domain >= PARIETAL_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_set_domain_enabled: capacity exceeded");
         return -1;
     }
 
@@ -666,6 +679,7 @@ int parietal_training_set_learning_callback(
     void* user_data
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_set_learning_callback: bridge is NULL");
         return -1;
     }
 
@@ -688,6 +702,7 @@ int parietal_training_set_update_callback(
     void* user_data
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_set_update_callback: bridge is NULL");
         return -1;
     }
 
@@ -726,6 +741,7 @@ int parietal_training_get_stats(
     parietal_training_stats_t* stats
 ) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_training_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -770,6 +786,7 @@ void parietal_training_reset_stats(parietal_training_bridge_t* bridge) {
 
 bool parietal_training_is_connected(const parietal_training_bridge_t* bridge) {
     if (!bridge || bridge->magic != PARIETAL_TRAINING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_training_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -816,6 +833,7 @@ static int apply_weight_update(parietal_training_bridge_t* bridge,
                                parietal_learning_domain_t domain,
                                float learning_rate) {
     if (!bridge || domain >= PARIETAL_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "parietal_training_bridge_version: bridge is NULL");
         return -1;
     }
 

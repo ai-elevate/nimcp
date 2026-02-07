@@ -129,7 +129,10 @@ static void generate_word(char* buf, uint32_t len, uint32_t* seed) {
 /* Generate placeholder text (would use real LLM in production) */
 static char* generate_placeholder_text(const char* prompt, uint32_t target_len, uint32_t* seed) {
     char* text = nimcp_calloc(target_len + 256, sizeof(char));
-    if (!text) return NULL;
+    if (!text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_placeholder_text: text is NULL");
+        return NULL;
+    }
 
     uint32_t pos = 0;
 
@@ -198,7 +201,10 @@ static uint32_t count_syllables(const char* word) {
 /* Generate haiku-style text */
 static char* generate_haiku_text(const char* subject, uint32_t* seed) {
     char* haiku = nimcp_calloc(256, sizeof(char));
-    if (!haiku) return NULL;
+    if (!haiku) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_haiku_text: haiku is NULL");
+        return NULL;
+    }
 
     /* 5-7-5 syllable structure */
     const char* templates[3] = {
@@ -229,7 +235,10 @@ static char* generate_haiku_text(const char* subject, uint32_t* seed) {
 /* Generate sonnet-style text */
 static char* generate_sonnet_text(const char* subject, bool shakespearean, uint32_t* seed) {
     char* sonnet = nimcp_calloc(2048, sizeof(char));
-    if (!sonnet) return NULL;
+    if (!sonnet) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_sonnet_text: sonnet is NULL");
+        return NULL;
+    }
 
     (void)shakespearean;
     (void)seed;
@@ -264,7 +273,10 @@ static char* generate_prose_text(const prose_request_t* request, uint32_t* seed)
     uint32_t target_chars = target_words * 5;  /* Rough estimate */
 
     char* prose = nimcp_calloc(target_chars + 1024, sizeof(char));
-    if (!prose) return NULL;
+    if (!prose) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_prose_text: prose is NULL");
+        return NULL;
+    }
 
     uint32_t pos = 0;
 
@@ -302,7 +314,10 @@ static char* generate_screenplay_text(const screenplay_request_t* request, uint3
     uint32_t target_chars = (uint32_t)(request ? request->target_page_count * 3000 : 3000);
 
     char* script = nimcp_calloc(target_chars + 1024, sizeof(char));
-    if (!script) return NULL;
+    if (!script) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_screenplay_text: script is NULL");
+        return NULL;
+    }
 
     uint32_t pos = 0;
 
@@ -350,6 +365,7 @@ text_generator_t* text_generator_create(const text_generator_config_t* config) {
     text_generator_t* gen = nimcp_calloc(1, sizeof(text_generator_t));
     if (!gen) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate text generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "text_generator_create: gen is NULL");
         return NULL;
     }
 
@@ -385,7 +401,10 @@ void text_generator_destroy(text_generator_t* gen) {
 int text_generate(text_generator_t* gen,
                   const text_generation_request_t* request,
                   text_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(text_generation_result_t));
 
@@ -415,7 +434,10 @@ int text_generate(text_generator_t* gen,
     /* Default: generate generic text */
     result->text = generate_placeholder_text(request->prompt,
                                               request->max_length * 4, &seed);
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;  /* Rough estimate */
@@ -432,7 +454,10 @@ int text_generate_continue(text_generator_t* gen,
                            const style_embedding_t* style,
                            uint32_t max_new_tokens,
                            text_generation_result_t* result) {
-    if (!gen || !existing || !result) return -1;
+    if (!gen || !existing || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: required parameter is NULL (gen, existing, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -442,13 +467,17 @@ int text_generate_continue(text_generator_t* gen,
 
     /* Generate continuation */
     char* continuation = generate_placeholder_text(NULL, max_new_tokens * 4, &seed);
-    if (!continuation) return -1;
+    if (!continuation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: continuation is NULL");
+        return -1;
+    }
 
     /* Combine existing + continuation */
     size_t total_len = existing_len + strlen(continuation) + 2;
     result->text = nimcp_calloc(total_len, sizeof(char));
     if (!result->text) {
         nimcp_free(continuation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "text_generator_destroy: result->text is NULL");
         return -1;
     }
 
@@ -473,7 +502,10 @@ int text_generate_poetry(text_generator_t* gen,
                          const poetry_request_t* request,
                          const style_embedding_t* style,
                          text_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -497,7 +529,10 @@ int text_generate_poetry(text_generator_t* gen,
             break;
     }
 
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;
@@ -513,7 +548,10 @@ int text_generate_haiku(text_generator_t* gen,
                         const char* subject,
                         const style_embedding_t* style,
                         text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: required parameter is NULL (gen, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -522,7 +560,10 @@ int text_generate_haiku(text_generator_t* gen,
     uint32_t seed = (uint32_t)time(NULL);
 
     result->text = generate_haiku_text(subject, &seed);
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;
@@ -539,7 +580,10 @@ int text_generate_sonnet(text_generator_t* gen,
                          bool shakespearean,
                          const style_embedding_t* style,
                          text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: required parameter is NULL (gen, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -548,7 +592,10 @@ int text_generate_sonnet(text_generator_t* gen,
     uint32_t seed = (uint32_t)time(NULL);
 
     result->text = generate_sonnet_text(subject, shakespearean, &seed);
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_destroy: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;
@@ -568,7 +615,10 @@ int text_generate_prose(text_generator_t* gen,
                         const prose_request_t* request,
                         const style_embedding_t* style,
                         text_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -577,7 +627,10 @@ int text_generate_prose(text_generator_t* gen,
     uint32_t seed = (uint32_t)time(NULL);
 
     result->text = generate_prose_text(request, &seed);
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;
@@ -594,7 +647,10 @@ int text_generate_short_story(text_generator_t* gen,
                               uint32_t word_count,
                               const style_embedding_t* style,
                               text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
 
     prose_request_t request = {0};
     request.structure = NARRATIVE_LINEAR;
@@ -615,7 +671,10 @@ int text_generate_screenplay(text_generator_t* gen,
                              const screenplay_request_t* request,
                              const style_embedding_t* style,
                              text_generation_result_t* result) {
-    if (!gen || !request || !result) return -1;
+    if (!gen || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, request, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -624,7 +683,10 @@ int text_generate_screenplay(text_generator_t* gen,
     uint32_t seed = (uint32_t)time(NULL);
 
     result->text = generate_screenplay_text(request, &seed);
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: result->text is NULL");
+        return -1;
+    }
 
     result->text_len = strlen(result->text);
     result->tokens_generated = result->text_len / 4;
@@ -641,7 +703,10 @@ int text_generate_scene(text_generator_t* gen,
                         const char* characters,
                         const style_embedding_t* style,
                         text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
 
     screenplay_request_t request = {0};
     request.target_page_count = 0.5f;
@@ -662,7 +727,10 @@ int text_generate_dialogue(text_generator_t* gen,
                            uint32_t num_exchanges,
                            const style_embedding_t* style,
                            text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
     (void)style;
 
     memset(result, 0, sizeof(text_generation_result_t));
@@ -672,7 +740,10 @@ int text_generate_dialogue(text_generator_t* gen,
     /* Generate dialogue */
     size_t buf_size = num_exchanges * 200 + 256;
     result->text = nimcp_calloc(buf_size, sizeof(char));
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->text is NULL");
+        return -1;
+    }
 
     size_t pos = 0;
 
@@ -711,7 +782,10 @@ int text_generate_lyrics(text_generator_t* gen,
                          const char* structure,
                          const style_embedding_t* style,
                          text_generation_result_t* result) {
-    if (!gen || !result) return -1;
+    if (!gen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (gen, result)");
+        return -1;
+    }
     (void)style;
     (void)structure;
 
@@ -721,7 +795,10 @@ int text_generate_lyrics(text_generator_t* gen,
 
     size_t buf_size = 2048;
     result->text = nimcp_calloc(buf_size, sizeof(char));
-    if (!result->text) return -1;
+    if (!result->text) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->text is NULL");
+        return -1;
+    }
 
     snprintf(result->text, buf_size,
         "[Verse 1]\n"
@@ -789,7 +866,10 @@ void text_generator_clear_style(text_generator_t* gen) {
 int text_generator_archetype_style(text_generator_t* gen,
                                    literary_style_archetype_t archetype_id,
                                    style_embedding_t* out) {
-    if (!gen || !out) return -1;
+    if (!gen || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "text_generator_clear_style: required parameter is NULL (gen, out)");
+        return -1;
+    }
 
     /* Generate archetype embedding */
     style_embedding_create(out, gen->config.style_embedding_dim);

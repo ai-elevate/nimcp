@@ -165,7 +165,10 @@ void bga_bridge_destroy(bga_bridge_t* bridge) {
 }
 
 int bga_bridge_reset(bga_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.fear_level = 0.0f;
     bridge->state.anxiety_level = 0.0f;
@@ -195,7 +198,10 @@ int bga_bridge_reset(bga_bridge_t* bridge) {
  * ============================================================================ */
 
 int bga_bridge_connect_bg(bga_bridge_t* bridge, basal_ganglia_t* bg) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_connect_bg: bridge is NULL");
+        return -1;
+    }
     bridge->bg = bg;
 
     /* Update num_actions if BG has different count */
@@ -221,13 +227,19 @@ int bga_bridge_connect_bg(bga_bridge_t* bridge, basal_ganglia_t* bg) {
 }
 
 int bga_bridge_connect_amygdala(bga_bridge_t* bridge, amygdala_t* amygdala) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_connect_amygdala: bridge is NULL");
+        return -1;
+    }
     bridge->amygdala = amygdala;
     return 0;
 }
 
 bool bga_bridge_is_connected(const bga_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bg != NULL && bridge->amygdala != NULL;
 }
 
@@ -236,7 +248,10 @@ bool bga_bridge_is_connected(const bga_bridge_t* bridge) {
  * ============================================================================ */
 
 int bga_bridge_tag_threat_action(bga_bridge_t* bridge, uint32_t action_id) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bga_bridge_tag_threat_action: bridge is NULL");
+        return -1;
+    }
 
     bridge->modulations[action_id].tag = BGA_TAG_THREATENING;
     bridge->modulations[action_id].is_active = true;
@@ -250,7 +265,10 @@ int bga_bridge_tag_threat_action(bga_bridge_t* bridge, uint32_t action_id) {
 }
 
 int bga_bridge_tag_safe_action(bga_bridge_t* bridge, uint32_t action_id) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bga_bridge_tag_safe_action: bridge is NULL");
+        return -1;
+    }
 
     bridge->modulations[action_id].tag = BGA_TAG_SAFE;
     bridge->modulations[action_id].is_active = true;
@@ -264,7 +282,10 @@ int bga_bridge_tag_safe_action(bga_bridge_t* bridge, uint32_t action_id) {
 }
 
 int bga_bridge_tag_escape_action(bga_bridge_t* bridge, uint32_t action_id) {
-    if (!bridge || action_id >= bridge->num_actions) return -1;
+    if (!bridge || action_id >= bridge->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bga_bridge_tag_escape_action: bridge is NULL");
+        return -1;
+    }
 
     bridge->modulations[action_id].tag = BGA_TAG_ESCAPE;
     bridge->modulations[action_id].is_active = true;
@@ -285,7 +306,10 @@ bga_action_tag_t bga_bridge_get_action_tag(
  * ============================================================================ */
 
 int bga_bridge_update_modulation(bga_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_update_modulation: bridge is NULL");
+        return -1;
+    }
 
     /* Read amygdala state if connected */
     if (bridge->amygdala) {
@@ -358,7 +382,10 @@ int bga_bridge_apply_modulation(
     float* action_values,
     uint32_t num_actions
 ) {
-    if (!bridge || !action_values) return -1;
+    if (!bridge || !action_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_apply_modulation: required parameter is NULL (bridge, action_values)");
+        return -1;
+    }
 
     uint32_t n = num_actions < bridge->num_actions ? num_actions : bridge->num_actions;
 
@@ -413,7 +440,10 @@ float bga_bridge_get_action_modulation(
 }
 
 bool bga_bridge_is_frozen(const bga_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_is_frozen: bridge is NULL");
+        return false;
+    }
     return bridge->state.influence == BGA_INFLUENCE_FREEZE;
 }
 
@@ -432,7 +462,10 @@ int bga_bridge_send_outcome(
     float outcome,
     bool was_threat
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_send_outcome: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_feedback) return 0;
     if (!bridge->amygdala) return 0;
 
@@ -464,7 +497,10 @@ int bga_bridge_get_state(
     const bga_bridge_t* bridge,
     bga_emotional_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -482,7 +518,10 @@ int bga_bridge_get_stats(
     const bga_bridge_t* bridge,
     bga_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bga_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

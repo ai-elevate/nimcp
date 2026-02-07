@@ -98,7 +98,10 @@ static claustrum_bio_subscription_t* find_subscription(
     claustrum_bio_async_bridge_t* b,
     uint32_t module_id
 ) {
-    if (!b || !b->subscriptions) return NULL;
+    if (!b || !b->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < b->subscription_count; i++) {
         if (b->subscriptions[i].module_id == module_id &&
@@ -106,13 +109,17 @@ static claustrum_bio_subscription_t* find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: required parameter is NULL (b, b->subscriptions)");
     return NULL;
 }
 
 static claustrum_bio_subscription_t* find_free_subscription(
     claustrum_bio_async_bridge_t* b
 ) {
-    if (!b || !b->subscriptions) return NULL;
+    if (!b || !b->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_subscription: required parameter is NULL (b, b->subscriptions)");
+        return NULL;
+    }
 
     /* First look for inactive slot */
     for (uint32_t i = 0; i < b->subscription_count; i++) {
@@ -126,6 +133,7 @@ static claustrum_bio_subscription_t* find_free_subscription(
         return &b->subscriptions[b->subscription_count++];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_subscription: validation failed");
     return NULL;
 }
 
@@ -134,7 +142,10 @@ static claustrum_bio_subscription_t* find_free_subscription(
  * ============================================================================ */
 
 int claustrum_bio_async_default_config(claustrum_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->broadcast_interval_ms = CLAUSTRUM_BIO_BRIDGE_DEFAULT_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -183,6 +194,7 @@ claustrum_bio_async_bridge_t* claustrum_bio_async_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -211,8 +223,14 @@ int claustrum_bio_async_connect(
     nimcp_claustrum_t* claustrum,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
-    if (!claustrum) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!claustrum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_connect: claustrum is NULL");
+        return -1;
+    }
 
     bridge->claustrum = claustrum;
     bridge->router = router;
@@ -227,7 +245,10 @@ int claustrum_bio_async_connect(
 }
 
 int claustrum_bio_async_disconnect(claustrum_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->claustrum = NULL;
     bridge->router = NULL;
@@ -248,7 +269,10 @@ int claustrum_bio_async_process_inbox(
     claustrum_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Process incoming modulation requests */
     uint32_t processed = 0;
@@ -262,8 +286,14 @@ int claustrum_bio_async_update(
     claustrum_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!bridge->claustrum) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!bridge->claustrum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_update: bridge->claustrum is NULL");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
     nimcp_claustrum_t* cl = bridge->claustrum;
@@ -330,8 +360,14 @@ int claustrum_bio_async_broadcast_binding(
     claustrum_bio_async_bridge_t* bridge,
     const nimcp_claustrum_bound_percept_t* percept
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!percept) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_binding: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!percept) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_binding: percept is NULL");
+        return -1;
+    }
 
     claustrum_bio_binding_msg_t msg = {0};
     msg.header.type = 0x5100;  /* Claustrum binding message */
@@ -364,7 +400,10 @@ int claustrum_bio_async_broadcast_consciousness(
     nimcp_claustrum_consciousness_level_t new_level,
     uint32_t percept_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_consciousness: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     claustrum_bio_consciousness_msg_t msg = {0};
     msg.header.type = 0x5101;  /* Claustrum consciousness message */
@@ -394,11 +433,17 @@ int claustrum_bio_async_broadcast_sync(
     claustrum_bio_async_bridge_t* bridge,
     const nimcp_claustrum_oscillator_t* oscillator
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_sync: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!oscillator && bridge->claustrum) {
         oscillator = &bridge->claustrum->oscillator;
     }
-    if (!oscillator) return -1;
+    if (!oscillator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_sync: oscillator is NULL");
+        return -1;
+    }
 
     claustrum_bio_sync_msg_t msg = {0};
     msg.header.type = 0x5102;  /* Claustrum sync message */
@@ -429,7 +474,10 @@ int claustrum_bio_async_broadcast_salience(
     float global_salience,
     nimcp_claustrum_modality_t salient_modality
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_salience: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     claustrum_bio_salience_msg_t msg = {0};
     msg.header.type = 0x5103;  /* Claustrum salience message */
@@ -462,7 +510,10 @@ int claustrum_bio_async_broadcast_attention_switch(
     nimcp_claustrum_brain_state_t new_state,
     float progress
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_attention_switch: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     claustrum_bio_attention_switch_msg_t msg = {0};
     msg.header.type = 0x5104;  /* Claustrum attention switch message */
@@ -495,8 +546,14 @@ int claustrum_bio_async_broadcast_modality_gate(
     float gate_level,
     float attention_bias
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (modality >= CLAUSTRUM_MODALITY_COUNT) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_broadcast_modality_gate: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (modality >= CLAUSTRUM_MODALITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "claustrum_bio_async_broadcast_modality_gate: capacity exceeded");
+        return -1;
+    }
 
     claustrum_bio_modality_gate_msg_t msg = {0};
     msg.header.type = 0x5105;  /* Claustrum modality gate message */
@@ -529,7 +586,10 @@ int claustrum_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     claustrum_bio_subscription_t* sub = find_subscription(bridge, module_id);
@@ -540,7 +600,10 @@ int claustrum_bio_async_subscribe_module(
 
     /* Find free slot */
     sub = find_free_subscription(bridge);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_subscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->module_id = module_id;
     sub->msg_type_mask = msg_types;
@@ -560,10 +623,16 @@ int claustrum_bio_async_unsubscribe_module(
     claustrum_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     claustrum_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask = 0;
@@ -580,10 +649,16 @@ int claustrum_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     claustrum_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -617,14 +692,20 @@ int claustrum_bio_async_get_stats(
     const claustrum_bio_async_bridge_t* bridge,
     claustrum_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int claustrum_bio_async_reset_stats(claustrum_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "claustrum_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(claustrum_bio_async_stats_t));
     return 0;

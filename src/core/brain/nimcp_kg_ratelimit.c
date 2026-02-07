@@ -125,6 +125,7 @@ static quota_entry_t* find_quota_entry(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_quota_entry: validation failed");
     return NULL;
 }
 
@@ -191,6 +192,7 @@ kg_ratelimiter_t* kg_ratelimit_create(const kg_ratelimit_config_t* config) {
     limiter->mutex = nimcp_mutex_create(&attr);
     if (!limiter->mutex) {
         nimcp_free(limiter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_ratelimit_create: limiter->mutex is NULL");
         return NULL;
     }
 
@@ -406,6 +408,7 @@ int kg_ratelimit_update_config(
     bool reset_counters
 ) {
     if (!limiter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_update_config: required parameter is NULL (limiter, config)");
         return -1;
     }
 
@@ -438,6 +441,7 @@ int kg_quota_set(
     const kg_quota_config_t* quota
 ) {
     if (!limiter || !quota) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_set: required parameter is NULL (limiter, quota)");
         return -1;
     }
 
@@ -449,6 +453,7 @@ int kg_quota_set(
     if (!entry) {
         if (limiter->quota_count >= KG_RATELIMIT_MAX_QUOTAS) {
             nimcp_mutex_unlock(limiter->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_quota_set: capacity exceeded");
             return -1; /* Quota limit reached */
         }
 
@@ -477,6 +482,7 @@ int kg_quota_get(
     kg_quota_config_t* quota
 ) {
     if (!limiter || !quota) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_get: required parameter is NULL (limiter, quota)");
         return -1;
     }
 
@@ -485,6 +491,7 @@ int kg_quota_get(
     quota_entry_t* entry = find_quota_entry((kg_ratelimiter_t*)limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(((kg_ratelimiter_t*)limiter)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_get: entry is NULL");
         return -1;
     }
 
@@ -501,6 +508,7 @@ int kg_quota_get_usage(
     kg_quota_config_t* usage
 ) {
     if (!limiter || !usage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_get_usage: required parameter is NULL (limiter, usage)");
         return -1;
     }
 
@@ -509,6 +517,7 @@ int kg_quota_get_usage(
     quota_entry_t* entry = find_quota_entry((kg_ratelimiter_t*)limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(((kg_ratelimiter_t*)limiter)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_get_usage: entry is NULL");
         return -1;
     }
 
@@ -526,6 +535,7 @@ bool kg_quota_check(
     uint64_t amount
 ) {
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_check: limiter is NULL");
         return false;
     }
 
@@ -558,6 +568,7 @@ int kg_quota_remove(
     const char* module_name
 ) {
     if (!limiter || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_quota_remove: required parameter is NULL (limiter, module_name)");
         return -1;
     }
 
@@ -577,6 +588,7 @@ int kg_quota_remove(
     }
 
     nimcp_mutex_unlock(limiter->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_quota_remove: operation failed");
     return -1; /* Not found */
 }
 
@@ -619,6 +631,7 @@ int kg_ratelimit_set_priority(
     uint32_t priority
 ) {
     if (!limiter || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_set_priority: required parameter is NULL (limiter, module_name)");
         return -1;
     }
 
@@ -631,6 +644,7 @@ int kg_ratelimit_set_priority(
     quota_entry_t* entry = find_quota_entry(limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(limiter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_set_priority: entry is NULL");
         return -1;
     }
 
@@ -647,6 +661,7 @@ int kg_ratelimit_get_priority(
     uint32_t* priority
 ) {
     if (!limiter || !module_name || !priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_priority: required parameter is NULL (limiter, module_name, priority)");
         return -1;
     }
 
@@ -655,6 +670,7 @@ int kg_ratelimit_get_priority(
     quota_entry_t* entry = find_quota_entry((kg_ratelimiter_t*)limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(((kg_ratelimiter_t*)limiter)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_priority: entry is NULL");
         return -1;
     }
 
@@ -671,6 +687,7 @@ int kg_ratelimit_reserve_bandwidth(
     float percent
 ) {
     if (!limiter || !module_name || percent < 0.0f || percent > 100.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_reserve_bandwidth: required parameter is NULL (limiter, module_name)");
         return -1;
     }
 
@@ -690,12 +707,14 @@ int kg_ratelimit_reserve_bandwidth(
 
     if (!target_entry) {
         nimcp_mutex_unlock(limiter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_reserve_bandwidth: target_entry is NULL");
         return -1;
     }
 
     /* Check if new reservation would exceed 100% */
     if (total_reserved + percent > 100.0f) {
         nimcp_mutex_unlock(limiter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_ratelimit_reserve_bandwidth: validation failed");
         return -1;
     }
 
@@ -712,6 +731,7 @@ int kg_ratelimit_get_reserved_bandwidth(
     float* percent
 ) {
     if (!limiter || !module_name || !percent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_reserved_bandwidth: required parameter is NULL (limiter, module_name, percent)");
         return -1;
     }
 
@@ -720,6 +740,7 @@ int kg_ratelimit_get_reserved_bandwidth(
     quota_entry_t* entry = find_quota_entry((kg_ratelimiter_t*)limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(((kg_ratelimiter_t*)limiter)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_reserved_bandwidth: entry is NULL");
         return -1;
     }
 
@@ -735,6 +756,7 @@ int kg_ratelimit_release_bandwidth(
     const char* module_name
 ) {
     if (!limiter || !module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_release_bandwidth: required parameter is NULL (limiter, module_name)");
         return -1;
     }
 
@@ -743,6 +765,7 @@ int kg_ratelimit_release_bandwidth(
     quota_entry_t* entry = find_quota_entry(limiter, module_name);
     if (!entry) {
         nimcp_mutex_unlock(limiter->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_release_bandwidth: entry is NULL");
         return -1;
     }
 
@@ -763,6 +786,7 @@ int kg_ratelimit_get_stats(
     kg_ratelimit_stats_t* stats
 ) {
     if (!limiter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_stats: required parameter is NULL (limiter, stats)");
         return -1;
     }
 
@@ -772,6 +796,7 @@ int kg_ratelimit_get_stats(
         quota_entry_t* entry = find_quota_entry((kg_ratelimiter_t*)limiter, module_name);
         if (!entry) {
             nimcp_mutex_unlock(((kg_ratelimiter_t*)limiter)->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_ratelimit_get_stats: entry is NULL");
             return -1;
         }
         memcpy(stats, &entry->stats, sizeof(kg_ratelimit_stats_t));

@@ -869,19 +869,28 @@ void remorse_regret_set_instance_health_agent(nimcp_health_agent_t* agent) {
  * ============================================================================ */
 
 int remorse_regret_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_regret_training_begin: ctx is NULL");
+        return -1;
+    }
     remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_begin", 0.0f);
     return 0;
 }
 
 int remorse_regret_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_regret_training_end: ctx is NULL");
+        return -1;
+    }
     remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_end", 1.0f);
     return 0;
 }
 
 int remorse_regret_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "remorse_regret_training_step: ctx is NULL");
+        return -1;
+    }
     remorse_regret_heartbeat_instance(g_remorse_regret_instance_health_agent, "remorse_regret_training_step", progress);
     return 0;
 }

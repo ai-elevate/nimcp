@@ -125,7 +125,10 @@ typedef struct {
 
 static int dist_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
-    if (!size) return -1;
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_state_serialize: size is NULL");
+        return -1;
+    }
 
     size_t needed = sizeof(dist_serializable_state_t);
 
@@ -159,18 +162,26 @@ static int dist_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 
 static int dist_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
-    if (!buffer) return -1;
-    if (size < sizeof(dist_serializable_state_t)) return -1;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist_state_deserialize: buffer is NULL");
+        return -1;
+    }
+    if (size < sizeof(dist_serializable_state_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_state_deserialize: validation failed");
+        return -1;
+    }
 
     const dist_serializable_state_t* state = (const dist_serializable_state_t*)buffer;
 
     /* Validate magic and version */
     if (state->magic != DIST_STATE_MAGIC) {
         LOG_WARN("Invalid distributed state magic: 0x%08X", state->magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_state_deserialize: validation failed");
         return -1;
     }
     if (state->version > DIST_STATE_VERSION) {
         LOG_WARN("Unknown distributed state version: %u", state->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dist_state_deserialize: validation failed");
         return -1;
     }
 
@@ -206,7 +217,10 @@ static size_t dist_state_get_size(void* ctx)
 
 static int meta_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
-    if (!size) return -1;
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_state_serialize: size is NULL");
+        return -1;
+    }
 
     size_t needed = sizeof(meta_serializable_state_t);
 
@@ -238,17 +252,25 @@ static int meta_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 
 static int meta_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
-    if (!buffer) return -1;
-    if (size < sizeof(meta_serializable_state_t)) return -1;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_state_deserialize: buffer is NULL");
+        return -1;
+    }
+    if (size < sizeof(meta_serializable_state_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_state_deserialize: validation failed");
+        return -1;
+    }
 
     const meta_serializable_state_t* state = (const meta_serializable_state_t*)buffer;
 
     if (state->magic != META_STATE_MAGIC) {
         LOG_WARN("Invalid meta-learning state magic: 0x%08X", state->magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_state_deserialize: validation failed");
         return -1;
     }
     if (state->version > META_STATE_VERSION) {
         LOG_WARN("Unknown meta-learning state version: %u", state->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_state_deserialize: validation failed");
         return -1;
     }
 
@@ -280,7 +302,10 @@ static size_t meta_state_get_size(void* ctx)
 
 static int adv_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
-    if (!size) return -1;
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_state_serialize: size is NULL");
+        return -1;
+    }
 
     size_t needed = sizeof(adv_serializable_state_t);
 
@@ -312,17 +337,25 @@ static int adv_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 
 static int adv_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
-    if (!buffer) return -1;
-    if (size < sizeof(adv_serializable_state_t)) return -1;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adv_state_deserialize: buffer is NULL");
+        return -1;
+    }
+    if (size < sizeof(adv_serializable_state_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_state_deserialize: validation failed");
+        return -1;
+    }
 
     const adv_serializable_state_t* state = (const adv_serializable_state_t*)buffer;
 
     if (state->magic != ADV_STATE_MAGIC) {
         LOG_WARN("Invalid adversarial state magic: 0x%08X", state->magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_state_deserialize: validation failed");
         return -1;
     }
     if (state->version > ADV_STATE_VERSION) {
         LOG_WARN("Unknown adversarial state version: %u", state->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adv_state_deserialize: validation failed");
         return -1;
     }
 
@@ -354,7 +387,10 @@ static size_t adv_state_get_size(void* ctx)
 
 static int hpo_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 {
-    if (!size) return -1;
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_state_serialize: size is NULL");
+        return -1;
+    }
 
     size_t needed = sizeof(hpo_serializable_state_t);
 
@@ -386,17 +422,25 @@ static int hpo_state_serialize(void* ctx, uint8_t* buffer, size_t* size)
 
 static int hpo_state_deserialize(void* ctx, const uint8_t* buffer, size_t size)
 {
-    if (!buffer) return -1;
-    if (size < sizeof(hpo_serializable_state_t)) return -1;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hpo_state_deserialize: buffer is NULL");
+        return -1;
+    }
+    if (size < sizeof(hpo_serializable_state_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_state_deserialize: validation failed");
+        return -1;
+    }
 
     const hpo_serializable_state_t* state = (const hpo_serializable_state_t*)buffer;
 
     if (state->magic != HPO_STATE_MAGIC) {
         LOG_WARN("Invalid HPO state magic: 0x%08X", state->magic);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_state_deserialize: validation failed");
         return -1;
     }
     if (state->version > HPO_STATE_VERSION) {
         LOG_WARN("Unknown HPO state version: %u", state->version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hpo_state_deserialize: validation failed");
         return -1;
     }
 
@@ -431,7 +475,10 @@ static training_state_module_t* find_module(
     const char* name
 )
 {
-    if (!registry || !name) return NULL;
+    if (!registry || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: required parameter is NULL (registry, name)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < registry->module_count; i++) {
         if (registry->modules[i].module_name &&
@@ -439,6 +486,7 @@ static training_state_module_t* find_module(
             return &registry->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_module: required parameter is NULL (registry, name)");
     return NULL;
 }
 
@@ -461,6 +509,7 @@ static int add_module(
     /* Check for duplicate */
     if (find_module(registry, name)) {
         LOG_WARN("Module '%s' already registered", name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_module: validation failed");
         return -1;
     }
 
@@ -605,6 +654,7 @@ int training_state_unregister(
 
     training_state_module_t* module = find_module(registry, module_name);
     if (!module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_state_unregister: module is NULL");
         return -1;  /* Not found */
     }
 

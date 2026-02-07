@@ -128,6 +128,7 @@ int visual_cortex_extract_features(
 const attention_map_t* visual_cortex_get_attention_map(visual_cortex_t* cortex) {
     /* TODO: Return attention map from visual cortex when available */
     (void)cortex;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex_get_attention_map: operation failed");
     return NULL;
 }
 
@@ -175,14 +176,38 @@ bool visual_bridge_validate_config(const visual_bridge_config_t* config) {
 
     if (config->min_motion_speed < 0.0f) return false;
     if (config->min_blob_size <= 0.0f) return false;
-    if (config->max_blob_size <= config->min_blob_size) return false;
-    if (config->contrast_threshold < 0.0f || config->contrast_threshold > 1.0f) return false;
-    if (config->assumed_target_size_m <= 0.0f) return false;
-    if (config->attention_threshold < 0.0f || config->attention_threshold > 1.0f) return false;
-    if (config->calibration.focal_length <= 0.0f) return false;
-    if (config->calibration.image_width == 0) return false;
-    if (config->calibration.image_height == 0) return false;
-    if (config->frame_dt_s <= 0.0f) return false;
+    if (config->max_blob_size <= config->min_blob_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->contrast_threshold < 0.0f || config->contrast_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->assumed_target_size_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->attention_threshold < 0.0f || config->attention_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->calibration.focal_length <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
+    if (config->calibration.image_width == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: config->calibration.image_width is zero");
+        return false;
+    }
+    if (config->calibration.image_height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: config->calibration.image_height is zero");
+        return false;
+    }
+    if (config->frame_dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_bridge_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }

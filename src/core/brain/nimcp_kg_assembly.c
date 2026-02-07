@@ -113,6 +113,7 @@ static void safe_strcpy(char* dest, const char* src, size_t dest_size) {
 
 kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
     if (layer_index >= KG_ASSEMBLY_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_layer: capacity exceeded");
         return NULL;
     }
 
@@ -131,6 +132,7 @@ kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
     layer->modules = nimcp_calloc(layer->module_capacity, sizeof(kg_module_wiring_t*));
     if (!layer->modules) {
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_layer: layer->modules is NULL");
         return NULL;
     }
     layer->module_count = 0;
@@ -141,6 +143,7 @@ kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
     if (!layer->internal_edges) {
         nimcp_free(layer->modules);
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_layer: layer->internal_edges is NULL");
         return NULL;
     }
     layer->internal_edge_count = 0;
@@ -152,6 +155,7 @@ kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
         nimcp_free(layer->internal_edges);
         nimcp_free(layer->modules);
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_layer: layer->external_edges is NULL");
         return NULL;
     }
     layer->external_edge_count = 0;
@@ -166,10 +170,12 @@ int kg_assembly_add_module_to_layer(
     kg_module_wiring_t* module
 ) {
     if (!layer || !module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_module_to_layer: required parameter is NULL (layer, module)");
         return -1;
     }
 
     if (layer->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_module_to_layer: validation failed");
         return -1;  /* Cannot add after finalization */
     }
 
@@ -202,10 +208,12 @@ int kg_assembly_add_internal_edge(
     const char* edge_type
 ) {
     if (!layer || !edge_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_internal_edge: required parameter is NULL (layer, edge_type)");
         return -1;
     }
 
     if (layer->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_internal_edge: validation failed");
         return -1;
     }
 
@@ -242,14 +250,17 @@ int kg_assembly_add_external_edge(
     const char* edge_type
 ) {
     if (!layer || !edge_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_external_edge: required parameter is NULL (layer, edge_type)");
         return -1;
     }
 
     if (layer->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_external_edge: validation failed");
         return -1;
     }
 
     if (target_layer >= KG_ASSEMBLY_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_assembly_add_external_edge: capacity exceeded");
         return -1;
     }
 
@@ -340,6 +351,7 @@ void kg_assembly_destroy_layer(kg_layer_wiring_t* layer) {
 
 kg_hemisphere_wiring_t* kg_assembly_create_hemisphere(uint8_t hemisphere) {
     if (hemisphere > KG_ASSEMBLY_HEMISPHERE_RIGHT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_assembly_create_hemisphere: validation failed");
         return NULL;
     }
 
@@ -374,18 +386,22 @@ int kg_assembly_add_layer_to_hemisphere(
     kg_layer_wiring_t* layer
 ) {
     if (!hemi || !layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_layer_to_hemisphere: required parameter is NULL (hemi, layer)");
         return -1;
     }
 
     if (hemi->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_layer_to_hemisphere: validation failed");
         return -1;
     }
 
     if (!layer->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_layer_to_hemisphere: layer->finalized is NULL");
         return -1;  /* Layer must be finalized first */
     }
 
     if (layer->layer_index >= KG_ASSEMBLY_LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_assembly_add_layer_to_hemisphere: capacity exceeded");
         return -1;
     }
 
@@ -537,6 +553,7 @@ kg_brain_wiring_t* kg_assembly_create_brain(void) {
     );
     if (!brain->callosal_connections) {
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_create_brain: brain->callosal_connections is NULL");
         return NULL;
     }
     brain->callosal_count = 0;
@@ -557,14 +574,17 @@ int kg_assembly_add_hemisphere_to_brain(
     kg_hemisphere_wiring_t* hemi
 ) {
     if (!brain || !hemi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_hemisphere_to_brain: required parameter is NULL (brain, hemi)");
         return -1;
     }
 
     if (brain->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_hemisphere_to_brain: validation failed");
         return -1;
     }
 
     if (!hemi->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_add_hemisphere_to_brain: hemi->finalized is NULL");
         return -1;
     }
 
@@ -575,6 +595,7 @@ int kg_assembly_add_hemisphere_to_brain(
     } else if (hemi->hemisphere == KG_ASSEMBLY_HEMISPHERE_RIGHT) {
         target = &brain->right;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_hemisphere_to_brain: validation failed");
         return -1;
     }
 
@@ -633,6 +654,7 @@ int kg_assembly_add_callosal_connection(
     }
 
     if (brain->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_assembly_add_callosal_connection: validation failed");
         return -1;
     }
 
@@ -805,10 +827,12 @@ int kg_assembly_write_to_kg(
     brain_kg_t* kg
 ) {
     if (!wiring || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_write_to_kg: required parameter is NULL (wiring, kg)");
         return -1;
     }
 
     if (!wiring->finalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_assembly_write_to_kg: wiring->finalized is NULL");
         return -1;
     }
 

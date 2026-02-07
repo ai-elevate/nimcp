@@ -324,10 +324,14 @@ static phoneme_features_t get_phoneme_features(uint8_t phoneme) {
  * @brief Enqueue a motor command
  */
 static bool enqueue_command(speech_motor_planner_t* planner, const motor_command_t* cmd) {
-    if (!planner || !cmd) return false;
+    if (!planner || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enqueue_command: required parameter is NULL (planner, cmd)");
+        return false;
+    }
 
     // Check if queue is full
     if (planner->queue_count >= planner->config.max_commands) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_command: capacity exceeded");
         return false;
     }
 
@@ -364,7 +368,10 @@ static bool generate_commands_for_phoneme(
     const phoneme_features_t* features,
     uint8_t phoneme
 ) {
-    if (!planner || !features) return false;
+    if (!planner || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_commands_for_phoneme: required parameter is NULL (planner, features)");
+        return false;
+    }
 
     motor_command_t cmd;
     cmd.phoneme = phoneme;
@@ -407,6 +414,7 @@ static bool generate_commands_for_phoneme(
         cmd.velocity = calculate_velocity(distance, features->duration_ms);
 
         if (!enqueue_command(planner, &cmd)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_commands_for_phoneme: enqueue_command is NULL");
             return false;  // Queue full
         }
 
@@ -448,6 +456,7 @@ speech_motor_planner_t* speech_motor_create(const speech_motor_config_t* config)
 
     // Validate configuration
     if (!speech_motor_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_motor_create: speech_motor_validate_config is NULL");
         return NULL;
     }
 
@@ -525,6 +534,7 @@ bool speech_motor_plan_phoneme(speech_motor_planner_t* planner, uint8_t phoneme)
 
     // Generate motor commands
     if (!generate_commands_for_phoneme(planner, &features, phoneme)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_plan_phoneme: generate_commands_for_phoneme is NULL");
         return false;
     }
 
@@ -559,6 +569,7 @@ bool speech_motor_get_commands(
     // Return false if queue is empty - no commands to retrieve
     if (planner->queue_count == 0) {
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_get_commands: planner->queue_count is zero");
         return false;
     }
 
@@ -629,6 +640,7 @@ bool speech_motor_plan_sequence(
     // Plan each phoneme in sequence
     for (uint32_t i = 0; i < num_phonemes; i++) {
         if (!speech_motor_plan_phoneme(planner, phonemes[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_plan_sequence: speech_motor_plan_phoneme is NULL");
             return false;  // Planning failed
         }
     }
@@ -713,25 +725,32 @@ const char* speech_motor_articulator_name(articulator_type_t articulator) {
 }
 
 bool speech_motor_validate_config(const speech_motor_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_motor_validate_config: config is NULL");
+        return false;
+    }
 
     // Validate max_commands
     if (config->max_commands == 0 || config->max_commands > 10000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: config->max_commands is zero");
         return false;
     }
 
     // Validate planning_window_ms
     if (config->planning_window_ms < 0.0F || config->planning_window_ms > 1000.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 
     // Validate coarticulation_strength
     if (config->coarticulation_strength < 0.0F || config->coarticulation_strength > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 
     // Validate default_velocity
     if (config->default_velocity < 0.0F || config->default_velocity > 100.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_validate_config: validation failed");
         return false;
     }
 
@@ -797,6 +816,7 @@ bool speech_motor_set_interpolation(
 
     /* Validate interpolation points (2-10 is reasonable) */
     if (enable && (num_interpolation_points < 2 || num_interpolation_points > 10)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_motor_set_interpolation: validation failed");
         return false;
     }
 

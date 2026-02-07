@@ -183,12 +183,16 @@ static void report_security_violation(
 
 /* Check if write access is allowed */
 static bool check_write_access(brain_kg_t* kg) {
-    if (!kg) return false;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_write_access: kg is NULL");
+        return false;
+    }
 
     /* Emergency lock blocks all writes */
     if (kg->security.emergency_locked) {
         report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
             BRAIN_KG_INVALID_NODE, "Write attempted during emergency lock");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "check_write_access: validation failed");
         return false;
     }
 
@@ -197,6 +201,7 @@ static bool check_write_access(brain_kg_t* kg) {
         kg->security.current_level < BRAIN_KG_ACCESS_WRITE) {
         report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
             BRAIN_KG_INVALID_NODE, "Insufficient access level for write");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_write_access: operation failed");
         return false;
     }
 
@@ -211,6 +216,7 @@ static bool check_write_access(brain_kg_t* kg) {
         if (kg->security.mutations_this_second >= kg->config.max_mutations_per_sec) {
             report_security_violation(kg, BRAIN_KG_SEC_EXCESSIVE_MUTATIONS,
                 BRAIN_KG_INVALID_NODE, "Mutation rate limit exceeded");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "check_write_access: capacity exceeded");
             return false;
         }
         kg->security.mutations_this_second++;
@@ -222,6 +228,7 @@ static bool check_write_access(brain_kg_t* kg) {
 /* Check if node is critical */
 static bool is_critical_node(brain_kg_t* kg, brain_kg_node_id_t id) {
     if (!kg || !kg->security.critical_nodes || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_critical_node: required parameter is NULL (kg, kg->security)");
         return false;
     }
     if (id < kg->node_capacity) {
@@ -263,6 +270,7 @@ static brain_kg_node_t* find_node_by_id_unlocked(brain_kg_t* kg, brain_kg_node_i
             return &kg->nodes[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node_by_id_unlocked: validation failed");
     return NULL;
 }
 
@@ -272,6 +280,7 @@ static brain_kg_edge_t* find_edge_by_id_unlocked(brain_kg_t* kg, brain_kg_edge_i
             return &kg->edges[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_edge_by_id_unlocked: validation failed");
     return NULL;
 }
 
@@ -280,7 +289,10 @@ static brain_kg_edge_t* find_edge_by_id_unlocked(brain_kg_t* kg, brain_kg_edge_i
  * ============================================================================ */
 
 int brain_kg_default_config(brain_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
     config->max_nodes = BRAIN_KG_MAX_NODES;
@@ -304,6 +316,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     brain_kg_t* kg = nimcp_malloc(sizeof(*kg));
     if (!kg) {
         NIMCP_LOGGING_ERROR("Failed to allocate brain_kg");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg is NULL");
         return NULL;
     }
 
@@ -325,6 +338,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
     if (!kg->nodes) {
         NIMCP_LOGGING_ERROR("Failed to allocate node array");
         nimcp_free(kg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg->nodes is NULL");
         return NULL;
     }
     memset(kg->nodes, 0, kg->node_capacity * sizeof(brain_kg_node_t));
@@ -335,6 +349,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
         NIMCP_LOGGING_ERROR("Failed to allocate edge array");
         nimcp_free(kg->nodes);
         nimcp_free(kg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg->edges is NULL");
         return NULL;
     }
     memset(kg->edges, 0, kg->edge_capacity * sizeof(brain_kg_edge_t));
@@ -346,6 +361,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
         nimcp_free(kg->edges);
         nimcp_free(kg->nodes);
         nimcp_free(kg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg->mutex is NULL");
         return NULL;
     }
 
@@ -364,6 +380,7 @@ brain_kg_t* brain_kg_create(const brain_kg_config_t* config) {
         nimcp_free(kg->edges);
         nimcp_free(kg->nodes);
         nimcp_free(kg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_create: kg->msg_index is NULL");
         return NULL;
     }
     memset(kg->msg_index.entries, 0,
@@ -481,7 +498,10 @@ brain_kg_node_id_t brain_kg_add_node(
 }
 
 const brain_kg_node_t* brain_kg_get_node(const brain_kg_t* kg, brain_kg_node_id_t id) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_node: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_t* mkg = (brain_kg_t*)kg;  /* Cast for mutex */
     nimcp_mutex_lock(mkg->mutex);
@@ -523,13 +543,17 @@ int brain_kg_update_node(
     const char* description,
     brain_kg_node_state_t state
 ) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_update_node: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
     if (!node) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_update_node: node is NULL");
         return -1;
     }
 
@@ -546,13 +570,17 @@ int brain_kg_update_node(
 }
 
 int brain_kg_set_module_ptr(brain_kg_t* kg, brain_kg_node_id_t id, void* module_ptr) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_set_module_ptr: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
     if (!node) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_set_module_ptr: node is NULL");
         return -1;
     }
 
@@ -569,13 +597,17 @@ int brain_kg_add_metadata(
     const char* key,
     const char* value
 ) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE || !key || !value) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE || !key || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_add_metadata: required parameter is NULL (kg, key, value)");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
     if (!node || node->metadata_count >= BRAIN_KG_MAX_METADATA) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_kg_add_metadata: node is NULL");
         return -1;
     }
 
@@ -590,10 +622,14 @@ int brain_kg_add_metadata(
 }
 
 int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_node: kg is NULL");
+        return -1;
+    }
 
     /* Security check */
     if (kg->config.enable_security && !check_write_access(kg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_node: check_write_access is NULL");
         return -1;
     }
 
@@ -601,6 +637,7 @@ int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
     if (is_critical_node(kg, id)) {
         report_security_violation(kg, BRAIN_KG_SEC_CRITICAL_NODE_MODIFIED,
             id, "Attempt to remove critical node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_node: validation failed");
         return -1;
     }
 
@@ -609,6 +646,7 @@ int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
     brain_kg_node_t* node = find_node_by_id_unlocked(kg, id);
     if (!node) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_remove_node: node is NULL");
         return -1;
     }
 
@@ -660,6 +698,7 @@ brain_kg_node_list_t* brain_kg_get_nodes_by_type(const brain_kg_t* kg, brain_kg_
     list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
     if (!list->nodes) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_nodes_by_type: list->nodes is NULL");
         return NULL;
     }
 
@@ -706,6 +745,7 @@ brain_kg_node_list_t* brain_kg_get_all_nodes(const brain_kg_t* kg) {
     list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
     if (!list->nodes) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_all_nodes: list->nodes is NULL");
         return NULL;
     }
 
@@ -817,7 +857,10 @@ brain_kg_edge_id_t brain_kg_add_edge(
 }
 
 const brain_kg_edge_t* brain_kg_get_edge(const brain_kg_t* kg, brain_kg_edge_id_t id) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_edge: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_t* mkg = (brain_kg_t*)kg;
     nimcp_mutex_lock(mkg->mutex);
@@ -863,13 +906,17 @@ int brain_kg_update_edge(
     float weight,
     const char* description
 ) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_update_edge: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_edge_t* edge = find_edge_by_id_unlocked(kg, id);
     if (!edge) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_update_edge: edge is NULL");
         return -1;
     }
 
@@ -888,13 +935,17 @@ int brain_kg_update_edge(
 }
 
 int brain_kg_remove_edge(brain_kg_t* kg, brain_kg_edge_id_t id) {
-    if (!kg || id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_edge: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_edge_t* edge = find_edge_by_id_unlocked(kg, id);
     if (!edge) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_remove_edge: edge is NULL");
         return -1;
     }
 
@@ -917,7 +968,10 @@ int brain_kg_remove_edge(brain_kg_t* kg, brain_kg_edge_id_t id) {
 }
 
 brain_kg_edge_list_t* brain_kg_get_outgoing(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
-    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_outgoing: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
     if (!list) {
@@ -933,6 +987,7 @@ brain_kg_edge_list_t* brain_kg_get_outgoing(const brain_kg_t* kg, brain_kg_node_
     list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
     if (!list->edges) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_outgoing: list->edges is NULL");
         return NULL;
     }
 
@@ -957,7 +1012,10 @@ brain_kg_edge_list_t* brain_kg_get_outgoing(const brain_kg_t* kg, brain_kg_node_
 }
 
 brain_kg_edge_list_t* brain_kg_get_incoming(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
-    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_incoming: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
     if (!list) {
@@ -973,6 +1031,7 @@ brain_kg_edge_list_t* brain_kg_get_incoming(const brain_kg_t* kg, brain_kg_node_
     list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
     if (!list->edges) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_incoming: list->edges is NULL");
         return NULL;
     }
 
@@ -1019,6 +1078,7 @@ brain_kg_edge_list_t* brain_kg_get_edges_by_type(const brain_kg_t* kg, brain_kg_
     list->edges = nimcp_malloc(list->capacity * sizeof(brain_kg_edge_t*));
     if (!list->edges) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_edges_by_type: list->edges is NULL");
         return NULL;
     }
 
@@ -1058,6 +1118,7 @@ brain_kg_path_t* brain_kg_find_path(
     brain_kg_node_id_t to
 ) {
     if (!kg || from == BRAIN_KG_INVALID_NODE || to == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_find_path: kg is NULL");
         return NULL;
     }
 
@@ -1074,6 +1135,7 @@ brain_kg_path_t* brain_kg_find_path(
         if (parent) nimcp_free(parent);
         if (queue) nimcp_free(queue);
         nimcp_mutex_unlock(mkg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_find_path: validation failed");
         return NULL;
     }
 
@@ -1097,6 +1159,7 @@ brain_kg_path_t* brain_kg_find_path(
         nimcp_free(parent);
         nimcp_free(queue);
         nimcp_mutex_unlock(mkg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_find_path: validation failed");
         return NULL;
     }
 
@@ -1187,7 +1250,10 @@ brain_kg_node_list_t* brain_kg_get_reachable(
     brain_kg_node_id_t start_node,
     uint32_t max_depth
 ) {
-    if (!kg || start_node == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || start_node == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_reachable: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
     if (!list) {
@@ -1203,6 +1269,7 @@ brain_kg_node_list_t* brain_kg_get_reachable(
     list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
     if (!list->nodes) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_reachable: list->nodes is NULL");
         return NULL;
     }
 
@@ -1213,6 +1280,7 @@ brain_kg_node_list_t* brain_kg_get_reachable(
     if (!visited) {
         nimcp_mutex_unlock(mkg->mutex);
         brain_kg_node_list_destroy(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_reachable: visited is NULL");
         return NULL;
     }
     memset(visited, 0, kg->node_capacity * sizeof(bool));
@@ -1226,6 +1294,7 @@ brain_kg_node_list_t* brain_kg_get_reachable(
         nimcp_free(visited);
         nimcp_mutex_unlock(mkg->mutex);
         brain_kg_node_list_destroy(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_reachable: validation failed");
         return NULL;
     }
 
@@ -1301,7 +1370,10 @@ void brain_kg_path_destroy(brain_kg_path_t* path) {
  * ============================================================================ */
 
 brain_kg_node_list_t* brain_kg_search_nodes(const brain_kg_t* kg, const char* pattern) {
-    if (!kg || !pattern) return NULL;
+    if (!kg || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_search_nodes: required parameter is NULL (kg, pattern)");
+        return NULL;
+    }
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
     if (!list) {
@@ -1317,6 +1389,7 @@ brain_kg_node_list_t* brain_kg_search_nodes(const brain_kg_t* kg, const char* pa
     list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
     if (!list->nodes) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_search_nodes: list->nodes is NULL");
         return NULL;
     }
 
@@ -1347,7 +1420,10 @@ brain_kg_node_list_t* brain_kg_search_nodes(const brain_kg_t* kg, const char* pa
 }
 
 brain_kg_node_list_t* brain_kg_get_neighbors(const brain_kg_t* kg, brain_kg_node_id_t node_id) {
-    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_neighbors: kg is NULL");
+        return NULL;
+    }
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
     if (!list) {
@@ -1363,6 +1439,7 @@ brain_kg_node_list_t* brain_kg_get_neighbors(const brain_kg_t* kg, brain_kg_node
     list->nodes = nimcp_malloc(list->capacity * sizeof(brain_kg_node_t*));
     if (!list->nodes) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_neighbors: list->nodes is NULL");
         return NULL;
     }
 
@@ -1449,7 +1526,10 @@ brain_kg_node_list_t* brain_kg_get_hubs(const brain_kg_t* kg, uint32_t max_count
  * ============================================================================ */
 
 int brain_kg_get_stats(const brain_kg_t* kg, brain_kg_stats_t* stats) {
-    if (!kg || !stats) return -1;
+    if (!kg || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_stats: required parameter is NULL (kg, stats)");
+        return -1;
+    }
 
     brain_kg_t* mkg = (brain_kg_t*)kg;
     nimcp_mutex_lock(mkg->mutex);
@@ -1460,7 +1540,10 @@ int brain_kg_get_stats(const brain_kg_t* kg, brain_kg_stats_t* stats) {
 }
 
 int brain_kg_generate_summary(const brain_kg_t* kg, char* buffer, size_t buffer_size) {
-    if (!kg || !buffer || buffer_size == 0) return -1;
+    if (!kg || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_generate_summary: required parameter is NULL (kg, buffer)");
+        return -1;
+    }
 
     brain_kg_stats_t stats;
     brain_kg_get_stats(kg, &stats);
@@ -1546,7 +1629,10 @@ const char* brain_kg_node_state_to_string(brain_kg_node_state_t state) {
  * ============================================================================ */
 
 int brain_kg_populate_from_brain(brain_kg_t* kg, void* brain) {
-    if (!kg || !brain) return -1;
+    if (!kg || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_populate_from_brain: required parameter is NULL (kg, brain)");
+        return -1;
+    }
 
     /* Cast to access brain_struct members
      * Note: We use void* to avoid circular header dependencies */
@@ -1849,7 +1935,10 @@ int brain_kg_populate_from_brain(brain_kg_t* kg, void* brain) {
 }
 
 int brain_kg_refresh_state(brain_kg_t* kg, void* brain) {
-    if (!kg || !brain) return -1;
+    if (!kg || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_refresh_state: required parameter is NULL (kg, brain)");
+        return -1;
+    }
 
     NIMCP_LOGGING_DEBUG("brain_kg_refresh_state called");
     return 0;
@@ -1860,7 +1949,10 @@ int brain_kg_refresh_state(brain_kg_t* kg, void* brain) {
  * ============================================================================ */
 
 int brain_kg_connect_immune(brain_kg_t* kg, void* immune_system) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_connect_immune: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
     kg->security.immune_system = immune_system;
@@ -1872,7 +1964,10 @@ int brain_kg_connect_immune(brain_kg_t* kg, void* immune_system) {
 }
 
 int brain_kg_disconnect_immune(brain_kg_t* kg) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_disconnect_immune: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
     kg->security.immune_system = NULL;
@@ -1888,7 +1983,10 @@ int brain_kg_register_security_callback(
     brain_kg_security_callback_t callback,
     void* user_data
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_register_security_callback: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
     kg->security.callback = callback;
@@ -1903,7 +2001,10 @@ int brain_kg_set_access_level(
     brain_kg_access_level_t level,
     uint64_t token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_set_access_level: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -1913,6 +2014,7 @@ int brain_kg_set_access_level(
             nimcp_mutex_unlock(kg->mutex);
             report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
                 BRAIN_KG_INVALID_NODE, "Invalid token for access level change");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_set_access_level: validation failed");
             return -1;
         }
     }
@@ -1923,6 +2025,7 @@ int brain_kg_set_access_level(
             nimcp_mutex_unlock(kg->mutex);
             report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
                 BRAIN_KG_INVALID_NODE, "Admin token required for ADMIN access");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_set_access_level: validation failed");
             return -1;
         }
     }
@@ -1939,7 +2042,10 @@ int brain_kg_generate_token(
     brain_kg_access_level_t level,
     uint64_t* token_out
 ) {
-    if (!kg || !token_out) return -1;
+    if (!kg || !token_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_generate_token: required parameter is NULL (kg, token_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -1949,6 +2055,7 @@ int brain_kg_generate_token(
         nimcp_mutex_unlock(kg->mutex);
         report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
             BRAIN_KG_INVALID_NODE, "ADMIN access required to generate tokens");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_generate_token: operation failed");
         return -1;
     }
 
@@ -1967,7 +2074,10 @@ int brain_kg_generate_token(
 }
 
 int brain_kg_verify_integrity(brain_kg_t* kg) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_verify_integrity: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -1986,6 +2096,7 @@ int brain_kg_verify_integrity(brain_kg_t* kg) {
         nimcp_mutex_unlock(kg->mutex);
         report_security_violation(kg, BRAIN_KG_SEC_INTEGRITY_VIOLATION,
             BRAIN_KG_INVALID_NODE, "Integrity checksum mismatch detected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_verify_integrity: validation failed");
         return -1;
     }
 
@@ -1997,7 +2108,10 @@ int brain_kg_verify_integrity(brain_kg_t* kg) {
 }
 
 int brain_kg_mark_critical(brain_kg_t* kg, brain_kg_node_id_t node_id) {
-    if (!kg || node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_mark_critical: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -2006,6 +2120,7 @@ int brain_kg_mark_critical(brain_kg_t* kg, brain_kg_node_id_t node_id) {
         kg->security.critical_nodes = nimcp_malloc(kg->node_capacity * sizeof(bool));
         if (!kg->security.critical_nodes) {
             nimcp_mutex_unlock(kg->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_mark_critical: kg->security is NULL");
             return -1;
         }
         memset(kg->security.critical_nodes, 0, kg->node_capacity * sizeof(bool));
@@ -2022,6 +2137,7 @@ int brain_kg_mark_critical(brain_kg_t* kg, brain_kg_node_id_t node_id) {
     }
 
     nimcp_mutex_unlock(kg->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_mark_critical: validation failed");
     return -1;
 }
 
@@ -2030,7 +2146,10 @@ int brain_kg_get_security_stats(
     uint32_t* violations_out,
     uint64_t* last_violation_time
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_get_security_stats: kg is NULL");
+        return -1;
+    }
 
     brain_kg_t* mkg = (brain_kg_t*)kg;
     nimcp_mutex_lock(mkg->mutex);
@@ -2047,7 +2166,10 @@ int brain_kg_get_security_stats(
 }
 
 int brain_kg_emergency_lock(brain_kg_t* kg) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_emergency_lock: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
     kg->security.emergency_locked = true;
@@ -2058,7 +2180,10 @@ int brain_kg_emergency_lock(brain_kg_t* kg) {
 }
 
 int brain_kg_emergency_unlock(brain_kg_t* kg, uint64_t admin_token) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_emergency_unlock: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -2066,6 +2191,7 @@ int brain_kg_emergency_unlock(brain_kg_t* kg, uint64_t admin_token) {
         nimcp_mutex_unlock(kg->mutex);
         report_security_violation(kg, BRAIN_KG_SEC_UNAUTHORIZED_ACCESS,
             BRAIN_KG_INVALID_NODE, "Invalid admin token for emergency unlock");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_emergency_unlock: validation failed");
         return -1;
     }
 
@@ -2087,7 +2213,10 @@ static brain_kg_msg_index_entry_t* find_msg_index_entry_unlocked(
     brain_kg_t* kg,
     uint32_t message_type
 ) {
-    if (!kg || !kg->msg_index.entries) return NULL;
+    if (!kg || !kg->msg_index.entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_msg_index_entry_unlocked: required parameter is NULL (kg, kg->msg_index)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < kg->msg_index.entry_capacity; i++) {
         if (kg->msg_index.entries[i].in_use &&
@@ -2095,6 +2224,7 @@ static brain_kg_msg_index_entry_t* find_msg_index_entry_unlocked(
             return &kg->msg_index.entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_msg_index_entry_unlocked: required parameter is NULL (kg, kg->msg_index)");
     return NULL;
 }
 
@@ -2105,7 +2235,10 @@ static brain_kg_msg_index_entry_t* get_or_create_msg_index_entry_unlocked(
     brain_kg_t* kg,
     uint32_t message_type
 ) {
-    if (!kg || !kg->msg_index.entries) return NULL;
+    if (!kg || !kg->msg_index.entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_msg_index_entry_unlocked: required parameter is NULL (kg, kg->msg_index)");
+        return NULL;
+    }
 
     /* First try to find existing entry */
     brain_kg_msg_index_entry_t* entry = find_msg_index_entry_unlocked(kg, message_type);
@@ -2125,6 +2258,7 @@ static brain_kg_msg_index_entry_t* get_or_create_msg_index_entry_unlocked(
     }
 
     NIMCP_LOGGING_WARN("Message index capacity reached (%u)", kg->msg_index.entry_capacity);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_msg_index_entry_unlocked: operation failed");
     return NULL;
 }
 
@@ -2154,6 +2288,7 @@ brain_kg_handler_list_t* brain_kg_get_handlers_for_message_type(
     list->handlers = nimcp_malloc(list->capacity * sizeof(brain_kg_node_id_t));
     if (!list->handlers) {
         nimcp_free(list);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_kg_get_handlers_for_message_type: list->handlers is NULL");
         return NULL;
     }
 
@@ -2199,7 +2334,10 @@ int brain_kg_add_message_handler(
     brain_kg_node_id_t module_node_id,
     uint32_t message_type
 ) {
-    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_add_message_handler: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
@@ -2214,6 +2352,7 @@ int brain_kg_add_message_handler(
         kg, message_type);
     if (!entry) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_add_message_handler: entry is NULL");
         return -1;
     }
 
@@ -2230,6 +2369,7 @@ int brain_kg_add_message_handler(
         nimcp_mutex_unlock(kg->mutex);
         NIMCP_LOGGING_WARN("Max handlers per message type reached for type %u",
                            message_type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_kg_add_message_handler: capacity exceeded");
         return -1;
     }
 
@@ -2248,13 +2388,17 @@ int brain_kg_remove_message_handler(
     brain_kg_node_id_t module_node_id,
     uint32_t message_type
 ) {
-    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || module_node_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_message_handler: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 
     brain_kg_msg_index_entry_t* entry = find_msg_index_entry_unlocked(kg, message_type);
     if (!entry) {
         nimcp_mutex_unlock(kg->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_remove_message_handler: entry is NULL");
         return -1;
     }
 
@@ -2280,11 +2424,15 @@ int brain_kg_remove_message_handler(
     }
 
     nimcp_mutex_unlock(kg->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_kg_remove_message_handler: operation failed");
     return -1;  /* Not found */
 }
 
 int brain_kg_rebuild_message_index(brain_kg_t* kg) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg_rebuild_message_index: kg is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(kg->mutex);
 

@@ -137,6 +137,7 @@ int ofc_brain_init_register(brain_t brain) {
     if (!ofc) {
         NIMCP_LOG_ERROR(OFC_INIT_MODULE_NAME,
             "OFC subsystem creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_brain_init_register: ofc is NULL");
         return -1;
     }
 
@@ -153,7 +154,10 @@ nimcp_ofc_t* ofc_brain_init_create(
     const ofc_init_config_t* config,
     ofc_init_result_t* result
 ) {
-    if (!brain || !config) return NULL;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_brain_init_create: required parameter is NULL (brain, config)");
+        return NULL;
+    }
 
     ofc_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -165,6 +169,7 @@ nimcp_ofc_t* ofc_brain_init_create(
     if (ofc_default_config(&ofc_config) < 0) {
         local_result.error_count++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_brain_init_create: validation failed");
         return NULL;
     }
 
@@ -270,7 +275,10 @@ int ofc_brain_init_destroy(nimcp_ofc_t* ofc) {
 //=============================================================================
 
 bool ofc_init_bio_async_bridge(nimcp_ofc_t* ofc, brain_t brain) {
-    if (!ofc || !brain) return false;
+    if (!ofc || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_init_bio_async_bridge: required parameter is NULL (ofc, brain)");
+        return false;
+    }
 
     /* Get bio-router from brain (would need brain API accessor) */
     /* struct nimcp_bio_router* router = brain_get_bio_router(brain); */
@@ -287,7 +295,10 @@ bool ofc_init_kg_wiring(
     brain_t brain,
     uint64_t admin_token
 ) {
-    if (!ofc || !brain) return false;
+    if (!ofc || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_init_kg_wiring: required parameter is NULL (ofc, brain)");
+        return false;
+    }
 
     /* Get KG from brain (would need brain API accessor) */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -302,7 +313,10 @@ bool ofc_init_kg_wiring(
 }
 
 bool ofc_init_security(nimcp_ofc_t* ofc, brain_t brain) {
-    if (!ofc || !brain) return false;
+    if (!ofc || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_init_security: required parameter is NULL (ofc, brain)");
+        return false;
+    }
 
     /* Get BBB from brain (would need brain API accessor) */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -318,7 +332,10 @@ bool ofc_init_security(nimcp_ofc_t* ofc, brain_t brain) {
 }
 
 bool ofc_init_immune_bridge(nimcp_ofc_t* ofc, brain_t brain) {
-    if (!ofc || !brain) return false;
+    if (!ofc || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_init_immune_bridge: required parameter is NULL (ofc, brain)");
+        return false;
+    }
 
     /* Get immune system from brain (would need brain API accessor) */
     /* void* immune = brain_get_immune(brain); */
@@ -335,7 +352,10 @@ bool ofc_init_immune_bridge(nimcp_ofc_t* ofc, brain_t brain) {
 //=============================================================================
 
 bool ofc_is_initialized(nimcp_ofc_t* ofc) {
-    if (!ofc) return false;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_is_initialized: ofc is NULL");
+        return false;
+    }
 
     /* Access initialized field via opaque pointer cast */
     /* In full implementation, would need accessor function */

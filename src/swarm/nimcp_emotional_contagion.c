@@ -118,7 +118,10 @@ static agent_entry_t* find_agent(
     const emotional_contagion_t* ec,
     uint32_t agent_id) {
 
-    if (!ec || !ec->agent_hash) return NULL;
+    if (!ec || !ec->agent_hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_hash_function: required parameter is NULL (ec, ec->agent_hash)");
+        return NULL;
+    }
 
     size_t hash = agent_hash_function(agent_id, ec->hash_size);
     agent_entry_t* entry = ec->agent_hash[hash];
@@ -130,6 +133,7 @@ static agent_entry_t* find_agent(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_hash_function: validation failed");
     return NULL;
 }
 
@@ -383,6 +387,7 @@ emotional_contagion_t* emotional_contagion_create(
 
     /* Validate configuration */
     if (emotional_contagion_validate_config(config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_get_default_config: validation failed");
         return NULL;
     }
 
@@ -409,6 +414,7 @@ emotional_contagion_t* emotional_contagion_create(
     if (!ec->agent_hash) {
         LOG_ERROR(CONTAGION_MODULE, "Failed to allocate agent hash table");
         nimcp_free(ec);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_get_default_config: ec->agent_hash is NULL");
         return NULL;
     }
 
@@ -419,6 +425,7 @@ emotional_contagion_t* emotional_contagion_create(
         LOG_ERROR(CONTAGION_MODULE, "Failed to initialize mutex");
         nimcp_free(ec->agent_hash);
         nimcp_free(ec);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotional_contagion_get_default_config: validation failed");
         return NULL;
     }
 

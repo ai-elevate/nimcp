@@ -93,16 +93,19 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
 
     // Compute topology statistics
     if (!topology_compute_stats(network, &cache->stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_cognitive_init: topology_compute_stats is NULL");
         return false;
     }
 
     uint32_t N = cache->stats.num_neurons;
     if (N == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_cognitive_init: N is zero");
         return false;
     }
 
     // Identify hub neurons (top 10%)
     if (!topology_identify_hubs(network, 0.9F, &cache->hub_indices, &cache->num_hubs)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_cognitive_init: topology_identify_hubs is NULL");
         return false;
     }
 
@@ -118,6 +121,7 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     // Compute betweenness centrality
     if (!topology_compute_betweenness(network, cache->centrality_scores)) {
         fractal_cognitive_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fractal_cognitive_init: topology_compute_betweenness is NULL");
         return false;
     }
 
@@ -254,6 +258,7 @@ bool fractal_is_hub_neuron(const fractal_cognitive_cache_t *cache, uint32_t neur
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "fractal_is_hub_neuron: validation failed");
     return false;
 }
 

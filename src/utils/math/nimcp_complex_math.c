@@ -107,21 +107,25 @@ static bool detect_avx2_support(void) {
 
     // Check CPUID support
     if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_avx2_support: __get_cpuid is NULL");
         return false;
     }
 
     // Check OSXSAVE (bit 27 of ECX)
     if (!(ecx & (1 << 27))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_avx2_support: validation failed");
         return false;
     }
 
     // Check AVX support (bit 28 of ECX)
     if (!(ecx & (1 << 28))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_avx2_support: validation failed");
         return false;
     }
 
     // Check extended features (EAX=7, ECX=0)
     if (!__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_avx2_support: __get_cpuid_count is NULL");
         return false;
     }
 
@@ -130,6 +134,7 @@ static bool detect_avx2_support(void) {
 }
 #else
 static bool detect_avx2_support(void) {
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_avx2_support: __get_cpuid_count is NULL");
     return false;
 }
 #endif
@@ -571,10 +576,12 @@ static void fft_internal(neural_phasor_t* data, uint32_t n, bool inverse) {
 
 bool phasor_fft(const neural_phasor_t* input, neural_phasor_t* output, uint32_t n) {
     if (input == NULL || output == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_fft: n is zero");
         return false;
     }
 
     if (!is_power_of_2(n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_fft: is_power_of_2 is NULL");
         return false;
     }
 
@@ -589,10 +596,12 @@ bool phasor_fft(const neural_phasor_t* input, neural_phasor_t* output, uint32_t 
 
 bool phasor_ifft(const neural_phasor_t* input, neural_phasor_t* output, uint32_t n) {
     if (input == NULL || output == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_ifft: n is zero");
         return false;
     }
 
     if (!is_power_of_2(n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_ifft: is_power_of_2 is NULL");
         return false;
     }
 
@@ -607,22 +616,26 @@ bool phasor_ifft(const neural_phasor_t* input, neural_phasor_t* output, uint32_t
 
 bool phasor_power_spectrum(const neural_phasor_t* input, float* output, uint32_t n) {
     if (input == NULL || output == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: n is zero");
         return false;
     }
 
     if (!is_power_of_2(n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: is_power_of_2 is NULL");
         return false;
     }
 
     // Allocate temporary buffer for FFT
     neural_phasor_t* fft_result = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (fft_result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: validation failed");
         return false;
     }
 
     // Compute FFT
     if (!phasor_fft(input, fft_result, n)) {
         nimcp_free(fft_result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: phasor_fft is NULL");
         return false;
     }
 
@@ -798,16 +811,19 @@ bool phasor_hilbert_transform(const float* real_signal,
                               neural_phasor_t* analytic_signal,
                               uint32_t n) {
     if (real_signal == NULL || analytic_signal == NULL || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: n is zero");
         return false;
     }
 
     if (!is_power_of_2(n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phasor_power_spectrum: is_power_of_2 is NULL");
         return false;
     }
 
     // Allocate FFT buffer
     neural_phasor_t* fft_buffer = (neural_phasor_t*)nimcp_malloc(n * sizeof(neural_phasor_t));
     if (fft_buffer == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 

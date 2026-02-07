@@ -154,6 +154,7 @@ int physics_security_register_hh(
     if (!bbb_register_subject(bbb, &local_subject)) {
         NIMCP_LOG_ERROR(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to register HH subject");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_register_hh: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -190,6 +191,7 @@ int physics_security_register_thermo(
     if (!bbb_register_subject(bbb, &local_subject)) {
         NIMCP_LOG_ERROR(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to register Thermo subject");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_register_thermo: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -225,6 +227,7 @@ int physics_security_register_ephaptic(
     if (!bbb_register_subject(bbb, &local_subject)) {
         NIMCP_LOG_ERROR(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to register Ephaptic subject");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_register_ephaptic: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -244,12 +247,16 @@ int physics_security_register_memory(
     size_t size,
     physics_security_state_t* state
 ) {
-    if (!bbb || !address || size == 0) return -1;
+    if (!bbb || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_security_register_memory: required parameter is NULL (bbb, address)");
+        return -1;
+    }
 
     uint32_t region_id = bbb_register_memory_region(bbb, address, size, true);
     if (region_id == 0) {
         NIMCP_LOG_ERROR(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to register memory region");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_register_memory: region_id is zero");
         return -1;
     }
 
@@ -281,7 +288,10 @@ bool physics_security_check_access(
     uint32_t module_id,
     physics_security_op_t op
 ) {
-    if (!bbb) return false;
+    if (!bbb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_security_check_access: bbb is NULL");
+        return false;
+    }
 
     /* Create subject from module_id */
     bbb_subject_t subject = {
@@ -333,6 +343,7 @@ bool physics_security_has_capability(
             module_caps |= PHYSICS_CAP_FIELD_MODIFY;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_has_capability: operation failed");
             return false;
     }
 
@@ -356,6 +367,7 @@ int physics_security_grant_capability(
         NIMCP_LOG_WARN(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to grant capability 0x%llx to module 0x%x",
             (unsigned long long)capability, module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_grant_capability: bbb_grant_capability is NULL");
         return -1;
     }
 
@@ -379,6 +391,7 @@ int physics_security_revoke_capability(
         NIMCP_LOG_WARN(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to revoke capability 0x%llx from module 0x%x",
             (unsigned long long)capability, module_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_revoke_capability: bbb_revoke_capability is NULL");
         return -1;
     }
 
@@ -394,12 +407,16 @@ int physics_security_connect_immune(
     void* immune,
     physics_security_state_t* state
 ) {
-    if (!bbb || !immune) return -1;
+    if (!bbb || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_security_connect_immune: required parameter is NULL (bbb, immune)");
+        return -1;
+    }
 
     /* Connect BBB to immune system */
     if (!bbb_connect_immune(bbb, (brain_immune_system_t*)immune)) {
         NIMCP_LOG_WARN(PHYSICS_SECURITY_MODULE_NAME,
             "Failed to connect BBB to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_security_connect_immune: bbb_connect_immune is NULL");
         return -1;
     }
 

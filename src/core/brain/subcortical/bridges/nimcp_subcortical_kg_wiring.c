@@ -113,7 +113,10 @@ static brain_kg_edge_id_t create_subcortical_edge(
 //=============================================================================
 
 int subcortical_kg_default_config(subcortical_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_basal_ganglia = true;
     config->register_thalamus = true;
@@ -375,7 +378,10 @@ int subcortical_kg_register_basal_ganglia(
     uint64_t admin_token
 ) {
     (void)config;  /* All BG components registered by default */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_basal_ganglia: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create basal ganglia root node */
     state->bg_id = create_subcortical_node(
@@ -386,6 +392,7 @@ int subcortical_kg_register_basal_ganglia(
     );
     if (state->bg_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(SUBCORTICAL_KG_MODULE_NAME, "Failed to create BG root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_basal_ganglia: validation failed");
         return -1;
     }
     state->node_count++;
@@ -620,7 +627,10 @@ int subcortical_kg_register_thalamus(
     uint64_t admin_token
 ) {
     (void)config;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_thalamus: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create thalamus root node */
     state->thalamus_id = create_subcortical_node(
@@ -631,6 +641,7 @@ int subcortical_kg_register_thalamus(
     );
     if (state->thalamus_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(SUBCORTICAL_KG_MODULE_NAME, "Failed to create thalamus root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_thalamus: validation failed");
         return -1;
     }
     state->node_count++;
@@ -661,7 +672,10 @@ int subcortical_kg_register_nucleus_accumbens(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_nucleus_accumbens: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Create NAc root node */
     state->nac_id = create_subcortical_node(
@@ -672,6 +686,7 @@ int subcortical_kg_register_nucleus_accumbens(
     );
     if (state->nac_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(SUBCORTICAL_KG_MODULE_NAME, "Failed to create NAc root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_nucleus_accumbens: validation failed");
         return -1;
     }
     state->node_count++;
@@ -732,7 +747,10 @@ int subcortical_kg_register_pathways(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_pathways: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Direct Pathway node */
     state->direct_pathway_id = create_subcortical_node(
@@ -919,7 +937,10 @@ int subcortical_kg_register_cross_edges(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_cross_edges: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Register BG -> Thalamus output edges */
     register_bg_thalamus_edges(kg, state, admin_token);
@@ -952,8 +973,14 @@ int subcortical_kg_register_striatal_subdivisions(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
-    if (striatum_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_striatal_subdivisions: required parameter is NULL (kg, state)");
+        return -1;
+    }
+    if (striatum_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_striatal_subdivisions: validation failed");
+        return -1;
+    }
 
     /* Dorsal Striatum (associative/sensorimotor) */
     state->dorsal_striatum_id = create_subcortical_node(
@@ -1032,7 +1059,10 @@ int subcortical_kg_register_vta(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_vta: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     state->vta_id = create_subcortical_node(
         kg, SUBCORTICAL_KG_VTA_NAME,
@@ -1042,6 +1072,7 @@ int subcortical_kg_register_vta(
     );
     if (state->vta_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(SUBCORTICAL_KG_MODULE_NAME, "Failed to create VTA node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_vta: validation failed");
         return -1;
     }
     state->node_count++;
@@ -1090,8 +1121,14 @@ int subcortical_kg_register_extended_thalamus(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg || !state) return -1;
-    if (thalamus_id == BRAIN_KG_INVALID_NODE) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_extended_thalamus: required parameter is NULL (kg, state)");
+        return -1;
+    }
+    if (thalamus_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_extended_thalamus: validation failed");
+        return -1;
+    }
 
     /* Anterior Nucleus (limbic, Papez circuit) */
     state->an_id = create_subcortical_node(
@@ -1173,7 +1210,10 @@ int subcortical_kg_register_all(
     subcortical_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     /* Use provided config or defaults */
     subcortical_kg_config_t local_config;
@@ -1203,6 +1243,7 @@ int subcortical_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(SUBCORTICAL_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "subcortical_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -1305,7 +1346,10 @@ int subcortical_kg_update_state(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Reserved for future access control */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_update_state: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /* Update SNc dopamine level */
     if (state->snc_id != BRAIN_KG_INVALID_NODE) {
@@ -1391,7 +1435,10 @@ int subcortical_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;  /* Would be used for actual deletion */
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subcortical_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     /*
      * Note: Full implementation would remove nodes in reverse order

@@ -189,6 +189,7 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
     if (!immune_system || !emotion_system) {
         LOG_MODULE_ERROR("emotion_immune_bridge",
                   "Cannot create bridge without immune and emotion systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotion_immune_bridge_create: required parameter is NULL (immune_system, emotion_system)");
         return NULL;
     }
 
@@ -274,7 +275,10 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_emotion_modulation) return 0;
-    if (!bridge->immune_system || !bridge->emotion_system) return -1;
+    if (!bridge->immune_system || !bridge->emotion_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->emotion_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
@@ -346,7 +350,10 @@ int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_anhedonia) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_apply", 0.0f);
@@ -414,7 +421,10 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_emotion_immune_trigger) return 0;
-    if (!bridge->emotion_system || !bridge->immune_system) return -1;
+    if (!bridge->emotion_system || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_trigger_from_stress: required parameter is NULL (bridge->emotion_system, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_trigg", 0.0f);
@@ -428,6 +438,7 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
     emotion_state_t emotion;
     if (!emotion_system_get_state(bridge->emotion_system, &emotion)) {
         nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_immune_trigger_from_stress: emotion_system_get_state is NULL");
         return -1;
     }
 
@@ -469,7 +480,10 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_grief_inflammation_coupling) return 0;
-    if (!bridge->grief_system || !bridge->immune_system) return -1;
+    if (!bridge->grief_system || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_amplify_grief_inflammation: required parameter is NULL (bridge->grief_system, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_ampli", 0.0f);
@@ -510,7 +524,10 @@ int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_positive_immune_boost) return 0;
-    if (!bridge->joy_system || !bridge->immune_system) return -1;
+    if (!bridge->joy_system || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_boost_from_positive_affect: required parameter is NULL (bridge->joy_system, bridge->immune_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_boost", 0.0f);
@@ -602,7 +619,10 @@ int emotion_immune_get_cytokine_effects(
     const emotion_immune_bridge_t* bridge,
     cytokine_emotion_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_c", 0.0f);
@@ -619,7 +639,10 @@ int emotion_immune_get_inflammation_state(
     const emotion_immune_bridge_t* bridge,
     inflammation_emotion_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_get_i", 0.0f);
@@ -633,7 +656,10 @@ int emotion_immune_get_inflammation_state(
 }
 
 bool emotion_immune_is_sick_behavior(const emotion_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_is_sick_behavior: bridge is NULL");
+        return false;
+    }
 
     /* Sickness behavior threshold */
     /* Phase 8: Heartbeat at operation start */
@@ -732,7 +758,10 @@ int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool emotion_immune_is_bio_async_connected(const emotion_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_immune_bridge_heartbeat("emotion_immu_emotion_immune_is_bi", 0.0f);
 

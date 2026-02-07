@@ -380,6 +380,7 @@ imag_reason_fep_bridge_t* imag_reason_fep_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "imagination_reasoning_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imag_reason_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -431,7 +432,10 @@ void imag_reason_fep_bridge_destroy(imag_reason_fep_bridge_t* bridge) {
 }
 
 int imag_reason_fep_bridge_reset(imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -476,7 +480,10 @@ int imag_reason_fep_bridge_register(
     imagination_reasoning_bridge_t* imag_reason_bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -513,6 +520,7 @@ int imag_reason_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->imag_reason_bridge = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imag_reason_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -529,7 +537,10 @@ int imag_reason_fep_bridge_register(
 }
 
 int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -558,7 +569,10 @@ int imag_reason_fep_bridge_unregister(imag_reason_fep_bridge_t* bridge) {
 }
 
 bool imag_reason_fep_bridge_is_registered(const imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -595,13 +609,17 @@ int imag_reason_fep_update_callback(void* handle) {
 
 
     imag_reason_fep_bridge_t* bridge = (imag_reason_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_update_callback: bridge->registered is NULL");
         return -1;
     }
 
@@ -692,7 +710,10 @@ void imag_reason_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int imag_reason_fep_bridge_force_update(imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -726,7 +747,10 @@ int imag_reason_fep_bridge_update_scenario_quality(
     imag_reason_fep_bridge_t* bridge,
     float quality
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_update_scenario_quality: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -744,7 +768,10 @@ int imag_reason_fep_bridge_update_reasoning_coherence(
     imag_reason_fep_bridge_t* bridge,
     float coherence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_update_reasoning_coherence: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -762,7 +789,10 @@ int imag_reason_fep_bridge_update_counterfactual_validity(
     imag_reason_fep_bridge_t* bridge,
     float validity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_update_counterfactual_validity: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -780,7 +810,10 @@ int imag_reason_fep_bridge_update_creative_novelty(
     imag_reason_fep_bridge_t* bridge,
     float novelty
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_update_creative_novelty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -801,7 +834,10 @@ int imag_reason_fep_bridge_get_metrics(
     const imag_reason_fep_bridge_t* bridge,
     imag_reason_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -818,7 +854,10 @@ int imag_reason_fep_bridge_get_stats(
     const imag_reason_fep_bridge_t* bridge,
     imag_reason_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -832,7 +871,10 @@ int imag_reason_fep_bridge_get_stats(
 }
 
 int imag_reason_fep_bridge_reset_stats(imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -930,7 +972,10 @@ imag_reason_fep_state_t imag_reason_fep_bridge_get_state(
 }
 
 bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -944,7 +989,10 @@ bool imag_reason_fep_bridge_is_degraded(const imag_reason_fep_bridge_t* bridge) 
 }
 
 bool imag_reason_fep_bridge_is_coherent(const imag_reason_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_is_coherent: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -977,7 +1025,10 @@ int imag_reason_fep_bridge_set_high_fe_callback(
     imag_reason_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -996,7 +1047,10 @@ int imag_reason_fep_bridge_set_surprise_callback(
     imag_reason_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -1015,7 +1069,10 @@ int imag_reason_fep_bridge_set_metrics_callback(
     imag_reason_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -1037,7 +1094,10 @@ int imag_reason_fep_bridge_set_config(
     imag_reason_fep_bridge_t* bridge,
     const imag_reason_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);
@@ -1054,7 +1114,10 @@ int imag_reason_fep_bridge_get_config(
     const imag_reason_fep_bridge_t* bridge,
     imag_reason_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imag_reason_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_reasoning_fep_bridge_heartbeat("imagination__imag_reason_fep_brid", 0.0f);

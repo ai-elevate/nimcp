@@ -88,6 +88,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
 ) {
     // Guard: validate inputs
     if (!dest_ids || num_destinations == 0 || !signal_data || signal_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_wrapper_create: required parameter is NULL (dest_ids, signal_data)");
         return NULL;
     }
 
@@ -116,6 +117,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
     wrapper->dest_ids_manager = cow_manager_create(&dest_config, dest_ids);
     if (!wrapper->dest_ids_manager) {
         nimcp_free(wrapper);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_wrapper_create: wrapper->dest_ids_manager is NULL");
         return NULL;
     }
 
@@ -130,6 +132,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
     if (!wrapper->signal_data_manager) {
         cow_manager_destroy(wrapper->dest_ids_manager);
         nimcp_free(wrapper);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_wrapper_create: wrapper->signal_data_manager is NULL");
         return NULL;
     }
 
@@ -144,6 +147,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
         cow_manager_destroy(wrapper->dest_ids_manager);
         cow_manager_destroy(wrapper->signal_data_manager);
         nimcp_free(wrapper);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_create: validation failed");
         return NULL;
     }
 
@@ -165,9 +169,11 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
      *       attempting to acquire would create inconsistent reference.
      */
     if (!wrapper->dest_ids_handle || !wrapper->signal_data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_wrapper_acquire: required parameter is NULL (wrapper->dest_ids_handle, wrapper->signal_data_handle)");
         return NULL;
     }
     if (!wrapper->dest_ids_manager || !wrapper->signal_data_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_acquire: required parameter is NULL (wrapper->dest_ids_manager, wrapper->signal_data_manager)");
         return NULL;
     }
 
@@ -199,6 +205,7 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
         if (new_wrapper->dest_ids_handle) cow_release(new_wrapper->dest_ids_handle);
         if (new_wrapper->signal_data_handle) cow_release(new_wrapper->signal_data_handle);
         nimcp_free(new_wrapper);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_wrapper_acquire: validation failed");
         return NULL;
     }
 
@@ -236,7 +243,10 @@ NIMCP_EXPORT const uint32_t* signal_wrapper_read_destinations(
     uint32_t* num_destinations_out
 ) {
     // Guard: validate inputs
-    if (!wrapper || !wrapper->dest_ids_handle) return NULL;
+    if (!wrapper || !wrapper->dest_ids_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_read_destinations: required parameter is NULL (wrapper, wrapper->dest_ids_handle)");
+        return NULL;
+    }
 
     // Return metadata if requested
     if (num_destinations_out) {
@@ -252,7 +262,10 @@ NIMCP_EXPORT const float* signal_wrapper_read_data(
     uint32_t* signal_size_out
 ) {
     // Guard: validate inputs
-    if (!wrapper || !wrapper->signal_data_handle) return NULL;
+    if (!wrapper || !wrapper->signal_data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_read_data: required parameter is NULL (wrapper, wrapper->signal_data_handle)");
+        return NULL;
+    }
 
     // Return metadata if requested
     if (signal_size_out) {
@@ -268,7 +281,10 @@ NIMCP_EXPORT uint32_t* signal_wrapper_write_destinations(
     uint32_t* num_destinations_out
 ) {
     // Guard: validate inputs
-    if (!wrapper || !wrapper->dest_ids_handle) return NULL;
+    if (!wrapper || !wrapper->dest_ids_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_write_destinations: required parameter is NULL (wrapper, wrapper->dest_ids_handle)");
+        return NULL;
+    }
 
     // Return metadata if requested
     if (num_destinations_out) {
@@ -284,7 +300,10 @@ NIMCP_EXPORT float* signal_wrapper_write_data(
     uint32_t* signal_size_out
 ) {
     // Guard: validate inputs
-    if (!wrapper || !wrapper->signal_data_handle) return NULL;
+    if (!wrapper || !wrapper->signal_data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_write_data: required parameter is NULL (wrapper, wrapper->signal_data_handle)");
+        return NULL;
+    }
 
     // Return metadata if requested
     if (signal_size_out) {
@@ -297,7 +316,10 @@ NIMCP_EXPORT float* signal_wrapper_write_data(
 
 NIMCP_EXPORT bool signal_wrapper_is_shared(signal_wrapper_t wrapper) {
     // Guard: validate input
-    if (!wrapper) return false;
+    if (!wrapper) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_wrapper_is_shared: wrapper is NULL");
+        return false;
+    }
 
     // Check if refcount > 1 (multiple wrappers share the data)
     return signal_wrapper_refcount(wrapper) > 1;

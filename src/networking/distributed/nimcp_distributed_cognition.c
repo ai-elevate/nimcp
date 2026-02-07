@@ -244,6 +244,7 @@ distrib_cognition_t distrib_cognition_create(
 {
     if (!p2p_node) {
         LOG_ERROR(LOG_MODULE, "Invalid P2P node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_create: p2p_node is NULL");
         return NULL;
     }
 
@@ -296,6 +297,7 @@ distrib_cognition_t distrib_cognition_create(
         nimcp_free(dc->neuromod_pools);
         nimcp_rwlock_destroy(&dc->rwlock);
         nimcp_free(dc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_create: dc->glial_systems is NULL");
         return NULL;
     }
 
@@ -309,6 +311,7 @@ distrib_cognition_t distrib_cognition_create(
         nimcp_free(dc->neuromod_pools);
         nimcp_rwlock_destroy(&dc->rwlock);
         nimcp_free(dc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_create: dc->brain_regions is NULL");
         return NULL;
     }
 
@@ -399,6 +402,7 @@ bool distrib_cognition_register_neuromod_pool(
 
     if (!dc || !pool) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid parameters for neuromod pool registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_neuromod_pool: required parameter is NULL (dc, pool)");
         return false;
     }
 
@@ -420,6 +424,7 @@ bool distrib_cognition_register_neuromod_pool(
                               dc->neuromod_pool_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand neuromod pool capacity");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_neuromod_pool: new_pools is NULL");
             return false;
         }
 
@@ -446,11 +451,13 @@ bool distrib_cognition_broadcast_neuromod(
     float concentration)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_broadcast_neuromod: dc is NULL");
         return false;
     }
 
     if (concentration < 0.0F || concentration > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid neuromodulator concentration: %.2f", concentration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_broadcast_neuromod: validation failed");
         return false;
     }
 
@@ -488,6 +495,7 @@ bool distrib_cognition_register_glial_system(
 {
     if (!dc || !glial) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid parameters for glial system registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_glial_system: required parameter is NULL (dc, glial)");
         return false;
     }
 
@@ -508,6 +516,7 @@ bool distrib_cognition_register_glial_system(
                               dc->glial_system_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand glial system capacity");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_glial_system: new_systems is NULL");
             return false;
         }
 
@@ -536,16 +545,19 @@ bool distrib_cognition_coordinate_pruning(
     uint8_t action)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_coordinate_pruning: dc is NULL");
         return false;
     }
 
     if (activity_score < 0.0F || activity_score > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid activity score: %.2f", activity_score);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_coordinate_pruning: validation failed");
         return false;
     }
 
     if (action > 2) {  // 0=monitor, 1=prune, 2=preserve
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid pruning action: %d", action);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_coordinate_pruning: validation failed");
         return false;
     }
 
@@ -579,11 +591,13 @@ bool distrib_cognition_propagate_calcium_wave(
     float wave_velocity)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_propagate_calcium_wave: dc is NULL");
         return false;
     }
 
     if (calcium_level < 0.0F || calcium_level > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid calcium level: %.2f", calcium_level);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_propagate_calcium_wave: validation failed");
         return false;
     }
 
@@ -620,6 +634,7 @@ bool distrib_cognition_register_brain_region(
 {
     if (!dc || !region) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid parameters for brain region registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_brain_region: required parameter is NULL (dc, region)");
         return false;
     }
 
@@ -640,6 +655,7 @@ bool distrib_cognition_register_brain_region(
                               dc->brain_region_capacity, new_capacity);
             nimcp_rwlock_unlock(&dc->rwlock);
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to expand brain region capacity");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_register_brain_region: new_regions is NULL");
             return false;
         }
 
@@ -669,16 +685,19 @@ bool distrib_cognition_broadcast_region_activity(
     uint32_t total_neurons)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_broadcast_region_activity: dc is NULL");
         return false;
     }
 
     if (avg_activity < 0.0F || avg_activity > 1.0F) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid average activity: %.2f", avg_activity);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_broadcast_region_activity: validation failed");
         return false;
     }
 
     if (active_neurons > total_neurons) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Active neurons (%u) exceeds total neurons (%u)", active_neurons, total_neurons);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_broadcast_region_activity: validation failed");
         return false;
     }
 
@@ -751,6 +770,7 @@ static void* neuromod_sync_worker(void* arg)
 
     log_message(LOG_LEVEL_INFO, "[distributed_cognition] Neuromodulator sync worker stopped");
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sync_worker: operation failed");
     return NULL;
 }
 
@@ -794,6 +814,7 @@ static void* glial_sync_worker(void* arg)
 
     log_message(LOG_LEVEL_INFO, "[distributed_cognition] Glial sync worker stopped");
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_sync_worker: operation failed");
     return NULL;
 }
 
@@ -837,6 +858,7 @@ static void* region_sync_worker(void* arg)
 
     log_message(LOG_LEVEL_INFO, "[distributed_cognition] Region sync worker stopped");
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region_sync_worker: operation failed");
     return NULL;
 }
 
@@ -933,6 +955,7 @@ static void handle_region_activity_msg(distrib_cognition_t dc, const uint8_t* pa
 bool distrib_cognition_start(distrib_cognition_t dc)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_start: dc is NULL");
         return false;
     }
 
@@ -947,6 +970,7 @@ bool distrib_cognition_start(distrib_cognition_t dc)
     if (dc->config.enable_neuromod_sync) {
         if (nimcp_thread_create(&dc->neuromod_thread, neuromod_sync_worker, dc, NULL) != NIMCP_SUCCESS) {
             log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Failed to start neuromod worker");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_start: validation failed");
             return false;
         }
     }
@@ -986,6 +1010,7 @@ bool distrib_cognition_start(distrib_cognition_t dc)
 bool distrib_cognition_stop(distrib_cognition_t dc)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_stop: dc is NULL");
         return false;
     }
 
@@ -1022,6 +1047,7 @@ bool distrib_cognition_get_stats(
     distrib_cognition_stats_t* stats)
 {
     if (!dc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_get_stats: required parameter is NULL (dc, stats)");
         return false;
     }
 
@@ -1037,11 +1063,13 @@ bool distrib_cognition_set_sync_mode(
     sync_mode_t mode)
 {
     if (!dc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_set_sync_mode: dc is NULL");
         return false;
     }
 
     if (mode < SYNC_MODE_DISABLED || mode > SYNC_MODE_BIDIRECTIONAL) {
         log_message(LOG_LEVEL_ERROR, "[distributed_cognition] Invalid sync mode: %d", mode);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "distrib_cognition_set_sync_mode: validation failed");
         return false;
     }
 
@@ -1132,6 +1160,7 @@ static void* async_neuromod_broadcast_worker(void* arg)
     // Free context
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_neuromod_broadcast_worker: operation failed");
     return NULL;
 }
 
@@ -1173,6 +1202,7 @@ static void* async_calcium_wave_worker(void* arg)
     // Free context
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_calcium_wave_worker: operation failed");
     return NULL;
 }
 
@@ -1215,6 +1245,7 @@ static void* async_pruning_worker(void* arg)
     // Free context
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_pruning_worker: operation failed");
     return NULL;
 }
 
@@ -1229,11 +1260,13 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
 {
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: invalid coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_broadcast_neuromod_async: dc is NULL");
         return NULL;
     }
 
     if (concentration < 0.0F || concentration > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: invalid concentration %.3f", concentration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_broadcast_neuromod_async: validation failed");
         return NULL;
     }
 
@@ -1241,6 +1274,7 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
     nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to create promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_broadcast_neuromod_async: promise is NULL");
         return NULL;
     }
 
@@ -1248,6 +1282,7 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
     if (!future) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_broadcast_neuromod_async: future is NULL");
         return NULL;
     }
 
@@ -1256,6 +1291,7 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
     if (!ctx) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_broadcast_neuromod_async: ctx is NULL");
         return NULL;
     }
 
@@ -1270,6 +1306,7 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async neuromod broadcast: failed to create worker thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_broadcast_neuromod_async: validation failed");
         return NULL;
     }
 
@@ -1289,11 +1326,13 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
 {
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: invalid coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_propagate_calcium_wave_async: dc is NULL");
         return NULL;
     }
 
     if (calcium_level < 0.0F || calcium_level > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: invalid calcium level %.3f", calcium_level);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_propagate_calcium_wave_async: validation failed");
         return NULL;
     }
 
@@ -1301,6 +1340,7 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
     nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to create promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_propagate_calcium_wave_async: promise is NULL");
         return NULL;
     }
 
@@ -1308,6 +1348,7 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
     if (!future) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_propagate_calcium_wave_async: future is NULL");
         return NULL;
     }
 
@@ -1316,6 +1357,7 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
     if (!ctx) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_propagate_calcium_wave_async: ctx is NULL");
         return NULL;
     }
 
@@ -1331,6 +1373,7 @@ nimcp_future_t distrib_cognition_propagate_calcium_wave_async(
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async calcium wave: failed to create worker thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_propagate_calcium_wave_async: validation failed");
         return NULL;
     }
 
@@ -1352,16 +1395,19 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
 {
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_coordinate_pruning_async: dc is NULL");
         return NULL;
     }
 
     if (activity_score < 0.0F || activity_score > 1.0F) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid activity score %.3f", activity_score);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_coordinate_pruning_async: validation failed");
         return NULL;
     }
 
     if (action > 2) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: invalid action %d", action);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_coordinate_pruning_async: validation failed");
         return NULL;
     }
 
@@ -1369,6 +1415,7 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
     nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to create promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_coordinate_pruning_async: promise is NULL");
         return NULL;
     }
 
@@ -1376,6 +1423,7 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
     if (!future) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "distrib_cognition_coordinate_pruning_async: future is NULL");
         return NULL;
     }
 
@@ -1384,6 +1432,7 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
     if (!ctx) {
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_coordinate_pruning_async: ctx is NULL");
         return NULL;
     }
 
@@ -1400,6 +1449,7 @@ nimcp_future_t distrib_cognition_coordinate_pruning_async(
         nimcp_free(ctx);
         nimcp_promise_destroy(promise);
         LOG_MODULE_ERROR(MODULE_NAME, "Async pruning coordination: failed to create worker thread");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "distrib_cognition_coordinate_pruning_async: validation failed");
         return NULL;
     }
 

@@ -24,6 +24,14 @@ extern "C" {
 #include "mesh/nimcp_mesh_transaction.h"
 }
 
+// Mirror of private payload struct from nimcp_genius_profiles.c for test use
+typedef struct {
+    genius_type_t type;
+    float strength;
+    uint64_t timestamp_ms;
+    uint8_t epitope[GENIUS_EPITOPE_SIZE];
+} genius_profile_tx_payload_t;
+
 //=============================================================================
 // Test Fixture
 //=============================================================================
@@ -113,7 +121,7 @@ TEST_F(MeshIntegrationTest, MeshProposeAllGeniusTypes) {
     for (size_t i = 0; i < sizeof(types)/sizeof(types[0]); i++) {
         // Reset bridge state first
         genius_profiles_deactivate(bridge_mesh_enabled);
-        EXPECT_EQ(genius_profiles_get_state(bridge_mesh_enabled), GENIUS_STATE_IDLE);
+        EXPECT_EQ(genius_profiles_get_state(bridge_mesh_enabled), GENIUS_STATE_INACTIVE);
 
         // Propose activation via mesh
         genius_error_t err = genius_profiles_mesh_propose(bridge_mesh_enabled, types[i], 1.0f);
@@ -176,7 +184,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseInvalidTransactionType) {
     // Transaction with non-belief/non-config type
     mesh_transaction_t tx;
     memset(&tx, 0, sizeof(tx));
-    tx.type = MESH_TX_HEALTH_CHECK;  // Not BELIEF_UPDATE or CONFIG_UPDATE
+    tx.type = MESH_TX_STATE_CHANGE;  // Not BELIEF_UPDATE or CONFIG_UPDATE
 
     genius_error_t err = genius_profiles_mesh_endorse(bridge_mesh_enabled, &tx);
     // Should return success (skip endorsement for non-relevant types)
@@ -197,7 +205,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseNoPayload) {
 TEST_F(MeshIntegrationTest, MeshEndorseWhileInFlowState) {
     // Activate profile and enter flow state
     genius_profiles_activate(bridge_mesh_enabled, GENIUS_TYPE_MATHEMATICAL, 1.0f);
-    genius_profiles_enter_flow(bridge_mesh_enabled);
+    genius_profiles_enter_flow(bridge_mesh_enabled, 0.7f, 0.7f);
 
     // Create valid transaction
     genius_profile_tx_payload_t payload;
@@ -208,7 +216,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseWhileInFlowState) {
     mesh_transaction_t tx;
     memset(&tx, 0, sizeof(tx));
     tx.type = MESH_TX_BELIEF_UPDATE;
-    tx.payload = &payload;
+    tx.payload = (uint8_t*)&payload;
     tx.payload_size = sizeof(payload);
 
     genius_error_t err = genius_profiles_mesh_endorse(bridge_mesh_enabled, &tx);
@@ -267,7 +275,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseWithHighFatigue) {
     mesh_transaction_t tx;
     memset(&tx, 0, sizeof(tx));
     tx.type = MESH_TX_BELIEF_UPDATE;
-    tx.payload = &payload;
+    tx.payload = (uint8_t*)&payload;
     tx.payload_size = sizeof(payload);
 
     genius_error_t err = genius_profiles_mesh_endorse(bridge_mesh_enabled, &tx);
@@ -283,7 +291,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseInvalidGeniusType) {
     mesh_transaction_t tx;
     memset(&tx, 0, sizeof(tx));
     tx.type = MESH_TX_BELIEF_UPDATE;
-    tx.payload = &payload;
+    tx.payload = (uint8_t*)&payload;
     tx.payload_size = sizeof(payload);
 
     genius_error_t err = genius_profiles_mesh_endorse(bridge_mesh_enabled, &tx);
@@ -299,7 +307,7 @@ TEST_F(MeshIntegrationTest, MeshEndorseInvalidStrength) {
     mesh_transaction_t tx;
     memset(&tx, 0, sizeof(tx));
     tx.type = MESH_TX_BELIEF_UPDATE;
-    tx.payload = &payload;
+    tx.payload = (uint8_t*)&payload;
     tx.payload_size = sizeof(payload);
 
     genius_error_t err = genius_profiles_mesh_endorse(bridge_mesh_enabled, &tx);

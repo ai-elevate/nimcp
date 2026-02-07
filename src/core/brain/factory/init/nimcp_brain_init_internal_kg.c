@@ -248,6 +248,7 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
         fprintf(stderr, "[INTERNAL_KG] ERROR: Failed to create internal KG\n");
         brain->internal_kg = NULL;
         brain->internal_kg_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_internal_kg_subsystem: kg is NULL");
         return false;
     }
 
@@ -262,6 +263,7 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
         brain_kg_destroy(kg);
         brain->internal_kg = NULL;
         brain->internal_kg_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_internal_kg_subsystem: validation failed");
         return false;
     }
 

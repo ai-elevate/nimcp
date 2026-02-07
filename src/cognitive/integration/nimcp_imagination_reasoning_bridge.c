@@ -187,7 +187,10 @@ static float update_average(float old_avg, float new_value, uint32_t count) {
  * @brief Find free scenario slot (unlocked)
  */
 static int find_free_scenario_slot_unlocked(imagination_reasoning_bridge_t* bridge) {
-    if (!bridge->active_scenarios) return -1;
+    if (!bridge->active_scenarios) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_scenario_slot_unlocked: bridge->active_scenarios is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_concurrent_scenarios; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -200,6 +203,7 @@ static int find_free_scenario_slot_unlocked(imagination_reasoning_bridge_t* brid
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_scenario_slot_unlocked: bridge->active_scenarios is NULL");
     return -1;
 }
 
@@ -208,7 +212,10 @@ static int find_free_scenario_slot_unlocked(imagination_reasoning_bridge_t* brid
  */
 static int find_scenario_by_id_unlocked(imagination_reasoning_bridge_t* bridge,
                                         uint64_t scenario_id) {
-    if (!bridge->active_scenarios) return -1;
+    if (!bridge->active_scenarios) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_scenario_slot_unlocked: bridge->active_scenarios is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->config.max_concurrent_scenarios; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -222,6 +229,7 @@ static int find_scenario_by_id_unlocked(imagination_reasoning_bridge_t* bridge,
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_free_scenario_slot_unlocked: operation failed");
     return -1;
 }
 
@@ -233,6 +241,7 @@ static int handle_counterfactual_result_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!event->payload || event->payload_size < sizeof(counterfactual_result_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_counterfactual_result_unlocked: event->payload is NULL");
         return -1;
     }
 
@@ -268,6 +277,7 @@ static int handle_simulation_result_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!event->payload || event->payload_size < sizeof(simulation_result_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_simulation_result_unlocked: event->payload is NULL");
         return -1;
     }
 
@@ -298,6 +308,7 @@ static int handle_creative_result_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!event->payload || event->payload_size < sizeof(creative_inference_result_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_creative_result_unlocked: event->payload is NULL");
         return -1;
     }
 
@@ -334,6 +345,7 @@ static int handle_insight_feedback_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!event->payload || event->payload_size < sizeof(imagination_insight_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_insight_feedback_unlocked: event->payload is NULL");
         return -1;
     }
 
@@ -367,6 +379,7 @@ static int imagination_reasoning_query_handler(
     imagination_reasoning_bridge_t* bridge = (imagination_reasoning_bridge_t*)context;
 
     if (!bridge || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_query_handler: required parameter is NULL (bridge, query, result)");
         return -1;
     }
 
@@ -378,6 +391,7 @@ static int imagination_reasoning_query_handler(
                 sizeof(result->error_message) - 1);
         bridge->stats.query_errors++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_query_handler: bridge->connected is NULL");
         return -1;
     }
 
@@ -400,6 +414,7 @@ static int imagination_reasoning_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_reasoning_query_handler: state_ptr is NULL");
                 return -1;
             }
 
@@ -421,6 +436,7 @@ static int imagination_reasoning_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_reasoning_query_handler: stats_ptr is NULL");
                 return -1;
             }
 
@@ -437,6 +453,7 @@ static int imagination_reasoning_query_handler(
                     sizeof(result->error_message) - 1);
             bridge->stats.query_errors++;
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_query_handler: operation failed");
             return -1;
     }
 
@@ -514,6 +531,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "imagination_reasoning") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_reasoning_bridge_create: validation failed");
         return NULL;
     }
 
@@ -525,6 +543,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     if (!bridge->active_scenarios) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_reasoning_bridge_create: bridge->active_scenarios is NULL");
         return NULL;
     }
 
@@ -593,10 +612,12 @@ int imagination_reasoning_bridge_register_with_hub(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_register_with_hub: required parameter is NULL (bridge, hub)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_register_with_hub: bridge->initialized is NULL");
         return -1;
     }
 
@@ -608,6 +629,7 @@ int imagination_reasoning_bridge_register_with_hub(
 
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_bridge_register_with_hub: validation failed");
         return -1;  /* Already connected */
     }
 
@@ -621,6 +643,7 @@ int imagination_reasoning_bridge_register_with_hub(
     );
     if (ret != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -635,6 +658,7 @@ int imagination_reasoning_bridge_register_with_hub(
     if (ret != 0) {
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -650,6 +674,7 @@ int imagination_reasoning_bridge_register_with_hub(
         cognitive_hub_unsubscribe(hub, bridge->config.module_id, COG_EVENT_OUTPUT_READY);
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -666,6 +691,7 @@ int imagination_reasoning_bridge_register_with_hub(
         cognitive_hub_unsubscribe(hub, bridge->config.module_id, COG_EVENT_OUTPUT_READY);
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -729,6 +755,7 @@ int imagination_reasoning_bridge_unregister_from_hub(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_unregister_from_hub: bridge->connected is NULL");
         return -1;
     }
 
@@ -784,6 +811,7 @@ bool imagination_reasoning_bridge_is_connected(
     const imagination_reasoning_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_is_connected: bridge is NULL");
         return false;
     }
 
@@ -807,6 +835,7 @@ int imagination_reasoning_bridge_set_imagination(
     imagination_engine_t* engine
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_set_imagination: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -826,6 +855,7 @@ int imagination_reasoning_bridge_set_reasoning(
     reasoning_engine_t* engine
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_set_reasoning: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -849,6 +879,7 @@ int imagination_reasoning_request_counterfactual_analysis(
     const counterfactual_scenario_t* scenario
 ) {
     if (!bridge || !scenario) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_request_counterfactual_analysis: required parameter is NULL (bridge, scenario)");
         return -1;
     }
 
@@ -860,6 +891,7 @@ int imagination_reasoning_request_counterfactual_analysis(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_request_counterfactual_analysis: bridge->connected is NULL");
         return -1;
     }
 
@@ -928,6 +960,7 @@ int imagination_reasoning_set_counterfactual_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_set_counterfactual_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -952,6 +985,7 @@ int imagination_reasoning_publish_simulation_result(
     const simulation_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_simulation_result: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -963,6 +997,7 @@ int imagination_reasoning_publish_simulation_result(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_simulation_result: bridge->connected is NULL");
         return -1;
     }
 
@@ -1017,6 +1052,7 @@ int imagination_reasoning_set_simulation_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_set_simulation_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1041,6 +1077,7 @@ int imagination_reasoning_request_creative_inference(
     const creative_inference_request_t* request
 ) {
     if (!bridge || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_request_creative_inference: required parameter is NULL (bridge, request)");
         return -1;
     }
 
@@ -1052,6 +1089,7 @@ int imagination_reasoning_request_creative_inference(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_request_creative_inference: bridge->connected is NULL");
         return -1;
     }
 
@@ -1108,6 +1146,7 @@ int imagination_reasoning_set_creative_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_set_creative_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1132,6 +1171,7 @@ int imagination_reasoning_publish_insight(
     const imagination_insight_t* insight
 ) {
     if (!bridge || !insight) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_insight: required parameter is NULL (bridge, insight)");
         return -1;
     }
 
@@ -1143,6 +1183,7 @@ int imagination_reasoning_publish_insight(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_insight: bridge->connected is NULL");
         return -1;
     }
 
@@ -1197,6 +1238,7 @@ int imagination_reasoning_set_insight_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_set_insight_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1223,6 +1265,7 @@ int imagination_reasoning_generate_scenario(
     imagination_scenario_t* scenario_out
 ) {
     if (!bridge || !scenario_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_generate_scenario: required parameter is NULL (bridge, scenario_out)");
         return -1;
     }
 
@@ -1231,6 +1274,7 @@ int imagination_reasoning_generate_scenario(
 
 
     if (type >= IMAG_SCENARIO_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "imagination_reasoning_generate_scenario: capacity exceeded");
         return -1;
     }
 
@@ -1240,6 +1284,7 @@ int imagination_reasoning_generate_scenario(
     int slot = find_free_scenario_slot_unlocked(bridge);
     if (slot < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_reasoning_generate_scenario: validation failed");
         return -1;  /* No free slots */
     }
 
@@ -1279,6 +1324,7 @@ int imagination_reasoning_analyze_scenario(
     imagination_analysis_result_t* result_out
 ) {
     if (!bridge || !scenario || !result_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_analyze_scenario: required parameter is NULL (bridge, scenario, result_out)");
         return -1;
     }
 
@@ -1345,6 +1391,7 @@ int imagination_reasoning_publish_result(
     const imagination_analysis_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_result: required parameter is NULL (bridge, result)");
         return -1;
     }
 
@@ -1356,6 +1403,7 @@ int imagination_reasoning_publish_result(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_publish_result: bridge->connected is NULL");
         return -1;
     }
 
@@ -1409,6 +1457,7 @@ int imagination_reasoning_on_event(
     imagination_reasoning_bridge_t* bridge = (imagination_reasoning_bridge_t*)user_data;
 
     if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_on_event: required parameter is NULL (bridge, event)");
         return -1;
     }
 
@@ -1416,6 +1465,7 @@ int imagination_reasoning_on_event(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_on_event: bridge->connected is NULL");
         return -1;
     }
 
@@ -1548,10 +1598,12 @@ int imagination_reasoning_bridge_get_stats(
     imagination_reasoning_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_get_stats: bridge->initialized is NULL");
         return -1;
     }
 
@@ -1574,6 +1626,7 @@ int imagination_reasoning_bridge_reset_stats(imagination_reasoning_bridge_t* bri
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_reasoning_bridge_reset_stats: bridge->initialized is NULL");
         return -1;
     }
 

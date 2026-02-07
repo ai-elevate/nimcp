@@ -196,10 +196,16 @@ static int compare_by_difficulty(const void* a, const void* b) {
     float diff_b = g_sort_ctx.difficulties[idx_b];
 
     if (g_sort_ctx.ascending) {
-        if (diff_a < diff_b) return -1;
+        if (diff_a < diff_b) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_difficulty: validation failed");
+            return -1;
+        }
         if (diff_a > diff_b) return 1;
     } else {
-        if (diff_a > diff_b) return -1;
+        if (diff_a > diff_b) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_difficulty: validation failed");
+            return -1;
+        }
         if (diff_a < diff_b) return 1;
     }
     return 0;
@@ -420,7 +426,10 @@ int curriculum_set_difficulties(
     curriculum_ctx_t* ctx,
     const float* scores
 ) {
-    if (!ctx || !scores) return -1;
+    if (!ctx || !scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_set_difficulties: required parameter is NULL (ctx, scores)");
+        return -1;
+    }
 
     memcpy(ctx->difficulties, scores, ctx->num_samples * sizeof(float));
     memcpy(ctx->difficulty_ema, scores, ctx->num_samples * sizeof(float));
@@ -443,7 +452,10 @@ int curriculum_update_difficulty(
     const nimcp_tensor_t* prediction,
     const nimcp_tensor_t* target
 ) {
-    if (!ctx || sample_idx >= ctx->num_samples) return -1;
+    if (!ctx || sample_idx >= ctx->num_samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curriculum_update_difficulty: ctx is NULL");
+        return -1;
+    }
 
     (void)prediction;  /* May be used for confidence-based metrics */
     (void)target;
@@ -496,7 +508,10 @@ int curriculum_update_difficulties_batch(
     const float* losses,
     uint32_t batch_size
 ) {
-    if (!ctx || !sample_indices || !losses) return -1;
+    if (!ctx || !sample_indices || !losses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_update_difficulties_batch: required parameter is NULL (ctx, sample_indices, losses)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < batch_size; i++) {
         curriculum_update_difficulty(ctx, sample_indices[i], losses[i], NULL, NULL);
@@ -537,7 +552,10 @@ int curriculum_get_sample_weights(
     curriculum_ctx_t* ctx,
     float* weights
 ) {
-    if (!ctx || !weights) return -1;
+    if (!ctx || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_get_sample_weights: required parameter is NULL (ctx, weights)");
+        return -1;
+    }
 
     /* If in warmup, all weights equal */
     if (ctx->state == CURRICULUM_STATE_WARMUP) {
@@ -589,7 +607,10 @@ bool curriculum_should_include(
     const curriculum_ctx_t* ctx,
     uint32_t sample_idx
 ) {
-    if (!ctx || sample_idx >= ctx->num_samples) return false;
+    if (!ctx || sample_idx >= ctx->num_samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curriculum_should_include: ctx is NULL");
+        return false;
+    }
 
     /* Always include during warmup */
     if (ctx->state == CURRICULUM_STATE_WARMUP) return true;
@@ -609,7 +630,10 @@ int curriculum_get_ordered_indices(
     uint32_t* indices,
     bool ascending
 ) {
-    if (!ctx || !indices) return -1;
+    if (!ctx || !indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_get_ordered_indices: required parameter is NULL (ctx, indices)");
+        return -1;
+    }
 
     /* Need to sort */
     curriculum_ctx_t* mutable_ctx = (curriculum_ctx_t*)ctx;  /* For sorting */
@@ -633,7 +657,10 @@ int curriculum_select_samples(
     uint32_t max_samples,
     uint32_t* num_selected
 ) {
-    if (!ctx || !indices || !num_selected) return -1;
+    if (!ctx || !indices || !num_selected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_select_samples: required parameter is NULL (ctx, indices, num_selected)");
+        return -1;
+    }
 
     /* Get ordered indices (easy first) */
     if (!ctx->sorted_valid) {
@@ -796,7 +823,10 @@ float curriculum_get_threshold(const curriculum_ctx_t* ctx) {
 }
 
 int curriculum_set_state(curriculum_ctx_t* ctx, curriculum_state_t state) {
-    if (!ctx || state >= CURRICULUM_STATE_COUNT) return -1;
+    if (!ctx || state >= CURRICULUM_STATE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "curriculum_set_state: ctx is NULL");
+        return -1;
+    }
 
     ctx->state = state;
 
@@ -825,7 +855,10 @@ int curriculum_get_stats(
     const curriculum_ctx_t* ctx,
     curriculum_stats_t* stats
 ) {
-    if (!ctx || !stats) return -1;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_get_stats: required parameter is NULL (ctx, stats)");
+        return -1;
+    }
     *stats = ctx->stats;
     return 0;
 }
@@ -901,7 +934,10 @@ int curriculum_compute_difficulty_from_loss(
     uint32_t num_samples,
     float* difficulties
 ) {
-    if (!losses || !difficulties || num_samples == 0) return -1;
+    if (!losses || !difficulties || num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curriculum_compute_difficulty_from_loss: required parameter is NULL (losses, difficulties)");
+        return -1;
+    }
 
     /* Find min/max for normalization */
     float min_loss = losses[0];

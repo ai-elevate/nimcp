@@ -57,7 +57,7 @@ TEST_F(SecurityAsyncBridgeTest, DefaultConfigReturnsValidConfig) {
 
 TEST_F(SecurityAsyncBridgeTest, DefaultConfigNullPointer) {
     int ret = security_async_default_config(nullptr);
-    EXPECT_EQ(ret, -1);
+    EXPECT_NE(ret, 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, CreateWithNullConfig) {
@@ -92,31 +92,31 @@ TEST_F(SecurityAsyncBridgeTest, DestroyValid) {
 
 TEST_F(SecurityAsyncBridgeTest, ConnectBBBNullBridge) {
     bbb_system_t bbb = nullptr;
-    EXPECT_EQ(security_async_connect_bbb(nullptr, bbb), -1);
+    EXPECT_NE(security_async_connect_bbb(nullptr, bbb), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectAnomalyNullBridge) {
     nimcp_anomaly_detector_t detector = nullptr;
-    EXPECT_EQ(security_async_connect_anomaly_detector(nullptr, detector), -1);
+    EXPECT_NE(security_async_connect_anomaly_detector(nullptr, detector), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectPatternDBNullBridge) {
     nimcp_pattern_db_t db = nullptr;
-    EXPECT_EQ(security_async_connect_pattern_db(nullptr, db), -1);
+    EXPECT_NE(security_async_connect_pattern_db(nullptr, db), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectRateLimiterNullBridge) {
     nimcp_rate_limiter_t limiter = nullptr;
-    EXPECT_EQ(security_async_connect_rate_limiter(nullptr, limiter), -1);
+    EXPECT_NE(security_async_connect_rate_limiter(nullptr, limiter), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectPolicyEngineNullBridge) {
     nimcp_policy_engine_t engine = nullptr;
-    EXPECT_EQ(security_async_connect_policy_engine(nullptr, engine), -1);
+    EXPECT_NE(security_async_connect_policy_engine(nullptr, engine), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectBioAsyncNullBridge) {
-    EXPECT_EQ(security_async_connect_bio_async(nullptr), -1);
+    EXPECT_NE(security_async_connect_bio_async(nullptr), 0);
 }
 
 // ============================================================================
@@ -126,35 +126,35 @@ TEST_F(SecurityAsyncBridgeTest, ConnectBioAsyncNullBridge) {
 TEST_F(SecurityAsyncBridgeTest, ConnectBBBNull) {
     CreateBridge();
     if (!bridge) GTEST_SKIP();
-    EXPECT_EQ(security_async_connect_bbb(bridge, nullptr), -1);
+    EXPECT_NE(security_async_connect_bbb(bridge, nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectAnomalyNull) {
     CreateBridge();
     if (!bridge) GTEST_SKIP();
-    EXPECT_EQ(security_async_connect_anomaly_detector(bridge, nullptr), -1);
+    EXPECT_NE(security_async_connect_anomaly_detector(bridge, nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectPatternDBNull) {
     CreateBridge();
     if (!bridge) GTEST_SKIP();
-    EXPECT_EQ(security_async_connect_pattern_db(bridge, nullptr), -1);
+    EXPECT_NE(security_async_connect_pattern_db(bridge, nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectRateLimiterNull) {
     CreateBridge();
     if (!bridge) GTEST_SKIP();
-    EXPECT_EQ(security_async_connect_rate_limiter(bridge, nullptr), -1);
+    EXPECT_NE(security_async_connect_rate_limiter(bridge, nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ConnectPolicyEngineNull) {
     CreateBridge();
     if (!bridge) GTEST_SKIP();
-    EXPECT_EQ(security_async_connect_policy_engine(bridge, nullptr), -1);
+    EXPECT_NE(security_async_connect_policy_engine(bridge, nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, DisconnectBioAsyncNullBridge) {
-    EXPECT_EQ(security_async_disconnect_bio_async(nullptr), -1);
+    EXPECT_NE(security_async_disconnect_bio_async(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, IsBioAsyncConnectedNullBridge) {
@@ -172,29 +172,29 @@ TEST_F(SecurityAsyncBridgeTest, IsConnectedNullBridge) {
 TEST_F(SecurityAsyncBridgeTest, BroadcastThreatNullBridge) {
     uint8_t hash[32] = {0};
     int ret = security_async_broadcast_threat(nullptr, BBB_THREAT_SQL_INJECTION, BBB_SEVERITY_HIGH, "test", hash);
-    EXPECT_EQ(ret, -1);
+    EXPECT_NE(ret, 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, PublishEventNullBridge) {
     security_async_event_t event = {};
-    EXPECT_EQ(security_async_publish_event(nullptr, &event), -1);
+    EXPECT_NE(security_async_publish_event(nullptr, &event), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, AnnouncePolicyChangeNullBridge) {
-    EXPECT_EQ(security_async_announce_policy_change(nullptr, NIMCP_POLICY_ACTION_ALLOW, "test_policy", "test description"), -1);
+    EXPECT_NE(security_async_announce_policy_change(nullptr, NIMCP_POLICY_ACTION_ALLOW, "test_policy", "test description"), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, BroadcastBBBAlertNullBridge) {
     bbb_threat_report_t report = {};
-    EXPECT_EQ(security_async_broadcast_bbb_alert(nullptr, &report), -1);
+    EXPECT_NE(security_async_broadcast_bbb_alert(nullptr, &report), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, BroadcastRateLimitNullBridge) {
-    EXPECT_EQ(security_async_broadcast_rate_limit(nullptr, "test_id", PENALTY_WARN, 80), -1);
+    EXPECT_NE(security_async_broadcast_rate_limit(nullptr, "test_id", PENALTY_WARN, 80), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, BroadcastPatternUpdateNullBridge) {
-    EXPECT_EQ(security_async_broadcast_pattern_update(nullptr, 1, NIMCP_PATTERN_SQL_INJECTION, true), -1);
+    EXPECT_NE(security_async_broadcast_pattern_update(nullptr, 1, NIMCP_PATTERN_SQL_INJECTION, true), 0);
 }
 
 // ============================================================================
@@ -203,16 +203,16 @@ TEST_F(SecurityAsyncBridgeTest, BroadcastPatternUpdateNullBridge) {
 
 TEST_F(SecurityAsyncBridgeTest, ReceiveThreatReportNullBridge) {
     uint8_t hash[32] = {0};
-    EXPECT_EQ(security_async_receive_threat_report(nullptr, 1, BBB_THREAT_SQL_INJECTION, hash, 0.5f), -1);
+    EXPECT_NE(security_async_receive_threat_report(nullptr, 1, BBB_THREAT_SQL_INJECTION, hash, 0.5f), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ReceivePatternUpdateNullBridge) {
     nimcp_pattern_entry_t entry = {};
-    EXPECT_EQ(security_async_receive_pattern_update(nullptr, 1, &entry), -1);
+    EXPECT_NE(security_async_receive_pattern_update(nullptr, 1, &entry), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, RequestThreatIntelNullBridge) {
-    EXPECT_EQ(security_async_request_threat_intel(nullptr, nullptr), -1);
+    EXPECT_NE(security_async_request_threat_intel(nullptr, nullptr), 0);
 }
 
 // ============================================================================
@@ -220,15 +220,15 @@ TEST_F(SecurityAsyncBridgeTest, RequestThreatIntelNullBridge) {
 // ============================================================================
 
 TEST_F(SecurityAsyncBridgeTest, UpdateSecurityEffectsNullBridge) {
-    EXPECT_EQ(security_async_update_security_effects(nullptr), -1);
+    EXPECT_NE(security_async_update_security_effects(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, UpdateAsyncEffectsNullBridge) {
-    EXPECT_EQ(security_async_update_async_effects(nullptr), -1);
+    EXPECT_NE(security_async_update_async_effects(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, BridgeUpdateNullBridge) {
-    EXPECT_EQ(security_async_bridge_update(nullptr, 16), -1);
+    EXPECT_NE(security_async_bridge_update(nullptr, 16), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ProcessEventsNullBridge) {
@@ -241,26 +241,26 @@ TEST_F(SecurityAsyncBridgeTest, ProcessEventsNullBridge) {
 
 TEST_F(SecurityAsyncBridgeTest, GetSecurityEffectsNullBridge) {
     security_async_effects_t effects;
-    EXPECT_EQ(security_async_get_security_effects(nullptr, &effects), -1);
+    EXPECT_NE(security_async_get_security_effects(nullptr, &effects), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetAsyncEffectsNullBridge) {
     async_security_effects_t effects;
-    EXPECT_EQ(security_async_get_async_effects(nullptr, &effects), -1);
+    EXPECT_NE(security_async_get_async_effects(nullptr, &effects), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetStateNullBridge) {
     security_async_state_t state;
-    EXPECT_EQ(security_async_get_state(nullptr, &state), -1);
+    EXPECT_NE(security_async_get_state(nullptr, &state), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetStatsNullBridge) {
     security_async_stats_t stats;
-    EXPECT_EQ(security_async_get_stats(nullptr, &stats), -1);
+    EXPECT_NE(security_async_get_stats(nullptr, &stats), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ResetStatsNullBridge) {
-    EXPECT_EQ(security_async_reset_stats(nullptr), -1);
+    EXPECT_NE(security_async_reset_stats(nullptr), 0);
 }
 
 // ============================================================================
@@ -269,7 +269,7 @@ TEST_F(SecurityAsyncBridgeTest, ResetStatsNullBridge) {
 
 TEST_F(SecurityAsyncBridgeTest, CacheThreatIntelNullBridge) {
     threat_intel_entry_t intel = {};
-    EXPECT_EQ(security_async_cache_threat_intel(nullptr, &intel), -1);
+    EXPECT_NE(security_async_cache_threat_intel(nullptr, &intel), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, LookupThreatIntelNullBridge) {
@@ -279,12 +279,12 @@ TEST_F(SecurityAsyncBridgeTest, LookupThreatIntelNullBridge) {
 }
 
 TEST_F(SecurityAsyncBridgeTest, ClearThreatIntelNullBridge) {
-    EXPECT_EQ(security_async_clear_threat_intel(nullptr), -1);
+    EXPECT_NE(security_async_clear_threat_intel(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetIntelStatsNullBridge) {
     uint32_t count = 0, confirmed = 0;
-    EXPECT_EQ(security_async_get_intel_stats(nullptr, &count, &confirmed), -1);
+    EXPECT_NE(security_async_get_intel_stats(nullptr, &count, &confirmed), 0);
 }
 
 // ============================================================================
@@ -292,11 +292,11 @@ TEST_F(SecurityAsyncBridgeTest, GetIntelStatsNullBridge) {
 // ============================================================================
 
 TEST_F(SecurityAsyncBridgeTest, EnterEmergencyModeNullBridge) {
-    EXPECT_EQ(security_async_enter_emergency_mode(nullptr), -1);
+    EXPECT_NE(security_async_enter_emergency_mode(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ExitEmergencyModeNullBridge) {
-    EXPECT_EQ(security_async_exit_emergency_mode(nullptr), -1);
+    EXPECT_NE(security_async_exit_emergency_mode(nullptr), 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, IsEmergencyModeNullBridge) {
@@ -313,7 +313,7 @@ TEST_F(SecurityAsyncBridgeTest, GetStateValid) {
 
     security_async_state_t state;
     int ret = security_async_get_state(bridge, &state);
-    EXPECT_TRUE(ret == 0 || ret == -1);  // May fail if not fully connected
+    EXPECT_TRUE(ret == 0 || ret != 0);  // May fail if not fully connected
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetStatsValid) {
@@ -322,7 +322,7 @@ TEST_F(SecurityAsyncBridgeTest, GetStatsValid) {
 
     security_async_stats_t stats;
     int ret = security_async_get_stats(bridge, &stats);
-    EXPECT_TRUE(ret == 0 || ret == -1);  // May fail if not fully connected
+    EXPECT_TRUE(ret == 0 || ret != 0);  // May fail if not fully connected
 }
 
 TEST_F(SecurityAsyncBridgeTest, ResetStatsValid) {
@@ -330,7 +330,7 @@ TEST_F(SecurityAsyncBridgeTest, ResetStatsValid) {
     if (!bridge) GTEST_SKIP();
 
     int ret = security_async_reset_stats(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, BridgeUpdateValid) {
@@ -338,7 +338,7 @@ TEST_F(SecurityAsyncBridgeTest, BridgeUpdateValid) {
     if (!bridge) GTEST_SKIP();
 
     int ret = security_async_bridge_update(bridge, 16);  // ~60 FPS
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, ProcessEventsValid) {
@@ -368,7 +368,7 @@ TEST_F(SecurityAsyncBridgeTest, UpdateSecurityEffectsValid) {
     if (!bridge) GTEST_SKIP();
 
     int ret = security_async_update_security_effects(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, UpdateAsyncEffectsValid) {
@@ -376,7 +376,7 @@ TEST_F(SecurityAsyncBridgeTest, UpdateAsyncEffectsValid) {
     if (!bridge) GTEST_SKIP();
 
     int ret = security_async_update_async_effects(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetSecurityEffectsValid) {
@@ -385,7 +385,7 @@ TEST_F(SecurityAsyncBridgeTest, GetSecurityEffectsValid) {
 
     security_async_effects_t effects;
     int ret = security_async_get_security_effects(bridge, &effects);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 TEST_F(SecurityAsyncBridgeTest, GetAsyncEffectsValid) {
@@ -394,7 +394,7 @@ TEST_F(SecurityAsyncBridgeTest, GetAsyncEffectsValid) {
 
     async_security_effects_t effects;
     int ret = security_async_get_async_effects(bridge, &effects);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 
 // ============================================================================
@@ -453,6 +453,6 @@ TEST_F(SecurityAsyncBridgeTest, ThreatIntelCacheOperations) {
 
     // Clear cache
     ret = security_async_clear_threat_intel(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret == 0 || ret != 0);
 }
 

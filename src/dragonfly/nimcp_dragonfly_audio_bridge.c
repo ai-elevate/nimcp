@@ -135,34 +135,55 @@ audio_bridge_config_t audio_bridge_default_config(void) {
 }
 
 bool audio_bridge_validate_config(const audio_bridge_config_t* config) {
-    if (!config) return false;
-
-    if (config->min_intensity_db < 0 || config->min_intensity_db > 120.0f)
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_bridge_validate_config: config is NULL");
         return false;
+    }
 
-    if (config->min_frequency_hz <= 0 || config->max_frequency_hz <= config->min_frequency_hz)
+    if (config->min_intensity_db < 0 || config->min_intensity_db > 120.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->detection_threshold < 0 || config->detection_threshold > 1.0f)
+    if (config->min_frequency_hz <= 0 || config->max_frequency_hz <= config->min_frequency_hz) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->loc_mode > AUDIO_LOC_SPECTRAL)
+    if (config->detection_threshold < 0 || config->detection_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->ear_separation_m <= 0 || config->ear_separation_m > 1.0f)
+    if (config->loc_mode > AUDIO_LOC_SPECTRAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->speed_of_sound_mps < 300.0f || config->speed_of_sound_mps > 400.0f)
+    if (config->ear_separation_m <= 0 || config->ear_separation_m > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->correlation_threshold < 0 || config->correlation_threshold > 1.0f)
+    if (config->speed_of_sound_mps < 300.0f || config->speed_of_sound_mps > 400.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->max_angular_diff < 0 || config->max_angular_diff > M_PI)
+    if (config->correlation_threshold < 0 || config->correlation_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
 
-    if (config->smoothing_alpha < 0 || config->smoothing_alpha > 1.0f)
+    if (config->max_angular_diff < 0 || config->max_angular_diff > M_PI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
         return false;
+    }
+
+    if (config->smoothing_alpha < 0 || config->smoothing_alpha > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_bridge_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -222,7 +243,10 @@ void dragonfly_audio_bridge_destroy(dragonfly_audio_bridge_t* bridge) {
 }
 
 int dragonfly_audio_bridge_reset(dragonfly_audio_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_reset: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -395,8 +419,14 @@ int dragonfly_audio_bridge_process_frame(
     uint32_t num_channels,
     uint32_t sample_rate
 ) {
-    if (!bridge || !bridge->initialized || !samples) return -1;
-    if (num_samples == 0 || num_channels == 0 || sample_rate == 0) return -1;
+    if (!bridge || !bridge->initialized || !samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_process_frame: required parameter is NULL (bridge, bridge->initialized, samples)");
+        return -1;
+    }
+    if (num_samples == 0 || num_channels == 0 || sample_rate == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_audio_bridge_process_frame: num_samples is zero");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     nimcp_mutex_lock(bridge->base.mutex);
@@ -520,8 +550,14 @@ int dragonfly_audio_bridge_process_spectrum(
     uint32_t num_bins,
     uint32_t sample_rate
 ) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (!left_spectrum || !right_spectrum || num_bins == 0) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_process_spectrum: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
+    if (!left_spectrum || !right_spectrum || num_bins == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_process_spectrum: required parameter is NULL (left_spectrum, right_spectrum)");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     nimcp_mutex_lock(bridge->base.mutex);
@@ -624,7 +660,10 @@ int dragonfly_audio_bridge_inject_source(
     dragonfly_audio_bridge_t* bridge,
     const audio_source_t* source
 ) {
-    if (!bridge || !bridge->initialized || !source) return -1;
+    if (!bridge || !bridge->initialized || !source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_inject_source: required parameter is NULL (bridge, bridge->initialized, source)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -658,7 +697,10 @@ int dragonfly_audio_bridge_get_result(
     const dragonfly_audio_bridge_t* bridge,
     audio_detection_result_t* result
 ) {
-    if (!bridge || !bridge->initialized || !result) return -1;
+    if (!bridge || !bridge->initialized || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_get_result: required parameter is NULL (bridge, bridge->initialized, result)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *result = bridge->latest_result;
@@ -677,8 +719,14 @@ int dragonfly_audio_bridge_correlate_visual(
     audio_visual_correlation_t* correlations,
     uint32_t max_correlations
 ) {
-    if (!bridge || !bridge->initialized || !correlations) return -1;
-    if (!visual_result_ptr || max_correlations == 0) return -1;
+    if (!bridge || !bridge->initialized || !correlations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_correlate_visual: required parameter is NULL (bridge, bridge->initialized, correlations)");
+        return -1;
+    }
+    if (!visual_result_ptr || max_correlations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_audio_bridge_correlate_visual: visual_result_ptr is NULL");
+        return -1;
+    }
 
     const visual_motion_result_t* visual = (const visual_motion_result_t*)visual_result_ptr;
 
@@ -744,7 +792,10 @@ int dragonfly_audio_bridge_get_attention_cue(
     float cue_direction[2],
     float* cue_priority
 ) {
-    if (!bridge || !bridge->initialized || !cue_direction || !cue_priority) return -1;
+    if (!bridge || !bridge->initialized || !cue_direction || !cue_priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_get_attention_cue: required parameter is NULL (bridge, bridge->initialized, cue_direction, cue_priority)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
 
@@ -822,7 +873,10 @@ int dragonfly_audio_bridge_get_stats(
     const dragonfly_audio_bridge_t* bridge,
     audio_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -832,7 +886,10 @@ int dragonfly_audio_bridge_get_stats(
 }
 
 int dragonfly_audio_bridge_reset_stats(dragonfly_audio_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(audio_bridge_stats_t));
@@ -850,8 +907,14 @@ int dragonfly_audio_bridge_set_config(
     dragonfly_audio_bridge_t* bridge,
     const audio_bridge_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
-    if (!audio_bridge_validate_config(config)) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_set_config: required parameter is NULL (bridge, bridge->initialized, config)");
+        return -1;
+    }
+    if (!audio_bridge_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_audio_bridge_set_config: audio_bridge_validate_config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
@@ -864,7 +927,10 @@ int dragonfly_audio_bridge_get_config(
     const dragonfly_audio_bridge_t* bridge,
     audio_bridge_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_audio_bridge_get_config: required parameter is NULL (bridge, bridge->initialized, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *config = bridge->config;

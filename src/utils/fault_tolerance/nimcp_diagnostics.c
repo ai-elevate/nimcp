@@ -180,6 +180,7 @@ bool diagnostics_init(const char* log_file) {
     g_diagnostic_log = fopen(log_path, "a");
     if (!g_diagnostic_log) {
         nimcp_mutex_unlock(&g_diagnostic_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_init: g_diagnostic_log is NULL");
         return false;
     }
 
@@ -189,6 +190,7 @@ bool diagnostics_init(const char* log_file) {
         fclose(g_diagnostic_log);
         g_diagnostic_log = NULL;
         nimcp_mutex_unlock(&g_diagnostic_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_init: g_diagnostic_history is NULL");
         return false;
     }
 
@@ -290,6 +292,7 @@ static void symbolicate_stack_frame(void* address, stack_frame_t* frame) {
 
 diagnostic_result_t* diagnostics_analyze_stack_trace(void** trace, int depth) {
     if (!trace || depth <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_analyze_stack_trace: trace is NULL");
         return NULL;
     }
 
@@ -577,6 +580,7 @@ diagnostic_result_t* diagnostics_analyze_numerical_stability(brain_t brain) {
 
 bool diagnostics_detect_crash_pattern(diagnostic_history_t* history) {
     if (!history || history->count < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_detect_crash_pattern: history is NULL");
         return false;
     }
 
@@ -607,11 +611,13 @@ bool diagnostics_detect_crash_pattern(diagnostic_history_t* history) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_detect_crash_pattern: validation failed");
     return false;
 }
 
 bool diagnostics_detect_memory_corruption(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_detect_memory_corruption: brain is NULL");
         return false;
     }
 
@@ -621,11 +627,13 @@ bool diagnostics_detect_memory_corruption(brain_t brain) {
     // - Structure invariants
     // - Checksums
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_detect_memory_corruption: operation failed");
     return false;
 }
 
 bool diagnostics_detect_numerical_instability(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_detect_numerical_instability: brain is NULL");
         return false;
     }
 
@@ -634,6 +642,7 @@ bool diagnostics_detect_numerical_instability(brain_t brain) {
     // - Activation values for NaN/Inf
     // - Gradient values for NaN/Inf
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_detect_numerical_instability: brain is NULL");
     return false;
 }
 
@@ -658,6 +667,7 @@ bool diagnostics_detect_infinite_loop(void* instruction_pointer, uint32_t thresh
         g_loop_detector.last_check_time = now;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_detect_infinite_loop: operation failed");
     return false;
 }
 
@@ -771,12 +781,14 @@ void diagnostics_suggest_recovery(diagnostic_result_t* result) {
 
 bool diagnostics_auto_recover(diagnostic_result_t* result, brain_t brain) {
     if (!result || result->recovery_action_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_auto_recover: result is NULL");
         return false;
     }
 
     // Only attempt auto-recovery if top action has high confidence
     const recovery_action_recommendation_t* action = &result->recovery_actions[0];
     if (action->confidence < 0.8F || action->requires_user_intervention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "diagnostics_auto_recover: validation failed");
         return false;
     }
 
@@ -866,11 +878,13 @@ void diagnostics_report_to_log(const diagnostic_result_t* result) {
 
 bool diagnostics_report_to_file(const diagnostic_result_t* result, const char* path) {
     if (!result || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_report_to_file: required parameter is NULL (result, path)");
         return false;
     }
 
     FILE* f = fopen(path, "w");
     if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diagnostics_report_to_file: f is NULL");
         return false;
     }
 

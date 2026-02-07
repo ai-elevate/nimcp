@@ -275,6 +275,7 @@ static char* generate_reasoning_steps(
     char* steps = nimcp_malloc(buffer_size);
     if (!steps) {
         *out_num_steps = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_reasoning_steps: steps is NULL");
         return NULL;
     }
     memset(steps, 0, buffer_size);
@@ -519,6 +520,7 @@ financial_explanations_bridge_t* financial_explanations_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_EXPLANATIONS, "financial_explanations") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_explanations_bridge_create: validation failed");
         return NULL;
     }
 
@@ -530,6 +532,7 @@ financial_explanations_bridge_t* financial_explanations_bridge_create(
             set_error("Failed to allocate audit buffer");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_explanations_bridge_create: bridge->audit_buffer is NULL");
             return NULL;
         }
     }

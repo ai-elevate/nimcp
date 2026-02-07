@@ -244,7 +244,10 @@ static bool add_to_history(history_buffer_t* buffer, const observation_t* obs) {
  * @brief Get observation from history (0 = most recent)
  */
 static observation_t* get_from_history(history_buffer_t* buffer, uint32_t steps_back) {
-    if (steps_back >= buffer->count) return NULL;
+    if (steps_back >= buffer->count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_from_history: capacity exceeded");
+        return NULL;
+    }
     uint32_t idx = (buffer->head + buffer->capacity - steps_back) % buffer->capacity;
     return &buffer->buffer[idx];
 }
@@ -571,6 +574,7 @@ bool precognition_observe(
     /* Add to history */
     if (!add_to_history(&module->history, observation)) {
         set_error(module, PRECOGNITION_ERROR_INTERNAL);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_observe: add_to_history is NULL");
         return false;
     }
 
@@ -718,6 +722,7 @@ bool precognition_predict(
     observation_t* current = get_from_history(&module->history, 0);
     if (!current || !current->features) {
         set_error(module, PRECOGNITION_ERROR_INSUFFICIENT_HISTORY);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_predict: required parameter is NULL (current, current->features)");
         return false;
     }
 
@@ -918,6 +923,7 @@ bool precognition_predict_most_likely(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, 1, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_predict_most_likely: precognition_predict is NULL");
         return false;
     }
 
@@ -953,11 +959,13 @@ bool precognition_predict_feature(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, 1, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_predict_feature: precognition_predict is NULL");
         return false;
     }
 
     if (ensemble.trajectory_count == 0 || !ensemble.trajectories) {
         precognition_free_ensemble(&ensemble);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_predict_feature: ensemble is NULL");
         return false;
     }
 
@@ -1003,6 +1011,7 @@ bool precognition_get_distribution(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, module->config.num_future_samples, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_get_distribution: precognition_predict is NULL");
         return false;
     }
 
@@ -1032,6 +1041,7 @@ bool precognition_event_probability(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, module->config.num_future_samples, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_event_probability: precognition_predict is NULL");
         return false;
     }
 
@@ -1072,12 +1082,14 @@ bool precognition_confidence_interval(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, module->config.num_future_samples, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_confidence_interval: precognition_predict is NULL");
         return false;
     }
 
     /* Use consensus mean and variance for interval */
     if (!ensemble.consensus.mean || !ensemble.consensus.variance) {
         precognition_free_ensemble(&ensemble);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_confidence_interval: required parameter is NULL (ensemble, ensemble)");
         return false;
     }
 
@@ -1115,6 +1127,7 @@ bool precognition_detect_anomaly(
     }
 
     if (module->history.count < 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_detect_anomaly: validation failed");
         return false;  /* Need enough history */
     }
 
@@ -1125,6 +1138,7 @@ bool precognition_detect_anomaly(
     observation_t* current = get_from_history(&module->history, 0);
     if (!current || !current->features) {
         module->status = PRECOGNITION_STATUS_IDLE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_detect_anomaly: required parameter is NULL (current, current->features)");
         return false;
     }
 
@@ -1181,6 +1195,7 @@ bool precognition_detect_anomaly(
     }
 
     module->status = PRECOGNITION_STATUS_IDLE;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_detect_anomaly: validation failed");
     return false;
 }
 
@@ -1202,6 +1217,7 @@ bool precognition_predict_anomalies(
 
     prediction_ensemble_t ensemble;
     if (!precognition_predict(module, horizon, module->config.num_future_samples, &ensemble)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_predict_anomalies: precognition_predict is NULL");
         return false;
     }
 
@@ -1256,6 +1272,7 @@ bool precognition_check_early_warning(
     }
 
     if (!module->config.enable_early_warning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_check_early_warning: module->config is NULL");
         return false;
     }
 
@@ -1301,6 +1318,7 @@ bool precognition_check_early_warning(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_check_early_warning: validation failed");
     return false;
 }
 
@@ -1481,6 +1499,7 @@ bool precognition_query_causal_effect(
 
     *strength = 0.0f;
     *confidence = 0.0f;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_query_causal_effect: operation failed");
     return false;
 }
 
@@ -1497,6 +1516,7 @@ bool precognition_counterfactual(
     }
 
     if (!module->config.enable_counterfactual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_counterfactual: module->config is NULL");
         return false;
     }
 
@@ -1505,6 +1525,7 @@ bool precognition_counterfactual(
     /* Generate factual prediction */
     if (!precognition_predict(module, query->horizon, module->config.num_future_samples,
                               &result->factual)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_counterfactual: module->config is NULL");
         return false;
     }
 
@@ -1515,6 +1536,7 @@ bool precognition_counterfactual(
     observation_t* current = get_from_history(&module->history, 0);
     if (!current || !current->features) {
         precognition_free_ensemble(&result->factual);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "precognition_counterfactual: required parameter is NULL (current, current->features)");
         return false;
     }
 
@@ -1650,6 +1672,7 @@ bool precognition_verify_prediction(
         pred = pred->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "precognition_verify_prediction: operation failed");
     return false;
 }
 

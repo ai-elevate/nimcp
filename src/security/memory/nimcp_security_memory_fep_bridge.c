@@ -194,6 +194,7 @@ sec_mem_fep_bridge_t* sec_mem_fep_create(
     /* Validate required parameters */
     if (!security_mem || !fep_system) {
         NIMCP_LOGGING_ERROR("Security Memory FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_create: required parameter is NULL (security_mem, fep_system)");
         return NULL;
     }
 
@@ -203,6 +204,7 @@ sec_mem_fep_bridge_t* sec_mem_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security Memory FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_mem_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -225,6 +227,7 @@ sec_mem_fep_bridge_t* sec_mem_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security Memory FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -354,6 +357,7 @@ int sec_mem_fep_get_config(
     sec_mem_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -371,6 +375,7 @@ int sec_mem_fep_set_config(
     const sec_mem_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -380,6 +385,7 @@ int sec_mem_fep_set_config(
     if (config->free_energy_threshold <= 0.0f ||
         config->surprise_threshold <= 0.0f) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_mem_fep_set_config: operation failed");
         return -1;
     }
 
@@ -406,6 +412,7 @@ int sec_mem_fep_compute_effects(sec_mem_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_compute_effects: bridge->state is NULL");
         return -1;
     }
 
@@ -697,6 +704,7 @@ int sec_mem_fep_detect_corruption(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_detect_corruption: required parameter is NULL (bridge, threat_level_out, confidence_out)");
         return -1;
     }
 
@@ -755,6 +763,7 @@ int sec_mem_fep_detect_false_injection(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_detect_false_injection: required parameter is NULL (bridge, threat_level_out, confidence_out)");
         return -1;
     }
 
@@ -818,6 +827,7 @@ int sec_mem_fep_detect_replay_attack(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_detect_replay_attack: required parameter is NULL (bridge, threat_level_out, confidence_out)");
         return -1;
     }
 
@@ -877,6 +887,7 @@ int sec_mem_fep_detect_retrieval_manipulation(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_detect_retrieval_manipulation: required parameter is NULL (bridge, threat_level_out, confidence_out)");
         return -1;
     }
 
@@ -939,6 +950,7 @@ int sec_mem_fep_detect_threat(
     float* confidence_out
 ) {
     if (!bridge || !threat_level_out || !attack_type_out || !confidence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_detect_threat: required parameter is NULL (bridge, threat_level_out, attack_type_out, confidence_out)");
         return -1;
     }
 
@@ -1033,6 +1045,7 @@ int sec_mem_fep_get_response(
     float* urgency_out
 ) {
     if (!bridge || !response_out || !urgency_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_response: required parameter is NULL (bridge, response_out, urgency_out)");
         return -1;
     }
 
@@ -1074,6 +1087,7 @@ int sec_mem_fep_get_attack_response(
     sec_mem_fep_response_t* response_out
 ) {
     if (!bridge || !response_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_attack_response: required parameter is NULL (bridge, response_out)");
         return -1;
     }
 
@@ -1246,6 +1260,7 @@ int sec_mem_fep_get_fep_effects(
     fep_to_sec_mem_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->fep_effects;
@@ -1257,6 +1272,7 @@ int sec_mem_fep_get_security_effects(
     sec_mem_to_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_security_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
     *effects = bridge->security_effects;
@@ -1268,6 +1284,7 @@ int sec_mem_fep_get_state(
     sec_mem_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_state: required parameter is NULL (bridge, state)");
         return -1;
     }
     *state = bridge->state;
@@ -1279,6 +1296,7 @@ int sec_mem_fep_get_stats(
     sec_mem_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
     *stats = bridge->stats;
@@ -1404,6 +1422,7 @@ int sec_mem_fep_process_messages(sec_mem_fep_bridge_t* bridge) {
     }
 
     if (!bridge->base.bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_process_messages: bridge->base is NULL");
         return -1;
     }
 
@@ -1427,10 +1446,12 @@ int sec_mem_fep_send_alert(
     sec_mem_fep_attack_type_t attack_type
 ) {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_send_alert: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 
     if (!bridge->base.bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_mem_fep_send_alert: bridge->base is NULL");
         return -1;
     }
 

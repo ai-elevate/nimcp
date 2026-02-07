@@ -198,6 +198,7 @@ static gt_exec_opponent_model_t* find_or_create_opponent_model(
         return model;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_or_create_opponent_model: operation failed");
     return NULL;
 }
 
@@ -210,6 +211,7 @@ static gt_exec_opponent_model_t* find_or_create_opponent_model(
  */
 static int gt_exec_on_event(const cognitive_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_exec_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -280,6 +282,7 @@ static int gt_exec_query_handler(
     void* context
 ) {
     if (!query || !result || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_exec_query_handler: required parameter is NULL (query, result, context)");
         return -1;
     }
 
@@ -425,6 +428,7 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "game_theory_executive") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "game_theory_executive_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -487,6 +491,7 @@ int game_theory_executive_bridge_connect(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !bridge->initialized || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_connect: required parameter is NULL (bridge, bridge->initialized, hub)");
         return -1;
     }
 
@@ -499,6 +504,7 @@ int game_theory_executive_bridge_connect(
     /* Check if already connected */
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_bridge_connect: validation failed");
         return -1;
     }
 
@@ -520,6 +526,7 @@ int game_theory_executive_bridge_connect(
         nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_bridge_connect: validation failed");
         return -1;
     }
 
@@ -572,6 +579,7 @@ int game_theory_executive_bridge_connect(
 
 int game_theory_executive_bridge_disconnect(game_theory_executive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_disconnect: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -583,6 +591,7 @@ int game_theory_executive_bridge_disconnect(game_theory_executive_bridge_t* brid
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_disconnect: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -618,6 +627,7 @@ bool game_theory_executive_bridge_is_connected(
     const game_theory_executive_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -647,6 +657,7 @@ int game_theory_executive_analyze_options(
     uint32_t num_outcomes
 ) {
     if (!bridge || !bridge->initialized || !utilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_analyze_options: required parameter is NULL (bridge, bridge->initialized, utilities)");
         return -1;
     }
 
@@ -655,6 +666,7 @@ int game_theory_executive_analyze_options(
 
 
     if (num_actions == 0 || num_outcomes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_analyze_options: num_actions is zero");
         return -1;
     }
 
@@ -673,6 +685,7 @@ int game_theory_executive_analyze_options(
     if (!bridge->current_utilities) {
         bridge->state = GT_EXEC_STATE_ERROR;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "game_theory_executive_analyze_options: bridge->current_utilities is NULL");
         return -1;
     }
 
@@ -692,6 +705,7 @@ int game_theory_executive_get_recommendation(
     gt_strategic_recommendation_t* recommendation_out
 ) {
     if (!bridge || !bridge->initialized || !recommendation_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_get_recommendation: required parameter is NULL (bridge, bridge->initialized, recommendation_out)");
         return -1;
     }
 
@@ -703,6 +717,7 @@ int game_theory_executive_get_recommendation(
 
     if (!bridge->current_utilities || bridge->current_num_actions == 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_get_recommendation: bridge->current_utilities is NULL");
         return -1;
     }
 
@@ -802,6 +817,7 @@ int game_theory_executive_notify_outcome(
     const gt_decision_outcome_t* outcome
 ) {
     if (!bridge || !bridge->initialized || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_notify_outcome: required parameter is NULL (bridge, bridge->initialized, outcome)");
         return -1;
     }
 
@@ -858,6 +874,7 @@ int game_theory_executive_publish_recommendation(
     const gt_strategic_recommendation_t* recommendation
 ) {
     if (!bridge || !bridge->initialized || !recommendation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_publish_recommendation: required parameter is NULL (bridge, bridge->initialized, recommendation)");
         return -1;
     }
 
@@ -869,6 +886,7 @@ int game_theory_executive_publish_recommendation(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_publish_recommendation: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -916,6 +934,7 @@ int game_theory_executive_request_risk_assessment(
     (void)context;  /* Reserved for future use */
 
     if (!bridge || !bridge->initialized || !assessment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_request_risk_assessment: required parameter is NULL (bridge, bridge->initialized, assessment)");
         return -1;
     }
 
@@ -1040,6 +1059,7 @@ int game_theory_executive_notify_decision_made(
     bool followed_recommendation
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_notify_decision_made: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1075,6 +1095,7 @@ int game_theory_executive_request_opponent_model(
     (void)context;  /* Reserved for future use */
 
     if (!bridge || !bridge->initialized || !model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_request_opponent_model: required parameter is NULL (bridge, bridge->initialized, model)");
         return -1;
     }
 
@@ -1085,6 +1106,7 @@ int game_theory_executive_request_opponent_model(
 
     if (!internal_model) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_request_opponent_model: internal_model is NULL");
         return -1;
     }
 
@@ -1105,6 +1127,7 @@ int game_theory_executive_update_opponent_model(
     float outcome
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_update_opponent_model: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1119,6 +1142,7 @@ int game_theory_executive_update_opponent_model(
 
     if (!model || observed_strategy >= model->num_strategies) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "game_theory_executive_update_opponent_model: model is NULL");
         return -1;
     }
 
@@ -1209,6 +1233,7 @@ int game_theory_executive_request_strategic_analysis(
     gt_strategic_recommendation_t* recommendation
 ) {
     if (!bridge || !bridge->initialized || !situation || !recommendation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_request_strategic_analysis: required parameter is NULL (bridge, bridge->initialized, situation, recommendation)");
         return -1;
     }
 
@@ -1301,6 +1326,7 @@ int game_theory_executive_bridge_get_stats(
     game_theory_executive_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1320,6 +1346,7 @@ int game_theory_executive_bridge_get_stats(
 
 int game_theory_executive_bridge_reset_stats(game_theory_executive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1336,6 +1363,7 @@ int game_theory_executive_bridge_reset_stats(game_theory_executive_bridge_t* bri
 
 int game_theory_executive_bridge_force_update(game_theory_executive_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_executive_bridge_force_update: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

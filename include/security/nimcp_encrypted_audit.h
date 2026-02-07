@@ -105,6 +105,7 @@ extern "C" {
 
 #define NIMCP_ENCRYPTED_AUDIT_MAGIC 0x45415544       /**< 'EAUD' */
 #define NIMCP_ENCRYPTED_AUDIT_VERSION 1              /**< Format version */
+#define NIMCP_ENCRYPTED_AUDIT_FILE_MAGIC 0x4E414C4F  /**< 'NALO' - File export format magic */
 
 // Encryption constants (AES-256-GCM with libsodium)
 #define NIMCP_AUDIT_KEY_SIZE 32                      /**< 256-bit key */

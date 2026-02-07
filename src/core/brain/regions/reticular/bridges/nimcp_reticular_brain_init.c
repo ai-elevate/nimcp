@@ -103,6 +103,7 @@ int reticular_brain_init_register(brain_t brain) {
 
     reticular_init_config_t config;
     if (reticular_init_default_config(&config) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reticular_brain_init_register: validation failed");
         return -1;
     }
 
@@ -113,6 +114,7 @@ int reticular_brain_init_register(brain_t brain) {
     if (!reticular) {
         NIMCP_LOG_ERROR(RETICULAR_INIT_MODULE_NAME,
             "Reticular subsystem creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_brain_init_register: reticular is NULL");
         return -1;
     }
 
@@ -129,7 +131,10 @@ nimcp_reticular_t* reticular_brain_init_create(
     const reticular_init_config_t* config,
     reticular_init_result_t* result
 ) {
-    if (!brain || !config) return NULL;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_brain_init_create: required parameter is NULL (brain, config)");
+        return NULL;
+    }
 
     reticular_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -139,6 +144,7 @@ nimcp_reticular_t* reticular_brain_init_create(
     if (reticular_default_config(&ret_config) < 0) {
         local_result.error_count++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reticular_brain_init_create: validation failed");
         return NULL;
     }
 
@@ -246,7 +252,10 @@ bool reticular_init_nuclei(
     nimcp_reticular_t* reticular,
     const reticular_init_config_t* config
 ) {
-    if (!reticular || !config) return false;
+    if (!reticular || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_nuclei: required parameter is NULL (reticular, config)");
+        return false;
+    }
 
     /* Nuclei are initialized by reticular_create via reticular_init */
     /* This function performs any additional post-creation setup */
@@ -261,7 +270,10 @@ bool reticular_init_modulators(
     nimcp_reticular_t* reticular,
     const reticular_init_config_t* config
 ) {
-    if (!reticular || !config) return false;
+    if (!reticular || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_modulators: required parameter is NULL (reticular, config)");
+        return false;
+    }
 
     /* Modulators are initialized by reticular_create */
     /* Additional configuration can be applied here */
@@ -276,7 +288,10 @@ bool reticular_init_autonomic(
     nimcp_reticular_t* reticular,
     const reticular_init_config_t* config
 ) {
-    if (!reticular || !config) return false;
+    if (!reticular || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_autonomic: required parameter is NULL (reticular, config)");
+        return false;
+    }
 
     /* Autonomic system initialized by reticular_create */
 
@@ -294,7 +309,10 @@ bool reticular_init_bio_async_bridges(
     nimcp_reticular_t* reticular,
     brain_t brain
 ) {
-    if (!reticular || !brain) return false;
+    if (!reticular || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_bio_async_bridges: required parameter is NULL (reticular, brain)");
+        return false;
+    }
 
     /* Bio-async connection would be established here */
     /* Requires access to brain's bio-router */
@@ -310,7 +328,10 @@ bool reticular_init_kg_wiring(
     brain_t brain,
     uint64_t admin_token
 ) {
-    if (!reticular || !brain) return false;
+    if (!reticular || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_kg_wiring: required parameter is NULL (reticular, brain)");
+        return false;
+    }
 
     /* KG wiring would be established here */
     /* Requires access to brain's KG */
@@ -327,7 +348,10 @@ bool reticular_init_security(
     nimcp_reticular_t* reticular,
     brain_t brain
 ) {
-    if (!reticular || !brain) return false;
+    if (!reticular || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_security: required parameter is NULL (reticular, brain)");
+        return false;
+    }
 
     /* Security registration would be established here */
     /* Requires access to brain's BBB */
@@ -342,7 +366,10 @@ bool reticular_init_immune_bridge(
     nimcp_reticular_t* reticular,
     brain_t brain
 ) {
-    if (!reticular || !brain) return false;
+    if (!reticular || !brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_init_immune_bridge: required parameter is NULL (reticular, brain)");
+        return false;
+    }
 
     /* Immune bridge would be established here */
     /* Requires access to brain's immune system */
@@ -358,7 +385,10 @@ bool reticular_init_immune_bridge(
 //=============================================================================
 
 bool reticular_is_initialized(nimcp_reticular_t* reticular) {
-    if (!reticular) return false;
+    if (!reticular) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular_is_initialized: reticular is NULL");
+        return false;
+    }
     return reticular->initialized;
 }
 

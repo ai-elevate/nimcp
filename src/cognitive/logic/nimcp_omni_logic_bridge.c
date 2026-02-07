@@ -185,6 +185,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     if (bridge_base_init(&bridge->base, 0, "omni_logic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -194,6 +195,7 @@ omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config)
     if (!bridge->rules) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_logic_bridge_create: bridge->rules is NULL");
         return NULL;
     }
     bridge->num_rules = 0;
@@ -434,7 +436,10 @@ int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
 }
 
 bool omni_logic_should_forward_chain(omni_logic_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_should_forward_chain: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_fo", 0.0f);
 
@@ -447,7 +452,10 @@ bool omni_logic_should_forward_chain(omni_logic_bridge_t* bridge) {
 }
 
 bool omni_logic_should_backward_chain(omni_logic_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_should_backward_chain: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_ba", 0.0f);
 
@@ -460,7 +468,10 @@ bool omni_logic_should_backward_chain(omni_logic_bridge_t* bridge) {
 }
 
 bool omni_logic_should_switch_direction(omni_logic_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_should_switch_direction: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_should_sw", 0.0f);
 
@@ -732,7 +743,10 @@ int omni_logic_disconnect_bio_async(omni_logic_bridge_t* bridge) {
 }
 
 bool omni_logic_is_bio_async_connected(const omni_logic_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_logic_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_logic_bridge_heartbeat("omni_logic_b_omni_logic_is_bio_as", 0.0f);
 

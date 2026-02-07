@@ -283,6 +283,7 @@ int hypo_insula_bridge_compute_attention(hypo_insula_bridge_t* bridge) {
     /* Get current drive states */
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_insula_bridge_compute_attention: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -392,7 +393,10 @@ static nimcp_error_t insula_handle_attention_request(
 }
 
 bool hypo_insula_bridge_register_bio(hypo_insula_bridge_t* bridge, bool use_kg_wiring) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring;  /* Future KG wiring integration */
@@ -407,6 +411,7 @@ bool hypo_insula_bridge_register_bio(hypo_insula_bridge_t* bridge, bool use_kg_w
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_insula_bridge: failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 

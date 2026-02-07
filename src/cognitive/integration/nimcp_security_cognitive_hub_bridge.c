@@ -139,7 +139,10 @@ static int security_event_callback(
 )
 {
     security_cognitive_bridge_t bridge = (security_cognitive_bridge_t)user_data;
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_event_callback: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     /* Translate security event to cognitive domain if configured */
     if (bridge->config.translate_security_to_cognitive && bridge->cognitive_connected) {
@@ -158,7 +161,10 @@ static int cognitive_event_callback(
 )
 {
     security_cognitive_bridge_t bridge = (security_cognitive_bridge_t)user_data;
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_event_callback: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     /* Translate cognitive event to security domain if configured */
     if (bridge->config.translate_cognitive_to_security && bridge->security_connected) {
@@ -218,7 +224,10 @@ static int security_query_handler(
 )
 {
     security_cognitive_bridge_t bridge = (security_cognitive_bridge_t)context;
-    if (!bridge || !query || !result) return -1;
+    if (!bridge || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_query_handler: required parameter is NULL (bridge, query, result)");
+        return -1;
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->stats.security_queries_handled++;
@@ -362,6 +371,7 @@ security_cognitive_bridge_t security_cognitive_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "security_cognitive") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "security_cognitive_bridge_create: validation failed");
         return NULL;
     }
 
@@ -601,7 +611,10 @@ int security_cognitive_disconnect_cognitive(security_cognitive_bridge_t bridge)
 
 bool security_cognitive_is_connected(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_cognitive_is_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     security_cognitive_hub_bridge_heartbeat("security_cog_security_cognitive_i", 0.0f);

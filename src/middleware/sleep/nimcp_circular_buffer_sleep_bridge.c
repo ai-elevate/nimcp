@@ -83,7 +83,10 @@ static void circular_buffer_on_sleep_state_change(sleep_state_t new_state, void*
 }
 
 int circular_buffer_sleep_default_config(circular_buffer_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_capacity_modulation = true;
     config->enable_retention_modulation = true;
     config->enable_overflow_modulation = true;
@@ -170,7 +173,10 @@ void circular_buffer_sleep_bridge_destroy(circular_buffer_sleep_bridge_t bridge)
 }
 
 int circular_buffer_sleep_update(circular_buffer_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -208,7 +214,10 @@ int circular_buffer_sleep_get_effects(
     const circular_buffer_sleep_bridge_t bridge,
     circular_buffer_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circular_buffer_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

@@ -576,6 +576,7 @@ bool nimcp_supply_chain_is_source_trusted(nimcp_supply_chain_t sc,
 
     if (nimcp_platform_mutex_lock(&sc->lock) != 0) {
         LOG_ERROR("Failed to acquire lock for checking trusted source");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_supply_chain_add_trusted_source: validation failed");
         return false;
     }
 
@@ -588,6 +589,7 @@ bool nimcp_supply_chain_is_source_trusted(nimcp_supply_chain_t sc,
 
     nimcp_platform_mutex_unlock(&sc->lock);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_supply_chain_add_trusted_source: validation failed");
     return false;
 }
 

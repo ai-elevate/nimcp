@@ -66,6 +66,7 @@ static synapse_structural_state_t* find_spine(
     uint32_t synapse_id
 ) {
     if (!system || !system->spines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine: required parameter is NULL (system, system->spines)");
         return NULL;
     }
 
@@ -75,6 +76,7 @@ static synapse_structural_state_t* find_spine(
             return &system->spines[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine: operation failed");
     return NULL;
 }
 
@@ -86,6 +88,7 @@ static synapse_structural_state_t* find_spine_any_state(
     uint32_t synapse_id
 ) {
     if (!system || !system->spines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine_any_state: required parameter is NULL (system, system->spines)");
         return NULL;
     }
 
@@ -94,6 +97,7 @@ static synapse_structural_state_t* find_spine_any_state(
             return &system->spines[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_spine_any_state: validation failed");
     return NULL;
 }
 
@@ -307,6 +311,7 @@ int structural_plasticity_form_synapse(
     if (!system->spines) {
         NIMCP_LOGGING_ERROR("Spine array not initialized");
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_form_synapse: system->spines is NULL");
         return -1;
     }
 
@@ -319,6 +324,7 @@ int structural_plasticity_form_synapse(
         if (system->num_spines >= system->max_spines) {
             NIMCP_LOGGING_WARN("Spine limit reached, no eliminated slots available");
             nimcp_platform_mutex_unlock(system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "structural_plasticity_form_synapse: capacity exceeded");
             return -1;
         }
         slot = system->num_spines;
@@ -328,6 +334,7 @@ int structural_plasticity_form_synapse(
     if (slot >= system->max_spines) {
         NIMCP_LOGGING_ERROR("Slot index exceeds max_spines");
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "structural_plasticity_form_synapse: capacity exceeded");
         return -1;
     }
 
@@ -389,6 +396,7 @@ int structural_plasticity_eliminate_synapse(
     if (!spine) {
         NIMCP_LOGGING_WARN("Synapse %u not found", synapse_id);
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_eliminate_synapse: spine is NULL");
         return -1;
     }
 
@@ -446,6 +454,7 @@ bool structural_plasticity_should_prune(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "structural_plasticity_should_prune: validation failed");
     return false;
 }
 
@@ -467,11 +476,13 @@ int structural_plasticity_stabilize_synapse(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_stabilize_synapse: spine is NULL");
         return -1;
     }
 
     if (spine->state != SYNAPSE_STATE_NASCENT) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "structural_plasticity_stabilize_synapse: validation failed");
         return -1;  /* Can only stabilize nascent spines */
     }
 
@@ -511,11 +522,13 @@ int structural_plasticity_potentiate_synapse(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_potentiate_synapse: spine is NULL");
         return -1;
     }
 
     if (spine->state != SYNAPSE_STATE_STABLE) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "structural_plasticity_potentiate_synapse: validation failed");
         return -1;  /* Can only potentiate stable spines */
     }
 
@@ -555,6 +568,7 @@ int structural_plasticity_tag_for_consolidation(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_tag_for_consolidation: spine is NULL");
         return -1;
     }
 
@@ -583,6 +597,7 @@ int structural_plasticity_update_activity(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_update_activity: spine is NULL");
         return -1;
     }
 
@@ -639,6 +654,7 @@ int structural_plasticity_record_ltp(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_record_ltp: spine is NULL");
         return -1;
     }
 
@@ -705,6 +721,7 @@ int structural_plasticity_record_ltd(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_record_ltd: spine is NULL");
         return -1;
     }
 
@@ -774,6 +791,7 @@ int structural_plasticity_update(
     /* BOUNDS VALIDATION: Verify spine array before iteration */
     if (!system->spines || system->num_spines > system->max_spines) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_update: system->spines is NULL");
         return -1;
     }
 
@@ -948,6 +966,7 @@ int structural_plasticity_get_synapse_state(
         find_spine_any_state((structural_plasticity_system_t*)system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_get_synapse_state: spine is NULL");
         return -1;
     }
 
@@ -978,6 +997,7 @@ int structural_plasticity_get_morphology(
         find_spine_any_state((structural_plasticity_system_t*)system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_get_morphology: spine is NULL");
         return -1;
     }
 
@@ -1074,6 +1094,7 @@ int structural_plasticity_tag_complement(
     synapse_structural_state_t* spine = find_spine(system, synapse_id);
     if (!spine) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structural_plasticity_tag_complement: spine is NULL");
         return -1;
     }
 

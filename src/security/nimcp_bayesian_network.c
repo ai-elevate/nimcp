@@ -269,6 +269,7 @@ static uint32_t bn_get_dep(uint32_t node_index, uint32_t dep_index, void* user_d
  */
 static bool compute_topo_order(nimcp_bayesian_network_t bn) {
     if (!bn || bn->num_nodes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_topo_order: bn is NULL");
         return false;
     }
 

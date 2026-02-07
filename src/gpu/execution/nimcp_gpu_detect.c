@@ -806,6 +806,7 @@ bool gpu_detect_capabilities(gpu_detect_result_t* caps)
 {
     if (!caps) {
         LOG_ERROR("NULL capabilities pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_detect_capabilities: caps is NULL");
         return false;
     }
 
@@ -852,6 +853,7 @@ bool gpu_get_device_info(uint32_t device_index, gpu_device_info_t* info)
     pthread_once(&s_cache_init_once, gpu_detect_init_impl);
 
     if (device_index >= s_cached_caps.device_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gpu_get_device_info: capacity exceeded");
         return false;
     }
 

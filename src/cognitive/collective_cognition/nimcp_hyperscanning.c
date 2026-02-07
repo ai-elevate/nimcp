@@ -233,6 +233,7 @@ static hyperscanning_instance_t* find_instance(
             return &hs->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
     return NULL;
 }
 
@@ -265,6 +266,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
     return -1;
 }
 
@@ -280,6 +282,7 @@ static hyperscanning_instance_t* find_free_slot(hyperscanning_t* hs) {
             return &hs->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: hs->instances is NULL");
     return NULL;
 }
 
@@ -287,11 +290,15 @@ static hyperscanning_instance_t* find_free_slot(hyperscanning_t* hs) {
  * @brief Get index of instance in array
  */
 static int get_instance_array_index(hyperscanning_t* hs, hyperscanning_instance_t* inst) {
-    if (!inst || !hs) return -1;
+    if (!inst || !hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_instance_array_index: required parameter is NULL (inst, hs)");
+        return -1;
+    }
     ptrdiff_t diff = inst - hs->instances;
     if (diff >= 0 && diff < COLLECTIVE_MAX_INSTANCES) {
         return (int)diff;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_instance_array_index: capacity exceeded");
     return -1;
 }
 
@@ -323,6 +330,7 @@ static pair_sync_entry_t* find_pair(
             return &hs->pairs[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pair: operation failed");
     return NULL;
 }
 
@@ -342,7 +350,10 @@ static pair_sync_entry_t* get_or_create_pair(
     if (pair) return pair;
 
     /* Create new pair */
-    if (hs->pair_count >= HYPERSCAN_MAX_PAIRS) return NULL;
+    if (hs->pair_count >= HYPERSCAN_MAX_PAIRS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_pair: capacity exceeded");
+        return NULL;
+    }
 
     pair = &hs->pairs[hs->pair_count++];
     memset(pair, 0, sizeof(pair_sync_entry_t));
@@ -874,7 +885,10 @@ void hyperscanning_destroy(hyperscanning_t* hs) {
 }
 
 int hyperscanning_reset(hyperscanning_t* hs) {
-    if (!hs) return -1;
+    if (!hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_reset: hs is NULL");
+        return -1;
+    }
 
     /* Clear hash table */
     /* Phase 8: Heartbeat at operation start */
@@ -920,7 +934,10 @@ int hyperscanning_register_instance(
     hyperscanning_state_callback_fn state_callback,
     void* user_data
 ) {
-    if (!hs) return -1;
+    if (!hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_register_instance: hs is NULL");
+        return -1;
+    }
 
     /* Check if already registered */
     /* Phase 8: Heartbeat at operation start */
@@ -928,12 +945,16 @@ int hyperscanning_register_instance(
 
 
     if (find_instance(hs, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hyperscanning_register_instance: validation failed");
         return -1;
     }
 
     /* Find free slot */
     hyperscanning_instance_t* slot = find_free_slot(hs);
-    if (!slot) return -1;
+    if (!slot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_register_instance: slot is NULL");
+        return -1;
+    }
 
     /* Initialize instance */
     slot->instance_id = instance_id;
@@ -992,14 +1013,20 @@ int hyperscanning_unregister_instance(
     hyperscanning_t* hs,
     uint32_t instance_id
 ) {
-    if (!hs) return -1;
+    if (!hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_unregister_instance: hs is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_unregister_instance", 0.0f);
 
 
     hyperscanning_instance_t* inst = find_instance(hs, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_unregister_instance: inst is NULL");
+        return -1;
+    }
 
     inst->active = false;
     hs->instance_count--;
@@ -1019,14 +1046,20 @@ int hyperscanning_update_state(
     hyperscanning_t* hs,
     const hyperscanning_neural_state_t* state
 ) {
-    if (!hs || !state) return -1;
+    if (!hs || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_update_state: required parameter is NULL (hs, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_update_state", 0.0f);
 
 
     hyperscanning_instance_t* inst = find_instance(hs, state->instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_update_state: inst is NULL");
+        return -1;
+    }
 
     inst->state = *state;
     inst->state.timestamp_us = get_timestamp_us();
@@ -1046,7 +1079,10 @@ int hyperscanning_update_state(
  *===========================================================================*/
 
 int hyperscanning_update(hyperscanning_t* hs) {
-    if (!hs || !hs->initialized) return -1;
+    if (!hs || !hs->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_update: required parameter is NULL (hs, hs->initialized)");
+        return -1;
+    }
 
     /* Update all pair metrics */
     /* Phase 8: Heartbeat at operation start */
@@ -1161,14 +1197,20 @@ int hyperscanning_get_pair_sync(
     uint32_t instance_b,
     hyperscan_pair_t* pair
 ) {
-    if (!hs || !pair) return -1;
+    if (!hs || !pair) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_get_pair_sync: required parameter is NULL (hs, pair)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_get_pair_sync", 0.0f);
 
 
     pair_sync_entry_t* entry = find_pair((hyperscanning_t*)hs, instance_a, instance_b);
-    if (!entry) return -1;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_get_pair_sync: entry is NULL");
+        return -1;
+    }
 
     *pair = entry->metrics;
     return 0;
@@ -1178,7 +1220,10 @@ int hyperscanning_get_state(
     const hyperscanning_t* hs,
     hyperscan_state_t* state
 ) {
-    if (!hs || !state) return -1;
+    if (!hs || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_get_state: required parameter is NULL (hs, state)");
+        return -1;
+    }
 
     *state = hs->global_state;
     /* Phase 8: Heartbeat at operation start */
@@ -1214,7 +1259,10 @@ int hyperscanning_entrain_to(
     hyperscanning_t* hs,
     const entrainment_request_t* request
 ) {
-    if (!hs || !request) return -1;
+    if (!hs || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_entrain_to: required parameter is NULL (hs, request)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_entrain_to", 0.0f);
@@ -1223,7 +1271,10 @@ int hyperscanning_entrain_to(
     hyperscanning_instance_t* requester = find_instance(hs, request->requester_id);
     hyperscanning_instance_t* target = find_instance(hs, request->target_id);
 
-    if (!requester || !target) return -1;
+    if (!requester || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_entrain_to: required parameter is NULL (requester, target)");
+        return -1;
+    }
 
     requester->entrainment_status = ENTRAINMENT_IN_PROGRESS;
     requester->entrainment_target = request->target_id;
@@ -1249,14 +1300,20 @@ int hyperscanning_release_entrainment(
     hyperscanning_t* hs,
     uint32_t instance_id
 ) {
-    if (!hs) return -1;
+    if (!hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_release_entrainment: hs is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_release_entrainment", 0.0f);
 
 
     hyperscanning_instance_t* inst = find_instance(hs, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_release_entrainment: inst is NULL");
+        return -1;
+    }
 
     entrainment_status_t old_status = inst->entrainment_status;
     inst->entrainment_status = ENTRAINMENT_RELEASED;
@@ -1306,7 +1363,10 @@ int hyperscanning_set_entrainment_callback(
     hyperscanning_entrainment_callback_fn callback,
     void* user_data
 ) {
-    if (!hs) return -1;
+    if (!hs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_set_entrainment_callback: hs is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hyperscanning_heartbeat("hyperscannin_set_entrainment_call", 0.0f);
@@ -1371,7 +1431,10 @@ int hyperscanning_get_stats(
     const hyperscanning_t* hs,
     hyperscanning_stats_t* stats
 ) {
-    if (!hs || !stats) return -1;
+    if (!hs || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperscanning_get_stats: required parameter is NULL (hs, stats)");
+        return -1;
+    }
 
     *stats = hs->stats;
     /* Phase 8: Heartbeat at operation start */

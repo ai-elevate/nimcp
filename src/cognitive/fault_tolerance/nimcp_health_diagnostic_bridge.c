@@ -246,6 +246,7 @@ static const anomaly_error_mapping_t* find_anomaly_mapping(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_anomaly_mapping: validation failed");
     return NULL;
 }
 
@@ -282,6 +283,7 @@ static const agent_error_mapping_t* find_agent_mapping(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_mapping: validation failed");
     return NULL;
 }
 
@@ -322,6 +324,7 @@ static int capture_stack_trace(diagnostic_result_t* result) {
     void* buffer[MAX_STACK_DEPTH];
     int depth = backtrace(buffer, MAX_STACK_DEPTH);
     if (depth <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capture_stack_trace: validation failed");
         return -1;
     }
 
@@ -437,6 +440,7 @@ health_diag_bridge_t* health_diag_bridge_create(
 
     if (!bridge->custom_anomaly_mappings || !bridge->custom_agent_mappings) {
         health_diag_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_diag_bridge_create: required parameter is NULL (bridge->custom_anomaly_mappings, bridge->custom_agent_mappings)");
         return NULL;
     }
 
@@ -444,6 +448,7 @@ health_diag_bridge_t* health_diag_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "health_diagnostic") != 0) {
         health_diag_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_diag_bridge_create: validation failed");
         return NULL;
     }
 
@@ -513,6 +518,7 @@ int health_diag_bridge_convert_anomaly(
 
     /* Check minimum severity filter (not an error — intentional filtering) */
     if (anomaly->severity < bridge->config.min_severity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_diag_bridge_convert_anomaly: validation failed");
         return -1;
     }
 
@@ -528,6 +534,7 @@ int health_diag_bridge_convert_anomaly(
     diagnostic_result_t* diag = allocate_diagnostic_result();
     if (!diag) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_diag_bridge_convert_anomaly: diag is NULL");
         return -1;
     }
 
@@ -669,6 +676,7 @@ int health_diag_bridge_convert_agent_message(
 
     /* Check minimum severity filter (not an error — intentional filtering) */
     if (message->severity < bridge->config.min_agent_severity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_diag_bridge_convert_agent_message: validation failed");
         return -1;
     }
 
@@ -684,6 +692,7 @@ int health_diag_bridge_convert_agent_message(
     diagnostic_result_t* diag = allocate_diagnostic_result();
     if (!diag) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_diag_bridge_convert_agent_message: diag is NULL");
         return -1;
     }
 
@@ -1046,6 +1055,7 @@ void health_diag_bridge_reset_stats(health_diag_bridge_t* bridge) {
 
 bool health_diag_bridge_is_ready(const health_diag_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_diag_bridge_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

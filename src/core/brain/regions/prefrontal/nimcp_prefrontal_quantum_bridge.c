@@ -148,6 +148,7 @@ prefrontal_quantum_bridge_t* prefrontal_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -164,6 +165,7 @@ prefrontal_quantum_bridge_t* prefrontal_quantum_bridge_create(
 
     if (!bridge->decision_candidates || !bridge->plan_candidates) {
         prefrontal_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_quantum_bridge_create: required parameter is NULL (bridge->decision_candidates, bridge->plan_candidates)");
         return NULL;
     }
 
@@ -174,6 +176,7 @@ prefrontal_quantum_bridge_t* prefrontal_quantum_bridge_create(
 
     if (!bridge->action_sequence_buffer) {
         prefrontal_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_quantum_bridge_create: bridge->action_sequence_buffer is NULL");
         return NULL;
     }
 
@@ -223,8 +226,14 @@ int prefrontal_quantum_accelerate_decision(
     float min_utility,
     quantum_decision_result_t* result
 ) {
-    if (!bridge || !utilities || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !utilities || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_accelerate_decision: required parameter is NULL (bridge, utilities, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_accelerate_decision: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -281,7 +290,10 @@ int prefrontal_quantum_accelerate_decision(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &decision_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_quantum_accelerate_decision: validation failed");
+        return -1;
+    }
 
     /* Generate decision candidates from quantum state */
     uint32_t num_candidates = (bridge->max_candidates < num_options) ?
@@ -346,14 +358,23 @@ int prefrontal_quantum_parallel_eval(
     uint32_t num_criteria,
     quantum_decision_result_t* result
 ) {
-    if (!bridge || !options || !criteria || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !options || !criteria || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_parallel_eval: required parameter is NULL (bridge, options, criteria, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_parallel_eval: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
     /* Compute utilities for each option */
     float* utilities = nimcp_calloc(num_options, sizeof(float));
-    if (!utilities) return -1;
+    if (!utilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prefrontal_quantum_parallel_eval: utilities is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_options; i++) {
         float utility = 0.0f;
@@ -384,8 +405,14 @@ int prefrontal_quantum_optimize_plan(
     uint32_t max_plan_length,
     quantum_planning_result_t* result
 ) {
-    if (!bridge || !available_actions || !values || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !available_actions || !values || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_optimize_plan: required parameter is NULL (bridge, available_actions, values, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_optimize_plan: bridge->config is NULL");
+        return -1;
+    }
     (void)constraints;  /* Used in more complex implementation */
 
     memset(result, 0, sizeof(*result));
@@ -407,7 +434,10 @@ int prefrontal_quantum_optimize_plan(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &plan_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_quantum_optimize_plan: validation failed");
+        return -1;
+    }
 
     /* Generate plan candidates */
     uint32_t num_candidates = (bridge->max_candidates < num_actions) ?
@@ -471,8 +501,14 @@ int prefrontal_quantum_tree_search(
     const bool* goal_nodes,
     quantum_planning_result_t* result
 ) {
-    if (!bridge || !tree_adjacency || !node_values || !goal_nodes || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !tree_adjacency || !node_values || !goal_nodes || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_tree_search: required parameter is NULL (bridge, tree_adjacency, node_values, goal_nodes, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_tree_search: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -488,6 +524,7 @@ int prefrontal_quantum_tree_search(
 
     if (num_goals == 0) {
         bridge->stats.classical_fallbacks++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_quantum_tree_search: num_goals is zero");
         return -1;
     }
 
@@ -524,8 +561,14 @@ int prefrontal_quantum_resolve_conflict(
     uint32_t num_goals,
     quantum_conflict_result_t* result
 ) {
-    if (!bridge || !goal_values || !goal_conflicts || !result) return -1;
-    if (!bridge->config.enabled || !bridge->config.enable_quantum_annealing) return -1;
+    if (!bridge || !goal_values || !goal_conflicts || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_resolve_conflict: required parameter is NULL (bridge, goal_values, goal_conflicts, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled || !bridge->config.enable_quantum_annealing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_resolve_conflict: required parameter is NULL (bridge->config, bridge->config)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -539,6 +582,7 @@ int prefrontal_quantum_resolve_conflict(
     if (!result->goal_weights || !result->selected_priorities) {
         if (result->goal_weights) nimcp_free(result->goal_weights);
         if (result->selected_priorities) nimcp_free(result->selected_priorities);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prefrontal_quantum_resolve_conflict: validation failed");
         return -1;
     }
 
@@ -590,8 +634,14 @@ int prefrontal_quantum_estimate_probability(
     uint32_t context_size,
     float* probability
 ) {
-    if (!bridge || !probability) return -1;
-    if (!bridge->config.enabled || !bridge->config.use_amplitude_estimation) return -1;
+    if (!bridge || !probability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_estimate_probability: required parameter is NULL (bridge, probability)");
+        return -1;
+    }
+    if (!bridge->config.enabled || !bridge->config.use_amplitude_estimation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_estimate_probability: required parameter is NULL (bridge->config, bridge->config)");
+        return -1;
+    }
 
     (void)action_id;
 
@@ -626,7 +676,10 @@ int prefrontal_quantum_get_stats(
     const prefrontal_quantum_bridge_t* bridge,
     prefrontal_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -641,7 +694,10 @@ int prefrontal_quantum_get_config(
     const prefrontal_quantum_bridge_t* bridge,
     prefrontal_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -651,7 +707,10 @@ bool prefrontal_quantum_check_resources(
     uint32_t* qubits_available,
     float* coherence_remaining
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal_quantum_check_resources: bridge is NULL");
+        return false;
+    }
 
     if (qubits_available) {
         *qubits_available = bridge->config.max_decision_qubits;

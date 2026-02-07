@@ -186,6 +186,7 @@ static nimcp_toctou_token_t find_free_token_slot(nimcp_toctou_guard_t guard) {
     for (uint32_t i = 0; i < guard->config.max_concurrent_tokens; i++) {
         nimcp_toctou_token_t token = guard->token_pool[i];
         if (token == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_token_slot: validation failed");
             return NULL; // Slot available for new allocation
         }
 
@@ -201,6 +202,7 @@ static nimcp_toctou_token_t find_free_token_slot(nimcp_toctou_guard_t guard) {
         nimcp_platform_mutex_unlock(&token->token_lock);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_token_slot: operation failed");
     return NULL;
 }
 
@@ -258,6 +260,7 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
     // Validate configuration
     if (actual_config.max_concurrent_tokens == 0) {
         LOG_ERROR("Invalid max_concurrent_tokens (0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_guard_create: actual_config.max_concurrent_tokens is zero");
         return NULL;
     }
 
@@ -282,6 +285,7 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
     if (nimcp_platform_mutex_init(&guard->guard_lock, false) != 0) {
         LOG_ERROR("Failed to initialize guard lock");
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_toctou_guard_create: validation failed");
         return NULL;
     }
 
@@ -292,6 +296,7 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
         LOG_ERROR("Failed to allocate token pool");
         nimcp_platform_mutex_destroy(&guard->guard_lock);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_toctou_guard_create: guard->token_pool is NULL");
         return NULL;
     }
 
@@ -369,6 +374,7 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
     // Validate inputs
     if (!is_valid_guard(guard)) {
         LOG_ERROR("Invalid guard handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_toctou_validate_custom: is_valid_guard is NULL");
         return NULL;
     }
 
@@ -378,6 +384,7 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
         nimcp_platform_mutex_lock(&guard->guard_lock);
         guard->stats.validation_failures++;
         nimcp_platform_mutex_unlock(&guard->guard_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_validate_custom: size is zero");
         return NULL;
     }
 
@@ -411,6 +418,7 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
             guard->config.max_concurrent_tokens);
         guard->stats.contention_events++;
         nimcp_platform_mutex_unlock(&guard->guard_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_toctou_validate_custom: validation failed");
         return NULL;
     }
 
@@ -425,6 +433,7 @@ nimcp_toctou_token_t nimcp_toctou_validate_custom(
             token->state = TOKEN_STATE_INVALID;
             nimcp_platform_mutex_unlock(&token->token_lock);
             nimcp_platform_mutex_unlock(&guard->guard_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_validate_custom: validator is NULL");
             return NULL;
         }
     }
@@ -569,6 +578,7 @@ nimcp_error_t nimcp_toctou_cancel(nimcp_toctou_token_t token) {
 
 bool nimcp_toctou_token_is_valid(nimcp_toctou_token_t token) {
     if (!is_valid_token(token)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_toctou_token_is_valid: is_valid_token is NULL");
         return false;
     }
 

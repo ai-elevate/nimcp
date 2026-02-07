@@ -101,6 +101,7 @@ amygdala_autobio_bridge_t* amygdala_autobio_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "amygdala_autobio_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -283,6 +284,7 @@ float amygdala_autobio_get_salience_boost(const amygdala_autobio_bridge_t* bridg
 
 bool amygdala_autobio_is_flashbulb_mode(const amygdala_autobio_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_autobio_is_flashbulb_mode: bridge is NULL");
         return false;
     }
 
@@ -546,6 +548,7 @@ int amygdala_autobio_disconnect_bio_async(amygdala_autobio_bridge_t* bridge) {
 
 bool amygdala_autobio_is_bio_async_connected(const amygdala_autobio_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amygdala_autobio_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

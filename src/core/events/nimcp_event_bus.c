@@ -252,8 +252,14 @@ brain_event_t event_create(brain_event_type_t type, event_priority_t priority, c
  * @brief Copy data into event
  */
 bool event_set_data(brain_event_t* event, const void* data, size_t size) {
-    if (!event || !data) return false;
-    if (size > EVENT_BUS_MAX_DATA_SIZE) return false;
+    if (!event || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_set_data: required parameter is NULL (event, data)");
+        return false;
+    }
+    if (size > EVENT_BUS_MAX_DATA_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_set_data: validation failed");
+        return false;
+    }
 
     memcpy(event->data.data, data, size);
     event->data.size = size;
@@ -269,7 +275,10 @@ bool event_set_data(brain_event_t* event, const void* data, size_t size) {
  */
 static event_queue_t* event_queue_create(uint32_t max_size) {
     event_queue_t* queue = (event_queue_t*)nimcp_calloc(1, sizeof(event_queue_t));
-    if (!queue) return NULL;
+    if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_create: queue is NULL");
+        return NULL;
+    }
 
     queue->head = NULL;
     queue->tail = NULL;
@@ -312,13 +321,17 @@ static void event_queue_destroy(event_queue_t* queue) {
  * @brief Enqueue event
  */
 static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event) {
-    if (!queue || !event) return false;
+    if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_enqueue: required parameter is NULL (queue, event)");
+        return false;
+    }
 
     nimcp_mutex_lock(&queue->mutex);
 
     // Check if full
     if (queue->count >= queue->max_size) {
         nimcp_mutex_unlock(&queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "event_queue_enqueue: capacity exceeded");
         return false;
     }
 
@@ -326,6 +339,7 @@ static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event
     event_node_t* node = (event_node_t*)nimcp_malloc(sizeof(event_node_t));
     if (!node) {
         nimcp_mutex_unlock(&queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_queue_enqueue: node is NULL");
         return false;
     }
 
@@ -361,7 +375,10 @@ static bool event_queue_enqueue(event_queue_t* queue, const brain_event_t* event
  * @return true if event was dequeued, false if shutdown or error
  */
 static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, volatile bool* shutdown_flag) {
-    if (!queue || !event) return false;
+    if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_dequeue: required parameter is NULL (queue, event)");
+        return false;
+    }
 
     nimcp_mutex_lock(&queue->mutex);
 
@@ -370,6 +387,7 @@ static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, vola
         // Check shutdown flag before waiting - prevents indefinite blocking
         if (shutdown_flag && *shutdown_flag) {
             nimcp_mutex_unlock(&queue->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: validation failed");
             return false;  // Shutdown requested, exit immediately
         }
         nimcp_cond_wait(&queue->not_empty, &queue->mutex);
@@ -378,6 +396,7 @@ static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, vola
     // Final shutdown check after waking up
     if (shutdown_flag && *shutdown_flag) {
         nimcp_mutex_unlock(&queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_queue_dequeue: validation failed");
         return false;
     }
 
@@ -385,6 +404,7 @@ static bool event_queue_dequeue(event_queue_t* queue, brain_event_t* event, vola
     event_node_t* node = queue->head;
     if (!node) {
         nimcp_mutex_unlock(&queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_queue_dequeue: node is NULL");
         return false;
     }
 
@@ -541,6 +561,7 @@ static void* event_bus_worker_thread(void* arg) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_worker_thread: bus->shutdown is NULL");
     return NULL;
 }
 
@@ -626,7 +647,10 @@ bool event_bus_stop(event_bus_t bus, bool drain_queue) {
  * @brief Check if running
  */
 bool event_bus_is_running(event_bus_t bus) {
-    if (!bus) return false;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_is_running: bus is NULL");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
     return internal->running;
@@ -729,7 +753,10 @@ event_subscription_handle_t event_bus_subscribe_priority(
  * @brief Unsubscribe
  */
 bool event_bus_unsubscribe(event_bus_t bus, event_subscription_handle_t handle) {
-    if (!bus || handle == INVALID_SUBSCRIPTION_HANDLE) return false;
+    if (!bus || handle == INVALID_SUBSCRIPTION_HANDLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_unsubscribe: bus is NULL");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
@@ -754,6 +781,7 @@ bool event_bus_unsubscribe(event_bus_t bus, event_subscription_handle_t handle) 
     }
 
     nimcp_mutex_unlock(&internal->subscriber_mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_unsubscribe: operation failed");
     return false;
 }
 
@@ -836,7 +864,10 @@ typedef struct {
  * subscribe/unsubscribe during delivery.
  */
 static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* event) {
-    if (!bus || !event) return false;
+    if (!bus || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deliver_event_to_subscribers: required parameter is NULL (bus, event)");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
     uint64_t start_time = event_get_timestamp_us();
@@ -923,7 +954,10 @@ static bool deliver_event_to_subscribers(event_bus_t bus, const brain_event_t* e
  * @brief Publish event
  */
 bool event_bus_publish(event_bus_t bus, const brain_event_t* event) {
-    if (!bus || !event) return false;
+    if (!bus || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_publish: required parameter is NULL (bus, event)");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
@@ -947,6 +981,7 @@ bool event_bus_publish(event_bus_t bus, const brain_event_t* event) {
             nimcp_mutex_unlock(&internal->stats_mutex);
             snprintf(internal->last_error, sizeof(internal->last_error),
                     "Event queue full, event dropped");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_publish: event_queue_enqueue is NULL");
             return false;
         }
         return true;
@@ -977,7 +1012,10 @@ bool event_bus_publish_data(
     const void* data,
     size_t data_size
 ) {
-    if (data_size > EVENT_BUS_MAX_DATA_SIZE) return false;
+    if (data_size > EVENT_BUS_MAX_DATA_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_publish_data: validation failed");
+        return false;
+    }
 
     // Phase IS-1: BBB validation for external event data
     if (data && data_size > 0) {
@@ -985,6 +1023,7 @@ bool event_bus_publish_data(
         if (bbb) {
             bbb_validation_result_t result;
             if (!bbb_validate_input(bbb, data, data_size, &result)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_publish_data: bbb_validate_input is NULL");
                 return false;  // BBB rejected the data
             }
         }
@@ -992,6 +1031,7 @@ bool event_bus_publish_data(
 
     brain_event_t event = event_create(type, priority, source);
     if (!event_set_data(&event, data, data_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "event_bus_publish_data: event_set_data is NULL");
         return false;
     }
 
@@ -1033,7 +1073,10 @@ uint32_t event_bus_flush(event_bus_t bus) {
  * @brief Get statistics
  */
 bool event_bus_get_stats(event_bus_t bus, event_bus_stats_t* stats) {
-    if (!bus || !stats) return false;
+    if (!bus || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_get_stats: required parameter is NULL (bus, stats)");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 

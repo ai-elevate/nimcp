@@ -268,7 +268,10 @@ bool nimcp_metrics_set_directory(
     nimcp_metrics_collector_t collector,
     const char* directory
 ) {
-    if (!collector || !directory) return false;
+    if (!collector || !directory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_set_directory: required parameter is NULL (collector, directory)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -286,7 +289,10 @@ bool nimcp_metrics_set_format(
     nimcp_metrics_collector_t collector,
     nimcp_metrics_format_t format
 ) {
-    if (!collector) return false;
+    if (!collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_set_format: collector is NULL");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -308,7 +314,10 @@ static bool add_to_buffer(
     metric_buffer_entry_t* entry =
         nimcp_calloc(1, sizeof(metric_buffer_entry_t));
 
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_to_buffer: entry is NULL");
+        return false;
+    }
 
     memcpy(&entry->point, point, sizeof(nimcp_metric_point_t));
     entry->next = NULL;
@@ -350,7 +359,10 @@ bool nimcp_metrics_record_counter(
     uint64_t value,
     nimcp_metric_category_t category
 ) {
-    if (!collector || !name) return false;
+    if (!collector || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_counter: required parameter is NULL (collector, name)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -372,7 +384,10 @@ bool nimcp_metrics_record_gauge(
     double value,
     nimcp_metric_category_t category
 ) {
-    if (!collector || !name) return false;
+    if (!collector || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_gauge: required parameter is NULL (collector, name)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -394,7 +409,10 @@ bool nimcp_metrics_record_timer(
     double duration_ms,
     nimcp_metric_category_t category
 ) {
-    if (!collector || !name) return false;
+    if (!collector || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_timer: required parameter is NULL (collector, name)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -416,7 +434,10 @@ bool nimcp_metrics_record_event(
     const char* labels,
     nimcp_metric_category_t category
 ) {
-    if (!collector || !name) return false;
+    if (!collector || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_event: required parameter is NULL (collector, name)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -441,7 +462,10 @@ bool nimcp_metrics_record_point(
     nimcp_metrics_collector_t collector,
     const nimcp_metric_point_t* point
 ) {
-    if (!collector || !point) return false;
+    if (!collector || !point) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_point: required parameter is NULL (collector, point)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -457,7 +481,10 @@ bool nimcp_metrics_record_hierarchical(
     nimcp_metrics_collector_t collector,
     const nimcp_hierarchical_metrics_t* metrics
 ) {
-    if (!collector || !metrics) return false;
+    if (!collector || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_record_hierarchical: required parameter is NULL (collector, metrics)");
+        return false;
+    }
 
     // Record system metrics
     nimcp_metrics_record_gauge(collector, "hierarchical.num_regions",
@@ -538,7 +565,10 @@ bool nimcp_metrics_timer_stop(
     uint64_t start_time,
     nimcp_metric_category_t category
 ) {
-    if (!collector || !timer_name || start_time == 0) return false;
+    if (!collector || !timer_name || start_time == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_timer_stop: required parameter is NULL (collector, timer_name)");
+        return false;
+    }
 
     uint64_t end_time = get_timestamp_ms();
     double duration_ms = (double)(end_time - start_time);
@@ -591,7 +621,10 @@ bool nimcp_metrics_export_tableau_csv(
     nimcp_metrics_collector_t collector,
     const char* filename
 ) {
-    if (!collector || !filename) return false;
+    if (!collector || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_export_tableau_csv: required parameter is NULL (collector, filename)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -603,6 +636,7 @@ bool nimcp_metrics_export_tableau_csv(
     FILE* file = fopen(filepath, "w");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open file for export: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_export_tableau_csv: file is NULL");
         return false;
     }
 
@@ -633,7 +667,10 @@ bool nimcp_metrics_export_powerbi_json(
     nimcp_metrics_collector_t collector,
     const char* filename
 ) {
-    if (!collector || !filename) return false;
+    if (!collector || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_export_powerbi_json: required parameter is NULL (collector, filename)");
+        return false;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -645,6 +682,7 @@ bool nimcp_metrics_export_powerbi_json(
     FILE* file = fopen(filepath, "w");
     if (!file) {
         NIMCP_LOGGING_ERROR("Failed to open file for export: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_export_powerbi_json: file is NULL");
         return false;
     }
 
@@ -694,7 +732,10 @@ int32_t nimcp_metrics_get_stats(
     char* stats_json,
     uint32_t max_size
 ) {
-    if (!collector || !stats_json || max_size == 0) return -1;
+    if (!collector || !stats_json || max_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_get_stats: required parameter is NULL (collector, stats_json)");
+        return -1;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -733,7 +774,10 @@ int32_t nimcp_metrics_query_by_category(
     nimcp_metric_point_t* results,
     uint32_t max_results
 ) {
-    if (!collector || !results || max_results == 0) return -1;
+    if (!collector || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_query_by_category: required parameter is NULL (collector, results)");
+        return -1;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -759,7 +803,10 @@ int32_t nimcp_metrics_query_by_time(
     nimcp_metric_point_t* results,
     uint32_t max_results
 ) {
-    if (!collector || !results || max_results == 0) return -1;
+    if (!collector || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_query_by_time: required parameter is NULL (collector, results)");
+        return -1;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -785,7 +832,10 @@ int32_t nimcp_metrics_query_by_name(
     nimcp_metric_point_t* results,
     uint32_t max_results
 ) {
-    if (!collector || !pattern || !results || max_results == 0) return -1;
+    if (!collector || !pattern || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_query_by_name: required parameter is NULL (collector, pattern, results)");
+        return -1;
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;
@@ -922,6 +972,7 @@ static nimcp_error_t metrics_handle_brain_probe(
  */
 bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
     if (!collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_register_bio_async: collector is NULL");
         return false;
     }
 
@@ -944,6 +995,7 @@ bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
         };
         g_metrics_module_ctx = bio_router_register_module(&info);
         if (!g_metrics_module_ctx) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_metrics_register_bio_async: g_metrics_module_ctx is NULL");
             return false;
         }
     }
@@ -966,6 +1018,7 @@ bool nimcp_metrics_register_bio_async(nimcp_metrics_collector_t collector) {
         ));
 
         if (err != NIMCP_SUCCESS) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_metrics_register_bio_async: validation failed");
             return false;
         }
     }

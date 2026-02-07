@@ -117,6 +117,7 @@ static void connect_fuzzy_to_training(fuzzy_bridge_t* fuzzy, brain_t brain) {
 bool nimcp_brain_factory_init_fuzzy_subsystem(brain_t brain) {
     if (!brain) {
         fprintf(stderr, "[FUZZY] ERROR: brain is NULL\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_fuzzy_subsystem: brain is NULL");
         return false;
     }
 
@@ -135,6 +136,7 @@ bool nimcp_brain_factory_init_fuzzy_subsystem(brain_t brain) {
     fuzzy_bridge_t* fuzzy = fuzzy_bridge_create(&config);
     if (!fuzzy) {
         fprintf(stderr, "[FUZZY] ERROR: Failed to create fuzzy bridge\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_fuzzy_subsystem: fuzzy is NULL");
         return false;
     }
 

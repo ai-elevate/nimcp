@@ -103,6 +103,7 @@ mesh_health_bridge_t* mesh_health_bridge_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create health bridge without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_health_bridge_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -115,6 +116,7 @@ mesh_health_bridge_t* mesh_health_bridge_create(
     mesh_health_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate health bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_health_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -129,6 +131,7 @@ mesh_health_bridge_t* mesh_health_bridge_create(
     if (!bridge->mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_health_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -164,6 +167,7 @@ static int find_record_by_id(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_record_by_id: operation failed");
     return -1;
 }
 
@@ -670,6 +674,7 @@ bool mesh_health_bridge_is_healthy(
     mesh_health_record_t record;
     if (mesh_health_bridge_get_health(bridge, participant_id, &record)
         != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge_is_healthy: validation failed");
         return false;
     }
     return record.status == MESH_HEALTH_HEALTHY ||
@@ -683,6 +688,7 @@ bool mesh_health_bridge_is_channel_healthy(
     mesh_channel_health_t health;
     if (mesh_health_bridge_get_channel_health(bridge, channel_id, &health)
         != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_health_bridge_is_channel_healthy: validation failed");
         return false;
     }
     return health.status == MESH_HEALTH_HEALTHY ||

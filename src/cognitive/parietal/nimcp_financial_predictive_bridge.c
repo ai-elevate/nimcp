@@ -1215,6 +1215,7 @@ fin_predictive_state_t* financial_predictive_state_create(
     uint32_t num_assets, uint32_t horizon)
 {
     if (num_assets == 0 || horizon == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_state_create: num_assets is zero");
         return NULL;
     }
     if (num_assets > FIN_PREDICTIVE_MAX_ASSETS) {
@@ -1225,7 +1226,10 @@ fin_predictive_state_t* financial_predictive_state_create(
     }
 
     fin_predictive_state_t* state = (fin_predictive_state_t*)nimcp_malloc(sizeof(fin_predictive_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_state_create: state is NULL");
+        return NULL;
+    }
 
     memset(state, 0, sizeof(*state));
     state->num_assets = num_assets;
@@ -1238,6 +1242,7 @@ fin_predictive_state_t* financial_predictive_state_create(
 
     if (!state->predictions || !state->precisions || !state->prediction_errors) {
         financial_predictive_state_destroy(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_state_create: required parameter is NULL (state->predictions, state->precisions, state->prediction_errors)");
         return NULL;
     }
 
@@ -1261,12 +1266,18 @@ void financial_predictive_state_destroy(fin_predictive_state_t* state) {
 fin_active_inference_result_t* financial_predictive_result_create(
     uint32_t num_assets, uint32_t num_actions)
 {
-    if (num_assets == 0) return NULL;
+    if (num_assets == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_result_create: num_assets is zero");
+        return NULL;
+    }
     if (num_actions == 0) num_actions = FIN_ACTION_COUNT;
 
     fin_active_inference_result_t* result =
         (fin_active_inference_result_t*)nimcp_malloc(sizeof(fin_active_inference_result_t));
-    if (!result) return NULL;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_result_create: result is NULL");
+        return NULL;
+    }
 
     memset(result, 0, sizeof(*result));
     result->num_weights = num_assets;
@@ -1277,6 +1288,7 @@ fin_active_inference_result_t* financial_predictive_result_create(
 
     if (!result->action_weights || !result->all_actions) {
         financial_predictive_result_destroy(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_predictive_result_create: required parameter is NULL (result->action_weights, result->all_actions)");
         return NULL;
     }
 

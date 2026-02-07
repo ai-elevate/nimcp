@@ -392,6 +392,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
     if (nimcp_mutex_init(&ctx->rpe_mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init RPE mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
         return NULL;
     }
 
@@ -399,6 +400,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
         LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to init stats mutex");
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
         return NULL;
     }
 
@@ -407,6 +409,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
         nimcp_mutex_destroy(&ctx->stats_mutex);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
         return NULL;
     }
 
@@ -416,6 +419,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
         nimcp_mutex_destroy(&ctx->stats_mutex);
         nimcp_mutex_destroy(&ctx->rpe_mutex);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tpb_create: validation failed");
         return NULL;
     }
 
@@ -443,6 +447,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
             nimcp_mutex_destroy(&ctx->stats_mutex);
             nimcp_mutex_destroy(&ctx->rpe_mutex);
             nimcp_free(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tpb_create: ctx->neuromod_system is NULL");
             return NULL;
         }
         ctx->owns_neuromod = true;
@@ -1560,6 +1565,7 @@ nimcp_result_t tpb_connect_callbacks(tpb_context_t* ctx, tcb_context_t* callback
 tcb_context_t* tpb_get_callback_context(const tpb_context_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tpb_get_callback_context: ctx is NULL");
         return NULL;
     }
     return ctx->callback_ctx;

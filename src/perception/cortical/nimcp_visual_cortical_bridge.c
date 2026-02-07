@@ -241,6 +241,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     if (config->num_hypercolumns == 0 ||
         config->num_hypercolumns > VISUAL_CORTICAL_MAX_HYPERCOLUMNS) {
         NIMCP_LOGGING_ERROR("Invalid num_hypercolumns: %u", config->num_hypercolumns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_bridge_create: config is NULL");
         return NULL;
     }
 
@@ -250,6 +251,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate visual-cortical bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortical_bridge_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(visual_cortical_bridge_t));
@@ -275,6 +277,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
     if (!bridge->hypercolumns) {
         NIMCP_LOGGING_ERROR("Failed to allocate hypercolumns array");
         visual_cortical_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortical_bridge_create: bridge->hypercolumns is NULL");
         return NULL;
     }
     memset(bridge->hypercolumns, 0,
@@ -293,6 +296,7 @@ visual_cortical_bridge_t* visual_cortical_bridge_create(
         if (!bridge->hypercolumns[i]) {
             NIMCP_LOGGING_ERROR("Failed to create hypercolumn %u", i);
             visual_cortical_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortical_bridge_create: bridge->hypercolumns is NULL");
             return NULL;
         }
 
@@ -843,7 +847,10 @@ const orientation_hypercolumn_t* visual_cortical_get_hypercolumn(
     }
 
     uint32_t idx = compute_hypercolumn_index(bridge, retino_x, retino_y);
-    if (idx >= bridge->num_hypercolumns) return NULL;
+    if (idx >= bridge->num_hypercolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_hypercolumn: capacity exceeded");
+        return NULL;
+    }
 
     return bridge->hypercolumns[idx];
 }

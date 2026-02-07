@@ -138,14 +138,20 @@ void social_substrate_bridge_destroy(social_substrate_bridge_t* bridge) {
 }
 
 int social_substrate_bridge_update(social_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     /* Safety gates: ethics + LGSS pre-check */
     BRIDGE_ETHICS_GATE(bridge, "social_substrate_bridge_update");
     BRIDGE_LGSS_GATE(bridge, "social_substrate_bridge_update");
 
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_substrate_bridge_update: validation failed");
+        return -1;
+    }
 
     float atp = metabolic.atp_level;
     float metabolic_cap = metabolic.metabolic_capacity;
@@ -178,13 +184,19 @@ int social_substrate_bridge_update(social_substrate_bridge_t* bridge) {
 }
 
 int social_substrate_bridge_get_effects(const social_substrate_bridge_t* bridge, social_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     return 0;
 }
 
 int social_substrate_bridge_apply_effects(social_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
@@ -249,7 +261,10 @@ int social_substrate_bridge_apply_effects(social_substrate_bridge_t* bridge) {
 }
 
 int social_substrate_bridge_register_bio_async(social_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);

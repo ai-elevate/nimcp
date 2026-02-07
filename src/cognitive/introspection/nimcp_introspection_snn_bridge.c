@@ -328,7 +328,10 @@ void introspection_snn_destroy(introspection_snn_bridge_t* bridge) {
 }
 
 int introspection_snn_reset(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_re", 0.0f);
@@ -386,8 +389,14 @@ int introspection_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_en", 0.0f);
@@ -468,7 +477,10 @@ int introspection_snn_encode_uncertainty(
     float epistemic,
     float aleatoric
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_encode_uncertainty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_en", 0.0f);
@@ -493,7 +505,10 @@ int introspection_snn_encode_pattern(
     float pattern_strength,
     uint32_t pattern_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_encode_pattern: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_en", 0.0f);
@@ -515,7 +530,10 @@ int introspection_snn_encode_error(
     float error_magnitude,
     uint32_t error_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_encode_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_en", 0.0f);
@@ -550,8 +568,14 @@ int introspection_snn_encode_error(
 //=============================================================================
 
 int introspection_snn_simulate(introspection_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_si", 0.0f);
@@ -633,7 +657,10 @@ int introspection_snn_simulate(introspection_snn_bridge_t* bridge, float duratio
 }
 
 int introspection_snn_step(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_st", 0.0f);
 
@@ -646,16 +673,23 @@ int introspection_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_fo", 0.0f);
 
 
     int spike_count = introspection_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_forward: validation failed");
+        return -1;
+    }
 
     if (introspection_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_forward: validation failed");
         return -1;
     }
 
@@ -670,7 +704,10 @@ int introspection_snn_get_insight(
     introspection_snn_bridge_t* bridge,
     introspection_insight_t* insight
 ) {
-    if (!bridge || !insight) return -1;
+    if (!bridge || !insight) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_get_insight: required parameter is NULL (bridge, insight)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ge", 0.0f);
@@ -688,8 +725,14 @@ int introspection_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ge", 0.0f);
@@ -714,7 +757,10 @@ bool introspection_snn_check_uncertainty(
     introspection_snn_bridge_t* bridge,
     float* uncertainty_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_uncertainty: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ch", 0.0f);
@@ -735,7 +781,10 @@ bool introspection_snn_check_error(
     introspection_snn_bridge_t* bridge,
     float* error_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_error: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ch", 0.0f);
@@ -756,7 +805,10 @@ bool introspection_snn_check_state_change(
     introspection_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ch", 0.0f);
@@ -793,8 +845,14 @@ int introspection_snn_get_dim_state(
     uint32_t dim,
     introspection_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ge", 0.0f);
@@ -811,7 +869,10 @@ int introspection_snn_get_state(
     introspection_snn_bridge_t* bridge,
     introspection_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ge", 0.0f);
@@ -845,7 +906,10 @@ int introspection_snn_get_state(
 }
 
 int introspection_snn_get_stats(introspection_snn_bridge_t* bridge, introspection_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_ge", 0.0f);
@@ -859,7 +923,10 @@ int introspection_snn_get_stats(introspection_snn_bridge_t* bridge, introspectio
 }
 
 int introspection_snn_reset_stats(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_re", 0.0f);
@@ -918,7 +985,10 @@ int introspection_snn_register_uncertainty_callback(
     introspection_snn_uncertainty_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_register_uncertainty_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_re", 0.0f);
@@ -937,7 +1007,10 @@ int introspection_snn_register_insight_callback(
     introspection_snn_insight_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_register_insight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_re", 0.0f);
@@ -956,7 +1029,10 @@ int introspection_snn_register_error_callback(
     introspection_snn_error_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_register_error_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_re", 0.0f);
@@ -975,8 +1051,14 @@ int introspection_snn_register_error_callback(
 //=============================================================================
 
 int introspection_snn_bio_async_connect(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_bi", 0.0f);
@@ -991,7 +1073,10 @@ int introspection_snn_bio_async_connect(introspection_snn_bridge_t* bridge) {
 }
 
 int introspection_snn_bio_async_disconnect(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_bi", 0.0f);
@@ -1005,7 +1090,10 @@ int introspection_snn_bio_async_disconnect(introspection_snn_bridge_t* bridge) {
 }
 
 bool introspection_snn_is_bio_async_connected(introspection_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     introspection_snn_bridge_heartbeat("introspectio_introspection_snn_is", 0.0f);

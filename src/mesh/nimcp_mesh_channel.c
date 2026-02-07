@@ -100,7 +100,10 @@ bbb_system_t mesh_channel_get_bbb(void) {
  * @return true if valid, false if threat detected
  */
 static bool validate_belief_bbb(const mesh_belief_t* belief) {
-    if (!belief) return false;
+    if (!belief) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_belief_bbb: belief is NULL");
+        return false;
+    }
 
     bbb_system_t bbb = atomic_load(&g_mesh_channel_bbb);
     if (!bbb) return true;  /* BBB not configured, allow */
@@ -227,13 +230,17 @@ static private_data_collection_t* find_collection(
     mesh_channel_t* channel,
     const char* name
 ) {
-    if (!channel || !name) return NULL;
+    if (!channel || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_collection: required parameter is NULL (channel, name)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < channel->collection_count; i++) {
         if (strcmp(channel->collections[i].name, name) == 0) {
             return &channel->collections[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_collection: validation failed");
     return NULL;
 }
 
@@ -244,7 +251,10 @@ static bool is_authorized_for_collection(
     const private_data_collection_t* collection,
     mesh_participant_id_t participant
 ) {
-    if (!collection) return false;
+    if (!collection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_authorized_for_collection: collection is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < collection->authorized_count; i++) {
         if (collection->authorized[i] == participant) {
@@ -261,13 +271,17 @@ static private_data_entry_t* find_entry(
     private_data_collection_t* collection,
     const char* key
 ) {
-    if (!collection || !key) return NULL;
+    if (!collection || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry: required parameter is NULL (collection, key)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < collection->entry_count; i++) {
         if (strcmp(collection->entries[i].key, key) == 0) {
             return &collection->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: validation failed");
     return NULL;
 }
 
@@ -341,6 +355,7 @@ mesh_channel_t* mesh_channel_create(
     mesh_channel_t* channel = nimcp_calloc(1, sizeof(*channel));
     if (!channel) {
         LOG_ERROR("Failed to allocate channel");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_create: channel is NULL");
         return NULL;
     }
 
@@ -358,6 +373,7 @@ mesh_channel_t* mesh_channel_create(
     if (!channel->world_state) {
         LOG_ERROR("Failed to create world state for channel %s", channel->name);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_create: channel->world_state is NULL");
         return NULL;
     }
 
@@ -369,6 +385,7 @@ mesh_channel_t* mesh_channel_create(
         LOG_ERROR("Failed to allocate participant array");
         collective_workspace_destroy(channel->world_state);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_create: channel->participants is NULL");
         return NULL;
     }
 
@@ -380,6 +397,7 @@ mesh_channel_t* mesh_channel_create(
         nimcp_free(channel->participants);
         collective_workspace_destroy(channel->world_state);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_create: channel->beliefs is NULL");
         return NULL;
     }
 
@@ -392,6 +410,7 @@ mesh_channel_t* mesh_channel_create(
         nimcp_free(channel->participants);
         collective_workspace_destroy(channel->world_state);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_create: channel->collections is NULL");
         return NULL;
     }
 
@@ -406,6 +425,7 @@ mesh_channel_t* mesh_channel_create(
         nimcp_free(channel->participants);
         collective_workspace_destroy(channel->world_state);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_create: channel->module_wirings is NULL");
         return NULL;
     }
 
@@ -419,6 +439,7 @@ mesh_channel_t* mesh_channel_create(
         nimcp_free(channel->participants);
         collective_workspace_destroy(channel->world_state);
         nimcp_free(channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_create: channel->mutex is NULL");
         return NULL;
     }
 
@@ -558,7 +579,10 @@ bool mesh_channel_has_participant(
     const mesh_channel_t* channel,
     mesh_participant_id_t participant_id
 ) {
-    if (!validate_channel(channel)) return false;
+    if (!validate_channel(channel)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_has_participant: validate_channel is NULL");
+        return false;
+    }
 
     /* Safe to read without lock for simple contains check */
     for (size_t i = 0; i < channel->participant_count; i++) {
@@ -688,7 +712,10 @@ size_t mesh_channel_prune_world_state(
  * ============================================================================ */
 
 kg_module_wiring_t* mesh_channel_get_knowledge_graph(mesh_channel_t* channel) {
-    if (!channel || channel->wiring_count == 0) return NULL;
+    if (!channel || channel->wiring_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_get_knowledge_graph: channel is NULL");
+        return NULL;
+    }
     /* Return first wiring as representative */
     return channel->module_wirings[0];
 }
@@ -1237,6 +1264,7 @@ mesh_channel_manager_t* mesh_channel_manager_create(
     mesh_channel_manager_t* manager = nimcp_calloc(1, sizeof(*manager));
     if (!manager) {
         LOG_ERROR("Failed to allocate channel manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_manager_create: manager is NULL");
         return NULL;
     }
 
@@ -1245,6 +1273,7 @@ mesh_channel_manager_t* mesh_channel_manager_create(
     if (!manager->channels) {
         LOG_ERROR("Failed to allocate channels array");
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_manager_create: manager->channels is NULL");
         return NULL;
     }
 
@@ -1253,6 +1282,7 @@ mesh_channel_manager_t* mesh_channel_manager_create(
         LOG_ERROR("Failed to create manager mutex");
         nimcp_free(manager->channels);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_manager_create: manager->mutex is NULL");
         return NULL;
     }
 
@@ -1290,19 +1320,24 @@ mesh_channel_t* mesh_channel_manager_create_channel(
     mesh_channel_manager_t* manager,
     const mesh_channel_config_t* config
 ) {
-    if (!validate_manager(manager) || !config) return NULL;
+    if (!validate_manager(manager) || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_manager_create_channel: required parameter is NULL (validate_manager, config)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(manager->mutex);
 
     if (manager->channel_count >= manager->channel_capacity) {
         nimcp_mutex_unlock(manager->mutex);
         LOG_ERROR("Channel manager full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_channel_manager_create_channel: capacity exceeded");
         return NULL;
     }
 
     mesh_channel_t* channel = mesh_channel_create(config, manager->registry);
     if (!channel) {
         nimcp_mutex_unlock(manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_channel_manager_create_channel: channel is NULL");
         return NULL;
     }
 
@@ -1317,7 +1352,10 @@ mesh_channel_t* mesh_channel_manager_get_channel(
     mesh_channel_manager_t* manager,
     mesh_channel_id_t channel_id
 ) {
-    if (!validate_manager(manager)) return NULL;
+    if (!validate_manager(manager)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_manager_get_channel: validate_manager is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i < manager->channel_count; i++) {
         if (manager->channels[i] &&
@@ -1325,6 +1363,7 @@ mesh_channel_t* mesh_channel_manager_get_channel(
             return manager->channels[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_manager_get_channel: validate_manager is NULL");
     return NULL;
 }
 
@@ -1332,7 +1371,10 @@ mesh_channel_t* mesh_channel_manager_get_channel_by_name(
     mesh_channel_manager_t* manager,
     const char* name
 ) {
-    if (!validate_manager(manager) || !name) return NULL;
+    if (!validate_manager(manager) || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_channel_manager_get_channel_by_name: required parameter is NULL (validate_manager, name)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < manager->channel_count; i++) {
         if (manager->channels[i]) {
@@ -1342,6 +1384,7 @@ mesh_channel_t* mesh_channel_manager_get_channel_by_name(
             }
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_channel_manager_get_channel_by_name: validation failed");
     return NULL;
 }
 

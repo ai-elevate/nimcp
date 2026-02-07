@@ -384,6 +384,7 @@ sa_fep_bridge_t* sa_fep_bridge_create(const sa_fep_config_t* config) {
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "salience_attention_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sa_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -529,6 +530,7 @@ int sa_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->sa_bridge = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sa_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -579,7 +581,10 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
 }
 
 bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_reg", 0.0f);
@@ -627,6 +632,7 @@ int sa_fep_update_callback(void* handle) {
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa_fep_update_callback: bridge->registered is NULL");
         return -1;
     }
 
@@ -991,7 +997,10 @@ sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
 }
 
 bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_deg", 0.0f);
@@ -1005,7 +1014,10 @@ bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
 }
 
 bool sa_fep_bridge_is_efficient(const sa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa_fep_bridge_is_efficient: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_attention_fep_bridge_heartbeat("salience_att_sa_fep_bridge_is_eff", 0.0f);

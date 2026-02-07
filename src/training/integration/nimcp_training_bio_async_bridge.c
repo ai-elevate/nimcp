@@ -141,6 +141,7 @@ static training_worker_info_t* find_worker_unlocked(
             return &bridge->workers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_worker_unlocked: validation failed");
     return NULL;
 }
 
@@ -227,6 +228,7 @@ training_bio_async_bridge_t* training_bio_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, 0, "training_bio_async") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_bio_bridge_create: validation failed");
         return NULL;
     }
 
@@ -364,6 +366,7 @@ int training_bio_bridge_disconnect(training_bio_async_bridge_t* bridge) {
 
 bool training_bio_bridge_is_connected(const training_bio_async_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_bio_bridge_is_connected: bridge is NULL");
         return false;
     }
     return bridge->connected;

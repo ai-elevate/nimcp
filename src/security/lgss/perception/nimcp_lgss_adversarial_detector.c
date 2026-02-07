@@ -370,6 +370,7 @@ lgss_adversarial_detector_t* lgss_adversarial_detector_create(
     detector->mutex = nimcp_mutex_create(&attr);
     if (!detector->mutex) {
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_adversarial_detector_create: detector->mutex is NULL");
         return NULL;
     }
 

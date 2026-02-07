@@ -261,6 +261,7 @@ consolidation_config_t consolidation_default_config(void)
 bool brain_consolidate_memory(brain_t brain, const consolidation_config_t* config)
 {
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_consolidate_memory: validation failed");
         return false;
     }
 
@@ -325,6 +326,7 @@ static bool perform_consolidation(brain_t brain, const consolidation_config_t* c
                                   consolidation_stats_t* stats, float* progress)
 {
     if (brain == NULL || config == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "perform_consolidation: validation failed");
         return false;
     }
 
@@ -522,6 +524,7 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
 {
     /* Guard: Validate inputs */
     if (brain == NULL || config == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_scaling: validation failed");
         return false;
     }
 
@@ -529,12 +532,14 @@ static bool consolidate_scaling(brain_t brain, const consolidation_config_t* con
     /* WHY: Need direct access to synaptic weights */
     adaptive_network_t network = brain_get_network(brain);
     if (network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_scaling: validation failed");
         return false;
     }
 
     /* WHAT: Get number of neurons to iterate over */
     uint32_t num_neurons = adaptive_network_get_neuron_count(network);
     if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_scaling: num_neurons is zero");
         return false;
     }
 
@@ -630,6 +635,7 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
 {
     /* Guard: Validate inputs */
     if (brain == NULL || config == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_pruning: validation failed");
         return false;
     }
 
@@ -637,12 +643,14 @@ static bool consolidate_pruning(brain_t brain, const consolidation_config_t* con
     /* WHY: Need access to synaptic weights for pruning */
     adaptive_network_t network = brain_get_network(brain);
     if (network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_pruning: validation failed");
         return false;
     }
 
     /* WHAT: Get number of neurons */
     uint32_t num_neurons = adaptive_network_get_neuron_count(network);
     if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidate_pruning: num_neurons is zero");
         return false;
     }
 
@@ -796,6 +804,7 @@ static void* consolidation_thread_fn(void* arg)
         nimcp_mutex_unlock(&handle->lock);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_thread_fn: operation failed");
     return NULL;
 }
 
@@ -931,6 +940,7 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
         nimcp_mutex_destroy(&handle->lock);
         nimcp_cond_destroy(&handle->trigger_cond);
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_start_background_consolidation: validation failed");
         return NULL;
     }
 
@@ -1072,6 +1082,7 @@ void brain_resume_consolidation(consolidation_handle_t handle)
 bool brain_trigger_consolidation(consolidation_handle_t handle)
 {
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_trigger_consolidation: validation failed");
         return false;
     }
 
@@ -1101,6 +1112,7 @@ bool brain_trigger_consolidation(consolidation_handle_t handle)
 pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_patterns)
 {
     if (brain == NULL || num_patterns == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_important_patterns: validation failed");
         return NULL;
     }
 
@@ -1128,6 +1140,7 @@ pattern_importance_t* brain_get_important_patterns(brain_t brain, uint32_t* num_
 
     if (patterns == NULL) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_important_patterns: validation failed");
         return NULL;
     }
 
@@ -1186,6 +1199,7 @@ void pattern_importance_free(pattern_importance_t* patterns, uint32_t num_patter
 bool brain_mark_pattern_important(brain_t brain, const char* pattern_name, float importance_score)
 {
     if (brain == NULL || pattern_name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_mark_pattern_important: validation failed");
         return false;
     }
 
@@ -1211,6 +1225,7 @@ bool brain_mark_pattern_important(brain_t brain, const char* pattern_name, float
 bool consolidation_get_stats(consolidation_handle_t handle, consolidation_stats_t* stats)
 {
     if (stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_get_stats: validation failed");
         return false;
     }
 
@@ -1298,6 +1313,7 @@ void consolidation_reset_global_state(void)
 bool consolidation_is_running(consolidation_handle_t handle)
 {
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_is_running: validation failed");
         return false;
     }
 
@@ -1353,6 +1369,7 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
 {
     /* Guard: Validate inputs */
     if (brain == NULL || pattern_name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_replay_pattern: validation failed");
         return false;
     }
 
@@ -1362,6 +1379,7 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
 
 
     if (strength <= 0.0F || strength > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_replay_pattern: validation failed");
         return false;
     }
 
@@ -1376,6 +1394,7 @@ bool brain_replay_pattern(brain_t brain, const char* pattern_name, uint32_t repl
     /* WHAT: Get network for weight access */
     adaptive_network_t network = brain_get_network(brain);
     if (network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_replay_pattern: validation failed");
         return false;
     }
 
@@ -1410,6 +1429,7 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
 {
     /* Guard: Validate inputs */
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_synaptic_scaling: validation failed");
         return false;
     }
 
@@ -1419,18 +1439,21 @@ bool brain_apply_synaptic_scaling(brain_t brain, float target_activation)
 
 
     if (target_activation <= 0.0F || target_activation > 2.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_synaptic_scaling: validation failed");
         return false;
     }
 
     /* WHAT: Get adaptive network from brain */
     adaptive_network_t network = brain_get_network(brain);
     if (network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_synaptic_scaling: validation failed");
         return false;
     }
 
     /* WHAT: Get number of neurons */
     uint32_t num_neurons = adaptive_network_get_neuron_count(network);
     if (num_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_apply_synaptic_scaling: num_neurons is zero");
         return false;
     }
 

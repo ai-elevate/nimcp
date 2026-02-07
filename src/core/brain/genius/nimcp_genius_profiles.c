@@ -1432,6 +1432,7 @@ const eidetic_memory_config_t* eidetic_config_wiltshire(void) {
 
 const genius_profile_t* genius_profile_get(genius_type_t type) {
     if (type < 0 || type >= GENIUS_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "genius_profile_get: capacity exceeded");
         return NULL;
     }
     return s_profiles[type];
@@ -2155,7 +2156,10 @@ genius_activation_state_t genius_profiles_get_state(
 const genius_profile_t* genius_profiles_get_active(
     const genius_profiles_bridge_t* bridge
 ) {
-    if (!bridge || bridge->active_count == 0) return NULL;
+    if (!bridge || bridge->active_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_profiles_get_active: bridge is NULL");
+        return NULL;
+    }
     return bridge->active_profiles[0];
 }
 
@@ -2170,7 +2174,10 @@ float genius_profiles_get_flow_depth(const genius_profiles_bridge_t* bridge) {
 }
 
 bool genius_profiles_is_ready(const genius_profiles_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_profiles_is_ready: bridge is NULL");
+        return false;
+    }
     return bridge->state != GENIUS_STATE_ERROR &&
            bridge->state != GENIUS_STATE_DEGRADED;
 }
@@ -2419,10 +2426,16 @@ genius_error_t genius_profiles_apply_eidetic(genius_profiles_bridge_t* bridge) {
 const eidetic_memory_config_t* genius_profiles_get_eidetic_config(
     const genius_profiles_bridge_t* bridge
 ) {
-    if (!bridge || bridge->active_count == 0) return NULL;
+    if (!bridge || bridge->active_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "genius_profiles_get_eidetic_config: bridge is NULL");
+        return NULL;
+    }
 
     const genius_profile_t* primary = bridge->active_profiles[0];
-    if (!primary) return NULL;
+    if (!primary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_profiles_get_eidetic_config: primary is NULL");
+        return NULL;
+    }
 
     return &primary->eidetic;
 }
@@ -2436,7 +2449,10 @@ nimcp_exception_t* genius_profiles_raise_exception(
     genius_error_t error,
     const char* message
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius_profiles_raise_exception: bridge is NULL");
+        return NULL;
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->total_exceptions++;

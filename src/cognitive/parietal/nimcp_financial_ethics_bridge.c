@@ -254,6 +254,7 @@ static bool is_manipulative_action(fin_action_type_t action_type) {
         case FIN_ACTION_WASH_TRADE:
             return true;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_manipulative_action: operation failed");
             return false;
     }
 }
@@ -335,11 +336,13 @@ static bool check_first_law(
 ) {
     /* First law: Do not cause significant harm */
     if (harm_score > threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_first_law: validation failed");
         return false;  /* Violation */
     }
 
     /* Manipulative actions inherently violate first law */
     if (is_manipulative_action((fin_action_type_t)action->action_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_first_law: validation failed");
         return false;
     }
 
@@ -359,6 +362,7 @@ static bool check_second_law(
         case FIN_ACTION_SPOOFING:
         case FIN_ACTION_LAYERING:
         case FIN_ACTION_WASH_TRADE:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_second_law: operation failed");
             return false;  /* Regulatory violations */
         default:
             break;
@@ -377,6 +381,7 @@ static bool check_third_law(
     /* Third law: Self-interest must not override ethics */
     /* If action has high potential profit (magnitude) but causes harm, it violates */
     if (action->action_magnitude > 0.8f && harm_score > 0.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_third_law: validation failed");
         return false;
     }
 
@@ -511,6 +516,7 @@ financial_ethics_bridge_t* financial_ethics_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_ETHICS, "financial_ethics") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_ethics_bridge_create: validation failed");
         return NULL;
     }
 
@@ -1170,6 +1176,7 @@ bool financial_ethics_bridge_is_auto_flagged(
     fin_action_type_t action_type
 ) {
     if (!bridge || bridge->magic != FINANCIAL_ETHICS_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "financial_ethics_bridge_is_auto_flagged: bridge is NULL");
         return false;
     }
 

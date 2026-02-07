@@ -281,7 +281,10 @@ static void apply_immune_impairment_to_goal(theory_of_mind_t tom, float* confide
  */
 static bool add_belief(theory_of_mind_t tom, const char* content, float confidence, bool is_false)
 {
-    if (!tom || !content) return false;
+    if (!tom || !content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_belief: required parameter is NULL (tom, content)");
+        return false;
+    }
 
     // Search for existing belief with same content
     for (uint32_t i = 0; i < tom->num_beliefs; i++) {
@@ -341,7 +344,10 @@ static bool add_belief(theory_of_mind_t tom, const char* content, float confiden
  */
 static bool update_desire(theory_of_mind_t tom, const char* goal, float intensity)
 {
-    if (!tom || !goal) return false;
+    if (!tom || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_desire: required parameter is NULL (tom, goal)");
+        return false;
+    }
 
     // For simplicity, just update first desire slot as "current goal"
     if (tom->num_desires == 0) {
@@ -369,7 +375,10 @@ static bool update_desire(theory_of_mind_t tom, const char* goal, float intensit
 __attribute__((unused))
 static bool update_intention(theory_of_mind_t tom, const char* action, float likelihood, bool in_progress)
 {
-    if (!tom || !action) return false;
+    if (!tom || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_intention: required parameter is NULL (tom, action)");
+        return false;
+    }
 
     // For simplicity, use first intention slot as "current intention"
     if (tom->num_intentions == 0) {
@@ -462,6 +471,7 @@ static tom_emotion_t infer_emotion_from_observation(const tom_observation_t* obs
 static bool infer_goal_from_observation(const tom_observation_t* obs, char* goal_buffer, size_t buffer_size, float* confidence)
 {
     if (!obs || !goal_buffer || buffer_size == 0 || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "infer_goal_from_observation: required parameter is NULL (obs, goal_buffer, confidence)");
         return false;
     }
 
@@ -510,6 +520,7 @@ theory_of_mind_t tom_create(brain_t self_brain)
     theory_of_mind_t tom = (theory_of_mind_t)nimcp_malloc(sizeof(struct theory_of_mind_s));
     if (!tom) {
         set_error("Failed to allocate Theory of Mind structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tom_create: tom is NULL");
         return NULL;
     }
 
@@ -642,6 +653,7 @@ bool tom_observe(theory_of_mind_t tom, const tom_observation_t* observation)
 
     if (!tom || !observation) {
         set_error("NULL tom or observation in tom_observe");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_observe: required parameter is NULL (tom, observation)");
         return false;
     }
 
@@ -788,6 +800,7 @@ bool tom_infer_goal(theory_of_mind_t tom, char* goal_buffer, size_t buffer_size,
 {
     if (!tom || !goal_buffer || buffer_size == 0) {
         set_error("Invalid parameters in tom_infer_goal");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_infer_goal: required parameter is NULL (tom, goal_buffer)");
         return false;
     }
 
@@ -809,6 +822,7 @@ bool tom_predict_action(theory_of_mind_t tom, char* predicted_action, size_t act
 {
     if (!tom || !predicted_action || action_buffer_size == 0) {
         set_error("Invalid parameters in tom_predict_action");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_predict_action: required parameter is NULL (tom, predicted_action)");
         return false;
     }
 
@@ -856,6 +870,7 @@ bool tom_empathize(theory_of_mind_t tom, tom_emotion_t observed_emotion, tom_emo
 {
     if (!tom || !empathy_response) {
         set_error("Invalid parameters in tom_empathize");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_empathize: required parameter is NULL (tom, empathy_response)");
         return false;
     }
 
@@ -912,6 +927,7 @@ bool tom_detect_false_belief(theory_of_mind_t tom,
 {
     if (!tom || !reality_state || !believed_state || !is_false_belief) {
         set_error("Invalid parameters in tom_detect_false_belief");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_detect_false_belief: required parameter is NULL (tom, reality_state, believed_state, is_false_belief)");
         return false;
     }
 
@@ -941,6 +957,7 @@ bool tom_get_bdi_state(theory_of_mind_t tom,
 {
     if (!tom) {
         set_error("NULL tom in tom_get_bdi_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_get_bdi_state: tom is NULL");
         return false;
     }
 
@@ -987,6 +1004,7 @@ bool tom_get_statistics(theory_of_mind_t tom, tom_statistics_t* stats)
 {
     if (!tom || !stats) {
         set_error("Invalid parameters in tom_get_statistics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_get_statistics: required parameter is NULL (tom, stats)");
         return false;
     }
 
@@ -1018,14 +1036,17 @@ bool tom_update_self_model(theory_of_mind_t tom,
     // Guard: Validate parameters
     if (!tom) {
         set_error("NULL tom in tom_update_self_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_update_self_model: tom is NULL");
         return false;
     }
     if (!features) {
         set_error("NULL features in tom_update_self_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_update_self_model: features is NULL");
         return false;
     }
     if (!action_label) {
         set_error("NULL action_label in tom_update_self_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_update_self_model: action_label is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1034,10 +1055,12 @@ bool tom_update_self_model(theory_of_mind_t tom,
 
     if (num_features == 0) {
         set_error("Zero num_features in tom_update_self_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_update_self_model: num_features is zero");
         return false;
     }
     if (confidence < 0.0F || confidence > 1.0F) {
         set_error("Invalid confidence in tom_update_self_model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_update_self_model: validation failed");
         return false;
     }
 
@@ -1052,6 +1075,7 @@ bool tom_reset(theory_of_mind_t tom)
 {
     if (!tom) {
         set_error("NULL tom in tom_reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_reset: tom is NULL");
         return false;
     }
 
@@ -1133,6 +1157,7 @@ static agent_model_t* find_agent_model(theory_of_mind_t tom, agent_id_t agent_id
             return &tom->agent_models[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_model: validation failed");
     return NULL;
 }
 
@@ -1182,6 +1207,7 @@ static agent_model_t* get_or_create_agent_model(theory_of_mind_t tom, agent_id_t
     }
 
     set_error("Agent tracking array full (max %d agents)", MAX_TRACKED_AGENTS);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_agent_model: operation failed");
     return NULL;
 }
 
@@ -1301,10 +1327,12 @@ bool tom_connect_immune(theory_of_mind_t tom, brain_immune_system_t* immune)
     // Guard: validate parameters
     if (!tom) {
         set_error("NULL tom in tom_connect_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_connect_immune: tom is NULL");
         return false;
     }
     if (!immune) {
         set_error("NULL immune in tom_connect_immune");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_connect_immune: immune is NULL");
         return false;
     }
 
@@ -1348,10 +1376,12 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
     // Guard: validate parameters
     if (!tom) {
         set_error("NULL tom in tom_trigger_social_stress");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_trigger_social_stress: tom is NULL");
         return false;
     }
     if (!tom->immune_system) {
         set_error("No immune system connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_trigger_social_stress: tom->immune_system is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1360,6 +1390,7 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
 
     if (prediction_error < 0.0f || prediction_error > 1.0f) {
         set_error("Invalid prediction_error (must be [0,1])");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_trigger_social_stress: validation failed");
         return false;
     }
 
@@ -1393,6 +1424,7 @@ bool tom_trigger_social_stress(theory_of_mind_t tom,
 
     if (result != 0) {
         set_error("Failed to release stress cytokine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tom_trigger_social_stress: validation failed");
         return false;
     }
 

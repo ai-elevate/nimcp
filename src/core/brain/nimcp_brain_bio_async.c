@@ -136,6 +136,7 @@ static inline bool inject_current_impl(
                 "inject_current_impl: network is NULL");
 
 
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_global_activity_impl: network is NULL");
             return false;
 
 
@@ -343,6 +344,7 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
     unified_mem_manager_t mem_mgr = unified_mem_create(NULL);
     if (!mem_mgr) {
         LOG_ERROR("brain_bio_async_init: Failed to create memory manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_bio_async_init: mem_mgr is NULL");
         return -1;
     }
 
@@ -356,6 +358,7 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
     if (!ctx_handle) {
         LOG_ERROR("brain_bio_async_init: Failed to allocate context");
         unified_mem_destroy(mem_mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_bio_async_init: ctx_handle is NULL");
         return -1;
     }
 
@@ -368,6 +371,7 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
         LOG_ERROR("brain_bio_async_init: Failed to initialize mutex");
         unified_mem_free(ctx_handle);
         unified_mem_destroy(mem_mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "brain_bio_async_init: validation failed");
         return -1;
     }
 
@@ -385,6 +389,7 @@ nimcp_error_t brain_bio_async_init(brain_t brain) {
         nimcp_platform_mutex_destroy(&ctx->stats_mutex);
         unified_mem_free(ctx_handle);
         unified_mem_destroy(mem_mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_bio_async_init: ctx->module_ctx is NULL");
         return -1;
     }
 
@@ -626,11 +631,13 @@ static nimcp_error_t brain_handle_state_query(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_msg_brain_state_query_t)) {
         LOG_ERROR("brain_handle_state_query: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_state_query: msg is NULL");
         return -1;
     }
 
     if (!user_data) {
         LOG_ERROR("brain_handle_state_query: NULL user_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_handle_state_query: user_data is NULL");
         return -1;
     }
 
@@ -745,11 +752,13 @@ static nimcp_error_t brain_handle_activation_request(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_msg_neuron_activation_request_t)) {
         LOG_ERROR("brain_handle_activation_request: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_activation_request: msg is NULL");
         return -1;
     }
 
     if (!user_data) {
         LOG_ERROR("brain_handle_activation_request: NULL user_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_handle_activation_request: user_data is NULL");
         return -1;
     }
 
@@ -768,6 +777,7 @@ static nimcp_error_t brain_handle_activation_request(
     if (request->neuron_id >= total_neurons) {
         LOG_ERROR("brain_handle_activation_request: Invalid neuron ID %d (max %d)",
                   request->neuron_id, total_neurons - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_activation_request: capacity exceeded");
         return -1;
     }
 
@@ -846,11 +856,13 @@ static nimcp_error_t brain_handle_topology_query(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_msg_brain_state_query_t)) {
         LOG_ERROR("brain_handle_topology_query: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_topology_query: msg is NULL");
         return -1;
     }
 
     if (!user_data) {
         LOG_ERROR("brain_handle_topology_query: NULL user_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_handle_topology_query: user_data is NULL");
         return -1;
     }
 
@@ -933,11 +945,13 @@ static nimcp_error_t brain_handle_region_config_query(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_msg_region_config_query_t)) {
         LOG_ERROR("brain_handle_region_config_query: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_region_config_query: msg is NULL");
         return -1;
     }
 
     if (!user_data) {
         LOG_ERROR("brain_handle_region_config_query: NULL user_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_handle_region_config_query: user_data is NULL");
         return -1;
     }
 
@@ -1056,11 +1070,13 @@ static nimcp_error_t brain_handle_step_request(
     // Guard: validate inputs
     if (!msg || msg_size < sizeof(bio_message_header_t)) {
         LOG_ERROR("brain_handle_step_request: Invalid message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_handle_step_request: msg is NULL");
         return -1;
     }
 
     if (!user_data) {
         LOG_ERROR("brain_handle_step_request: NULL user_data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_handle_step_request: user_data is NULL");
         return -1;
     }
 
@@ -1287,6 +1303,7 @@ bool brain_bio_async_get_stats(
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->bio_async_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_bio_async_get_stats: b->bio_async_ctx is NULL");
         return false;
     }
 

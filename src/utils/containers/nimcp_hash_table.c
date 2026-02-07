@@ -174,6 +174,7 @@ static bool key_compare_string_sensitive(const void* key1, size_t key1_size, con
                                          size_t key2_size)
 {
     if (key1_size != key2_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_sensitive: validation failed");
         return false;
     }
     return memcmp(key1, key2, key1_size) == 0;
@@ -188,6 +189,7 @@ static bool key_compare_string_insensitive(const void* key1, size_t key1_size, c
                                            size_t key2_size)
 {
     if (key1_size != key2_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_insensitive: validation failed");
         return false;
     }
 
@@ -196,6 +198,7 @@ static bool key_compare_string_insensitive(const void* key1, size_t key1_size, c
 
     for (size_t i = 0; i < key1_size; i++) {
         if (tolower((unsigned char) s1[i]) != tolower((unsigned char) s2[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_string_insensitive: validation failed");
             return false;
         }
     }
@@ -212,6 +215,7 @@ static bool key_compare_integer(const void* key1, size_t key1_size, const void* 
                                 size_t key2_size)
 {
     if (key1_size != key2_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "key_compare_integer: validation failed");
         return false;
     }
     return memcmp(key1, key2, key1_size) == 0;
@@ -418,6 +422,7 @@ static hash_entry_t* find_entry(hash_table_t* table, hash_entry_t* head, const v
     if (prev) {
         *prev = previous;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry: validation failed");
     return NULL;
 }
 
@@ -444,6 +449,7 @@ hash_table_t* hash_table_create(const hash_table_config_t* config)
                       "around ALL hash table operations including create, insert, lookup, "
                       "remove, iterate, and destroy. Failing to do so will cause data races.");
             nimcp_free(table);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_table_create: validation failed");
             return NULL;
         }
     } else {
@@ -540,10 +546,12 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
                                       const void* value, size_t value_size)
 {
     if (!table || !key || !value || !table->buckets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_generic: required parameter is NULL (table, key, value, table->buckets)");
         return false;
     }
 
     if (table->bucket_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_table_insert_generic: table->bucket_count is zero");
         return false;  // Defensive check for zero buckets
     }
 
@@ -559,6 +567,7 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
         // Update existing entry
         void* new_value = nimcp_malloc(value_size);
         if (!new_value) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_table_insert_generic: new_value is NULL");
             return false;
         }
         memcpy(new_value, value, value_size);
@@ -578,6 +587,7 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
     // Create new entry
     hash_entry_t* new_entry = create_entry(key, key_size, value, value_size, hash);
     if (!new_entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_generic: new_entry is NULL");
         return false;
     }
 
@@ -597,10 +607,12 @@ static bool hash_table_insert_generic(hash_table_t* table, const void* key, size
 static void* hash_table_lookup_generic(hash_table_t* table, const void* key, size_t key_size)
 {
     if (!table || !key || !table->buckets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_lookup_generic: required parameter is NULL (table, key, table->buckets)");
         return NULL;
     }
 
     if (table->bucket_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_table_lookup_generic: table->bucket_count is zero");
         return NULL;  // Defensive check for zero buckets
     }
 
@@ -623,10 +635,12 @@ static void* hash_table_lookup_generic(hash_table_t* table, const void* key, siz
 static bool hash_table_remove_generic(hash_table_t* table, const void* key, size_t key_size)
 {
     if (!table || !key || !table->buckets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_remove_generic: required parameter is NULL (table, key, table->buckets)");
         return false;
     }
 
     if (table->bucket_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_table_remove_generic: table->bucket_count is zero");
         return false;  // Defensive check for zero buckets
     }
 
@@ -640,6 +654,7 @@ static bool hash_table_remove_generic(hash_table_t* table, const void* key, size
         find_entry(table, table->buckets[bucket_index], key, key_size, hash, &prev);
 
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_remove_generic: entry is NULL");
         return false;  // Not found
     }
 
@@ -665,6 +680,7 @@ bool hash_table_insert_string(hash_table_t* table, const char* key, const void* 
                               size_t value_size)
 {
     if (!key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_string: key is NULL");
         return false;
     }
 
@@ -687,6 +703,7 @@ void* hash_table_lookup_string(hash_table_t* table, const char* key)
 bool hash_table_remove_string(hash_table_t* table, const char* key)
 {
     if (!key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_remove_string: key is NULL");
         return false;
     }
 

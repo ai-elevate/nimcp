@@ -97,11 +97,17 @@ struct synchrony_detector {
  * @brief Initialize spike window
  */
 static bool init_spike_window(spike_window_t* window, double size_ms) {
-    if (!window) return false;
+    if (!window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_spike_window: window is NULL");
+        return false;
+    }
 
     window->capacity = MAX_SPIKES_PER_WINDOW;
     window->spikes = (spike_event_t*)nimcp_calloc(window->capacity, sizeof(spike_event_t));
-    if (!window->spikes) return false;
+    if (!window->spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_spike_window: window->spikes is NULL");
+        return false;
+    }
 
     window->count = 0;
     window->head = 0;
@@ -336,6 +342,7 @@ synchrony_detector_t* synchrony_detector_create(const synchrony_detector_config_
 
     if (!init_success) {
         synchrony_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synchrony_detector_create: init_success is NULL");
         return NULL;
     }
 
@@ -345,6 +352,7 @@ synchrony_detector_t* synchrony_detector_create(const synchrony_detector_config_
 
     if (!detector->neuron_spike_counts || !detector->last_spike_times) {
         synchrony_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synchrony_detector_create: required parameter is NULL (detector->neuron_spike_counts, detector->last_spike_times)");
         return NULL;
     }
 
@@ -371,6 +379,7 @@ synchrony_detector_t* synchrony_detector_create(const synchrony_detector_config_
 
     if (!detector->neuron_bool_pool || !detector->spike_counts_pool) {
         synchrony_detector_destroy(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synchrony_detector_create: required parameter is NULL (detector->neuron_bool_pool, detector->spike_counts_pool)");
         return NULL;
     }
 
@@ -407,6 +416,7 @@ bool synchrony_detector_add_spike(synchrony_detector_t* detector,
                                    uint32_t neuron_id,
                                    double timestamp_ms) {
     if (!detector || neuron_id >= detector->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synchrony_detector_destroy: detector is NULL");
         return false;
     }
 
@@ -427,6 +437,7 @@ bool synchrony_detector_detect(synchrony_detector_t* detector,
                                 uint32_t window_idx,
                                 synchrony_result_t* result) {
     if (!detector || !result || window_idx >= detector->config.num_windows) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synchrony_detector_destroy: required parameter is NULL (detector, result)");
         return false;
     }
 
@@ -439,7 +450,10 @@ bool synchrony_detector_detect(synchrony_detector_t* detector,
 
     // Count neurons that fired - Phase 1.5 O(1) pool allocation
     bool* neuron_fired = (bool*)memory_pool_acquire(detector->neuron_bool_pool);
-    if (!neuron_fired) return false;
+    if (!neuron_fired) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synchrony_detector_destroy: neuron_fired is NULL");
+        return false;
+    }
     memset(neuron_fired, 0, detector->num_neurons * sizeof(bool));
 
     for (uint32_t i = 0; i < window->count; i++) {
@@ -518,7 +532,10 @@ bool synchrony_detector_get_stats(const synchrony_detector_t* detector,
                                    uint64_t* total_spikes,
                                    uint64_t* total_critical_events,
                                    float* mean_synchrony) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synchrony_detector_reset: detector is NULL");
+        return false;
+    }
 
     if (total_spikes) *total_spikes = detector->total_spikes;
     if (total_critical_events) *total_critical_events = detector->total_critical_events;

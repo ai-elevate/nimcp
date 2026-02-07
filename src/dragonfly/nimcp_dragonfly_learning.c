@@ -150,20 +150,50 @@ learning_config_t learning_default_config(void) {
 }
 
 bool learning_validate_config(const learning_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learning_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->max_episodes == 0 || config->max_episodes > LEARNING_MAX_EPISODES) return false;
-    if (config->episode_decay_rate < 0.0f || config->episode_decay_rate > 1.0f) return false;
+    if (config->max_episodes == 0 || config->max_episodes > LEARNING_MAX_EPISODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: config->max_episodes is zero");
+        return false;
+    }
+    if (config->episode_decay_rate < 0.0f || config->episode_decay_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_pattern_confidence < 0.0f || config->min_pattern_confidence > 1.0f) return false;
-    if (config->similarity_threshold < 0.0f || config->similarity_threshold > 1.0f) return false;
+    if (config->min_pattern_confidence < 0.0f || config->min_pattern_confidence > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
+    if (config->similarity_threshold < 0.0f || config->similarity_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->strategy_learning_rate < 0.0f || config->strategy_learning_rate > 1.0f) return false;
-    if (config->pattern_learning_rate < 0.0f || config->pattern_learning_rate > 1.0f) return false;
-    if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) return false;
+    if (config->strategy_learning_rate < 0.0f || config->strategy_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
+    if (config->pattern_learning_rate < 0.0f || config->pattern_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
+    if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->exploration_rate < 0.0f || config->exploration_rate > 1.0f) return false;
-    if (config->exploration_decay < 0.0f || config->exploration_decay > 1.0f) return false;
+    if (config->exploration_rate < 0.0f || config->exploration_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
+    if (config->exploration_decay < 0.0f || config->exploration_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -385,7 +415,10 @@ void dragonfly_learning_destroy(dragonfly_learning_t learning) {
 }
 
 int dragonfly_learning_reset(dragonfly_learning_t learning) {
-    if (!learning) return -1;
+    if (!learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_reset: learning is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(learning->mutex);
 
@@ -417,7 +450,10 @@ int dragonfly_learning_record_episode(
     dragonfly_learning_t learning,
     const hunt_episode_t* episode
 ) {
-    if (!learning || !episode) return -1;
+    if (!learning || !episode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_record_episode: required parameter is NULL (learning, episode)");
+        return -1;
+    }
 
     nimcp_mutex_lock(learning->mutex);
 
@@ -467,7 +503,10 @@ int dragonfly_learning_begin_hunt(
     const dragonfly_target_info_t* target,
     intercept_strategy_t strategy
 ) {
-    if (!learning || !target) return -1;
+    if (!learning || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_begin_hunt: required parameter is NULL (learning, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(learning->mutex);
 
@@ -501,7 +540,10 @@ int dragonfly_learning_end_hunt(
     failure_reason_t reason,
     float miss_distance
 ) {
-    if (!learning || !learning->hunt_in_progress) return -1;
+    if (!learning || !learning->hunt_in_progress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_end_hunt: required parameter is NULL (learning, learning->hunt_in_progress)");
+        return -1;
+    }
 
     nimcp_mutex_lock(learning->mutex);
 
@@ -529,7 +571,10 @@ int dragonfly_learning_get_recommendation(
     const dragonfly_target_info_t* target,
     learning_recommendation_t* recommendation
 ) {
-    if (!learning || !target || !recommendation) return -1;
+    if (!learning || !target || !recommendation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_recommendation: required parameter is NULL (learning, target, recommendation)");
+        return -1;
+    }
 
     nimcp_mutex_lock(learning->mutex);
 
@@ -614,7 +659,10 @@ int dragonfly_learning_get_strategy_stats(
     intercept_strategy_t strategy,
     strategy_effectiveness_t* stats
 ) {
-    if (!learning || !stats || strategy >= NUM_STRATEGIES) return -1;
+    if (!learning || !stats || strategy >= NUM_STRATEGIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_strategy_stats: required parameter is NULL (learning, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
     *stats = learning->strategy_stats[strategy];
@@ -628,7 +676,10 @@ int dragonfly_learning_get_all_strategy_stats(
     strategy_effectiveness_t* stats,
     uint32_t* num_strategies
 ) {
-    if (!learning || !stats || !num_strategies) return -1;
+    if (!learning || !stats || !num_strategies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_all_strategy_stats: required parameter is NULL (learning, stats, num_strategies)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
 
@@ -646,7 +697,10 @@ int dragonfly_learning_get_patterns(
     uint32_t max_patterns,
     uint32_t* num_patterns
 ) {
-    if (!learning || !patterns || !num_patterns) return -1;
+    if (!learning || !patterns || !num_patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_patterns: required parameter is NULL (learning, patterns, num_patterns)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
 
@@ -666,7 +720,10 @@ int dragonfly_learning_get_recent_episodes(
     uint32_t max_episodes,
     uint32_t* num_episodes
 ) {
-    if (!learning || !episodes || !num_episodes) return -1;
+    if (!learning || !episodes || !num_episodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_recent_episodes: required parameter is NULL (learning, episodes, num_episodes)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
 
@@ -689,7 +746,10 @@ int dragonfly_learning_get_stats(
     const dragonfly_learning_t learning,
     learning_stats_t* stats
 ) {
-    if (!learning || !stats) return -1;
+    if (!learning || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_learning_get_stats: required parameter is NULL (learning, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)learning->mutex);
     *stats = learning->stats;

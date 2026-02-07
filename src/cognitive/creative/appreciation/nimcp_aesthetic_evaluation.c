@@ -99,6 +99,7 @@ aesthetic_evaluator_t* aesthetic_evaluator_create(
     aesthetic_evaluator_t* eval = nimcp_calloc(1, sizeof(aesthetic_evaluator_t));
     if (!eval) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate aesthetic evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "aesthetic_evaluator_config_defaults: eval is NULL");
         return NULL;
     }
 
@@ -135,7 +136,10 @@ int aesthetic_evaluate_text(aesthetic_evaluator_t* eval,
                             const char* text, size_t len,
                             art_modality_t modality,
                             aesthetic_evaluation_t* out) {
-    if (!eval || !text || !out) return -1;
+    if (!eval || !text || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "aesthetic_evaluator_destroy: required parameter is NULL (eval, text, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(aesthetic_evaluation_t));
 
@@ -165,7 +169,10 @@ int aesthetic_evaluate_text(aesthetic_evaluator_t* eval,
 int aesthetic_evaluate_music(aesthetic_evaluator_t* eval,
                               const music_track_t* tracks, uint32_t num_tracks,
                               aesthetic_evaluation_t* out) {
-    if (!eval || !tracks || !out) return -1;
+    if (!eval || !tracks || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "aesthetic_evaluator_destroy: required parameter is NULL (eval, tracks, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(aesthetic_evaluation_t));
 
@@ -184,7 +191,10 @@ int aesthetic_evaluate_music(aesthetic_evaluator_t* eval,
 int aesthetic_evaluate_visual(aesthetic_evaluator_t* eval,
                                const visual_image_t* image,
                                aesthetic_evaluation_t* out) {
-    if (!eval || !image || !out) return -1;
+    if (!eval || !image || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "aesthetic_evaluator_destroy: required parameter is NULL (eval, image, out)");
+        return -1;
+    }
 
     memset(out, 0, sizeof(aesthetic_evaluation_t));
 
@@ -203,7 +213,10 @@ int aesthetic_evaluate_visual(aesthetic_evaluator_t* eval,
 int aesthetic_evaluate(aesthetic_evaluator_t* eval,
                         const void* content, art_modality_t modality,
                         aesthetic_evaluation_t* out) {
-    if (!eval || !content || !out) return -1;
+    if (!eval || !content || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "aesthetic_evaluator_destroy: required parameter is NULL (eval, content, out)");
+        return -1;
+    }
 
     /* Route to appropriate modality-specific evaluator */
     switch (modality) {
@@ -231,6 +244,7 @@ int aesthetic_evaluate(aesthetic_evaluator_t* eval,
 
         default:
             LOG_WARN(LOG_MODULE, "Unsupported modality: %d", modality);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "aesthetic_evaluator_destroy: operation failed");
             return -1;
     }
 }

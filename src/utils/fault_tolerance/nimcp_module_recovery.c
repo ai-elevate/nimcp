@@ -60,6 +60,7 @@ nimcp_module_recovery_manager_t* nimcp_module_recovery_manager_create(void) {
     if (!manager->mutex) {
         LOG_ERROR("Failed to create mutex for module recovery manager");
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_module_recovery_manager_create: manager->mutex is NULL");
         return NULL;
     }
 
@@ -94,6 +95,7 @@ static nimcp_module_recovery_entry_t* find_module_unlocked(
             return &manager->modules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_unlocked: validation failed");
     return NULL;
 }
 
@@ -643,6 +645,7 @@ nimcp_module_recovery_result_t nimcp_stdp_recovery(
 
 int nimcp_stdp_health_check(void* module_state, float* out_health) {
     if (!module_state || !out_health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_stdp_health_check: required parameter is NULL (module_state, out_health)");
         return -1;
     }
 
@@ -781,6 +784,7 @@ nimcp_module_recovery_result_t nimcp_astrocyte_recovery(
 
 int nimcp_astrocyte_health_check(void* module_state, float* out_health) {
     if (!module_state || !out_health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_astrocyte_health_check: required parameter is NULL (module_state, out_health)");
         return -1;
     }
 

@@ -252,6 +252,7 @@ swarm_consensus_t swarm_consensus_create(const swarm_consensus_config_t* config)
     if (!bbb_check_pointer(config, "swarm_consensus_create")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_consensus", "create_error", "Invalid config pointer");
         LOG_ERROR("Invalid config pointer in swarm_consensus_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_consensus_create: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -1040,6 +1041,7 @@ static bool is_byzantine_fault(
 {
     /* Need at least 3 votes for statistical analysis */
     if (vote->vote_count < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_byzantine_fault: validation failed");
         return false;
     }
 
@@ -1080,6 +1082,7 @@ static bool is_byzantine_fault(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_byzantine_fault: validation failed");
     return false;
 }
 
@@ -1160,6 +1163,7 @@ nimcp_error_t swarm_consensus_disconnect_bio_async(swarm_consensus_t ctx)
 bool swarm_consensus_is_bio_async_connected(const swarm_consensus_t ctx)
 {
     if (!ctx || ctx->magic != NIMCP_SWARM_CONSENSUS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consensus_is_bio_async_connected: ctx is NULL");
         return false;
     }
 

@@ -255,6 +255,7 @@ static pr_sequence_t* find_sequence_unlocked(pr_cerebellum_bridge_t bridge,
             return &bridge->sequences[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_automatization_level: validation failed");
     return NULL;
 }
 
@@ -264,7 +265,10 @@ static pr_sequence_t* find_sequence_unlocked(pr_cerebellum_bridge_t bridge,
 static bool init_sequence_elements(pr_sequence_t* seq, size_t initial_capacity) {
     seq->elements = (pr_sequence_element_t*)nimcp_calloc(
         initial_capacity, sizeof(pr_sequence_element_t));
-    if (!seq->elements) return false;
+    if (!seq->elements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_sequence_elements: seq->elements is NULL");
+        return false;
+    }
     seq->capacity = initial_capacity;
     seq->length = 0;
     return true;
@@ -338,15 +342,39 @@ NIMCP_EXPORT pr_cerebellum_config_t pr_cerebellum_config_default(void) {
 }
 
 NIMCP_EXPORT bool pr_cerebellum_config_validate(const pr_cerebellum_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->max_sequences == 0) return false;
-    if (config->max_sequence_length == 0) return false;
-    if (config->timing_precision_ms < 0) return false;
-    if (config->max_timing_error_ms <= 0) return false;
-    if (config->error_learning_rate < 0 || config->error_learning_rate > 1) return false;
-    if (config->ltd_factor < 0 || config->ltd_factor > 1) return false;
-    if (config->ltp_factor < 0 || config->ltp_factor > 1) return false;
+    if (config->max_sequences == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: config->max_sequences is zero");
+        return false;
+    }
+    if (config->max_sequence_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: config->max_sequence_length is zero");
+        return false;
+    }
+    if (config->timing_precision_ms < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
+        return false;
+    }
+    if (config->max_timing_error_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
+        return false;
+    }
+    if (config->error_learning_rate < 0 || config->error_learning_rate > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
+        return false;
+    }
+    if (config->ltd_factor < 0 || config->ltd_factor > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
+        return false;
+    }
+    if (config->ltp_factor < 0 || config->ltp_factor > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -361,6 +389,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
     pr_cerebellum_config_t cfg;
     if (config) {
         if (!pr_cerebellum_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_create: pr_cerebellum_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -383,6 +412,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
     bridge->sequences = (pr_sequence_t*)nimcp_calloc(initial_seq_capacity, sizeof(pr_sequence_t));
     if (!bridge->sequences) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_cerebellum_bridge_create: bridge->sequences is NULL");
         return NULL;
     }
     bridge->sequence_capacity = initial_seq_capacity;
@@ -396,6 +426,7 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
         if (!bridge->timing_history) {
             nimcp_free(bridge->sequences);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_cerebellum_bridge_create: bridge->timing_history is NULL");
             return NULL;
         }
         bridge->timing_history_capacity = cfg.timing_history_size;
@@ -784,7 +815,10 @@ NIMCP_EXPORT int pr_cerebellum_bridge_sync_sequence(
     pr_cerebellum_bridge_t bridge,
     uint64_t sequence_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_sync_sequence: bridge is NULL");
+        return -1;
+    }
 
     int synced = 0;
 
@@ -793,6 +827,7 @@ NIMCP_EXPORT int pr_cerebellum_bridge_sync_sequence(
     pr_sequence_t* seq = find_sequence_unlocked(bridge, sequence_id);
     if (!seq) {
         PR_CEREB_MUTEX_UNLOCK(bridge->sequence_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_sync_sequence: seq is NULL");
         return -1;
     }
 
@@ -1412,13 +1447,17 @@ NIMCP_EXPORT int pr_cerebellum_bridge_get_position(
     const pr_cerebellum_bridge_t bridge,
     uint64_t sequence_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_get_position: bridge is NULL");
+        return -1;
+    }
 
     PR_CEREB_MUTEX_LOCK(((pr_cerebellum_bridge_t)bridge)->sequence_mutex);
 
     pr_sequence_t* seq = find_sequence_unlocked((pr_cerebellum_bridge_t)bridge, sequence_id);
     if (!seq) {
         PR_CEREB_MUTEX_UNLOCK(((pr_cerebellum_bridge_t)bridge)->sequence_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_get_position: seq is NULL");
         return -1;
     }
 
@@ -1679,9 +1718,18 @@ NIMCP_EXPORT uint64_t pr_cerebellum_current_time_ms(void) {
 }
 
 NIMCP_EXPORT bool pr_cerebellum_bridge_validate(const pr_cerebellum_bridge_t bridge) {
-    if (!bridge) return false;
-    if (!bridge->initialized) return false;
-    if (!bridge->sequences) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_validate: bridge is NULL");
+        return false;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_validate: bridge->initialized is NULL");
+        return false;
+    }
+    if (!bridge->sequences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_cerebellum_bridge_validate: bridge->sequences is NULL");
+        return false;
+    }
 
     /* Verify sequence integrity */
     for (size_t i = 0; i < bridge->num_sequences; i++) {
@@ -1692,10 +1740,12 @@ NIMCP_EXPORT bool pr_cerebellum_bridge_validate(const pr_cerebellum_bridge_t bri
         }
 
         if (bridge->sequences[i].length > bridge->sequences[i].capacity) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_bridge_validate: validation failed");
             return false;
         }
         if (bridge->sequences[i].consolidation < 0.0f ||
             bridge->sequences[i].consolidation > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_cerebellum_bridge_validate: validation failed");
             return false;
         }
     }

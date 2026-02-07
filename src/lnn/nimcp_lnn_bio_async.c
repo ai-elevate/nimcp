@@ -94,6 +94,7 @@ typedef struct {
  */
 static inline lnn_bio_async_ctx_t* get_bio_ctx(lnn_network_t* network) {
     if (!network || !network->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_bio_ctx: required parameter is NULL (network, network->bio_ctx)");
         return NULL;
     }
     return (lnn_bio_async_ctx_t*)network->bio_ctx;
@@ -104,6 +105,7 @@ static inline lnn_bio_async_ctx_t* get_bio_ctx(lnn_network_t* network) {
  */
 static inline const lnn_bio_async_ctx_t* get_bio_ctx_const(const lnn_network_t* network) {
     if (!network || !network->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_bio_ctx_const: required parameter is NULL (network, network->bio_ctx)");
         return NULL;
     }
     return (const lnn_bio_async_ctx_t*)network->bio_ctx;
@@ -354,6 +356,7 @@ int lnn_bio_async_disconnect(lnn_network_t* network) {
 
 bool lnn_bio_async_is_connected(const lnn_network_t* network) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_bio_async_is_connected: network is NULL");
         return false;
     }
 

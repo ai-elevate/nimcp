@@ -90,7 +90,10 @@ static float randf(void) {
  * ============================================================================ */
 
 int gust_quantum_default_config(gust_quantum_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(gust_quantum_config_t));
 
@@ -151,7 +154,10 @@ void gust_quantum_bridge_destroy(gust_quantum_bridge_t* bridge) {
  * ============================================================================ */
 
 int gust_quantum_connect(gust_quantum_bridge_t* bridge, nimcp_gustatory_t* gust) {
-    if (!bridge || !gust) return -1;
+    if (!bridge || !gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_connect: required parameter is NULL (bridge, gust)");
+        return -1;
+    }
 
     bridge->gust = gust;
     bridge->is_connected = true;
@@ -161,7 +167,10 @@ int gust_quantum_connect(gust_quantum_bridge_t* bridge, nimcp_gustatory_t* gust)
 }
 
 int gust_quantum_disconnect(gust_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->gust = NULL;
     bridge->is_connected = false;
@@ -185,8 +194,14 @@ gust_quantum_status_t gust_quantum_get_status(const gust_quantum_bridge_t* bridg
 int gust_quantum_calibrate_thresholds(gust_quantum_bridge_t* bridge,
                                       const gust_threshold_cal_spec_t* spec,
                                       gust_qmc_threshold_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_qmc) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;
 
@@ -245,8 +260,14 @@ int gust_quantum_sample_taste_response(gust_quantum_bridge_t* bridge,
                                        float concentration,
                                        uint32_t num_samples,
                                        float* responses) {
-    if (!bridge || !responses) return -1;
-    if (taste >= TASTE_COUNT) return -1;
+    if (!bridge || !responses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: required parameter is NULL (bridge, responses)");
+        return -1;
+    }
+    if (taste >= TASTE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gust_quantum_get_status: capacity exceeded");
+        return -1;
+    }
 
     /* Simulate taste response with noise */
     for (uint32_t i = 0; i < num_samples; i++) {
@@ -266,8 +287,14 @@ int gust_quantum_sample_taste_response(gust_quantum_bridge_t* bridge,
 int gust_quantum_search_flavors(gust_quantum_bridge_t* bridge,
                                 const taste_stimulus_t* stimulus,
                                 gust_quantum_flavor_result_t* result) {
-    if (!bridge || !stimulus || !result) return -1;
-    if (!bridge->config.enable_walks) return -1;
+    if (!bridge || !stimulus || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: required parameter is NULL (bridge, stimulus, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_walks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;
 
@@ -278,6 +305,7 @@ int gust_quantum_search_flavors(gust_quantum_bridge_t* bridge,
         nimcp_free(result->similar_foods);
         nimcp_free(result->similarity_scores);
         bridge->status = GUST_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gust_quantum_get_status: required parameter is NULL (result->similar_foods, result->similarity_scores)");
         return -1;
     }
 
@@ -327,7 +355,10 @@ int gust_quantum_predict_food_category(gust_quantum_bridge_t* bridge,
                                        const taste_stimulus_t* stimulus,
                                        food_category_t* category,
                                        float* confidence) {
-    if (!bridge || !stimulus || !category || !confidence) return -1;
+    if (!bridge || !stimulus || !category || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: required parameter is NULL (bridge, stimulus, category, confidence)");
+        return -1;
+    }
 
     /* Simple heuristic classification */
     if (stimulus->bitter > 0.6f || stimulus->sour > 0.7f) {
@@ -357,8 +388,14 @@ int gust_quantum_predict_food_category(gust_quantum_bridge_t* bridge,
 int gust_quantum_optimize_preferences(gust_quantum_bridge_t* bridge,
                                       const gust_preference_opt_spec_t* spec,
                                       gust_quantum_preference_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_annealing) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_annealing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = GUST_QUANTUM_STATUS_COMPUTING;
 
@@ -423,10 +460,16 @@ int gust_quantum_predict_reward(gust_quantum_bridge_t* bridge,
                                 const taste_stimulus_t* stimulus,
                                 float satiety,
                                 gust_quantum_reward_result_t* result) {
-    if (!bridge || !stimulus || !result) return -1;
+    if (!bridge || !stimulus || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, stimulus, result)");
+        return -1;
+    }
 
     result->contribution_weights = (float*)nimcp_calloc(TASTE_COUNT, sizeof(float));
-    if (!result->contribution_weights) return -1;
+    if (!result->contribution_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->contribution_weights is NULL");
+        return -1;
+    }
 
     /* Compute reward from stimulus */
     float reward = 0.0f;
@@ -459,7 +502,10 @@ int gust_quantum_predict_reward(gust_quantum_bridge_t* bridge,
 int gust_quantum_optimize_disgust_threshold(gust_quantum_bridge_t* bridge,
                                             float current_threshold,
                                             float* optimal) {
-    if (!bridge || !optimal) return -1;
+    if (!bridge || !optimal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, optimal)");
+        return -1;
+    }
 
     /* Simple optimization - threshold should be sensitive enough */
     *optimal = current_threshold * 0.9f + randf() * 0.05f;
@@ -499,13 +545,19 @@ void gust_quantum_reward_result_free(gust_quantum_reward_result_t* result) {
  * ============================================================================ */
 
 int gust_quantum_get_stats(const gust_quantum_bridge_t* bridge, gust_quantum_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(gust_quantum_stats_t));
     return 0;
 }
 
 int gust_quantum_reset_stats(gust_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_quantum_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(gust_quantum_stats_t));
     return 0;
 }

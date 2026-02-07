@@ -40,7 +40,10 @@ static float hz_to_mel(float hz) {
 }
 
 int vae_audio_bridge_default_config(vae_audio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_audio_bridge_default_config: config is NULL");
+        return -1;
+    }
     memset(config, 0, sizeof(*config));
 
     config->sample_rate = VAE_AUDIO_DEFAULT_SAMPLE_RATE;
@@ -62,7 +65,10 @@ int vae_audio_bridge_default_config(vae_audio_bridge_config_t* config) {
 
 vae_audio_bridge_t* vae_audio_bridge_create(const vae_audio_bridge_config_t* config) {
     vae_audio_bridge_t* bridge = (vae_audio_bridge_t*)nimcp_calloc(1, sizeof(vae_audio_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_audio_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     if (config) memcpy(&bridge->config, config, sizeof(vae_audio_bridge_config_t));
     else vae_audio_bridge_default_config(&bridge->config);

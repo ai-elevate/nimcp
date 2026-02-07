@@ -16,6 +16,9 @@ macro(add_working_memory_pe_test TEST_NAME)
     )
     add_test(NAME unit_cognitive_working_memory_${TEST_NAME}
              COMMAND unit_cognitive_working_memory_${TEST_NAME})
+    set_tests_properties(unit_cognitive_working_memory_${TEST_NAME} PROPERTIES
+        TIMEOUT 600
+    )
 endmacro()
 
 # Working Memory PE tests

@@ -697,6 +697,7 @@ nimcp_rand_ctx_t* nimcp_rand_ctx_create_with_backend(
     nimcp_rand_ctx_t* ctx = (nimcp_rand_ctx_t*)nimcp_malloc(sizeof(nimcp_rand_ctx_t));
     if (!ctx) {
         LOG_MODULE_ERROR(LOG_MODULE_NAME, "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_rand_ctx_create_with_backend: ctx is NULL");
         return NULL;
     }
 
@@ -768,6 +769,7 @@ nimcp_rand_ctx_t* nimcp_rand_ctx_clone(const nimcp_rand_ctx_t* ctx)
 
     if (ctx->magic != CTX_MAGIC) {
         LOG_MODULE_ERROR(LOG_MODULE_NAME, "Invalid context magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rand_ctx_clone: validation failed");
         return NULL;
     }
 

@@ -242,6 +242,7 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type,
         if (astro->covered_synapse_ids) nimcp_free(astro->covered_synapse_ids);
         if (astro->synapse_calcium_levels) nimcp_free(astro->synapse_calcium_levels);
         nimcp_free(astro);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_module_shutdown: validation failed");
         return NULL;
     }
 
@@ -262,6 +263,7 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type,
         if (astro->coupled_astrocyte_ids) nimcp_free(astro->coupled_astrocyte_ids);
         if (astro->coupling_strengths) nimcp_free(astro->coupling_strengths);
         nimcp_free(astro);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_module_shutdown: validation failed");
         return NULL;
     }
 
@@ -591,6 +593,7 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity) {
     if (capacity == 0) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Cannot create network with zero capacity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astrocyte_network_create: capacity is zero");
         return NULL;
     }
 
@@ -615,6 +618,7 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Failed to allocate astrocyte array");
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astrocyte_network_create: network->astrocytes is NULL");
         return NULL;
     }
 
@@ -790,6 +794,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
         if (sys->workspace_dCaER) nimcp_free(sys->workspace_dCaER);
         if (sys->last_wave_time) nimcp_free(sys->last_wave_time);
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_calcium_system_create: validation failed");
         return NULL;
     }
 

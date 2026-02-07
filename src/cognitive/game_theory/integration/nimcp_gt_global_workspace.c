@@ -147,6 +147,7 @@ static int find_module_state(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_module_state: validation failed");
     return -1;
 }
 
@@ -155,6 +156,7 @@ static int add_module_state(
     cognitive_module_t module
 ) {
     if (ctx->num_modules >= MAX_GW_MODULES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_module_state: capacity exceeded");
         return -1;
     }
 
@@ -249,6 +251,7 @@ gt_gw_auction_ctx_t gt_gw_create(
     ctx->auction = nimcp_auction_create(&auction_config);
     if (!ctx->auction) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gt_gw_create: ctx->auction is NULL");
         return NULL;
     }
 
@@ -482,6 +485,7 @@ bool gt_gw_compete(
     float bid
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_gw_compete: ctx is NULL");
         return false;
     }
 
@@ -492,6 +496,7 @@ bool gt_gw_compete(
 
     nimcp_error_t err = gt_gw_bid(ctx, module, content, content_dim, bid);
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gt_gw_compete: validation failed");
         return false;
     }
 
@@ -499,6 +504,7 @@ bool gt_gw_compete(
     gt_gw_round_result_t result;
     err = gt_gw_resolve(ctx, &result);
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gt_gw_compete: validation failed");
         return false;
     }
 

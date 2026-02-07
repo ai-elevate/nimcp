@@ -161,6 +161,7 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -179,6 +180,7 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
     if (!bridge->search_candidates || !bridge->binding_hypotheses ||
         !bridge->segment_candidates || !bridge->motion_candidates) {
         occipital_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -188,6 +190,7 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
         bridge->max_binding_features * bridge->max_candidates, sizeof(uint32_t));
     if (!bridge->binding_feature_ids) {
         occipital_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "occipital_quantum_bridge_create: bridge->binding_feature_ids is NULL");
         return NULL;
     }
 
@@ -272,7 +275,10 @@ int occipital_quantum_visual_search(
     /* Solve using quantum Grover search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &search_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_visual_search: validation failed");
+        return -1;
+    }
 
     /* Generate search candidates */
     uint32_t num_candidates = (bridge->max_candidates < search_cnf.n_variables) ?
@@ -400,7 +406,10 @@ int occipital_quantum_feature_binding(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &binding_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_feature_binding: validation failed");
+        return -1;
+    }
 
     /* Generate binding hypotheses */
     quantum_binding_hypothesis_t* best = NULL;
@@ -507,7 +516,10 @@ int occipital_quantum_segment_scene(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &seg_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_segment_scene: validation failed");
+        return -1;
+    }
 
     /* Generate segmentation candidates */
     quantum_segment_candidate_t* best = NULL;
@@ -599,7 +611,10 @@ int occipital_quantum_integrate_motion(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &motion_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_quantum_integrate_motion: validation failed");
+        return -1;
+    }
 
     /* Compute mean local motion as baseline */
     float mean_dx = 0.0f, mean_dy = 0.0f;

@@ -265,6 +265,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
     jepa_mask_generator_t* gen = nimcp_malloc(sizeof(jepa_mask_generator_t));
     if (!gen) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_generator_create: gen is NULL");
         return NULL;
     }
     memset(gen, 0, sizeof(jepa_mask_generator_t));
@@ -272,6 +273,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
     /* Initialize bridge base */
     if (bridge_base_init(&gen->base, BIO_MODULE_JEPA_MASKING, "jepa_masking") != 0) {
         nimcp_free(gen);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_mask_generator_create: validation failed");
         return NULL;
     }
 
@@ -298,6 +300,7 @@ jepa_mask_generator_t* jepa_mask_generator_create(const jepa_mask_config_t* conf
     if (!gen->temp_buffer) {
         bridge_base_cleanup(&gen->base);
         nimcp_free(gen);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_generator_create: gen->temp_buffer is NULL");
         return NULL;
     }
 
@@ -351,11 +354,13 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
 
 
     if (width == 0 || height == 0 || temporal == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_create: width is zero");
         return NULL;
     }
     if (width > JEPA_MASK_MAX_WIDTH || height > JEPA_MASK_MAX_HEIGHT ||
         temporal > JEPA_MASK_MAX_TEMPORAL) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Mask dimensions exceed limits");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_mask_create: width is zero");
         return NULL;
     }
 
@@ -376,6 +381,7 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
     mask->data = nimcp_malloc(mask->total_size * sizeof(float));
     if (!mask->data) {
         nimcp_free(mask);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_mask_create: mask->data is NULL");
         return NULL;
     }
 

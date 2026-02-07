@@ -491,14 +491,17 @@ mental_health_monitor_t* mental_health_create(const mental_health_config_t* conf
 
     if (config->history_window_size == 0) {
         set_error("Invalid history_window_size: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_create: config->history_window_size is zero");
         return NULL;
     }
     if (config->history_window_size > 10000) {
         set_error("history_window_size too large: > 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_create: validation failed");
         return NULL;
     }
     if (config->check_interval_decisions == 0) {
         set_error("Invalid check_interval_decisions: 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_create: config->check_interval_decisions is zero");
         return NULL;
     }
 
@@ -663,7 +666,10 @@ float mental_health_check_specific(mental_health_monitor_t* mon, brain_t brain, 
 }
 
 bool mental_health_intervene(mental_health_monitor_t* mon, brain_t brain) {
-    if (!is_valid_monitor(mon)) return false;
+    if (!is_valid_monitor(mon)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_intervene: is_valid_monitor is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_heartbeat("mental_healt_intervene", 0.0f);
 
@@ -672,6 +678,7 @@ bool mental_health_intervene(mental_health_monitor_t* mon, brain_t brain) {
     nimcp_mutex_lock(mon->lock);
     if (mon->primary_severity < DISORDER_SEVERITY_MODERATE) {
         nimcp_mutex_unlock(mon->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_intervene: validation failed");
         return false;
     }
     intervention_type_t intervention = INTERVENTION_NONE;
@@ -750,7 +757,10 @@ void mental_health_display_dashboard(mental_health_monitor_t* mon) {
 }
 
 bool mental_health_get_stats(mental_health_monitor_t* mon, mental_health_stats_t* stats) {
-    if (!is_valid_monitor(mon) || !stats) return false;
+    if (!is_valid_monitor(mon) || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_get_stats: required parameter is NULL (is_valid_monitor, stats)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mental_health_heartbeat("mental_healt_get_stats", 0.0f);
 
@@ -789,7 +799,10 @@ disorder_severity_t mental_health_classify_severity(float score, const mental_he
 }
 
 bool mental_health_connect_immune(mental_health_monitor_t* mon, brain_immune_system_t* immune) {
-    if (!is_valid_monitor(mon)) return false;
+    if (!is_valid_monitor(mon)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_connect_immune: is_valid_monitor is NULL");
+        return false;
+    }
     if (!immune) {
 
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
@@ -844,7 +857,10 @@ bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain
 
     (void)mon;
     /* Reject invalid fraction */
-    if (frac < 0.0f || frac > 1.0f) return false;
+    if (frac < 0.0f || frac > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_test_memory_reset: validation failed");
+        return false;
+    }
     /* Reject NULL brain */
     if (!brain) {
 
@@ -856,7 +872,10 @@ bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain
 
         }
     /* 0.0 fraction clears no systems, return false (no systems cleared) */
-    if (frac == 0.0f) return false;
+    if (frac == 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_test_memory_reset: frac is zero");
+        return false;
+    }
     /* Valid fraction with valid brain - would clear memory systems */
     return true;
 }

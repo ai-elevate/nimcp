@@ -111,6 +111,7 @@ memory_thalamic_bridge_t* memory_thalamic_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "memory_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -136,7 +137,10 @@ void memory_thalamic_bridge_destroy(memory_thalamic_bridge_t* bridge) {
 }
 
 int memory_thalamic_bridge_reset(memory_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_reset", 0.0f);
 
@@ -152,7 +156,10 @@ int memory_thalamic_route_signal(
     memory_thalamic_bridge_t* bridge,
     const memory_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_route_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_rout", 0.0f);
 
@@ -191,6 +198,7 @@ int memory_thalamic_route_signal(
             break;
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "memory_thalamic_route_signal: operation failed");
             return -1;
     }
 
@@ -212,7 +220,10 @@ int memory_thalamic_route_encode(
     float strength,
     float emotional_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_route_encode: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_rout", 0.0f);
@@ -237,7 +248,10 @@ int memory_thalamic_route_retrieve(
     float salience,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_route_retrieve: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_rout", 0.0f);
@@ -258,7 +272,10 @@ int memory_thalamic_route_retrieve(
 }
 
 int memory_thalamic_set_attention(memory_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_set_", 0.0f);
 
@@ -270,7 +287,10 @@ int memory_thalamic_set_attention(memory_thalamic_bridge_t* bridge, float attent
 }
 
 int memory_thalamic_get_attention(const memory_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_memory_thalamic_get_", 0.0f);
 
@@ -286,7 +306,10 @@ int memory_thalamic_bridge_get_stats(
     const memory_thalamic_bridge_t* bridge,
     memory_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     memory_thalamic_bridge_heartbeat("memory_thala_get_stats", 0.0f);
 

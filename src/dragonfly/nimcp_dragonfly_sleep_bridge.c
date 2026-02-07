@@ -113,13 +113,22 @@ dragonfly_sleep_config_t dragonfly_sleep_default_config(void) {
 }
 
 bool dragonfly_sleep_validate_config(const dragonfly_sleep_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->consolidation_threshold < 0.0f ||
         config->consolidation_threshold > 1.0f) return false;
 
-    if (config->dawn_activity_boost < 0.0f) return false;
-    if (config->dusk_activity_boost < 0.0f) return false;
+    if (config->dawn_activity_boost < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_sleep_validate_config: validation failed");
+        return false;
+    }
+    if (config->dusk_activity_boost < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_sleep_validate_config: validation failed");
+        return false;
+    }
     if (config->night_activity_floor < 0.0f ||
         config->night_activity_floor > 1.0f) return false;
 
@@ -198,7 +207,10 @@ int dragonfly_sleep_bridge_connect(
     dragonfly_system_t* dragonfly,
     sleep_orchestrator_t sleep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_bridge_connect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
@@ -210,7 +222,10 @@ int dragonfly_sleep_bridge_connect(
 }
 
 int dragonfly_sleep_bridge_disconnect(dragonfly_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
@@ -229,7 +244,10 @@ int dragonfly_sleep_record_experience(
     dragonfly_sleep_bridge_t bridge,
     const hunting_experience_t* experience
 ) {
-    if (!bridge || !experience) return -1;
+    if (!bridge || !experience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_record_experience: required parameter is NULL (bridge, experience)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -252,7 +270,10 @@ int dragonfly_sleep_record_success(
     float miss_distance,
     intercept_strategy_t strategy
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_record_success: bridge is NULL");
+        return -1;
+    }
 
     hunting_experience_t exp = {0};
     exp.target_id = target_id;
@@ -270,7 +291,10 @@ int dragonfly_sleep_record_failure(
     const char* reason,
     intercept_strategy_t strategy
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_record_failure: bridge is NULL");
+        return -1;
+    }
 
     hunting_experience_t exp = {0};
     exp.target_id = target_id;
@@ -290,7 +314,10 @@ int dragonfly_sleep_bridge_update(
     dragonfly_sleep_bridge_t bridge,
     float dt_s
 ) {
-    if (!bridge || dt_s <= 0.0f) return -1;
+    if (!bridge || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_sleep_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -347,7 +374,10 @@ int dragonfly_sleep_bridge_update(
 }
 
 int dragonfly_sleep_consolidate(dragonfly_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_consolidate: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -403,7 +433,10 @@ int dragonfly_sleep_get_memory(
     const dragonfly_sleep_bridge_t bridge,
     consolidated_memory_t* memory
 ) {
-    if (!bridge || !memory) return -1;
+    if (!bridge || !memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_sleep_get_memory: required parameter is NULL (bridge, memory)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *memory = bridge->memory;
@@ -417,7 +450,10 @@ int dragonfly_sleep_get_memory(
 //=============================================================================
 
 bool dragonfly_sleep_hunting_allowed(const dragonfly_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_hunting_allowed: bridge is NULL");
+        return false;
+    }
     return bridge->state.is_hunting_allowed;
 }
 
@@ -433,7 +469,10 @@ int dragonfly_sleep_recommend_strategy(
     intercept_strategy_t* strategy,
     float* confidence
 ) {
-    if (!bridge || !strategy || !confidence) return -1;
+    if (!bridge || !strategy || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_recommend_strategy: required parameter is NULL (bridge, strategy, confidence)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -461,7 +500,10 @@ int dragonfly_sleep_get_state(
     const dragonfly_sleep_bridge_t bridge,
     dragonfly_sleep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
@@ -474,7 +516,10 @@ int dragonfly_sleep_get_stats(
     const dragonfly_sleep_bridge_t bridge,
     dragonfly_sleep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_sleep_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;

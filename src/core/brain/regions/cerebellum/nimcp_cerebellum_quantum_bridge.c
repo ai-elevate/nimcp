@@ -139,6 +139,7 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -155,6 +156,7 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
     if (!bridge->timing_candidates || !bridge->trajectory_candidates ||
         !bridge->gain_candidates) {
         cerebellum_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -198,8 +200,14 @@ int cerebellum_quantum_optimize_timing(
     uint32_t num_alternatives,
     quantum_timing_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_timing: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_timing: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -221,7 +229,10 @@ int cerebellum_quantum_optimize_timing(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &timing_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_quantum_optimize_timing: validation failed");
+        return -1;
+    }
 
     /* Generate timing candidates from quantum state */
     uint32_t num_candidates = (bridge->max_candidates < timing_cnf.n_variables) ?
@@ -293,8 +304,14 @@ int cerebellum_quantum_optimize_trajectory(
     float max_duration_ms,
     quantum_trajectory_result_t* result
 ) {
-    if (!bridge || !result || !start_state || !end_state) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result || !start_state || !end_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_trajectory: required parameter is NULL (bridge, result, start_state, end_state)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_trajectory: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -314,7 +331,10 @@ int cerebellum_quantum_optimize_trajectory(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &traj_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_quantum_optimize_trajectory: validation failed");
+        return -1;
+    }
 
     /* Generate trajectory candidates */
     quantum_trajectory_candidate_t* best = NULL;
@@ -399,8 +419,14 @@ int cerebellum_quantum_optimize_gains(
     float error_signal,
     quantum_gain_result_t* result
 ) {
-    if (!bridge || !result || !current_gains) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result || !current_gains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_gains: required parameter is NULL (bridge, result, current_gains)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_optimize_gains: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -420,7 +446,10 @@ int cerebellum_quantum_optimize_gains(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &gain_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_quantum_optimize_gains: validation failed");
+        return -1;
+    }
 
     /* Generate gain candidates */
     uint32_t num_candidates = (bridge->max_candidates < 8) ? bridge->max_candidates : 8;
@@ -493,8 +522,14 @@ int cerebellum_quantum_evaluate_programs(
     uint32_t program_dims,
     float* scores
 ) {
-    if (!bridge || !programs || !scores || num_programs == 0) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !programs || !scores || num_programs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_evaluate_programs: required parameter is NULL (bridge, programs, scores)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_evaluate_programs: bridge->config is NULL");
+        return -1;
+    }
 
     /* Evaluate all programs using quantum parallelism simulation */
     for (uint32_t i = 0; i < num_programs; i++) {
@@ -540,17 +575,27 @@ int cerebellum_quantum_select_program(
     uint32_t* best_program_idx,
     float* confidence
 ) {
-    if (!bridge || !programs || !best_program_idx || num_programs == 0) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !programs || !best_program_idx || num_programs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_select_program: required parameter is NULL (bridge, programs, best_program_idx)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_select_program: bridge->config is NULL");
+        return -1;
+    }
 
     /* Evaluate all programs */
     float* scores = nimcp_calloc(num_programs, sizeof(float));
-    if (!scores) return -1;
+    if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_quantum_select_program: scores is NULL");
+        return -1;
+    }
 
     int ret = cerebellum_quantum_evaluate_programs(bridge, programs, num_programs,
                                                     program_dims, scores);
     if (ret != 0) {
         nimcp_free(scores);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_quantum_select_program: validation failed");
         return -1;
     }
 
@@ -591,7 +636,10 @@ int cerebellum_quantum_get_stats(
     const cerebellum_quantum_bridge_t* bridge,
     cerebellum_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -606,7 +654,10 @@ int cerebellum_quantum_get_config(
     const cerebellum_quantum_bridge_t* bridge,
     cerebellum_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_quantum_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

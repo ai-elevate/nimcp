@@ -63,6 +63,7 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "thalamic_router_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         thalamic_router_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -89,7 +90,10 @@ int thalamic_router_fep_bridge_connect_router(
     thalamic_router_fep_bridge_t* bridge,
     thalamic_router_t* router
 ) {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_connect_router: required parameter is NULL (bridge, router)");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->thalamic_router = router;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -101,7 +105,10 @@ int thalamic_router_fep_bridge_connect_fep(
     thalamic_router_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -217,7 +224,10 @@ int thalamic_router_fep_report_routed_signal(
     thalamic_router_fep_bridge_t* bridge,
     const routed_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_report_routed_signal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.signals_routed++;
@@ -266,7 +276,10 @@ int thalamic_router_fep_bridge_get_state(
     const thalamic_router_fep_bridge_t* bridge,
     thalamic_router_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
@@ -277,7 +290,10 @@ int thalamic_router_fep_bridge_get_stats(
     const thalamic_router_fep_bridge_t* bridge,
     thalamic_router_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock((void*)bridge->base.mutex);
@@ -337,6 +353,9 @@ int thalamic_router_fep_bridge_disconnect_bio_async(
 bool thalamic_router_fep_bridge_is_bio_async_connected(
     const thalamic_router_fep_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

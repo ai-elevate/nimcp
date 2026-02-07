@@ -129,7 +129,10 @@ static float latent_to_spike_time(const vae_snn_bridge_t* bridge, float latent_v
 static int generate_poisson_spikes(float rate_hz, float window_ms,
                                     uint32_t** spike_times, uint32_t* num_spikes)
 {
-    if (!spike_times || !num_spikes) return -1;
+    if (!spike_times || !num_spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_poisson_spikes: required parameter is NULL (spike_times, num_spikes)");
+        return -1;
+    }
 
     float dt_ms = 1.0f; /* 1 ms resolution */
     uint32_t num_bins = (uint32_t)(window_ms / dt_ms);
@@ -238,10 +241,16 @@ int vae_snn_bridge_default_config(vae_snn_bridge_config_t* config)
 
 vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
 {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_snn_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_snn_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_SNN_STATE_DISCONNECTED;
@@ -253,6 +262,7 @@ vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
                                         sizeof(vae_snn_population_config_t));
     if (!bridge->populations) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_snn_bridge_create: bridge->populations is NULL");
         return NULL;
     }
     bridge->num_populations = 0;
@@ -265,6 +275,7 @@ vae_snn_bridge_t* vae_snn_bridge_create(const vae_snn_bridge_config_t* config)
 
     if (!bridge->encode_buffer || !bridge->decode_buffer || !bridge->spike_buffer) {
         vae_snn_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_snn_bridge_create: required parameter is NULL (bridge->encode_buffer, bridge->decode_buffer, bridge->spike_buffer)");
         return NULL;
     }
 
@@ -370,7 +381,10 @@ int vae_snn_bridge_disconnect(vae_snn_bridge_t* bridge)
 
 bool vae_snn_bridge_is_connected(const vae_snn_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_snn_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state == VAE_SNN_STATE_CONNECTED;
 }
 
@@ -382,7 +396,10 @@ int vae_snn_add_population(vae_snn_bridge_t* bridge,
                             const vae_snn_population_config_t* pop_config)
 {
     if (!bridge || !pop_config) return NIMCP_ERROR_VAE_SNN_NULL;
-    if (bridge->num_populations >= VAE_SNN_MAX_POPULATIONS) return -1;
+    if (bridge->num_populations >= VAE_SNN_MAX_POPULATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vae_snn_add_population: capacity exceeded");
+        return -1;
+    }
 
     bridge->populations[bridge->num_populations] = *pop_config;
     bridge->num_populations++;
@@ -877,6 +894,7 @@ int vae_snn_update_precision_from_vae(vae_snn_bridge_t* bridge)
     int ret = vae_get_latent_state(bridge->vae, state);
     if (ret != 0 || !state->log_var) {
         vae_latent_state_destroy(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_snn_update_precision_from_vae: state->log_var is NULL");
         return -1;
     }
 

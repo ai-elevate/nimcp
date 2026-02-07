@@ -845,6 +845,7 @@ static void* guardian_monitor_thread(void* arg) {
     }
 
     GUARDIAN_LOG("Monitor thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guardian_monitor_thread: operation failed");
     return NULL;
 }
 
@@ -863,11 +864,13 @@ mental_health_guardian_t* mental_health_guardian_create(
     brain_t brain = (brain_t)brain_ptr;
     if (!brain) {
         GUARDIAN_LOG("ERROR: NULL brain provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_create: brain is NULL");
         return NULL;
     }
 
     if (!brain->mental_health_monitor) {
         GUARDIAN_LOG("ERROR: Brain has no mental health monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_create: brain->mental_health_monitor is NULL");
         return NULL;
     }
 
@@ -875,6 +878,7 @@ mental_health_guardian_t* mental_health_guardian_create(
     mental_health_guardian_t* guardian = nimcp_calloc(1, sizeof(mental_health_guardian_t));
     if (!guardian) {
         GUARDIAN_LOG("ERROR: Failed to allocate guardian");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_guardian_create: guardian is NULL");
         return NULL;
     }
 
@@ -894,6 +898,7 @@ mental_health_guardian_t* mental_health_guardian_create(
     if (!guardian->lock) {
         GUARDIAN_LOG("ERROR: Failed to create mutex");
         nimcp_free(guardian);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_guardian_create: guardian->lock is NULL");
         return NULL;
     }
 
@@ -990,6 +995,7 @@ void mental_health_guardian_destroy(mental_health_guardian_t* guardian) {
 
 bool mental_health_guardian_start(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_start: guardian is NULL");
         return false;
     }
 
@@ -1026,6 +1032,7 @@ bool mental_health_guardian_start(mental_health_guardian_t* guardian) {
         GUARDIAN_LOG("ERROR: Failed to create monitor thread (error=%d)", result);
         atomic_store(&guardian->running, false);
         guardian->state = GUARDIAN_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_guardian_start: validation failed");
         return false;
     }
 
@@ -1038,6 +1045,7 @@ bool mental_health_guardian_start(mental_health_guardian_t* guardian) {
 
 bool mental_health_guardian_stop(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_stop: guardian is NULL");
         return false;
     }
 
@@ -1066,6 +1074,7 @@ bool mental_health_guardian_stop(mental_health_guardian_t* guardian) {
 
 bool mental_health_guardian_pause(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_pause: guardian is NULL");
         return false;
     }
 
@@ -1082,6 +1091,7 @@ bool mental_health_guardian_pause(mental_health_guardian_t* guardian) {
 
 bool mental_health_guardian_resume(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_resume: guardian is NULL");
         return false;
     }
 
@@ -1105,6 +1115,7 @@ bool mental_health_guardian_get_status(
     mental_health_guardian_status_t* status)
 {
     if (!guardian || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_get_status: required parameter is NULL (guardian, status)");
         return false;
     }
 
@@ -1159,6 +1170,7 @@ bool mental_health_guardian_get_status(
 
 bool mental_health_guardian_reset_stats(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_reset_stats: guardian is NULL");
         return false;
     }
 
@@ -1208,6 +1220,7 @@ bool mental_health_guardian_set_level(
     guardian_intervention_level_t level)
 {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_set_level: guardian is NULL");
         return false;
     }
 
@@ -1233,6 +1246,7 @@ bool mental_health_guardian_update_config(
     const mental_health_guardian_config_t* config)
 {
     if (!guardian || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_update_config: required parameter is NULL (guardian, config)");
         return false;
     }
 
@@ -1254,6 +1268,7 @@ bool mental_health_guardian_get_config(
     mental_health_guardian_config_t* config)
 {
     if (!guardian || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_get_config: required parameter is NULL (guardian, config)");
         return false;
     }
 
@@ -1277,6 +1292,7 @@ bool mental_health_guardian_connect_immune(
     brain_immune_system_t* immune)
 {
     if (!guardian || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_immune: required parameter is NULL (guardian, immune)");
         return false;
     }
 
@@ -1298,6 +1314,7 @@ bool mental_health_guardian_connect_kg(
     uint64_t admin_token)
 {
     if (!guardian || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_kg: required parameter is NULL (guardian, kg)");
         return false;
     }
 
@@ -1319,6 +1336,7 @@ bool mental_health_guardian_connect_bio_async(
     void* bio_context  /* bio_module_context_t */)
 {
     if (!guardian || !bio_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_bio_async: required parameter is NULL (guardian, bio_context)");
         return false;
     }
 
@@ -1340,6 +1358,7 @@ bool mental_health_guardian_connect_neuromod(
     void* neuromod  /* spatial_neuromod_field_t* */)
 {
     if (!guardian || !neuromod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_neuromod: required parameter is NULL (guardian, neuromod)");
         return false;
     }
 
@@ -1360,6 +1379,7 @@ bool mental_health_guardian_connect_brainstem(
     void* medulla  /* medulla_t */)
 {
     if (!guardian || !medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_brainstem: required parameter is NULL (guardian, medulla)");
         return false;
     }
 
@@ -1380,6 +1400,7 @@ bool mental_health_guardian_connect_sleep(
     void* sleep  /* sleep_system_t */)
 {
     if (!guardian || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_sleep: required parameter is NULL (guardian, sleep)");
         return false;
     }
 
@@ -1400,6 +1421,7 @@ bool mental_health_guardian_connect_plasticity(
     void* plasticity  /* homeostatic_plasticity_t */)
 {
     if (!guardian || !plasticity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_plasticity: required parameter is NULL (guardian, plasticity)");
         return false;
     }
 
@@ -1473,6 +1495,7 @@ bool mental_health_guardian_register_fep(
     void* orchestrator  /* fep_orchestrator_t* */)
 {
     if (!guardian || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_register_fep: required parameter is NULL (guardian, orchestrator)");
         return false;
     }
 
@@ -1501,6 +1524,7 @@ bool mental_health_guardian_register_fep(
 
     if (result != 0) {
         GUARDIAN_LOG("Failed to register with FEP orchestrator (error=%d)", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mental_health_guardian_register_fep: validation failed");
         return false;
     }
 
@@ -1516,6 +1540,7 @@ bool mental_health_guardian_register_fep(
 
 bool mental_health_guardian_unregister_fep(mental_health_guardian_t* guardian) {
     if (!guardian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_unregister_fep: guardian is NULL");
         return false;
     }
 
@@ -1555,6 +1580,7 @@ bool mental_health_guardian_connect_working_memory(
     void* working_memory  /* working_memory_t* */)
 {
     if (!guardian || !working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mental_health_guardian_connect_working_memory: required parameter is NULL (guardian, working_memory)");
         return false;
     }
 
@@ -1575,6 +1601,7 @@ bool mental_health_guardian_connect_executive(
     void* executive  /* executive_controller_t* */)
 {
     if (!guardian || !executive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_guardian_connect_executive: required parameter is NULL (guardian, executive)");
         return false;
     }
 

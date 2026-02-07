@@ -170,6 +170,7 @@ static voxel_entry_t* get_or_create_voxel(
     const grid_index_t* idx
 ) {
     if (!is_index_valid(system, idx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_voxel: is_index_valid is NULL");
         return NULL;
     }
 
@@ -190,6 +191,7 @@ static voxel_entry_t* get_or_create_voxel(
     entry = (voxel_entry_t*)nimcp_calloc(1, sizeof(voxel_entry_t));
     if (!entry) {
         LOG_ERROR("Failed to allocate voxel entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_voxel: entry is NULL");
         return NULL;
     }
 
@@ -213,6 +215,7 @@ static const voxel_entry_t* get_voxel(
     const grid_index_t* idx
 ) {
     if (!is_index_valid(system, idx)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_voxel: is_index_valid is NULL");
         return NULL;
     }
 
@@ -228,6 +231,7 @@ static const voxel_entry_t* get_voxel(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_voxel: operation failed");
     return NULL;
 }
 

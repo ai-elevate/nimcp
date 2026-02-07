@@ -363,6 +363,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     // Guard: validate parameters
     if (max_connections == 0) {
         LOG_ERROR("max_connections must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "columnar_connectivity_create: max_connections is zero");
         return NULL;
     }
 
@@ -406,6 +407,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
         conn_hash_table_destroy(conn->by_target);
         nimcp_free(conn->connections);
         nimcp_free(conn);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "columnar_connectivity_create: validation failed");
         return NULL;
     }
 
@@ -1304,7 +1306,10 @@ bool connectivity_is_small_world(columnar_connectivity_t* conn) {
     float L = connectivity_compute_path_length(conn);
 
     // Guard: check validity
-    if (C < 0.0F || L < 0.0F) return false;
+    if (C < 0.0F || L < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "connectivity_is_small_world: validation failed");
+        return false;
+    }
 
     // Approximation: C_rand ≈ k/N, L_rand ≈ ln(N)/ln(k)
     // For small-world: σ = (C/C_rand) / (L/L_rand) > 1

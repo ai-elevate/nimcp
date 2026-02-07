@@ -171,6 +171,7 @@ superior_colliculus_t* sc_create(const sc_config_t* config) {
         nimcp_free(sc->deep_map);
         nimcp_free(sc->snr_input);
         nimcp_free(sc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_create: operation failed");
         return NULL;
     }
 
@@ -203,7 +204,10 @@ void sc_destroy(superior_colliculus_t* sc) {
 }
 
 int sc_reset(superior_colliculus_t* sc) {
-    if (!sc) return -1;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_reset: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -234,8 +238,14 @@ int sc_set_visual_input(superior_colliculus_t* sc,
                          const float* visual_map,
                          uint32_t width,
                          uint32_t height) {
-    if (!sc || !visual_map) return -1;
-    if (width != sc->map_width || height != sc->map_height) return -1;
+    if (!sc || !visual_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_reset: required parameter is NULL (sc, visual_map)");
+        return -1;
+    }
+    if (width != sc->map_width || height != sc->map_height) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_reset: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -247,12 +257,16 @@ int sc_set_visual_input(superior_colliculus_t* sc,
 }
 
 int sc_add_target(superior_colliculus_t* sc, const sc_target_t* target) {
-    if (!sc || !target) return -1;
+    if (!sc || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_add_target: required parameter is NULL (sc, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
     if (sc->num_targets >= SC_MAX_TARGETS) {
         nimcp_mutex_unlock(sc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sc_add_target: capacity exceeded");
         return -1;
     }
 
@@ -267,7 +281,10 @@ int sc_add_target(superior_colliculus_t* sc, const sc_target_t* target) {
 int sc_update_target(superior_colliculus_t* sc,
                       uint32_t target_id,
                       const sc_position_t* position) {
-    if (!sc || !position || target_id >= sc->num_targets) return -1;
+    if (!sc || !position || target_id >= sc->num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_add_target: required parameter is NULL (sc, position)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
     sc->targets[target_id].position = *position;
@@ -276,7 +293,10 @@ int sc_update_target(superior_colliculus_t* sc,
 }
 
 int sc_remove_target(superior_colliculus_t* sc, uint32_t target_id) {
-    if (!sc || target_id >= sc->num_targets) return -1;
+    if (!sc || target_id >= sc->num_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_remove_target: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -299,8 +319,14 @@ int sc_receive_snr_input(superior_colliculus_t* sc,
                           const float* snr_output,
                           uint32_t width,
                           uint32_t height) {
-    if (!sc || !snr_output) return -1;
-    if (width != sc->map_width || height != sc->map_height) return -1;
+    if (!sc || !snr_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_remove_target: required parameter is NULL (sc, snr_output)");
+        return -1;
+    }
+    if (width != sc->map_width || height != sc->map_height) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_remove_target: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -314,7 +340,10 @@ int sc_receive_snr_input(superior_colliculus_t* sc,
 int sc_set_snr_disinhibition(superior_colliculus_t* sc,
                               const sc_position_t* target,
                               float disinhibition) {
-    if (!sc || !target) return -1;
+    if (!sc || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_remove_target: required parameter is NULL (sc, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -337,26 +366,39 @@ int sc_set_snr_disinhibition(superior_colliculus_t* sc,
  * ============================================================================ */
 
 bool sc_is_saccade_ready(const superior_colliculus_t* sc) {
-    if (!sc) return false;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_is_saccade_ready: sc is NULL");
+        return false;
+    }
     return sc->saccade_ready;
 }
 
 int sc_get_saccade(const superior_colliculus_t* sc, sc_saccade_t* saccade) {
-    if (!sc || !saccade) return -1;
+    if (!sc || !saccade) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_saccade: required parameter is NULL (sc, saccade)");
+        return -1;
+    }
 
-    if (!sc->saccade_ready) return -1;
+    if (!sc->saccade_ready) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_saccade: sc->saccade_ready is NULL");
+        return -1;
+    }
 
     *saccade = sc->pending_saccade;
     return 0;
 }
 
 int sc_execute_saccade(superior_colliculus_t* sc) {
-    if (!sc) return -1;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_execute_saccade: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
     if (!sc->saccade_ready) {
         nimcp_mutex_unlock(sc->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_execute_saccade: sc->saccade_ready is NULL");
         return -1;
     }
 
@@ -381,7 +423,10 @@ int sc_execute_saccade(superior_colliculus_t* sc) {
 }
 
 int sc_cancel_saccade(superior_colliculus_t* sc) {
-    if (!sc) return -1;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_cancel_saccade: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
     sc->saccade_ready = false;
@@ -393,7 +438,10 @@ int sc_cancel_saccade(superior_colliculus_t* sc) {
 int sc_command_saccade(superior_colliculus_t* sc,
                         const sc_position_t* target,
                         sc_saccade_type_t type) {
-    if (!sc || !target) return -1;
+    if (!sc || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_cancel_saccade: required parameter is NULL (sc, target)");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -418,7 +466,10 @@ int sc_command_saccade(superior_colliculus_t* sc,
 }
 
 int sc_get_gaze(const superior_colliculus_t* sc, sc_position_t* gaze) {
-    if (!sc || !gaze) return -1;
+    if (!sc || !gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_gaze: required parameter is NULL (sc, gaze)");
+        return -1;
+    }
     *gaze = sc->current_gaze;
     return 0;
 }
@@ -428,7 +479,10 @@ int sc_get_gaze(const superior_colliculus_t* sc, sc_position_t* gaze) {
  * ============================================================================ */
 
 int sc_strengthen_fixation(superior_colliculus_t* sc, float strength) {
-    if (!sc) return -1;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_strengthen_fixation: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
     sc->fixation_strength = clamp_f(strength, 0.0f, 1.0f);
@@ -437,7 +491,10 @@ int sc_strengthen_fixation(superior_colliculus_t* sc, float strength) {
 }
 
 int sc_release_fixation(superior_colliculus_t* sc) {
-    if (!sc) return -1;
+    if (!sc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_release_fixation: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
     sc->fixation_strength = 0.0f;
@@ -455,7 +512,10 @@ sc_fixation_state_t sc_get_fixation_state(const superior_colliculus_t* sc) {
  * ============================================================================ */
 
 int sc_step(superior_colliculus_t* sc, float dt_ms) {
-    if (!sc || dt_ms <= 0) return -1;
+    if (!sc || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_step: sc is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(sc->mutex);
 
@@ -532,7 +592,10 @@ int sc_get_motor_map(const superior_colliculus_t* sc,
                       float* motor_map,
                       uint32_t* width,
                       uint32_t* height) {
-    if (!sc || !motor_map || !width || !height) return -1;
+    if (!sc || !motor_map || !width || !height) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_step: required parameter is NULL (sc, motor_map, width, height)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)sc->mutex);
 
@@ -545,7 +608,10 @@ int sc_get_motor_map(const superior_colliculus_t* sc,
 }
 
 int sc_get_stats(const superior_colliculus_t* sc, sc_stats_t* stats) {
-    if (!sc || !stats) return -1;
+    if (!sc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_stats: required parameter is NULL (sc, stats)");
+        return -1;
+    }
     *stats = sc->stats;
     return 0;
 }
@@ -556,18 +622,25 @@ int sc_get_stats(const superior_colliculus_t* sc, sc_stats_t* stats) {
 
 int sc_get_corollary_discharge(const superior_colliculus_t* sc,
                                 sc_saccade_t* cd) {
-    if (!sc || !cd) return -1;
+    if (!sc || !cd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_stats: required parameter is NULL (sc, cd)");
+        return -1;
+    }
 
     if (sc->saccade_ready) {
         *cd = sc->pending_saccade;
         return 0;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sc_get_stats: validation failed");
     return -1;
 }
 
 int sc_get_predicted_gaze(const superior_colliculus_t* sc,
                            sc_position_t* predicted) {
-    if (!sc || !predicted) return -1;
+    if (!sc || !predicted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc_get_stats: required parameter is NULL (sc, predicted)");
+        return -1;
+    }
 
     if (sc->saccade_ready) {
         *predicted = sc->pending_saccade.target;

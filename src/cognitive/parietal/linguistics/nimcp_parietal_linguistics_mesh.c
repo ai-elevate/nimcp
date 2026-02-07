@@ -295,6 +295,7 @@ static linguistics_mesh_participant_t* mesh_find_participant(
             return &mesh->participants[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_find_participant: validation failed");
     return NULL;
 }
 
@@ -311,6 +312,7 @@ static mesh_pending_request_t* mesh_find_pending_request(
             return &mesh->pending_requests[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_find_pending_request: operation failed");
     return NULL;
 }
 
@@ -1703,31 +1705,40 @@ linguistics_mesh_config_t linguistics_mesh_default_config(void) {
 
 bool linguistics_mesh_validate_config(const linguistics_mesh_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "linguistics_mesh_validate_config: config is NULL");
         return false;
     }
 
     if (config->agreement_threshold < 0.0f || config->agreement_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->belief_learning_rate <= 0.0f || config->belief_learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->precision_floor <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->precision_ceiling <= config->precision_floor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->gossip_probability < 0.0f || config->gossip_probability > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: validation failed");
         return false;
     }
     if (config->max_iterations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "linguistics_mesh_validate_config: config->max_iterations is zero");
         return false;
     }
     if (config->algorithm >= LING_MESH_ALG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "linguistics_mesh_validate_config: capacity exceeded");
         return false;
     }
     if (config->metric >= LING_MESH_METRIC_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "linguistics_mesh_validate_config: capacity exceeded");
         return false;
     }
 
@@ -1740,6 +1751,7 @@ linguistics_mesh_t* linguistics_mesh_create(const linguistics_mesh_config_t* con
     if (config) {
         if (!linguistics_mesh_validate_config(config)) {
             mesh_set_error("Invalid mesh configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "linguistics_mesh_create: linguistics_mesh_validate_config is NULL");
             return NULL;
         }
         actual_config = *config;
@@ -1750,6 +1762,7 @@ linguistics_mesh_t* linguistics_mesh_create(const linguistics_mesh_config_t* con
     linguistics_mesh_t* mesh = nimcp_calloc(1, sizeof(linguistics_mesh_t));
     if (!mesh) {
         mesh_set_error("Failed to allocate mesh coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "linguistics_mesh_create: mesh is NULL");
         return NULL;
     }
 
@@ -1769,6 +1782,7 @@ linguistics_mesh_t* linguistics_mesh_create(const linguistics_mesh_config_t* con
     if (!mesh->mutex) {
         mesh_set_error("Failed to create mesh mutex");
         nimcp_free(mesh);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "linguistics_mesh_create: mesh->mutex is NULL");
         return NULL;
     }
 
@@ -2124,6 +2138,7 @@ const linguistics_mesh_participant_t* linguistics_mesh_get_participant(
     uint32_t module_id
 ) {
     if (!mesh_is_valid(mesh)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "linguistics_mesh_get_participant: mesh_is_valid is NULL");
         return NULL;
     }
 
@@ -2134,6 +2149,7 @@ const linguistics_mesh_participant_t* linguistics_mesh_get_participant(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "linguistics_mesh_get_participant: operation failed");
     return NULL;
 }
 

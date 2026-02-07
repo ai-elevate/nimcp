@@ -208,6 +208,7 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
         system->imbalance_capacity * sizeof(neuromod_imbalance_t));
     if (!system->imbalances) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_immune_create: system->imbalances is NULL");
         return NULL;
     }
     system->imbalance_count = 0;
@@ -218,6 +219,7 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
     if (!system->mutex) {
         nimcp_free(system->imbalances);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_immune_create: system->mutex is NULL");
         return NULL;
     }
 
@@ -260,7 +262,10 @@ int neuromod_immune_connect_immune(
      * HOW:  Store reference for later access
      */
 
-    if (!system || !immune_system) return -1;
+    if (!system || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_connect_immune: required parameter is NULL (system, immune_system)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->immune_system = immune_system;
@@ -281,7 +286,10 @@ int neuromod_immune_connect_neuromod(
      * HOW:  Store reference for level queries
      */
 
-    if (!system || !neuromod_system) return -1;
+    if (!system || !neuromod_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_connect_neuromod: required parameter is NULL (system, neuromod_system)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     system->neuromod_system = neuromod_system;
@@ -317,7 +325,10 @@ int neuromod_immune_apply_cytokine_effect(
 
 
     }
-    if (concentration < 0.0f || concentration > 1.0f) return -1;
+    if (concentration < 0.0f || concentration > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_apply_cytokine_effect: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -376,6 +387,7 @@ int neuromod_immune_apply_cytokine_effect(
 
     default:
         nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_apply_cytokine_effect: operation failed");
         return -1;
     }
 
@@ -411,7 +423,10 @@ int neuromod_immune_apply_proinflammatory_effect(
 
 
     }
-    if (severity < 0.0f || severity > 1.0f) return -1;
+    if (severity < 0.0f || severity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_apply_proinflammatory_effect: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -467,7 +482,10 @@ int neuromod_immune_apply_antiinflammatory_effect(
 
 
     }
-    if (il10_concentration < 0.0f || il10_concentration > 1.0f) return -1;
+    if (il10_concentration < 0.0f || il10_concentration > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_apply_antiinflammatory_effect: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -520,8 +538,14 @@ int neuromod_immune_detect_imbalance(
      * HOW:  Compare current to baseline, check duration
      */
 
-    if (!system || !imbalance_out) return -1;
-    if (!system->neuromod_system) return -1;
+    if (!system || !imbalance_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_detect_imbalance: required parameter is NULL (system, imbalance_out)");
+        return -1;
+    }
+    if (!system->neuromod_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_detect_imbalance: system->neuromod_system is NULL");
+        return -1;
+    }
 
     *imbalance_out = NULL;
 
@@ -545,6 +569,7 @@ int neuromod_immune_detect_imbalance(
 
     if (type == NEUROMOD_IMBALANCE_NONE) {
         nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_detect_imbalance: validation failed");
         return -1;  /* No imbalance */
     }
 
@@ -565,6 +590,7 @@ int neuromod_immune_detect_imbalance(
             new_capacity * sizeof(neuromod_imbalance_t));
         if (!new_array) {
             nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_immune_detect_imbalance: new_array is NULL");
             return -1;
         }
         memcpy(new_array, system->imbalances,
@@ -615,9 +641,18 @@ int neuromod_immune_alert_imbalance(
      * HOW:  Present imbalance as antigen to brain immune system
      */
 
-    if (!system || !imbalance || !antigen_id_out) return -1;
-    if (!system->immune_system) return -1;
-    if (imbalance->immune_alerted) return -1;
+    if (!system || !imbalance || !antigen_id_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_alert_imbalance: required parameter is NULL (system, imbalance, antigen_id_out)");
+        return -1;
+    }
+    if (!system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_alert_imbalance: system->immune_system is NULL");
+        return -1;
+    }
+    if (imbalance->immune_alerted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_alert_imbalance: validation failed");
+        return -1;
+    }
 
     /* Create epitope from imbalance signature */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -665,8 +700,14 @@ int neuromod_immune_correct_imbalance(
      * HOW:  Generate corrective immune response
      */
 
-    if (!system || !imbalance) return -1;
-    if (imbalance->corrective_action_taken) return -1;
+    if (!system || !imbalance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_correct_imbalance: required parameter is NULL (system, imbalance)");
+        return -1;
+    }
+    if (imbalance->corrective_action_taken) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_correct_imbalance: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 
@@ -694,6 +735,7 @@ int neuromod_immune_correct_imbalance(
 
     default:
         nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_immune_correct_imbalance: operation failed");
         return -1;
     }
 
@@ -798,7 +840,10 @@ int neuromod_immune_get_cytokine_effects(
     neuromod_immune_system_t* system,
     cytokine_neuromod_effects_t* effects_out)
 {
-    if (!system || !effects_out) return -1;
+    if (!system || !effects_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_get_cytokine_effects: required parameter is NULL (system, effects_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     memcpy(effects_out, &system->cytokine_effects, sizeof(cytokine_neuromod_effects_t));
@@ -813,7 +858,10 @@ int neuromod_immune_get_imbalances(
     size_t count_in,
     size_t* count_out)
 {
-    if (!system || !imbalances_out || !count_out) return -1;
+    if (!system || !imbalances_out || !count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_immune_get_imbalances: required parameter is NULL (system, imbalances_out, count_out)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
 

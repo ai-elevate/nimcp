@@ -85,6 +85,7 @@ int mental_health_wellbeing_default_config(mental_health_wellbeing_config_t* con
     // Guard clause: check for NULL
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mental_health_wellbeing_default_config: config is NULL");
         return -1;
     }
 
@@ -376,6 +377,7 @@ int enhanced_wellbeing_update_mental_health(
     // Guard clause: check for NULL pointers
     if (!mental_health || !effects) {
         NIMCP_LOGGING_ERROR("NULL pointer(s)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_update_mental_health: required parameter is NULL (mental_health, effects)");
         return -1;
     }
 
@@ -445,10 +447,12 @@ int enhanced_wellbeing_get_mental_health_effects(
     // Guard clause: check for NULL pointers
     if (!effects) {
         NIMCP_LOGGING_ERROR("NULL effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_mental_health_effects: effects is NULL");
         return -1;
     }
     if (!effects_out) {
         NIMCP_LOGGING_ERROR("NULL effects_out pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enhanced_wellbeing_get_mental_health_effects: effects_out is NULL");
         return -1;
     }
 

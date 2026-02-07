@@ -326,6 +326,7 @@ hypo_homeostasis_handle_t* hypo_homeostasis_create(
         1, sizeof(hypo_homeostasis_handle_t));
     if (!system) {
         LOG_ERROR(HOMEO_LOG_MODULE, "Failed to allocate homeostasis memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_homeostasis_default_config: system is NULL");
         return NULL;
     }
 
@@ -698,6 +699,7 @@ bool hypo_homeostasis_check_alignment(const hypo_homeostasis_handle_t* system,
                                        float* alignment_score) {
     if (!system) {
         if (alignment_score) *alignment_score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_homeostasis_get_reward: validation failed");
         return false;
     }
 
@@ -726,7 +728,10 @@ bool hypo_homeostasis_check_alignment(const hypo_homeostasis_handle_t* system,
 bool hypo_homeostasis_set_gains(hypo_homeostasis_handle_t* system,
                                  hypo_variable_type_t var_type,
                                  const hypo_pid_gains_t* gains) {
-    if (!system || !gains || var_type >= HYPO_VAR_COUNT) return false;
+    if (!system || !gains || var_type >= HYPO_VAR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_reward: required parameter is NULL (system, gains)");
+        return false;
+    }
 
     if (system->mutex) nimcp_mutex_lock(system->mutex);
 
@@ -745,7 +750,10 @@ bool hypo_homeostasis_set_gains(hypo_homeostasis_handle_t* system,
 bool hypo_homeostasis_get_gains(const hypo_homeostasis_handle_t* system,
                                  hypo_variable_type_t var_type,
                                  hypo_pid_gains_t* gains) {
-    if (!system || !gains || var_type >= HYPO_VAR_COUNT) return false;
+    if (!system || !gains || var_type >= HYPO_VAR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_reward: required parameter is NULL (system, gains)");
+        return false;
+    }
 
     *gains = system->variables[var_type].controller.gains;
     return true;
@@ -757,7 +765,10 @@ bool hypo_homeostasis_get_gains(const hypo_homeostasis_handle_t* system,
 
 bool hypo_homeostasis_get_stats(const hypo_homeostasis_handle_t* system,
                                  hypo_homeostasis_stats_t* stats) {
-    if (!system || !stats) return false;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_reward: required parameter is NULL (system, stats)");
+        return false;
+    }
 
     *stats = system->stats;
     return true;

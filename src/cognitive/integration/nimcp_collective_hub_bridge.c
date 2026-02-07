@@ -172,6 +172,7 @@ static int handle_social_signal_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!bridge->collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_social_signal_unlocked: bridge->collective is NULL");
         return -1;
     }
 
@@ -197,6 +198,7 @@ static int handle_state_change_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!bridge->collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_state_change_unlocked: bridge->collective is NULL");
         return -1;
     }
 
@@ -222,6 +224,7 @@ static int handle_decision_unlocked(
     const cognitive_event_data_t* event
 ) {
     if (!bridge->collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_decision_unlocked: bridge->collective is NULL");
         return -1;
     }
 
@@ -250,6 +253,7 @@ static int collective_query_handler(
     collective_hub_bridge_t* bridge = (collective_hub_bridge_t*)context;
 
     if (!bridge || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_query_handler: required parameter is NULL (bridge, query, result)");
         return -1;
     }
 
@@ -261,6 +265,7 @@ static int collective_query_handler(
                 sizeof(result->error_message) - 1);
         bridge->stats.query_errors++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_query_handler: required parameter is NULL (bridge->connected, bridge->collective)");
         return -1;
     }
 
@@ -284,6 +289,7 @@ static int collective_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_query_handler: state is NULL");
                 return -1;
             }
 
@@ -295,6 +301,7 @@ static int collective_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_query_handler: validation failed");
                 return -1;
             }
 
@@ -315,6 +322,7 @@ static int collective_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_query_handler: stats is NULL");
                 return -1;
             }
 
@@ -326,6 +334,7 @@ static int collective_query_handler(
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
                 nimcp_mutex_unlock(bridge->base.mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_query_handler: validation failed");
                 return -1;
             }
 
@@ -341,6 +350,7 @@ static int collective_query_handler(
                     sizeof(result->error_message) - 1);
             bridge->stats.query_errors++;
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_query_handler: operation failed");
             return -1;
     }
 
@@ -413,6 +423,7 @@ collective_hub_bridge_t* collective_hub_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "collective_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_hub_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -465,10 +476,12 @@ int collective_hub_bridge_connect(
     collective_cognition_t* collective
 ) {
     if (!bridge || !hub || !collective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_connect: required parameter is NULL (bridge, hub, collective)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_connect: bridge->initialized is NULL");
         return -1;
     }
 
@@ -480,6 +493,7 @@ int collective_hub_bridge_connect(
 
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
         return -1;  /* Already connected */
     }
 
@@ -493,6 +507,7 @@ int collective_hub_bridge_connect(
     );
     if (ret != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
         return -1;
     }
 
@@ -508,6 +523,7 @@ int collective_hub_bridge_connect(
         if (ret != 0) {
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
             return -1;
         }
     }
@@ -528,6 +544,7 @@ int collective_hub_bridge_connect(
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
             return -1;
         }
     }
@@ -552,6 +569,7 @@ int collective_hub_bridge_connect(
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
             return -1;
         }
     }
@@ -579,6 +597,7 @@ int collective_hub_bridge_connect(
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_connect: validation failed");
             return -1;
         }
     }
@@ -618,6 +637,7 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_disconnect: bridge->connected is NULL");
         return -1;
     }
 
@@ -650,6 +670,7 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
 
 bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_is_connected: bridge is NULL");
         return false;
     }
 
@@ -680,6 +701,7 @@ int collective_hub_on_event(
     collective_hub_bridge_t* bridge = (collective_hub_bridge_t*)user_data;
 
     if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_on_event: required parameter is NULL (bridge, event)");
         return -1;
     }
 
@@ -687,6 +709,7 @@ int collective_hub_on_event(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_on_event: bridge->connected is NULL");
         return -1;
     }
 
@@ -728,6 +751,7 @@ int collective_hub_publish_consensus(
     const collective_consensus_data_t* consensus_data
 ) {
     if (!bridge || !consensus_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_publish_consensus: required parameter is NULL (bridge, consensus_data)");
         return -1;
     }
 
@@ -739,6 +763,7 @@ int collective_hub_publish_consensus(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_publish_consensus: bridge->connected is NULL");
         return -1;
     }
 
@@ -774,6 +799,7 @@ int collective_hub_publish_state_change(
     const collective_state_change_t* state_change
 ) {
     if (!bridge || !state_change) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_publish_state_change: required parameter is NULL (bridge, state_change)");
         return -1;
     }
 
@@ -785,6 +811,7 @@ int collective_hub_publish_state_change(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_publish_state_change: bridge->connected is NULL");
         return -1;
     }
 
@@ -846,6 +873,7 @@ int collective_hub_publish_event(
 
     if (!bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_publish_event: bridge->connected is NULL");
         return -1;
     }
 
@@ -876,6 +904,7 @@ int collective_hub_publish_event(
 
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_publish_event: operation failed");
             return -1;
     }
 
@@ -936,6 +965,7 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
 
     if (!bridge->connected || !bridge->collective) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_update: required parameter is NULL (bridge->connected, bridge->collective)");
         return -1;
     }
 
@@ -949,6 +979,7 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
     int ret = collective_cognition_get_state(bridge->collective, &state);
     if (ret != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_hub_bridge_update: validation failed");
         return -1;
     }
 
@@ -1046,10 +1077,12 @@ int collective_hub_bridge_get_stats(
     collective_hub_bridge_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_get_stats: bridge->initialized is NULL");
         return -1;
     }
 
@@ -1074,6 +1107,7 @@ int collective_hub_bridge_reset_stats(collective_hub_bridge_t* bridge) {
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_hub_bridge_reset_stats: bridge->initialized is NULL");
         return -1;
     }
 

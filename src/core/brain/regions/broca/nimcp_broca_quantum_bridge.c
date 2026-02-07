@@ -139,6 +139,7 @@ broca_quantum_bridge_t* broca_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "broca_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -155,6 +156,7 @@ broca_quantum_bridge_t* broca_quantum_bridge_create(
     if (!bridge->lexical_candidates || !bridge->syntax_candidates ||
         !bridge->phoneme_candidates) {
         broca_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -228,7 +230,10 @@ int broca_quantum_search_lexicon(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &search_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_quantum_search_lexicon: validation failed");
+        return -1;
+    }
 
     /* Generate lexical candidates from quantum state */
     uint32_t num_candidates = (bridge->max_candidates < search_cnf.n_variables) ?
@@ -326,7 +331,10 @@ int broca_quantum_optimize_syntax(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &syntax_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_quantum_optimize_syntax: validation failed");
+        return -1;
+    }
 
     /* Generate syntax candidates */
     quantum_syntax_candidate_t* best = NULL;
@@ -409,7 +417,10 @@ int broca_quantum_optimize_phonemes(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &phoneme_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_quantum_optimize_phonemes: validation failed");
+        return -1;
+    }
 
     /* Generate phoneme sequence candidates */
     uint32_t num_candidates = (bridge->max_candidates < 4) ? bridge->max_candidates : 4;

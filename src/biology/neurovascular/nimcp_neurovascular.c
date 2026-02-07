@@ -356,10 +356,12 @@ nimcp_nvc_unit_t* nimcp_nvc_get_unit(
     uint32_t unit_id
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_nvc_get_unit: required parameter is NULL (system, system->initialized)");
         return NULL;
     }
 
     if (unit_id >= system->num_units) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_nvc_get_unit: capacity exceeded");
         return NULL;
     }
 

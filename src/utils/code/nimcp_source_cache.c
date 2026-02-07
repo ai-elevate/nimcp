@@ -63,6 +63,7 @@ static bool build_full_path(
     size_t path_size
 ) {
     if (!filename || !path_out || path_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_full_path: required parameter is NULL (filename, path_out)");
         return false;
     }
 
@@ -70,6 +71,7 @@ static bool build_full_path(
     if (filename[0] == '/') {
         size_t len = strlen(filename);
         if (len >= path_size) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_full_path: capacity exceeded");
             return false;
         }
         strncpy(path_out, filename, path_size - 1);
@@ -120,6 +122,7 @@ static uint32_t* build_line_offsets(
 ) {
     if (!content || file_size == 0) {
         *line_count_out = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_line_offsets: content is NULL");
         return NULL;
     }
 
@@ -135,6 +138,7 @@ static uint32_t* build_line_offsets(
     uint32_t* offsets = nimcp_malloc((line_count + 1) * sizeof(uint32_t));
     if (!offsets) {
         *line_count_out = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_line_offsets: offsets is NULL");
         return NULL;
     }
 
@@ -163,6 +167,7 @@ static void* mmap_file(const char* path, size_t* size_out) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         LOG_DEBUG("Failed to open file for mmap: %s (errno=%d)", path, errno);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mmap_file: validation failed");
         return NULL;
     }
 
@@ -170,6 +175,7 @@ static void* mmap_file(const char* path, size_t* size_out) {
     if (fstat(fd, &st) != 0) {
         close(fd);
         LOG_DEBUG("Failed to stat file: %s (errno=%d)", path, errno);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mmap_file: validation failed");
         return NULL;
     }
 
@@ -177,6 +183,7 @@ static void* mmap_file(const char* path, size_t* size_out) {
     if (file_size == 0) {
         close(fd);
         *size_out = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mmap_file: file_size is zero");
         return NULL;
     }
 
@@ -185,6 +192,7 @@ static void* mmap_file(const char* path, size_t* size_out) {
 
     if (addr == MAP_FAILED) {
         LOG_DEBUG("Failed to mmap file: %s (errno=%d)", path, errno);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mmap_file: validation failed");
         return NULL;
     }
 
@@ -242,12 +250,14 @@ static source_file_entry_t* load_file_entry(
     time_t mtime = get_file_mtime(full_path);
     if (mtime == 0) {
         LOG_DEBUG("File not found: %s", full_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_file_entry: mtime is zero");
         return NULL;
     }
 
     /* mmap the file */
     void* mmap_addr = mmap_file(full_path, &file_size);
     if (!mmap_addr && file_size > 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_file_entry: mmap_addr is NULL");
         return NULL;
     }
 
@@ -278,6 +288,7 @@ static source_file_entry_t* load_file_entry(
         if (line_offsets) {
             nimcp_free(line_offsets);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_file_entry: validation failed");
         return NULL;
     }
 
@@ -285,6 +296,7 @@ static source_file_entry_t* load_file_entry(
     if (!hash_table_insert_string(cache->file_table, filename, &entry, sizeof(entry))) {
         LOG_ERROR("Failed to insert file entry into hash table: %s", filename);
         free_file_entry(&entry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_file_entry: hash_table_insert_string is NULL");
         return NULL;
     }
 
@@ -313,6 +325,7 @@ static bool refresh_file_entry(
     time_t current_mtime = get_file_mtime(full_path);
     if (current_mtime == 0) {
         LOG_DEBUG("File no longer exists: %s", entry->filename);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "refresh_file_entry: current_mtime is zero");
         return false;
     }
 
@@ -343,6 +356,7 @@ static bool refresh_file_entry(
     size_t file_size = 0;
     void* mmap_addr = mmap_file(full_path, &file_size);
     if (!mmap_addr && file_size > 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "refresh_file_entry: mmap_addr is NULL");
         return false;
     }
 
@@ -383,6 +397,7 @@ static source_file_entry_t* get_or_load_file(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_load_file: required parameter is NULL (cache, filename)");
         return NULL;
     }
 
@@ -390,6 +405,7 @@ static source_file_entry_t* get_or_load_file(
     char full_path[NIMCP_SOURCE_CACHE_MAX_PATH];
     if (!build_full_path(cache, filename, full_path, sizeof(full_path))) {
         LOG_DEBUG("Failed to build path for: %s", filename);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_or_load_file: build_full_path is NULL");
         return NULL;
     }
 
@@ -436,6 +452,7 @@ source_cache_t source_cache_create_with_config(
     struct nimcp_source_cache* cache = nimcp_calloc(1, sizeof(struct nimcp_source_cache));
     if (!cache) {
         LOG_ERROR("Failed to allocate source cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_cache_create_with_config: cache is NULL");
         return NULL;
     }
 
@@ -460,6 +477,7 @@ source_cache_t source_cache_create_with_config(
     if (nimcp_platform_mutex_init(&cache->cache_lock, false) != 0) {
         LOG_ERROR("Failed to initialize cache mutex");
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "source_cache_create_with_config: validation failed");
         return NULL;
     }
 
@@ -478,6 +496,7 @@ source_cache_t source_cache_create_with_config(
         LOG_ERROR("Failed to create file hash table");
         nimcp_platform_mutex_destroy(&cache->cache_lock);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_cache_create_with_config: cache->file_table is NULL");
         return NULL;
     }
 
@@ -541,12 +560,14 @@ const source_file_entry_t* source_cache_get_file(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_file: required parameter is NULL (cache, filename)");
         return NULL;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
         LOG_ERROR("Invalid source cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_file: validation failed");
         return NULL;
     }
 
@@ -688,6 +709,7 @@ char* source_cache_get_function_source(
     uint32_t end_line
 ) {
     if (!cache || !filename || start_line == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_function_source: required parameter is NULL (cache, filename)");
         return NULL;
     }
 
@@ -705,6 +727,7 @@ char* source_cache_get_function_source(
     /* Validate line range */
     if (start_line > entry->line_count) {
         nimcp_platform_rwlock_rdunlock(&entry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_function_source: validation failed");
         return NULL;
     }
 
@@ -714,6 +737,7 @@ char* source_cache_get_function_source(
 
     if (start_line > end_line) {
         nimcp_platform_rwlock_rdunlock(&entry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_function_source: validation failed");
         return NULL;
     }
 
@@ -723,6 +747,7 @@ char* source_cache_get_function_source(
 
     if (start_offset >= entry->file_size) {
         nimcp_platform_rwlock_rdunlock(&entry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_get_function_source: capacity exceeded");
         return NULL;
     }
 
@@ -735,6 +760,7 @@ char* source_cache_get_function_source(
     char* result = nimcp_malloc(copy_size + 1);
     if (!result) {
         nimcp_platform_rwlock_rdunlock(&entry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_cache_get_function_source: result is NULL");
         return NULL;
     }
 
@@ -798,11 +824,13 @@ bool source_cache_mark_modified(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_mark_modified: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_mark_modified: validation failed");
         return false;
     }
 
@@ -810,6 +838,7 @@ bool source_cache_mark_modified(
         c->file_table, filename);
 
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_mark_modified: entry is NULL");
         return false;
     }
 
@@ -825,11 +854,13 @@ bool source_cache_invalidate(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_invalidate: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_invalidate: validation failed");
         return false;
     }
 
@@ -838,6 +869,7 @@ bool source_cache_invalidate(
         c->file_table, filename);
 
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_invalidate: entry is NULL");
         return false;
     }
 
@@ -865,17 +897,20 @@ bool source_cache_refresh(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_refresh: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_refresh: validation failed");
         return false;
     }
 
     /* Build full path */
     char full_path[NIMCP_SOURCE_CACHE_MAX_PATH];
     if (!build_full_path(c, filename, full_path, sizeof(full_path))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_refresh: build_full_path is NULL");
         return false;
     }
 
@@ -957,11 +992,13 @@ bool source_cache_is_cached(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_is_cached: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_is_cached: validation failed");
         return false;
     }
 
@@ -973,11 +1010,13 @@ bool source_cache_needs_refresh(
     const char* filename
 ) {
     if (!cache || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_needs_refresh: required parameter is NULL (cache, filename)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_needs_refresh: validation failed");
         return false;
     }
 
@@ -985,6 +1024,7 @@ bool source_cache_needs_refresh(
         c->file_table, filename);
 
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_needs_refresh: entry is NULL");
         return false;  /* Not cached */
     }
 
@@ -1000,6 +1040,7 @@ bool source_cache_needs_refresh(
     /* Check filesystem mtime */
     char full_path[NIMCP_SOURCE_CACHE_MAX_PATH];
     if (!build_full_path(c, filename, full_path, sizeof(full_path))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_needs_refresh: build_full_path is NULL");
         return false;
     }
 
@@ -1059,11 +1100,13 @@ bool source_cache_get_stats(
     source_cache_stats_t* stats
 ) {
     if (!cache || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_stats: required parameter is NULL (cache, stats)");
         return false;
     }
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_get_stats: validation failed");
         return false;
     }
 
@@ -1146,6 +1189,7 @@ const char* source_cache_get_root(source_cache_t cache) {
 
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_get_root: validation failed");
         return NULL;
     }
 
@@ -1154,6 +1198,7 @@ const char* source_cache_get_root(source_cache_t cache) {
 
 bool source_cache_validate(source_cache_t cache) {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_validate: cache is NULL");
         return false;
     }
 
@@ -1162,18 +1207,21 @@ bool source_cache_validate(source_cache_t cache) {
     /* Check magic */
     if (c->magic != NIMCP_SOURCE_CACHE_MAGIC) {
         LOG_ERROR("Source cache validation failed: bad magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_cache_validate: validation failed");
         return false;
     }
 
     /* Check hash table */
     if (!c->file_table) {
         LOG_ERROR("Source cache validation failed: no file table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_validate: c->file_table is NULL");
         return false;
     }
 
     /* Check initialized flag */
     if (!c->initialized) {
         LOG_ERROR("Source cache validation failed: not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_cache_validate: c->initialized is NULL");
         return false;
     }
 

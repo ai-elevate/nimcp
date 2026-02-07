@@ -187,6 +187,7 @@ bool brain_get_mirror_activations(brain_t brain, float* activations,
     if (!brain->config.enable_mirror_neurons || !brain->mirror_neurons) {
         set_error("brain_get_mirror_activations: mirror neurons not enabled");
         *out_size = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_mirror_activations: required parameter is NULL (brain->config, brain->mirror_neurons)");
         return false;
     }
 
@@ -200,6 +201,7 @@ bool brain_get_mirror_activations(brain_t brain, float* activations,
 
     if (!success) {
         set_error("brain_get_mirror_activations: failed to extract activations");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_mirror_activations: success is NULL");
         return false;
     }
 
@@ -259,6 +261,7 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
     // Guard: Check required subsystems
     if (!brain->config.enable_mirror_neurons || !brain->mirror_neurons) {
         set_error("brain_compute_empathy: mirror neurons not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_empathy: required parameter is NULL (brain->config, brain->mirror_neurons)");
         return false;
     }
 
@@ -384,6 +387,7 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
     astrocyte_network_t* astro_net = astrocyte_network_create(num_astrocytes);
     if (!astro_net) {
         set_error("brain_enable_astrocytes: failed to create astrocyte network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_astrocytes: astro_net is NULL");
         return false;
     }
 
@@ -392,6 +396,7 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
     if (!ca_sys) {
         astrocyte_network_destroy(astro_net);
         set_error("brain_enable_astrocytes: failed to create calcium system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_astrocytes: ca_sys is NULL");
         return false;
     }
 
@@ -401,6 +406,7 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
         astrocyte_calcium_system_destroy(ca_sys);
         astrocyte_network_destroy(astro_net);
         set_error("brain_enable_astrocytes: failed to assign astrocyte network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_astrocytes: validation failed");
         return false;
     }
 
@@ -434,6 +440,7 @@ bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
     nimcp_result_t result = glial_integration_get_stats(brain->glial, &gi_stats);
     if (result != NIMCP_SUCCESS) {
         set_error("brain_get_astrocyte_stats: failed to get glial stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_astrocyte_stats: validation failed");
         return false;
     }
 

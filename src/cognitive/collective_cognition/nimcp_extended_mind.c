@@ -160,6 +160,7 @@ static cognitive_extension_t* find_extension(
             return &em->extensions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_extension: validation failed");
     return NULL;
 }
 
@@ -175,6 +176,7 @@ static cognitive_extension_t* find_free_extension_slot(extended_mind_t* em) {
             return &em->extensions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_free_extension_slot: .extension_id is zero");
     return NULL;
 }
 
@@ -234,6 +236,7 @@ static pending_query_t* find_query(
             return &em->queries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_query: validation failed");
     return NULL;
 }
 
@@ -249,6 +252,7 @@ static pending_query_t* find_free_query_slot(extended_mind_t* em) {
             return &em->queries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_query_slot: em->queries is NULL");
     return NULL;
 }
 
@@ -271,6 +275,7 @@ static pending_offload_t* find_offload(
             return &em->offloads[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_offload: validation failed");
     return NULL;
 }
 
@@ -286,6 +291,7 @@ static pending_offload_t* find_free_offload_slot(extended_mind_t* em) {
             return &em->offloads[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_offload_slot: em->offloads is NULL");
     return NULL;
 }
 
@@ -387,7 +393,10 @@ void extended_mind_destroy(extended_mind_t* em) {
 }
 
 int extended_mind_reset(extended_mind_t* em) {
-    if (!em) return -1;
+    if (!em) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_reset: em is NULL");
+        return -1;
+    }
 
     /* Clear extensions */
     /* Phase 8: Heartbeat at operation start */
@@ -449,14 +458,20 @@ int extended_mind_unregister_extension(
     extended_mind_t* em,
     uint32_t extension_id
 ) {
-    if (!em) return -1;
+    if (!em) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_unregister_extension: em is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_unregister_extension", 0.0f);
 
 
     cognitive_extension_t* ext = find_extension(em, extension_id);
-    if (!ext) return -1;
+    if (!ext) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_unregister_extension: ext is NULL");
+        return -1;
+    }
 
     memset(ext, 0, sizeof(cognitive_extension_t));
     em->extension_count--;
@@ -470,14 +485,20 @@ int extended_mind_get_extension(
     uint32_t extension_id,
     cognitive_extension_t* ext
 ) {
-    if (!em || !ext) return -1;
+    if (!em || !ext) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_get_extension: required parameter is NULL (em, ext)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_get_extension", 0.0f);
 
 
     cognitive_extension_t* found = find_extension((extended_mind_t*)em, extension_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_get_extension: found is NULL");
+        return -1;
+    }
 
     *ext = *found;
     return 0;
@@ -489,14 +510,20 @@ int extended_mind_update_extension_stats(
     bool success,
     float latency_ms
 ) {
-    if (!em) return -1;
+    if (!em) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_update_extension_stats: em is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_update_extension_sta", 0.0f);
 
 
     cognitive_extension_t* ext = find_extension(em, extension_id);
-    if (!ext) return -1;
+    if (!ext) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_update_extension_stats: ext is NULL");
+        return -1;
+    }
 
     ext->total_queries++;
     ext->last_access_us = get_timestamp_us();
@@ -612,7 +639,10 @@ int extended_mind_query_sync(
     void* response,
     size_t* response_size
 ) {
-    if (!em || !query || !response || !response_size) return -1;
+    if (!em || !query || !response || !response_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_query_sync: required parameter is NULL (em, query, response, response_size)");
+        return -1;
+    }
 
     /* Find best extension of type */
     /* Phase 8: Heartbeat at operation start */
@@ -620,7 +650,10 @@ int extended_mind_query_sync(
 
 
     cognitive_extension_t* ext = find_best_extension_of_type(em, type);
-    if (!ext || !ext->query_fn) return -1;
+    if (!ext || !ext->query_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_query_sync: required parameter is NULL (ext, ext->query_fn)");
+        return -1;
+    }
 
     uint64_t start_us = get_timestamp_us();
 
@@ -650,14 +683,20 @@ int extended_mind_cancel_query(
     extended_mind_t* em,
     uint32_t query_id
 ) {
-    if (!em) return -1;
+    if (!em) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_cancel_query: em is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_cancel_query", 0.0f);
 
 
     pending_query_t* q = find_query(em, query_id);
-    if (!q) return -1;
+    if (!q) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_cancel_query: q is NULL");
+        return -1;
+    }
 
     q->status = EXT_QUERY_CANCELLED;
     q->active = false;
@@ -724,14 +763,20 @@ int extended_mind_check_offload(
     void* result,
     size_t* result_size
 ) {
-    if (!em) return -1;
+    if (!em) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_check_offload: em is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_check_offload", 0.0f);
 
 
     pending_offload_t* o = find_offload(em, offload_id);
-    if (!o) return -1;
+    if (!o) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_check_offload: o is NULL");
+        return -1;
+    }
 
     if (!o->completed) return 1;  /* Still pending */
 
@@ -757,7 +802,10 @@ int extended_mind_get_state(
     const extended_mind_t* em,
     extended_mind_state_t* state
 ) {
-    if (!em || !state) return -1;
+    if (!em || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_get_state: required parameter is NULL (em, state)");
+        return -1;
+    }
 
     *state = em->state;
     /* Phase 8: Heartbeat at operation start */
@@ -824,7 +872,10 @@ uint32_t extended_mind_best_extension(
  *===========================================================================*/
 
 int extended_mind_update(extended_mind_t* em) {
-    if (!em || !em->initialized) return -1;
+    if (!em || !em->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_update: required parameter is NULL (em, em->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     extended_mind_heartbeat("extended_min_update", 0.0f);
@@ -977,7 +1028,10 @@ int extended_mind_get_stats(
     const extended_mind_t* em,
     extended_mind_stats_t* stats
 ) {
-    if (!em || !stats) return -1;
+    if (!em || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extended_mind_get_stats: required parameter is NULL (em, stats)");
+        return -1;
+    }
 
     *stats = em->stats;
     /* Phase 8: Heartbeat at operation start */

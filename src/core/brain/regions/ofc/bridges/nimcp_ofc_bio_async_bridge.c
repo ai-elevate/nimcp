@@ -147,7 +147,10 @@ static void init_msg_header(
 
 int ofc_bio_async_default_config(ofc_bio_async_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -238,12 +241,16 @@ int ofc_bio_async_connect(
     void* ofc,
     bio_router_t router)
 {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_connect: required parameter is NULL (bridge, router)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_bio_async_connect: validation failed");
         return -1; /* Already connected */
     }
 
@@ -262,6 +269,7 @@ int ofc_bio_async_connect(
     bridge->module_ctx = bio_router_register_module(&info);
     if (!bridge->module_ctx) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_connect: bridge->module_ctx is NULL");
         return -1;
     }
 
@@ -274,7 +282,10 @@ int ofc_bio_async_connect(
 
 int ofc_bio_async_disconnect(ofc_bio_async_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -299,7 +310,10 @@ int ofc_bio_async_disconnect(ofc_bio_async_bridge_t* bridge)
 
 bool ofc_bio_async_is_connected(const ofc_bio_async_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 
@@ -311,7 +325,10 @@ int ofc_bio_async_process_inbox(
     ofc_bio_async_bridge_t* bridge,
     uint32_t max_messages)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -330,7 +347,10 @@ int ofc_bio_async_update(
     ofc_bio_async_bridge_t* bridge,
     uint32_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -357,7 +377,10 @@ int ofc_bio_async_broadcast_value(
     float value,
     float confidence)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_value: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_value_broadcast) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -394,7 +417,10 @@ int ofc_bio_async_broadcast_decision(
     float confidence,
     float reaction_time_ms)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_decision: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_decision_broadcast) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -433,7 +459,10 @@ int ofc_bio_async_broadcast_rpe(
     float received,
     float expected)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_rpe: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_rpe_broadcast) return 0;
 
     /* Skip insignificant RPEs */
@@ -479,7 +508,10 @@ int ofc_bio_async_broadcast_reversal(
     uint32_t new_stimulus,
     float reversal_strength)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_reversal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_reversal_broadcast) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -518,7 +550,10 @@ int ofc_bio_async_broadcast_expected_value(
     float expected_value,
     float variance)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_expected_value: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -552,7 +587,10 @@ int ofc_bio_async_broadcast_context_change(
     uint32_t new_context,
     float similarity)
 {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_broadcast_context_change: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_context_broadcast) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -595,7 +633,10 @@ int ofc_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -612,6 +653,7 @@ int ofc_bio_async_subscribe_module(
     /* Add new subscription */
     if (bridge->subscription_count >= bridge->config.max_subscriptions) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ofc_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -636,7 +678,10 @@ int ofc_bio_async_unsubscribe_module(
     ofc_bio_async_bridge_t* bridge,
     uint32_t module_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -654,6 +699,7 @@ int ofc_bio_async_unsubscribe_module(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_bio_async_unsubscribe_module: operation failed");
     return -1; /* Not found */
 }
 
@@ -662,7 +708,10 @@ int ofc_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -675,6 +724,7 @@ int ofc_bio_async_update_subscription(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ofc_bio_async_update_subscription: validation failed");
     return -1; /* Not found */
 }
 
@@ -705,7 +755,10 @@ int ofc_bio_async_get_stats(
     const ofc_bio_async_bridge_t* bridge,
     ofc_bio_async_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
@@ -713,7 +766,10 @@ int ofc_bio_async_get_stats(
 
 int ofc_bio_async_reset_stats(ofc_bio_async_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));

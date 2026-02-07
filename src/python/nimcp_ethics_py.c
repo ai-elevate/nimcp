@@ -53,6 +53,7 @@ static int Ethics_init(EthicsObject* self, PyObject* args, PyObject* kwds)
     self->ethics = nimcp_ethics_create();
     if (self->ethics == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create ethics module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Ethics_init: validation failed");
         return -1;
     }
 
@@ -70,17 +71,20 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
     PyObject* situation_list;
 
     if (!PyArg_ParseTuple(args, "O", &situation_list)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (!PyList_Check(situation_list)) {
         PyErr_SetString(PyExc_TypeError, "situation must be a list of floats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_features = PyList_Size(situation_list);
     if (num_features <= 0) {
         PyErr_SetString(PyExc_ValueError, "situation must be non-empty");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: validation failed");
         return NULL;
     }
 
@@ -88,6 +92,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
     float* situation = (float*)nimcp_malloc(sizeof(float) * (size_t)num_features);
     if (situation == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: validation failed");
         return NULL;
     }
 
@@ -96,6 +101,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
         if (!PyFloat_Check(item) && !PyLong_Check(item)) {
             nimcp_free(situation);
             PyErr_SetString(PyExc_TypeError, "All situation values must be numbers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: required parameter is NULL (PyFloat_Check, PyLong_Check)");
             return NULL;
         }
         situation[i] = (float)PyFloat_AsDouble(item);
@@ -112,6 +118,7 @@ static PyObject* Ethics_check(EthicsObject* self, PyObject* args)
 
     if (status != NIMCP_OK) {
         PyErr_SetString(PyExc_RuntimeError, "Ethics check failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Ethics_check: validation failed");
         return NULL;
     }
 
@@ -172,12 +179,15 @@ int init_ethics_module(PyObject* module)
 {
     LOG_MODULE_INFO("bindings.python.ethics", "Initializing ethics module");
 
-    if (PyType_Ready(&EthicsType) < 0)
+    if (PyType_Ready(&EthicsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_ethics_module: validation failed");
         return -1;
+    }
 
     Py_INCREF(&EthicsType);
     if (PyModule_AddObject(module, "Ethics", (PyObject*)&EthicsType) < 0) {
         Py_DECREF(&EthicsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_ethics_module: validation failed");
         return -1;
     }
 

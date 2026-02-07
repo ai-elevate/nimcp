@@ -107,12 +107,14 @@ static goal_entry_t* find_goal(language_prefrontal_bridge_t* bridge, uint32_t go
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
     return NULL;
 }
 
 static bool queue_utterance(language_prefrontal_bridge_t* bridge, const utterance_plan_t* plan) {
     uint32_t next_tail = (bridge->queue_tail + 1) % bridge->queue_size;
     if (next_tail == bridge->queue_head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_utterance: validation failed");
         return false; /* Queue full */
     }
     bridge->utterance_queue[bridge->queue_tail] = *plan;
@@ -202,6 +204,7 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
     bridge->inhibitions = nimcp_calloc(bridge->inhibition_capacity, sizeof(inhibition_entry_t));
     if (!bridge->inhibitions) {
         language_prefrontal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_prefrontal_bridge_create: bridge->inhibitions is NULL");
         return NULL;
     }
 
@@ -210,6 +213,7 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
     bridge->utterance_queue = nimcp_calloc(bridge->queue_size, sizeof(utterance_plan_t));
     if (!bridge->utterance_queue) {
         language_prefrontal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_prefrontal_bridge_create: bridge->utterance_queue is NULL");
         return NULL;
     }
 
@@ -217,6 +221,7 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
     bridge->pending_conflict = nimcp_calloc(1, sizeof(language_conflict_t));
     if (!bridge->pending_conflict) {
         language_prefrontal_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_prefrontal_bridge_create: bridge->pending_conflict is NULL");
         return NULL;
     }
 
@@ -400,7 +405,10 @@ int language_prefrontal_set_communication_goal(
     language_prefrontal_bridge_t* bridge,
     const communication_goal_t* goal
 ) {
-    if (!bridge || !goal) return -1;
+    if (!bridge || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_set_communication_goal: required parameter is NULL (bridge, goal)");
+        return -1;
+    }
 
     goal_entry_t* entry = nimcp_calloc(1, sizeof(goal_entry_t));
     if (!entry) {
@@ -461,7 +469,10 @@ int language_prefrontal_get_active_goals(
     communication_goal_t* goals,
     uint32_t max_goals
 ) {
-    if (!bridge || !goals) return -1;
+    if (!bridge || !goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_get_active_goals: required parameter is NULL (bridge, goals)");
+        return -1;
+    }
 
     uint32_t count = 0;
     goal_entry_t* g = bridge->goals;
@@ -482,9 +493,13 @@ int language_prefrontal_submit_utterance_plan(
     language_prefrontal_bridge_t* bridge,
     const utterance_plan_t* plan
 ) {
-    if (!bridge || !plan) return -1;
+    if (!bridge || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_submit_utterance_plan: required parameter is NULL (bridge, plan)");
+        return -1;
+    }
 
     if (!queue_utterance(bridge, plan)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_submit_utterance_plan: queue_utterance is NULL");
         return -1;
     }
 
@@ -498,7 +513,10 @@ int language_prefrontal_modify_plan(
     uint32_t plan_id,
     const utterance_plan_t* modified_plan
 ) {
-    if (!bridge || !modified_plan) return -1;
+    if (!bridge || !modified_plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_modify_plan: required parameter is NULL (bridge, modified_plan)");
+        return -1;
+    }
 
     /* Search queue for matching plan */
     for (uint32_t i = bridge->queue_head; i != bridge->queue_tail;
@@ -509,6 +527,7 @@ int language_prefrontal_modify_plan(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_modify_plan: validation failed");
     return -1;
 }
 
@@ -520,7 +539,10 @@ int language_prefrontal_apply_inhibition(
     language_prefrontal_bridge_t* bridge,
     const inhibition_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_apply_inhibition: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Find empty slot */
     for (uint32_t i = 0; i < bridge->inhibition_capacity; i++) {
@@ -539,6 +561,7 @@ int language_prefrontal_apply_inhibition(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_apply_inhibition: validation failed");
     return -1; /* No slots available */
 }
 
@@ -575,7 +598,10 @@ bool language_prefrontal_is_inhibited(
     const language_prefrontal_bridge_t* bridge,
     const char* word_or_topic
 ) {
-    if (!bridge || !word_or_topic) return false;
+    if (!bridge || !word_or_topic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_is_inhibited: required parameter is NULL (bridge, word_or_topic)");
+        return false;
+    }
     return check_inhibition((language_prefrontal_bridge_t*)bridge, word_or_topic);
 }
 
@@ -587,7 +613,10 @@ int language_prefrontal_report_production_status(
     language_prefrontal_bridge_t* bridge,
     const production_status_t* status
 ) {
-    if (!bridge || !status) return -1;
+    if (!bridge || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_report_production_status: required parameter is NULL (bridge, status)");
+        return -1;
+    }
 
     /* Update fluency stats */
     float n = (float)(bridge->stats.goals_completed + 1);
@@ -647,7 +676,10 @@ int language_prefrontal_report_conflict(
     language_prefrontal_bridge_t* bridge,
     const language_conflict_t* conflict
 ) {
-    if (!bridge || !conflict) return -1;
+    if (!bridge || !conflict) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_report_conflict: required parameter is NULL (bridge, conflict)");
+        return -1;
+    }
 
     *bridge->pending_conflict = *conflict;
     bridge->conflict_needs_resolution = conflict->needs_resolution;
@@ -664,7 +696,10 @@ int language_prefrontal_request_decision(
     const language_conflict_t* conflict,
     uint32_t* selected_option
 ) {
-    if (!bridge || !conflict || !selected_option) return -1;
+    if (!bridge || !conflict || !selected_option) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_request_decision: required parameter is NULL (bridge, conflict, selected_option)");
+        return -1;
+    }
 
     /* Simple heuristic: select highest value option */
     uint32_t best = 0;
@@ -783,7 +818,10 @@ int language_prefrontal_get_stats(
     const language_prefrontal_bridge_t* bridge,
     language_prefrontal_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -797,7 +835,10 @@ int language_prefrontal_get_config(
     const language_prefrontal_bridge_t* bridge,
     language_prefrontal_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -806,7 +847,10 @@ int language_prefrontal_set_config(
     language_prefrontal_bridge_t* bridge,
     const language_prefrontal_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_prefrontal_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     bridge->config = *config;
     return 0;
 }

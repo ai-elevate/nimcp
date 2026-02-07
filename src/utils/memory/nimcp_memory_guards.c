@@ -105,7 +105,10 @@ static void* get_user_ptr(allocation_header_t* header) {
 }
 
 static bool check_canaries(allocation_header_t* header) {
-    if (!header) return false;
+    if (!header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "check_canaries: header is NULL");
+        return false;
+    }
 
     // Check start canary
     if (header->canary_start != CANARY_START) {
@@ -116,6 +119,7 @@ static bool check_canaries(allocation_header_t* header) {
                 header->file ? header->file : "unknown",
                 header->line, header->size);
         g_stats.corruption_detected++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_canaries: validation failed");
         return false;
     }
 
@@ -130,6 +134,7 @@ static bool check_canaries(allocation_header_t* header) {
                 header->line, header->size);
         fprintf(stderr, "Buffer overflow of %zu bytes detected!\n", header->size);
         g_stats.buffer_overflows_detected++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_canaries: validation failed");
         return false;
     }
 
@@ -212,7 +217,10 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
         return nimcp_malloc(size);
     }
 
-    if (size == 0) return NULL;
+    if (size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_malloc_guarded: size is zero");
+        return NULL;
+    }
 
     // Allocate: header + user_data + footer
     size_t total_size = sizeof(allocation_header_t) + size + sizeof(allocation_footer_t);
@@ -221,6 +229,7 @@ void* nimcp_malloc_guarded(size_t size, const char* file, int line) {
     if (!header) {
         fprintf(stderr, "malloc_guarded: allocation failed (%zu bytes) at %s:%d\n",
                 size, file ? file : "unknown", line);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_malloc_guarded: header is NULL");
         return NULL;
     }
 
@@ -278,6 +287,7 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line) 
 
     if (size == 0) {
         nimcp_free_guarded(ptr, file, line);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_realloc_guarded: size is zero");
         return NULL;
     }
 

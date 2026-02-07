@@ -108,6 +108,7 @@ int rn_brain_init_register(brain_t brain) {
     if (rn_brain_init_create(brain, &config, &result) < 0) {
         NIMCP_LOG_ERROR(RN_INIT_MODULE_NAME,
             "Red Nucleus subsystem initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rn_brain_init_register: validation failed");
         return -1;
     }
 
@@ -124,7 +125,10 @@ int rn_brain_init_create(
     const rn_init_config_t* config,
     rn_init_result_t* result
 ) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_brain_init_create: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     rn_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -148,6 +152,7 @@ int rn_brain_init_create(
         NIMCP_LOG_ERROR(RN_INIT_MODULE_NAME,
             "Failed to create Red Nucleus instance");
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rn_brain_init_create: validation failed");
         return -1;
     }
     local_result.rn_created = true;
@@ -325,7 +330,10 @@ int rn_init_kg_wiring(
     struct nimcp_red_nucleus* rn,
     uint64_t admin_token
 ) {
-    if (!brain || !rn) return -1;
+    if (!brain || !rn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_init_kg_wiring: required parameter is NULL (brain, rn)");
+        return -1;
+    }
 
     /* Would access brain's KG and register Red Nucleus nodes */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -345,7 +353,10 @@ int rn_init_security(
     brain_t brain,
     struct nimcp_red_nucleus* rn
 ) {
-    if (!brain || !rn) return -1;
+    if (!brain || !rn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_init_security: required parameter is NULL (brain, rn)");
+        return -1;
+    }
 
     /* Would access brain's BBB and register Red Nucleus */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -361,7 +372,10 @@ int rn_init_bio_async(
     brain_t brain,
     struct nimcp_red_nucleus* rn
 ) {
-    if (!brain || !rn) return -1;
+    if (!brain || !rn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_init_bio_async: required parameter is NULL (brain, rn)");
+        return -1;
+    }
 
     /* Bio-async bridges would connect here */
     NIMCP_LOG_DEBUG(RN_INIT_MODULE_NAME,
@@ -374,7 +388,10 @@ int rn_init_immune(
     brain_t brain,
     struct nimcp_red_nucleus* rn
 ) {
-    if (!brain || !rn) return -1;
+    if (!brain || !rn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_init_immune: required parameter is NULL (brain, rn)");
+        return -1;
+    }
 
     /* Would create Red Nucleus-immune bridge and connect */
     NIMCP_LOG_DEBUG(RN_INIT_MODULE_NAME,
@@ -388,7 +405,10 @@ int rn_init_immune(
 //=============================================================================
 
 bool rn_is_initialized(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn_is_initialized: brain is NULL");
+        return false;
+    }
 
     /* Would check if Red Nucleus subsystem exists in brain */
     /* return brain_has_red_nucleus(brain); */

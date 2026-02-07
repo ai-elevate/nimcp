@@ -164,6 +164,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
         if (!system->state.per_column_da) {
             NIMCP_LOGGING_ERROR("Failed to allocate per-column DA");
             nimcp_free(system);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_neuromod_create: system->state is NULL");
             return NULL;
         }
         system->state.num_columns = config->num_columns;
@@ -183,6 +184,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
             nimcp_free(system->state.per_column_da);
         }
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_create: validation failed");
         return NULL;
     }
 
@@ -192,6 +194,7 @@ cortical_neuromod_system_t* cortical_neuromod_create(
             nimcp_free(system->state.per_column_da);
         }
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_create: validation failed");
         return NULL;
     }
 
@@ -284,6 +287,7 @@ int cortical_neuromod_set_level(
             break;
         default:
             nimcp_platform_mutex_unlock(system->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_neuromod_set_level: operation failed");
             return -1;
     }
 
@@ -387,7 +391,10 @@ int cortical_neuromod_set_column_da(
 
     }
     if (!system->state.per_column_da) return -1;
-    if (column_index >= system->state.num_columns) return -1;
+    if (column_index >= system->state.num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "cortical_neuromod_set_column_da: capacity exceeded");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->state.per_column_da[column_index] = clamp_01(level);
@@ -523,7 +530,10 @@ int cortical_neuromod_apply_ach_effects(
     float* modulated_snr
 ) {
     /* Guard clauses */
-    if (!system || !modulated_li || !modulated_snr) return -1;
+    if (!system || !modulated_li || !modulated_snr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_apply_ach_effects: required parameter is NULL (system, modulated_li, modulated_snr)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -547,7 +557,10 @@ int cortical_neuromod_apply_da_effects(
     float* modulated_lr
 ) {
     /* Guard clauses */
-    if (!system || !modulated_gain || !modulated_lr) return -1;
+    if (!system || !modulated_gain || !modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_apply_da_effects: required parameter is NULL (system, modulated_gain, modulated_lr)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -572,7 +585,10 @@ int cortical_neuromod_apply_ne_effects(
     bool* should_reset
 ) {
     /* Guard clauses */
-    if (!system || !modulated_gain || !should_reset) return -1;
+    if (!system || !modulated_gain || !should_reset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_apply_ne_effects: required parameter is NULL (system, modulated_gain, should_reset)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -601,7 +617,10 @@ int cortical_neuromod_apply_serotonin_effects(
     float* modulated_inhibition
 ) {
     /* Guard clauses */
-    if (!system || !modulated_inhibition) return -1;
+    if (!system || !modulated_inhibition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_apply_serotonin_effects: required parameter is NULL (system, modulated_inhibition)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -655,7 +674,10 @@ int cortical_neuromod_get_stats(
     cortical_neuromod_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_get_stats: required parameter is NULL (system, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     memcpy(stats, &system->stats, sizeof(cortical_neuromod_stats_t));
@@ -776,7 +798,10 @@ bool cortical_neuromod_is_bio_async_connected(
     const cortical_neuromod_system_t* system
 ) {
     /* Guard clause */
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_is_bio_async_connected: system is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     bool connected = system->bio_async_enabled;
@@ -793,7 +818,10 @@ int cortical_neuromod_connect_global_system(
     neuromodulator_system_t global_system
 ) {
     /* Guard clauses */
-    if (!system || !global_system) return -1;
+    if (!system || !global_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_connect_global_system: required parameter is NULL (system, global_system)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     system->global_system = global_system;
@@ -819,6 +847,7 @@ int cortical_neuromod_sync_with_global(cortical_neuromod_system_t* system) {
     /* Check if connected */
     if (!system->global_connected || !system->global_system) {
         nimcp_platform_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_neuromod_sync_with_global: required parameter is NULL (system->global_connected, system->global_system)");
         return -1;
     }
 

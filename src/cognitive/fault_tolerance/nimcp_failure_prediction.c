@@ -251,6 +251,7 @@ static int find_indicator_index(failure_predictor_t* predictor, metric_type_t me
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_indicator_index: validation failed");
     return -1;
 }
 
@@ -265,7 +266,10 @@ static int compare_predictions(const void* a, const void* b) {
     const failure_prediction_t* pred_b = (const failure_prediction_t*)b;
 
     // Sort descending by probability
-    if (pred_a->probability > pred_b->probability) return -1;
+    if (pred_a->probability > pred_b->probability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_predictions: validation failed");
+        return -1;
+    }
     if (pred_a->probability < pred_b->probability) return 1;
     return 0;
 }
@@ -308,6 +312,7 @@ failure_predictor_t* failure_predictor_create_custom(
 
     if (!config) {
         LOG_ERROR("NULL config in failure_predictor_create_custom");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: config is NULL");
         return NULL;
     }
 
@@ -318,12 +323,14 @@ failure_predictor_t* failure_predictor_create_custom(
     if (config->max_predictions == 0 || config->max_indicators == 0) {
         LOG_ERROR("Invalid config: max_predictions=%u, max_indicators=%u",
                   config->max_predictions, config->max_indicators);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_create_custom: config->max_predictions is zero");
         return NULL;
     }
 
     if (config->prediction_threshold < 0.0F || config->prediction_threshold > 1.0F) {
         LOG_ERROR("Invalid prediction_threshold: %.2f (must be [0,1])",
                   config->prediction_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_create_custom: validation failed");
         return NULL;
     }
 
@@ -334,6 +341,7 @@ failure_predictor_t* failure_predictor_create_custom(
     failure_predictor_t* predictor = nimcp_calloc(1, sizeof(failure_predictor_t));
     if (!predictor) {
         LOG_ERROR("Failed to allocate failure_predictor_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: predictor is NULL");
         return NULL;
     }
 
@@ -348,6 +356,7 @@ failure_predictor_t* failure_predictor_create_custom(
     if (!predictor->indicators) {
         LOG_ERROR("Failed to allocate indicators array");
         nimcp_free(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: predictor->indicators is NULL");
         return NULL;
     }
 
@@ -362,6 +371,7 @@ failure_predictor_t* failure_predictor_create_custom(
         LOG_ERROR("Failed to allocate predictions array");
         nimcp_free(predictor->indicators);
         nimcp_free(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_create_custom: predictor->predictions is NULL");
         return NULL;
     }
 
@@ -442,6 +452,7 @@ bool failure_predictor_update_indicator(
 
     if (!predictor) {
         LOG_ERROR("NULL predictor in failure_predictor_update_indicator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_update_indicator: predictor is NULL");
         return false;
     }
 
@@ -457,6 +468,7 @@ bool failure_predictor_update_indicator(
     // Sanitize inputs
     if (isnan(current_value) || isinf(current_value)) {
         LOG_WARNING("Invalid current_value (NaN or Inf) for metric %d", metric);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_update_indicator: validation failed");
         return false;
     }
 
@@ -483,6 +495,7 @@ bool failure_predictor_update_indicator(
             LOG_WARNING("Indicator capacity reached (%u), cannot add metric %d",
                         predictor->config.max_indicators, metric);
             unlock(predictor);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "failure_predictor_update_indicator: capacity exceeded");
             return false;
         }
 
@@ -566,11 +579,13 @@ bool failure_predictor_update_from_health_metrics(
 
     if (!predictor) {
         LOG_ERROR("NULL predictor in failure_predictor_update_from_health_metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_update_from_health_metrics: predictor is NULL");
         return false;
     }
 
     if (!metrics) {
         LOG_ERROR("NULL metrics in failure_predictor_update_from_health_metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_update_from_health_metrics: metrics is NULL");
         return false;
     }
 
@@ -632,6 +647,7 @@ bool failure_predictor_get_indicator(
 )
 {
     if (!predictor || !indicator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_indicator: required parameter is NULL (predictor, indicator)");
         return false;
     }
 
@@ -645,6 +661,7 @@ bool failure_predictor_get_indicator(
 
     if (index < 0) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "failure_predictor_get_indicator: validation failed");
         return false;
     }
 
@@ -660,6 +677,7 @@ leading_indicator_t* failure_predictor_get_all_indicators(
 )
 {
     if (!predictor || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_all_indicators: required parameter is NULL (predictor, count)");
         return NULL;
     }
 
@@ -673,6 +691,7 @@ leading_indicator_t* failure_predictor_get_all_indicators(
 
     if (*count == 0) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_get_all_indicators: count is zero");
         return NULL;
     }
 
@@ -681,6 +700,7 @@ leading_indicator_t* failure_predictor_get_all_indicators(
     if (!indicators) {
         unlock(predictor);
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_get_all_indicators: indicators is NULL");
         return NULL;
     }
 
@@ -704,10 +724,12 @@ bool failure_predictor_detect_memory_leak(
 )
 {
     if (!predictor || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_detect_memory_leak: required parameter is NULL (predictor, metrics)");
         return false;
     }
 
     if (!predictor->config.enable_memory_leak_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "failure_predictor_detect_memory_leak: predictor->config is NULL");
         return false;
     }
 
@@ -722,6 +744,7 @@ bool failure_predictor_detect_memory_leak(
 
     if (index < 0 || !predictor->indicators[index].initialized) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_detect_memory_leak: predictor->indicators is NULL");
         return false;
     }
 
@@ -753,10 +776,12 @@ bool failure_predictor_detect_gradient_explosion(
 )
 {
     if (!predictor || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_detect_gradient_explosion: required parameter is NULL (predictor, metrics)");
         return false;
     }
 
     if (!predictor->config.enable_gradient_explosion_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_detect_gradient_explosion: predictor->config is NULL");
         return false;
     }
 
@@ -770,6 +795,7 @@ bool failure_predictor_detect_gradient_explosion(
 
     if (index < 0 || !predictor->indicators[index].initialized) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_detect_gradient_explosion: predictor->indicators is NULL");
         return false;
     }
 
@@ -922,6 +948,7 @@ failure_prediction_t* failure_predictor_predict(
 )
 {
     if (!predictor || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_predict: required parameter is NULL (predictor, metrics)");
         return NULL;
     }
 
@@ -1072,6 +1099,7 @@ bool failure_predictor_get_prediction_by_type(
 )
 {
     if (!predictor || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_prediction_by_type: required parameter is NULL (predictor, prediction)");
         return false;
     }
 
@@ -1096,6 +1124,7 @@ bool failure_predictor_get_prediction_by_type(
     }
 
     unlock(predictor);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_get_prediction_by_type: validation failed");
     return false;
 }
 
@@ -1123,6 +1152,7 @@ failure_prediction_t* failure_predictor_get_highest_probability_prediction(
 
 
     (void)predictor;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_highest_probability_prediction: operation failed");
     return NULL;
 }
 
@@ -1143,6 +1173,7 @@ bool failure_predictor_get_highest_probability_prediction_copy(
 )
 {
     if (!predictor || !out_prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_highest_probability_prediction_copy: required parameter is NULL (predictor, out_prediction)");
         return false;
     }
 
@@ -1154,6 +1185,7 @@ bool failure_predictor_get_highest_probability_prediction_copy(
 
     if (predictor->prediction_count == 0) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_get_highest_probability_prediction_copy: predictor->prediction_count is zero");
         return false;
     }
 
@@ -1194,6 +1226,7 @@ bool failure_predictor_needs_prevention(
 )
 {
     if (!predictor || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_needs_prevention: required parameter is NULL (predictor, prediction)");
         return false;
     }
 
@@ -1218,6 +1251,7 @@ const char* failure_predictor_get_preventive_action(
 )
 {
     if (!predictor || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "failure_predictor_get_preventive_action: required parameter is NULL (predictor, prediction)");
         return NULL;
     }
 
@@ -1269,6 +1303,7 @@ const char* failure_predictor_get_highest_priority_action(
 
     if (predictor->prediction_count == 0) {
         unlock(predictor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "failure_predictor_get_highest_priority_action: predictor->prediction_count is zero");
         return NULL;
     }
 

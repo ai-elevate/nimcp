@@ -300,6 +300,7 @@ nimcp_brain_t nimcp_brain_create(
         LOG_ERROR("Failed to create internal brain for '%s'", name);
         set_error("Failed to create internal brain");
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_create: handle->internal_brain is NULL");
         return NULL;
     }
 
@@ -501,6 +502,7 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
     if (!handle->internal_brain) {
         set_error("Failed to load brain from file");
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_load: handle->internal_brain is NULL");
         return NULL;
     }
 
@@ -634,6 +636,7 @@ nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     nimcp_brain_config_t config;
     if (!nimcp_config_load(config_filepath, &config)) {
         set_error("Failed to load config from %s", config_filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_create_from_config: nimcp_config_load is NULL");
         return NULL;
     }
 
@@ -737,6 +740,7 @@ static bio_module_context_t g_brain_probe_module_ctx = NULL;
  */
 static bio_module_context_t get_brain_probe_module_ctx(void) {
     if (!bio_router_is_initialized()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_brain_probe_module_ctx: bio_router_is_initialized is NULL");
         return NULL;
     }
     if (!g_brain_probe_module_ctx) {
@@ -852,6 +856,7 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
 
     if (!original->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_clone_cow: original->internal_brain is NULL");
         return NULL;
     }
 
@@ -870,6 +875,7 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     if (!clone_handle->internal_brain) {
         set_error("Failed to clone internal brain");
         nimcp_free(clone_handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_clone_cow: clone_handle->internal_brain is NULL");
         return NULL;
     }
 
@@ -908,6 +914,7 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_snapshot_cow: brain->internal_brain is NULL");
         return NULL;
     }
 
@@ -928,6 +935,7 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
     if (!brain_get_stats(brain->internal_brain, &current_stats)) {
         set_error("Failed to get brain stats for snapshot");
         nimcp_free(snapshot);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_snapshot_cow: brain_get_stats is NULL");
         return NULL;
     }
 
@@ -1089,6 +1097,7 @@ const float* nimcp_brain_working_memory_get(
     // Guard: Validate brain
     if (!brain || !brain->internal_brain) {
         set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_working_memory_get: required parameter is NULL (brain, brain->internal_brain)");
         return NULL;
     }
 
@@ -1385,6 +1394,7 @@ nimcp_network_t nimcp_network_create(
     if (!handle->internal_network) {
         set_error("Failed to create internal neural network");
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_network_create: handle->internal_network is NULL");
         return NULL;
     }
 
@@ -1472,6 +1482,7 @@ nimcp_ethics_t nimcp_ethics_create(void) {
     if (!handle->internal_ethics) {
         set_error("Failed to create internal ethics engine");
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ethics_create: handle->internal_ethics is NULL");
         return NULL;
     }
 
@@ -1539,6 +1550,7 @@ nimcp_knowledge_t nimcp_knowledge_create(void) {
     if (!handle->internal_knowledge) {
         set_error("Failed to create internal knowledge system");
         nimcp_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_knowledge_create: handle->internal_knowledge is NULL");
         return NULL;
     }
 
@@ -1635,11 +1647,13 @@ nimcp_status_t nimcp_knowledge_query(
 bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_enable_complex_oscillations: brain is NULL");
         return false;
     }
 
     if (!brain->internal_brain) {
         set_error("Brain has NULL internal_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_enable_complex_oscillations: brain->internal_brain is NULL");
         return false;
     }
 
@@ -1660,6 +1674,7 @@ bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
     // For actual enable/disable, we would need brain_config_t access
     // This is a placeholder implementation that at least validates the state
     set_error("Complex oscillation enable/disable requires brain reconfiguration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_enable_complex_oscillations: validation failed");
     return false;
 }
 
@@ -1668,6 +1683,7 @@ bool nimcp_enable_complex_oscillations(nimcp_brain_t brain, bool enable) {
  */
 bool nimcp_is_complex_oscillations_enabled(nimcp_brain_t brain) {
     if (!brain || !brain->internal_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_is_complex_oscillations_enabled: required parameter is NULL (brain, brain->internal_brain)");
         return false;
     }
 
@@ -1902,6 +1918,7 @@ float nimcp_get_pac_modulation(
 bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_resize: brain is NULL");
         return false;
     }
     
@@ -1911,6 +1928,7 @@ bool nimcp_brain_resize(nimcp_brain_t brain, uint32_t new_neuron_count) {
 bool nimcp_brain_auto_resize(nimcp_brain_t brain) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_auto_resize: brain is NULL");
         return false;
     }
     
@@ -1929,11 +1947,13 @@ uint32_t nimcp_brain_get_neuron_count(nimcp_brain_t brain) {
 bool nimcp_brain_get_utilization_metrics(nimcp_brain_t brain, float* utilization, float* saturation) {
     if (!brain) {
         set_error("Brain handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_utilization_metrics: brain is NULL");
         return false;
     }
 
     if (!utilization || !saturation) {
         set_error("Output parameters are NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_get_utilization_metrics: required parameter is NULL (utilization, saturation)");
         return false;
     }
 
@@ -1984,6 +2004,7 @@ static training_pipeline_state_t* get_training_state(nimcp_brain_t brain) {
             return &g_training_states[i].state;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_training_state: validation failed");
     return NULL;  // No space
 }
 

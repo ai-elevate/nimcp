@@ -192,25 +192,44 @@ parietal_bridge_config_t parietal_bridge_default_config(void) {
 }
 
 bool parietal_bridge_validate_config(const parietal_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     /* Use centralized constants for validation limits */
-    if (config->attention_map_width == 0 || config->attention_map_width > NIMCP_ATTENTION_MAP_MAX_WIDTH)
+    if (config->attention_map_width == 0 || config->attention_map_width > NIMCP_ATTENTION_MAP_MAX_WIDTH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: config->attention_map_width is zero");
         return false;
-    if (config->attention_map_height == 0 || config->attention_map_height > NIMCP_ATTENTION_MAP_MAX_HEIGHT / 2)
+    }
+    if (config->attention_map_height == 0 || config->attention_map_height > NIMCP_ATTENTION_MAP_MAX_HEIGHT / 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: config->attention_map_height is zero");
         return false;
-    if (config->attention_decay < 0 || config->attention_decay > 1.0f)
+    }
+    if (config->attention_decay < 0 || config->attention_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
-    if (config->saccade_threshold < 0 || config->saccade_threshold > M_PI)
+    }
+    if (config->saccade_threshold < 0 || config->saccade_threshold > M_PI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
-    if (config->pursuit_gain < 0 || config->pursuit_gain > 2.0f)
+    }
+    if (config->pursuit_gain < 0 || config->pursuit_gain > 2.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
-    if (config->motor_latency_ms < 0 || config->motor_latency_ms > 1000.0f)
+    }
+    if (config->motor_latency_ms < 0 || config->motor_latency_ms > 1000.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
-    if (config->gain_field_sigma <= 0)
+    }
+    if (config->gain_field_sigma <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
-    if (config->query_radius_default <= 0)
+    }
+    if (config->query_radius_default <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_bridge_validate_config: validation failed");
         return false;
+    }
 
     return true;
 }
@@ -292,7 +311,10 @@ void dragonfly_parietal_bridge_destroy(dragonfly_parietal_bridge_t* bridge) {
 }
 
 int dragonfly_parietal_bridge_reset(dragonfly_parietal_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_reset: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -320,7 +342,10 @@ int dragonfly_parietal_bridge_set_observer(
     dragonfly_parietal_bridge_t* bridge,
     const observer_state_t* observer
 ) {
-    if (!bridge || !bridge->initialized || !observer) return -1;
+    if (!bridge || !bridge->initialized || !observer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_set_observer: required parameter is NULL (bridge, bridge->initialized, observer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->observer = *observer;
@@ -334,7 +359,10 @@ int dragonfly_parietal_bridge_get_observer(
     const dragonfly_parietal_bridge_t* bridge,
     observer_state_t* observer
 ) {
-    if (!bridge || !bridge->initialized || !observer) return -1;
+    if (!bridge || !bridge->initialized || !observer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_get_observer: required parameter is NULL (bridge, bridge->initialized, observer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *observer = bridge->observer;
@@ -353,7 +381,10 @@ int dragonfly_parietal_bridge_transform_position(
     coordinate_frame_t from_frame,
     coordinate_frame_t to_frame
 ) {
-    if (!bridge || !bridge->initialized || !position) return -1;
+    if (!bridge || !bridge->initialized || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_transform_position: required parameter is NULL (bridge, bridge->initialized, position)");
+        return -1;
+    }
     if (from_frame == to_frame) return 0;  /* No transform needed */
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
@@ -410,7 +441,10 @@ int dragonfly_parietal_bridge_compute_angles(
     float* elevation,
     float* distance
 ) {
-    if (!bridge || !bridge->initialized || !position) return -1;
+    if (!bridge || !bridge->initialized || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_compute_angles: required parameter is NULL (bridge, bridge->initialized, position)");
+        return -1;
+    }
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -445,7 +479,10 @@ int dragonfly_parietal_bridge_transform_target(
     parietal_target_t* target,
     coordinate_frame_t target_frame
 ) {
-    if (!bridge || !bridge->initialized || !target) return -1;
+    if (!bridge || !bridge->initialized || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_transform_target: required parameter is NULL (bridge, bridge->initialized, target)");
+        return -1;
+    }
     if (target->frame == target_frame) return 0;
 
     /* Transform position */
@@ -481,7 +518,10 @@ int dragonfly_parietal_bridge_transform_target(
 //=============================================================================
 
 int dragonfly_parietal_bridge_sync_targets(dragonfly_parietal_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_sync_targets: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -538,7 +578,10 @@ int dragonfly_parietal_bridge_get_targets(
     parietal_target_t* targets,
     coordinate_frame_t frame
 ) {
-    if (!bridge || !bridge->initialized || !targets) return -1;
+    if (!bridge || !bridge->initialized || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_get_targets: required parameter is NULL (bridge, bridge->initialized, targets)");
+        return -1;
+    }
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -561,7 +604,10 @@ int dragonfly_parietal_bridge_get_primary_target(
     parietal_target_t* target,
     coordinate_frame_t frame
 ) {
-    if (!bridge || !bridge->initialized || !target) return -1;
+    if (!bridge || !bridge->initialized || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_get_primary_target: required parameter is NULL (bridge, bridge->initialized, target)");
+        return -1;
+    }
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
     nimcp_mutex_lock(mutable_bridge->base.mutex);
@@ -595,14 +641,21 @@ int dragonfly_parietal_bridge_get_primary_target(
 //=============================================================================
 
 parietal_attention_map_t* parietal_attention_map_create(uint32_t width, uint32_t height) {
-    if (width == 0 || height == 0) return NULL;
+    if (width == 0 || height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_attention_map_create: width is zero");
+        return NULL;
+    }
 
     parietal_attention_map_t* map = nimcp_calloc(1, sizeof(parietal_attention_map_t));
-    if (!map) return NULL;
+    if (!map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_attention_map_create: map is NULL");
+        return NULL;
+    }
 
     map->weights = nimcp_calloc(width * height, sizeof(float));
     if (!map->weights) {
         nimcp_free(map);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "parietal_attention_map_create: map->weights is NULL");
         return NULL;
     }
 
@@ -652,15 +705,24 @@ int parietal_attention_map_set(
     float elevation,
     float weight
 ) {
-    if (!map || !map->weights) return -1;
+    if (!map || !map->weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attention_map_set: required parameter is NULL (map, map->weights)");
+        return -1;
+    }
 
     /* Normalize to [0,1] */
     float az_norm = (azimuth - map->azimuth_min) / (map->azimuth_max - map->azimuth_min);
     float el_norm = (elevation - map->elevation_min) / (map->elevation_max - map->elevation_min);
 
     /* Clamp */
-    if (az_norm < 0 || az_norm > 1) return -1;
-    if (el_norm < 0 || el_norm > 1) return -1;
+    if (az_norm < 0 || az_norm > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_attention_map_set: validation failed");
+        return -1;
+    }
+    if (el_norm < 0 || el_norm > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parietal_attention_map_set: validation failed");
+        return -1;
+    }
 
     /* Map to indices */
     uint32_t x = (uint32_t)(az_norm * (map->width - 1));
@@ -688,7 +750,10 @@ int parietal_attention_map_find_peak(
     float* elevation,
     float* weight
 ) {
-    if (!map || !map->weights) return -1;
+    if (!map || !map->weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attention_map_find_peak: required parameter is NULL (map, map->weights)");
+        return -1;
+    }
 
     float max_weight = -1.0f;
     uint32_t max_x = 0, max_y = 0;
@@ -723,7 +788,10 @@ int dragonfly_parietal_bridge_update_attention(
     dragonfly_parietal_bridge_t* bridge,
     parietal_attention_map_t* map
 ) {
-    if (!bridge || !bridge->initialized || !map) return -1;
+    if (!bridge || !bridge->initialized || !map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_update_attention: required parameter is NULL (bridge, bridge->initialized, map)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -763,7 +831,10 @@ int dragonfly_parietal_bridge_generate_motor_command(
     uint32_t target_id,
     motor_command_t* command
 ) {
-    if (!bridge || !bridge->initialized || !command) return -1;
+    if (!bridge || !bridge->initialized || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_generate_motor_command: required parameter is NULL (bridge, bridge->initialized, command)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -778,6 +849,7 @@ int dragonfly_parietal_bridge_generate_motor_command(
 
     if (!target) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_generate_motor_command: target is NULL");
         return -1;
     }
 
@@ -819,7 +891,10 @@ int dragonfly_parietal_bridge_generate_saccade(
     float elevation,
     motor_command_t* command
 ) {
-    if (!bridge || !bridge->initialized || !command) return -1;
+    if (!bridge || !bridge->initialized || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_generate_saccade: required parameter is NULL (bridge, bridge->initialized, command)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -847,7 +922,10 @@ int dragonfly_parietal_bridge_generate_pursuit(
     uint32_t target_id,
     motor_command_t* command
 ) {
-    if (!bridge || !bridge->initialized || !command) return -1;
+    if (!bridge || !bridge->initialized || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_generate_pursuit: required parameter is NULL (bridge, bridge->initialized, command)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -862,6 +940,7 @@ int dragonfly_parietal_bridge_generate_pursuit(
 
     if (!target) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_generate_pursuit: target is NULL");
         return -1;
     }
 
@@ -891,7 +970,10 @@ int dragonfly_parietal_bridge_compute_intercept_path(
     parietal_waypoint_t* waypoints,
     uint32_t max_waypoints
 ) {
-    if (!bridge || !bridge->initialized || !waypoints || max_waypoints == 0) return -1;
+    if (!bridge || !bridge->initialized || !waypoints || max_waypoints == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_compute_intercept_path: required parameter is NULL (bridge, bridge->initialized, waypoints)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -959,7 +1041,10 @@ int dragonfly_parietal_bridge_compute_gain_field(
     const parietal_target_t* target,
     gain_field_t* gain_field
 ) {
-    if (!bridge || !bridge->initialized || !target || !gain_field) return -1;
+    if (!bridge || !bridge->initialized || !target || !gain_field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_compute_gain_field: required parameter is NULL (bridge, bridge->initialized, target, gain_field)");
+        return -1;
+    }
 
     memset(gain_field, 0, sizeof(gain_field_t));
 
@@ -993,7 +1078,10 @@ int dragonfly_parietal_bridge_apply_gain_field(
     motor_command_t* command,
     const gain_field_t* gain_field
 ) {
-    if (!command || !gain_field) return -1;
+    if (!command || !gain_field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_apply_gain_field: required parameter is NULL (command, gain_field)");
+        return -1;
+    }
 
     /* Modulate velocity by gain field */
     command->velocity.x *= gain_field->modulation_strength;
@@ -1014,7 +1102,10 @@ int dragonfly_parietal_bridge_get_stats(
     const dragonfly_parietal_bridge_t* bridge,
     parietal_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -1025,7 +1116,10 @@ int dragonfly_parietal_bridge_get_stats(
 }
 
 int dragonfly_parietal_bridge_reset_stats(dragonfly_parietal_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(parietal_bridge_stats_t));
@@ -1043,8 +1137,14 @@ int dragonfly_parietal_bridge_set_config(
     dragonfly_parietal_bridge_t* bridge,
     const parietal_bridge_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
-    if (!parietal_bridge_validate_config(config)) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_set_config: required parameter is NULL (bridge, bridge->initialized, config)");
+        return -1;
+    }
+    if (!parietal_bridge_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_parietal_bridge_set_config: parietal_bridge_validate_config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
@@ -1057,7 +1157,10 @@ int dragonfly_parietal_bridge_get_config(
     const dragonfly_parietal_bridge_t* bridge,
     parietal_bridge_config_t* config
 ) {
-    if (!bridge || !bridge->initialized || !config) return -1;
+    if (!bridge || !bridge->initialized || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_parietal_bridge_get_config: required parameter is NULL (bridge, bridge->initialized, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *config = bridge->config;

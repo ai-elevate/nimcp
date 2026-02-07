@@ -133,6 +133,7 @@ static void init_articulators(language_motor_bridge_t* bridge)
 static bool queue_command(language_motor_bridge_t* bridge, const articulator_command_t* cmd)
 {
     if (bridge->queue_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_command: capacity exceeded");
         return false;
     }
 
@@ -149,6 +150,7 @@ static bool queue_command(language_motor_bridge_t* bridge, const articulator_com
 static bool dequeue_command(language_motor_bridge_t* bridge, articulator_command_t* cmd)
 {
     if (bridge->queue_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_command: bridge->queue_count is zero");
         return false;
     }
 
@@ -173,6 +175,7 @@ static int send_to_motor_cortex(
     const articulator_command_t* cmd)
 {
     if (!bridge->motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_to_motor_cortex: bridge->motor is NULL");
         return -1;
     }
 
@@ -193,10 +196,12 @@ static int send_to_motor_cortex(
     goal.urgency = cmd->priority;
 
     if (!motor_plan_movement(bridge->motor, &goal)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "send_to_motor_cortex: motor_plan_movement is NULL");
         return -1;
     }
 
     if (!motor_begin_execution(bridge->motor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "send_to_motor_cortex: motor_begin_execution is NULL");
         return -1;
     }
 
@@ -474,6 +479,7 @@ int language_motor_bridge_update(
     uint64_t timestamp_ms)
 {
     if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
         return -1;
     }
 
@@ -521,10 +527,12 @@ int language_motor_send_command(
     const articulator_command_t* command)
 {
     if (!bridge || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_send_command: required parameter is NULL (bridge, command)");
         return -1;
     }
 
     if (!queue_command(bridge, command)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_motor_send_command: queue_command is NULL");
         return -1;
     }
 
@@ -538,6 +546,7 @@ int language_motor_send_phoneme_program(
     const phoneme_motor_program_t* program)
 {
     if (!bridge || !program) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_send_phoneme_program: required parameter is NULL (bridge, program)");
         return -1;
     }
 
@@ -549,6 +558,7 @@ int language_motor_send_phoneme_program(
         cmd.execution_time_ms = now_ms + (uint64_t)program->commands[i].execution_time_ms;
 
         if (!queue_command(bridge, &cmd)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_motor_send_phoneme_program: queue_command is NULL");
             return -1;
         }
     }
@@ -564,6 +574,7 @@ int language_motor_request_speech_production(
     const speech_production_request_t* request)
 {
     if (!bridge || !request || !request->phoneme_sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_request_speech_production: required parameter is NULL (bridge, request, request->phoneme_sequence)");
         return -1;
     }
 
@@ -655,6 +666,7 @@ int language_motor_receive_feedback(
     const proprioceptive_feedback_t* feedback)
 {
     if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_receive_feedback: required parameter is NULL (bridge, feedback)");
         return -1;
     }
 
@@ -713,6 +725,7 @@ int language_motor_get_articulator_state(
     articulator_state_t* state)
 {
     if (!bridge || !state || articulator >= ARTICULATOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_articulator_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -726,6 +739,7 @@ int language_motor_get_all_articulator_states(
     uint32_t max_states)
 {
     if (!bridge || !states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_all_articulator_states: required parameter is NULL (bridge, states)");
         return -1;
     }
 
@@ -744,6 +758,7 @@ int language_motor_get_production_status(
     speech_production_status_t* status)
 {
     if (!bridge || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_production_status: required parameter is NULL (bridge, status)");
         return -1;
     }
 
@@ -787,10 +802,12 @@ int language_motor_register_phoneme_program(
     const phoneme_motor_program_t* program)
 {
     if (!bridge || !program) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_register_phoneme_program: required parameter is NULL (bridge, program)");
         return -1;
     }
 
     if (program->phoneme_id >= MAX_PHONEME_PROGRAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_motor_register_phoneme_program: capacity exceeded");
         return -1;
     }
 
@@ -811,11 +828,13 @@ int language_motor_get_phoneme_program(
     phoneme_motor_program_t* program)
 {
     if (!bridge || !program) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_phoneme_program: required parameter is NULL (bridge, program)");
         return -1;
     }
 
     if (phoneme_id >= MAX_PHONEME_PROGRAMS ||
         !bridge->phoneme_programs[phoneme_id].is_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_phoneme_program: required parameter is NULL (bridge, program)");
         return -1;
     }
 
@@ -828,6 +847,7 @@ bool language_motor_has_phoneme_program(
     uint8_t phoneme_id)
 {
     if (!bridge || phoneme_id >= MAX_PHONEME_PROGRAMS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_motor_has_phoneme_program: bridge is NULL");
         return false;
     }
 
@@ -843,6 +863,7 @@ int language_motor_set_speech_rate(
     float rate_multiplier)
 {
     if (!bridge || rate_multiplier <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_motor_set_speech_rate: bridge is NULL");
         return -1;
     }
 
@@ -953,6 +974,7 @@ int language_motor_get_stats(
     language_motor_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -976,6 +998,7 @@ int language_motor_get_config(
     language_motor_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -988,6 +1011,7 @@ int language_motor_set_config(
     const language_motor_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_motor_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 

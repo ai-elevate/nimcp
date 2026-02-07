@@ -228,6 +228,7 @@ static ssize_t find_entry(
         return first_tombstone;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: capacity exceeded");
     return -1;
 }
 
@@ -267,6 +268,7 @@ static bool resize_table(config_hash_table_t table, size_t new_capacity) {
 
     if (!new_buckets_handle) {
         LOG_ERROR("Failed to allocate new buckets array for resize");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resize_table: new_buckets_handle is NULL");
         return false;
     }
 
@@ -366,6 +368,7 @@ static bool copy_value(
         dst->s = nimcp_strdup(src->s);
         if (!dst->s) {
             LOG_ERROR("Failed to duplicate string value");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy_value: dst->s is NULL");
             return false;
         }
     } else {
@@ -503,6 +506,7 @@ config_hash_table_t config_hash_create(size_t initial_capacity) {
         unified_mem_free(buckets_handle);
         unified_mem_free(table_handle);
         unified_mem_destroy(mem_manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_create: validation failed");
         return NULL;
     }
 
@@ -559,17 +563,20 @@ bool config_hash_set(
 ) {
     if (!table || !key || !value) {
         LOG_ERROR("Invalid parameters to config_hash_set");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_set: required parameter is NULL (table, key, value)");
         return false;
     }
 
     if (table->magic != CONFIG_HASH_MAGIC) {
         LOG_ERROR("Invalid table magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_set: validation failed");
         return false;
     }
 
     size_t key_len = strlen(key);
     if (key_len >= CONFIG_HASH_MAX_KEY_LEN) {
         LOG_ERROR("Key too long: %zu >= %d", key_len, CONFIG_HASH_MAX_KEY_LEN);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "config_hash_set: capacity exceeded");
         return false;
     }
 
@@ -582,12 +589,14 @@ bool config_hash_set(
         if (new_capacity > CONFIG_HASH_MAX_CAPACITY) {
             LOG_ERROR("Cannot resize beyond max capacity");
             nimcp_platform_rwlock_unlock(&table->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_set: validation failed");
             return false;
         }
 
         if (!resize_table(table, new_capacity)) {
             LOG_ERROR("Failed to resize table");
             nimcp_platform_rwlock_unlock(&table->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_set: resize_table is NULL");
             return false;
         }
     }
@@ -597,6 +606,7 @@ bool config_hash_set(
     if (index < 0) {
         LOG_ERROR("Failed to find insertion point for key: %s", key);
         nimcp_platform_rwlock_unlock(&table->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_hash_set: validation failed");
         return false;
     }
 
@@ -612,6 +622,7 @@ bool config_hash_set(
         // Copy new value
         if (!copy_value(&entry->value, value, type)) {
             nimcp_platform_rwlock_unlock(&table->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_set: copy_value is NULL");
             return false;
         }
 
@@ -626,6 +637,7 @@ bool config_hash_set(
         if (!entry->key) {
             LOG_ERROR("Failed to duplicate key");
             nimcp_platform_rwlock_unlock(&table->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_set: entry->key is NULL");
             return false;
         }
 
@@ -633,6 +645,7 @@ bool config_hash_set(
         if (!copy_value(&entry->value, value, type)) {
             nimcp_free(entry->key);
             nimcp_platform_rwlock_unlock(&table->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_set: copy_value is NULL");
             return false;
         }
 
@@ -664,11 +677,13 @@ bool config_hash_get(
 ) {
     if (!table || !key || !value) {
         LOG_ERROR("Invalid parameters to config_hash_get");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_get: required parameter is NULL (table, key, value)");
         return false;
     }
 
     if (table->magic != CONFIG_HASH_MAGIC) {
         LOG_ERROR("Invalid table magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_get: validation failed");
         return false;
     }
 
@@ -681,6 +696,7 @@ bool config_hash_get(
     if (index < 0) {
         nimcp_platform_rwlock_unlock(&table->lock);
         LOG_DEBUG("Key not found: %s", key);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_hash_get: validation failed");
         return false;
     }
 
@@ -689,6 +705,7 @@ bool config_hash_get(
     // Copy value
     if (!copy_value(value, &entry->value, entry->type)) {
         nimcp_platform_rwlock_unlock(&table->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_get: copy_value is NULL");
         return false;
     }
 
@@ -707,11 +724,13 @@ bool config_hash_get(
 bool config_hash_remove(config_hash_table_t table, const char* key) {
     if (!table || !key) {
         LOG_ERROR("Invalid parameters to config_hash_remove");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_remove: required parameter is NULL (table, key)");
         return false;
     }
 
     if (table->magic != CONFIG_HASH_MAGIC) {
         LOG_ERROR("Invalid table magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_remove: validation failed");
         return false;
     }
 
@@ -724,6 +743,7 @@ bool config_hash_remove(config_hash_table_t table, const char* key) {
     if (index < 0) {
         nimcp_platform_rwlock_unlock(&table->lock);
         LOG_DEBUG("Key not found for removal: %s", key);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "config_hash_remove: validation failed");
         return false;
     }
 
@@ -749,10 +769,12 @@ bool config_hash_remove(config_hash_table_t table, const char* key) {
 
 bool config_hash_contains(config_hash_table_t table, const char* key) {
     if (!table || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_contains: required parameter is NULL (table, key)");
         return false;
     }
 
     if (table->magic != CONFIG_HASH_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "config_hash_contains: validation failed");
         return false;
     }
 
@@ -851,6 +873,7 @@ config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
 
     if (table->magic != CONFIG_HASH_MAGIC) {
         LOG_ERROR("Invalid table magic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_hash_snapshot: validation failed");
         return NULL;
     }
 

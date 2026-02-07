@@ -22,6 +22,7 @@ protected:
 
     void SetUp() override {
         config = gd_default_config();
+        config.check_interval_ms = 10;  // Fast exit for monitor thread in tests
         ctx = gd_create(&config);
     }
 

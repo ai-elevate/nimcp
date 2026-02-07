@@ -148,6 +148,7 @@ static cooldown_entry_t* find_cooldown_entry(
             return &bridge->cooldown_entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_cooldown_entry: validation failed");
     return NULL;
 }
 
@@ -192,6 +193,7 @@ static bool is_in_cooldown(
 ) {
     cooldown_entry_t* entry = find_cooldown_entry(bridge, epitope);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_in_cooldown: entry is NULL");
         return false;
     }
 
@@ -217,6 +219,7 @@ static code_immune_repair_tracking_t* find_tracking_record(
             return &bridge->tracking[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tracking_record: validation failed");
     return NULL;
 }
 
@@ -301,6 +304,7 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
     self_repair_coordinator_t* self_repair
 ) {
     if (!code_immune || !self_repair) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_self_repair_bridge_create: required parameter is NULL (code_immune, self_repair)");
         return NULL;
     }
 
@@ -333,6 +337,7 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
         bridge->tracking_capacity, sizeof(code_immune_repair_tracking_t));
     if (!bridge->tracking) {
         code_immune_self_repair_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_immune_self_repair_bridge_create: bridge->tracking is NULL");
         return NULL;
     }
 
@@ -341,6 +346,7 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
         MAX_COOLDOWN_ENTRIES, sizeof(cooldown_entry_t));
     if (!bridge->cooldown_entries) {
         code_immune_self_repair_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_immune_self_repair_bridge_create: bridge->cooldown_entries is NULL");
         return NULL;
     }
 
@@ -350,6 +356,7 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
     bridge->mutex = nimcp_mutex_create(&attr);
     if (!bridge->mutex) {
         code_immune_self_repair_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "code_immune_self_repair_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -445,6 +452,7 @@ int code_immune_antigen_to_diagnostic(
     diagnostic_result_t** result
 ) {
     if (!antigen || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_antigen_to_diagnostic: required parameter is NULL (antigen, result)");
         return -1;
     }
 
@@ -550,10 +558,12 @@ bool code_immune_should_auto_repair(
     const code_antigen_t* antigen
 ) {
     if (!bridge || !antigen || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_should_auto_repair: required parameter is NULL (bridge, antigen, bridge->initialized)");
         return false;
     }
 
     if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_should_auto_repair: bridge->config is NULL");
         return false;
     }
 
@@ -563,16 +573,19 @@ bool code_immune_should_auto_repair(
 
 
     if (antigen->recurrence_count < bridge->config.min_crash_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
     /* Check severity threshold */
     if (antigen->severity < bridge->config.min_severity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
     /* Check confidence threshold */
     if (antigen->confidence < bridge->config.min_confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
@@ -585,6 +598,7 @@ bool code_immune_should_auto_repair(
     nimcp_mutex_unlock(mutable_bridge->mutex);
 
     if (in_cooldown) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_should_auto_repair: validation failed");
         return false;
     }
 
@@ -597,6 +611,7 @@ int code_immune_trigger_auto_repair(
     uint64_t* repair_id
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_trigger_auto_repair: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -611,6 +626,7 @@ int code_immune_trigger_auto_repair(
         bridge->code_immune, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_trigger_auto_repair: antigen is NULL");
         return -1;
     }
 
@@ -629,6 +645,7 @@ int code_immune_trigger_auto_repair(
     diagnostic_result_t* diagnostic = NULL;
     if (code_immune_antigen_to_diagnostic(antigen, &diagnostic) != 0) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_trigger_auto_repair: validation failed");
         return -1;
     }
 
@@ -643,6 +660,7 @@ int code_immune_trigger_auto_repair(
     if (ret != 0) {
         diagnostics_free_result(diagnostic);
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_trigger_auto_repair: validation failed");
         return -1;
     }
 
@@ -739,6 +757,7 @@ int code_immune_notify_repair_outcome(
     const char* error_message
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_notify_repair_outcome: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -748,20 +767,21 @@ int code_immune_notify_repair_outcome(
 
     nimcp_mutex_lock(bridge->mutex);
 
-    /* Find tracking record (may not exist for external notifications) */
+    /* Find tracking record - must exist for outcome to be valid */
     code_immune_repair_tracking_t* tracking = find_tracking_record(bridge, repair_id);
-    if (tracking) {
-        /* Update tracking if record exists */
-        tracking->completed_at = nimcp_time_get_ms();
-        tracking->success = success;
-        if (error_message) {
-            snprintf(tracking->error_message, sizeof(tracking->error_message),
-                     "%s", error_message);
-        }
+    if (!tracking) {
+        /* No tracking record for this repair_id - it was never triggered */
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
     }
-    /* Note: If no tracking record exists, we still update stats to allow
-     * external systems to report repair outcomes without going through
-     * the full trigger flow */
+
+    /* Update tracking record */
+    tracking->completed_at = nimcp_time_get_ms();
+    tracking->success = success;
+    if (error_message) {
+        snprintf(tracking->error_message, sizeof(tracking->error_message),
+                 "%s", error_message);
+    }
 
     /* Update statistics */
     if (success) {
@@ -890,6 +910,7 @@ const code_immune_repair_tracking_t* code_immune_get_repair_tracking(
     uint64_t repair_id
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_get_repair_tracking: required parameter is NULL (bridge, bridge->initialized)");
         return NULL;
     }
 
@@ -913,6 +934,7 @@ int code_immune_self_repair_get_stats(
     code_immune_self_repair_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_self_repair_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -952,6 +974,7 @@ bool code_immune_self_repair_is_ready(
     const code_immune_self_repair_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "code_immune_self_repair_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1023,6 +1046,7 @@ int code_immune_self_repair_broadcast_trigger(
     /* Broadcast via bio-router */
     nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_self_repair_broadcast_trigger: validation failed");
         return -1;
     }
 
@@ -1084,6 +1108,7 @@ int code_immune_self_repair_broadcast_outcome(
     /* Broadcast via bio-router */
     nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "code_immune_self_repair_broadcast_outcome: validation failed");
         return -1;
     }
 

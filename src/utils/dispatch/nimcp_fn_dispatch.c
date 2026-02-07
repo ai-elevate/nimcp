@@ -105,6 +105,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
     if (nimcp_mutex_init(&table->table_lock, NULL) != 0) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to initialize table mutex");
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fn_dispatch_create: validation failed");
         return NULL;
     }
 
@@ -115,6 +116,7 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate entries array");
         nimcp_mutex_destroy(&table->table_lock);
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fn_dispatch_create: table->entries is NULL");
         return NULL;
     }
 
@@ -375,10 +377,12 @@ NIMCP_EXPORT int fn_dispatch_register(fn_dispatch_table_t* table,
 NIMCP_EXPORT void* fn_dispatch_get(fn_dispatch_table_t* table, const char* name)
 {
     if (!table || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_get: required parameter is NULL (table, name)");
         return NULL;
     }
 
     if (!fn_dispatch_is_valid(table)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_get: fn_dispatch_is_valid is NULL");
         return NULL;
     }
 
@@ -399,6 +403,7 @@ NIMCP_EXPORT void* fn_dispatch_get(fn_dispatch_table_t* table, const char* name)
     // Check quarantine status
     if (entry->quarantined) {
         pthread_rwlock_unlock(&entry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_get: validation failed");
         return NULL;
     }
 
@@ -412,10 +417,12 @@ NIMCP_EXPORT const fn_dispatch_entry_t* fn_dispatch_get_entry(fn_dispatch_table_
                                                                 const char* name)
 {
     if (!table || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_get_entry: required parameter is NULL (table, name)");
         return NULL;
     }
 
     if (!fn_dispatch_is_valid(table)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_get_entry: fn_dispatch_is_valid is NULL");
         return NULL;
     }
 
@@ -755,6 +762,7 @@ NIMCP_EXPORT int fn_dispatch_get_stats(fn_dispatch_table_t* table,
 NIMCP_EXPORT bool fn_dispatch_is_valid(const fn_dispatch_table_t* table)
 {
     if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fn_dispatch_is_valid: table is NULL");
         return false;
     }
     return table->magic == FN_DISPATCH_MAGIC;
@@ -861,6 +869,7 @@ static fn_dispatch_entry_t* find_entry(fn_dispatch_table_t* table, const char* n
             return &table->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: validation failed");
     return NULL;
 }
 

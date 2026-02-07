@@ -137,6 +137,7 @@ static synapse_entry_t* find_synapse(jepa_plasticity_bridge_t* bridge, uint32_t 
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -152,6 +153,7 @@ static synapse_entry_t* find_free_slot(jepa_plasticity_bridge_t* bridge) {
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -230,6 +232,7 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
     /* Initialize base (includes mutex creation) */
     if (bridge_base_init(&bridge->base, 0, "jepa_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "jepa_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -239,6 +242,7 @@ jepa_plasticity_bridge_t* jepa_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -338,6 +342,7 @@ int jepa_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -345,6 +350,7 @@ int jepa_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -384,6 +390,7 @@ int jepa_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -410,6 +417,7 @@ int jepa_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -435,6 +443,7 @@ int jepa_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -468,6 +477,7 @@ int jepa_plasticity_learn(
     if (!entry) {
         bridge->state = JEPA_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_plasticity_learn: entry is NULL");
         return -1;
     }
 

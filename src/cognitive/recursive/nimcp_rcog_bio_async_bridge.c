@@ -214,6 +214,7 @@ rcog_bio_async_bridge_t* rcog_bio_async_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_bio_async") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_bio_async_bridge_create: validation failed");
         return NULL;
     }
 
@@ -327,6 +328,7 @@ int rcog_bio_async_bridge_disconnect(rcog_bio_async_bridge_t* bridge) {
 
 bool rcog_bio_async_bridge_is_connected(const rcog_bio_async_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_bio_async_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

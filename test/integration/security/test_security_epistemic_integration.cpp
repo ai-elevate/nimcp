@@ -28,6 +28,7 @@ extern "C" {
 #include "security/epistemic/nimcp_security_epistemic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/time/nimcp_time.h"
 }
 
 /* ============================================================================
@@ -72,7 +73,7 @@ protected:
         chain.independent_paths = 2;
         chain.overall_reliability = 0.85f;
 
-        uint64_t now_us = 1000000;
+        uint64_t now_us = nimcp_time_monotonic_us();
         for (uint32_t i = 0; i < links && i < SEC_EPIST_MAX_EVIDENCE_CHAIN; i++) {
             chain.links[i].evidence_id = 5000 + i;
             chain.links[i].source_id = 6000 + i;

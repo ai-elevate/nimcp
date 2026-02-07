@@ -322,7 +322,10 @@ bool brainstem_quantum_bridge_connect_reasoner(
     brainstem_quantum_bridge_t* bridge,
     brain_qreason_ctx_t* qreason) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_destroy: bridge is NULL");
+        return false;
+    }
 
     bridge->qreason = qreason;
     if (qreason) {
@@ -337,7 +340,10 @@ bool brainstem_quantum_bridge_connect_annealer(
     brainstem_quantum_bridge_t* bridge,
     quantum_annealer_t annealer) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_destroy: bridge is NULL");
+        return false;
+    }
 
     bridge->annealer = annealer;
     if (annealer) {
@@ -359,7 +365,10 @@ bool brainstem_quantum_select_reflex(
     float urgency,
     quantum_reflex_result_t* result) {
 
-    if (!bridge || !result) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_destroy: required parameter is NULL (bridge, result)");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     memset(result, 0, sizeof(quantum_reflex_result_t));
@@ -410,7 +419,10 @@ bool brainstem_quantum_optimize_arousal(
     float threat_level,
     quantum_arousal_result_t* result) {
 
-    if (!bridge || !result) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_destroy: required parameter is NULL (bridge, result)");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     memset(result, 0, sizeof(quantum_arousal_result_t));
@@ -457,7 +469,10 @@ bool brainstem_quantum_integrate_sensory(
     const brainstem_sensory_input_t* auditory_input,
     quantum_sensory_result_t* result) {
 
-    if (!bridge || !result) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_destroy: required parameter is NULL (bridge, result)");
+        return false;
+    }
 
     uint64_t start_us = get_time_us();
     memset(result, 0, sizeof(quantum_sensory_result_t));
@@ -537,7 +552,10 @@ uint32_t brainstem_quantum_evaluate_pathways(
  *===========================================================================*/
 
 bool brainstem_quantum_bridge_update(brainstem_quantum_bridge_t* bridge, float dt) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_update: bridge is NULL");
+        return false;
+    }
 
     /* Update timing */
     bridge->last_update_us = get_time_us();
@@ -570,7 +588,10 @@ bool brainstem_quantum_bridge_get_stats(
     const brainstem_quantum_bridge_t* bridge,
     brainstem_quantum_stats_t* stats) {
 
-    if (!bridge || !stats) return false;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_update: required parameter is NULL (bridge, stats)");
+        return false;
+    }
     *stats = bridge->stats;
     return true;
 }
@@ -610,7 +631,10 @@ bool brainstem_quantum_bridge_set_mix(
     brainstem_quantum_bridge_t* bridge,
     float mix) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_quantum_bridge_update: bridge is NULL");
+        return false;
+    }
 
     if (mix < 0.0f) mix = 0.0f;
     if (mix > 1.0f) mix = 1.0f;

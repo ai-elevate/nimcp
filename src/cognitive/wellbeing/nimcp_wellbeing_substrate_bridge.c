@@ -294,32 +294,31 @@ int enhanced_wellbeing_update_substrate(enhanced_wellbeing_system_t* system) {
 
     system->substrate_effects.ion_imbalance_effect = 1.0f - physical.ion_balance;
 
-    /* Compute total substrate distress (weighted average) */
+    /* Compute total substrate distress (cumulative, clamped to [0,1])
+     * WHY:  Multiple stressors compound rather than dilute each other.
+     *        A system with critical ATP + hypoxia + hyperthermia should show
+     *        higher total distress than any single stressor alone. */
     float total_distress = 0.0f;
-    int component_count = 0;
 
     if (system->config.substrate_config.enable_atp_effects) {
         total_distress += system->substrate_effects.atp_distress_contribution;
-        component_count++;
     }
 
     if (system->config.substrate_config.enable_temperature_effects) {
         total_distress += system->substrate_effects.temp_distress_contribution;
-        component_count++;
     }
 
     if (system->config.substrate_config.enable_hypoxia_effects) {
         total_distress += system->substrate_effects.hypoxia_distress_contribution;
-        component_count++;
     }
 
     if (system->config.substrate_config.enable_membrane_effects) {
         total_distress += system->substrate_effects.membrane_distress_contribution;
-        component_count++;
     }
 
-    system->substrate_effects.total_substrate_distress =
-        (component_count > 0) ? (total_distress / (float)component_count) : 0.0f;
+    /* Clamp cumulative distress to [0, 1] */
+    if (total_distress > 1.0f) total_distress = 1.0f;
+    system->substrate_effects.total_substrate_distress = total_distress;
 
     /* Distress tolerance modifier: substrate health affects distress tolerance */
     switch (health) {

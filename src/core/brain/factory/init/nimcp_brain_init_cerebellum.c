@@ -182,6 +182,7 @@ bool nimcp_brain_factory_init_cerebellum_subsystem(brain_t brain) {
     brain->cerebellum = cerebellum_create(&cb_cfg);
     if (!brain->cerebellum) {
         set_error("Failed to create Cerebellum adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_cerebellum_subsystem: brain->cerebellum is NULL");
         return false;
     }
 
@@ -338,6 +339,7 @@ bool nimcp_brain_factory_init_cerebellum_quantum_bridge(brain_t brain) {
 
     if (!brain->cerebellum_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Cerebellum quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_cerebellum_quantum_bridge: brain->cerebellum_quantum_bridge is NULL");
         return false;
     }
 

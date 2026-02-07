@@ -247,6 +247,7 @@ static mps_tensor_t* mps_tensor_alloc(
     tensor->data = (float*)nimcp_calloc(tensor->total_size, sizeof(float));
     if (!tensor->data) {
         nimcp_free(tensor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_tensor_alloc: tensor->data is NULL");
         return NULL;
     }
 
@@ -321,12 +322,18 @@ static bool tt_svd_decompose(
     mps_matrix_t* mps,
     const mps_config_t* config)
 {
-    if (!weights || !mps || !config || !mps->sites) return false;
+    if (!weights || !mps || !config || !mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tt_svd_decompose: required parameter is NULL (weights, mps, config, mps->sites)");
+        return false;
+    }
 
     // WHAT: Working buffer for current reshaped matrix
     uint32_t max_size = num_rows * num_cols;
     float* current_matrix = nimcp_malloc(max_size * sizeof(float));
-    if (!current_matrix) return false;
+    if (!current_matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tt_svd_decompose: current_matrix is NULL");
+        return false;
+    }
 
     // WHAT: Initialize with original weights
     memcpy(current_matrix, weights, num_rows * num_cols * sizeof(float));
@@ -360,6 +367,7 @@ static bool tt_svd_decompose(
         float* svd_matrix = nimcp_malloc(svd_rows * svd_cols * sizeof(float));
         if (!svd_matrix) {
             nimcp_free(current_matrix);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tt_svd_decompose: svd_matrix is NULL");
             return false;
         }
 
@@ -388,6 +396,7 @@ static bool tt_svd_decompose(
             nimcp_free(svd_matrix);
             nimcp_free(current_matrix);
             svd_free(&svd);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tt_svd_decompose: required parameter is NULL (svd, svd, svd)");
             return false;
         }
 
@@ -429,6 +438,7 @@ static bool tt_svd_decompose(
                 nimcp_free(svd_matrix);
                 nimcp_free(current_matrix);
                 svd_free(&svd);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tt_svd_decompose: next_matrix is NULL");
                 return false;
             }
 
@@ -511,8 +521,14 @@ mps_matrix_t* mps_compress_matrix(
     mps_stats_t* stats
 ) {
     // Guard: NULL checks
-    if (!weights || !config) return NULL;
-    if (num_rows == 0 || num_cols == 0) return NULL;
+    if (!weights || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_compress_matrix: required parameter is NULL (weights, config)");
+        return NULL;
+    }
+    if (num_rows == 0 || num_cols == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_compress_matrix: num_rows is zero");
+        return NULL;
+    }
 
     // Record start time
     uint64_t start_time = nimcp_time_get_ms();
@@ -540,6 +556,7 @@ mps_matrix_t* mps_compress_matrix(
     mps->sites = (mps_tensor_t*)nimcp_calloc(mps->num_sites, sizeof(mps_tensor_t));
     if (!mps->sites) {
         nimcp_free(mps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_compress_matrix: mps->sites is NULL");
         return NULL;
     }
 
@@ -557,6 +574,7 @@ mps_matrix_t* mps_compress_matrix(
             }
             nimcp_free(mps->sites);
             nimcp_free(mps);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_compress_matrix: tensor is NULL");
             return NULL;
         }
 
@@ -581,6 +599,7 @@ mps_matrix_t* mps_compress_matrix(
         }
         nimcp_free(mps->sites);
         nimcp_free(mps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_compress_matrix: success is NULL");
         return NULL;
     }
 
@@ -617,8 +636,14 @@ bool mps_matrix_vector_multiply(
     float* output
 ) {
     // Guard: NULL checks
-    if (!mps || !input || !output) return false;
-    if (!mps->sites || mps->num_sites == 0) return false;
+    if (!mps || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_matrix_vector_multiply: required parameter is NULL (mps, input, output)");
+        return false;
+    }
+    if (!mps->sites || mps->num_sites == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_matrix_vector_multiply: mps->sites is NULL");
+        return false;
+    }
 
     // ALGORITHM: Left-to-right contraction
     //
@@ -636,6 +661,7 @@ bool mps_matrix_vector_multiply(
     if (!v_curr || !v_next) {
         if (v_curr) nimcp_free(v_curr);
         if (v_next) nimcp_free(v_next);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_matrix_vector_multiply: validation failed");
         return false;
     }
 
@@ -700,7 +726,10 @@ bool mps_reconstruct_matrix(
     float* weights
 ) {
     // Guard: NULL checks
-    if (!mps || !weights) return false;
+    if (!mps || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_reconstruct_matrix: required parameter is NULL (mps, weights)");
+        return false;
+    }
 
     // WARNING: This defeats the purpose of compression!
     // Only use for validation/debugging.
@@ -709,7 +738,10 @@ bool mps_reconstruct_matrix(
     for (uint32_t i = 0; i < mps->input_dim; i++) {
         // Create one-hot input vector
         float* input = (float*)nimcp_calloc(mps->input_dim, sizeof(float));
-        if (!input) return false;
+        if (!input) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_reconstruct_matrix: input is NULL");
+            return false;
+        }
 
         input[i] = 1.0F;
 
@@ -719,7 +751,10 @@ bool mps_reconstruct_matrix(
 
         nimcp_free(input);
 
-        if (!success) return false;
+        if (!success) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_reconstruct_matrix: success is NULL");
+            return false;
+        }
     }
 
     return true;
@@ -808,6 +843,7 @@ mps_matrix_t* mps_clone(const mps_matrix_t* mps) {
     );
     if (!clone->sites) {
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_clone: clone->sites is NULL");
         return NULL;
     }
 
@@ -824,6 +860,7 @@ mps_matrix_t* mps_clone(const mps_matrix_t* mps) {
             }
             nimcp_free(clone->sites);
             nimcp_free(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_clone: clone->sites is NULL");
             return NULL;
         }
 
@@ -878,13 +915,20 @@ size_t mps_memory_usage(const mps_matrix_t* mps) {
 }
 
 bool mps_verify_structure(const mps_matrix_t* mps) {
-    if (!mps || !mps->sites) return false;
-    if (mps->num_sites == 0) return false;
+    if (!mps || !mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_verify_structure: required parameter is NULL (mps, mps->sites)");
+        return false;
+    }
+    if (mps->num_sites == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: mps->num_sites is zero");
+        return false;
+    }
 
     // Check first site has left_dim = 1
     if (mps->sites[0].left_dim != 1) {
         printf("MPS verification failed: First site left_dim = %u (expected 1)\n",
                mps->sites[0].left_dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
         return false;
     }
 
@@ -893,6 +937,7 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
     if (mps->sites[last].right_dim != mps->output_dim) {
         printf("MPS verification failed: Last site right_dim = %u (expected %u)\n",
                mps->sites[last].right_dim, mps->output_dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
         return false;
     }
 
@@ -902,6 +947,7 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
             printf("MPS verification failed: Bond mismatch at site %u\n", i);
             printf("  Site %u right_dim = %u\n", i, mps->sites[i].right_dim);
             printf("  Site %u left_dim = %u\n", i+1, mps->sites[i+1].left_dim);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_verify_structure: validation failed");
             return false;
         }
     }
@@ -910,6 +956,7 @@ bool mps_verify_structure(const mps_matrix_t* mps) {
     for (uint32_t i = 0; i < mps->num_sites; i++) {
         if (!mps->sites[i].data) {
             printf("MPS verification failed: Site %u has NULL data\n", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_verify_structure: mps->sites is NULL");
             return false;
         }
     }
@@ -941,15 +988,25 @@ bool mps_backward(
      */
 
     // Guard: NULL checks
-    if (!mps || !input || !grad_output || !grad_mps) return false;
-    if (!mps->sites || mps->num_sites == 0) return false;
-    if (!grad_mps->sites || grad_mps->num_sites != mps->num_sites) return false;
+    if (!mps || !input || !grad_output || !grad_mps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_backward: required parameter is NULL (mps, input, grad_output, grad_mps)");
+        return false;
+    }
+    if (!mps->sites || mps->num_sites == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_backward: mps->sites is NULL");
+        return false;
+    }
+    if (!grad_mps->sites || grad_mps->num_sites != mps->num_sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_backward: grad_mps->sites is NULL");
+        return false;
+    }
 
     // Validate grad_mps structure matches mps
     for (uint32_t site = 0; site < mps->num_sites; site++) {
         if (grad_mps->sites[site].left_dim != mps->sites[site].left_dim ||
             grad_mps->sites[site].right_dim != mps->sites[site].right_dim ||
             grad_mps->sites[site].phys_dim != mps->sites[site].phys_dim) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_backward: grad_mps->sites is NULL");
             return false;
         }
     }
@@ -959,7 +1016,10 @@ bool mps_backward(
 
     // Allocate storage for intermediate values
     float** v_intermediates = (float**)nimcp_calloc(mps->num_sites + 1, sizeof(float*));
-    if (!v_intermediates) return false;
+    if (!v_intermediates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_backward: v_intermediates is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i <= mps->num_sites; i++) {
         v_intermediates[i] = (float*)nimcp_calloc(max_dim, sizeof(float));
@@ -969,6 +1029,7 @@ bool mps_backward(
                 nimcp_free(v_intermediates[j]);
             }
             nimcp_free(v_intermediates);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_backward: v_intermediates is NULL");
             return false;
         }
     }
@@ -1034,6 +1095,7 @@ bool mps_backward(
             nimcp_free(v_intermediates[i]);
         }
         nimcp_free(v_intermediates);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_backward: grad_v is NULL");
         return false;
     }
 
@@ -1048,6 +1110,7 @@ bool mps_backward(
                 nimcp_free(v_intermediates[j]);
             }
             nimcp_free(v_intermediates);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_backward: grad_v is NULL");
             return false;
         }
     }
@@ -1132,10 +1195,22 @@ bool mps_update_params(
      */
 
     // Guard: NULL checks
-    if (!mps || !grad_mps) return false;
-    if (!mps->sites || !grad_mps->sites) return false;
-    if (mps->num_sites != grad_mps->num_sites) return false;
-    if (learning_rate <= 0.0F || learning_rate > 1.0F) return false;
+    if (!mps || !grad_mps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_update_params: required parameter is NULL (mps, grad_mps)");
+        return false;
+    }
+    if (!mps->sites || !grad_mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_update_params: required parameter is NULL (mps->sites, grad_mps->sites)");
+        return false;
+    }
+    if (mps->num_sites != grad_mps->num_sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_update_params: validation failed");
+        return false;
+    }
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_update_params: validation failed");
+        return false;
+    }
 
     // Update each site tensor
     for (uint32_t site = 0; site < mps->num_sites; site++) {
@@ -1147,6 +1222,7 @@ bool mps_update_params(
             tensor->right_dim != grad_tensor->right_dim ||
             tensor->phys_dim != grad_tensor->phys_dim ||
             tensor->total_size != grad_tensor->total_size) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_update_params: operation failed");
             return false;
         }
 
@@ -1187,9 +1263,18 @@ bool mps_adapt_bond_dimensions(
      */
 
     // Guard: NULL checks
-    if (!mps || !mps->sites) return false;
-    if (mps->num_sites < 2) return false;
-    if (target_error <= 0.0F || target_error >= 1.0F) return false;
+    if (!mps || !mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_adapt_bond_dimensions: required parameter is NULL (mps, mps->sites)");
+        return false;
+    }
+    if (mps->num_sites < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_adapt_bond_dimensions: validation failed");
+        return false;
+    }
+    if (target_error <= 0.0F || target_error >= 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_adapt_bond_dimensions: capacity exceeded");
+        return false;
+    }
 
     // Adaptive strategy: Compute importance of each bond
     // For simplicity, we'll analyze the Frobenius norm of each site tensor
@@ -1269,9 +1354,18 @@ bool mps_recompress(
      */
 
     // Guard: NULL checks
-    if (!mps || !mps->sites) return false;
-    if (mps->num_sites == 0) return false;
-    if (new_bond_dim == 0) return false;
+    if (!mps || !mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_recompress: required parameter is NULL (mps, mps->sites)");
+        return false;
+    }
+    if (mps->num_sites == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_recompress: mps->num_sites is zero");
+        return false;
+    }
+    if (new_bond_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_recompress: new_bond_dim is zero");
+        return false;
+    }
     if (new_bond_dim == mps->bond_dim) return true; // Already at target
 
     uint32_t old_bond_dim = mps->bond_dim;
@@ -1292,7 +1386,10 @@ bool mps_recompress(
 
         // Allocate new tensor data
         float* new_data = (float*)nimcp_calloc(new_total_size, sizeof(float));
-        if (!new_data) return false;
+        if (!new_data) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_recompress: new_data is NULL");
+            return false;
+        }
 
         // Copy existing data (truncate or pad as needed)
         uint32_t copy_left_dim = (new_left_dim < tensor->left_dim) ? new_left_dim : tensor->left_dim;
@@ -1381,8 +1478,14 @@ bool mps_canonicalize(
      */
 
     // Guard: NULL checks
-    if (!mps || !mps->sites) return false;
-    if (center_site >= mps->num_sites) return false;
+    if (!mps || !mps->sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps_canonicalize: required parameter is NULL (mps, mps->sites)");
+        return false;
+    }
+    if (center_site >= mps->num_sites) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_canonicalize: capacity exceeded");
+        return false;
+    }
 
 #ifdef NIMCP_ENABLE_LAPACK
     // WHAT: LAPACK-based QR canonicalization
@@ -1407,12 +1510,16 @@ bool mps_canonicalize(
         float work_query;
         int info;
 
-        if (!tau) return false;
+        if (!tau) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_canonicalize: tau is NULL");
+            return false;
+        }
 
         // Query optimal workspace
         sgeqrf_(&m, &n, tensor->data, &m, tau, &work_query, &lwork, &info);
         if (info != 0) {
             nimcp_free(tau);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_canonicalize: validation failed");
             return false;
         }
 
@@ -1420,6 +1527,7 @@ bool mps_canonicalize(
         float* work = (float*)nimcp_malloc(lwork * sizeof(float));
         if (!work) {
             nimcp_free(tau);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_canonicalize: work is NULL");
             return false;
         }
 
@@ -1429,6 +1537,7 @@ bool mps_canonicalize(
         if (info != 0) {
             nimcp_free(tau);
             nimcp_free(work);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_canonicalize: validation failed");
             return false;
         }
 
@@ -1438,6 +1547,7 @@ bool mps_canonicalize(
         if (!R) {
             nimcp_free(tau);
             nimcp_free(work);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_canonicalize: R is NULL");
             return false;
         }
 
@@ -1456,6 +1566,7 @@ bool mps_canonicalize(
 
         if (info != 0) {
             nimcp_free(R);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mps_canonicalize: validation failed");
             return false;
         }
 
@@ -1475,6 +1586,7 @@ bool mps_canonicalize(
                 next_left * next_phys * next_right * sizeof(float));
             if (!next_reshaped) {
                 nimcp_free(R);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mps_canonicalize: next_reshaped is NULL");
                 return false;
             }
 

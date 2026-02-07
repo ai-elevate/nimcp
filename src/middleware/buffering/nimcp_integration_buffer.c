@@ -134,6 +134,7 @@ integration_buffer_t* integration_buffer_create(
             }
             nimcp_free(buf->channels);
             nimcp_free(buf);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration_buffer_create: operation failed");
             return NULL;
         }
 
@@ -173,7 +174,10 @@ bool integration_buffer_add(
     uint64_t timestamp
 ) {
     // Guard: validate inputs
-    if (!buffer || channel >= buffer->num_channels) return false;
+    if (!buffer || channel >= buffer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_buffer_add: buffer is NULL");
+        return false;
+    }
 
     channel_buffers_t* cbuf = &buffer->channels[channel];
 

@@ -215,10 +215,16 @@ int vae_emotion_bridge_default_config(vae_emotion_bridge_config_t* config) {
 }
 
 vae_emotion_bridge_t* vae_emotion_bridge_create(const vae_emotion_bridge_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_emotion_bridge_create: config is NULL");
+        return NULL;
+    }
 
     vae_emotion_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_emotion_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_emotion_bridge_create: bridge is NULL");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = VAE_EMOTION_STATE_DISCONNECTED;
@@ -233,6 +239,7 @@ vae_emotion_bridge_t* vae_emotion_bridge_create(const vae_emotion_bridge_config_
                                                    sizeof(float));
         if (!bridge->emotion_embeddings) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_emotion_bridge_create: bridge->emotion_embeddings is NULL");
             return NULL;
         }
 

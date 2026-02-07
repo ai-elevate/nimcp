@@ -150,6 +150,7 @@ static uint32_t get_timestamp_ms(void) {
 static swarm_connection_t* find_swarm(swarm_gateway_t* gateway,
                                       const char* swarm_id) {
     if (!gateway || !swarm_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_timestamp_ms: required parameter is NULL (gateway, swarm_id)");
         return NULL;
     }
 
@@ -159,6 +160,7 @@ static swarm_connection_t* find_swarm(swarm_gateway_t* gateway,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_timestamp_ms: validation failed");
     return NULL;
 }
 
@@ -437,11 +439,13 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
 
     if (!bbb_check_pointer(server_brain, "swarm_gateway_create")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error", "Invalid server_brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: bbb_check_pointer is NULL");
         return NULL;
     }
 
     if (!bbb_check_pointer(config, "swarm_gateway_create")) {
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error", "Invalid config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -449,6 +453,7 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
         bbb_audit_log(BBB_AUDIT_WARNING, "swarm_gateway", "create_error",
                      "Invalid max_swarms: %u", config->max_swarms);
         LOG_ERROR("Invalid max_swarms: %u", config->max_swarms);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: config->max_swarms is zero");
         return NULL;
     }
 
@@ -478,6 +483,7 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
     if (!gateway->swarms) {
         LOG_ERROR("Failed to allocate swarm array");
         nimcp_free(gateway);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "simulate_telemetry_reception: gateway->swarms is NULL");
         return NULL;
     }
 
@@ -493,6 +499,7 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
         LOG_ERROR("Failed to initialize gateway mutex");
         nimcp_free(gateway->swarms);
         nimcp_free(gateway);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "simulate_telemetry_reception: validation failed");
         return NULL;
     }
     gateway->mutex_initialized = true;

@@ -145,6 +145,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
     snn_hippocampus_bridge_t* bridge = nimcp_malloc(sizeof(snn_hippocampus_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hippocampus bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -174,6 +175,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
     if (!bridge->place_cells) {
         NIMCP_LOGGING_ERROR("Failed to allocate place cells");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_bridge_create: bridge->place_cells is NULL");
         return NULL;
     }
 
@@ -187,6 +189,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
             }
             nimcp_free(bridge->place_cells);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: cell is NULL");
             return NULL;
         }
 
@@ -214,6 +217,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
         }
         nimcp_free(bridge->place_cells);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: bridge->episodes is NULL");
         return NULL;
     }
     memset(bridge->episodes, 0, bridge->max_episodes * sizeof(episodic_memory_t*));
@@ -229,6 +233,7 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
         }
         nimcp_free(bridge->place_cells);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: bridge->recent_ripples is NULL");
         return NULL;
     }
     memset(bridge->recent_ripples, 0, bridge->max_ripples * sizeof(ripple_event_t));
@@ -482,7 +487,10 @@ episodic_memory_t* snn_hippocampus_encode_episode(
 
     /* Allocate new episode */
     episodic_memory_t* episode = nimcp_malloc(sizeof(episodic_memory_t));
-    if (!episode) return NULL;
+    if (!episode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_hippocampus_encode_episode: episode is NULL");
+        return NULL;
+    }
 
     memset(episode, 0, sizeof(episodic_memory_t));
 
@@ -503,6 +511,7 @@ episodic_memory_t* snn_hippocampus_encode_episode(
 
     if (active_count < bridge->config.min_spikes_for_episode) {
         nimcp_free(episode);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_encode_episode: validation failed");
         return NULL;
     }
 
@@ -515,6 +524,7 @@ episodic_memory_t* snn_hippocampus_encode_episode(
         if (episode->spike_sequence) nimcp_free(episode->spike_sequence);
         if (episode->spike_times_relative) nimcp_free(episode->spike_times_relative);
         nimcp_free(episode);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_encode_episode: validation failed");
         return NULL;
     }
 

@@ -121,6 +121,7 @@ population_coding_fep_bridge_t* population_coding_fep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "population_coding_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         population_coding_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "population_coding_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -153,7 +154,10 @@ int population_coding_fep_bridge_connect_encoder(
     population_coding_fep_bridge_t* bridge,
     population_coding_encoder_t encoder
 ) {
-    if (!bridge || !encoder) return -1;
+    if (!bridge || !encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_bridge_connect_encoder: required parameter is NULL (bridge, encoder)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->population_encoder = encoder;
@@ -167,7 +171,10 @@ int population_coding_fep_bridge_connect_fep(
     population_coding_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return -1;
+    if (!bridge || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_bridge_connect_fep: required parameter is NULL (bridge, fep)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -326,8 +333,14 @@ int population_coding_fep_report_observation(
     population_coding_fep_bridge_t* bridge,
     const vector3d_t* vector
 ) {
-    if (!bridge || !vector) return -1;
-    if (!bridge->fep_system) return -1;
+    if (!bridge || !vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_report_observation: required parameter is NULL (bridge, vector)");
+        return -1;
+    }
+    if (!bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_report_observation: bridge->fep_system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -356,7 +369,10 @@ int population_coding_fep_update_precision_from_synchrony(
 
     }
     if (!bridge->config.enable_synchrony_confidence) return 0;
-    if (!bridge->fep_system) return -1;
+    if (!bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_update_precision_from_synchrony: bridge->fep_system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -468,7 +484,10 @@ int population_coding_fep_bridge_get_state(
     const population_coding_fep_bridge_t* bridge,
     population_coding_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *state = bridge->state;
@@ -481,7 +500,10 @@ int population_coding_fep_bridge_get_stats(
     const population_coding_fep_bridge_t* bridge,
     population_coding_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *stats = bridge->stats;
@@ -494,7 +516,10 @@ int population_coding_fep_get_tuning_width(
     const population_coding_fep_bridge_t* bridge,
     float* tuning_width
 ) {
-    if (!bridge || !tuning_width) return -1;
+    if (!bridge || !tuning_width) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_get_tuning_width: required parameter is NULL (bridge, tuning_width)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *tuning_width = bridge->state.effective_tuning_width;
@@ -507,7 +532,10 @@ int population_coding_fep_get_baseline(
     const population_coding_fep_bridge_t* bridge,
     float* baseline
 ) {
-    if (!bridge || !baseline) return -1;
+    if (!bridge || !baseline) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_get_baseline: required parameter is NULL (bridge, baseline)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock((void*)bridge->base.mutex);
     *baseline = bridge->state.effective_baseline;
@@ -573,6 +601,9 @@ int population_coding_fep_bridge_disconnect_bio_async(
 bool population_coding_fep_bridge_is_bio_async_connected(
     const population_coding_fep_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "population_coding_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

@@ -195,6 +195,7 @@ temporal_quantum_bridge_t* temporal_quantum_bridge_create(
     if (!bridge->amplitude_buffer) {
         LOG_ERROR("[%s] Failed to allocate amplitude buffer", LOG_MODULE);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_quantum_bridge_create: bridge->amplitude_buffer is NULL");
         return NULL;
     }
 

@@ -62,16 +62,19 @@ static int BioPromise_init(BioPromiseObject* self, PyObject* args, PyObject* kwd
     Py_ssize_t result_size = 0;  /* 0 = use sized completion */
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|in", kwlist, &channel, &result_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BioPromise_init: PyArg_ParseTupleAndKeywords is NULL");
         return -1;
     }
 
     if (channel < 0 || channel >= BIO_CHANNEL_COUNT) {
         PyErr_SetString(PyExc_ValueError, "Invalid channel type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "BioPromise_init: capacity exceeded");
         return -1;
     }
 
     if (result_size < 0) {
         PyErr_SetString(PyExc_ValueError, "result_size must be non-negative");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BioPromise_init: validation failed");
         return -1;
     }
 
@@ -81,6 +84,7 @@ static int BioPromise_init(BioPromiseObject* self, PyObject* args, PyObject* kwd
     self->promise = nimcp_bio_promise_create((nimcp_bio_channel_type_t)channel, (size_t)result_size);
     if (self->promise == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create bio-promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BioPromise_init: validation failed");
         return -1;
     }
 
@@ -97,6 +101,7 @@ static PyObject* BioPromise_complete(BioPromiseObject* self, PyObject* args)
     Py_buffer buffer;
 
     if (!PyArg_ParseTuple(args, "y*", &buffer)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioPromise_complete: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -108,6 +113,7 @@ static PyObject* BioPromise_complete(BioPromiseObject* self, PyObject* args)
             PyBuffer_Release(&buffer);
             PyErr_Format(PyExc_ValueError, "Expected %zu bytes, got %zd",
                         self->result_size, buffer.len);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BioPromise_complete: validation failed");
             return NULL;
         }
         Py_BEGIN_ALLOW_THREADS
@@ -130,6 +136,7 @@ static PyObject* BioPromise_complete(BioPromiseObject* self, PyObject* args)
         } else {
             PyErr_SetString(PyExc_RuntimeError, "Failed to complete promise");
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioPromise_complete: validation failed");
         return NULL;
     }
 
@@ -146,6 +153,7 @@ static PyObject* BioPromise_fail(BioPromiseObject* self, PyObject* args)
     int error_code;
 
     if (!PyArg_ParseTuple(args, "i", &error_code)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioPromise_fail: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -157,6 +165,7 @@ static PyObject* BioPromise_fail(BioPromiseObject* self, PyObject* args)
 
     if (status != NIMCP_SUCCESS) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to fail promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioPromise_fail: validation failed");
         return NULL;
     }
 
@@ -176,6 +185,7 @@ static PyObject* BioPromise_get_future(BioPromiseObject* self, PyObject* Py_UNUS
     nimcp_bio_future_t future = nimcp_bio_promise_get_future(self->promise);
     if (future == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioPromise_get_future: validation failed");
         return NULL;
     }
 
@@ -284,11 +294,13 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
     unsigned long long timeout_ms = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|K", kwlist, &timeout_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioFuture_wait: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
     if (self->future == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Future not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioFuture_wait: validation failed");
         return NULL;
     }
 
@@ -297,6 +309,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
     void* buffer = nimcp_malloc(buffer_size);
     if (buffer == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioFuture_wait: validation failed");
         return NULL;
     }
 
@@ -313,6 +326,7 @@ static PyObject* BioFuture_wait(BioFutureObject* self, PyObject* args, PyObject*
         } else {
             PyErr_SetString(PyExc_RuntimeError, "Wait failed");
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "BioFuture_wait: validation failed");
         return NULL;
     }
 
@@ -481,11 +495,13 @@ static int PhaseSync_init(PhaseSyncObject* self, PyObject* args, PyObject* kwds)
     int band = BIO_OSC_GAMMA;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|i", kwlist, &band)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PhaseSync_init: PyArg_ParseTupleAndKeywords is NULL");
         return -1;
     }
 
     if (band < 0 || band >= BIO_OSC_BAND_COUNT) {
         PyErr_SetString(PyExc_ValueError, "Invalid oscillation band");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "PhaseSync_init: capacity exceeded");
         return -1;
     }
 
@@ -494,6 +510,7 @@ static int PhaseSync_init(PhaseSyncObject* self, PyObject* args, PyObject* kwds)
 
     if (self->sync == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create phase sync");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PhaseSync_init: validation failed");
         return -1;
     }
 
@@ -510,12 +527,14 @@ static PyObject* PhaseSync_add_future(PhaseSyncObject* self, PyObject* args)
     PyObject* future_obj;
 
     if (!PyArg_ParseTuple(args, "O!", &BioFutureType, &future_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_add_future: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     BioFutureObject* future = (BioFutureObject*)future_obj;
     if (future->future == NULL) {
         PyErr_SetString(PyExc_ValueError, "Future not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_add_future: validation failed");
         return NULL;
     }
 
@@ -527,6 +546,7 @@ static PyObject* PhaseSync_add_future(PhaseSyncObject* self, PyObject* args)
 
     if (status != NIMCP_SUCCESS) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to add future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_add_future: validation failed");
         return NULL;
     }
 
@@ -544,6 +564,7 @@ static PyObject* PhaseSync_wait_all(PhaseSyncObject* self, PyObject* args, PyObj
     unsigned long long timeout_ms = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|K", kwlist, &timeout_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_wait_all: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -568,11 +589,13 @@ static PyObject* PhaseSync_wait_coherent(PhaseSyncObject* self, PyObject* args, 
     unsigned long long timeout_ms = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|fK", kwlist, &threshold, &timeout_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_wait_coherent: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
     if (threshold < 0.0f || threshold > 1.0f) {
         PyErr_SetString(PyExc_ValueError, "threshold must be 0.0-1.0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PhaseSync_wait_coherent: validation failed");
         return NULL;
     }
 
@@ -715,18 +738,21 @@ static int PredictiveModel_init(PredictiveModelObject* self, PyObject* args, PyO
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ff", kwlist,
                                       &signal_name, &initial_prediction, &initial_precision)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PredictiveModel_init: operation failed");
         return -1;
     }
 
     self->signal_name = strdup(signal_name);
     if (self->signal_name == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PredictiveModel_init: validation failed");
         return -1;
     }
 
     self->model = nimcp_predictive_create(signal_name, initial_prediction, initial_precision);
     if (self->model == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create predictive model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PredictiveModel_init: validation failed");
         return -1;
     }
 
@@ -743,6 +769,7 @@ static PyObject* PredictiveModel_observe(PredictiveModelObject* self, PyObject* 
     float value;
 
     if (!PyArg_ParseTuple(args, "f", &value)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PredictiveModel_observe: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -754,6 +781,7 @@ static PyObject* PredictiveModel_observe(PredictiveModelObject* self, PyObject* 
 
     if (status != NIMCP_SUCCESS) {
         PyErr_SetString(PyExc_RuntimeError, "Observation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PredictiveModel_observe: validation failed");
         return NULL;
     }
 
@@ -774,6 +802,7 @@ static PyObject* PredictiveModel_set_prediction(PredictiveModelObject* self, PyO
     float precision = 0.0f;  /* 0 = keep current */
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "f|f", kwlist, &prediction, &precision)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PredictiveModel_set_prediction: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -904,6 +933,7 @@ static int GlialWave_init(GlialWaveObject* self, PyObject* args, PyObject* kwds)
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "I|f", kwlist,
                                       &source_region, &initial_calcium)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "GlialWave_init: operation failed");
         return -1;
     }
 
@@ -912,6 +942,7 @@ static int GlialWave_init(GlialWaveObject* self, PyObject* args, PyObject* kwds)
 
     if (self->wave == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initiate glial wave");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "GlialWave_init: validation failed");
         return -1;
     }
 
@@ -929,6 +960,7 @@ static PyObject* GlialWave_step(GlialWaveObject* self, PyObject* args, PyObject*
     float dt_ms = 0.0f;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|f", kwlist, &dt_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialWave_step: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -951,6 +983,7 @@ static PyObject* GlialWave_get_level_at(GlialWaveObject* self, PyObject* args)
     unsigned int region_id;
 
     if (!PyArg_ParseTuple(args, "I", &region_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialWave_get_level_at: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -968,6 +1001,7 @@ static PyObject* GlialWave_has_reached(GlialWaveObject* self, PyObject* args)
     unsigned int region_id;
 
     if (!PyArg_ParseTuple(args, "I", &region_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialWave_has_reached: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -987,6 +1021,7 @@ static PyObject* GlialWave_wait_for_region(GlialWaveObject* self, PyObject* args
     unsigned long long timeout_ms = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "I|K", kwlist, &region_id, &timeout_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "GlialWave_wait_for_region: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -1119,6 +1154,7 @@ static PyObject* bio_async_step(PyObject* Py_UNUSED(self), PyObject* args)
     float dt_ms = 0.0f;
 
     if (!PyArg_ParseTuple(args, "|f", &dt_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_step: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -1163,45 +1199,60 @@ int init_bio_async_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.bio_async", "Initializing bio-async module");
 
     /* Ready types */
-    if (PyType_Ready(&BioPromiseType) < 0)
+    if (PyType_Ready(&BioPromiseType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
-    if (PyType_Ready(&BioFutureType) < 0)
+    }
+    if (PyType_Ready(&BioFutureType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
-    if (PyType_Ready(&PhaseSyncType) < 0)
+    }
+    if (PyType_Ready(&PhaseSyncType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
-    if (PyType_Ready(&PredictiveModelType) < 0)
+    }
+    if (PyType_Ready(&PredictiveModelType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
-    if (PyType_Ready(&GlialWaveType) < 0)
+    }
+    if (PyType_Ready(&GlialWaveType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
+    }
 
     /* Add types */
     Py_INCREF(&BioPromiseType);
     if (PyModule_AddObject(module, "BioPromise", (PyObject*)&BioPromiseType) < 0) {
         Py_DECREF(&BioPromiseType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&BioFutureType);
     if (PyModule_AddObject(module, "BioFuture", (PyObject*)&BioFutureType) < 0) {
         Py_DECREF(&BioFutureType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&PhaseSyncType);
     if (PyModule_AddObject(module, "PhaseSync", (PyObject*)&PhaseSyncType) < 0) {
         Py_DECREF(&PhaseSyncType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&PredictiveModelType);
     if (PyModule_AddObject(module, "PredictiveModel", (PyObject*)&PredictiveModelType) < 0) {
         Py_DECREF(&PredictiveModelType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&GlialWaveType);
     if (PyModule_AddObject(module, "GlialWave", (PyObject*)&GlialWaveType) < 0) {
         Py_DECREF(&GlialWaveType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
         return -1;
     }
 
@@ -1209,10 +1260,12 @@ int init_bio_async_module(PyObject* module)
     for (PyMethodDef* meth = bio_async_module_methods; meth->ml_name != NULL; meth++) {
         PyObject* func = PyCFunction_New(meth, NULL);
         if (func == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
             return -1;
         }
         if (PyModule_AddObject(module, meth->ml_name, func) < 0) {
             Py_DECREF(func);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_bio_async_module: validation failed");
             return -1;
         }
     }

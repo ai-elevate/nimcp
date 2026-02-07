@@ -135,6 +135,7 @@ static reasoning_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -203,6 +204,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "reasoning_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "reasoning_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -212,6 +214,7 @@ reasoning_plasticity_bridge_t* reasoning_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reasoning_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -250,7 +253,10 @@ void reasoning_plasticity_destroy(reasoning_plasticity_bridge_t* bridge) {
 }
 
 int reasoning_plasticity_reset(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -299,7 +305,10 @@ int reasoning_plasticity_register_synapse(
     reasoning_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -310,12 +319,14 @@ int reasoning_plasticity_register_synapse(
     /* Check if already exists */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_plasticity_register_synapse: validation failed");
         return -1;
     }
 
     /* Check capacity */
     if (bridge->num_synapses >= bridge->max_synapses) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "reasoning_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -350,7 +361,10 @@ int reasoning_plasticity_unregister_synapse(
     reasoning_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -377,6 +391,7 @@ int reasoning_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_plasticity_unregister_synapse: operation failed");
     return -1;
 }
 
@@ -385,7 +400,10 @@ int reasoning_plasticity_get_synapse(
     uint32_t synapse_id,
     reasoning_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -396,6 +414,7 @@ int reasoning_plasticity_get_synapse(
     reasoning_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_get_synapse: syn is NULL");
         return -1;
     }
 
@@ -410,7 +429,10 @@ int reasoning_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -421,6 +443,7 @@ int reasoning_plasticity_protect_synapse(
     reasoning_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_protect_synapse: syn is NULL");
         return -1;
     }
 
@@ -441,7 +464,10 @@ int reasoning_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -454,6 +480,7 @@ int reasoning_plasticity_learn(
     if (!syn) {
         bridge->state = REASONING_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_learn: syn is NULL");
         return -1;
     }
 
@@ -617,7 +644,10 @@ int reasoning_plasticity_apply_reward(
     reasoning_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -663,8 +693,14 @@ int reasoning_plasticity_update_bcm(
     reasoning_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -704,8 +740,14 @@ int reasoning_plasticity_homeostatic_update(
     reasoning_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_plasticity_homeostatic_update: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -787,8 +829,14 @@ int reasoning_plasticity_update_traces(
     reasoning_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reasoning_plasticity_update_traces: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -816,7 +864,10 @@ int reasoning_plasticity_update_traces(
 }
 
 int reasoning_plasticity_consolidate(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -851,7 +902,10 @@ int reasoning_plasticity_get_calibration_state(
     reasoning_plasticity_bridge_t* bridge,
     reasoning_calibration_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_get_calibration_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -868,7 +922,10 @@ int reasoning_plasticity_get_state(
     reasoning_plasticity_bridge_t* bridge,
     reasoning_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -914,7 +971,10 @@ int reasoning_plasticity_get_stats(
     reasoning_plasticity_bridge_t* bridge,
     reasoning_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -928,7 +988,10 @@ int reasoning_plasticity_get_stats(
 }
 
 int reasoning_plasticity_reset_stats(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -950,7 +1013,10 @@ int reasoning_plasticity_register_learn_callback(
     reasoning_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -969,7 +1035,10 @@ int reasoning_plasticity_register_calibration_callback(
     reasoning_plasticity_calibration_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_register_calibration_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -988,8 +1057,14 @@ int reasoning_plasticity_register_calibration_callback(
 //=============================================================================
 
 int reasoning_plasticity_bio_async_connect(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -1003,7 +1078,10 @@ int reasoning_plasticity_bio_async_connect(reasoning_plasticity_bridge_t* bridge
 }
 
 int reasoning_plasticity_bio_async_disconnect(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);
@@ -1017,7 +1095,10 @@ int reasoning_plasticity_bio_async_disconnect(reasoning_plasticity_bridge_t* bri
 }
 
 bool reasoning_plasticity_is_bio_async_connected(reasoning_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     reasoning_plasticity_bridge_heartbeat("reasoning_pl_reasoning_plasticity", 0.0f);

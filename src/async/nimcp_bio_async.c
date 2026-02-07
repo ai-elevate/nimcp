@@ -346,10 +346,12 @@ static void handle_tracker_shutdown(void) {
 static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
     if (!g_handle_tracker.initialized) {
         LOG_DEBUG("Handle tracker not initialized, cannot register %p", ptr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "handle_tracker_register: g_handle_tracker is NULL");
         return false;
     }
     if (!ptr || !handle) {
         LOG_WARNING("Invalid arguments to handle_tracker_register: ptr=%p, handle=%p", ptr, (void*)handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_tracker_register: required parameter is NULL (ptr, handle)");
         return false;
     }
 
@@ -377,6 +379,7 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
     LOG_ERROR("Handle tracker full (%d entries) - cannot track allocation at %p "
               "(overflow count: %u, consider increasing BIO_MAX_TRACKED_HANDLES)",
               BIO_MAX_TRACKED_HANDLES, ptr, overflow_count);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "handle_tracker_register: operation failed");
     return false;
 }
 
@@ -387,6 +390,7 @@ static bool handle_tracker_register(void* ptr, unified_mem_handle_t handle) {
 static unified_mem_handle_t handle_tracker_remove(void* ptr) {
     if (!g_handle_tracker.initialized) {
         BIO_TRACE("Handle tracker not initialized, ptr %p assumed malloc'd", ptr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "handle_tracker_remove: g_handle_tracker is NULL");
         return NULL;
     }
     if (!ptr) {
@@ -411,6 +415,7 @@ static unified_mem_handle_t handle_tracker_remove(void* ptr) {
 
     nimcp_mutex_unlock(&g_handle_tracker.mutex);
     BIO_TRACE("Pointer %p not in handle tracker, assuming malloc'd", ptr);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle_tracker_remove: operation failed");
     return NULL;  /* Not found - allocated via nimcp_malloc */
 }
 
@@ -607,6 +612,7 @@ static nimcp_bio_shared_state_t* shared_state_create(
     if (!shared) {
         LOG_ERROR("Failed to allocate bio shared state (%zu bytes)",
                   sizeof(nimcp_bio_shared_state_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shared_state_create: shared is NULL");
         return NULL;
     }
 
@@ -643,12 +649,14 @@ static nimcp_bio_shared_state_t* shared_state_create(
     if (nimcp_mutex_init(&shared->mutex, NULL) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize shared state mutex");
         bio_free(shared);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shared_state_create: validation failed");
         return NULL;
     }
     if (nimcp_cond_init(&shared->cond) != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to initialize shared state condition variable");
         nimcp_mutex_destroy(&shared->mutex);
         bio_free(shared);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shared_state_create: validation failed");
         return NULL;
     }
 
@@ -1094,11 +1102,13 @@ nimcp_bio_promise_t nimcp_bio_promise_create(
 {
     if (!g_bio_async.initialized) {
         LOG_ERROR("Bio-async not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_bio_promise_create: g_bio_async is NULL");
         return NULL;
     }
 
     if (channel >= BIO_CHANNEL_COUNT) {
         LOG_ERROR("Invalid channel type: %d", channel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_bio_promise_create: capacity exceeded");
         return NULL;
     }
 
@@ -1106,12 +1116,14 @@ nimcp_bio_promise_t nimcp_bio_promise_create(
         bio_alloc(sizeof(struct nimcp_bio_promise_struct));
     if (!promise) {
         LOG_ERROR("Failed to allocate bio promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bio_promise_create: promise is NULL");
         return NULL;
     }
 
     nimcp_bio_shared_state_t* shared = shared_state_create(channel, result_size);
     if (!shared) {
         bio_free(promise);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bio_promise_create: shared is NULL");
         return NULL;
     }
 
@@ -1312,12 +1324,14 @@ nimcp_bio_future_t nimcp_bio_promise_get_future(nimcp_bio_promise_t promise) {
 
     if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
         LOG_ERROR("nimcp_bio_promise_get_future: invalid promise");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_get_future: promise is NULL");
         return NULL;
     }
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
         LOG_ERROR("nimcp_bio_promise_get_future: invalid shared state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_get_future: shared is NULL");
         return NULL;
     }
 
@@ -1325,6 +1339,7 @@ nimcp_bio_future_t nimcp_bio_promise_get_future(nimcp_bio_promise_t promise) {
         bio_alloc(sizeof(struct nimcp_bio_future_struct));
     if (!future) {
         LOG_ERROR("nimcp_bio_promise_get_future: failed to allocate future");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bio_promise_get_future: future is NULL");
         return NULL;
     }
 
@@ -1575,17 +1590,20 @@ nimcp_error_t nimcp_bio_future_then(
 
 bool nimcp_bio_future_cancel(nimcp_bio_future_t future) {
     if (!future || future->magic != BIO_MAGIC_FUTURE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bio_future_cancel: future is NULL");
         return false;
     }
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bio_future_cancel: shared is NULL");
         return false;
     }
 
     uint32_t expected = BIO_FUTURE_PENDING;
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_CANCELLED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bio_future_cancel: shared is NULL");
         return false;
     }
 
@@ -1633,11 +1651,13 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
 
     if (!g_bio_async.initialized) {
         LOG_ERROR("nimcp_phase_sync_create: bio-async not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_phase_sync_create: g_bio_async is NULL");
         return NULL;
     }
 
     if (band >= BIO_OSC_BAND_COUNT) {
         LOG_ERROR("nimcp_phase_sync_create: invalid band %d", band);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_phase_sync_create: capacity exceeded");
         return NULL;
     }
 
@@ -1645,6 +1665,7 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
         bio_aligned_alloc(BIO_CACHE_LINE_SIZE, sizeof(struct nimcp_phase_sync_struct));
     if (!sync) {
         LOG_ERROR("nimcp_phase_sync_create: failed to allocate phase sync");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_phase_sync_create: sync is NULL");
         return NULL;
     }
 
@@ -1658,6 +1679,7 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
     if (!sync->oscillators) {
         LOG_ERROR("nimcp_phase_sync_create: failed to allocate oscillators array");
         bio_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_phase_sync_create: sync->oscillators is NULL");
         return NULL;
     }
     sync->count = 0;
@@ -1681,12 +1703,14 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
     if (nimcp_rwlock_init(&sync->rwlock) != NIMCP_SUCCESS) {
         bio_free(sync->oscillators);
         bio_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_phase_sync_create: validation failed");
         return NULL;
     }
     if (nimcp_cond_init(&sync->cond) != NIMCP_SUCCESS) {
         nimcp_rwlock_destroy(&sync->rwlock);
         bio_free(sync->oscillators);
         bio_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_phase_sync_create: validation failed");
         return NULL;
     }
     if (nimcp_mutex_init(&sync->cond_mutex, NULL) != NIMCP_SUCCESS) {
@@ -1694,6 +1718,7 @@ nimcp_phase_sync_t nimcp_phase_sync_create(nimcp_oscillation_band_t band) {
         nimcp_rwlock_destroy(&sync->rwlock);
         bio_free(sync->oscillators);
         bio_free(sync);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_phase_sync_create: validation failed");
         return NULL;
     }
 
@@ -1930,6 +1955,7 @@ nimcp_predictive_model_t nimcp_predictive_create(
     float initial_precision)
 {
     if (!g_bio_async.initialized || !signal_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_predictive_create: required parameter is NULL (g_bio_async, signal_name)");
         return NULL;
     }
 
@@ -1957,6 +1983,7 @@ nimcp_predictive_model_t nimcp_predictive_create(
 
     if (nimcp_rwlock_init(&model->rwlock) != NIMCP_SUCCESS) {
         bio_free(model);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_predictive_create: validation failed");
         return NULL;
     }
 
@@ -2122,6 +2149,7 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
     float initial_calcium)
 {
     if (!g_bio_async.initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_glial_wave_initiate: g_bio_async is NULL");
         return NULL;
     }
 
@@ -2144,6 +2172,7 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
     wave->regions = (region_state_t*)bio_alloc(wave->num_regions * sizeof(region_state_t));
     if (!wave->regions) {
         bio_free(wave);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_glial_wave_initiate: wave->regions is NULL");
         return NULL;
     }
 
@@ -2169,12 +2198,14 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
     if (nimcp_rwlock_init(&wave->rwlock) != NIMCP_SUCCESS) {
         bio_free(wave->regions);
         bio_free(wave);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_glial_wave_initiate: validation failed");
         return NULL;
     }
     if (nimcp_cond_init(&wave->cond) != NIMCP_SUCCESS) {
         nimcp_rwlock_destroy(&wave->rwlock);
         bio_free(wave->regions);
         bio_free(wave);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_glial_wave_initiate: validation failed");
         return NULL;
     }
     if (nimcp_mutex_init(&wave->cond_mutex, NULL) != NIMCP_SUCCESS) {
@@ -2182,6 +2213,7 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
         nimcp_rwlock_destroy(&wave->rwlock);
         bio_free(wave->regions);
         bio_free(wave);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_glial_wave_initiate: validation failed");
         return NULL;
     }
 
@@ -2281,10 +2313,12 @@ float nimcp_glial_wave_get_level_at(nimcp_glial_wave_t wave, uint32_t region_id)
 
 bool nimcp_glial_wave_has_reached(nimcp_glial_wave_t wave, uint32_t region_id) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_has_reached: wave is NULL");
         return false;
     }
 
     if (region_id >= wave->num_regions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_has_reached: capacity exceeded");
         return false;
     }
 
@@ -2371,6 +2405,7 @@ float nimcp_glial_wave_get_radius(nimcp_glial_wave_t wave) {
 
 bool nimcp_glial_wave_is_active(nimcp_glial_wave_t wave) {
     if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_glial_wave_is_active: wave is NULL");
         return false;
     }
     return wave->active;

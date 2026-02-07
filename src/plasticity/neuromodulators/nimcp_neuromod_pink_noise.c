@@ -213,6 +213,7 @@ neuromod_pink_noise_t* neuromod_pink_create(const neuromod_pink_config_t* config
     if (!mod->dopamine_noise || !mod->serotonin_noise ||
         !mod->acetylcholine_noise || !mod->norepinephrine_noise) {
         neuromod_pink_destroy(mod);  // Cleanup partial initialization
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_pink_create: operation failed");
         return NULL;
     }
 
@@ -623,6 +624,7 @@ bool neuromod_pink_save(neuromod_pink_noise_t* mod, FILE* file)
 {
     // Guard: Validate parameters
     if (!mod || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_pink_save: required parameter is NULL (mod, file)");
         return false;
     }
 
@@ -631,47 +633,105 @@ bool neuromod_pink_save(neuromod_pink_noise_t* mod, FILE* file)
     // HOW:  Write uint32_t version = 1
     uint32_t version = 1;
     if (fwrite(&version, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
         return false;
     }
 
     // WHAT: Write baseline levels
     // WHY:  Restore resting neuromodulator levels
     // HOW:  Binary write of 4 float baselines
-    if (fwrite(&mod->dopamine_baseline, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->serotonin_baseline, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->acetylcholine_baseline, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->norepinephrine_baseline, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->dopamine_baseline, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->serotonin_baseline, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->acetylcholine_baseline, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->norepinephrine_baseline, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
 
     // WHAT: Write current levels
     // WHY:  Restore active neuromodulator concentrations
     // HOW:  Binary write of 4 float current levels
-    if (fwrite(&mod->dopamine_current, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->serotonin_current, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->acetylcholine_current, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->norepinephrine_current, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->dopamine_current, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->serotonin_current, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->acetylcholine_current, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->norepinephrine_current, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
 
     // WHAT: Write noise amplitudes
     // WHY:  Restore exploration noise levels
     // HOW:  Binary write of 4 float amplitudes
-    if (fwrite(&mod->dopamine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->serotonin_noise_amplitude, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->acetylcholine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->norepinephrine_noise_amplitude, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->dopamine_noise_amplitude, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->serotonin_noise_amplitude, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->acetylcholine_noise_amplitude, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->norepinephrine_noise_amplitude, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
 
     // WHAT: Write statistics
     // WHY:  Preserve historical tracking data
     // HOW:  Binary write of update_count, avg_dopamine, avg_serotonin
-    if (fwrite(&mod->update_count, sizeof(uint64_t), 1, file) != 1) return false;
-    if (fwrite(&mod->avg_dopamine, sizeof(float), 1, file) != 1) return false;
-    if (fwrite(&mod->avg_serotonin, sizeof(float), 1, file) != 1) return false;
+    if (fwrite(&mod->update_count, sizeof(uint64_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->avg_dopamine, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
+    if (fwrite(&mod->avg_serotonin, sizeof(float), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: validation failed");
+        return false;
+    }
 
     // WHAT: Write pink noise generators
     // WHY:  Restore exact noise generator state for reproducibility
     // HOW:  Use pink_noise_save API for each generator
-    if (!pink_noise_save(mod->dopamine_noise, file)) return false;
-    if (!pink_noise_save(mod->serotonin_noise, file)) return false;
-    if (!pink_noise_save(mod->acetylcholine_noise, file)) return false;
-    if (!pink_noise_save(mod->norepinephrine_noise, file)) return false;
+    if (!pink_noise_save(mod->dopamine_noise, file)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: pink_noise_save is NULL");
+        return false;
+    }
+    if (!pink_noise_save(mod->serotonin_noise, file)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: pink_noise_save is NULL");
+        return false;
+    }
+    if (!pink_noise_save(mod->acetylcholine_noise, file)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: pink_noise_save is NULL");
+        return false;
+    }
+    if (!pink_noise_save(mod->norepinephrine_noise, file)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_save: pink_noise_save is NULL");
+        return false;
+    }
 
     return true;
 }
@@ -703,10 +763,12 @@ neuromod_pink_noise_t* neuromod_pink_load(FILE* file)
     // HOW:  Read version, check against current version
     uint32_t version = 0;
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_pink_load: validation failed");
         return NULL;
     }
 
     if (version != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_pink_load: validation failed");
         return NULL;
     }
 
@@ -775,5 +837,6 @@ cleanup:
     if (mod) {
         neuromod_pink_destroy(mod);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_pink_load: validation failed");
     return NULL;
 }

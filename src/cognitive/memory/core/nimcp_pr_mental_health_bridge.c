@@ -180,7 +180,10 @@ static pr_mh_retrieval_event_t* get_history_entry(
     pr_mental_health_bridge_t bridge,
     size_t index
 ) {
-    if (index >= bridge->history_count) return NULL;
+    if (index >= bridge->history_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_history_entry: capacity exceeded");
+        return NULL;
+    }
 
     // Calculate actual position in circular buffer
     size_t start;
@@ -215,6 +218,7 @@ static pr_mh_intrusion_record_t* find_or_create_intrusion_record(
 
     // Create new if capacity allows
     if (bridge->intrusion_count >= bridge->intrusion_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_intrusion_record: capacity exceeded");
         return NULL;  // At capacity
     }
 
@@ -244,6 +248,7 @@ static pr_mh_rumination_pattern_t* find_rumination_pattern(
             return &bridge->rumination_patterns[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rumination_pattern: validation failed");
     return NULL;
 }
 
@@ -258,6 +263,7 @@ static pr_mh_rumination_pattern_t* find_or_create_rumination_pattern(
     if (pattern) return pattern;
 
     if (bridge->rumination_count >= bridge->rumination_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_rumination_pattern: capacity exceeded");
         return NULL;
     }
 
@@ -422,17 +428,29 @@ pr_mh_config_t pr_mental_health_bridge_default_config(void) {
 }
 
 bool pr_mental_health_bridge_validate_config(const pr_mh_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->retrieval_history_size == 0) return false;
-    if (config->rumination_threshold == 0) return false;
+    if (config->retrieval_history_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_mental_health_bridge_validate_config: config->retrieval_history_size is zero");
+        return false;
+    }
+    if (config->rumination_threshold == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_mental_health_bridge_validate_config: config->rumination_threshold is zero");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     pr_mental_health_bridge_heartbeat("pr_mental_he_validate_config", 0.0f);
 
 
     if (config->intrusion_intensity_threshold < 0.0f ||
         config->intrusion_intensity_threshold > 1.0f) return false;
-    if (config->valence_bias_healthy_min >= config->valence_bias_healthy_max) return false;
+    if (config->valence_bias_healthy_min >= config->valence_bias_healthy_max) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_mental_health_bridge_validate_config: capacity exceeded");
+        return false;
+    }
     if (config->trauma_load_threshold < 0.0f ||
         config->trauma_load_threshold > 1.0f) return false;
 
@@ -452,7 +470,10 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
 
     pr_mh_config_t cfg;
     if (config) {
-        if (!pr_mental_health_bridge_validate_config(config)) return NULL;
+        if (!pr_mental_health_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: pr_mental_health_bridge_validate_config is NULL");
+            return NULL;
+        }
         cfg = *config;
     } else {
         cfg = pr_mental_health_bridge_default_config();
@@ -480,6 +501,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     if (!bridge->history) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_mental_health_bridge_create: bridge->history is NULL");
         return NULL;
     }
 
@@ -491,6 +513,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_create: bridge->rumination_patterns is NULL");
         return NULL;
     }
 
@@ -503,6 +526,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_create: bridge->intrusion_records is NULL");
         return NULL;
     }
 
@@ -776,7 +800,10 @@ bool pr_mental_health_bridge_is_ruminating_on(
     uint64_t node_id,
     pr_mh_rumination_pattern_t* pattern
 ) {
-    if (!bridge || !bridge->initialized) return false;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_is_ruminating_on: required parameter is NULL (bridge, bridge->initialized)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_mental_health_bridge_heartbeat("pr_mental_he_is_ruminating_on", 0.0f);
@@ -1064,7 +1091,10 @@ bool pr_mental_health_bridge_valence_bias_concerning(
     pr_mental_health_bridge_t bridge,
     pr_mh_indicator_t* indicator
 ) {
-    if (!bridge || !bridge->initialized) return false;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_valence_bias_concerning: required parameter is NULL (bridge, bridge->initialized)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_mental_health_bridge_heartbeat("pr_mental_he_valence_bias_concern", 0.0f);
@@ -1072,6 +1102,7 @@ bool pr_mental_health_bridge_valence_bias_concerning(
 
     pr_mh_valence_bias_t bias;
     if (pr_mental_health_bridge_analyze_valence_bias(bridge, &bias) != PR_MH_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_mental_health_bridge_valence_bias_concerning: validation failed");
         return false;
     }
 
@@ -1085,6 +1116,7 @@ bool pr_mental_health_bridge_valence_bias_concerning(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_mental_health_bridge_valence_bias_concerning: validation failed");
     return false;
 }
 
@@ -1765,8 +1797,14 @@ uint64_t pr_mental_health_bridge_current_time_ms(void) {
 }
 
 bool pr_mental_health_bridge_validate(pr_mental_health_bridge_t bridge) {
-    if (!bridge) return false;
-    if (!bridge->initialized) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_validate: bridge is NULL");
+        return false;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_mental_health_bridge_validate: bridge->initialized is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_mental_health_bridge_heartbeat("pr_mental_he_validate", 0.0f);

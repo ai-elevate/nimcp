@@ -100,6 +100,7 @@ sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake
     if (bridge_base_init(&bridge->base, 0, "sleep_wake_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->sleep_wake = sleep_wake;
@@ -121,7 +122,10 @@ void sleep_wake_thalamic_bridge_destroy(sleep_wake_thalamic_bridge_t* bridge) {
 }
 
 int sleep_wake_thalamic_bridge_reset(sleep_wake_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -130,7 +134,10 @@ int sleep_wake_thalamic_bridge_reset(sleep_wake_thalamic_bridge_t* bridge) {
 }
 
 int sleep_wake_thalamic_route_arousal(sleep_wake_thalamic_bridge_t* bridge, const sleep_wake_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_route_arousal: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.arousal_updates++;
     bridge->stats.avg_arousal_level = (bridge->stats.avg_arousal_level * (bridge->stats.arousal_updates - 1) +
@@ -146,7 +153,10 @@ int sleep_wake_thalamic_route_arousal(sleep_wake_thalamic_bridge_t* bridge, cons
 }
 
 int sleep_wake_thalamic_modulate_gating(sleep_wake_thalamic_bridge_t* bridge, float arousal_level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_modulate_gating: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     /* Modulate attention based on arousal level */
     if (bridge->config.enable_arousal_modulation) {
@@ -157,7 +167,10 @@ int sleep_wake_thalamic_modulate_gating(sleep_wake_thalamic_bridge_t* bridge, fl
 }
 
 int sleep_wake_thalamic_set_attention(sleep_wake_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -165,13 +178,19 @@ int sleep_wake_thalamic_set_attention(sleep_wake_thalamic_bridge_t* bridge, floa
 }
 
 int sleep_wake_thalamic_get_attention(const sleep_wake_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     return 0;
 }
 
 int sleep_wake_thalamic_bridge_get_stats(const sleep_wake_thalamic_bridge_t* bridge, sleep_wake_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

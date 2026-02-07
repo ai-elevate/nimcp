@@ -86,6 +86,7 @@ static float clamp(float v, float min, float max) {
 static nimcp_vta_plasticity_synapse_t* find_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id) {
     for (uint32_t i = 0; i < b->synapse_count; i++)
         if (b->synapses[i].synapse_id == id) return &b->synapses[i];
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -145,7 +146,10 @@ void nimcp_vta_plasticity_destroy(nimcp_vta_plasticity_bridge_t* b) {
 }
 
 int nimcp_vta_plasticity_reset(nimcp_vta_plasticity_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_reset: b is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         b->synapses[i].weight = b->synapses[i].initial_weight;
         b->synapses[i].eligibility_trace = 0.0f;
@@ -157,19 +161,28 @@ int nimcp_vta_plasticity_reset(nimcp_vta_plasticity_bridge_t* b) {
 }
 
 int nimcp_vta_plasticity_connect_vta(nimcp_vta_plasticity_bridge_t* b, nimcp_vta_adapter_t a) {
-    if (!b || !a) return -1;
+    if (!b || !a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_connect_vta: required parameter is NULL (b, a)");
+        return -1;
+    }
     b->vta_adapter = a;
     return 0;
 }
 
 int nimcp_vta_plasticity_connect_coordinator(nimcp_vta_plasticity_bridge_t* b, struct nimcp_plasticity_coordinator* c) {
-    if (!b || !c) return -1;
+    if (!b || !c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_connect_coordinator: required parameter is NULL (b, c)");
+        return -1;
+    }
     b->plasticity_coordinator = c;
     return 0;
 }
 
 int nimcp_vta_plasticity_register_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id, nimcp_vta_synapse_type_t t, float w) {
-    if (!b || b->synapse_count >= b->synapse_capacity) return -1;
+    if (!b || b->synapse_count >= b->synapse_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_vta_plasticity_register_synapse: b is NULL");
+        return -1;
+    }
     nimcp_vta_plasticity_synapse_t* s = &b->synapses[b->synapse_count++];
     s->synapse_id = id;
     s->type = t;
@@ -179,7 +192,10 @@ int nimcp_vta_plasticity_register_synapse(nimcp_vta_plasticity_bridge_t* b, uint
 }
 
 int nimcp_vta_plasticity_unregister_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_unregister_synapse: b is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].synapse_id == id) {
             if (i < b->synapse_count - 1) b->synapses[i] = b->synapses[b->synapse_count - 1];
@@ -188,21 +204,34 @@ int nimcp_vta_plasticity_unregister_synapse(nimcp_vta_plasticity_bridge_t* b, ui
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_vta_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
 int nimcp_vta_plasticity_get_synapse(nimcp_vta_plasticity_bridge_t* b, uint32_t id, nimcp_vta_plasticity_synapse_t* out) {
-    if (!b || !out) return -1;
+    if (!b || !out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_get_synapse: required parameter is NULL (b, out)");
+        return -1;
+    }
     nimcp_vta_plasticity_synapse_t* s = find_synapse(b, id);
-    if (!s) return -1;
+    if (!s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_get_synapse: s is NULL");
+        return -1;
+    }
     *out = *s;
     return 0;
 }
 
 int nimcp_vta_plasticity_pre_spike(nimcp_vta_plasticity_bridge_t* b, uint32_t id, uint64_t ts) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_pre_spike: b is NULL");
+        return -1;
+    }
     nimcp_vta_plasticity_synapse_t* s = find_synapse(b, id);
-    if (!s) return -1;
+    if (!s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_pre_spike: s is NULL");
+        return -1;
+    }
     s->last_pre_spike_us = ts;
     s->eligibility_trace = 1.0f;
     b->stats.total_pre_spikes++;
@@ -210,16 +239,25 @@ int nimcp_vta_plasticity_pre_spike(nimcp_vta_plasticity_bridge_t* b, uint32_t id
 }
 
 int nimcp_vta_plasticity_post_spike(nimcp_vta_plasticity_bridge_t* b, uint32_t id, uint64_t ts) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_post_spike: b is NULL");
+        return -1;
+    }
     nimcp_vta_plasticity_synapse_t* s = find_synapse(b, id);
-    if (!s) return -1;
+    if (!s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_post_spike: s is NULL");
+        return -1;
+    }
     s->last_post_spike_us = ts;
     b->stats.total_post_spikes++;
     return 0;
 }
 
 int nimcp_vta_plasticity_reward(nimcp_vta_plasticity_bridge_t* b, float r, uint64_t ts) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_reward: b is NULL");
+        return -1;
+    }
     b->state.da.reward_received = true;
     b->state.da.last_reward_us = ts;
     b->stats.reward_events++;
@@ -228,14 +266,20 @@ int nimcp_vta_plasticity_reward(nimcp_vta_plasticity_bridge_t* b, float r, uint6
 }
 
 int nimcp_vta_plasticity_rpe(nimcp_vta_plasticity_bridge_t* b, float rpe, uint64_t ts) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_rpe: b is NULL");
+        return -1;
+    }
     b->state.da.current_rpe = rpe;
     b->current_modulation.rpe_signal = rpe;
     return 0;
 }
 
 int nimcp_vta_plasticity_set_da_level(nimcp_vta_plasticity_bridge_t* b, float da, float m) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_set_da_level: b is NULL");
+        return -1;
+    }
     b->state.da.da_level = clamp(da, 0.0f, 100.0f);
     b->state.da.motivation = clamp(m, 0.0f, 1.0f);
     float n = da / 100.0f;
@@ -246,7 +290,10 @@ int nimcp_vta_plasticity_set_da_level(nimcp_vta_plasticity_bridge_t* b, float da
 }
 
 int nimcp_vta_plasticity_update(nimcp_vta_plasticity_bridge_t* b, float dt_ms) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_update: b is NULL");
+        return -1;
+    }
     b->stats.total_updates++;
     float decay = expf(-dt_ms / b->config.eligibility_decay_tau);
     for (uint32_t i = 0; i < b->synapse_count; i++) {
@@ -256,7 +303,10 @@ int nimcp_vta_plasticity_update(nimcp_vta_plasticity_bridge_t* b, float dt_ms) {
 }
 
 int nimcp_vta_plasticity_td_update(nimcp_vta_plasticity_bridge_t* b, float cur, float next, float r) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_td_update: b is NULL");
+        return -1;
+    }
     float td_error = r + b->config.td_discount_factor * next - cur;
     b->state.da.current_rpe = td_error;
     b->stats.td_updates++;
@@ -264,7 +314,10 @@ int nimcp_vta_plasticity_td_update(nimcp_vta_plasticity_bridge_t* b, float cur, 
 }
 
 int nimcp_vta_plasticity_convert_traces(nimcp_vta_plasticity_bridge_t* b, float da) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_convert_traces: b is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < b->synapse_count; i++) {
         if (b->synapses[i].eligibility_trace > 0.1f) {
             float dw = b->synapses[i].eligibility_trace * da * b->config.da_trace_conversion;
@@ -276,7 +329,10 @@ int nimcp_vta_plasticity_convert_traces(nimcp_vta_plasticity_bridge_t* b, float 
 }
 
 int nimcp_vta_plasticity_get_modulation(nimcp_vta_plasticity_bridge_t* b, nimcp_vta_plasticity_modulation_t* m) {
-    if (!b || !m) return -1;
+    if (!b || !m) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_get_modulation: required parameter is NULL (b, m)");
+        return -1;
+    }
     *m = b->current_modulation;
     return 0;
 }
@@ -300,13 +356,19 @@ float nimcp_vta_plasticity_get_avg_value(nimcp_vta_plasticity_bridge_t* b) {
 }
 
 int nimcp_vta_plasticity_get_state(const nimcp_vta_plasticity_bridge_t* b, nimcp_vta_plasticity_bridge_state_t* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_get_state: required parameter is NULL (b, s)");
+        return -1;
+    }
     *s = b->state;
     return 0;
 }
 
 int nimcp_vta_plasticity_get_stats(const nimcp_vta_plasticity_bridge_t* b, nimcp_vta_plasticity_stats_t* s) {
-    if (!b || !s) return -1;
+    if (!b || !s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_get_stats: required parameter is NULL (b, s)");
+        return -1;
+    }
     *s = b->stats;
     return 0;
 }
@@ -316,20 +378,29 @@ void nimcp_vta_plasticity_reset_stats(nimcp_vta_plasticity_bridge_t* b) {
 }
 
 int nimcp_vta_plasticity_set_weight_callback(nimcp_vta_plasticity_bridge_t* b, nimcp_vta_weight_change_cb cb, void* ud) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_set_weight_callback: b is NULL");
+        return -1;
+    }
     b->weight_callback = cb;
     b->callback_user_data = ud;
     return 0;
 }
 
 int nimcp_vta_plasticity_connect_bio_async(nimcp_vta_plasticity_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_connect_bio_async: b is NULL");
+        return -1;
+    }
     b->state.bio_async_connected = true;
     return 0;
 }
 
 int nimcp_vta_plasticity_disconnect_bio_async(nimcp_vta_plasticity_bridge_t* b) {
-    if (!b) return -1;
+    if (!b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_plasticity_disconnect_bio_async: b is NULL");
+        return -1;
+    }
     b->state.bio_async_connected = false;
     return 0;
 }

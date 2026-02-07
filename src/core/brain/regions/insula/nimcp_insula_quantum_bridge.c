@@ -152,6 +152,7 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -161,6 +162,7 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
         bridge->num_intero_channels, sizeof(quantum_intero_state_t));
     if (!bridge->intero_states) {
         insula_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_quantum_bridge_create: bridge->intero_states is NULL");
         return NULL;
     }
 
@@ -170,6 +172,7 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
         bridge->num_emotion_hypotheses, sizeof(quantum_emotion_hypothesis_t));
     if (!bridge->emotion_hypotheses) {
         insula_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_quantum_bridge_create: bridge->emotion_hypotheses is NULL");
         return NULL;
     }
 
@@ -190,6 +193,7 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
         bridge->max_somatic_candidates, sizeof(quantum_somatic_marker_t));
     if (!bridge->somatic_candidates) {
         insula_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "insula_quantum_bridge_create: bridge->somatic_candidates is NULL");
         return NULL;
     }
 
@@ -231,8 +235,14 @@ int insula_quantum_init_interoception(
     const float* channels,
     uint32_t num_channels
 ) {
-    if (!bridge || !channels) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_init_interoception: required parameter is NULL (bridge, channels)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_init_interoception: bridge->config is NULL");
+        return -1;
+    }
 
     uint32_t n = (num_channels < bridge->num_intero_channels) ?
                   num_channels : bridge->num_intero_channels;
@@ -256,8 +266,14 @@ int insula_quantum_integrate_interoception(
     insula_quantum_bridge_t* bridge,
     quantum_intero_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_integrate_interoception: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_integrate_interoception: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -278,7 +294,10 @@ int insula_quantum_integrate_interoception(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &intero_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_quantum_integrate_interoception: validation failed");
+        return -1;
+    }
 
     /* Integrate signals based on quantum amplitudes */
     float integrated_value = 0.0f;
@@ -335,8 +354,14 @@ int insula_quantum_correct_intero_noise(
     float* corrected_signals,
     uint32_t num_signals
 ) {
-    if (!bridge || !noisy_signals || !corrected_signals) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !noisy_signals || !corrected_signals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_correct_intero_noise: required parameter is NULL (bridge, noisy_signals, corrected_signals)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_correct_intero_noise: bridge->config is NULL");
+        return -1;
+    }
 
     /* Simple noise correction using averaging and thresholding */
     /* In a full implementation, this would use quantum error correction */
@@ -371,8 +396,14 @@ int insula_quantum_evaluate_emotion(
     uint32_t body_state_dim,
     quantum_emotion_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_evaluate_emotion: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_evaluate_emotion: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -393,7 +424,10 @@ int insula_quantum_evaluate_emotion(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &emotion_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_quantum_evaluate_emotion: validation failed");
+        return -1;
+    }
 
     /* Map body state to emotional dimensions */
     float avg_body = 0.0f;
@@ -459,8 +493,14 @@ int insula_quantum_apply_emotional_interference(
     uint32_t num_hypotheses,
     const float* consistency_matrix
 ) {
-    if (!bridge || !hypotheses) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !hypotheses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_apply_emotional_interference: required parameter is NULL (bridge, hypotheses)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_apply_emotional_interference: bridge->config is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_interference) return 0;
 
     /* Apply interference based on consistency */
@@ -501,8 +541,14 @@ int insula_quantum_search_somatic_marker(
     uint32_t marker_database,
     quantum_somatic_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_search_somatic_marker: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_search_somatic_marker: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -524,7 +570,10 @@ int insula_quantum_search_somatic_marker(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &search_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insula_quantum_search_somatic_marker: validation failed");
+        return -1;
+    }
 
     /* Generate somatic marker candidates */
     uint32_t num_candidates = (bridge->max_somatic_candidates < search_cnf.n_variables) ?
@@ -592,8 +641,14 @@ int insula_quantum_evaluate_social(
     float* trust_estimate,
     float* fairness_estimate
 ) {
-    if (!bridge || !trust_estimate || !fairness_estimate) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !trust_estimate || !fairness_estimate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_evaluate_social: required parameter is NULL (bridge, trust_estimate, fairness_estimate)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_evaluate_social: bridge->config is NULL");
+        return -1;
+    }
 
     /* Aggregate social cues */
     float avg_cue = 0.5f;
@@ -628,8 +683,14 @@ int insula_quantum_optimize_homeostasis(
     float* optimal_action,
     uint32_t action_dim
 ) {
-    if (!bridge || !current_state || !target_state || !optimal_action) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !current_state || !target_state || !optimal_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_optimize_homeostasis: required parameter is NULL (bridge, current_state, target_state, optimal_action)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_optimize_homeostasis: bridge->config is NULL");
+        return -1;
+    }
 
     /* Calculate error between current and target */
     float total_error = 0.0f;
@@ -662,7 +723,10 @@ int insula_quantum_get_stats(
     const insula_quantum_bridge_t* bridge,
     insula_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -677,7 +741,10 @@ int insula_quantum_get_config(
     const insula_quantum_bridge_t* bridge,
     insula_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insula_quantum_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

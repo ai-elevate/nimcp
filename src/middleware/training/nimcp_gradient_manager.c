@@ -309,6 +309,7 @@ nimcp_result_t nimcp_gradient_accumulate(
 
 bool nimcp_gradient_accum_ready(const nimcp_gradient_manager_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gradient_accum_ready: ctx is NULL");
         return false;  /* Invalid context = not ready */
     }
     if (!ctx->config.use_accumulation) {

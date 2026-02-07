@@ -173,12 +173,14 @@ creative_training_bridge_t* creative_training_bridge_create(
 
     if (!config) {
         set_training_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_elapsed_seconds: config is NULL");
         return NULL;
     }
 
     creative_training_bridge_t* bridge = nimcp_calloc(1, sizeof(creative_training_bridge_t));
     if (!bridge) {
         set_training_error("Failed to allocate training bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_elapsed_seconds: bridge is NULL");
         return NULL;
     }
 
@@ -241,6 +243,7 @@ training_dataset_t* creative_training_create_dataset(const char* name) {
     training_dataset_t* dataset = nimcp_calloc(1, sizeof(training_dataset_t));
     if (!dataset) {
         set_training_error("Failed to allocate dataset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_create_dataset: dataset is NULL");
         return NULL;
     }
 
@@ -262,6 +265,7 @@ int creative_training_add_example(training_dataset_t* dataset,
                                    float quality,
                                    const char* tags) {
     if (!dataset || !image || !caption) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_create_dataset: required parameter is NULL (dataset, image, caption)");
         return -1;
     }
 
@@ -270,6 +274,7 @@ int creative_training_add_example(training_dataset_t* dataset,
     image_training_example_t* new_examples = nimcp_calloc(
         new_count, sizeof(image_training_example_t));
     if (!new_examples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_create_dataset: new_examples is NULL");
         return -1;
     }
 
@@ -312,6 +317,7 @@ int creative_training_add_preference(training_dataset_t* dataset,
                                       const char* prompt,
                                       float strength) {
     if (!dataset || !preferred || !rejected || !prompt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_create_dataset: required parameter is NULL (dataset, preferred, rejected, prompt)");
         return -1;
     }
 
@@ -320,6 +326,7 @@ int creative_training_add_preference(training_dataset_t* dataset,
     preference_pair_t* new_preferences = nimcp_calloc(
         new_count, sizeof(preference_pair_t));
     if (!new_preferences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_create_dataset: new_preferences is NULL");
         return -1;
     }
 
@@ -366,6 +373,7 @@ int creative_training_add_preference(training_dataset_t* dataset,
 
 training_dataset_t* creative_training_load_dataset(const char* dir) {
     if (!dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_load_dataset: dir is NULL");
         return NULL;
     }
 
@@ -373,6 +381,7 @@ training_dataset_t* creative_training_load_dataset(const char* dir) {
     /* For now, create empty dataset */
     training_dataset_t* dataset = creative_training_create_dataset(dir);
     if (!dataset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_load_dataset: dataset is NULL");
         return NULL;
     }
 
@@ -450,16 +459,19 @@ int creative_training_learn_style(creative_training_bridge_t* bridge,
                                    const training_dataset_t* dataset,
                                    const char* style_name) {
     if (!bridge || !dataset || !style_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "simulate_training_step: required parameter is NULL (bridge, dataset, style_name)");
         return -1;
     }
 
     if (dataset->num_examples < 5) {
         set_training_error("Style learning requires at least 5 examples");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
     if (bridge->status == TRAIN_STATUS_TRAINING) {
         set_training_error("Training already in progress");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
@@ -511,16 +523,19 @@ int creative_training_train_lora(creative_training_bridge_t* bridge,
                                   const char* base_model,
                                   const char* output_name) {
     if (!bridge || !dataset || !base_model || !output_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "simulate_training_step: required parameter is NULL (bridge, dataset, base_model, output_name)");
         return -1;
     }
 
     if (dataset->num_examples < 10) {
         set_training_error("LoRA training requires at least 10 examples");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
     if (bridge->status == TRAIN_STATUS_TRAINING) {
         set_training_error("Training already in progress");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
@@ -568,16 +583,19 @@ int creative_training_dreambooth(creative_training_bridge_t* bridge,
                                   const char* instance_prompt,
                                   const char* class_prompt) {
     if (!bridge || !dataset || !instance_prompt || !class_prompt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "simulate_training_step: required parameter is NULL (bridge, dataset, instance_prompt, class_prompt)");
         return -1;
     }
 
     if (dataset->num_examples < 3) {
         set_training_error("DreamBooth requires at least 3-5 images");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
     if (bridge->status == TRAIN_STATUS_TRAINING) {
         set_training_error("Training already in progress");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "simulate_training_step: validation failed");
         return -1;
     }
 
@@ -613,16 +631,19 @@ int creative_training_learn_preferences(creative_training_bridge_t* bridge,
                                          const training_dataset_t* dataset,
                                          const char* reward_model) {
     if (!bridge || !dataset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "simulate_training_step: required parameter is NULL (bridge, dataset)");
         return -1;
     }
 
     if (dataset->num_preferences < 10) {
         set_training_error("Preference learning requires at least 10 preference pairs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     if (bridge->status == TRAIN_STATUS_TRAINING) {
         set_training_error("Training already in progress");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -663,6 +684,7 @@ int creative_training_learn_preferences(creative_training_bridge_t* bridge,
 int creative_training_get_progress(const creative_training_bridge_t* bridge,
                                     training_progress_t* progress) {
     if (!bridge || !progress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, progress)");
         return -1;
     }
 
@@ -672,11 +694,13 @@ int creative_training_get_progress(const creative_training_bridge_t* bridge,
 
 int creative_training_pause(creative_training_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_pause: bridge is NULL");
         return -1;
     }
 
     if (bridge->status != TRAIN_STATUS_TRAINING) {
         set_training_error("Not currently training");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_pause: validation failed");
         return -1;
     }
 
@@ -691,11 +715,13 @@ int creative_training_pause(creative_training_bridge_t* bridge) {
 
 int creative_training_resume(creative_training_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_resume: bridge is NULL");
         return -1;
     }
 
     if (bridge->progress.step >= bridge->progress.total_steps) {
         set_training_error("Training already complete");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_resume: capacity exceeded");
         return -1;
     }
 
@@ -709,6 +735,7 @@ int creative_training_resume(creative_training_bridge_t* bridge) {
 
 int creative_training_cancel(creative_training_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: bridge is NULL");
         return -1;
     }
 
@@ -724,6 +751,7 @@ int creative_training_cancel(creative_training_bridge_t* bridge) {
 int creative_training_save_checkpoint(creative_training_bridge_t* bridge,
                                        const char* path) {
     if (!bridge || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: required parameter is NULL (bridge, path)");
         return -1;
     }
 
@@ -756,6 +784,7 @@ int creative_training_save_checkpoint(creative_training_bridge_t* bridge,
 int creative_training_load_checkpoint(creative_training_bridge_t* bridge,
                                        const char* path) {
     if (!bridge || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: required parameter is NULL (bridge, path)");
         return -1;
     }
 
@@ -781,17 +810,20 @@ int creative_training_load_checkpoint(creative_training_bridge_t* bridge,
 int creative_training_export_style(creative_training_bridge_t* bridge,
                                     style_embedding_t* style) {
     if (!bridge || !style) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: required parameter is NULL (bridge, style)");
         return -1;
     }
 
     if (bridge->current_task != TRAIN_TASK_STYLE_LEARNING) {
         set_training_error("No style learning task");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
 
     if (bridge->status != TRAIN_STATUS_COMPLETE &&
         bridge->progress.step < bridge->progress.total_steps / 2) {
         set_training_error("Training not sufficiently progressed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
 
@@ -802,6 +834,7 @@ int creative_training_export_style(creative_training_bridge_t* bridge,
     style->embedding_dim = 512;
     style->embedding = nimcp_calloc(style->embedding_dim, sizeof(float));
     if (!style->embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_cancel: style->embedding is NULL");
         return -1;
     }
 
@@ -820,17 +853,20 @@ int creative_training_export_style(creative_training_bridge_t* bridge,
 int creative_training_export_lora(creative_training_bridge_t* bridge,
                                    const char* output_path) {
     if (!bridge || !output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: required parameter is NULL (bridge, output_path)");
         return -1;
     }
 
     if (bridge->current_task != TRAIN_TASK_LORA) {
         set_training_error("No LoRA training task");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
 
     if (bridge->status != TRAIN_STATUS_COMPLETE &&
         bridge->progress.step < bridge->progress.total_steps / 2) {
         set_training_error("LoRA training not sufficiently progressed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
 
@@ -864,6 +900,7 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
                                        uint8_t rating,
                                        const char* feedback) {
     if (!bridge || !content || rating < 1 || rating > 5) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: required parameter is NULL (bridge, content)");
         return -1;
     }
 
@@ -872,6 +909,7 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
         uint32_t new_capacity = (g_feedback_capacity == 0) ? 16 : g_feedback_capacity * 2;
         feedback_entry_t* new_buffer = nimcp_calloc(new_capacity, sizeof(feedback_entry_t));
         if (!new_buffer) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_training_cancel: new_buffer is NULL");
             return -1;
         }
         if (g_feedback_buffer && g_feedback_count > 0) {
@@ -897,12 +935,14 @@ int creative_training_submit_feedback(creative_training_bridge_t* bridge,
 int creative_training_apply_feedback(creative_training_bridge_t* bridge,
                                       uint32_t min_feedback_count) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "creative_training_cancel: bridge is NULL");
         return -1;
     }
 
     if (g_feedback_count < min_feedback_count) {
         set_training_error("Insufficient feedback: have %u, need %u",
                           g_feedback_count, min_feedback_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "creative_training_cancel: validation failed");
         return -1;
     }
 

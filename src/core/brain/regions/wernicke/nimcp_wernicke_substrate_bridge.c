@@ -345,7 +345,10 @@ void wernicke_substrate_bridge_destroy(wernicke_substrate_bridge_t* bridge) {
  *===========================================================================*/
 
 int wernicke_substrate_bridge_update(wernicke_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* If not using manual state, would read from substrate here */
     if (!bridge->use_manual_state && bridge->substrate) {
@@ -388,7 +391,10 @@ int wernicke_substrate_bridge_get_effects(
     const wernicke_substrate_bridge_t* bridge,
     wernicke_substrate_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     if (!bridge->effects_valid) {
         /* Compute on demand */
@@ -400,7 +406,10 @@ int wernicke_substrate_bridge_get_effects(
 }
 
 int wernicke_substrate_bridge_apply(wernicke_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_apply: bridge is NULL");
+        return -1;
+    }
 
     /* Would apply effects to Wernicke adapter here */
     /* For now, just ensure effects are computed */
@@ -425,7 +434,10 @@ int wernicke_substrate_bridge_set_atp(
     wernicke_substrate_bridge_t* bridge,
     float atp
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_set_atp: bridge is NULL");
+        return -1;
+    }
 
     bridge->atp_level = clamp01(atp);
     bridge->use_manual_state = true;
@@ -438,7 +450,10 @@ int wernicke_substrate_bridge_set_fatigue(
     wernicke_substrate_bridge_t* bridge,
     float fatigue
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_set_fatigue: bridge is NULL");
+        return -1;
+    }
 
     bridge->fatigue_level = clamp01(fatigue);
     bridge->use_manual_state = true;
@@ -451,7 +466,10 @@ int wernicke_substrate_bridge_set_temperature(
     wernicke_substrate_bridge_t* bridge,
     float temperature
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_set_temperature: bridge is NULL");
+        return -1;
+    }
 
     bridge->temperature = temperature;
     bridge->use_manual_state = true;
@@ -468,7 +486,10 @@ int wernicke_substrate_bridge_connect_bio_async(
     wernicke_substrate_bridge_t* bridge,
     void* router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     bridge->bio_router = router;
 
@@ -482,7 +503,10 @@ int wernicke_substrate_bridge_handle_message(
     wernicke_substrate_bridge_t* bridge,
     void* message
 ) {
-    if (!bridge || !message) return -1;
+    if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_handle_message: required parameter is NULL (bridge, message)");
+        return -1;
+    }
 
     /* TODO: Handle bio-async messages when integrated */
     /* Parse message, update state, recompute effects */
@@ -498,7 +522,10 @@ int wernicke_substrate_bridge_get_stats(
     const wernicke_substrate_bridge_t* bridge,
     wernicke_substrate_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -516,7 +543,10 @@ int wernicke_substrate_bridge_get_config(
     const wernicke_substrate_bridge_t* bridge,
     wernicke_substrate_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -525,7 +555,10 @@ int wernicke_substrate_bridge_set_config(
     wernicke_substrate_bridge_t* bridge,
     const wernicke_substrate_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_substrate_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     bridge->config = *config;
     bridge->effects_valid = false;  /* Need to recompute */

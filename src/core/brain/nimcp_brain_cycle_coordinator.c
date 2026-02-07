@@ -298,6 +298,7 @@ static void update_welford_stats(cycle_entry_t* e, uint64_t duration_us) {
 /** Z-score anomaly detection */
 static bool is_duration_anomaly(const cycle_entry_t* e, uint64_t duration_us) {
     if (e->duration_count < 10 || e->duration_stddev < 1.0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_duration_anomaly: validation failed");
         return false;
     }
     double z = ((double)duration_us - e->duration_mean) / e->duration_stddev;
@@ -820,6 +821,7 @@ int brain_cycle_coordinator_unregister(
     cycle_entry_t* e = &coord->cycles[(int)type];
     if (!e->registered) {
         nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_cycle_coordinator_unregister: e->registered is NULL");
         return -1;
     }
 
@@ -865,6 +867,7 @@ int brain_cycle_coordinator_notify_tick(
     cycle_entry_t* e = &coord->cycles[(int)type];
     if (!e->registered) {
         nimcp_mutex_unlock(coord->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_cycle_coordinator_notify_tick: e->registered is NULL");
         return -1;
     }
 
@@ -1074,6 +1077,7 @@ int brain_cycle_coordinator_get_status(
     const cycle_entry_t* e = &coord->cycles[(int)type];
     if (!e->registered) {
         nimcp_mutex_unlock(((brain_cycle_coordinator_t*)coord)->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_cycle_coordinator_get_status: e->registered is NULL");
         return -1;
     }
 
@@ -1176,7 +1180,10 @@ int brain_cycle_coordinator_diagnose(
     char* buffer,
     size_t buffer_size)
 {
-    if (!coord || !buffer || buffer_size == 0) return -1;
+    if (!coord || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_cycle_coordinator_diagnose: required parameter is NULL (coord, buffer)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((brain_cycle_coordinator_t*)coord)->mutex);
 
@@ -1291,6 +1298,7 @@ int brain_cycle_coordinator_add_dependency(
         nimcp_mutex_unlock(coord->mutex);
         LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
             "Dependency array full (%u/%u)", coord->dependency_count, max_deps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_cycle_coordinator_add_dependency: capacity exceeded");
         return -1;
     }
 
@@ -1365,6 +1373,7 @@ int brain_cycle_coordinator_register_callbacks(
         LOG_MODULE_WARN(CYCLE_COORD_LOG_MODULE,
             "Callback array full (%u/%u)",
             coord->callback_count, (uint32_t)BRAIN_CYCLE_MAX_CALLBACKS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_cycle_coordinator_register_callbacks: capacity exceeded");
         return -1;
     }
 
@@ -1465,7 +1474,10 @@ CONNECT_IMPL(brain_cycle_coordinator_connect_world_model, world_model,
  * @brief Internal KG flush (must be called with mutex held)
  */
 static int flush_to_kg_unlocked(brain_cycle_coordinator_t* coord) {
-    if (!coord->kg_dispatcher) return -1;
+    if (!coord->kg_dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "flush_to_kg_unlocked: coord->kg_dispatcher is NULL");
+        return -1;
+    }
 
     coord->last_kg_write_us = get_timestamp_us();
 

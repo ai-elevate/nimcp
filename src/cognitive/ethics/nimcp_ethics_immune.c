@@ -269,6 +269,7 @@ bool ethics_trigger_immune_response(ethics_engine_t engine,
 
     // Guard: Immune integration not enabled
     if (!engine->immune_integration_enabled || !engine->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_trigger_immune_response: required parameter is NULL (engine->immune_integration_enabled, engine->immune_system)");
         return false;
     }
 
@@ -321,6 +322,7 @@ bool ethics_trigger_immune_response(ethics_engine_t engine,
         LOG_MODULE_WARN(LOG_MODULE, "Failed to trigger immune response for ethics violation: "
                         "type=%s, severity=%.2f, error=%d",
                         ethics_violation_type_name(violation), severity, result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_trigger_immune_response: operation failed");
         return false;
     }
 }

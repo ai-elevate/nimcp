@@ -100,11 +100,16 @@ stdp_omni_bridge_config_t stdp_omni_bridge_default_config(void) {
 }
 
 bool stdp_omni_bridge_validate_config(const stdp_omni_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_validate_config: config is NULL");
+        return false;
+    }
     if (config->pe_min_threshold < 0 || config->pe_max_threshold < config->pe_min_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_omni_bridge_validate_config: validation failed");
         return false;
     }
     if (config->wm_update_rate < 0 || config->wm_update_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_omni_bridge_validate_config: validation failed");
         return false;
     }
     return true;

@@ -345,7 +345,7 @@ TEST_F(SecurityCLRegressionTest, RetentionRateCalculation) {
         {0.855f, 0.9f, SECURITY_CL_RETENTION_HEALTHY},          /* 90% retention (0.855/0.95) */
         {0.76f, 0.8f, SECURITY_CL_RETENTION_HEALTHY},           /* 80% threshold boundary */
         {0.665f, 0.7f, SECURITY_CL_RETENTION_DEGRADING},        /* Degrading */
-        {0.57f, 0.6f, SECURITY_CL_RETENTION_CRITICAL},          /* Critical threshold boundary */
+        {0.57f, 0.6f, SECURITY_CL_RETENTION_DEGRADING},         /* At critical threshold boundary (>= 0.6) */
         {0.475f, 0.5f, SECURITY_CL_RETENTION_CRITICAL},         /* Below critical */
     };
 

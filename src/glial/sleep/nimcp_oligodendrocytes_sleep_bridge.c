@@ -243,6 +243,7 @@ int oligo_sleep_default_config(oligo_sleep_config_t* config)
     /* Guard clause: Validate config pointer */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -335,6 +336,7 @@ oligo_sleep_bridge_t oligo_sleep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for oligodendrocyte-sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligo_sleep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -457,7 +459,10 @@ float oligo_sleep_get_synthesis_rate(const oligo_sleep_bridge_t bridge)
 bool oligo_sleep_is_synthesis_active(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_synthesis_active: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.synthesis_active;
@@ -558,7 +563,10 @@ float oligo_sleep_get_repair_rate(const oligo_sleep_bridge_t bridge)
 bool oligo_sleep_is_repair_active(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_repair_active: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.repair_active;
@@ -578,10 +586,12 @@ int oligo_sleep_get_effects(
     /* Guard clauses: Validate inputs */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_get_effects: bridge is NULL");
         return -1;
     }
     if (!effects) {
         NIMCP_LOGGING_ERROR("NULL effects pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_get_effects: effects is NULL");
         return -1;
     }
 
@@ -601,6 +611,7 @@ int oligo_sleep_update(oligo_sleep_bridge_t bridge, float dt_ms)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_update: bridge is NULL");
         return -1;
     }
 
@@ -651,6 +662,7 @@ int oligo_sleep_connect_bio_async(oligo_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in connect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -678,6 +690,7 @@ int oligo_sleep_connect_bio_async(oligo_sleep_bridge_t bridge)
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oligo_sleep_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -687,6 +700,7 @@ int oligo_sleep_disconnect_bio_async(oligo_sleep_bridge_t bridge)
     /* Guard clause: Validate bridge */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in disconnect_bio_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -713,7 +727,10 @@ int oligo_sleep_disconnect_bio_async(oligo_sleep_bridge_t bridge)
 bool oligo_sleep_is_bio_async_connected(const oligo_sleep_bridge_t bridge)
 {
     /* Guard clause: Return false if NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->base.bio_async_enabled;
 }

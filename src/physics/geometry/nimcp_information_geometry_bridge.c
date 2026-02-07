@@ -90,7 +90,10 @@ void info_geom_bridge_destroy(info_geom_bridge_t bridge)
 
 int info_geom_bridge_register_kg(info_geom_bridge_t bridge, brain_kg_t* kg)
 {
-    if (!bridge || !kg) return -1;
+    if (!bridge || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "info_geom_bridge_register_kg: required parameter is NULL (bridge, kg)");
+        return -1;
+    }
 
     if (!bridge->config.enable_kg_wiring) {
         return 0;
@@ -103,6 +106,7 @@ int info_geom_bridge_register_kg(info_geom_bridge_t bridge, brain_kg_t* kg)
                                                     BRAIN_KG_NODE_INTEGRATION,
                                                     "Information geometry module");
     if (root_id == BRAIN_KG_INVALID_NODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "info_geom_bridge_register_kg: validation failed");
         return -1;
     }
     bridge->root_id = root_id;

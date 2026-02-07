@@ -81,6 +81,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_VISUAL_JEPA_FEP,
                          "visual_jepa_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_fep_bridge_default_config: operation failed");
         return NULL;
     }
 
@@ -94,6 +95,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
     if (!bridge->precision.patch_precision) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_jepa_fep_bridge_default_config: bridge->precision is NULL");
         return NULL;
     }
 
@@ -110,6 +112,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
         nimcp_free(bridge->precision.patch_precision);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_fep_bridge_default_config: bridge->effects is NULL");
         return NULL;
     }
     for (uint32_t i = 0; i < DEFAULT_NUM_PATCHES; i++) {
@@ -131,6 +134,7 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
         nimcp_free(bridge->precision.patch_precision);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_jepa_fep_bridge_default_config: required parameter is NULL (bridge->error_buffer, bridge->signals)");
         return NULL;
     }
     bridge->signals.error_dim = NIMCP_JEPA_LATENT_DIM;

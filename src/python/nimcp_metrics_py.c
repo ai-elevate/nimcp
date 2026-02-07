@@ -56,6 +56,7 @@ static int MetricsCollector_init(MetricsCollectorObject* self, PyObject* args, P
     static char* kwlist[] = {"directory", "format", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|si", kwlist, &directory, &format)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "MetricsCollector_init: PyArg_ParseTupleAndKeywords is NULL");
         return -1;
     }
 
@@ -71,6 +72,7 @@ static int MetricsCollector_init(MetricsCollectorObject* self, PyObject* args, P
 
     if (!self->collector) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create metrics collector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_init: self->collector is NULL");
         return -1;
     }
 
@@ -89,6 +91,7 @@ static PyObject* MetricsCollector_record_counter(MetricsCollectorObject* self, P
     static char* kwlist[] = {"name", "value", "category", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sK|i", kwlist, &name, &value, &category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_record_counter: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -114,6 +117,7 @@ static PyObject* MetricsCollector_record_gauge(MetricsCollectorObject* self, PyO
     static char* kwlist[] = {"name", "value", "category", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sd|i", kwlist, &name, &value, &category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_record_gauge: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -139,6 +143,7 @@ static PyObject* MetricsCollector_record_timer(MetricsCollectorObject* self, PyO
     static char* kwlist[] = {"name", "duration_ms", "category", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sd|i", kwlist, &name, &duration_ms, &category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_record_timer: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -164,6 +169,7 @@ static PyObject* MetricsCollector_record_event(MetricsCollectorObject* self, PyO
     static char* kwlist[] = {"name", "labels", "category", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|si", kwlist, &name, &labels, &category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_record_event: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -185,6 +191,7 @@ static PyObject* MetricsCollector_timer_start(MetricsCollectorObject* self, PyOb
     const char* name;
 
     if (!PyArg_ParseTuple(args, "s", &name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_timer_start: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -201,6 +208,7 @@ static PyObject* MetricsCollector_timer_stop(MetricsCollectorObject* self, PyObj
     static char* kwlist[] = {"name", "start_time", "category", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sK|i", kwlist, &name, &start_time, &category)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_timer_stop: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -227,6 +235,7 @@ static PyObject* MetricsCollector_flush(MetricsCollectorObject* self, PyObject* 
 
     if (count < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to flush metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_flush: validation failed");
         return NULL;
     }
 
@@ -237,6 +246,7 @@ static PyObject* MetricsCollector_export_tableau_csv(MetricsCollectorObject* sel
     const char* filename;
 
     if (!PyArg_ParseTuple(args, "s", &filename)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "MetricsCollector_export_tableau_csv: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -269,6 +279,7 @@ static PyObject* MetricsCollector_export_powerbi_json(MetricsCollectorObject* se
     const char* filename;
 
     if (!PyArg_ParseTuple(args, "s", &filename)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "MetricsCollector_export_powerbi_json: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -303,6 +314,7 @@ static PyObject* MetricsCollector_get_stats(MetricsCollectorObject* self, PyObje
 
     if (written < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_get_stats: validation failed");
         return NULL;
     }
 
@@ -313,6 +325,7 @@ static PyObject* MetricsCollector_set_directory(MetricsCollectorObject* self, Py
     const char* directory;
 
     if (!PyArg_ParseTuple(args, "s", &directory)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "MetricsCollector_set_directory: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -430,12 +443,14 @@ int init_metrics_module(PyObject* module) {
 
     if (PyType_Ready(&MetricsCollectorType) < 0) {
         LOG_MODULE_ERROR("bindings.python.metrics", "Failed to initialize MetricsCollector type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_metrics_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&MetricsCollectorType);
     if (PyModule_AddObject(module, "MetricsCollector", (PyObject*)&MetricsCollectorType) < 0) {
         Py_DECREF(&MetricsCollectorType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_metrics_module: validation failed");
         return -1;
     }
 

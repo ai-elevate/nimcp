@@ -217,6 +217,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
             nimcp_free(processor->rules);
             nimcp_free(processor->units);
             nimcp_free(processor);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntax_create: validation failed");
             return NULL;
         }
     }
@@ -237,6 +238,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     processor->tree_node_pool = memory_pool_create(&node_pool_config);
     if (!processor->tree_node_pool) {
         syntax_destroy(processor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "syntax_create: processor->tree_node_pool is NULL");
         return NULL;
     }
 
@@ -441,6 +443,7 @@ bool syntax_build_tree(syntax_processor_t* processor) {
     if (!processor->chart[0][n-1].is_filled ||
         processor->chart[0][n-1].phrase_type != PHRASE_IP) {
         processor->stats.failed_parses++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_build_tree: operation failed");
         return false;
     }
 
@@ -448,6 +451,7 @@ bool syntax_build_tree(syntax_processor_t* processor) {
     processor->tree_root = build_tree_from_chart(processor);
     if (processor->tree_root == NULL) {
         processor->stats.failed_parses++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_build_tree: validation failed");
         return false;
     }
 
@@ -507,6 +511,7 @@ bool syntax_validate_grammar(syntax_processor_t* processor, bool* is_valid) {
 
 bool syntax_reset(syntax_processor_t* processor) {
     if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_reset: validation failed");
         return false;
     }
 
@@ -529,6 +534,7 @@ bool syntax_reset(syntax_processor_t* processor) {
 
 const syntax_tree_node_t* syntax_get_tree_root(const syntax_processor_t* processor) {
     if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntax_get_tree_root: validation failed");
         return NULL;
     }
     return processor->tree_root;
@@ -565,6 +571,7 @@ static void print_tree_recursive(const syntax_tree_node_t* node, uint32_t depth)
 
 bool syntax_print_tree(const syntax_processor_t* processor) {
     if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_print_tree: validation failed");
         return false;
     }
 
@@ -660,6 +667,7 @@ bool syntax_decompose_morphemes(
     *num_morphemes = 0;
 
     if (!processor->config.enable_morphology || max_morphemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syntax_decompose_morphemes: processor->config is NULL");
         return false;
     }
 
@@ -668,6 +676,7 @@ bool syntax_decompose_morphemes(
 
     size_t len = strlen(word);
     if (len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_decompose_morphemes: len is zero");
         return false;
     }
 
@@ -739,6 +748,7 @@ uint32_t syntax_get_rule_count(const syntax_processor_t* processor) {
 
 bool syntax_load_default_rules(syntax_processor_t* processor) {
     if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "syntax_load_default_rules: validation failed");
         return false;
     }
 
@@ -1057,11 +1067,13 @@ static syntax_tree_node_t* build_tree_recursive(
     syntax_tree_node_t* parent
 ) {
     if (!processor || i > j || j >= processor->unit_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "build_tree_recursive: processor is NULL");
         return NULL;
     }
 
     /* Check if this cell was filled during parsing */
     if (!processor->chart[i][j].is_filled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_tree_recursive: processor->chart is NULL");
         return NULL;
     }
 
@@ -1103,6 +1115,7 @@ static syntax_tree_node_t* build_tree_recursive(
     if (!node->left) {
         /* Failed to build left child - cleanup and return NULL */
         memory_pool_release(processor->tree_node_pool, node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_tree_recursive: node->left is NULL");
         return NULL;
     }
 
@@ -1112,6 +1125,7 @@ static syntax_tree_node_t* build_tree_recursive(
         /* Failed to build right child - cleanup left child and node */
         free_tree_recursive(processor, node->left);
         memory_pool_release(processor->tree_node_pool, node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_tree_recursive: node->right is NULL");
         return NULL;
     }
 
@@ -1126,6 +1140,7 @@ static syntax_tree_node_t* build_tree_recursive(
 
 static syntax_tree_node_t* build_tree_from_chart(syntax_processor_t* processor) {
     if (processor == NULL || processor->unit_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_tree_from_chart: processor->unit_count is zero");
         return NULL;
     }
 
@@ -1133,6 +1148,7 @@ static syntax_tree_node_t* build_tree_from_chart(syntax_processor_t* processor) 
 
     /* Verify we have a valid parse */
     if (!processor->chart[0][n-1].is_filled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_tree_from_chart: processor->chart is NULL");
         return NULL;
     }
 
@@ -1147,18 +1163,21 @@ static syntax_tree_node_t* build_tree_from_chart(syntax_processor_t* processor) 
 
 static bool check_agreement(const syntactic_unit_t* subject, const syntactic_unit_t* verb) {
     if (subject == NULL || verb == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: validation failed");
         return false;
     }
 
     // Check number agreement
     if (subject->features.number != verb->features.number &&
         subject->features.number != 0 && verb->features.number != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: validation failed");
         return false;
     }
 
     // Check person agreement
     if (subject->features.person != verb->features.person &&
         subject->features.person != 0 && verb->features.person != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_agreement: operation failed");
         return false;
     }
 

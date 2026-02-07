@@ -190,6 +190,7 @@ nimcp_equilibrium_config_t nimcp_equilibrium_default_config(
 
 nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* config) {
     if (!config || config->num_players == 0 || config->num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: config is NULL");
         return NULL;
     }
 
@@ -207,6 +208,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
 
         if (config->num_strategies[i] == 0 ||
             config->num_strategies[i] > NIMCP_GT_MAX_STRATEGIES) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_create: validation failed");
             return NULL;
         }
     }
@@ -237,6 +239,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     ctx->temp_profile = nimcp_calloc(config->num_players, sizeof(uint32_t));
     if (!ctx->temp_profile) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: ctx->temp_profile is NULL");
         return NULL;
     }
 
@@ -257,6 +260,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
     if (!ctx->temp_probs) {
         nimcp_free(ctx->temp_profile);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_equilibrium_create: ctx->temp_probs is NULL");
         return NULL;
     }
 
@@ -265,6 +269,7 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
         nimcp_free(ctx->temp_probs);
         nimcp_free(ctx->temp_profile);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_equilibrium_create: validation failed");
         return NULL;
     }
 
@@ -312,6 +317,7 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
 ) {
     if (!strategies_per_player || num_players == 0 ||
         num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_game_matrix_create: operation failed");
         return NULL;
     }
 
@@ -351,6 +357,7 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
     matrix->data = nimcp_calloc(matrix->total_cells, sizeof(float));
     if (!matrix->data) {
         nimcp_free(matrix);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_game_matrix_create: matrix->data is NULL");
         return NULL;
     }
 
@@ -1428,6 +1435,7 @@ bool nimcp_equilibrium_is_nash(
     float epsilon
 ) {
     if (!ctx || !strategies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_equilibrium_is_nash: required parameter is NULL (ctx, strategies)");
         return false;
     }
 
@@ -1438,6 +1446,7 @@ bool nimcp_equilibrium_is_nash(
     float regrets[NIMCP_GT_MAX_PLAYERS];
     nimcp_error_t err = nimcp_equilibrium_compute_regret(ctx, strategies, regrets);
     if (err != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_is_nash: validation failed");
         return false;
     }
 
@@ -1449,6 +1458,7 @@ bool nimcp_equilibrium_is_nash(
         }
 
         if (regrets[i] > epsilon) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_equilibrium_is_nash: validation failed");
             return false;
         }
     }
@@ -1830,6 +1840,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
     // sum_i row_probs[i] * A[i][j] = constant for all j in support_col
 
     if (support_row_size == 0 || support_col_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: support_row_size is zero");
         return false;
     }
 
@@ -1865,6 +1876,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
         float diff_row = (A11 - A10) - (A01 - A00);
         if (fabsf(diff_row) < 1e-10f) {
             // Degenerate case
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: validation failed");
             return false;
         }
 
@@ -1872,6 +1884,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
         float p0 = 1.0f - p1;
 
         if (p0 < -1e-6f || p0 > 1.0f + 1e-6f || p1 < -1e-6f || p1 > 1.0f + 1e-6f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: validation failed");
             return false;
         }
 
@@ -1896,6 +1909,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
 
         float diff_col = (B11 - B01) - (B10 - B00);
         if (fabsf(diff_col) < 1e-10f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: validation failed");
             return false;
         }
 
@@ -1903,6 +1917,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
         float q0 = 1.0f - q1;
 
         if (q0 < -1e-6f || q0 > 1.0f + 1e-6f || q1 < -1e-6f || q1 > 1.0f + 1e-6f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: validation failed");
             return false;
         }
 
@@ -1916,6 +1931,7 @@ static bool solve_indifference_2player(const nimcp_equilibrium_t ctx,
     }
 
     // For other cases, return false (would need general linear algebra solver)
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_total_profiles: operation failed");
     return false;
 }
 
@@ -1968,6 +1984,7 @@ static bool check_no_outside_deviation(const nimcp_equilibrium_t ctx,
                 nimcp_strategy_profile_cleanup(&temp);
 
                 if (outside_payoff > support_payoff + 1e-6f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
                     return false;  // Profitable deviation outside support
                 }
             }

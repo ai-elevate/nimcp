@@ -191,6 +191,7 @@ static char* read_string(parser_state_t* state) {
         snprintf(state->error_message, sizeof(state->error_message),
                  "Unterminated string at line %zu", state->line);
         state->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "read_string: validation failed");
         return NULL;
     }
 
@@ -438,6 +439,7 @@ static bool expect(parser_state_t* state, token_type_t type, const char* msg) {
                  "%s at line %zu, column %zu",
                  msg, state->current_token.line, state->current_token.column);
         state->has_error = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "expect: match is NULL");
         return false;
     }
     return true;
@@ -522,6 +524,7 @@ static nimcp_ast_node_t* parse_primary(parser_state_t* state) {
             advance(state);
             if (!expect(state, TOKEN_IDENTIFIER, "Expected member name")) {
                 nimcp_ast_destroy(node);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_primary: expect is NULL");
                 return NULL;
             }
             node = nimcp_ast_create_member(node, state->current_token.value);
@@ -625,6 +628,7 @@ static nimcp_ast_node_t* parse_expression(parser_state_t* state) {
 
 static nimcp_ast_node_t* parse_param(parser_state_t* state) {
     if (!expect(state, TOKEN_IDENTIFIER, "Expected parameter name")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_param: expect is NULL");
         return NULL;
     }
 
@@ -633,6 +637,7 @@ static nimcp_ast_node_t* parse_param(parser_state_t* state) {
 
     if (!expect(state, TOKEN_COLON, "Expected ':'")) {
         nimcp_free(key);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_param: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -646,6 +651,7 @@ static nimcp_ast_node_t* parse_param(parser_state_t* state) {
 
 static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
     if (!expect(state, TOKEN_RULE, "Expected 'rule'")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_rule: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -658,6 +664,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
         nimcp_free(name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_rule: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -705,6 +712,7 @@ static nimcp_ast_node_t* parse_rule(parser_state_t* state) {
 
 static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
     if (!expect(state, TOKEN_POLICY, "Expected 'policy'")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_policy: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -717,6 +725,7 @@ static nimcp_ast_node_t* parse_policy(parser_state_t* state) {
 
     if (!expect(state, TOKEN_LBRACE, "Expected '{'")) {
         nimcp_free(name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_policy: expect is NULL");
         return NULL;
     }
     advance(state);
@@ -789,6 +798,7 @@ nimcp_ast_node_t* nimcp_policy_parse(const char* input, const char* filename, ch
         if (root) {
             nimcp_ast_destroy(root);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_policy_parse: validation failed");
         return NULL;
     }
 

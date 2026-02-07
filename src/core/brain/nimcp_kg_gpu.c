@@ -96,6 +96,7 @@ kg_gpu_context_t* kg_gpu_create(kg_gpu_backend_t preferred_backend) {
     gpu->devices = nimcp_calloc(KG_GPU_MAX_DEVICES, sizeof(kg_gpu_device_t));
     if (!gpu->devices) {
         nimcp_free(gpu);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gpu_create: gpu->devices is NULL");
         return NULL;
     }
 
@@ -137,6 +138,7 @@ int kg_gpu_enumerate_devices(
     uint32_t* count
 ) {
     if (!devices || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_enumerate_devices: required parameter is NULL (devices, count)");
         return -1;
     }
 
@@ -149,6 +151,7 @@ int kg_gpu_enumerate_devices(
 
 int kg_gpu_select_device(kg_gpu_context_t* gpu, uint32_t device_id) {
     if (!gpu || device_id >= gpu->device_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_gpu_select_device: gpu is NULL");
         return -1;
     }
 
@@ -161,6 +164,7 @@ int kg_gpu_select_device(kg_gpu_context_t* gpu, uint32_t device_id) {
 
 int kg_gpu_get_device_info(const kg_gpu_context_t* gpu, kg_gpu_device_t* info) {
     if (!gpu || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_get_device_info: required parameter is NULL (gpu, info)");
         return -1;
     }
 
@@ -186,6 +190,7 @@ int kg_gpu_set_memory_config(
     const kg_gpu_memory_config_t* config
 ) {
     if (!gpu || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_set_memory_config: required parameter is NULL (gpu, config)");
         return -1;
     }
 
@@ -199,6 +204,7 @@ int kg_gpu_set_kernel_config(
     const kg_gpu_kernel_config_t* config
 ) {
     if (!gpu || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_set_kernel_config: required parameter is NULL (gpu, config)");
         return -1;
     }
 
@@ -243,6 +249,7 @@ int kg_gpu_compute_centrality(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !kg || !metrics || !count || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_compute_centrality: required parameter is NULL (gpu, kg, metrics, count, result)");
         return -1;
     }
 
@@ -256,6 +263,7 @@ int kg_gpu_compute_centrality(
         /* Fall back to CPU implementation */
         result->success = false;
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_compute_centrality: validation failed");
         return -1;
     }
 
@@ -287,6 +295,7 @@ int kg_gpu_detect_communities(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !kg || !communities || !count || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_detect_communities: required parameter is NULL (gpu, kg, communities, count, result)");
         return -1;
     }
 
@@ -297,6 +306,7 @@ int kg_gpu_detect_communities(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_GRAPH_ANALYTICS) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_detect_communities: validation failed");
         return -1;
     }
 
@@ -321,6 +331,7 @@ int kg_gpu_compute_pagerank(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !kg || !ranks || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_compute_pagerank: required parameter is NULL (gpu, kg, ranks, result)");
         return -1;
     }
 
@@ -333,6 +344,7 @@ int kg_gpu_compute_pagerank(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_GRAPH_ANALYTICS) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_compute_pagerank: validation failed");
         return -1;
     }
 
@@ -357,6 +369,7 @@ int kg_gpu_build_similarity_index(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !kg || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_build_similarity_index: required parameter is NULL (gpu, kg, result)");
         return -1;
     }
 
@@ -367,6 +380,7 @@ int kg_gpu_build_similarity_index(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_SIMILARITY) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_build_similarity_index: validation failed");
         return -1;
     }
 
@@ -389,6 +403,7 @@ int kg_gpu_find_similar(
     kg_gpu_result_t* gpu_result
 ) {
     if (!gpu || !kg || !results || !gpu_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_find_similar: required parameter is NULL (gpu, kg, results, gpu_result)");
         return -1;
     }
 
@@ -402,6 +417,7 @@ int kg_gpu_find_similar(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_SIMILARITY) ||
         gpu->backend == KG_GPU_NONE) {
         gpu_result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_find_similar: validation failed");
         return -1;
     }
 
@@ -426,6 +442,7 @@ int kg_gpu_batch_similarity(
     kg_gpu_result_t* gpu_result
 ) {
     if (!gpu || !kg || !queries || query_count == 0 || !results || !gpu_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_batch_similarity: required parameter is NULL (gpu, kg, queries, results, gpu_result)");
         return -1;
     }
 
@@ -438,6 +455,7 @@ int kg_gpu_batch_similarity(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_SIMILARITY) ||
         gpu->backend == KG_GPU_NONE) {
         gpu_result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_batch_similarity: validation failed");
         return -1;
     }
 
@@ -466,6 +484,7 @@ int kg_gpu_quantum_walk(
     kg_gpu_result_t* gpu_result
 ) {
     if (!gpu || !kg || !result || !gpu_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_quantum_walk: required parameter is NULL (gpu, kg, result, gpu_result)");
         return -1;
     }
 
@@ -480,6 +499,7 @@ int kg_gpu_quantum_walk(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_QUANTUM_SIM) ||
         gpu->backend == KG_GPU_NONE) {
         gpu_result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_quantum_walk: validation failed");
         return -1;
     }
 
@@ -502,6 +522,7 @@ int kg_gpu_quantum_annealing(
     kg_gpu_result_t* gpu_result
 ) {
     if (!gpu || !kg || !optimization_problem || !solution || !gpu_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_quantum_annealing: required parameter is NULL (gpu, kg, optimization_problem, solution, gpu_result)");
         return -1;
     }
 
@@ -512,6 +533,7 @@ int kg_gpu_quantum_annealing(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_QUANTUM_SIM) ||
         gpu->backend == KG_GPU_NONE) {
         gpu_result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_quantum_annealing: validation failed");
         return -1;
     }
 
@@ -537,6 +559,7 @@ int kg_gpu_compute_weight_stats(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !weights || weight_count == 0 || !stats || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_compute_weight_stats: required parameter is NULL (gpu, weights, stats, result)");
         return -1;
     }
 
@@ -547,6 +570,7 @@ int kg_gpu_compute_weight_stats(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_WEIGHT_COMPUTE) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_compute_weight_stats: validation failed");
         return -1;
     }
 
@@ -570,6 +594,7 @@ int kg_gpu_weight_diff(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !weights_a || !weights_b || count == 0 || !diff || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_weight_diff: required parameter is NULL (gpu, weights_a, weights_b, diff, result)");
         return -1;
     }
 
@@ -580,6 +605,7 @@ int kg_gpu_weight_diff(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_WEIGHT_COMPUTE) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_weight_diff: validation failed");
         return -1;
     }
 
@@ -607,6 +633,7 @@ int kg_gpu_encrypt_batch(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !plaintexts || !sizes || count == 0 || !ciphertexts || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_encrypt_batch: required parameter is NULL (gpu, plaintexts, sizes, ciphertexts, result)");
         return -1;
     }
 
@@ -617,6 +644,7 @@ int kg_gpu_encrypt_batch(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_ENCRYPTION) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_encrypt_batch: validation failed");
         return -1;
     }
 
@@ -640,6 +668,7 @@ int kg_gpu_decrypt_batch(
     kg_gpu_result_t* result
 ) {
     if (!gpu || !ciphertexts || !sizes || count == 0 || !plaintexts || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_decrypt_batch: required parameter is NULL (gpu, ciphertexts, sizes, plaintexts, result)");
         return -1;
     }
 
@@ -650,6 +679,7 @@ int kg_gpu_decrypt_batch(
     if (!(gpu->enabled_targets & KG_GPU_TARGET_ENCRYPTION) ||
         gpu->backend == KG_GPU_NONE) {
         result->success = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_decrypt_batch: validation failed");
         return -1;
     }
 
@@ -670,6 +700,7 @@ int kg_gpu_decrypt_batch(
 
 int kg_gpu_allocate(kg_gpu_context_t* gpu, size_t size, void** gpu_ptr) {
     if (!gpu || size == 0 || !gpu_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gpu_allocate: required parameter is NULL (gpu, gpu_ptr)");
         return -1;
     }
 
@@ -682,11 +713,13 @@ int kg_gpu_allocate(kg_gpu_context_t* gpu, size_t size, void** gpu_ptr) {
     /* In a real implementation, call cudaMalloc, etc. */
     *gpu_ptr = NULL;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_allocate: validation failed");
     return -1;
 }
 
 int kg_gpu_free(kg_gpu_context_t* gpu, void* gpu_ptr) {
     if (!gpu || !gpu_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_free: required parameter is NULL (gpu, gpu_ptr)");
         return -1;
     }
 
@@ -697,6 +730,7 @@ int kg_gpu_free(kg_gpu_context_t* gpu, void* gpu_ptr) {
 
     /* In a real implementation, call cudaFree, etc. */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_free: validation failed");
     return -1;
 }
 
@@ -707,6 +741,7 @@ int kg_gpu_copy_to_device(
     size_t size
 ) {
     if (!gpu || !host_ptr || !gpu_ptr || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_copy_to_device: required parameter is NULL (gpu, host_ptr, gpu_ptr)");
         return -1;
     }
 
@@ -717,6 +752,7 @@ int kg_gpu_copy_to_device(
 
     /* In a real implementation, call cudaMemcpy H2D */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_copy_to_device: validation failed");
     return -1;
 }
 
@@ -727,6 +763,7 @@ int kg_gpu_copy_to_host(
     size_t size
 ) {
     if (!gpu || !gpu_ptr || !host_ptr || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_copy_to_host: required parameter is NULL (gpu, gpu_ptr, host_ptr)");
         return -1;
     }
 
@@ -737,6 +774,7 @@ int kg_gpu_copy_to_host(
 
     /* In a real implementation, call cudaMemcpy D2H */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gpu_copy_to_host: validation failed");
     return -1;
 }
 
@@ -746,6 +784,7 @@ int kg_gpu_copy_to_host(
 
 int kg_gpu_get_stats(const kg_gpu_context_t* gpu, kg_gpu_stats_t* stats) {
     if (!gpu || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_get_stats: required parameter is NULL (gpu, stats)");
         return -1;
     }
 
@@ -813,6 +852,7 @@ bool kg_gpu_is_available(const kg_gpu_context_t* gpu) {
 
 bool kg_gpu_target_enabled(const kg_gpu_context_t* gpu, kg_gpu_target_t target) {
     if (!gpu) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gpu_target_enabled: gpu is NULL");
         return false;
     }
 

@@ -92,16 +92,26 @@ bm_config_t bm_config_default(bm_hearing_mode_t mode) {
 }
 
 basilar_membrane_t* basilar_membrane_create(const bm_config_t* config) {
-    if (!config) return NULL;
-    if (config->num_channels == 0 || config->num_channels > BM_MAX_CHANNELS) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "basilar_membrane_create: config is NULL");
+        return NULL;
+    }
+    if (config->num_channels == 0 || config->num_channels > BM_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "basilar_membrane_create: config->num_channels is zero");
+        return NULL;
+    }
 
     basilar_membrane_t* bm = (basilar_membrane_t*)nimcp_calloc(1, sizeof(basilar_membrane_t));
-    if (!bm) return NULL;
+    if (!bm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "basilar_membrane_create: bm is NULL");
+        return NULL;
+    }
 
     bm->config = *config;
     bm->filters = (bm_filter_t*)nimcp_calloc(config->num_channels, sizeof(bm_filter_t));
     if (!bm->filters) {
         nimcp_free(bm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "basilar_membrane_create: bm->filters is NULL");
         return NULL;
     }
 
@@ -125,7 +135,10 @@ void basilar_membrane_destroy(basilar_membrane_t* bm) {
 }
 
 nimcp_error_t basilar_membrane_reset(basilar_membrane_t* bm) {
-    if (!bm) return -1;
+    if (!bm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_reset: bm is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bm->config.num_channels; i++) {
         memset(bm->filters[i].state_real, 0, sizeof(bm->filters[i].state_real));
         memset(bm->filters[i].state_imag, 0, sizeof(bm->filters[i].state_imag));
@@ -142,7 +155,10 @@ nimcp_error_t basilar_membrane_process(basilar_membrane_t* bm,
                                          const float* audio_in,
                                          uint32_t num_samples,
                                          bm_output_t* output) {
-    if (!bm || !audio_in || !output) return -1;
+    if (!bm || !audio_in || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_reset: required parameter is NULL (bm, audio_in, output)");
+        return -1;
+    }
     bm->samples_processed += num_samples;
     bm->frames_processed++;
     basilar_membrane_heartbeat("basilar_membrane_process", 0.5f);
@@ -152,7 +168,10 @@ nimcp_error_t basilar_membrane_process(basilar_membrane_t* bm,
 nimcp_error_t basilar_membrane_process_sample(basilar_membrane_t* bm,
                                                 float sample,
                                                 float* channel_outputs) {
-    if (!bm || !channel_outputs) return -1;
+    if (!bm || !channel_outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_reset: required parameter is NULL (bm, channel_outputs)");
+        return -1;
+    }
     for (uint32_t i = 0; i < bm->config.num_channels; i++) {
         channel_outputs[i] = sample * bm->filters[i].gain;
     }
@@ -179,7 +198,10 @@ float basilar_membrane_get_bandwidth(const basilar_membrane_t* bm,
 
 nimcp_error_t basilar_membrane_get_all_center_freqs(const basilar_membrane_t* bm,
                                                       float* freqs) {
-    if (!bm || !freqs) return -1;
+    if (!bm || !freqs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_get_num_channels: required parameter is NULL (bm, freqs)");
+        return -1;
+    }
     for (uint32_t i = 0; i < bm->config.num_channels; i++) {
         freqs[i] = bm->filters[i].center_freq_hz;
     }
@@ -188,8 +210,14 @@ nimcp_error_t basilar_membrane_get_all_center_freqs(const basilar_membrane_t* bm
 
 int32_t basilar_membrane_freq_to_channel(const basilar_membrane_t* bm,
                                            float freq_hz) {
-    if (!bm || bm->config.num_channels == 0) return -1;
-    if (freq_hz < bm->config.min_freq_hz || freq_hz > bm->config.max_freq_hz) return -1;
+    if (!bm || bm->config.num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basilar_membrane_get_num_channels: bm is NULL");
+        return -1;
+    }
+    if (freq_hz < bm->config.min_freq_hz || freq_hz > bm->config.max_freq_hz) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basilar_membrane_get_num_channels: validation failed");
+        return -1;
+    }
     float frac = (freq_hz - bm->config.min_freq_hz) /
                  (bm->config.max_freq_hz - bm->config.min_freq_hz);
     return (int32_t)(frac * (bm->config.num_channels - 1));
@@ -197,7 +225,10 @@ int32_t basilar_membrane_freq_to_channel(const basilar_membrane_t* bm,
 
 nimcp_error_t basilar_membrane_get_stats(const basilar_membrane_t* bm,
                                            bm_stats_t* stats) {
-    if (!bm || !stats) return -1;
+    if (!bm || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_get_num_channels: required parameter is NULL (bm, stats)");
+        return -1;
+    }
     memset(stats, 0, sizeof(bm_stats_t));
     stats->samples_processed = bm->samples_processed;
     stats->frames_processed = bm->frames_processed;
@@ -207,14 +238,20 @@ nimcp_error_t basilar_membrane_get_stats(const basilar_membrane_t* bm,
 nimcp_error_t basilar_membrane_set_channel_gain(basilar_membrane_t* bm,
                                                   uint32_t channel,
                                                   float gain_linear) {
-    if (!bm || channel >= bm->config.num_channels) return -1;
+    if (!bm || channel >= bm->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "basilar_membrane_get_num_channels: bm is NULL");
+        return -1;
+    }
     bm->filters[channel].gain = gain_linear;
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t basilar_membrane_set_all_gains(basilar_membrane_t* bm,
                                                const float* gains) {
-    if (!bm || !gains) return -1;
+    if (!bm || !gains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_get_num_channels: required parameter is NULL (bm, gains)");
+        return -1;
+    }
     for (uint32_t i = 0; i < bm->config.num_channels; i++) {
         bm->filters[i].gain = gains[i];
     }
@@ -225,7 +262,10 @@ nimcp_error_t basilar_membrane_apply_gain_curve(basilar_membrane_t* bm,
                                                   const float* freq_points,
                                                   const float* gain_points,
                                                   uint32_t num_points) {
-    if (!bm || !freq_points || !gain_points || num_points == 0) return -1;
+    if (!bm || !freq_points || !gain_points || num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "basilar_membrane_get_num_channels: required parameter is NULL (bm, freq_points, gain_points)");
+        return -1;
+    }
     /* Simple: apply nearest point gain */
     for (uint32_t ch = 0; ch < bm->config.num_channels; ch++) {
         float cf = bm->filters[ch].center_freq_hz;
@@ -241,18 +281,36 @@ nimcp_error_t basilar_membrane_apply_gain_curve(basilar_membrane_t* bm,
 }
 
 nimcp_error_t bm_config_validate(const bm_config_t* config) {
-    if (!config) return -1;
-    if (config->num_channels == 0 || config->num_channels > BM_MAX_CHANNELS) return -1;
-    if (config->min_freq_hz >= config->max_freq_hz) return -1;
-    if (config->sample_rate == 0) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bm_config_validate: config is NULL");
+        return -1;
+    }
+    if (config->num_channels == 0 || config->num_channels > BM_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bm_config_validate: config->num_channels is zero");
+        return -1;
+    }
+    if (config->min_freq_hz >= config->max_freq_hz) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bm_config_validate: capacity exceeded");
+        return -1;
+    }
+    if (config->sample_rate == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bm_config_validate: config->sample_rate is zero");
+        return -1;
+    }
     return NIMCP_SUCCESS;
 }
 
 bm_output_t* bm_output_create(basilar_membrane_t* bm, uint32_t max_samples) {
-    if (!bm || max_samples == 0) return NULL;
+    if (!bm || max_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bm_output_create: bm is NULL");
+        return NULL;
+    }
     uint32_t n = bm->config.num_channels;
     bm_output_t* out = (bm_output_t*)nimcp_calloc(1, sizeof(bm_output_t));
-    if (!out) return NULL;
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bm_output_create: out is NULL");
+        return NULL;
+    }
     out->num_channels = n;
     out->num_samples = max_samples;
     out->channel_output = (float*)nimcp_calloc(n, sizeof(float));
@@ -263,6 +321,7 @@ bm_output_t* bm_output_create(basilar_membrane_t* bm, uint32_t max_samples) {
         nimcp_free(out->channel_output); nimcp_free(out->envelope);
         nimcp_free(out->fine_structure); nimcp_free(out->phase);
         nimcp_free(out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bm_output_create: required parameter is NULL (out->channel_output, out->envelope, out->fine_structure, out->phase)");
         return NULL;
     }
     return out;
@@ -292,7 +351,10 @@ float bm_erb_to_freq(float erb) {
 nimcp_error_t bm_compute_erb_spaced_freqs(float min_freq, float max_freq,
                                             uint32_t num_channels,
                                             float* center_freqs) {
-    if (!center_freqs || num_channels == 0) return -1;
+    if (!center_freqs || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bm_erb_to_freq: center_freqs is NULL");
+        return -1;
+    }
     float erb_min = bm_freq_to_erb(min_freq);
     float erb_max = bm_freq_to_erb(max_freq);
     for (uint32_t i = 0; i < num_channels; i++) {

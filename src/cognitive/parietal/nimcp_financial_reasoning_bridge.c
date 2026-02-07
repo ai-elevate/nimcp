@@ -1212,11 +1212,13 @@ static bool evaluate_simple_condition(financial_reasoning_bridge_t* bridge,
     /* Parse: var op value */
     int parsed = sscanf(condition, "%63s %3s %f", var, op, &threshold);
     if (parsed != 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_simple_condition: validation failed");
         return false;
     }
 
     float value;
     if (!get_fact_value(bridge, var, &value)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_simple_condition: get_fact_value is NULL");
         return false;  /* Unknown fact */
     }
 
@@ -1235,6 +1237,7 @@ static bool evaluate_simple_condition(financial_reasoning_bridge_t* bridge,
         return fabsf(value - threshold) >= 0.0001f;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_simple_condition: operation failed");
     return false;
 }
 
@@ -1245,6 +1248,7 @@ static bool evaluate_condition(financial_reasoning_bridge_t* bridge,
                                 const char* condition)
 {
     if (!condition || condition[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_condition: condition is NULL");
         return false;
     }
 
@@ -1269,6 +1273,7 @@ static bool evaluate_condition(financial_reasoning_bridge_t* bridge,
                 bool partial = evaluate_simple_condition(bridge, simple);
                 result = result && partial;
                 if (!result) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_condition: result is NULL");
                     return false;  /* Short-circuit */
                 }
                 simple_idx = 0;

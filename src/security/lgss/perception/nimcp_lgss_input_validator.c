@@ -156,9 +156,13 @@ static void calculate_stats_float(const float* data, size_t len,
  * @brief Check for NaN/Inf values in float array
  */
 static bool check_float_validity(const float* data, size_t len) {
-    if (!data) return false;
+    if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_float_validity: data is NULL");
+        return false;
+    }
     for (size_t i = 0; i < len; i++) {
         if (isnan(data[i]) || isinf(data[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_float_validity: validation failed");
             return false;
         }
     }
@@ -170,9 +174,13 @@ static bool check_float_validity(const float* data, size_t len) {
  */
 static bool check_range_float(const float* data, size_t len,
                                float min_val, float max_val) {
-    if (!data) return false;
+    if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_float_validity: data is NULL");
+        return false;
+    }
     for (size_t i = 0; i < len; i++) {
         if (data[i] < min_val || data[i] > max_val) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_float_validity: validation failed");
             return false;
         }
     }
@@ -266,6 +274,7 @@ lgss_input_validator_t* lgss_input_validator_create(
     validator->mutex = nimcp_mutex_create(&attr);
     if (!validator->mutex) {
         nimcp_free(validator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lgss_input_validator_create: validator->mutex is NULL");
         return NULL;
     }
 

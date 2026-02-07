@@ -65,6 +65,7 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
     swarm_brain_fep_bridge_t* bridge = (swarm_brain_fep_bridge_t*)nimcp_malloc(sizeof(swarm_brain_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -84,6 +85,7 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_fep_create: bridge->base is NULL");
         return NULL;
     }
 

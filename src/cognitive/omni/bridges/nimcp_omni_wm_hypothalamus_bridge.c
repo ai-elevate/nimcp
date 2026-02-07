@@ -726,6 +726,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
     omni_wm_hypothalamus_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_hypothalamus_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM hypothalamus bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge is NULL");
         return NULL;
     }
 
@@ -734,6 +735,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
                          "wm_hypothalamus_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -750,6 +752,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate controller outputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->hypo_to_wm is NULL");
         return NULL;
     }
     bridge->hypo_to_wm.controller_count = 0;
@@ -760,6 +763,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate predicted state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->wm_to_hypo is NULL");
         return NULL;
     }
     bridge->wm_to_hypo.predicted_state_dim = 0;
@@ -771,6 +775,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate suggested setpoints");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->wm_to_hypo is NULL");
         return NULL;
     }
 
@@ -782,6 +787,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate last predicted state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge->last_predicted_state is NULL");
         return NULL;
     }
 
@@ -813,6 +819,7 @@ omni_wm_hypothalamus_bridge_t* omni_wm_hypothalamus_bridge_create(
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             NIMCP_LOGGING_ERROR("Failed to allocate resource predictions");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
             return NULL;
         }
     }
@@ -1054,7 +1061,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_circadian(
 }
 
 bool omni_wm_hypothalamus_bridge_is_connected(const omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_hypothalamus_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_is_connected", 0.0f);
 
@@ -1269,7 +1279,7 @@ float omni_wm_hypothalamus_bridge_get_priority_boost(
     const omni_wm_hypothalamus_bridge_t* bridge,
     uint32_t drive_type) {
 
-    if (!bridge || drive_type >= WM_HYPO_MAX_DRIVES) return 1.0f;
+    if (!bridge || drive_type >= WM_HYPO_MAX_DRIVES) return 0.0f;
 
     /* Phase 8: Heartbeat at operation start */
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_priority_boost", 0.0f);
@@ -1312,7 +1322,10 @@ float omni_wm_hypothalamus_bridge_get_drive_modifier(
 bool omni_wm_hypothalamus_bridge_is_conservative(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_is_conservative", 0.0f);
 
@@ -1338,10 +1351,9 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_stress(
 
     stress_level = clamp_float(stress_level, 0.0f, 1.0f);
 
-    /* Exponential moving average smoothing */
-    bridge->current_stress_smoothed =
-        STRESS_AROUSAL_SMOOTHING * stress_level +
-        (1.0f - STRESS_AROUSAL_SMOOTHING) * bridge->current_stress_smoothed;
+    /* Direct assignment for explicit API call - smoothing is applied
+     * internally during update cycles, not on explicit set */
+    bridge->current_stress_smoothed = stress_level;
 
     /* Update effects */
     bridge->hypo_to_wm.stress_level = bridge->current_stress_smoothed;
@@ -1411,7 +1423,7 @@ float omni_wm_hypothalamus_bridge_get_circadian_modulation(
     const omni_wm_hypothalamus_bridge_t* bridge,
     uint32_t modulation_type) {
 
-    if (!bridge) return 1.0f;
+    if (!bridge) return 0.0f;
 
     /* Phase 8: Heartbeat at operation start */
     omni_wm_hypothalamus_bridge_heartbeat("omni_wm_hypo_get_circadian_modula", 0.0f);

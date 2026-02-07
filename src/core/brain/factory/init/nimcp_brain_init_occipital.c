@@ -276,6 +276,7 @@ bool nimcp_brain_factory_init_occipital_subsystem(brain_t brain) {
     brain->occipital = occipital_create(&occipital_cfg);
     if (!brain->occipital) {
         set_error("Failed to create occipital adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_occipital_subsystem: brain->occipital is NULL");
         return false;
     }
 
@@ -379,6 +380,7 @@ bool nimcp_brain_factory_init_occipital_substrate_bridge(brain_t brain) {
 
     if (!brain->occipital_substrate_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create occipital substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_occipital_substrate_bridge: brain->occipital_substrate_bridge is NULL");
         return false;
     }
 
@@ -423,6 +425,7 @@ bool nimcp_brain_factory_init_occipital_thalamic_bridge(brain_t brain) {
 
     if (!brain->occipital_thalamic_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create occipital thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_occipital_thalamic_bridge: brain->occipital_thalamic_bridge is NULL");
         return false;
     }
 
@@ -470,6 +473,7 @@ bool nimcp_brain_factory_init_occipital_quantum_bridge(brain_t brain) {
 
     if (!brain->occipital_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create occipital quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_occipital_quantum_bridge: brain->occipital_quantum_bridge is NULL");
         return false;
     }
 
@@ -500,6 +504,7 @@ bool nimcp_brain_factory_connect_occipital_to_parietal(brain_t brain) {
     if (!occipital_set_motion_callback(brain->occipital,
             dorsal_motion_callback, brain)) {
         LOG_WARN(LOG_MODULE, "Failed to set occipital motion callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_connect_occipital_to_parietal: operation failed");
         return false;
     }
 
@@ -530,6 +535,7 @@ bool nimcp_brain_factory_connect_occipital_to_temporal(brain_t brain) {
     if (!occipital_set_feature_callback(brain->occipital,
             ventral_feature_callback, brain)) {
         LOG_WARN(LOG_MODULE, "Failed to set occipital feature callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_connect_occipital_to_temporal: operation failed");
         return false;
     }
 
@@ -591,6 +597,7 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
     occipital_training_bridge_t* training_bridge = occipital_training_bridge_create(&config);
     if (!training_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create occipital training bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_occipital_to_training: training_bridge is NULL");
         return false;
     }
 
@@ -598,6 +605,7 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
     if (occipital_training_connect_occipital(training_bridge, brain->occipital) != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect occipital to training bridge");
         occipital_training_bridge_destroy(training_bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_connect_occipital_to_training: validation failed");
         return false;
     }
 
@@ -605,6 +613,7 @@ bool nimcp_brain_factory_connect_occipital_to_training(brain_t brain) {
     if (occipital_training_connect_training(training_bridge, brain->training_ctx) != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect training context to bridge");
         occipital_training_bridge_destroy(training_bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_connect_occipital_to_training: validation failed");
         return false;
     }
 
@@ -682,6 +691,7 @@ bool nimcp_brain_factory_connect_occipital_to_logic(brain_t brain) {
 
     if (!bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create visual-logic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_occipital_to_logic: bridge is NULL");
         return false;
     }
 
@@ -814,6 +824,7 @@ bool nimcp_brain_factory_connect_occipital_to_cortical_columns(brain_t brain) {
 
         if (!brain->orientation_hypercolumns) {
             LOG_WARN(LOG_MODULE, "Failed to allocate orientation hypercolumns");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_connect_occipital_to_cortical_columns: brain->orientation_hypercolumns is NULL");
             return false;
         }
 
@@ -927,6 +938,7 @@ bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain) {
 
     if (!av_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create occipital audiovisual bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_connect_occipital_to_broca: av_bridge is NULL");
         return false;
     }
 
@@ -934,6 +946,7 @@ bool nimcp_brain_factory_connect_occipital_to_broca(brain_t brain) {
     if (occipital_av_connect_broca(av_bridge, brain->broca) != 0) {
         LOG_WARN(LOG_MODULE, "Failed to connect audiovisual bridge to Broca");
         occipital_av_bridge_destroy(av_bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_connect_occipital_to_broca: validation failed");
         return false;
     }
 

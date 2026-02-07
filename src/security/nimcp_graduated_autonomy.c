@@ -100,6 +100,7 @@ static autonomy_domain_t* find_domain(graduated_autonomy_t* system, const char* 
             return &system->domains[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_domain: validation failed");
     return NULL;
 }
 
@@ -110,7 +111,10 @@ static autonomy_domain_t* get_or_create_domain(
     autonomy_domain_t* domain = find_domain(system, name);
     if (domain) return domain;
 
-    if (system->domain_count >= AUTONOMY_MAX_DOMAINS) return NULL;
+    if (system->domain_count >= AUTONOMY_MAX_DOMAINS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_or_create_domain: capacity exceeded");
+        return NULL;
+    }
 
     domain = &system->domains[system->domain_count++];
     memset(domain, 0, sizeof(*domain));
@@ -137,7 +141,10 @@ graduated_autonomy_t* graduated_autonomy_create(
     const graduated_autonomy_config_t* config)
 {
     graduated_autonomy_t* system = nimcp_calloc(1, sizeof(graduated_autonomy_t));
-    if (system == NULL) return NULL;
+    if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "graduated_autonomy_create: validation failed");
+        return NULL;
+    }
 
     system->mutex = nimcp_mutex_create(NULL);
     if (system->mutex == NULL) { nimcp_free(system); return NULL; }

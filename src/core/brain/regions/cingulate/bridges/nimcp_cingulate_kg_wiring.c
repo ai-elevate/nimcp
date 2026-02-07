@@ -98,7 +98,10 @@ static brain_kg_edge_id_t create_cingulate_edge(
 //=============================================================================
 
 int cingulate_kg_default_config(cingulate_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_kg_default_config: config is NULL");
+        return -1;
+    }
 
     config->register_dacc = true;
     config->register_vacc = true;
@@ -122,7 +125,10 @@ int cingulate_kg_register_all(
     cingulate_kg_state_t* state,
     uint64_t admin_token
 ) {
-    if (!kg) return -1;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_kg_register_all: kg is NULL");
+        return -1;
+    }
 
     cingulate_kg_config_t local_config;
     if (config) {
@@ -143,6 +149,7 @@ int cingulate_kg_register_all(
     );
     if (local_state.root_id == BRAIN_KG_INVALID_NODE) {
         NIMCP_LOG_ERROR(CINGULATE_KG_MODULE_NAME, "Failed to create root node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_kg_register_all: validation failed");
         return -1;
     }
     local_state.node_count++;
@@ -313,7 +320,10 @@ int cingulate_kg_unregister_all(
     uint64_t admin_token
 ) {
     (void)admin_token;
-    if (!kg || !state) return -1;
+    if (!kg || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_kg_unregister_all: required parameter is NULL (kg, state)");
+        return -1;
+    }
 
     state->registered = false;
     state->node_count = 0;

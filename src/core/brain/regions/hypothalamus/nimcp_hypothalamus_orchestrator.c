@@ -165,6 +165,7 @@ static int find_bridge_index(hypo_orchestrator_t orch, uint32_t bridge_id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_index: validation failed");
     return -1;
 }
 
@@ -178,6 +179,7 @@ static int find_bridge_by_type(hypo_orchestrator_t orch, hypo_bridge_type_t type
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_bridge_by_type: validation failed");
     return -1;
 }
 
@@ -474,6 +476,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
     orch->mutex = nimcp_mutex_create(&attr);
     if (!orch->mutex) {
         nimcp_free(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_orch_create: orch->mutex is NULL");
         return NULL;
     }
 
@@ -486,6 +489,7 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
         if (!orch->event_queue) {
             nimcp_mutex_free(orch->mutex);
             nimcp_free(orch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_create: orch->event_queue is NULL");
             return NULL;
         }
     }
@@ -584,12 +588,14 @@ int hypo_orch_register_bridge(
     /* Check if bridge type already registered */
     if (find_bridge_by_type(orch, bridge_type) >= 0) {
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_register_bridge: capacity exceeded");
         return -1;
     }
 
     /* Check capacity */
     if (orch->num_bridges >= orch->config.max_bridges) {
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_register_bridge: capacity exceeded");
         return -1;
     }
 
@@ -655,6 +661,7 @@ int hypo_orch_unregister_bridge(
     int idx = find_bridge_index(orch, bridge_id);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_unregister_bridge: validation failed");
         return -1;
     }
 
@@ -715,6 +722,7 @@ int hypo_orch_get_bridge_info(
     int idx = find_bridge_index(orch, bridge_id);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_get_bridge_info: validation failed");
         return -1;
     }
 
@@ -741,6 +749,7 @@ int hypo_orch_get_bridge_by_type(
     int idx = find_bridge_by_type(orch, bridge_type);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_get_bridge_by_type: validation failed");
         return -1;
     }
 
@@ -792,6 +801,7 @@ int hypo_orch_subscribe(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_subscribe: capacity exceeded");
             return -1;
         }
         slot = (int)orch->num_subscriptions++;
@@ -843,6 +853,7 @@ int hypo_orch_subscribe_to_bridge(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_subscribe_to_bridge: capacity exceeded");
             return -1;
         }
         slot = (int)orch->num_subscriptions++;
@@ -889,6 +900,7 @@ int hypo_orch_unsubscribe(
     }
 
     ORCH_UNLOCK(orch);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_unsubscribe: operation failed");
     return -1;
 }
 
@@ -952,6 +964,7 @@ int hypo_orch_publish_async(
     if (orch->queue_count >= orch->config.event_queue_size) {
         orch->stats.events_dropped++;
         ORCH_UNLOCK(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hypo_orch_publish_async: capacity exceeded");
         return -1;
     }
 

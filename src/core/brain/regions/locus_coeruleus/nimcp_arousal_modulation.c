@@ -171,6 +171,7 @@ int nimcp_arousal_shutdown(nimcp_arousal_system_t* system) {
 
 int nimcp_arousal_reset(nimcp_arousal_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_reset: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -200,10 +201,12 @@ int nimcp_arousal_update(
     float dt
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_arousal_update: validation failed");
         return -1;
     }
 
@@ -318,6 +321,7 @@ int nimcp_arousal_update(
 
 int nimcp_arousal_set_target(nimcp_arousal_system_t* system, float target) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_set_target: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -327,6 +331,7 @@ int nimcp_arousal_set_target(nimcp_arousal_system_t* system, float target) {
 
 int nimcp_arousal_apply_circadian(nimcp_arousal_system_t* system, float time_of_day) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_apply_circadian: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -369,10 +374,12 @@ int nimcp_arousal_get_dimensions(
     nimcp_arousal_dimensions_t* dimensions
 ) {
     if (!system || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_dimensions: required parameter is NULL (system, dimensions)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_dimensions: system->initialized is NULL");
         return -1;
     }
 
@@ -385,10 +392,12 @@ int nimcp_arousal_get_gain(
     nimcp_gain_modulation_t* gain
 ) {
     if (!system || !gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_gain: required parameter is NULL (system, gain)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_gain: system->initialized is NULL");
         return -1;
     }
 
@@ -401,10 +410,12 @@ int nimcp_arousal_get_performance(
     nimcp_arousal_performance_t* performance
 ) {
     if (!system || !performance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_performance: required parameter is NULL (system, performance)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_arousal_get_performance: system->initialized is NULL");
         return -1;
     }
 

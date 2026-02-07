@@ -51,6 +51,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surprise_plasticity)
+void surprise_plasticity_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================
@@ -189,6 +190,7 @@ static habituation_entry_t* find_source(surprise_plasticity_bridge_t* bridge, ui
             return &bridge->sources[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source: validation failed");
     return NULL;
 }
 

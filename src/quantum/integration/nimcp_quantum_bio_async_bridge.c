@@ -116,6 +116,7 @@ static quantum_bio_subscription_t* quantum_find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_find_subscription: validation failed");
     return NULL;
 }
 

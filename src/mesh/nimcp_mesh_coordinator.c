@@ -212,6 +212,7 @@ mesh_coordinator_t* mesh_coordinator_create(
     mesh_coordinator_t* coord = nimcp_calloc(1, sizeof(*coord));
     if (!coord) {
         LOG_ERROR("Failed to allocate coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_create: coord is NULL");
         return NULL;
     }
 
@@ -233,6 +234,7 @@ mesh_coordinator_t* mesh_coordinator_create(
     if (!coord->participants) {
         LOG_ERROR("Failed to allocate participant array");
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_create: coord->participants is NULL");
         return NULL;
     }
 
@@ -242,6 +244,7 @@ mesh_coordinator_t* mesh_coordinator_create(
         LOG_ERROR("Failed to create coordinator mutex");
         nimcp_free(coord->participants);
         nimcp_free(coord);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_coordinator_create: coord->mutex is NULL");
         return NULL;
     }
 
@@ -461,7 +464,10 @@ bool mesh_coordinator_has_participant(
     const mesh_coordinator_t* coord,
     mesh_participant_id_t participant_id
 ) {
-    if (!validate_coordinator(coord)) return false;
+    if (!validate_coordinator(coord)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_coordinator_has_participant: validate_coordinator is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < coord->participant_count; i++) {
         if (coord->participants[i] == participant_id) {
@@ -605,7 +611,10 @@ uint64_t mesh_coordinator_get_last_heartbeat(const mesh_coordinator_t* coord) {
 }
 
 bool mesh_coordinator_heartbeat_timed_out(const mesh_coordinator_t* coord) {
-    if (!validate_coordinator(coord)) return false;
+    if (!validate_coordinator(coord)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_coordinator_heartbeat_timed_out: validate_coordinator is NULL");
+        return false;
+    }
 
     uint64_t now = nimcp_time_now_ns();
     uint64_t timeout_ns = (uint64_t)(coord->election_timeout_ms * 1000000.0f);

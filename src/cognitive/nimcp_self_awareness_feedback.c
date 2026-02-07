@@ -317,6 +317,7 @@ int feedback_set_policy(
     const feedback_policy_t* policy
 ) {
     if (!system || !policy || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_set_policy: required parameter is NULL (system, policy, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -324,6 +325,7 @@ int feedback_set_policy(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_set_policy: capacity exceeded");
         return -1;
     }
 
@@ -340,6 +342,7 @@ int feedback_get_policy(
     feedback_policy_t* policy
 ) {
     if (!system || !policy || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_get_policy: required parameter is NULL (system, policy, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -347,6 +350,7 @@ int feedback_get_policy(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_get_policy: capacity exceeded");
         return -1;
     }
 
@@ -369,6 +373,7 @@ int feedback_record_transfer(
     const char* error_msg
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_record_transfer: required parameter is NULL (system, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -376,6 +381,7 @@ int feedback_record_transfer(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_record_transfer: capacity exceeded");
         return -1;
     }
 
@@ -448,6 +454,7 @@ int feedback_compute_value(
     float* output
 ) {
     if (!system || !output || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_compute_value: required parameter is NULL (system, output, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -455,6 +462,7 @@ int feedback_compute_value(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_compute_value: capacity exceeded");
         return -1;
     }
 
@@ -511,6 +519,7 @@ int feedback_analyze_loop(
     feedback_analysis_t* analysis
 ) {
     if (!system || !analysis || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_analyze_loop: required parameter is NULL (system, analysis, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -518,6 +527,7 @@ int feedback_analyze_loop(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_analyze_loop: capacity exceeded");
         return -1;
     }
 
@@ -671,6 +681,7 @@ int feedback_analyze_loop(
 
 int feedback_analyze_all(feedback_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_analyze_all: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -751,6 +762,7 @@ bool feedback_has_unhealthy_loops(const feedback_system_t* system) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "feedback_has_unhealthy_loops: validation failed");
     return false;
 }
 
@@ -766,6 +778,7 @@ int feedback_get_history(
     uint32_t* count
 ) {
     if (!system || !records || !count || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_get_history: required parameter is NULL (system, records, count, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -773,6 +786,7 @@ int feedback_get_history(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_get_history: capacity exceeded");
         return -1;
     }
 
@@ -801,6 +815,7 @@ int feedback_clear_history(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_clear_history: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -837,6 +852,7 @@ int feedback_open_gate(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_open_gate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -844,6 +860,7 @@ int feedback_open_gate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_open_gate: capacity exceeded");
         return -1;
     }
 
@@ -856,6 +873,7 @@ int feedback_close_gate(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_close_gate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -863,6 +881,7 @@ int feedback_close_gate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_close_gate: capacity exceeded");
         return -1;
     }
 
@@ -875,6 +894,7 @@ bool feedback_is_gate_open(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_is_gate_open: required parameter is NULL (system, system->initialized)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -882,6 +902,7 @@ bool feedback_is_gate_open(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_is_gate_open: capacity exceeded");
         return false;
     }
 
@@ -899,6 +920,7 @@ int feedback_enable_adaptive_rate(
     float decrease_factor
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_enable_adaptive_rate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -906,6 +928,7 @@ int feedback_enable_adaptive_rate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_enable_adaptive_rate: capacity exceeded");
         return -1;
     }
 
@@ -922,6 +945,7 @@ int feedback_disable_adaptive_rate(
     feedback_loop_type_t loop_type
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "feedback_disable_adaptive_rate: required parameter is NULL (system, system->initialized)");
         return -1;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -929,6 +953,7 @@ int feedback_disable_adaptive_rate(
 
 
     if (loop_type < 0 || loop_type >= FEEDBACK_LOOP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "feedback_disable_adaptive_rate: capacity exceeded");
         return -1;
     }
 

@@ -111,6 +111,7 @@ kg_schema_version_t kg_schema_get_current(const brain_kg_t* kg) {
 
 int kg_schema_set_version(brain_kg_t* kg, const kg_schema_version_t* version) {
     if (!kg || !version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_set_version: required parameter is NULL (kg, version)");
         return -1;
     }
 
@@ -127,15 +128,24 @@ int kg_schema_compare(const kg_schema_version_t* a, const kg_schema_version_t* b
     }
 
     /* Compare major version */
-    if (a->major < b->major) return -1;
+    if (a->major < b->major) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_compare: validation failed");
+        return -1;
+    }
     if (a->major > b->major) return 1;
 
     /* Compare minor version */
-    if (a->minor < b->minor) return -1;
+    if (a->minor < b->minor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_compare: validation failed");
+        return -1;
+    }
     if (a->minor > b->minor) return 1;
 
     /* Compare patch version */
-    if (a->patch < b->patch) return -1;
+    if (a->patch < b->patch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_compare: validation failed");
+        return -1;
+    }
     if (a->patch > b->patch) return 1;
 
     /* Compare labels (empty label > non-empty label for release versions) */
@@ -143,7 +153,10 @@ int kg_schema_compare(const kg_schema_version_t* a, const kg_schema_version_t* b
     bool b_has_label = b->label[0] != '\0';
 
     if (!a_has_label && b_has_label) return 1;  /* Release > pre-release */
-    if (a_has_label && !b_has_label) return -1; /* Pre-release < release */
+    if (a_has_label && !b_has_label) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_compare: b_has_label is NULL");
+        return -1;
+    }
 
     if (a_has_label && b_has_label) {
         return strcmp(a->label, b->label);
@@ -158,6 +171,7 @@ int kg_schema_version_to_string(
     size_t buffer_size
 ) {
     if (!version || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_version_to_string: required parameter is NULL (version, buffer)");
         return -1;
     }
 
@@ -179,6 +193,7 @@ int kg_schema_version_from_string(
     kg_schema_version_t* version
 ) {
     if (!str || !version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_version_from_string: required parameter is NULL (str, version)");
         return -1;
     }
 
@@ -197,6 +212,7 @@ int kg_schema_version_from_string(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_version_from_string: validation failed");
     return -1;
 }
 
@@ -215,6 +231,7 @@ int kg_schema_register_migration(const kg_migration_script_t* migration) {
     }
 
     if (g_migration_registry.count >= KG_SCHEMA_MAX_MIGRATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_schema_register_migration: capacity exceeded");
         return -1; /* Registry full */
     }
 
@@ -223,6 +240,7 @@ int kg_schema_register_migration(const kg_migration_script_t* migration) {
         kg_migration_script_t* existing = &g_migration_registry.migrations[i];
         if (kg_schema_compare(&existing->from_version, &migration->from_version) == 0 &&
             kg_schema_compare(&existing->to_version, &migration->to_version) == 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_register_migration: validation failed");
             return -1; /* Duplicate migration */
         }
     }
@@ -249,6 +267,7 @@ int kg_schema_list_migrations(kg_migration_script_t* migrations, uint32_t* count
     ensure_registry_initialized();
 
     if (!migrations || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_list_migrations: required parameter is NULL (migrations, count)");
         return -1;
     }
 
@@ -274,6 +293,7 @@ int kg_schema_get_pending_migrations(
     ensure_registry_initialized();
 
     if (!kg || !migrations || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_get_pending_migrations: required parameter is NULL (kg, migrations, count)");
         return -1;
     }
 
@@ -302,6 +322,7 @@ const kg_migration_script_t* kg_schema_find_migration(
     ensure_registry_initialized();
 
     if (!from || !to) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_find_migration: required parameter is NULL (from, to)");
         return NULL;
     }
 
@@ -313,6 +334,7 @@ const kg_migration_script_t* kg_schema_find_migration(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_find_migration: validation failed");
     return NULL;
 }
 
@@ -332,6 +354,7 @@ int kg_schema_migrate(
     kg_migration_result_t* result
 ) {
     if (!kg || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_migrate: required parameter is NULL (kg, target)");
         return -1;
     }
 
@@ -373,6 +396,7 @@ int kg_schema_migrate(
         local_result.completed_at = get_current_timestamp_ms();
         local_result.duration_ms = local_result.completed_at - local_result.started_at;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_migrate: validation failed");
         return -1;
     }
 
@@ -387,6 +411,7 @@ int kg_schema_migrate(
         local_result.completed_at = get_current_timestamp_ms();
         local_result.duration_ms = local_result.completed_at - local_result.started_at;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_migrate: validation failed");
         return -1;
     }
 
@@ -494,6 +519,7 @@ int kg_schema_get_migration_history(
     uint32_t* count
 ) {
     if (!kg || !history || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_get_migration_history: required parameter is NULL (kg, history, count)");
         return -1;
     }
 
@@ -524,16 +550,19 @@ bool kg_schema_is_compatible(
     const kg_schema_version_t* actual
 ) {
     if (!required || !actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_is_compatible: required parameter is NULL (required, actual)");
         return false;
     }
 
     /* Same major version required */
     if (required->major != actual->major) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_is_compatible: validation failed");
         return false;
     }
 
     /* Actual minor must be >= required minor */
     if (actual->minor < required->minor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_schema_is_compatible: validation failed");
         return false;
     }
 
@@ -545,6 +574,7 @@ bool kg_schema_needs_migration(
     const kg_schema_version_t* target
 ) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_schema_needs_migration: kg is NULL");
         return false;
     }
 

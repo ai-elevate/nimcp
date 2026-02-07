@@ -184,6 +184,7 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
     if (nimcp_platform_mutex_init(&mgr->state_mutex, false) != 0) {
         LOG_ERROR("[%s] Failed to initialize mutex", POWER_MODULE);
         nimcp_free(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "portia_power_init: validation failed");
         return NULL;
     }
 
@@ -253,6 +254,7 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
         LOG_ERROR("[%s] Failed to create polling thread", POWER_MODULE);
         nimcp_platform_mutex_destroy(&mgr->state_mutex);
         nimcp_free(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_power_init: validation failed");
         return NULL;
     }
 
@@ -294,6 +296,7 @@ void portia_power_shutdown(portia_power_manager_t mgr) {
 
 bool portia_power_get_status(portia_power_manager_t mgr, power_status_t* status) {
     if (!mgr || mgr->magic != POWER_MAGIC || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_power_get_status: required parameter is NULL (mgr, status)");
         return false;
     }
 
@@ -301,6 +304,7 @@ bool portia_power_get_status(portia_power_manager_t mgr, power_status_t* status)
     bbb_validation_result_t result;
     if (mgr->bbb && !bbb_validate_pointer(mgr->bbb, status, sizeof(*status), &result)) {
         LOG_ERROR("[%s] Invalid status pointer: %s", POWER_MODULE, result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_power_get_status: bbb_validate_pointer is NULL");
         return false;
     }
 
@@ -520,6 +524,7 @@ power_tier_config_t portia_power_get_tier_config(
 
 bool portia_power_get_stats(portia_power_manager_t mgr, portia_power_stats_t* stats) {
     if (!mgr || mgr->magic != POWER_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_power_get_stats: required parameter is NULL (mgr, stats)");
         return false;
     }
 
@@ -527,6 +532,7 @@ bool portia_power_get_stats(portia_power_manager_t mgr, portia_power_stats_t* st
     bbb_validation_result_t result;
     if (mgr->bbb && !bbb_validate_pointer(mgr->bbb, stats, sizeof(*stats), &result)) {
         LOG_ERROR("[%s] Invalid stats pointer: %s", POWER_MODULE, result.reason);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_power_get_stats: bbb_validate_pointer is NULL");
         return false;
     }
 
@@ -666,6 +672,7 @@ static void* power_poll_thread(void* arg) {
     }
 
     LOG_DEBUG("[%s] Polling thread exited", POWER_MODULE);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "power_poll_thread: operation failed");
     return NULL;
 }
 
@@ -687,6 +694,7 @@ static bool read_battery_status(portia_power_manager_t mgr, power_status_t* stat
     // Read capacity
     float capacity = read_sysfs_float(mgr->battery_path, "capacity");
     if (capacity < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_battery_status: validation failed");
         return false;
     }
     status->battery_level_pct = capacity;

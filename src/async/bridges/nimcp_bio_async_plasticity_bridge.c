@@ -325,7 +325,10 @@ int bio_async_plasticity_bridge_disconnect(bio_async_plasticity_bridge_t* bridge
 }
 
 bool bio_async_plasticity_bridge_is_connected(const bio_async_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_plasticity_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 
@@ -698,6 +701,7 @@ int bio_async_plasticity_subscribe(
     if (slot < 0) {
         BRIDGE_UNLOCK(bridge);
         NIMCP_LOGGING_WARN("Bio-async plasticity: subscription slots exhausted");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bio_async_plasticity_subscribe: validation failed");
         return -1;
     }
 
@@ -732,6 +736,7 @@ int bio_async_plasticity_unsubscribe(
 
     if (!bridge->subscriptions[subscription_id].active) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio_async_plasticity_unsubscribe: bridge->subscriptions is NULL");
         return -1;
     }
 

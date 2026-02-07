@@ -117,6 +117,7 @@ static PyObject* KnowledgeItem_FromC(const knowledge_item_t* item)
     if (!obj->concept_name || !obj->definition || !obj->context) {
         Py_DECREF(obj);
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeItem_FromC: required parameter is NULL (obj->concept_name, obj->definition, obj->context)");
         return NULL;
     }
 
@@ -198,6 +199,7 @@ static PyObject* DomainKnowledge_FromC(const domain_knowledge_t* dk)
     obj->gaps = PyList_New((Py_ssize_t)dk->num_gaps);
     if (obj->gaps == NULL) {
         Py_DECREF(obj);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "DomainKnowledge_FromC: validation failed");
         return NULL;
     }
 
@@ -205,6 +207,7 @@ static PyObject* DomainKnowledge_FromC(const domain_knowledge_t* dk)
         PyObject* gap_str = PyUnicode_FromString(dk->gaps[i]);
         if (gap_str == NULL) {
             Py_DECREF(obj);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "DomainKnowledge_FromC: validation failed");
             return NULL;
         }
         PyList_SET_ITEM(obj->gaps, (Py_ssize_t)i, gap_str);
@@ -249,12 +252,14 @@ static int KnowledgeSystem_init(KnowledgeSystemObject* self, PyObject* args, PyO
     const char* learner_name = "python_learner";
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", kwlist, &learner_name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "KnowledgeSystem_init: PyArg_ParseTupleAndKeywords is NULL");
         return -1;
     }
 
     self->system = knowledge_system_create(learner_name);
     if (self->system == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create knowledge system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "KnowledgeSystem_init: validation failed");
         return -1;
     }
 
@@ -273,11 +278,13 @@ static PyObject* KnowledgeSystem_learn_from_text(KnowledgeSystemObject* self, Py
     int domain = KNOWLEDGE_DOMAIN_GENERAL;
 
     if (!PyArg_ParseTuple(args, "s|i", &text, &domain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_learn_from_text: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (domain < KNOWLEDGE_DOMAIN_LANGUAGE || domain > KNOWLEDGE_DOMAIN_GENERAL) {
         PyErr_SetString(PyExc_ValueError, "Invalid domain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_learn_from_text: validation failed");
         return NULL;
     }
 
@@ -300,6 +307,7 @@ static PyObject* KnowledgeSystem_retrieve(KnowledgeSystemObject* self, PyObject*
     const char* concept;
 
     if (!PyArg_ParseTuple(args, "s", &concept)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_retrieve: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -330,6 +338,7 @@ static PyObject* KnowledgeSystem_understand(KnowledgeSystemObject* self, PyObjec
     const char* context;
 
     if (!PyArg_ParseTuple(args, "ss", &concept, &context)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_understand: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -358,11 +367,13 @@ static PyObject* KnowledgeSystem_explain_simply(KnowledgeSystemObject* self, PyO
     unsigned int target_age = 10;
 
     if (!PyArg_ParseTuple(args, "s|I", &concept, &target_age)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_explain_simply: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (target_age < 3 || target_age > 18) {
         PyErr_SetString(PyExc_ValueError, "target_age must be between 3 and 18");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_explain_simply: validation failed");
         return NULL;
     }
 
@@ -391,6 +402,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
     unsigned int max_connections = 10;
 
     if (!PyArg_ParseTuple(args, "s|I", &concept, &max_connections)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_find_connections: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -401,6 +413,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
     knowledge_item_t* connections = (knowledge_item_t*)nimcp_calloc(max_connections, sizeof(knowledge_item_t));
     if (connections == NULL) {
         PyErr_NoMemory();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_find_connections: validation failed");
         return NULL;
     }
 
@@ -413,6 +426,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
     PyObject* result = PyList_New((Py_ssize_t)num_found);
     if (result == NULL) {
         nimcp_free(connections);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "KnowledgeSystem_find_connections: validation failed");
         return NULL;
     }
 
@@ -421,6 +435,7 @@ static PyObject* KnowledgeSystem_find_connections(KnowledgeSystemObject* self, P
         if (item == NULL) {
             Py_DECREF(result);
             nimcp_free(connections);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_find_connections: validation failed");
             return NULL;
         }
         PyList_SET_ITEM(result, (Py_ssize_t)i, item);
@@ -442,6 +457,7 @@ static PyObject* KnowledgeSystem_build_on(KnowledgeSystemObject* self, PyObject*
     const char* differences;
 
     if (!PyArg_ParseTuple(args, "sss", &new_concept, &based_on, &differences)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "KnowledgeSystem_build_on: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -465,6 +481,7 @@ static PyObject* KnowledgeSystem_reinforce(KnowledgeSystemObject* self, PyObject
     const char* example;
 
     if (!PyArg_ParseTuple(args, "ss", &concept, &example)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_reinforce: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -487,11 +504,13 @@ static PyObject* KnowledgeSystem_assess_domain(KnowledgeSystemObject* self, PyOb
     int domain;
 
     if (!PyArg_ParseTuple(args, "i", &domain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_assess_domain: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (domain < KNOWLEDGE_DOMAIN_LANGUAGE || domain > KNOWLEDGE_DOMAIN_GENERAL) {
         PyErr_SetString(PyExc_ValueError, "Invalid domain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_assess_domain: validation failed");
         return NULL;
     }
 
@@ -542,6 +561,7 @@ static PyObject* KnowledgeSystem_get_summary(KnowledgeSystemObject* self, PyObje
         PyObject* dk = DomainKnowledge_FromC(&assessments[i]);
         if (dk == NULL) {
             Py_DECREF(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_get_summary: validation failed");
             return NULL;
         }
         PyList_SET_ITEM(result, (Py_ssize_t)i, dk);
@@ -560,6 +580,7 @@ static PyObject* KnowledgeSystem_save(KnowledgeSystemObject* self, PyObject* arg
     const char* filepath;
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_save: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -583,6 +604,7 @@ static PyObject* KnowledgeSystem_load(PyTypeObject* cls, PyObject* args)
     (void)cls;  /* Unused */
 
     if (!PyArg_ParseTuple(args, "s", &filepath)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_load: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -594,6 +616,7 @@ static PyObject* KnowledgeSystem_load(PyTypeObject* cls, PyObject* args)
 
     if (system == NULL) {
         PyErr_SetString(PyExc_IOError, "Failed to load knowledge system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_load: validation failed");
         return NULL;
     }
 
@@ -601,6 +624,7 @@ static PyObject* KnowledgeSystem_load(PyTypeObject* cls, PyObject* args)
     KnowledgeSystemObject* obj = PyObject_New(KnowledgeSystemObject, &KnowledgeSystemType);
     if (obj == NULL) {
         knowledge_system_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "KnowledgeSystem_load: validation failed");
         return NULL;
     }
 
@@ -618,6 +642,7 @@ static PyObject* KnowledgeSystem_organize_domain(KnowledgeSystemObject* self, Py
     int domain;
 
     if (!PyArg_ParseTuple(args, "i", &domain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_organize_domain: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -640,11 +665,13 @@ static PyObject* KnowledgeSystem_get_by_confidence_range(KnowledgeSystemObject* 
     float min_conf, max_conf;
 
     if (!PyArg_ParseTuple(args, "ff", &min_conf, &max_conf)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_get_by_confidence_range: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (min_conf < 0.0f || max_conf > 1.0f || min_conf > max_conf) {
         PyErr_SetString(PyExc_ValueError, "Invalid confidence range (must be 0.0-1.0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_get_by_confidence_range: validation failed");
         return NULL;
     }
 
@@ -658,6 +685,7 @@ static PyObject* KnowledgeSystem_get_by_confidence_range(KnowledgeSystemObject* 
     PyObject* result_list = PyList_New((Py_ssize_t)num_results);
     if (result_list == NULL) {
         nimcp_free(results);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "KnowledgeSystem_get_by_confidence_range: validation failed");
         return NULL;
     }
 
@@ -666,6 +694,7 @@ static PyObject* KnowledgeSystem_get_by_confidence_range(KnowledgeSystemObject* 
         if (item == NULL) {
             Py_DECREF(result_list);
             nimcp_free(results);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_get_by_confidence_range: validation failed");
             return NULL;
         }
         PyList_SET_ITEM(result_list, (Py_ssize_t)i, item);
@@ -685,6 +714,7 @@ static PyObject* KnowledgeSystem_domain_name(PyObject* Py_UNUSED(self), PyObject
     int domain;
 
     if (!PyArg_ParseTuple(args, "i", &domain)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "KnowledgeSystem_domain_name: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -831,29 +861,38 @@ int init_knowledge_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.knowledge", "Initializing knowledge module");
 
     /* Ready types */
-    if (PyType_Ready(&KnowledgeItemType) < 0)
+    if (PyType_Ready(&KnowledgeItemType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
-    if (PyType_Ready(&DomainKnowledgeType) < 0)
+    }
+    if (PyType_Ready(&DomainKnowledgeType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
-    if (PyType_Ready(&KnowledgeSystemType) < 0)
+    }
+    if (PyType_Ready(&KnowledgeSystemType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
+    }
 
     /* Add types */
     Py_INCREF(&KnowledgeItemType);
     if (PyModule_AddObject(module, "KnowledgeItem", (PyObject*)&KnowledgeItemType) < 0) {
         Py_DECREF(&KnowledgeItemType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&DomainKnowledgeType);
     if (PyModule_AddObject(module, "DomainKnowledge", (PyObject*)&DomainKnowledgeType) < 0) {
         Py_DECREF(&DomainKnowledgeType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&KnowledgeSystemType);
     if (PyModule_AddObject(module, "KnowledgeSystem", (PyObject*)&KnowledgeSystemType) < 0) {
         Py_DECREF(&KnowledgeSystemType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_knowledge_module: validation failed");
         return -1;
     }
 

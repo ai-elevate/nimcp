@@ -67,7 +67,10 @@ struct dragonfly_workspace_bridge_s {
 //=============================================================================
 
 int dragonfly_ws_bridge_default_config(dragonfly_ws_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     /* Competition settings */
     config->ignition_threshold = 0.5f;
@@ -92,15 +95,39 @@ int dragonfly_ws_bridge_default_config(dragonfly_ws_config_t* config) {
 }
 
 int dragonfly_ws_bridge_validate_config(const dragonfly_ws_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) return -1;
-    if (config->base_salience < 0.0f || config->base_salience > 1.0f) return -1;
-    if (config->target_detection_salience < 0.0f || config->target_detection_salience > 1.0f) return -1;
-    if (config->pursuit_salience < 0.0f || config->pursuit_salience > 1.0f) return -1;
-    if (config->broadcast_decay_rate < 0.0f) return -1;
-    if (config->context_influence_weight < 0.0f || config->context_influence_weight > 1.0f) return -1;
-    if (config->subscribe_mode > WS_SUBSCRIBE_EXECUTIVE) return -1;
+    if (config->ignition_threshold < 0.0f || config->ignition_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->base_salience < 0.0f || config->base_salience > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->target_detection_salience < 0.0f || config->target_detection_salience > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->pursuit_salience < 0.0f || config->pursuit_salience > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->broadcast_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->context_influence_weight < 0.0f || config->context_influence_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->subscribe_mode > WS_SUBSCRIBE_EXECUTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_bridge_validate_config: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -152,7 +179,10 @@ void dragonfly_ws_bridge_destroy(dragonfly_workspace_bridge_t* bridge) {
 }
 
 int dragonfly_ws_bridge_reset(dragonfly_workspace_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->has_active_broadcast = false;
     bridge->broadcast_age_ms = 0.0f;
@@ -231,7 +261,10 @@ int dragonfly_ws_broadcast_target(
     float x, float y, float z,
     float vx, float vy, float vz
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_broadcast_target: bridge is NULL");
+        return -1;
+    }
 
     float content[6] = {x, y, z, vx, vy, vz};
     dragonfly_ws_compete_result_t result = dragonfly_ws_compete(
@@ -250,7 +283,10 @@ int dragonfly_ws_broadcast_intercept(
     float intercept_x, float intercept_y, float intercept_z,
     float time_to_intercept
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_broadcast_intercept: bridge is NULL");
+        return -1;
+    }
 
     float content[4] = {intercept_x, intercept_y, intercept_z, time_to_intercept};
     dragonfly_ws_compete_result_t result = dragonfly_ws_compete(
@@ -268,7 +304,10 @@ int dragonfly_ws_broadcast_alert(
     dragonfly_workspace_bridge_t* bridge,
     float alert_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_broadcast_alert: bridge is NULL");
+        return -1;
+    }
 
     float content[1] = {alert_level};
     dragonfly_ws_compete_result_t result = dragonfly_ws_compete(
@@ -290,8 +329,14 @@ int dragonfly_ws_subscribe(
     dragonfly_workspace_bridge_t* bridge,
     dragonfly_ws_subscribe_mode_t mode
 ) {
-    if (!bridge) return -1;
-    if (mode > WS_SUBSCRIBE_EXECUTIVE) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_subscribe: bridge is NULL");
+        return -1;
+    }
+    if (mode > WS_SUBSCRIBE_EXECUTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_subscribe: validation failed");
+        return -1;
+    }
 
     bridge->subscribed[mode] = true;
     return 0;
@@ -301,15 +346,24 @@ int dragonfly_ws_unsubscribe(
     dragonfly_workspace_bridge_t* bridge,
     dragonfly_ws_subscribe_mode_t mode
 ) {
-    if (!bridge) return -1;
-    if (mode > WS_SUBSCRIBE_EXECUTIVE) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_unsubscribe: bridge is NULL");
+        return -1;
+    }
+    if (mode > WS_SUBSCRIBE_EXECUTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ws_unsubscribe: validation failed");
+        return -1;
+    }
 
     bridge->subscribed[mode] = false;
     return 0;
 }
 
 bool dragonfly_ws_has_broadcast(const dragonfly_workspace_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_has_broadcast: bridge is NULL");
+        return false;
+    }
     return bridge->queue_count > 0;
 }
 
@@ -317,7 +371,10 @@ int dragonfly_ws_receive(
     dragonfly_workspace_bridge_t* bridge,
     dragonfly_ws_received_t* received
 ) {
-    if (!bridge || !received) return -1;
+    if (!bridge || !received) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_receive: required parameter is NULL (bridge, received)");
+        return -1;
+    }
 
     if (bridge->queue_count == 0) {
         return 1;  /* No broadcasts available */
@@ -340,7 +397,10 @@ int dragonfly_ws_get_context(
     float* context,
     uint32_t context_dim
 ) {
-    if (!bridge || !context) return -1;
+    if (!bridge || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_get_context: required parameter is NULL (bridge, context)");
+        return -1;
+    }
 
     uint32_t copy_dim = (context_dim < bridge->context_dim) ? context_dim : bridge->context_dim;
     memcpy(context, bridge->context, copy_dim * sizeof(float));
@@ -349,7 +409,10 @@ int dragonfly_ws_get_context(
 }
 
 int dragonfly_ws_apply_context(dragonfly_workspace_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_apply_context: bridge is NULL");
+        return -1;
+    }
 
     /* Apply context influence to current salience */
     bridge->current_salience = bridge->config.base_salience +
@@ -375,7 +438,10 @@ int dragonfly_ws_connect_dragonfly(
     dragonfly_workspace_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_connect_dragonfly: bridge is NULL");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -384,13 +450,19 @@ int dragonfly_ws_connect_workspace(
     dragonfly_workspace_bridge_t* bridge,
     void* global_workspace
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_connect_workspace: bridge is NULL");
+        return -1;
+    }
     bridge->global_workspace = global_workspace;
     return 0;
 }
 
 int dragonfly_ws_update(dragonfly_workspace_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_time_ms += dt_ms;
 
@@ -427,13 +499,19 @@ int dragonfly_ws_bridge_get_stats(
     const dragonfly_workspace_bridge_t* bridge,
     dragonfly_ws_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dragonfly_ws_bridge_reset_stats(dragonfly_workspace_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ws_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

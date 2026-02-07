@@ -219,6 +219,7 @@ static brain_antigen_t* find_antigen_by_id(brain_immune_system_t* system, uint32
             return &system->antigens[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antigen_by_id: validation failed");
     return NULL;
 }
 
@@ -244,6 +245,7 @@ static brain_b_cell_t* find_b_cell_by_id(brain_immune_system_t* system, uint32_t
             return &system->b_cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_b_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -269,6 +271,7 @@ static brain_t_cell_t* find_t_cell_by_id(brain_immune_system_t* system, uint32_t
             return &system->t_cells[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_t_cell_by_id: validation failed");
     return NULL;
 }
 
@@ -294,6 +297,7 @@ static brain_antibody_t* find_antibody_by_id(brain_immune_system_t* system, uint
             return &system->antibodies[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_antibody_by_id: validation failed");
     return NULL;
 }
 
@@ -319,6 +323,7 @@ static brain_inflammation_site_t* find_inflammation_by_id(brain_immune_system_t*
             return &system->inflammation_sites[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_inflammation_by_id: validation failed");
     return NULL;
 }
 
@@ -504,7 +509,10 @@ static void update_inflammation_sites(brain_immune_system_t* system, uint64_t de
  * @brief Get default configuration
  */
 int brain_immune_default_config(brain_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_default_config", 0.0f);
@@ -619,6 +627,7 @@ brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) 
 
 cleanup:
     brain_immune_destroy(system);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_create: validation failed");
     return NULL;
 }
 
@@ -651,7 +660,10 @@ void brain_immune_destroy(brain_immune_system_t* system) {
  * @brief Start immune system
  */
 int brain_immune_start(brain_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_start: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_start", 0.0f);
@@ -674,7 +686,10 @@ int brain_immune_start(brain_immune_system_t* system) {
  * @brief Stop immune system
  */
 int brain_immune_stop(brain_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_stop: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_stop", 0.0f);
@@ -701,11 +716,11 @@ int brain_immune_stop(brain_immune_system_t* system) {
 int brain_immune_connect_bbb(brain_immune_system_t* system, bbb_system_t bbb_system) {
     if (!system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bbb: system is NULL");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
     if (!bbb_system) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bbb: bbb_system is NULL");
-        return -1;
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -784,7 +799,10 @@ static void bft_trust_recovery_cb(
  * @brief Connect to BFT with enhanced callbacks
  */
 int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_context) {
-    if (!system || !bft_context) return -1;
+    if (!system || !bft_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bft: required parameter is NULL (system, bft_context)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_connect_bft", 0.0f);
@@ -826,7 +844,10 @@ int brain_immune_connect_bft(brain_immune_system_t* system, bft_context_t* bft_c
  * HOW:  Link systems and enable auto-sync of threats, memory cells, and responses
  */
 int brain_immune_connect_swarm(brain_immune_system_t* system, NimcpSwarmImmuneSystem* swarm_immune) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_swarm: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_connect_swarm", 0.0f);
@@ -882,7 +903,10 @@ static void hr_completion_cb(
  * @brief Connect to hierarchical recovery
  */
 int brain_immune_connect_hierarchical_recovery(brain_immune_system_t* system, void* hr_context) {
-    if (!system || !hr_context) return -1;
+    if (!system || !hr_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_hierarchical_recovery: required parameter is NULL (system, hr_context)");
+        return -1;
+    }
 
     /* Register completion callback for IL-10 release */
     /* Phase 8: Heartbeat at operation start */
@@ -902,7 +926,10 @@ int brain_immune_connect_hierarchical_recovery(brain_immune_system_t* system, vo
  * @brief Connect to bio-async router
  */
 int brain_immune_connect_bio_async(brain_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_connect_bio_async: system is NULL");
+        return -1;
+    }
     if (!bio_router_is_initialized()) {
         if (system->config.enable_logging) {
             LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME, "Bio-async router not available, skipping registration");
@@ -947,7 +974,10 @@ int brain_immune_auto_sync_swarm_threat(
     brain_immune_system_t* system,
     const NimcpSwarmThreat* threat
 ) {
-    if (!system || !threat || !system->swarm_immune) return -1;
+    if (!system || !threat || !system->swarm_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_auto_sync_swarm_threat: required parameter is NULL (system, threat, system->swarm_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_auto_sync_swarm_thre", 0.0f);
@@ -976,18 +1006,27 @@ int brain_immune_sync_memory_to_swarm(
     brain_immune_system_t* system,
     uint32_t b_cell_id
 ) {
-    if (!system || !system->swarm_immune) return -1;
+    if (!system || !system->swarm_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_sync_memory_to_swarm: required parameter is NULL (system, system->swarm_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_sync_memory_to_swarm", 0.0f);
 
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
-    if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
+    if (!b_cell || b_cell->state != B_CELL_MEMORY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_sync_memory_to_swarm: b_cell is NULL");
+        return -1;
+    }
 
     /* Find corresponding antigen to get response type */
     brain_antigen_t* antigen = find_antigen_by_id(system, b_cell->bound_antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_sync_memory_to_swarm: antigen is NULL");
+        return -1;
+    }
 
     /* Create swarm threat signature from B cell receptor */
     NimcpSwarmThreatSignature signature;
@@ -1034,6 +1073,7 @@ int brain_immune_sync_memory_to_swarm(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_sync_memory_to_swarm: validation failed");
     return -1;
 }
 
@@ -1048,17 +1088,26 @@ int brain_immune_trigger_swarm_response(
     brain_immune_system_t* system,
     uint32_t antibody_id
 ) {
-    if (!system || !system->swarm_immune) return -1;
+    if (!system || !system->swarm_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_trigger_swarm_response: required parameter is NULL (system, system->swarm_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_trigger_swarm_respon", 0.0f);
 
 
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
-    if (!antibody || !antibody->active) return -1;
+    if (!antibody || !antibody->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_trigger_swarm_response: required parameter is NULL (antibody, antibody->active)");
+        return -1;
+    }
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antibody->target_antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_trigger_swarm_response: antigen is NULL");
+        return -1;
+    }
 
     /* If antibody already has swarm response, execute it */
     if (antibody->swarm_response_id != 0) {
@@ -1094,6 +1143,7 @@ int brain_immune_trigger_swarm_response(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_trigger_swarm_response: validation failed");
     return -1;
 }
 
@@ -1108,14 +1158,20 @@ int brain_immune_broadcast_inflammation_state(
     brain_immune_system_t* system,
     uint32_t site_id
 ) {
-    if (!system || !system->swarm_immune) return -1;
+    if (!system || !system->swarm_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_broadcast_inflammation_state: required parameter is NULL (system, system->swarm_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_broadcast_inflammati", 0.0f);
 
 
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_broadcast_inflammation_state: site is NULL");
+        return -1;
+    }
 
     /* Map inflammation level to swarm severity */
     NimcpSwarmSeverity severity;
@@ -1169,14 +1225,20 @@ int brain_immune_consensus_threat_severity(
     uint32_t antigen_id,
     float* agreed_severity_out
 ) {
-    if (!system || !system->swarm_immune || !agreed_severity_out) return -1;
+    if (!system || !system->swarm_immune || !agreed_severity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_consensus_threat_severity: required parameter is NULL (system, system->swarm_immune, agreed_severity_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_consensus_threat_sev", 0.0f);
 
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_consensus_threat_severity: antigen is NULL");
+        return -1;
+    }
 
     /* Confirm threat via swarm consensus */
     uint32_t threat_id = antigen->id;
@@ -1221,6 +1283,7 @@ int brain_immune_consensus_threat_severity(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_consensus_threat_severity: operation failed");
     return -1;
 }
 
@@ -1236,14 +1299,20 @@ int brain_immune_propagate_secondary_response(
     uint32_t memory_b_cell_id,
     uint32_t antigen_id
 ) {
-    if (!system || !system->swarm_immune) return -1;
+    if (!system || !system->swarm_immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_propagate_secondary_response: required parameter is NULL (system, system->swarm_immune)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_propagate_secondary_", 0.0f);
 
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, memory_b_cell_id);
-    if (!b_cell || b_cell->state != B_CELL_MEMORY) return -1;
+    if (!b_cell || b_cell->state != B_CELL_MEMORY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_propagate_secondary_response: b_cell is NULL");
+        return -1;
+    }
 
     /* Share memory cell with swarm if not already shared */
     if (b_cell->swarm_memory_cell_id == 0) {
@@ -1296,8 +1365,14 @@ int brain_immune_present_antigen(
     uint32_t source_node,
     uint32_t* antigen_id
 ) {
-    if (!system || !epitope || epitope_len == 0) return -1;
-    if (system->antigen_count >= system->antigen_capacity) return -1;
+    if (!system || !epitope || epitope_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_antigen: required parameter is NULL (system, epitope)");
+        return -1;
+    }
+    if (system->antigen_count >= system->antigen_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_present_antigen: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_present_antigen", 0.0f);
@@ -1376,7 +1451,10 @@ int brain_immune_present_bbb_threat(
     size_t data_len,
     uint32_t* antigen_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_bbb_threat: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Map BBB severity to 1-10 scale */
     /* Phase 8: Heartbeat at operation start */
@@ -1421,7 +1499,10 @@ int brain_immune_present_byzantine(
     size_t evidence_len,
     uint32_t* antigen_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_byzantine: system is NULL");
+        return -1;
+    }
 
     /* Create epitope from node ID and behavior */
     /* Phase 8: Heartbeat at operation start */
@@ -1462,7 +1543,10 @@ int brain_immune_present_swarm_threat(
     const NimcpSwarmThreat* threat,
     uint32_t* antigen_id
 ) {
-    if (!system || !threat) return -1;
+    if (!system || !threat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_swarm_threat: required parameter is NULL (system, threat)");
+        return -1;
+    }
 
     /* Map swarm severity */
     /* Phase 8: Heartbeat at operation start */
@@ -1503,15 +1587,24 @@ int brain_immune_activate_b_cell(
     uint32_t antigen_id,
     uint32_t* b_cell_id
 ) {
-    if (!system) return -1;
-    if (system->b_cell_count >= system->b_cell_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_b_cell: system is NULL");
+        return -1;
+    }
+    if (system->b_cell_count >= system->b_cell_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_b_cell: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_b_cell", 0.0f);
 
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_b_cell: antigen is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1550,14 +1643,20 @@ int brain_immune_activate_b_cell(
  * @brief Convert B cell to memory
  */
 int brain_immune_b_cell_to_memory(brain_immune_system_t* system, uint32_t b_cell_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_b_cell_to_memory: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_b_cell_to_memory", 0.0f);
 
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
-    if (!b_cell) return -1;
+    if (!b_cell) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_b_cell_to_memory: b_cell is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1604,15 +1703,24 @@ int brain_immune_activate_helper_t(
     uint32_t antigen_id,
     uint32_t* t_cell_id
 ) {
-    if (!system) return -1;
-    if (system->t_cell_count >= system->t_cell_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_helper_t: system is NULL");
+        return -1;
+    }
+    if (system->t_cell_count >= system->t_cell_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_helper_t: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_helper_t", 0.0f);
 
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_helper_t: antigen is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1654,15 +1762,24 @@ int brain_immune_activate_killer_t(
     uint32_t antigen_id,
     uint32_t* t_cell_id
 ) {
-    if (!system) return -1;
-    if (system->t_cell_count >= system->t_cell_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_killer_t: system is NULL");
+        return -1;
+    }
+    if (system->t_cell_count >= system->t_cell_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_activate_killer_t: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_activate_killer_t", 0.0f);
 
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_activate_killer_t: antigen is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1699,14 +1816,20 @@ int brain_immune_t_cell_kill(
     uint32_t t_cell_id,
     uint32_t target_node
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_t_cell_kill: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_t_cell_kill", 0.0f);
 
 
     brain_t_cell_t* t_cell = find_t_cell_by_id(system, t_cell_id);
-    if (!t_cell || t_cell->type != T_CELL_KILLER) return -1;
+    if (!t_cell || t_cell->type != T_CELL_KILLER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_t_cell_kill: t_cell is NULL");
+        return -1;
+    }
 
     /* Execute quarantine via BFT if connected */
     if (system->bft_context) {
@@ -1747,17 +1870,26 @@ int brain_immune_t_help_b(
     uint32_t helper_id,
     uint32_t b_cell_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_t_help_b: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_t_help_b", 0.0f);
 
 
     brain_t_cell_t* helper = find_t_cell_by_id(system, helper_id);
-    if (!helper || helper->type != T_CELL_HELPER) return -1;
+    if (!helper || helper->type != T_CELL_HELPER) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_t_help_b: helper is NULL");
+        return -1;
+    }
 
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
-    if (!b_cell) return -1;
+    if (!b_cell) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_t_help_b: b_cell is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -1795,7 +1927,10 @@ int brain_immune_produce_antibody(
     brain_antibody_class_t ab_class,
     uint32_t* antibody_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_produce_antibody: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_produce_antibody", 0.0f);
@@ -1806,6 +1941,7 @@ int brain_immune_produce_antibody(
     /* Check capacity inside lock to avoid race */
     if (system->antibody_count >= system->antibody_capacity) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_produce_antibody: capacity exceeded");
         return -1;
     }
 
@@ -1813,6 +1949,7 @@ int brain_immune_produce_antibody(
     brain_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
     if (!b_cell || b_cell->state != B_CELL_PLASMA) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_produce_antibody: b_cell is NULL");
         return -1;
     }
 
@@ -1865,7 +2002,10 @@ int brain_immune_produce_antibody(
  * @brief Execute antibody response
  */
 int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibody_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_execute_antibody: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_execute_antibody", 0.0f);
@@ -1877,6 +2017,7 @@ int brain_immune_execute_antibody(brain_immune_system_t* system, uint32_t antibo
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody || !antibody->active) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_execute_antibody: required parameter is NULL (antibody, antibody->active)");
         return -1;
     }
 
@@ -1933,7 +2074,10 @@ int brain_immune_neutralize(
     uint32_t antigen_id,
     uint32_t antibody_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_neutralize: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_neutralize", 0.0f);
@@ -1945,12 +2089,14 @@ int brain_immune_neutralize(
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_neutralize: antigen is NULL");
         return -1;
     }
 
     brain_antibody_t* antibody = find_antibody_by_id(system, antibody_id);
     if (!antibody) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_neutralize: antibody is NULL");
         return -1;
     }
 
@@ -2014,10 +2160,22 @@ int brain_immune_release_cytokine(
     uint32_t target_region,
     uint32_t* cytokine_id
 ) {
-    if (!system) return -1;
-    if (!system->mutex) return -1;
-    if (!system->cytokines) return -1;
-    if (system->cytokine_count >= system->cytokine_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_release_cytokine: system is NULL");
+        return -1;
+    }
+    if (!system->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_release_cytokine: system->mutex is NULL");
+        return -1;
+    }
+    if (!system->cytokines) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_release_cytokine: system->cytokines is NULL");
+        return -1;
+    }
+    if (system->cytokine_count >= system->cytokine_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_release_cytokine: capacity exceeded");
+        return -1;
+    }
     /* Validate concentration is in expected range [0.0, 1.0] */
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_release_cytokine", 0.0f);
@@ -2115,7 +2273,10 @@ int brain_immune_broadcast_alert(
     uint32_t antigen_id,
     brain_inflammation_level_t severity
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_broadcast_alert: system is NULL");
+        return -1;
+    }
 
     /* Release appropriate cytokine for severity */
     /* Phase 8: Heartbeat at operation start */
@@ -2163,8 +2324,14 @@ int brain_immune_initiate_inflammation(
     uint32_t antigen_id,
     uint32_t* site_id
 ) {
-    if (!system) return -1;
-    if (system->inflammation_count >= system->inflammation_capacity) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_initiate_inflammation: system is NULL");
+        return -1;
+    }
+    if (system->inflammation_count >= system->inflammation_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "brain_immune_initiate_inflammation: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_initiate_inflammatio", 0.0f);
@@ -2212,14 +2379,20 @@ int brain_immune_initiate_inflammation(
  * @brief Escalate inflammation
  */
 int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t site_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_escalate_inflammation: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_escalate_inflammatio", 0.0f);
 
 
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_escalate_inflammation: site is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
 
@@ -2247,14 +2420,20 @@ int brain_immune_escalate_inflammation(brain_immune_system_t* system, uint32_t s
  * @brief Resolve inflammation
  */
 int brain_immune_resolve_inflammation(brain_immune_system_t* system, uint32_t site_id) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_resolve_inflammation: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_resolve_inflammation", 0.0f);
 
 
     brain_inflammation_site_t* site = find_inflammation_by_id(system, site_id);
-    if (!site) return -1;
+    if (!site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_resolve_inflammation: site is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(system->mutex);
     site->resolution_progress = 0.01f;  /* Start resolution */
@@ -2293,14 +2472,20 @@ int brain_immune_check_memory(
     uint32_t antigen_id,
     uint32_t* b_cell_id
 ) {
-    if (!system || !b_cell_id) return -1;
+    if (!system || !b_cell_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_check_memory: required parameter is NULL (system, b_cell_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_check_memory", 0.0f);
 
 
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
-    if (!antigen) return -1;
+    if (!antigen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_check_memory: antigen is NULL");
+        return -1;
+    }
 
     float best_affinity = 0.0f;
     uint32_t best_match_id = 0;
@@ -2353,6 +2538,7 @@ int brain_immune_check_memory(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_check_memory: validation failed");
     return -1;  /* No memory match */
 }
 
@@ -2364,14 +2550,20 @@ int brain_immune_secondary_response(
     uint32_t antigen_id,
     uint32_t memory_b_cell_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_secondary_response: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_secondary_response", 0.0f);
 
 
     brain_b_cell_t* memory = find_b_cell_by_id(system, memory_b_cell_id);
-    if (!memory || memory->state != B_CELL_MEMORY) return -1;
+    if (!memory || memory->state != B_CELL_MEMORY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_immune_secondary_response: memory is NULL");
+        return -1;
+    }
 
     /* Memory response is faster and stronger */
     nimcp_mutex_lock(system->mutex);
@@ -2407,7 +2599,10 @@ int brain_immune_set_antigen_callback(
     brain_immune_antigen_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_set_antigen_callback: system is NULL");
+        return -1;
+    }
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
     /* Phase 8: Heartbeat at operation start */
@@ -2427,7 +2622,10 @@ int brain_immune_set_neutralize_callback(
     brain_immune_neutralize_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_set_neutralize_callback: system is NULL");
+        return -1;
+    }
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
     /* Phase 8: Heartbeat at operation start */
@@ -2447,7 +2645,10 @@ int brain_immune_set_cytokine_callback(
     brain_immune_cytokine_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_set_cytokine_callback: system is NULL");
+        return -1;
+    }
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
     /* Phase 8: Heartbeat at operation start */
@@ -2467,7 +2668,10 @@ int brain_immune_set_inflammation_callback(
     brain_immune_inflammation_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_set_inflammation_callback: system is NULL");
+        return -1;
+    }
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
     /* Phase 8: Heartbeat at operation start */
@@ -2487,7 +2691,10 @@ int brain_immune_set_kill_callback(
     brain_immune_kill_cb_t callback,
     void* user_data
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_set_kill_callback: system is NULL");
+        return -1;
+    }
 
     /* THREAD SAFETY: Acquire mutex to prevent race with callback invocation */
     /* Phase 8: Heartbeat at operation start */
@@ -2510,7 +2717,10 @@ int brain_immune_set_kill_callback(
  * @brief Update immune system state
  */
 int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
-    if (!system || !system->running) return -1;
+    if (!system || !system->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_update: required parameter is NULL (system, system->running)");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_update", 0.0f);
@@ -2556,7 +2766,10 @@ int brain_immune_update(brain_immune_system_t* system, uint64_t delta_ms) {
  * @brief Get statistics
  */
 int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* stats) {
-    if (!system || !stats) return -1;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_get_stats: required parameter is NULL (system, stats)");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_get_stats", 0.0f);
@@ -2636,7 +2849,10 @@ int brain_immune_get_stats(brain_immune_system_t* system, brain_immune_stats_t* 
  * HOW:  Copy key metrics to BFT-compatible structure
  */
 int brain_immune_get_checkpoint_state(brain_immune_system_t* system, void* state) {
-    if (!system || !state) return -1;
+    if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_get_checkpoint_state: required parameter is NULL (system, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_get_checkpoint_state", 0.0f);
@@ -2712,7 +2928,10 @@ brain_immune_phase_t brain_immune_get_phase(brain_immune_system_t* system) {
  * @brief Check if antigen is neutralized
  */
 bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen_id) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_is_neutralized: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_is_neutralized", 0.0f);
@@ -2759,7 +2978,10 @@ int brain_immune_handle_bft_accusation(
     const bft_evidence_t* evidence,
     uint32_t evidence_count
 ) {
-    if (!system || !evidence) return -1;
+    if (!system || !evidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_handle_bft_accusation: required parameter is NULL (system, evidence)");
+        return -1;
+    }
 
     // Create antigen from BFT accusation
     uint32_t antigen_id = 0;
@@ -2791,7 +3013,10 @@ int brain_immune_handle_bft_quarantine(
     uint64_t duration_ms,
     float trust_score
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_handle_bft_quarantine: system is NULL");
+        return -1;
+    }
 
     /* Find antigen for this node if exists */
     nimcp_mutex_lock(system->mutex);
@@ -2846,7 +3071,10 @@ int brain_immune_handle_bft_trust_recovery(
     float old_trust,
     float new_trust
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_handle_bft_trust_recovery: system is NULL");
+        return -1;
+    }
 
     /* Find B cells associated with this node */
     nimcp_mutex_lock(system->mutex);
@@ -3168,8 +3396,14 @@ static void send_imagination_modulation_unlocked(brain_immune_system_t* system) 
  * @return 0 on success, -1 on error
  */
 int brain_immune_send_imagination_modulation(brain_immune_system_t* system) {
-    if (!system) return -1;
-    if (!system->mutex) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_send_imagination_modulation: system is NULL");
+        return -1;
+    }
+    if (!system->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_send_imagination_modulation: system->mutex is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_send_imagination_mod", 0.0f);
@@ -3204,6 +3438,7 @@ static nimcp_error_t imagination_message_handler(
     (void)response_promise;  /* Unused - no response needed */
 
     if (!msg || msg_size < sizeof(bio_message_header_t) || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_message_handler: required parameter is NULL (msg, user_data)");
         return -1;
     }
 
@@ -3276,8 +3511,14 @@ static int brain_immune_wiring_handler_callback(
  * @return 0 on success, -1 on error
  */
 int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
-    if (!system) return -1;
-    if (!system->bio_context) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_register_imagination_handler: system is NULL");
+        return -1;
+    }
+    if (!system->bio_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_register_imagination_handler: system->bio_context is NULL");
+        return -1;
+    }
 
     /* Module ID for brain immune */
     /* Phase 8: Heartbeat at operation start */
@@ -3315,6 +3556,7 @@ int brain_immune_register_imagination_handler(brain_immune_system_t* system) {
             LOG_MODULE_WARN(BRAIN_IMMUNE_MODULE_NAME,
                 "Failed to register imagination handler");
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_immune_register_imagination_handler: validation failed");
         return -1;
     }
 
@@ -3383,7 +3625,10 @@ int brain_immune_present_exception(
     const nimcp_exception_t* exception,
     uint32_t* antigen_id_out
 ) {
-    if (!system || !exception) return -1;
+    if (!system || !exception) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_present_exception: required parameter is NULL (system, exception)");
+        return -1;
+    }
 
     /* Use direct field access now that we include nimcp_exception.h */
     /* Phase 8: Heartbeat at operation start */
@@ -3476,7 +3721,10 @@ int brain_immune_notify_recovery_result(
     int recovery_action,
     bool success
 ) {
-    if (!system) return -1;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_notify_recovery_result: system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_notify_recovery_resu", 0.0f);
@@ -3522,7 +3770,10 @@ int brain_immune_get_recovery_recommendation(
     uint32_t antigen_id,
     int* action_out
 ) {
-    if (!system || !action_out) return -1;
+    if (!system || !action_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_get_recovery_recommendation: required parameter is NULL (system, action_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     brain_immune_heartbeat("brain_immune_get_recovery_recomme", 0.0f);
@@ -3533,6 +3784,7 @@ int brain_immune_get_recovery_recommendation(
     brain_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
     if (!antigen) {
         nimcp_mutex_unlock(system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_get_recovery_recommendation: antigen is NULL");
         return -1;
     }
 

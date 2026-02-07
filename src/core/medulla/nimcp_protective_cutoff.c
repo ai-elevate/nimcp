@@ -193,6 +193,7 @@ protective_cutoff_t* protective_cutoff_create(const protective_cutoff_config_t* 
     protective_cutoff_t* cutoff = (protective_cutoff_t*)nimcp_calloc(1, sizeof(protective_cutoff_t));
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("Failed to allocate protective cutoff context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protective_cutoff_create: cutoff is NULL");
         return NULL;
     }
 
@@ -225,6 +226,7 @@ protective_cutoff_t* protective_cutoff_create(const protective_cutoff_config_t* 
     if (nimcp_platform_mutex_init(&cutoff->mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(cutoff);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "protective_cutoff_create: validation failed");
         return NULL;
     }
 
@@ -459,11 +461,13 @@ bool protective_cutoff_can_execute(
 {
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("NULL cutoff context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_can_execute: cutoff is NULL");
         return false;
     }
 
     if (operation >= OP_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid operation type: %d", operation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protective_cutoff_can_execute: capacity exceeded");
         return false;
     }
 
@@ -732,6 +736,7 @@ int protective_cutoff_disconnect_bio_async(protective_cutoff_t* cutoff) {
 bool protective_cutoff_is_bio_async_connected(const protective_cutoff_t* cutoff) {
     if (!cutoff) {
         NIMCP_LOGGING_ERROR("NULL cutoff context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_is_bio_async_connected: cutoff is NULL");
         return false;
     }
 

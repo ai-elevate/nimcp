@@ -201,6 +201,7 @@ vae_bbb_bridge_t* vae_bbb_bridge_create(const vae_bbb_bridge_config_t* config)
 
     if (!config) {
         if (vae_bbb_bridge_default_config(&default_config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_create: validation failed");
             return NULL;
         }
         config = &default_config;
@@ -224,6 +225,7 @@ vae_bbb_bridge_t* vae_bbb_bridge_create(const vae_bbb_bridge_config_t* config)
     if (!bridge->mutex) {
         NIMCP_LOG_ERROR("VAE-BBB Bridge: Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_bbb_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -352,7 +354,10 @@ int vae_bbb_bridge_connect_bbb(vae_bbb_bridge_t* bridge, bbb_system_t bbb)
 
 int vae_bbb_bridge_disconnect(vae_bbb_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -369,7 +374,10 @@ int vae_bbb_bridge_disconnect(vae_bbb_bridge_t* bridge)
 
 bool vae_bbb_bridge_is_connected(const vae_bbb_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return (bridge->vae != NULL) && (bridge->bbb != NULL);
 }
 
@@ -829,7 +837,10 @@ vae_bbb_result_t vae_bbb_validate_pipeline(vae_bbb_bridge_t* bridge,
 
 int vae_bbb_sanitize_input(vae_bbb_bridge_t* bridge, nimcp_tensor_t* input)
 {
-    if (!bridge || !input || !input->data) return -1;
+    if (!bridge || !input || !input->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_sanitize_input: required parameter is NULL (bridge, input, input->data)");
+        return -1;
+    }
 
     uint32_t replaced = 0;
     uint32_t clamped = 0;
@@ -857,7 +868,10 @@ int vae_bbb_sanitize_input(vae_bbb_bridge_t* bridge, nimcp_tensor_t* input)
 
 int vae_bbb_sanitize_output(vae_bbb_bridge_t* bridge, nimcp_tensor_t* output)
 {
-    if (!bridge || !output || !output->data) return -1;
+    if (!bridge || !output || !output->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_sanitize_output: required parameter is NULL (bridge, output, output->data)");
+        return -1;
+    }
 
     uint32_t replaced = 0;
     uint32_t clamped = 0;
@@ -928,8 +942,14 @@ bool vae_bbb_detect_adversarial(vae_bbb_bridge_t* bridge,
                                  const nimcp_tensor_t* reference,
                                  float* adversarial_score)
 {
-    if (!bridge || !input || !adversarial_score) return false;
-    if (!bridge->config.detect_adversarial) return false;
+    if (!bridge || !input || !adversarial_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_detect_adversarial: required parameter is NULL (bridge, input, adversarial_score)");
+        return false;
+    }
+    if (!bridge->config.detect_adversarial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_detect_adversarial: bridge->config is NULL");
+        return false;
+    }
 
     *adversarial_score = 0.0f;
 
@@ -993,7 +1013,10 @@ int vae_bbb_report_threat(vae_bbb_bridge_t* bridge,
                            const void* data,
                            size_t data_size)
 {
-    if (!bridge || !bridge->bbb) return -1;
+    if (!bridge || !bridge->bbb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_report_threat: required parameter is NULL (bridge, bridge->bbb)");
+        return -1;
+    }
 
     /* Convert VAE threat to BBB threat */
     bbb_threat_type_t bbb_threat = vae_threat_to_bbb_threat(threat);
@@ -1035,7 +1058,10 @@ uint32_t vae_bbb_quarantine_tensor(vae_bbb_bridge_t* bridge,
 int vae_bbb_bridge_get_stats(const vae_bbb_bridge_t* bridge,
                               vae_bbb_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     stats->uptime_us = get_timestamp_us() - bridge->creation_time_us;
     return 0;
@@ -1044,7 +1070,10 @@ int vae_bbb_bridge_get_stats(const vae_bbb_bridge_t* bridge,
 int vae_bbb_bridge_get_health(const vae_bbb_bridge_t* bridge,
                                vae_bbb_bridge_health_t* health)
 {
-    if (!bridge || !health) return -1;
+    if (!bridge || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_get_health: required parameter is NULL (bridge, health)");
+        return -1;
+    }
     *health = bridge->health;
     return 0;
 }
@@ -1058,7 +1087,10 @@ vae_bbb_bridge_state_t vae_bbb_bridge_get_state(const vae_bbb_bridge_t* bridge)
 int vae_bbb_bridge_get_last_validation(const vae_bbb_bridge_t* bridge,
                                         vae_bbb_validation_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_bridge_get_last_validation: required parameter is NULL (bridge, result)");
+        return -1;
+    }
     *result = bridge->last_validation;
     return 0;
 }
@@ -1069,7 +1101,10 @@ int vae_bbb_bridge_get_last_validation(const vae_bbb_bridge_t* bridge,
 
 int vae_bbb_set_bounds(vae_bbb_bridge_t* bridge, const vae_bbb_bounds_t* bounds)
 {
-    if (!bridge || !bounds) return -1;
+    if (!bridge || !bounds) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_set_bounds: required parameter is NULL (bridge, bounds)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->config.bounds = *bounds;
@@ -1080,14 +1115,20 @@ int vae_bbb_set_bounds(vae_bbb_bridge_t* bridge, const vae_bbb_bounds_t* bounds)
 
 int vae_bbb_get_bounds(const vae_bbb_bridge_t* bridge, vae_bbb_bounds_t* bounds)
 {
-    if (!bridge || !bounds) return -1;
+    if (!bridge || !bounds) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_get_bounds: required parameter is NULL (bridge, bounds)");
+        return -1;
+    }
     *bounds = bridge->config.bounds;
     return 0;
 }
 
 int vae_bbb_set_validation_mask(vae_bbb_bridge_t* bridge, uint32_t mask)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_bbb_set_validation_mask: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->config.validation_mask = mask;

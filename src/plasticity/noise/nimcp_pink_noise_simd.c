@@ -313,7 +313,10 @@ const float* pink_simd_generate_aligned(
     pink_simd_generator_t* gen,
     uint32_t num_samples
 ) {
-    if (!gen || num_samples == 0) return NULL;
+    if (!gen || num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_simd_generate_aligned: gen is NULL");
+        return NULL;
+    }
 
     if (num_samples > gen->buffer_size) {
         num_samples = gen->buffer_size;

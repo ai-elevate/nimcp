@@ -119,6 +119,7 @@ typedef struct {
     uint32_t ciphertext_len;
     uint32_t entry_id;
     uint64_t timestamp_ns;
+    uint32_t key_version;   // Key version used for encryption
     uint8_t ciphertext[];  // Variable length
 } encrypted_entry_t;
 
@@ -271,6 +272,7 @@ static nimcp_error_t encrypt_entry(
     encrypted->entry_id = plaintext->entry_id;
     encrypted->timestamp_ns = plaintext->timestamp_ns;
     encrypted->ciphertext_len = ciphertext_len;
+    encrypted->key_version = audit->current_key->version;
 
     uint64_t start_time = get_time_ns();
 
@@ -342,9 +344,24 @@ static nimcp_error_t decrypt_entry(
         return NIMCP_INVALID_PARAM;
     }
 
-    // Find key by version
-    encryption_key_t* key = audit->current_key;
-    // For now, just use current key (should search key_history by version)
+    // Find key by version - search current key and history
+    encryption_key_t* key = NULL;
+    if (audit->current_key->version == encrypted->key_version) {
+        key = audit->current_key;
+    } else {
+        encryption_key_t* k = audit->key_history;
+        while (k) {
+            if (k->version == encrypted->key_version) {
+                key = k;
+                break;
+            }
+            k = k->next;
+        }
+    }
+    if (!key) {
+        // Fallback to current key if version not found
+        key = audit->current_key;
+    }
 
     uint64_t start_time = get_time_ns();
 
@@ -396,6 +413,7 @@ static nimcp_error_t decrypt_entry(
  */
 static bool should_rotate_key(nimcp_encrypted_audit_t audit) {
     if (audit->rotation_policy == NIMCP_KEY_ROTATION_MANUAL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_rotate_key: validation failed");
         return false;
     }
 
@@ -404,6 +422,7 @@ static bool should_rotate_key(nimcp_encrypted_audit_t audit) {
     }
 
     // Add other rotation policies here
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_rotate_key: validation failed");
     return false;
 }
 
@@ -436,18 +455,21 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     size_t key_len
 ) {
     if (!master_key || key_len != NIMCP_AUDIT_KEY_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypted_audit_create: master_key is NULL");
         return NULL;
     }
 
 #if USE_LIBSODIUM
     // Initialize libsodium
     if (sodium_init() < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_encrypted_audit_create: validation failed");
         return NULL;
     }
 
     // Check AES-256-GCM availability
     if (!crypto_aead_aes256gcm_is_available()) {
         fprintf(stderr, "AES-256-GCM not available on this CPU\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_encrypted_audit_create: crypto_aead_aes256gcm_is_available is NULL");
         return NULL;
     }
 #endif
@@ -470,6 +492,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     audit->buffer = nimcp_calloc(audit->config.buffer_size, sizeof(buffer_slot_t));
     if (!audit->buffer) {
         nimcp_free(audit);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_encrypted_audit_create: audit->buffer is NULL");
         return NULL;
     }
 
@@ -478,6 +501,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
     if (!audit->current_key) {
         nimcp_free(audit->buffer);
         nimcp_free(audit);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_encrypted_audit_create: audit->current_key is NULL");
         return NULL;
     }
 
@@ -509,6 +533,7 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
         nimcp_free(audit->current_key);
         nimcp_free(audit->buffer);
         nimcp_free(audit);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_encrypted_audit_create: validation failed");
         return NULL;
     }
 
@@ -991,6 +1016,14 @@ nimcp_error_t nimcp_encrypted_audit_export(
         entries_written++;
     }
 
+    // Update header with actual entries written (may differ from initial count
+    // if some buffer slots were empty/not in use)
+    if (entries_written != header.entry_count) {
+        header.entry_count = entries_written;
+        fseek(file, 0, SEEK_SET);
+        fwrite(&header, sizeof(header), 1, file);
+    }
+
     nimcp_mutex_unlock(&audit->lock);
     fclose(file);
 
@@ -1039,7 +1072,8 @@ nimcp_error_t nimcp_encrypted_audit_import(
         uint32_t total_size;
         if (fread(&total_size, sizeof(total_size), 1, file) != 1) break;
 
-        if (total_size < sizeof(encrypted_entry_t) || total_size > audit->config.max_entry_size + 1024) {
+        size_t max_valid_size = sizeof(encrypted_entry_t) + sizeof(nimcp_audit_entry_t) + 1024;
+        if (total_size < sizeof(encrypted_entry_t) || total_size > max_valid_size) {
             LOG_MODULE_WARN("encrypted_audit", "Invalid entry size: %u", total_size);
             break;
         }
@@ -1072,6 +1106,9 @@ nimcp_error_t nimcp_encrypted_audit_import(
         audit->next_entry_id++;
         entries_imported++;
     }
+
+    // Update statistics to reflect imported entries
+    audit->stats.total_entries += entries_imported;
 
     nimcp_mutex_unlock(&audit->lock);
     fclose(file);

@@ -378,6 +378,7 @@ gt_fep_bridge_t* gt_fep_bridge_create(const gt_fep_config_t* config) {
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "gt_fep") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "gt_fep_bridge_create: validation failed");
         return NULL;
     }
 
@@ -429,7 +430,10 @@ void gt_fep_bridge_destroy(gt_fep_bridge_t* bridge) {
 }
 
 int gt_fep_bridge_reset(gt_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_reset", 0.0f);
@@ -472,7 +476,10 @@ int gt_fep_bridge_register(
     nimcp_gt_system_t gt_system,
     uint32_t* bridge_id_out
 ) {
-    if (!bridge || !orchestrator) return -1;
+    if (!bridge || !orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_register: required parameter is NULL (bridge, orchestrator)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_regist", 0.0f);
@@ -509,6 +516,7 @@ int gt_fep_bridge_register(
         bridge->orchestrator = NULL;
         bridge->gt_system = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gt_fep_bridge_register: validation failed");
         return -1;
     }
 
@@ -525,7 +533,10 @@ int gt_fep_bridge_register(
 }
 
 int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_unregister: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_unregi", 0.0f);
@@ -554,7 +565,10 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
 }
 
 bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_reg", 0.0f);
@@ -591,13 +605,17 @@ int gt_fep_update_callback(void* handle) {
 
 
     gt_fep_bridge_t* bridge = (gt_fep_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_update_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_update_callback: bridge->registered is NULL");
         return -1;
     }
 
@@ -683,7 +701,10 @@ void gt_fep_destroy_callback(void* handle) {
  *===========================================================================*/
 
 int gt_fep_bridge_force_update(gt_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_force_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_force_", 0.0f);
@@ -717,7 +738,10 @@ int gt_fep_bridge_update_strategy_uncertainty(
     gt_fep_bridge_t* bridge,
     float uncertainty
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_update_strategy_uncertainty: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
@@ -735,7 +759,10 @@ int gt_fep_bridge_update_opponent_error(
     gt_fep_bridge_t* bridge,
     float error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_update_opponent_error: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
@@ -752,7 +779,10 @@ int gt_fep_bridge_update_nash_distance(
     gt_fep_bridge_t* bridge,
     float distance
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_update_nash_distance: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_update", 0.0f);
@@ -774,7 +804,10 @@ int gt_fep_bridge_get_metrics(
     const gt_fep_bridge_t* bridge,
     gt_fep_metrics_t* metrics_out
 ) {
-    if (!bridge || !metrics_out) return -1;
+    if (!bridge || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_get_metrics: required parameter is NULL (bridge, metrics_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_me", 0.0f);
@@ -791,7 +824,10 @@ int gt_fep_bridge_get_stats(
     const gt_fep_bridge_t* bridge,
     gt_fep_stats_t* stats_out
 ) {
-    if (!bridge || !stats_out) return -1;
+    if (!bridge || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_get_stats: required parameter is NULL (bridge, stats_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_st", 0.0f);
@@ -805,7 +841,10 @@ int gt_fep_bridge_get_stats(
 }
 
 int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_reset_", 0.0f);
@@ -881,7 +920,10 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
 }
 
 bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_deg", 0.0f);
@@ -895,7 +937,10 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
 }
 
 bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_is_at_nash: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_is_at_", 0.0f);
@@ -928,7 +973,10 @@ int gt_fep_bridge_set_high_fe_callback(
     gt_fep_high_fe_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_set_high_fe_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_hi", 0.0f);
@@ -947,7 +995,10 @@ int gt_fep_bridge_set_surprise_callback(
     gt_fep_surprise_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_set_surprise_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_su", 0.0f);
@@ -966,7 +1017,10 @@ int gt_fep_bridge_set_metrics_callback(
     gt_fep_metrics_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_set_metrics_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_me", 0.0f);
@@ -988,7 +1042,10 @@ int gt_fep_bridge_set_config(
     gt_fep_bridge_t* bridge,
     const gt_fep_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_set_co", 0.0f);
@@ -1005,7 +1062,10 @@ int gt_fep_bridge_get_config(
     const gt_fep_bridge_t* bridge,
     gt_fep_config_t* config_out
 ) {
-    if (!bridge || !config_out) return -1;
+    if (!bridge || !config_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gt_fep_bridge_get_config: required parameter is NULL (bridge, config_out)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     game_theory_fep_bridge_heartbeat("game_theory__gt_fep_bridge_get_co", 0.0f);

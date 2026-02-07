@@ -125,9 +125,11 @@ static void destroy_direction_predictor(jepa_direction_state_t* dir_state) {
 static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
 #ifdef NIMCP_ENABLE_CUDA
     if (!bidir || !bidir->gpu_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_use_gpu: required parameter is NULL (bidir, bidir->gpu_initialized)");
         return false;
     }
     if (bidir->config.gpu_mode == JEPA_BIDIR_GPU_DISABLED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: validation failed");
         return false;
     }
     if (bidir->config.gpu_mode == JEPA_BIDIR_GPU_REQUIRED ||
@@ -137,6 +139,7 @@ static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
     return false;
 #else
     (void)bidir;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_use_gpu: operation failed");
     return false;
 #endif
 }
@@ -220,12 +223,14 @@ jepa_bidirectional_t* jepa_bidirectional_create(const jepa_bidir_config_t* confi
 
     if (jepa_bidir_validate_config(config) != NIMCP_SUCCESS) {
         NIMCP_LOG_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_bidirectional_create: validation failed");
         return NULL;
     }
 
     jepa_bidirectional_t* bidir = nimcp_calloc(1, sizeof(jepa_bidirectional_t));
     if (!bidir) {
         NIMCP_LOG_ERROR("Failed to allocate bidirectional predictor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidirectional_create: bidir is NULL");
         return NULL;
     }
 
@@ -236,6 +241,7 @@ jepa_bidirectional_t* jepa_bidirectional_create(const jepa_bidir_config_t* confi
     if (!bidir->mutex) {
         NIMCP_LOG_ERROR("Failed to create mutex");
         nimcp_free(bidir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidirectional_create: bidir->mutex is NULL");
         return NULL;
     }
 
@@ -335,6 +341,7 @@ jepa_bidirectional_t* jepa_bidirectional_create(const jepa_bidir_config_t* confi
 
 error:
     jepa_bidirectional_destroy(bidir);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidirectional_create: operation failed");
     return NULL;
 }
 
@@ -794,6 +801,7 @@ int jepa_bidirectional_set_direction_enabled(jepa_bidirectional_t* bidir,
 bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
                                               jepa_direction_t direction) {
     if (!bidir || direction >= JEPA_DIR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "jepa_bidirectional_set_training: bidir is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -942,6 +950,7 @@ jepa_bidir_result_t* jepa_bidir_result_create(uint32_t dim) {
     result->prediction = jepa_latent_create_dim(dim);
     if (!result->prediction) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidir_result_create: result->prediction is NULL");
         return NULL;
     }
 
@@ -978,6 +987,7 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
     result->results = nimcp_calloc(num_directions, sizeof(jepa_bidir_result_t));
     if (!result->results) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_bidir_result_destroy: result->results is NULL");
         return NULL;
     }
 
@@ -1001,6 +1011,7 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
             }
             nimcp_free(result->results);
             nimcp_free(result);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_bidir_result_destroy: validation failed");
             return NULL;
         }
     }

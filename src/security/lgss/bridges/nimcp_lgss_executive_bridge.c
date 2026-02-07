@@ -285,6 +285,7 @@ executive_safety_bridge_t* executive_safety_bridge_create_custom(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, LGSS_EXEC_MODULE_ID, "lgss_executive_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "executive_safety_bridge_create_custom: validation failed");
         return NULL;
     }
 
@@ -298,6 +299,7 @@ executive_safety_bridge_t* executive_safety_bridge_create_custom(
     if (!bridge->blocked_log) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "executive_safety_bridge_create_custom: bridge->blocked_log is NULL");
         return NULL;
     }
     memset(bridge->blocked_log, 0, sizeof(blocked_task_entry_t) * log_size);
@@ -858,6 +860,7 @@ int executive_safety_connect_executive(
 
 bool executive_safety_is_connected(const executive_safety_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_safety_is_connected: bridge is NULL");
         return false;
     }
     /* Bridge is functional if AIx is connected (executive is optional) */
@@ -880,6 +883,7 @@ int executive_safety_disconnect_bio_async(executive_safety_bridge_t* bridge) {
 
 bool executive_safety_is_bio_async_connected(const executive_safety_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "executive_safety_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge_base_is_bio_async_connected(&bridge->base);

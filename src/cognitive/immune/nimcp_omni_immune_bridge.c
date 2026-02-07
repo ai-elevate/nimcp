@@ -223,6 +223,7 @@ omni_immune_bridge_t* omni_immune_bridge_create(const omni_immune_config_t* conf
     if (bridge_base_init(&bridge->base, 0, "omni_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -559,7 +560,10 @@ int omni_immune_disconnect_bio_async(omni_immune_bridge_t* bridge) {
 }
 
 bool omni_immune_is_bio_async_connected(const omni_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_immune_bridge_heartbeat("omni_immune__omni_immune_is_bio_a", 0.0f);
 

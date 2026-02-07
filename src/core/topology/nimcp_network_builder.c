@@ -256,6 +256,7 @@ bool network_init_weights_pink_noise(
     // Guard: NULL network
     if (!network) {
         LOG_ERROR(LOG_MODULE, "network_init_weights_pink_noise: NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_init_weights_pink_noise: network is NULL");
         return false;
     }
 
@@ -286,6 +287,7 @@ bool network_init_weights_pink_noise(
     pink_noise_generator_t generator = pink_noise_create(&noise_config);
     if (!generator) {
         LOG_ERROR(LOG_MODULE, "Failed to create pink noise generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_init_weights_pink_noise: generator is NULL");
         return false;
     }
 
@@ -294,6 +296,7 @@ bool network_init_weights_pink_noise(
     if (!noise_samples) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate noise samples array");
         pink_noise_destroy(generator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network_init_weights_pink_noise: noise_samples is NULL");
         return false;
     }
 
@@ -301,6 +304,7 @@ bool network_init_weights_pink_noise(
         LOG_ERROR(LOG_MODULE, "Failed to generate pink noise samples");
         nimcp_free(noise_samples);
         pink_noise_destroy(generator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "network_init_weights_pink_noise: pink_noise_generate is NULL");
         return false;
     }
 

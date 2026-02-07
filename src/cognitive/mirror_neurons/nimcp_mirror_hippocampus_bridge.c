@@ -217,6 +217,7 @@ static int32_t find_episode_by_id(const mirror_hippocampus_bridge_t* bridge,
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_action_similarity: validation failed");
     return -1;
 }
 
@@ -327,6 +328,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
     mirror_hippocampus_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_hippocampus_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate mirror-hippocampus bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hippocampus_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -334,6 +336,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_HIPPOCAMPUS_BRIDGE,
                          "mirror_hippocampus_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_hippocampus_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -351,6 +354,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
         LOG_ERROR("Failed to allocate episode storage");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hippocampus_bridge_create: bridge->episodes is NULL");
         return NULL;
     }
     bridge->num_episodes = 0;
@@ -365,6 +369,7 @@ mirror_hippocampus_bridge_t* mirror_hippocampus_bridge_create(
         nimcp_free(bridge->episodes);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hippocampus_bridge_create: bridge->current_sequence is NULL");
         return NULL;
     }
     bridge->current_sequence_length = 0;
@@ -488,6 +493,7 @@ int mirror_hippocampus_store_action(
 
 
     if (action->confidence < bridge->config.encoding_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_store_action: validation failed");
         return -1;
     }
 
@@ -935,6 +941,7 @@ int mirror_hippocampus_get_episode(
     int32_t idx = find_episode_by_id(bridge, episode_id);
     if (idx < 0) {
         *episode = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_get_episode: validation failed");
         return -1;
     }
 
@@ -984,11 +991,13 @@ int mirror_hippocampus_request_replay(
     }
 
     if (episode_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_request_replay: episode_id is zero");
         return -1; /* No episodes available */
     }
 
     int32_t idx = find_episode_by_id(bridge, episode_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_request_replay: validation failed");
         return -1;
     }
 
@@ -1024,6 +1033,7 @@ int mirror_hippocampus_step_replay(
     int32_t ep_idx = find_episode_by_id(bridge, bridge->replay_episode_id);
     if (ep_idx < 0) {
         bridge->replay_active = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_step_replay: validation failed");
         return -1;
     }
 

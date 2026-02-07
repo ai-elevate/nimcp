@@ -148,6 +148,7 @@ int portia_sensor_fusion_immune_default_config(portia_sensor_fusion_immune_confi
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_default_config: config is NULL");
         return -1;
     }
 
@@ -221,6 +222,7 @@ portia_sensor_fusion_immune_bridge_t* portia_sensor_fusion_immune_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "portia_sensor_fusion_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -268,6 +270,7 @@ int portia_sensor_fusion_immune_apply_cytokine_effects(
     /* Guard clause */
     if (!bridge || !bridge->sensor_fusion) {
         NIMCP_LOGGING_ERROR("Invalid bridge or sensor fusion");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->sensor_fusion)");
         return -1;
     }
 
@@ -303,6 +306,7 @@ int portia_sensor_fusion_immune_apply_inflammation_effects(
     /* Guard clause */
     if (!bridge || !bridge->sensor_fusion) {
         NIMCP_LOGGING_ERROR("Invalid bridge or sensor fusion");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->sensor_fusion)");
         return -1;
     }
 
@@ -385,6 +389,7 @@ static int portia_sensor_fusion_immune_trigger_overload_response_unlocked(
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_sensor_fusion_immune_trigger_overload_response_unlocked: portia_fusion_get_stats is NULL");
         return -1;
     }
 
@@ -464,6 +469,7 @@ static int portia_sensor_fusion_immune_trigger_dropout_suppression_unlocked(
     /* Get sensor fusion state */
     portia_fusion_stats_t stats;
     if (!portia_fusion_get_stats(bridge->sensor_fusion, &stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_sensor_fusion_immune_trigger_dropout_suppression_unlocked: portia_fusion_get_stats is NULL");
         return -1;
     }
 
@@ -495,6 +501,7 @@ int portia_sensor_fusion_immune_trigger_overload_response(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_trigger_overload_response: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -515,6 +522,7 @@ int portia_sensor_fusion_immune_boost_from_conflicts(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_boost_from_conflicts: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -535,6 +543,7 @@ int portia_sensor_fusion_immune_trigger_dropout_suppression(
     /* Guard clause */
     if (!bridge || !bridge->immune_system) {
         NIMCP_LOGGING_ERROR("Invalid bridge or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_trigger_dropout_suppression: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -560,6 +569,7 @@ int portia_sensor_fusion_immune_update(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_update: bridge is NULL");
         return -1;
     }
 
@@ -609,6 +619,7 @@ int portia_sensor_fusion_immune_get_cytokine_effects(
     /* Guard clause */
     if (!bridge || !effects) {
         NIMCP_LOGGING_ERROR("Null bridge or effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -623,6 +634,7 @@ int portia_sensor_fusion_immune_get_inflammation_state(
     /* Guard clause */
     if (!bridge || !state) {
         NIMCP_LOGGING_ERROR("Null bridge or state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -635,6 +647,7 @@ bool portia_sensor_fusion_immune_has_sensor_impairment(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_has_sensor_impairment: bridge is NULL");
         return false;
     }
 
@@ -664,6 +677,7 @@ int portia_sensor_fusion_immune_connect_bio_async(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -682,6 +696,7 @@ int portia_sensor_fusion_immune_disconnect_bio_async(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -703,6 +718,7 @@ bool portia_sensor_fusion_immune_is_bio_async_connected(
 ) {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_sensor_fusion_immune_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

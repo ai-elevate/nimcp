@@ -98,6 +98,7 @@ static association_entry_t* find_association(const char* A, const char* B) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_association: validation failed");
     return NULL;
 }
 
@@ -106,6 +107,7 @@ static association_entry_t* create_association(const char* A, const char* B) {
 
     if (g_associations.count >= g_associations.capacity) {
         LOG_ERROR("association_learning: Association store full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_association: capacity exceeded");
         return NULL;
     }
 

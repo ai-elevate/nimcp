@@ -182,6 +182,7 @@ int pag_security_register(
     if (!bbb_register_subject(bbb, &pag_subject)) {
         NIMCP_LOG_ERROR(PAG_SECURITY_MODULE_NAME,
             "Failed to register PAG subject with BBB");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_register: bbb_register_subject is NULL");
         return -1;
     }
 
@@ -232,12 +233,16 @@ int pag_security_register_memory(
     size_t size,
     pag_security_state_t* state
 ) {
-    if (!bbb || !address || size == 0) return -1;
+    if (!bbb || !address || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_register_memory: required parameter is NULL (bbb, address)");
+        return -1;
+    }
 
     uint32_t region_id = bbb_register_memory_region(bbb, address, size, false);
     if (region_id == 0) {
         NIMCP_LOG_ERROR(PAG_SECURITY_MODULE_NAME,
             "Failed to register PAG memory region");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_register_memory: region_id is zero");
         return -1;
     }
 
@@ -268,7 +273,10 @@ bool pag_security_check_access(
     bbb_system_t bbb,
     pag_security_op_t op
 ) {
-    if (!bbb) return false;
+    if (!bbb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_check_access: bbb is NULL");
+        return false;
+    }
 
     /* Create subject from PAG module */
     bbb_subject_t subject = {
@@ -311,9 +319,18 @@ bool pag_security_validate_kg_token(
     const pag_security_state_t* state,
     uint64_t token
 ) {
-    if (!state) return false;
-    if (!state->registered) return false;
-    if (state->admin_token == 0) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_validate_kg_token: state is NULL");
+        return false;
+    }
+    if (!state->registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_validate_kg_token: state->registered is NULL");
+        return false;
+    }
+    if (state->admin_token == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_validate_kg_token: state->admin_token is zero");
+        return false;
+    }
 
     return state->admin_token == token;
 }
@@ -334,6 +351,7 @@ int pag_security_grant_capability(
         NIMCP_LOG_WARN(PAG_SECURITY_MODULE_NAME,
             "Failed to grant capability 0x%llx to PAG",
             (unsigned long long)capability);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_grant_capability: bbb_grant_capability is NULL");
         return -1;
     }
 
@@ -356,6 +374,7 @@ int pag_security_revoke_capability(
         NIMCP_LOG_WARN(PAG_SECURITY_MODULE_NAME,
             "Failed to revoke capability 0x%llx from PAG",
             (unsigned long long)capability);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_revoke_capability: bbb_revoke_capability is NULL");
         return -1;
     }
 
@@ -371,12 +390,16 @@ int pag_security_connect_immune(
     void* immune,
     pag_security_state_t* state
 ) {
-    if (!bbb || !immune) return -1;
+    if (!bbb || !immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag_security_connect_immune: required parameter is NULL (bbb, immune)");
+        return -1;
+    }
 
     /* Connect BBB to immune system */
     if (!bbb_connect_immune(bbb, (brain_immune_system_t*)immune)) {
         NIMCP_LOG_WARN(PAG_SECURITY_MODULE_NAME,
             "Failed to connect PAG security to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pag_security_connect_immune: bbb_connect_immune is NULL");
         return -1;
     }
 

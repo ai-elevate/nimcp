@@ -139,13 +139,19 @@ void emotion_recognition_substrate_bridge_destroy(emotion_recognition_substrate_
 }
 
 int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_substrate_bridge_heartbeat("emotion_reco_update", 0.0f);
 
 
     substrate_metabolic_state_t metabolic;
-    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
+    if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_recognition_substrate_bridge_update: validation failed");
+        return -1;
+    }
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
     /* ATP enables recognition accuracy and subtle sensitivity */
     if (bridge->config.enable_atp_modulation) {
@@ -164,7 +170,10 @@ int emotion_recognition_substrate_bridge_update(emotion_recognition_substrate_br
 }
 
 int emotion_recognition_substrate_bridge_get_effects(const emotion_recognition_substrate_bridge_t* bridge, emotion_recognition_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_substrate_bridge_heartbeat("emotion_reco_get_effects", 0.0f);
@@ -174,7 +183,10 @@ int emotion_recognition_substrate_bridge_get_effects(const emotion_recognition_s
 }
 
 int emotion_recognition_substrate_bridge_apply_effects(emotion_recognition_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -222,7 +234,10 @@ int emotion_recognition_substrate_bridge_apply_effects(emotion_recognition_subst
 }
 
 int emotion_recognition_substrate_bridge_register_bio_async(emotion_recognition_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_recognition_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_recognition_substrate_bridge_heartbeat("emotion_reco_register_bio_async", 0.0f);
 

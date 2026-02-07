@@ -284,6 +284,7 @@ const mesh_receptive_field_t* mesh_brain_region_get_receptive_field(
             return &MESH_RF_COLLECTIVE_WORKSPACE;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_region_get_receptive_field: operation failed");
             return NULL;
     }
 }
@@ -373,6 +374,7 @@ mesh_brain_integration_t* mesh_brain_integration_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Bootstrap handle is required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_brain_integration_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -386,6 +388,7 @@ mesh_brain_integration_t* mesh_brain_integration_create(
         1, sizeof(mesh_brain_integration_t));
     if (!integration) {
         LOG_ERROR("Failed to allocate brain integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_brain_integration_create: integration is NULL");
         return NULL;
     }
 
@@ -399,6 +402,7 @@ mesh_brain_integration_t* mesh_brain_integration_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_brain_integration_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -761,9 +765,11 @@ bool mesh_brain_integration_is_registered(
     mesh_brain_region_t region
 ) {
     if (!integration || integration->magic != MESH_BRAIN_INTEGRATION_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_brain_integration_is_registered: integration is NULL");
         return false;
     }
     if (region <= MESH_BRAIN_REGION_UNKNOWN || region >= MESH_BRAIN_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mesh_brain_integration_is_registered: capacity exceeded");
         return false;
     }
 

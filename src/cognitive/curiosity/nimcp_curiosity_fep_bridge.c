@@ -187,6 +187,7 @@ curiosity_fep_bridge_t* curiosity_fep_bridge_create(const curiosity_fep_config_t
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for curiosity-FEP bridge");
         curiosity_fep_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -266,7 +267,10 @@ int curiosity_fep_bridge_connect_curiosity(
     curiosity_fep_bridge_t* bridge,
     curiosity_engine_t curiosity
 ) {
-    if (!bridge || !curiosity) return -1;
+    if (!bridge || !curiosity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_bridge_connect_curiosity: required parameter is NULL (bridge, curiosity)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_connect_curiosity", 0.0f);
@@ -300,7 +304,10 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
 
     }
     if (!bridge->config.enable_epistemic_curiosity) return 0;
-    if (!bridge->fep_system) return -1;
+    if (!bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_compute_epistemic_value: bridge->fep_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_comput", 0.0f);
@@ -354,7 +361,10 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
 
     }
     if (!bridge->config.enable_knowledge_gap_detection) return 0;
-    if (!bridge->fep_system) return -1;
+    if (!bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_detect_knowledge_gaps: bridge->fep_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_detect", 0.0f);
@@ -475,7 +485,10 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
 
     }
     if (!bridge->config.enable_learning_updates) return 0;
-    if (!bridge->curiosity_engine || !bridge->fep_system) return -1;
+    if (!bridge->curiosity_engine || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_update_model_from_learning: required parameter is NULL (bridge->curiosity_engine, bridge->fep_system)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_curiosity_fep_update", 0.0f);
@@ -590,7 +603,10 @@ int curiosity_fep_bridge_get_state(
     const curiosity_fep_bridge_t* bridge,
     curiosity_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_bridge_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_get_state", 0.0f);
@@ -608,7 +624,10 @@ int curiosity_fep_bridge_get_stats(
     const curiosity_fep_bridge_t* bridge,
     curiosity_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_fep_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     curiosity_fep_bridge_heartbeat("curiosity_fe_get_stats", 0.0f);

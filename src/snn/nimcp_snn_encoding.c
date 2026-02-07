@@ -116,7 +116,10 @@ snn_encoder_t* snn_encoder_create_rate(uint32_t n_inputs,
     }
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_RATE);
-    if (!encoder) return NULL;
+    if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        return NULL;
+    }
 
     encoder->config.rate = *config;
 
@@ -134,7 +137,10 @@ snn_encoder_t* snn_encoder_create_temporal(uint32_t n_inputs,
     }
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_TEMPORAL);
-    if (!encoder) return NULL;
+    if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        return NULL;
+    }
 
     encoder->config.temporal = *config;
 
@@ -155,7 +161,10 @@ snn_encoder_t* snn_encoder_create_population(uint32_t n_inputs,
     uint32_t n_outputs = n_inputs * config->n_neurons;
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_outputs, SNN_ENCODE_POPULATION);
-    if (!encoder) return NULL;
+    if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        return NULL;
+    }
 
     encoder->config.population = *config;
 
@@ -174,7 +183,10 @@ snn_encoder_t* snn_encoder_create_latency(uint32_t n_inputs,
     }
 
     snn_encoder_t* encoder = encoder_alloc(n_inputs, n_inputs, SNN_ENCODE_LATENCY);
-    if (!encoder) return NULL;
+    if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_rate_decoder_config_default: encoder is NULL");
+        return NULL;
+    }
 
     encoder->config.latency = *config;
 
@@ -237,7 +249,10 @@ snn_decoder_t* snn_decoder_create_rate(uint32_t n_inputs,
     }
 
     snn_decoder_t* decoder = decoder_alloc(n_inputs, n_outputs, SNN_DECODE_RATE);
-    if (!decoder) return NULL;
+    if (!decoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        return NULL;
+    }
 
     decoder->config.rate = *config;
 
@@ -257,7 +272,10 @@ snn_decoder_t* snn_decoder_create_first_spike(uint32_t n_inputs,
 
     /* First-spike decoder outputs a single class */
     snn_decoder_t* decoder = decoder_alloc(n_inputs, 1, SNN_DECODE_FIRST_SPIKE);
-    if (!decoder) return NULL;
+    if (!decoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        return NULL;
+    }
 
     decoder->config.first_spike = *config;
 
@@ -276,7 +294,10 @@ snn_decoder_t* snn_decoder_create_population(uint32_t n_inputs,
     }
 
     snn_decoder_t* decoder = decoder_alloc(n_inputs, n_outputs, SNN_DECODE_POPULATION);
-    if (!decoder) return NULL;
+    if (!decoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_encoder_destroy: decoder is NULL");
+        return NULL;
+    }
 
     decoder->config.population = *config;
 

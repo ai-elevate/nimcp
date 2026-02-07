@@ -165,6 +165,7 @@ static phi_instance_t* find_instance(
             return &cps->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_instance: validation failed");
     return NULL;
 }
 
@@ -180,6 +181,7 @@ static phi_instance_t* find_free_instance_slot(collective_phi_system_t* cps) {
             return &cps->instances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_instance_slot: cps->instances is NULL");
     return NULL;
 }
 
@@ -198,6 +200,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
     return -1;
 }
 
@@ -223,6 +226,7 @@ static flow_entry_t* find_flow(
             return &cps->flows[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_flow: operation failed");
     return NULL;
 }
 
@@ -246,6 +250,7 @@ static flow_entry_t* get_or_create_flow(
             return &cps->flows[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_flow: operation failed");
     return NULL;
 }
 
@@ -498,7 +503,10 @@ void collective_phi_destroy(collective_phi_system_t* cps) {
 }
 
 int collective_phi_reset(collective_phi_system_t* cps) {
-    if (!cps) return -1;
+    if (!cps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_reset: cps is NULL");
+        return -1;
+    }
 
     /* Clear instances */
     /* Phase 8: Heartbeat at operation start */
@@ -537,10 +545,16 @@ int collective_phi_register_instance(
     uint32_t instance_id,
     float initial_phi
 ) {
-    if (!cps) return -1;
+    if (!cps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_register_instance: cps is NULL");
+        return -1;
+    }
 
     /* Check if already registered */
-    if (find_instance(cps, instance_id)) return -1;
+    if (find_instance(cps, instance_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_phi_register_instance: validation failed");
+        return -1;
+    }
 
     /* Find free slot */
     /* Phase 8: Heartbeat at operation start */
@@ -548,7 +562,10 @@ int collective_phi_register_instance(
 
 
     phi_instance_t* slot = find_free_instance_slot(cps);
-    if (!slot) return -1;
+    if (!slot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_register_instance: slot is NULL");
+        return -1;
+    }
 
     slot->instance_id = instance_id;
     slot->active = true;
@@ -588,14 +605,20 @@ int collective_phi_unregister_instance(
     collective_phi_system_t* cps,
     uint32_t instance_id
 ) {
-    if (!cps) return -1;
+    if (!cps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_unregister_instance: cps is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_unregister_instance", 0.0f);
 
 
     phi_instance_t* inst = find_instance(cps, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_unregister_instance: inst is NULL");
+        return -1;
+    }
 
     inst->active = false;
     cps->instance_count--;
@@ -622,14 +645,20 @@ int collective_phi_update_local(
     uint32_t instance_id,
     float local_phi
 ) {
-    if (!cps) return -1;
+    if (!cps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update_local: cps is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_update_local", 0.0f);
 
 
     phi_instance_t* inst = find_instance(cps, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update_local: inst is NULL");
+        return -1;
+    }
 
     inst->local_phi = local_phi;
     return 0;
@@ -645,14 +674,20 @@ int collective_phi_update_flow(
     uint32_t to_instance,
     const information_flow_t* flow
 ) {
-    if (!cps || !flow) return -1;
+    if (!cps || !flow) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update_flow: required parameter is NULL (cps, flow)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_update_flow", 0.0f);
 
 
     flow_entry_t* f = get_or_create_flow(cps, from_instance, to_instance);
-    if (!f) return -1;
+    if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update_flow: f is NULL");
+        return -1;
+    }
 
     f->flow = *flow;
     f->flow.from_instance = from_instance;
@@ -667,14 +702,20 @@ int collective_phi_get_flow(
     uint32_t to_instance,
     information_flow_t* flow
 ) {
-    if (!cps || !flow) return -1;
+    if (!cps || !flow) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_flow: required parameter is NULL (cps, flow)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get_flow", 0.0f);
 
 
     flow_entry_t* f = find_flow((collective_phi_system_t*)cps, from_instance, to_instance);
-    if (!f) return -1;
+    if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_flow: f is NULL");
+        return -1;
+    }
 
     *flow = f->flow;
     return 0;
@@ -685,7 +726,10 @@ int collective_phi_get_flow(
  *===========================================================================*/
 
 int collective_phi_update(collective_phi_system_t* cps) {
-    if (!cps || !cps->initialized) return -1;
+    if (!cps || !cps->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update: required parameter is NULL (cps, cps->initialized)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_update", 0.0f);
@@ -811,7 +855,10 @@ int collective_phi_get(
     const collective_phi_system_t* cps,
     collective_phi_t* phi
 ) {
-    if (!cps || !phi) return -1;
+    if (!cps || !phi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get: required parameter is NULL (cps, phi)");
+        return -1;
+    }
     *phi = cps->phi;
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get", 0.0f);
@@ -836,14 +883,20 @@ int collective_phi_get_contribution(
     uint32_t instance_id,
     instance_phi_contribution_t* contribution
 ) {
-    if (!cps || !contribution) return -1;
+    if (!cps || !contribution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_contribution: required parameter is NULL (cps, contribution)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get_contribution", 0.0f);
 
 
     phi_instance_t* inst = find_instance((collective_phi_system_t*)cps, instance_id);
-    if (!inst) return -1;
+    if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_contribution: inst is NULL");
+        return -1;
+    }
 
     contribution->instance_id = instance_id;
     contribution->local_phi = inst->local_phi;
@@ -863,7 +916,10 @@ int collective_phi_get_qualia(
     const collective_phi_system_t* cps,
     qualia_report_t* report
 ) {
-    if (!cps || !report) return -1;
+    if (!cps || !report) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_qualia: required parameter is NULL (cps, report)");
+        return -1;
+    }
     *report = cps->qualia;
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get_qualia", 0.0f);
@@ -876,7 +932,10 @@ int collective_phi_update_qualia(
     collective_phi_system_t* cps,
     const qualia_report_t* report
 ) {
-    if (!cps || !report) return -1;
+    if (!cps || !report) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_update_qualia: required parameter is NULL (cps, report)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_update_qualia", 0.0f);
 
@@ -894,7 +953,10 @@ int collective_phi_get_integration_matrix(
     float* matrix,
     uint32_t* size
 ) {
-    if (!cps || !matrix || !size) return -1;
+    if (!cps || !matrix || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_integration_matrix: required parameter is NULL (cps, matrix, size)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get_integration_matr", 0.0f);
@@ -1007,7 +1069,10 @@ int collective_phi_get_stats(
     const collective_phi_system_t* cps,
     collective_phi_stats_t* stats
 ) {
-    if (!cps || !stats) return -1;
+    if (!cps || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_phi_get_stats: required parameter is NULL (cps, stats)");
+        return -1;
+    }
     *stats = cps->stats;
     /* Phase 8: Heartbeat at operation start */
     collective_phi_heartbeat("collective_p_get_stats", 0.0f);

@@ -81,6 +81,7 @@ int astro_network_default_config(astro_network_config_t* config) {
     /* Guard: validate parameters */
     if (!config) {
         NIMCP_LOGGING_ERROR("astro_network_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_network_default_config: config is NULL");
         return -1;
     }
 
@@ -165,6 +166,7 @@ astro_network_bridge_t* astro_network_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astro_network_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -583,7 +585,10 @@ int astro_network_get_inflammation_state(
 
 bool astro_network_has_astrogliosis(const astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_network_has_astrogliosis: bridge is NULL");
+        return false;
+    }
 
     return bridge->cytokine_effects.is_astrogliosis ||
            bridge->inflammation_state.glial_scar_forming;
@@ -659,7 +664,10 @@ int astro_network_disconnect_bio_async(astro_network_bridge_t* bridge) {
 
 bool astro_network_is_bio_async_connected(const astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro_network_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     return bridge->base.bio_async_enabled;
 }

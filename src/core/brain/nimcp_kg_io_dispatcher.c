@@ -263,11 +263,13 @@ static void queue_destroy(kg_io_queue_t* queue) {
 
 static int queue_push(kg_io_queue_t* queue, const kg_io_request_t* request) {
     if (!queue || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_push: required parameter is NULL (queue, request)");
         return -1;
     }
 
     uint32_t count = atomic_load(&queue->count);
     if (count >= queue->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_push: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -295,6 +297,7 @@ static int queue_push(kg_io_queue_t* queue, const kg_io_request_t* request) {
 
 static int queue_pop(kg_io_queue_t* queue, kg_io_request_t* request) {
     if (!queue || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_pop: required parameter is NULL (queue, request)");
         return -1;
     }
 
@@ -302,6 +305,7 @@ static int queue_pop(kg_io_queue_t* queue, kg_io_request_t* request) {
     kg_io_queue_entry_t* next = head->next;
 
     if (!next) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_pop: next is NULL");
         return -1;  /* Queue empty */
     }
 
@@ -329,6 +333,7 @@ static bool queue_is_full(const kg_io_queue_t* queue) {
 
 static int pool_init(kg_io_pool_t* pool, const kg_questdb_config_t* config) {
     if (!pool || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_init: required parameter is NULL (pool, config)");
         return -1;
     }
 
@@ -338,6 +343,7 @@ static int pool_init(kg_io_pool_t* pool, const kg_questdb_config_t* config) {
 
     pool->connections = nimcp_calloc(pool->size, sizeof(kg_io_connection_t));
     if (!pool->connections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pool_init: pool->connections is NULL");
         return -1;
     }
 
@@ -359,6 +365,7 @@ static int pool_init(kg_io_pool_t* pool, const kg_questdb_config_t* config) {
     pool->mutex = nimcp_mutex_create(&attr);
     if (!pool->mutex) {
         nimcp_free(pool->connections);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_init: pool->mutex is NULL");
         return -1;
     }
 
@@ -366,6 +373,7 @@ static int pool_init(kg_io_pool_t* pool, const kg_questdb_config_t* config) {
     if (!pool->available) {
         nimcp_mutex_free(pool->mutex);
         nimcp_free(pool->connections);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_init: pool->available is NULL");
         return -1;
     }
 
@@ -437,6 +445,7 @@ static kg_io_connection_t* pool_acquire(kg_io_pool_t* pool, uint32_t timeout_ms)
     }
 
     nimcp_mutex_unlock(pool->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_acquire: operation failed");
     return NULL;
 }
 
@@ -463,6 +472,7 @@ static void pool_release(kg_io_pool_t* pool, kg_io_connection_t* conn) {
 static int execute_write(kg_io_connection_t* conn, const kg_io_request_t* request,
                           kg_io_result_t* result) {
     if (!conn || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_release: required parameter is NULL (conn, request, result)");
         return -1;
     }
 
@@ -485,6 +495,7 @@ static int execute_write(kg_io_connection_t* conn, const kg_io_request_t* reques
 static int execute_read(kg_io_connection_t* conn, const kg_io_request_t* request,
                          kg_io_result_t* result) {
     if (!conn || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_release: required parameter is NULL (conn, request, result)");
         return -1;
     }
 
@@ -513,6 +524,7 @@ static int execute_read(kg_io_connection_t* conn, const kg_io_request_t* request
 static void* writer_thread_func(void* arg) {
     kg_io_worker_t* worker = (kg_io_worker_t*)arg;
     if (!worker || !worker->dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "writer_thread_func: required parameter is NULL (worker, worker->dispatcher)");
         return NULL;
     }
 
@@ -578,12 +590,14 @@ static void* writer_thread_func(void* arg) {
     }
 
     worker->active = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "writer_thread_func: validation failed");
     return NULL;
 }
 
 static void* reader_thread_func(void* arg) {
     kg_io_worker_t* worker = (kg_io_worker_t*)arg;
     if (!worker || !worker->dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reader_thread_func: required parameter is NULL (worker, worker->dispatcher)");
         return NULL;
     }
 
@@ -636,6 +650,7 @@ static void* reader_thread_func(void* arg) {
     }
 
     worker->active = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reader_thread_func: validation failed");
     return NULL;
 }
 
@@ -782,6 +797,7 @@ kg_io_dispatcher_t* kg_io_dispatcher_create(const kg_questdb_config_t* config) {
 
 error:
     kg_io_dispatcher_destroy(dispatcher);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_create: operation failed");
     return NULL;
 }
 
@@ -842,6 +858,7 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
                 dispatcher->writer_workers[j].should_stop = true;
                 nimcp_thread_join(dispatcher->writer_workers[j].thread, NULL);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_start: operation failed");
             return -1;
         }
     }
@@ -869,6 +886,7 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
             for (uint32_t j = 0; j < i; j++) {
                 nimcp_thread_join(dispatcher->reader_workers[j].thread, NULL);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_start: operation failed");
             return -1;
         }
     }
@@ -879,6 +897,7 @@ int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
 
 int kg_io_dispatcher_stop(kg_io_dispatcher_t* dispatcher) {
     if (!dispatcher || !dispatcher->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_stop: required parameter is NULL (dispatcher, dispatcher->running)");
         return -1;
     }
 
@@ -915,6 +934,7 @@ int kg_io_write_async(kg_io_dispatcher_t* dispatcher,
                       const char* table, const void* row_data, size_t size,
                       kg_io_callback_fn callback, void* user_data) {
     if (!dispatcher || !table || !row_data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_stop: required parameter is NULL (dispatcher, table, row_data)");
         return -1;
     }
 
@@ -931,6 +951,7 @@ int kg_io_write_async(kg_io_dispatcher_t* dispatcher,
     request.op_id = atomic_fetch_add(&dispatcher->next_op_id, 1);
 
     if (queue_push(&dispatcher->write_queue, &request) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_stop: validation failed");
         return -1;  /* Queue full */
     }
 
@@ -947,6 +968,7 @@ int kg_io_write_batch_async(kg_io_dispatcher_t* dispatcher,
                             size_t size, uint32_t row_count,
                             kg_io_callback_fn callback, void* user_data) {
     if (!dispatcher || !table || !batch_data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_stop: required parameter is NULL (dispatcher, table, batch_data)");
         return -1;
     }
 
@@ -963,6 +985,7 @@ int kg_io_write_batch_async(kg_io_dispatcher_t* dispatcher,
     request.op_id = atomic_fetch_add(&dispatcher->next_op_id, 1);
 
     if (queue_push(&dispatcher->batch_queue, &request) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_stop: validation failed");
         return -1;
     }
 
@@ -977,6 +1000,7 @@ int kg_io_query_async(kg_io_dispatcher_t* dispatcher,
                       const char* sql, kg_io_priority_t priority,
                       kg_io_callback_fn callback, void* user_data) {
     if (!dispatcher || !sql) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_stop: required parameter is NULL (dispatcher, sql)");
         return -1;
     }
 
@@ -991,6 +1015,7 @@ int kg_io_query_async(kg_io_dispatcher_t* dispatcher,
     request.op_id = atomic_fetch_add(&dispatcher->next_op_id, 1);
 
     if (queue_push(&dispatcher->read_queue, &request) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_stop: validation failed");
         return -1;
     }
 
@@ -1005,6 +1030,7 @@ int kg_io_stream_async(kg_io_dispatcher_t* dispatcher,
                        const char* sql, uint32_t batch_size,
                        kg_io_callback_fn callback, void* user_data) {
     if (!dispatcher || !sql || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_dispatcher_stop: required parameter is NULL (dispatcher, sql, callback)");
         return -1;
     }
 
@@ -1019,6 +1045,7 @@ int kg_io_stream_async(kg_io_dispatcher_t* dispatcher,
     request.op_id = atomic_fetch_add(&dispatcher->next_op_id, 1);
 
     if (queue_push(&dispatcher->read_queue, &request) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_dispatcher_stop: validation failed");
         return -1;
     }
 
@@ -1055,6 +1082,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
                      const char* table, const void* row_data, size_t size,
                      uint32_t timeout_ms) {
     if (!dispatcher || !table || !row_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_callback: required parameter is NULL (dispatcher, table, row_data)");
         return -1;
     }
 
@@ -1066,6 +1094,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
     if (!mutex || !cond) {
         if (mutex) nimcp_mutex_free(mutex);
         if (cond) nimcp_cond_destroy(cond);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sync_callback: validation failed");
         return -1;
     }
 
@@ -1077,6 +1106,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
     if (kg_io_write_async(dispatcher, table, row_data, size, sync_callback, &ctx) != 0) {
         nimcp_mutex_free(mutex);
         nimcp_cond_destroy(cond);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sync_callback: validation failed");
         return -1;
     }
 
@@ -1098,6 +1128,7 @@ int kg_io_write_sync(kg_io_dispatcher_t* dispatcher,
 kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
                                   const char* sql, uint32_t timeout_ms) {
     if (!dispatcher || !sql) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_callback: required parameter is NULL (dispatcher, sql)");
         return NULL;
     }
 
@@ -1109,6 +1140,7 @@ kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
     if (!mutex || !cond) {
         if (mutex) nimcp_mutex_free(mutex);
         if (cond) nimcp_cond_destroy(cond);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sync_callback: validation failed");
         return NULL;
     }
 
@@ -1120,6 +1152,7 @@ kg_io_result_t* kg_io_query_sync(kg_io_dispatcher_t* dispatcher,
     if (kg_io_query_async(dispatcher, sql, KG_IO_PRIORITY_NORMAL, sync_callback, &ctx) != 0) {
         nimcp_mutex_free(mutex);
         nimcp_cond_destroy(cond);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_callback: validation failed");
         return NULL;
     }
 
@@ -1155,6 +1188,7 @@ void kg_io_result_free(kg_io_result_t* result) {
 kg_io_batch_t* kg_io_batch_create(kg_io_dispatcher_t* dispatcher,
                                    const char* table, uint32_t estimated_rows) {
     if (!dispatcher || !table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_io_result_free: required parameter is NULL (dispatcher, table)");
         return NULL;
     }
 
@@ -1176,6 +1210,7 @@ kg_io_batch_t* kg_io_batch_create(kg_io_dispatcher_t* dispatcher,
     batch->buffer = nimcp_malloc(batch->buffer_capacity);
     if (!batch->buffer) {
         nimcp_free(batch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_io_result_free: batch->buffer is NULL");
         return NULL;
     }
 
@@ -1188,6 +1223,7 @@ kg_io_batch_t* kg_io_batch_create(kg_io_dispatcher_t* dispatcher,
 
 int kg_io_batch_add_row(kg_io_batch_t* batch, const void* row_data, size_t size) {
     if (!batch || !row_data || size == 0 || batch->submitted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_batch_add_row: required parameter is NULL (batch, row_data)");
         return -1;
     }
 
@@ -1219,6 +1255,7 @@ int kg_io_batch_add_row(kg_io_batch_t* batch, const void* row_data, size_t size)
 int kg_io_batch_submit(kg_io_batch_t* batch,
                         kg_io_callback_fn callback, void* user_data) {
     if (!batch || batch->submitted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_batch_add_row: batch is NULL");
         return -1;
     }
 
@@ -1254,6 +1291,7 @@ void kg_io_batch_cancel(kg_io_batch_t* batch) {
 
 bool kg_io_can_accept_writes(const kg_io_dispatcher_t* dispatcher) {
     if (!dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_can_accept_writes: dispatcher is NULL");
         return false;
     }
     return !queue_is_full(&dispatcher->write_queue);
@@ -1275,6 +1313,7 @@ int kg_io_flush(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
 
         uint64_t elapsed = get_timestamp_ns() - start;
         if (elapsed > timeout_ns) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_flush: validation failed");
             return -1;  /* Timeout */
         }
 
@@ -1295,6 +1334,7 @@ int kg_io_sync(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
 
     /* Flush first */
     if (kg_io_flush(dispatcher, timeout_ms) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_io_sync: validation failed");
         return -1;
     }
 
@@ -1308,6 +1348,7 @@ int kg_io_sync(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
 
 int kg_io_get_stats(const kg_io_dispatcher_t* dispatcher, kg_io_stats_t* stats) {
     if (!dispatcher || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_io_get_stats: required parameter is NULL (dispatcher, stats)");
         return -1;
     }
 

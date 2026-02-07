@@ -19,6 +19,7 @@
 #include <float.h>
 #include <time.h>
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Module Constants
@@ -107,12 +108,14 @@ nimcp_gmm_t* nimcp_gmm_create(const nimcp_gmm_config_t* config) {
 
     if (cfg.n_components == 0 || cfg.n_components > NIMCP_GMM_MAX_COMPONENTS) {
         LOG_ERROR("Invalid n_components: %u", cfg.n_components);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gmm_create: cfg.n_components is zero");
         return NULL;
     }
 
     nimcp_gmm_t* gmm = (nimcp_gmm_t*)nimcp_calloc(1, sizeof(nimcp_gmm_t));
     if (!gmm) {
         LOG_ERROR("Failed to allocate GMM");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gmm_create: gmm is NULL");
         return NULL;
     }
 
@@ -128,6 +131,7 @@ nimcp_gmm_t* nimcp_gmm_create(const nimcp_gmm_config_t* config) {
 
     if (!gmm->weights || !gmm->log_det) {
         nimcp_gmm_destroy(gmm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gmm_create: required parameter is NULL (gmm->weights, gmm->log_det)");
         return NULL;
     }
 
@@ -555,7 +559,10 @@ nimcp_gp_t* nimcp_gp_create(const nimcp_gp_config_t* config) {
     nimcp_gp_config_t cfg = config ? *config : nimcp_gp_default_config();
 
     nimcp_gp_t* gp = (nimcp_gp_t*)nimcp_calloc(1, sizeof(nimcp_gp_t));
-    if (!gp) return NULL;
+    if (!gp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gp_create: gp is NULL");
+        return NULL;
+    }
 
     gp->magic = GP_MAGIC;
     gp->kernel = cfg.kernel;
@@ -649,7 +656,10 @@ static bool cholesky(float* A, uint32_t n) {
                 sum -= A[i * n + k] * A[j * n + k];
             }
             if (i == j) {
-                if (sum <= 0.0f) return false;
+                if (sum <= 0.0f) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky: validation failed");
+                    return false;
+                }
                 A[i * n + j] = sqrtf(sum);
             } else {
                 A[i * n + j] = sum / A[j * n + j];
@@ -933,11 +943,15 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
     nimcp_hmm_config_t cfg = config ? *config : nimcp_hmm_default_config();
 
     if (cfg.n_states == 0 || cfg.n_states > NIMCP_HMM_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hmm_create: cfg.n_states is zero");
         return NULL;
     }
 
     nimcp_hmm_t* hmm = (nimcp_hmm_t*)nimcp_calloc(1, sizeof(nimcp_hmm_t));
-    if (!hmm) return NULL;
+    if (!hmm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hmm_create: hmm is NULL");
+        return NULL;
+    }
 
     hmm->magic = HMM_MAGIC;
     hmm->n_states = cfg.n_states;
@@ -957,6 +971,7 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
     if (!hmm->initial_prob || !hmm->transition_prob ||
         !hmm->log_initial || !hmm->log_transition) {
         nimcp_hmm_destroy(hmm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hmm_create: operation failed");
         return NULL;
     }
 
@@ -976,6 +991,7 @@ nimcp_hmm_t* nimcp_hmm_create(const nimcp_hmm_config_t* config) {
         hmm->emission_covars = (float*)nimcp_calloc(s * d, sizeof(float));
         if (!hmm->emission_means || !hmm->emission_covars) {
             nimcp_hmm_destroy(hmm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_hmm_create: required parameter is NULL (hmm->emission_means, hmm->emission_covars)");
             return NULL;
         }
         for (uint32_t i = 0; i < s * d; i++) {
@@ -1513,7 +1529,10 @@ nimcp_kde_t* nimcp_kde_create(const nimcp_kde_config_t* config) {
     nimcp_kde_config_t cfg = config ? *config : nimcp_kde_default_config();
 
     nimcp_kde_t* kde = (nimcp_kde_t*)nimcp_calloc(1, sizeof(nimcp_kde_t));
-    if (!kde) return NULL;
+    if (!kde) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_kde_create: kde is NULL");
+        return NULL;
+    }
 
     kde->magic = KDE_MAGIC;
     kde->kernel = cfg.kernel;
@@ -1693,10 +1712,16 @@ nimcp_nb_config_t nimcp_nb_default_config(nimcp_nb_type_t type) {
 }
 
 nimcp_nb_t* nimcp_nb_create(const nimcp_nb_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_nb_create: config is NULL");
+        return NULL;
+    }
 
     nimcp_nb_t* nb = (nimcp_nb_t*)nimcp_calloc(1, sizeof(nimcp_nb_t));
-    if (!nb) return NULL;
+    if (!nb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_nb_create: nb is NULL");
+        return NULL;
+    }
 
     nb->magic = NB_MAGIC;
     nb->type = config->type;

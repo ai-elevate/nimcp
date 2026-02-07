@@ -222,6 +222,7 @@ static bool should_trigger_correction(language_cingulate_bridge_t* bridge,
                                        const speech_error_event_t* error)
 {
     if (!bridge->config.enable_self_correction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_trigger_correction: bridge->config is NULL");
         return false;
     }
 
@@ -235,6 +236,7 @@ static bool should_trigger_correction(language_cingulate_bridge_t* bridge,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_correction: capacity exceeded");
     return false;
 }
 
@@ -526,6 +528,7 @@ int language_cingulate_bridge_update(
     uint64_t timestamp_ms)
 {
     if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
         return -1;
     }
 
@@ -572,6 +575,7 @@ int language_cingulate_report_speech_event(
     const speech_monitoring_report_t* report)
 {
     if (!bridge || !report) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_report_speech_event: required parameter is NULL (bridge, report)");
         return -1;
     }
 
@@ -621,6 +625,7 @@ int language_cingulate_report_error(
     const speech_error_event_t* error)
 {
     if (!bridge || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_report_error: required parameter is NULL (bridge, error)");
         return -1;
     }
 
@@ -698,6 +703,7 @@ int language_cingulate_report_conflict(
     const language_conflict_event_t* conflict)
 {
     if (!bridge || !conflict) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_report_conflict: required parameter is NULL (bridge, conflict)");
         return -1;
     }
 
@@ -756,6 +762,7 @@ int language_cingulate_report_mismatch(
     speech_error_type_t type)
 {
     if (!bridge || !intended || !produced) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_report_mismatch: required parameter is NULL (bridge, intended, produced)");
         return -1;
     }
 
@@ -794,6 +801,7 @@ int language_cingulate_request_correction(
     correction_signal_t* signal)
 {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_request_correction: required parameter is NULL (bridge, signal)");
         return -1;
     }
 
@@ -814,6 +822,7 @@ int language_cingulate_apply_control(
     const language_control_signal_t* control)
 {
     if (!bridge || !control) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_apply_control: required parameter is NULL (bridge, control)");
         return -1;
     }
 
@@ -836,6 +845,7 @@ int language_cingulate_adjust_rate(
     float rate_factor)
 {
     if (!bridge || rate_factor <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cingulate_adjust_rate: bridge is NULL");
         return -1;
     }
 
@@ -922,6 +932,7 @@ int language_cingulate_get_recent_errors(
     uint32_t max_errors)
 {
     if (!bridge || !errors || max_errors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_get_recent_errors: required parameter is NULL (bridge, errors)");
         return -1;
     }
 
@@ -945,6 +956,7 @@ int language_cingulate_get_recent_conflicts(
     uint32_t max_conflicts)
 {
     if (!bridge || !conflicts || max_conflicts == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_get_recent_conflicts: required parameter is NULL (bridge, conflicts)");
         return -1;
     }
 
@@ -964,6 +976,7 @@ int language_cingulate_get_recent_conflicts(
 bool language_cingulate_has_pending_error(const language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_has_pending_error: bridge is NULL");
         return false;
     }
 
@@ -1057,6 +1070,7 @@ int language_cingulate_get_stats(
     language_cingulate_stats_t* stats)
 {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1078,6 +1092,7 @@ int language_cingulate_get_config(
     language_cingulate_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -1090,6 +1105,7 @@ int language_cingulate_set_config(
     const language_cingulate_config_t* config)
 {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_cingulate_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 

@@ -52,6 +52,7 @@ static axon_segment_state_t* find_or_create_segment(
     }
 
     if (bridge->num_segments >= bridge->segment_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_or_create_segment: capacity exceeded");
         return NULL;
     }
 
@@ -338,7 +339,10 @@ int axon_plasticity_disconnect_bio_async(axon_plasticity_bridge_t* bridge)
 
 bool axon_plasticity_is_bio_async_connected(const axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -424,6 +428,7 @@ int axon_plasticity_on_spike(
     if (seg->conduction_state == CONDUCTION_BLOCKED) {
         bridge->stats.conduction_failures++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "axon_plasticity_on_spike: validation failed");
         return -1;
     }
 

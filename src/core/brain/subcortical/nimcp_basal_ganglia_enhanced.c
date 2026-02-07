@@ -144,6 +144,7 @@ bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
     if (!bge->core) {
         NIMCP_LOGGING_ERROR("Failed to create core BG");
         nimcp_free(bge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_enhanced_create: bge->core is NULL");
         return NULL;
     }
 
@@ -214,6 +215,7 @@ bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
     if (!bge->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create enhanced BG mutex");
         bg_enhanced_destroy(bge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bg_enhanced_create: bge->mutex is NULL");
         return NULL;
     }
 
@@ -350,7 +352,10 @@ bgtr_bridge_t* bg_enhanced_get_training_bridge(bg_enhanced_t* bge) {
 int bg_enhanced_select_action(bg_enhanced_t* bge,
                                const float* cortical_input,
                                uint32_t* selected_action) {
-    if (!bge || !cortical_input || !selected_action) return -1;
+    if (!bge || !cortical_input || !selected_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_training_bridge: required parameter is NULL (bge, cortical_input, selected_action)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bge->mutex);
 
@@ -440,7 +445,10 @@ int bg_enhanced_select_action_for_goal(bg_enhanced_t* bge,
                                         const float* cortical_input,
                                         uint32_t goal_id,
                                         uint32_t* selected_action) {
-    if (!bge || !cortical_input || !selected_action) return -1;
+    if (!bge || !cortical_input || !selected_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_training_bridge: required parameter is NULL (bge, cortical_input, selected_action)");
+        return -1;
+    }
 
     /* If model-based is enabled, use it for goal-directed selection */
     if (bge->model_based) {
@@ -475,7 +483,10 @@ float bg_enhanced_get_action_value(const bg_enhanced_t* bge, uint32_t action_id)
  * ============================================================================ */
 
 int bg_enhanced_start_option(bg_enhanced_t* bge, uint32_t option_id) {
-    if (!bge || !bge->hrl) return -1;
+    if (!bge || !bge->hrl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_start_option: required parameter is NULL (bge, bge->hrl)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bge->mutex);
     bge->current_option = option_id;
@@ -491,7 +502,10 @@ bool bg_enhanced_in_option(const bg_enhanced_t* bge) {
 }
 
 int bg_enhanced_get_option_action(bg_enhanced_t* bge, uint32_t state, uint32_t* action) {
-    if (!bge || !bge->hrl || !bge->in_option || !action) return -1;
+    if (!bge || !bge->hrl || !bge->in_option || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_option_action: required parameter is NULL (bge, bge->hrl, bge->in_option, action)");
+        return -1;
+    }
     /* Get active option and its primitive action */
     uint32_t opt_id = bg_hrl_get_active_option(bge->hrl);
     const bg_option_t* opt = bg_hrl_get_option(bge->hrl, opt_id);
@@ -500,6 +514,7 @@ int bg_enhanced_get_option_action(bg_enhanced_t* bge, uint32_t state, uint32_t* 
         *action = bge->current_option;
         return 0;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bg_enhanced_get_option_action: validation failed");
     return -1;
 }
 
@@ -574,7 +589,10 @@ float bg_enhanced_get_liking(const bg_enhanced_t* bge, uint32_t reward_id) {
 int bg_enhanced_plan_to_goal(bg_enhanced_t* bge, uint32_t current_state,
                               uint32_t goal_state, uint32_t* action_sequence,
                               uint32_t* sequence_length) {
-    if (!bge || !bge->model_based || !action_sequence || !sequence_length) return -1;
+    if (!bge || !bge->model_based || !action_sequence || !sequence_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_liking: required parameter is NULL (bge, bge->model_based, action_sequence, sequence_length)");
+        return -1;
+    }
     /* Use simulate_trajectory and extract action sequence */
     bg_mb_trajectory_t trajectory;
     if (bg_mb_simulate_trajectory(bge->model_based, current_state, 10, &trajectory) == 0) {
@@ -584,6 +602,7 @@ int bg_enhanced_plan_to_goal(bg_enhanced_t* bge, uint32_t current_state,
         }
         return 0;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_enhanced_get_liking: validation failed");
     return -1;
 }
 
@@ -594,7 +613,10 @@ float bg_enhanced_get_mb_weight(const bg_enhanced_t* bge) {
 }
 
 int bg_enhanced_set_mb_weight(bg_enhanced_t* bge, float weight) {
-    if (!bge || !bge->model_based) return -1;
+    if (!bge || !bge->model_based) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_set_mb_weight: required parameter is NULL (bge, bge->model_based)");
+        return -1;
+    }
     /* Use arbitration mode to influence weight */
     /* Available modes: FIXED, UNCERTAINTY, RELIABILITY, SPEED_ACCURACY */
     bg_mb_arbitration_mode_t mode = (weight > 0.7f) ? BG_MB_ARBIT_RELIABILITY :
@@ -609,7 +631,10 @@ int bg_enhanced_set_mb_weight(bg_enhanced_t* bge, float weight) {
 
 int bg_enhanced_generate_saccade(bg_enhanced_t* bge, float target_x, float target_y,
                                   float* saccade_x, float* saccade_y) {
-    if (!bge || !bge->sc || !saccade_x || !saccade_y) return -1;
+    if (!bge || !bge->sc || !saccade_x || !saccade_y) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_set_mb_weight: required parameter is NULL (bge, bge->sc, saccade_x, saccade_y)");
+        return -1;
+    }
 
     sc_target_t target = {
         .position = {.x = target_x, .y = target_y},
@@ -640,7 +665,10 @@ int bg_enhanced_orient_to_target(bg_enhanced_t* bge, float target_x, float targe
 
 int bg_enhanced_coordinate_timing(bg_enhanced_t* bge, uint32_t action_id,
                                    float* timing_adjustment) {
-    if (!bge || !bge->cerebellar || !timing_adjustment) return -1;
+    if (!bge || !bge->cerebellar || !timing_adjustment) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_orient_to_target: required parameter is NULL (bge, bge->cerebellar, timing_adjustment)");
+        return -1;
+    }
     /* Get timing state and compute adjustment */
     bgcb_timing_state_t timing_state;
     if (bgcb_get_timing_state(bge->cerebellar, &timing_state) == 0) {
@@ -649,13 +677,17 @@ int bg_enhanced_coordinate_timing(bg_enhanced_t* bge, uint32_t action_id,
         return 0;
     }
     *timing_adjustment = 0.0f;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_enhanced_orient_to_target: validation failed");
     return -1;
 }
 
 int bg_enhanced_receive_cerebellar_prediction(bg_enhanced_t* bge,
                                                const float* prediction,
                                                uint32_t prediction_dim) {
-    if (!bge || !bge->cerebellar || !prediction || prediction_dim == 0) return -1;
+    if (!bge || !bge->cerebellar || !prediction || prediction_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_orient_to_target: required parameter is NULL (bge, bge->cerebellar, prediction)");
+        return -1;
+    }
     /* Set timing prediction from first element of prediction array */
     return bgcb_set_timing_prediction(bge->cerebellar, prediction[0]);
 }
@@ -666,7 +698,10 @@ int bg_enhanced_receive_cerebellar_prediction(bg_enhanced_t* bge,
 
 int bg_enhanced_devalue_outcome(bg_enhanced_t* bge, uint32_t outcome_id,
                                  bgod_method_t method, float magnitude) {
-    if (!bge || !bge->outcome_deval) return -1;
+    if (!bge || !bge->outcome_deval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_orient_to_target: required parameter is NULL (bge, bge->outcome_deval)");
+        return -1;
+    }
 
     switch (method) {
         case BGOD_METHOD_SATIETY:
@@ -674,6 +709,7 @@ int bg_enhanced_devalue_outcome(bg_enhanced_t* bge, uint32_t outcome_id,
         case BGOD_METHOD_AVERSION:
             return bgod_devalue_by_aversion(bge->outcome_deval, outcome_id, magnitude);
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_orient_to_target: required parameter is NULL (bge, bge->outcome_deval)");
             return -1;
     }
 }
@@ -733,7 +769,10 @@ int bg_enhanced_process_input(bg_enhanced_t* bge, const float* cortical_input) {
  * ============================================================================ */
 
 int bg_enhanced_get_stats(const bg_enhanced_t* bge, bg_enhanced_stats_t* stats) {
-    if (!bge || !stats) return -1;
+    if (!bge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_get_stats: required parameter is NULL (bge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bge->mutex);
 
@@ -806,7 +845,10 @@ int bg_enhanced_get_stats(const bg_enhanced_t* bge, bg_enhanced_stats_t* stats) 
 }
 
 bool bg_enhanced_feature_enabled(const bg_enhanced_t* bge, const char* feature_name) {
-    if (!bge || !feature_name) return false;
+    if (!bge || !feature_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_enhanced_feature_enabled: required parameter is NULL (bge, feature_name)");
+        return false;
+    }
 
     if (strcmp(feature_name, "beta") == 0) return bge->beta != NULL;
     if (strcmp(feature_name, "neuromod") == 0) return bge->neuromod != NULL;
@@ -821,6 +863,7 @@ bool bg_enhanced_feature_enabled(const bg_enhanced_t* bge, const char* feature_n
     if (strcmp(feature_name, "training") == 0 || strcmp(feature_name, "training_plasticity") == 0)
         return bge->training_bridge != NULL;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_enhanced_feature_enabled: validation failed");
     return false;
 }
 

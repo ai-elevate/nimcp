@@ -173,12 +173,14 @@ nimcp_auction_t nimcp_auction_create(const nimcp_auction_config_t* config) {
     auction->bids = nimcp_calloc(auction->max_bids, sizeof(nimcp_bid_t));
     if (!auction->bids) {
         nimcp_free(auction);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_auction_create: auction->bids is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(&auction->mutex, false) != 0) {
         nimcp_free(auction->bids);
         nimcp_free(auction);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_auction_create: validation failed");
         return NULL;
     }
 

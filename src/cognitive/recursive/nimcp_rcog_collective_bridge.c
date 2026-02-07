@@ -237,6 +237,7 @@ rcog_collective_bridge_t* rcog_collective_bridge_create(
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "rcog_collective") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "rcog_collective_bridge_create: validation failed");
         return NULL;
     }
 
@@ -750,6 +751,7 @@ bool rcog_collective_bridge_consensus_reached(
     float coherence_threshold
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_collective_bridge_consensus_reached: required parameter is NULL (bridge, state)");
         return false;
     }
 

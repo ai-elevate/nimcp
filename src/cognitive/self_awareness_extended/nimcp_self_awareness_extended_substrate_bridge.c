@@ -121,12 +121,14 @@ self_awareness_ext_substrate_bridge_t* self_awareness_ext_substrate_bridge_creat
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for self awareness ext substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_awareness_ext_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for self awareness ext substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_awareness_ext_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -151,13 +153,17 @@ void self_awareness_ext_substrate_bridge_destroy(self_awareness_ext_substrate_br
 }
 
 int self_awareness_ext_substrate_bridge_update(self_awareness_ext_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_substrate_bridge_update: required parameter is NULL (bridge, bridge->substrate)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_awareness_ext_substrate_bridge_update: validation failed");
         return -1;
     }
 
@@ -191,18 +197,27 @@ int self_awareness_ext_substrate_bridge_update(self_awareness_ext_substrate_brid
 }
 
 int self_awareness_ext_substrate_bridge_get_effects(const self_awareness_ext_substrate_bridge_t* bridge, self_awareness_ext_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_substrate_bridge_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     *effects = bridge->effects;
     return 0;
 }
 
 int self_awareness_ext_substrate_bridge_apply_effects(self_awareness_ext_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int self_awareness_ext_substrate_bridge_register_bio_async(self_awareness_ext_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_awareness_ext_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->router = router;
     bridge->bio_async_connected = (router != NULL);
     return 0;

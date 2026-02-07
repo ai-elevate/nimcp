@@ -205,6 +205,7 @@ void neuron_model_update(neuron_model_state_t state, float dt, float input_curre
 bool neuron_model_check_spike(const neuron_model_state_t state) {
     // Guard: Validate state and vtable
     if (!state || !state->vtable || !state->vtable->check_spike) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_model_check_spike: required parameter is NULL (state, state->vtable, state->vtable->check_spike)");
         return false;
     }
 

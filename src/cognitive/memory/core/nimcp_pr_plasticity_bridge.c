@@ -163,6 +163,7 @@ static pr_bcm_node_state_t* find_bcm_node(
             return &bridge->bcm_nodes[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_bcm_node: validation failed");
     return NULL;
 }
 
@@ -313,22 +314,52 @@ pr_plasticity_bridge_config_t pr_plasticity_config_default(void) {
 }
 
 bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_config_validate: config is NULL");
+        return false;
+    }
 
     /* STDP validation */
-    if (config->stdp.A_plus <= 0.0f) return false;
-    if (config->stdp.A_minus <= 0.0f) return false;
-    if (config->stdp.tau_plus <= 0.0f) return false;
-    if (config->stdp.tau_minus <= 0.0f) return false;
-    if (config->stdp.resonance_modulation < 0.0f) return false;
+    if (config->stdp.A_plus <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->stdp.A_minus <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->stdp.tau_plus <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->stdp.tau_minus <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->stdp.resonance_modulation < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* BCM validation */
-    if (config->bcm.theta_tau <= 0.0f) return false;
+    if (config->bcm.theta_tau <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Homeostatic validation */
-    if (config->homeostatic.scaling_tau <= 0.0f) return false;
-    if (config->homeostatic.min_scale <= 0.0f) return false;
-    if (config->homeostatic.max_scale <= config->homeostatic.min_scale) return false;
+    if (config->homeostatic.scaling_tau <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->homeostatic.min_scale <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
+    if (config->homeostatic.max_scale <= config->homeostatic.min_scale) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
+        return false;
+    }
 
     /* Target rate validation */
     /* Phase 8: Heartbeat at operation start */
@@ -344,12 +375,14 @@ bool pr_plasticity_config_validate(const pr_plasticity_bridge_config_t* config) 
 
         if (config->homeostatic.target_rate[t] < 0.0f ||
             config->homeostatic.target_rate[t] > 1.0f) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
             return false;
         }
     }
 
     /* Consolidation gate validation */
     if (config->consolidation_gate < 0.0f || config->consolidation_gate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_config_validate: validation failed");
         return false;
     }
 
@@ -380,6 +413,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     if (config) {
         if (!pr_plasticity_config_validate(config)) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_bridge_create: pr_plasticity_config_validate is NULL");
             return NULL;
         }
         bridge->config = *config;
@@ -390,6 +424,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pr_plasticity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -399,6 +434,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     if (!bridge->bcm_nodes) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_plasticity_bridge_create: bridge->bcm_nodes is NULL");
         return NULL;
     }
     bridge->bcm_node_count = 0;
@@ -411,6 +447,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
             nimcp_free(bridge->bcm_nodes);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_plasticity_bridge_create: bridge->events is NULL");
             return NULL;
         }
         bridge->event_count = 0;
@@ -463,7 +500,10 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
 }
 
 int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_reset", 0.0f);
@@ -710,7 +750,10 @@ int pr_bcm_update_history(
     uint64_t node_id,
     float activity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bcm_update_history: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bcm) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -722,6 +765,7 @@ int pr_bcm_update_history(
     pr_bcm_node_state_t* node = get_or_create_bcm_node(bridge, node_id);
     if (!node) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bcm_update_history: node is NULL");
         return -1;
     }
 
@@ -760,7 +804,10 @@ int pr_bcm_apply_to_node(
     uint64_t node_id,
     float activity)
 {
-    if (!bridge || !graph) return -1;
+    if (!bridge || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bcm_apply_to_node: required parameter is NULL (bridge, graph)");
+        return -1;
+    }
     if (!bridge->config.enable_bcm) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -773,6 +820,7 @@ int pr_bcm_apply_to_node(
     pr_bcm_node_state_t* bcm_node = get_or_create_bcm_node(bridge, node_id);
     if (!bcm_node) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_bcm_apply_to_node: bcm_node is NULL");
         return -1;
     }
 
@@ -784,6 +832,7 @@ int pr_bcm_apply_to_node(
     size_t edge_count;
     if (!entangle_get_outgoing(graph, node_id, edges, 256, &edge_count)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_bcm_apply_to_node: entangle_get_outgoing is NULL");
         return -1;
     }
 
@@ -989,7 +1038,10 @@ uint32_t pr_homeostatic_scale_tier(
 }
 
 int pr_homeostatic_update_targets(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_homeostatic_update_targets: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_homeostatic_updat", 0.0f);
@@ -1076,12 +1128,24 @@ bool pr_structural_create_edge(
     uint64_t to_id,
     float resonance)
 {
-    if (!bridge || !graph) return false;
-    if (!bridge->config.enable_structural) return false;
-    if (resonance < bridge->config.structural.create_threshold) return false;
+    if (!bridge || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_structural_create_edge: required parameter is NULL (bridge, graph)");
+        return false;
+    }
+    if (!bridge->config.enable_structural) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_structural_create_edge: bridge->config is NULL");
+        return false;
+    }
+    if (resonance < bridge->config.structural.create_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_structural_create_edge: validation failed");
+        return false;
+    }
 
     /* Check if edge already exists */
-    if (entangle_has_edge(graph, from_id, to_id)) return false;
+    if (entangle_has_edge(graph, from_id, to_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_structural_create_edge: validation failed");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_structural_create", 0.0f);
@@ -1135,8 +1199,14 @@ bool pr_structural_prune_edge(
     uint64_t from_id,
     uint64_t to_id)
 {
-    if (!bridge || !graph) return false;
-    if (!bridge->config.enable_structural) return false;
+    if (!bridge || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_structural_prune_edge: required parameter is NULL (bridge, graph)");
+        return false;
+    }
+    if (!bridge->config.enable_structural) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_structural_prune_edge: bridge->config is NULL");
+        return false;
+    }
 
     /* Get current edge */
     /* Phase 8: Heartbeat at operation start */
@@ -1144,10 +1214,16 @@ bool pr_structural_prune_edge(
 
 
     entangle_edge_t edge;
-    if (!entangle_get_edge(graph, from_id, to_id, &edge)) return false;
+    if (!entangle_get_edge(graph, from_id, to_id, &edge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_structural_prune_edge: entangle_get_edge is NULL");
+        return false;
+    }
 
     /* Check if weight is below prune threshold */
-    if (edge.weight >= bridge->config.structural.prune_threshold) return false;
+    if (edge.weight >= bridge->config.structural.prune_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_structural_prune_edge: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1185,7 +1261,10 @@ int pr_structural_remodel(
     uint32_t* edges_created,
     uint32_t* edges_pruned)
 {
-    if (!bridge || !graph || !node_ids) return -1;
+    if (!bridge || !graph || !node_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_structural_remodel: required parameter is NULL (bridge, graph, node_ids)");
+        return -1;
+    }
     if (!bridge->config.enable_structural) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1257,7 +1336,10 @@ int pr_plasticity_from_quaternion(
     float* bcm_rate,
     float* homeostatic_rate)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_from_quaternion: bridge is NULL");
+        return -1;
+    }
 
     /* w (consolidation) -> protection level */
     /* Phase 8: Heartbeat at operation start */
@@ -1300,7 +1382,10 @@ int pr_quaternion_from_plasticity(
     uint32_t event_count,
     nimcp_quaternion_t* quat_out)
 {
-    if (!bridge || !events || !quat_out) return -1;
+    if (!bridge || !events || !quat_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quaternion_from_plasticity: required parameter is NULL (bridge, events, quat_out)");
+        return -1;
+    }
 
     *quat_out = quat_in;
     BRIDGE_BBB_VALIDATE(bridge, events, sizeof(*events));
@@ -1425,8 +1510,14 @@ int pr_plasticity_get_tier_params(
     pr_memory_tier_t tier,
     pr_tier_plasticity_params_t* params)
 {
-    if (!bridge || !params) return -1;
-    if (tier >= PR_PLASTICITY_NUM_TIERS) return -1;
+    if (!bridge || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_get_tier_params: required parameter is NULL (bridge, params)");
+        return -1;
+    }
+    if (tier >= PR_PLASTICITY_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_get_tier_params: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_ti", 0.0f);
@@ -1446,8 +1537,14 @@ int pr_plasticity_apply_tier_rules(
     pr_memory_tier_t tier,
     float activity)
 {
-    if (!bridge || !graph) return -1;
-    if (tier >= PR_PLASTICITY_NUM_TIERS) return -1;
+    if (!bridge || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_apply_tier_rules: required parameter is NULL (bridge, graph)");
+        return -1;
+    }
+    if (tier >= PR_PLASTICITY_NUM_TIERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_plasticity_apply_tier_rules: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_apply_", 0.0f);
@@ -1488,7 +1585,10 @@ int pr_plasticity_log_event(
     pr_plasticity_bridge_t bridge,
     const pr_plasticity_event_t* event)
 {
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_log_event: required parameter is NULL (bridge, event)");
+        return -1;
+    }
     if (!bridge->config.enable_event_logging) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1509,7 +1609,10 @@ int pr_plasticity_get_events(
     uint32_t max_events,
     uint32_t* event_count)
 {
-    if (!bridge || !events || !event_count) return -1;
+    if (!bridge || !events || !event_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_get_events: required parameter is NULL (bridge, events, event_count)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_ev", 0.0f);
@@ -1549,7 +1652,10 @@ int pr_plasticity_get_events(
 }
 
 int pr_plasticity_clear_events(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_clear_events: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_clear_", 0.0f);
@@ -1567,7 +1673,10 @@ int pr_plasticity_get_stats(
     pr_plasticity_bridge_t bridge,
     pr_plasticity_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_get_st", 0.0f);
@@ -1592,7 +1701,10 @@ int pr_plasticity_get_stats(
 //=============================================================================
 
 int pr_plasticity_sync_with_coordinator(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_sync_with_coordinator: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_coordinator_sync) return 0;
 
     /* Would sync with plasticity_coordinator here */
@@ -1606,7 +1718,10 @@ int pr_plasticity_sync_with_coordinator(pr_plasticity_bridge_t bridge) {
 }
 
 int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1621,7 +1736,10 @@ int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
 }
 
 int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_discon", 0.0f);
@@ -1635,7 +1753,10 @@ int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
 }
 
 bool pr_plasticity_is_bio_async_connected(pr_plasticity_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_pr_plasticity_is_bio", 0.0f);
 
@@ -1652,7 +1773,10 @@ int pr_plasticity_bridge_update(
     entangle_graph_t graph,
     float dt_ms)
 {
-    if (!bridge || !graph) return -1;
+    if (!bridge || !graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_plasticity_bridge_update: required parameter is NULL (bridge, graph)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     pr_plasticity_bridge_heartbeat("pr_plasticit_update", 0.0f);

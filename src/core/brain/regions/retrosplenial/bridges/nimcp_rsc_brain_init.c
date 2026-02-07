@@ -77,7 +77,10 @@ static const char* rsc_version_string = "1.0.0";
 //=============================================================================
 
 int rsc_init_default_config(rsc_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_default_config: config is NULL");
+        return -1;
+    }
 
     config->num_transform_neurons = RSC_INIT_DEFAULT_TRANSFORM_NEURONS;
     config->num_context_neurons = RSC_INIT_DEFAULT_CONTEXT_NEURONS;
@@ -113,7 +116,10 @@ int rsc_brain_init_create(
     const rsc_init_config_t* config,
     rsc_init_result_t* result
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_brain_init_create: brain is NULL");
+        return -1;
+    }
 
     /* Use defaults if no config */
     rsc_init_config_t local_config;
@@ -197,7 +203,10 @@ done:
 }
 
 int rsc_brain_init_destroy(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_brain_init_destroy: brain is NULL");
+        return -1;
+    }
 
     /* Get RSC instance and destroy */
     nimcp_retrosplenial_t* rsc = rsc_get_from_brain(brain);
@@ -212,12 +221,16 @@ int rsc_brain_init_destroy(brain_t brain) {
 }
 
 bool nimcp_brain_factory_init_rsc_subsystem(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_rsc_subsystem: brain is NULL");
+        return false;
+    }
 
     rsc_init_result_t result;
     if (rsc_brain_init_create(brain, NULL, &result) < 0) {
         NIMCP_LOG_ERROR(RSC_INIT_MODULE_NAME,
             "RSC subsystem initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_brain_factory_init_rsc_subsystem: validation failed");
         return false;
     }
 
@@ -233,7 +246,10 @@ void nimcp_brain_factory_destroy_rsc_subsystem(brain_t brain) {
 //=============================================================================
 
 bool rsc_init_security(brain_t brain, nimcp_retrosplenial_t* rsc) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_security: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would access brain's BBB and register RSC module */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -250,7 +266,10 @@ bool rsc_init_kg_wiring(
     nimcp_retrosplenial_t* rsc,
     uint64_t admin_token
 ) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_kg_wiring: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would access brain's KG and register RSC nodes */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -268,7 +287,10 @@ bool rsc_init_bio_async_bridges(
     brain_t brain,
     nimcp_retrosplenial_t* rsc
 ) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_bio_async_bridges: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would connect RSC to brain's bio-router */
     /* nimcp_bio_router_t* router = brain_get_bio_router(brain); */
@@ -284,7 +306,10 @@ bool rsc_init_immune_bridge(
     brain_t brain,
     nimcp_retrosplenial_t* rsc
 ) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_immune_bridge: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would connect RSC to brain's immune system */
     /* brain_immune_system_t* immune = brain_get_immune(brain); */
@@ -300,7 +325,10 @@ bool rsc_init_hippocampus_bridge(
     brain_t brain,
     nimcp_retrosplenial_t* rsc
 ) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_hippocampus_bridge: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would connect RSC to hippocampus */
     /* hippocampus_adapter_t* hipp = brain_get_hippocampus(brain); */
@@ -316,7 +344,10 @@ bool rsc_init_entorhinal_bridge(
     brain_t brain,
     nimcp_retrosplenial_t* rsc
 ) {
-    if (!brain || !rsc) return false;
+    if (!brain || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_init_entorhinal_bridge: required parameter is NULL (brain, rsc)");
+        return false;
+    }
 
     /* Would connect RSC to entorhinal cortex */
     /* nimcp_entorhinal_t* ec = brain_get_entorhinal(brain); */
@@ -333,7 +364,10 @@ bool rsc_init_entorhinal_bridge(
 //=============================================================================
 
 bool rsc_is_initialized(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_is_initialized: brain is NULL");
+        return false;
+    }
 
     /* Would check if RSC subsystem exists in brain */
     /* return brain_has_rsc_subsystem(brain); */
@@ -357,5 +391,6 @@ nimcp_retrosplenial_t* rsc_get_from_brain(brain_t brain) {
     /* Would retrieve RSC from brain's subsystem registry */
     /* return (nimcp_retrosplenial_t*)brain_get_subsystem(brain, "rsc"); */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_get_from_brain: operation failed");
     return NULL;  /* Placeholder - requires brain internal access */
 }

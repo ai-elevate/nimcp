@@ -118,6 +118,7 @@ static threat_entry_t* find_threat_entry(
             return &si->threat_history[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_threat_entry: operation failed");
     return NULL;
 }
 
@@ -217,6 +218,7 @@ static int immune_action_to_msp_event(mesh_immune_action_t action) {
         case MESH_IMMUNE_ACTION_SHUTDOWN:
             return 1;  /* Chronic failure */
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_action_to_msp_event: operation failed");
             return -1; /* No MSP action needed */
     }
 }
@@ -265,12 +267,14 @@ mesh_security_integration_t* mesh_security_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create security integration without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_security_create: bootstrap is NULL");
         return NULL;
     }
 
     mesh_security_integration_t* si = nimcp_calloc(1, sizeof(*si));
     if (!si) {
         LOG_ERROR("Failed to allocate security integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_security_create: si is NULL");
         return NULL;
     }
 
@@ -296,6 +300,7 @@ mesh_security_integration_t* mesh_security_create(
     if (!si->mutex) {
         LOG_ERROR("Failed to create security integration mutex");
         nimcp_free(si);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_security_create: si->mutex is NULL");
         return NULL;
     }
 

@@ -685,6 +685,7 @@ int occipital_thalamic_set_nucleus_gain(
             bridge->state.trn_gate = nimcp_clamp_f(gain, 0.0f, 1.0f);
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_set_nucleus_gain: operation failed");
             return -1;
     }
 

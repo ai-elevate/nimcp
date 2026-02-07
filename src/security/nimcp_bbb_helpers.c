@@ -134,6 +134,7 @@ bool bbb_register_module(const char* module_name, bbb_module_type_t type)
     // Auto-initialize if not already done
     if (!nimcp_atomic_load_bool(&g_bbb_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
         if (!bbb_helpers_init()) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bbb_register_module: bbb_helpers_init is NULL");
             return false;
         }
     }
@@ -169,6 +170,7 @@ bool bbb_check_pointer(const void* ptr, const char* function_name)
         LOG_ERROR("[%s] NULL pointer validation failed",
                        function_name ? function_name : "unknown");
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_check_pointer: ptr is NULL");
         return false;
     }
 
@@ -187,6 +189,7 @@ bool bbb_check_string(const char* str, size_t max_len, const char* function_name
         LOG_ERROR("[%s] NULL string validation failed",
                        function_name ? function_name : "unknown");
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_check_string: str is NULL");
         return false;
     }
 
@@ -195,6 +198,7 @@ bool bbb_check_string(const char* str, size_t max_len, const char* function_name
         LOG_ERROR("[%s] String length %zu exceeds max %zu",
                        function_name ? function_name : "unknown", len, max_len);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_string: validation failed");
         return false;
     }
 
@@ -203,6 +207,7 @@ bool bbb_check_string(const char* str, size_t max_len, const char* function_name
         LOG_ERROR("[%s] String not null-terminated",
                        function_name ? function_name : "unknown");
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_check_string: validation failed");
         return false;
     }
 
@@ -221,6 +226,7 @@ bool bbb_validate_range(int64_t value, int64_t min, int64_t max, const char* fun
         LOG_ERROR("[%s] Value %ld out of range [%ld, %ld]",
                        function_name ? function_name : "unknown", value, min, max);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_range: validation failed");
         return false;
     }
 
@@ -239,6 +245,7 @@ bool bbb_validate_range_u(uint64_t value, uint64_t min, uint64_t max, const char
         LOG_ERROR("[%s] Value %lu out of range [%lu, %lu]",
                        function_name ? function_name : "unknown", value, min, max);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_range_u: validation failed");
         return false;
     }
 
@@ -257,6 +264,7 @@ bool bbb_validate_network_data(const void* data, size_t length, const char* func
         LOG_ERROR("[%s] NULL network data",
                        function_name ? function_name : "unknown");
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_network_data: data is NULL");
         return false;
     }
 
@@ -264,6 +272,7 @@ bool bbb_validate_network_data(const void* data, size_t length, const char* func
         LOG_ERROR("[%s] Invalid network data length: %zu",
                        function_name ? function_name : "unknown", length);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_network_data: length is zero");
         return false;
     }
 
@@ -283,6 +292,7 @@ bool bbb_validate_buffer_access(const void* buffer, size_t offset, size_t access
         LOG_ERROR("[%s] NULL buffer",
                        function_name ? function_name : "unknown");
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_buffer_access: buffer is NULL");
         return false;
     }
 
@@ -291,6 +301,7 @@ bool bbb_validate_buffer_access(const void* buffer, size_t offset, size_t access
         LOG_ERROR("[%s] Buffer access overflow: offset=%zu size=%zu buffer_size=%zu",
                        function_name ? function_name : "unknown", offset, access_size, buffer_size);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_buffer_access: validation failed");
         return false;
     }
 
@@ -298,6 +309,7 @@ bool bbb_validate_buffer_access(const void* buffer, size_t offset, size_t access
         LOG_ERROR("[%s] Buffer access overflow: offset=%zu+size=%zu > buffer_size=%zu",
                        function_name ? function_name : "unknown", offset, access_size, buffer_size);
         __sync_fetch_and_add(&g_threats_detected, 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_buffer_access: validation failed");
         return false;
     }
 
@@ -356,10 +368,12 @@ bbb_threat_type_t bbb_detect_threat(const void* data, size_t length)
 bool bbb_verify_message_integrity(const void* message, size_t length)
 {
     if (!bbb_check_pointer(message, "bbb_verify_message_integrity")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_message_integrity: bbb_check_pointer is NULL");
         return false;
     }
 
     if (length == 0 || length > 1048576) {  // 1MB max
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_message_integrity: length is zero");
         return false;
     }
 
@@ -374,6 +388,7 @@ bool bbb_verify_message_integrity(const void* message, size_t length)
 bool bbb_validate_privileged_operation(const void* operation_data, bbb_privilege_t privilege)
 {
     if (!bbb_check_pointer(operation_data, "bbb_validate_privileged_operation")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_privileged_operation: bbb_check_pointer is NULL");
         return false;
     }
 

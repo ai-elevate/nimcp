@@ -230,6 +230,7 @@ void nimcp_mutex_pool_release(nimcp_mutex_slot_t slot) {
 
 int nimcp_mutex_pool_lock(nimcp_mutex_slot_t slot) {
     if (!g_pool.initialized || slot >= NIMCP_MUTEX_POOL_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mutex_pool_lock: g_pool is NULL");
         return -1;
     }
 
@@ -245,6 +246,7 @@ int nimcp_mutex_pool_lock(nimcp_mutex_slot_t slot) {
 
 int nimcp_mutex_pool_trylock(nimcp_mutex_slot_t slot) {
     if (!g_pool.initialized || slot >= NIMCP_MUTEX_POOL_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mutex_pool_trylock: g_pool is NULL");
         return -1;
     }
 
@@ -262,6 +264,7 @@ int nimcp_mutex_pool_trylock(nimcp_mutex_slot_t slot) {
 
 int nimcp_mutex_pool_unlock(nimcp_mutex_slot_t slot) {
     if (!g_pool.initialized || slot >= NIMCP_MUTEX_POOL_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_mutex_pool_unlock: g_pool is NULL");
         return -1;
     }
 

@@ -199,6 +199,7 @@ NIMCP_API energy_consistency_checker_t* energy_consistency_create(
             checker->config.max_violations) != NIMCP_SUCCESS) {
         nimcp_mutex_destroy(checker->mutex);
         nimcp_free(checker);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_consistency_create: operation failed");
         return NULL;
     }
 
@@ -1164,6 +1165,7 @@ NIMCP_API const energy_consistency_result_t* energy_consistency_get_last_result(
     const energy_consistency_checker_t* checker)
 {
     if (!checker || !checker->has_last_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_consistency_get_last_result: required parameter is NULL (checker, checker->has_last_result)");
         return NULL;
     }
 
@@ -1322,6 +1324,7 @@ static bool check_circular_dependency(
     bool* in_stack)
 {
     if (current_step >= num_steps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_circular_dependency: capacity exceeded");
         return false;
     }
 
@@ -1363,6 +1366,7 @@ static bool check_circular_dependency(
     }
 
     in_stack[current_step] = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_circular_dependency: operation failed");
     return false;
 }
 

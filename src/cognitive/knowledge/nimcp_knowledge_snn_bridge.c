@@ -325,7 +325,10 @@ void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
 }
 
 int knowledge_snn_reset(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_reset", 0.0f);
@@ -383,8 +386,14 @@ int knowledge_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
@@ -462,7 +471,10 @@ int knowledge_snn_encode_semantic(
     float semantic,
     float activation
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_encode_semantic: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
@@ -487,7 +499,10 @@ int knowledge_snn_encode_retrieval(
     float retrieval_strength,
     uint32_t concept_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_encode_retrieval: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
@@ -509,7 +524,10 @@ int knowledge_snn_encode_association(
     float association,
     uint32_t association_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_encode_association: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_encode", 0.0f);
@@ -544,8 +562,14 @@ int knowledge_snn_encode_association(
 //=============================================================================
 
 int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_simula", 0.0f);
@@ -631,7 +655,10 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int knowledge_snn_step(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_step", 0.0f);
 
@@ -644,16 +671,23 @@ int knowledge_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_forwar", 0.0f);
 
 
     int spike_count = knowledge_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_forward: validation failed");
+        return -1;
+    }
 
     if (knowledge_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_forward: validation failed");
         return -1;
     }
 
@@ -668,7 +702,10 @@ int knowledge_snn_get_retrieval(
     knowledge_snn_bridge_t* bridge,
     knowledge_retrieval_t* retrieval
 ) {
-    if (!bridge || !retrieval) return -1;
+    if (!bridge || !retrieval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_get_retrieval: required parameter is NULL (bridge, retrieval)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_re", 0.0f);
@@ -686,8 +723,14 @@ int knowledge_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_ac", 0.0f);
@@ -712,7 +755,10 @@ bool knowledge_snn_check_activation(
     knowledge_snn_bridge_t* bridge,
     float* activation_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_activation: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
@@ -733,7 +779,10 @@ bool knowledge_snn_check_retrieval(
     knowledge_snn_bridge_t* bridge,
     float* retrieval_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_retrieval: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
@@ -754,7 +803,10 @@ bool knowledge_snn_check_state_change(
     knowledge_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_check_", 0.0f);
@@ -793,8 +845,14 @@ int knowledge_snn_get_dim_state(
     uint32_t dim,
     knowledge_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_di", 0.0f);
@@ -811,7 +869,10 @@ int knowledge_snn_get_state(
     knowledge_snn_bridge_t* bridge,
     knowledge_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_st", 0.0f);
@@ -845,7 +906,10 @@ int knowledge_snn_get_state(
 }
 
 int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_get_st", 0.0f);
@@ -859,7 +923,10 @@ int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_
 }
 
 int knowledge_snn_reset_stats(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_reset_", 0.0f);
@@ -918,7 +985,10 @@ int knowledge_snn_register_activation_callback(
     knowledge_snn_activation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_register_activation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
@@ -937,7 +1007,10 @@ int knowledge_snn_register_retrieval_callback(
     knowledge_snn_retrieval_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_register_retrieval_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
@@ -956,7 +1029,10 @@ int knowledge_snn_register_association_callback(
     knowledge_snn_association_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_register_association_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_regist", 0.0f);
@@ -975,8 +1051,14 @@ int knowledge_snn_register_association_callback(
 //=============================================================================
 
 int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_bio_as", 0.0f);
@@ -991,7 +1073,10 @@ int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
 }
 
 int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_bio_as", 0.0f);
@@ -1005,7 +1090,10 @@ int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
 }
 
 bool knowledge_snn_is_bio_async_connected(knowledge_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     knowledge_snn_bridge_heartbeat("knowledge_sn_knowledge_snn_is_bio", 0.0f);

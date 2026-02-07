@@ -155,6 +155,7 @@ bool nimcp_encrypt_with_password(
     }
 
     if (plaintext_len == 0 || password_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt_with_password: plaintext_len is zero");
         return false;
     }
 
@@ -162,6 +163,7 @@ bool nimcp_encrypt_with_password(
     size_t required_size = nimcp_encrypted_size(plaintext_len);
     if (*ciphertext_len < required_size) {
         *ciphertext_len = required_size;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt_with_password: validation failed");
         return false;
     }
 
@@ -180,6 +182,7 @@ bool nimcp_encrypt_with_password(
     uint8_t key[KEY_BYTES];
     if (!derive_key_from_password(password, password_len, salt, key)) {
         sodium_memzero(key, KEY_BYTES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt_with_password: derive_key_from_password is NULL");
         return false;
     }
 
@@ -238,12 +241,14 @@ bool nimcp_decrypt_with_password(
     }
 
     if (password_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: password_len is zero");
         return false;
     }
 
     // Check minimum ciphertext size
     size_t min_size = SALT_BYTES + NONCE_BYTES + TAG_BYTES;
     if (ciphertext_len < min_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: validation failed");
         return false;
     }
 
@@ -264,6 +269,7 @@ bool nimcp_decrypt_with_password(
     uint8_t key[KEY_BYTES];
     if (!derive_key_from_password(password, password_len, salt, key)) {
         sodium_memzero(key, KEY_BYTES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: derive_key_from_password is NULL");
         return false;
     }
 
@@ -272,6 +278,7 @@ bool nimcp_decrypt_with_password(
     if (*plaintext_len < expected_plaintext_len) {
         *plaintext_len = expected_plaintext_len;
         sodium_memzero(key, KEY_BYTES);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: validation failed");
         return false;
     }
 
@@ -308,6 +315,7 @@ bool nimcp_decrypt_with_password(
 // Stub implementations when encryption is not available
 bool nimcp_encryption_available(void)
 {
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encryption_available: operation failed");
     return false;
 }
 
@@ -332,6 +340,7 @@ bool nimcp_encrypt_with_password(
     (void)password_len;
     (void)ciphertext;
     (void)ciphertext_len;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_encrypt_with_password: operation failed");
     return false;  // Encryption not available
 }
 
@@ -350,6 +359,7 @@ bool nimcp_decrypt_with_password(
     (void)password_len;
     (void)plaintext;
     (void)plaintext_len;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_decrypt_with_password: operation failed");
     return false;  // Decryption not available
 }
 

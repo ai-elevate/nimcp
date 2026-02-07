@@ -364,6 +364,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_con
 
     /* Validate configuration */
     if (nimcp_lr_scheduler_validate_config(config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lr_scheduler_create: validation failed");
         return NULL;
     }
 
@@ -1001,6 +1002,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create_with_warmup(
     const nimcp_lr_scheduler_config_t* main_config
 ) {
     if (!warmup_config || !main_config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_lr_scheduler_create_with_warmup: required parameter is NULL (warmup_config, main_config)");
         return NULL;
     }
 
@@ -1022,6 +1024,7 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create_with_warmup(
     ctx->state.warmup.main_scheduler = nimcp_lr_scheduler_create(main_config);
     if (!ctx->state.warmup.main_scheduler) {
         nimcp_lr_scheduler_destroy(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_lr_scheduler_create_with_warmup: ctx->state is NULL");
         return NULL;
     }
 

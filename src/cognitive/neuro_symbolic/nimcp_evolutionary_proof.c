@@ -185,6 +185,7 @@ static proof_q_entry_t* find_q_entry(evolutionary_proof_search_t* eps,
             return &eps->q_table[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_state_hash: validation failed");
     return NULL;
 }
 
@@ -343,6 +344,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
                                     sizeof(proof_strategy_t));
     if (!eps->population) {
         nimcp_free(eps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->population is NULL");
         return NULL;
     }
     eps->population_count = eps->config.population_size;
@@ -353,6 +355,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
     if (!eps->q_table) {
         nimcp_free(eps->population);
         nimcp_free(eps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_gene: eps->q_table is NULL");
         return NULL;
     }
 
@@ -363,6 +366,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
         nimcp_free(eps->q_table);
         nimcp_free(eps->population);
         nimcp_free(eps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_gene: eps->experience_buffer is NULL");
         return NULL;
     }
 
@@ -375,6 +379,7 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
         nimcp_free(eps->q_table);
         nimcp_free(eps->population);
         nimcp_free(eps);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_gene: eps->mutex is NULL");
         return NULL;
     }
 
@@ -836,7 +841,10 @@ NIMCP_API nimcp_error_t evolutionary_proof_mutate(
 NIMCP_API const proof_strategy_t* evolutionary_proof_get_best(
     const evolutionary_proof_search_t* eps) {
 
-    if (!eps || eps->population_count == 0) return NULL;
+    if (!eps || eps->population_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: eps is NULL");
+        return NULL;
+    }
 
     const proof_strategy_t* best = &eps->population[0];
     for (uint32_t i = 1; i < eps->population_count; i++) {
@@ -1055,7 +1063,10 @@ NIMCP_API bool evolutionary_proof_prove(
     evoproof_trace_t* trace,
     uint32_t max_steps) {
 
-    if (!eps || !goal || !trace) return false;
+    if (!eps || !goal || !trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (eps, goal, trace)");
+        return false;
+    }
 
     (void)logic;  /* Will integrate with logic system later */
 
@@ -1144,6 +1155,7 @@ NIMCP_API bool evolutionary_proof_prove_with_strategy(
     evoproof_trace_t* trace) {
 
     if (!eps || strategy_id >= eps->population_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: eps is NULL");
         return false;
     }
 
@@ -1211,13 +1223,19 @@ NIMCP_API int32_t evolutionary_proof_export_knowledge(
     void* buffer,
     uint32_t buffer_size) {
 
-    if (!eps || !buffer) return -1;
+    if (!eps || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evolutionary_proof_trace_cleanup: required parameter is NULL (eps, buffer)");
+        return -1;
+    }
 
     uint32_t required = sizeof(uint32_t) * 2 +
                         eps->population_count * sizeof(proof_strategy_t) +
                         eps->q_table_count * sizeof(proof_q_entry_t);
 
-    if (buffer_size < required) return -1;
+    if (buffer_size < required) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evolutionary_proof_trace_cleanup: validation failed");
+        return -1;
+    }
 
     uint8_t* ptr = (uint8_t*)buffer;
 

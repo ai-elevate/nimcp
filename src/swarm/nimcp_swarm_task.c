@@ -160,6 +160,7 @@ static task_node_t* find_task_node(
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task_node: validation failed");
     return NULL;
 }
 
@@ -173,6 +174,7 @@ static bool check_dependencies(
     for (uint32_t i = 0; i < task->dependency_count; i++) {
         task_node_t* dep_node = find_task_node(manager, task->depends_on[i]);
         if (!dep_node || dep_node->task.status != SWARM_TASK_STATUS_COMPLETED) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_dependencies: dep_node is NULL");
             return false;
         }
     }
@@ -218,6 +220,7 @@ swarm_task_manager_t* swarm_task_manager_create(
     swarm_task_manager_t* manager = nimcp_malloc(sizeof(swarm_task_manager_t));
     if (!manager) {
         NIMCP_LOGGING_ERROR("Failed to allocate task manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_task_manager_create: manager is NULL");
         return NULL;
     }
 
@@ -236,6 +239,7 @@ swarm_task_manager_t* swarm_task_manager_create(
     if (!manager->buckets) {
         NIMCP_LOGGING_ERROR("Failed to allocate task hash table");
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_task_manager_create: manager->buckets is NULL");
         return NULL;
     }
 
@@ -245,6 +249,7 @@ swarm_task_manager_t* swarm_task_manager_create(
         NIMCP_LOGGING_ERROR("Failed to allocate task manager mutex");
         nimcp_free(manager->buckets);
         nimcp_free(manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_task_manager_create: manager->mutex is NULL");
         return NULL;
     }
     nimcp_mutex_init(manager->mutex, NULL);
@@ -315,6 +320,7 @@ int swarm_task_manager_get_stats(
     swarm_task_manager_stats_t* stats)
 {
     if (!manager || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_manager_get_stats: required parameter is NULL (manager, stats)");
         return -1;
     }
 
@@ -337,6 +343,7 @@ int swarm_task_create(
     uint64_t* task_id)
 {
     if (!manager || !description || !task_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_create: required parameter is NULL (manager, description, task_id)");
         return -1;
     }
 
@@ -399,6 +406,7 @@ int swarm_task_set_requirements(
     const swarm_task_requirements_t* requirements)
 {
     if (!manager || !requirements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_set_requirements: required parameter is NULL (manager, requirements)");
         return -1;
     }
 
@@ -1028,6 +1036,7 @@ int swarm_task_get_by_mission(
     uint32_t* count)
 {
     if (!manager || !task_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_get_by_mission: required parameter is NULL (manager, task_ids, count)");
         return -1;
     }
 
@@ -1058,6 +1067,7 @@ int swarm_task_get_by_agent(
     uint32_t* count)
 {
     if (!manager || !task_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_get_by_agent: required parameter is NULL (manager, task_ids, count)");
         return -1;
     }
 
@@ -1087,6 +1097,7 @@ int swarm_task_get_pending(
     uint32_t* count)
 {
     if (!manager || !task_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_get_pending: required parameter is NULL (manager, task_ids, count)");
         return -1;
     }
 
@@ -1114,6 +1125,7 @@ bool swarm_task_dependencies_satisfied(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_dependencies_satisfied: manager is NULL");
         return false;
     }
 
@@ -1122,6 +1134,7 @@ bool swarm_task_dependencies_satisfied(
     task_node_t* node = find_task_node(manager, task_id);
     if (!node) {
         nimcp_mutex_unlock((nimcp_mutex_t*)manager->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_task_dependencies_satisfied: node is NULL");
         return false;
     }
 

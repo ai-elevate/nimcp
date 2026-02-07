@@ -119,6 +119,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
 {
     if (grad_size == 0) {
         LOG_ERROR("Gradient size must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_lnn_gradient_dao_create: grad_size is zero");
         return NULL;
     }
 
@@ -175,6 +176,7 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
         }
 #endif
         nimcp_free(dao);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lnn_gradient_dao_create: validation failed");
         return NULL;
     }
 
@@ -216,6 +218,7 @@ static int dao_accumulate(nimcp_lnn_gradient_dao_t* self, float* new_grads)
 {
     if (!self || !new_grads) {
         LOG_ERROR("Invalid arguments to dao_accumulate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao_accumulate: required parameter is NULL (self, new_grads)");
         return -1;
     }
 
@@ -251,6 +254,7 @@ static int dao_apply(nimcp_lnn_gradient_dao_t* self, float* weights, float lr)
 {
     if (!self || !weights) {
         LOG_ERROR("Invalid arguments to dao_apply");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao_apply: required parameter is NULL (self, weights)");
         return -1;
     }
 
@@ -330,6 +334,7 @@ static int dao_reset(nimcp_lnn_gradient_dao_t* self)
 {
     if (!self) {
         LOG_ERROR("Invalid argument to dao_reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao_reset: self is NULL");
         return -1;
     }
 
@@ -356,6 +361,7 @@ static int dao_sync_to_host(nimcp_lnn_gradient_dao_t* self)
 {
     if (!self) {
         LOG_ERROR("Invalid argument to dao_sync_to_host");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao_sync_to_host: self is NULL");
         return -1;
     }
 

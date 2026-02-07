@@ -100,6 +100,7 @@ int hippocampus_thalamic_bridge_reset(hippocampus_thalamic_bridge_t* bridge) {
 int hippocampus_thalamic_route_signal(hippocampus_thalamic_bridge_t* bridge,
                                        const hippocampus_thalamic_signal_t* signal) {
     if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_thalamic_bridge_reset: required parameter is NULL (bridge, signal)");
         return -1;
     }
 
@@ -164,6 +165,7 @@ int hippocampus_thalamic_set_attention(hippocampus_thalamic_bridge_t* bridge, fl
     }
 
     if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_thalamic_set_attention: validation failed");
         return -1;
     }
 
@@ -173,6 +175,7 @@ int hippocampus_thalamic_set_attention(hippocampus_thalamic_bridge_t* bridge, fl
 
 int hippocampus_thalamic_get_attention(const hippocampus_thalamic_bridge_t* bridge, float* attention) {
     if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_thalamic_get_attention: required parameter is NULL (bridge, attention)");
         return -1;
     }
 
@@ -183,6 +186,7 @@ int hippocampus_thalamic_get_attention(const hippocampus_thalamic_bridge_t* brid
 int hippocampus_thalamic_bridge_get_stats(const hippocampus_thalamic_bridge_t* bridge,
                                            hippocampus_thalamic_stats_t* stats) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_thalamic_get_attention: required parameter is NULL (bridge, stats)");
         return -1;
     }
 

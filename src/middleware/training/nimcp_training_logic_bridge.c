@@ -540,6 +540,7 @@ training_logic_bridge_t* training_logic_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_logic_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -551,6 +552,7 @@ training_logic_bridge_t* training_logic_create(
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_logic_create: bridge->history is NULL");
         return NULL;
     }
     memset(bridge->history, 0,
@@ -569,6 +571,7 @@ training_logic_bridge_t* training_logic_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_logic_create: bridge->logic_network is NULL");
         return NULL;
     }
 
@@ -579,6 +582,7 @@ training_logic_bridge_t* training_logic_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "training_logic_create: validation failed");
         return NULL;
     }
 
@@ -929,6 +933,7 @@ int training_logic_signal_instability(
 
 bool training_logic_check_stability(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_check_stability: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -955,6 +960,7 @@ bool training_logic_check_stability(training_logic_bridge_t* bridge) {
 
 bool training_logic_needs_intervention(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_needs_intervention: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -980,6 +986,7 @@ bool training_logic_needs_intervention(training_logic_bridge_t* bridge) {
 
 bool training_logic_can_increase_lr(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_can_increase_lr: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -1008,6 +1015,7 @@ bool training_logic_should_adjust_batch(
     bool* increase_batch)
 {
     if (!bridge || !bridge->logic_network || !increase_batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_should_adjust_batch: required parameter is NULL (bridge, bridge->logic_network, increase_batch)");
         return false;
     }
 
@@ -1031,6 +1039,7 @@ bool training_logic_should_adjust_batch(
 
 bool training_logic_should_checkpoint(training_logic_bridge_t* bridge) {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_should_checkpoint: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -1483,6 +1492,7 @@ bool training_logic_evaluate_gate(
     uint32_t gate_id)
 {
     if (!bridge || !bridge->logic_network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_evaluate_gate: required parameter is NULL (bridge, bridge->logic_network)");
         return false;
     }
 
@@ -1622,6 +1632,7 @@ int training_logic_disconnect_bio_async(training_logic_bridge_t* bridge) {
 
 bool training_logic_is_bio_async_connected(const training_logic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

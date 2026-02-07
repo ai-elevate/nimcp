@@ -205,6 +205,7 @@ int broca_thalamic_route_signal(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "broca_thalamic_route_signal: operation failed");
             return -1;
     }
 

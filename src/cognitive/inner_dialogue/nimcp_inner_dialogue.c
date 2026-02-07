@@ -545,6 +545,7 @@ static bool query_cycle_coordinator_health(const inner_dialogue_engine_t* engine
     if (stalled_ratio > 0.5f) {
         NIMCP_LOGGING_WARN("inner_dialogue: %u/%u cycles stalled — suppressing deliberation",
                            stalled, total);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "inner_dialogue_engine_reset: validation failed");
         return false;
     }
 
@@ -784,7 +785,10 @@ static bool validate_turn_through_ethics(inner_dialogue_engine_t* engine,
 
 inner_dialogue_perspective_registry_t* inner_dialogue_engine_get_registry(
     inner_dialogue_engine_t* engine) {
-    if (!engine_valid(engine)) return NULL;
+    if (!engine_valid(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: engine_valid is NULL");
+        return NULL;
+    }
     return &engine->registry;
 }
 
@@ -1269,6 +1273,7 @@ const inner_dialogue_turn_history_t* inner_dialogue_engine_get_history(
 const char* inner_dialogue_engine_get_topic(
     const inner_dialogue_engine_t* engine) {
     if (!engine_valid(engine) || engine->state == DIALOGUE_STATE_IDLE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inner_dialogue_engine_cancel: engine_valid is NULL");
         return NULL;
     }
     return engine->topic;

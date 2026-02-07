@@ -194,6 +194,7 @@ static task_registry_t* task_registry_create(uint32_t capacity)
     reg->entries = (task_entry_t*)nimcp_calloc(capacity, sizeof(task_entry_t));
     if (!reg->entries) {
         nimcp_free(reg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "task_registry_create: reg->entries is NULL");
         return NULL;
     }
 
@@ -233,6 +234,7 @@ static task_entry_t* task_registry_find(task_registry_t* reg, uint64_t task_id)
             return &reg->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "task_registry_find: validation failed");
     return NULL;
 }
 
@@ -250,6 +252,7 @@ static promise_registry_t* promise_registry_create(uint32_t capacity)
     reg->entries = (promise_entry_t*)nimcp_calloc(capacity, sizeof(promise_entry_t));
     if (!reg->entries) {
         nimcp_free(reg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "promise_registry_create: reg->entries is NULL");
         return NULL;
     }
 
@@ -280,6 +283,7 @@ static future_registry_t* future_registry_create(uint32_t capacity)
     reg->entries = (future_entry_t*)nimcp_calloc(capacity, sizeof(future_entry_t));
     if (!reg->entries) {
         nimcp_free(reg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "future_registry_create: reg->entries is NULL");
         return NULL;
     }
 
@@ -311,6 +315,7 @@ static sync_group_registry_t* sync_group_registry_create(uint32_t capacity)
     reg->groups = (sync_group_t*)nimcp_calloc(capacity, sizeof(sync_group_t));
     if (!reg->groups) {
         nimcp_free(reg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sync_group_registry_create: reg->groups is NULL");
         return NULL;
     }
 
@@ -357,6 +362,7 @@ static priority_queue_t* priority_queue_create(uint32_t capacity)
     queue->task_ids = (uint64_t*)nimcp_calloc(capacity, sizeof(uint64_t));
     if (!queue->task_ids) {
         nimcp_free(queue);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "priority_queue_create: queue->task_ids is NULL");
         return NULL;
     }
 
@@ -376,8 +382,14 @@ static void priority_queue_destroy(priority_queue_t* queue)
 
 static int priority_queue_enqueue(priority_queue_t* queue, uint64_t task_id)
 {
-    if (!queue) return -1;
-    if (queue->count >= queue->capacity) return -1;
+    if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "priority_queue_enqueue: queue is NULL");
+        return -1;
+    }
+    if (queue->count >= queue->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "priority_queue_enqueue: capacity exceeded");
+        return -1;
+    }
 
     queue->task_ids[queue->tail] = task_id;
     queue->tail = (queue->tail + 1) % queue->capacity;
@@ -448,7 +460,10 @@ static nimcp_error_t handle_async_message(
 
 int async_integration_default_config(async_integration_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -521,6 +536,7 @@ async_integration_t* async_integration_create(
     if (bridge_base_init(&bridge->base, 0, "async_integration") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -529,6 +545,7 @@ async_integration_t* async_integration_create(
     if (!bridge->task_registry) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->task_registry is NULL");
         return NULL;
     }
 
@@ -538,6 +555,7 @@ async_integration_t* async_integration_create(
         task_registry_destroy((task_registry_t*)bridge->task_registry);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_create: bridge->promise_registry is NULL");
         return NULL;
     }
 
@@ -548,6 +566,7 @@ async_integration_t* async_integration_create(
         task_registry_destroy((task_registry_t*)bridge->task_registry);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: bridge->future_registry is NULL");
         return NULL;
     }
 
@@ -559,6 +578,7 @@ async_integration_t* async_integration_create(
         task_registry_destroy((task_registry_t*)bridge->task_registry);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: bridge->phase_sync_groups is NULL");
         return NULL;
     }
 
@@ -577,6 +597,7 @@ async_integration_t* async_integration_create(
             task_registry_destroy((task_registry_t*)bridge->task_registry);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_create: operation failed");
             return NULL;
         }
     }
@@ -633,7 +654,10 @@ void async_integration_destroy(async_integration_t* bridge)
 
 int async_integration_start(async_integration_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_start: bridge is NULL");
+        return -1;
+    }
     if (!bridge->initialized) return ASYNC_INTEGRATION_ERROR_NOT_INITIALIZED;
     if (bridge->running) return ASYNC_INTEGRATION_ERROR_ALREADY_RUNNING;
 
@@ -662,7 +686,10 @@ int async_integration_start(async_integration_t* bridge)
 
 int async_integration_stop(async_integration_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_stop: bridge is NULL");
+        return -1;
+    }
     if (!bridge->running) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -765,7 +792,10 @@ int async_integration_cancel_task(
     async_integration_t* bridge,
     uint64_t task_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_cancel_task: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -774,12 +804,14 @@ int async_integration_cancel_task(
 
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_cancel_task: entry is NULL");
         return -1;
     }
 
     /* Can only cancel pending tasks */
     if (entry->state != ASYNC_OP_STATE_PENDING) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_integration_cancel_task: validation failed");
         return -1;
     }
 
@@ -826,8 +858,14 @@ int async_integration_update_task_priority(
     uint64_t task_id,
     uint32_t new_priority)
 {
-    if (!bridge) return -1;
-    if (new_priority >= ASYNC_INTEGRATION_PRIORITY_LEVELS) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_update_task_priority: bridge is NULL");
+        return -1;
+    }
+    if (new_priority >= ASYNC_INTEGRATION_PRIORITY_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_integration_update_task_priority: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -836,6 +874,7 @@ int async_integration_update_task_priority(
 
     if (!entry || entry->state != ASYNC_OP_STATE_PENDING) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_integration_update_task_priority: entry is NULL");
         return -1;
     }
 
@@ -1060,7 +1099,10 @@ int async_integration_add_to_sync_group(
     uint32_t sync_group_id,
     uint64_t future_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_add_to_sync_group: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1078,6 +1120,7 @@ int async_integration_add_to_sync_group(
 
     if (!group) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_add_to_sync_group: group is NULL");
         return -1;
     }
 
@@ -1092,12 +1135,14 @@ int async_integration_add_to_sync_group(
 
     if (!future_entry || !future_entry->bio_future) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_add_to_sync_group: required parameter is NULL (future_entry, future_entry->bio_future)");
         return -1;
     }
 
     /* Check capacity */
     if (group->future_count >= group->max_futures) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "async_integration_add_to_sync_group: capacity exceeded");
         return -1;
     }
 
@@ -1106,6 +1151,7 @@ int async_integration_add_to_sync_group(
         group->phase_sync, future_entry->bio_future);
     if (err != NIMCP_SUCCESS) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_integration_add_to_sync_group: validation failed");
         return -1;
     }
 
@@ -1122,7 +1168,10 @@ int async_integration_wait_coherence(
     float coherence_threshold,
     uint64_t timeout_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_wait_coherence: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1139,6 +1188,7 @@ int async_integration_wait_coherence(
 
     if (!group || !group->phase_sync) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_wait_coherence: required parameter is NULL (group, group->phase_sync)");
         return -1;
     }
 
@@ -1160,6 +1210,7 @@ int async_integration_wait_coherence(
         return 0;
     } else {
         bridge->stats.phase_sync_timeouts++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_integration_wait_coherence: validation failed");
         return -1;
     }
 }
@@ -1196,7 +1247,10 @@ int async_integration_destroy_sync_group(
     async_integration_t* bridge,
     uint32_t sync_group_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_destroy_sync_group: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1213,6 +1267,7 @@ int async_integration_destroy_sync_group(
 
     if (!group) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_destroy_sync_group: group is NULL");
         return -1;
     }
 
@@ -1237,7 +1292,10 @@ int async_integration_destroy_sync_group(
 
 int async_integration_connect_bio_async(async_integration_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->bio_async_connected) return 0;
     if (!bio_router_is_initialized()) return ASYNC_INTEGRATION_ERROR_NOT_CONNECTED;
 
@@ -1271,7 +1329,10 @@ int async_integration_connect_bio_async(async_integration_t* bridge)
 
 int async_integration_disconnect_bio_async(async_integration_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->bio_async_connected) return 0;
 
     if (bridge->bio_context) {
@@ -1308,7 +1369,10 @@ int async_integration_send_message(
     /* Allocate message buffer */
     size_t msg_size = sizeof(bio_message_header_t) + size;
     void* msg = nimcp_malloc(msg_size);
-    if (!msg) return -1;
+    if (!msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_integration_send_message: msg is NULL");
+        return -1;
+    }
 
     /* Fill header */
     bio_message_header_t* header = (bio_message_header_t*)msg;
@@ -1345,7 +1409,10 @@ int async_integration_update(
     async_integration_t* bridge,
     float dt_ms)
 {
-    if (!bridge || !bridge->running) return -1;
+    if (!bridge || !bridge->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_update: required parameter is NULL (bridge, bridge->running)");
+        return -1;
+    }
     (void)dt_ms;
 
     uint64_t start_time = get_time_ms();
@@ -1480,7 +1547,10 @@ int async_integration_set_event_callback(
     async_coord_event_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_set_event_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->event_callback = callback;
@@ -1498,7 +1568,10 @@ int async_integration_get_state(
     const async_integration_t* bridge,
     async_integration_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((async_integration_t*)bridge)->mutex);
 
@@ -1549,7 +1622,10 @@ int async_integration_get_stats(
     const async_integration_t* bridge,
     async_integration_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_integration_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(((async_integration_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(async_integration_stats_t));

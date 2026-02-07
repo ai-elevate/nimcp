@@ -183,6 +183,7 @@ bool nimcp_brain_factory_init_wernicke_subsystem(brain_t brain) {
     brain->wernicke = wernicke_create(&wernicke_cfg);
     if (!brain->wernicke) {
         set_error("Failed to create Wernicke adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_subsystem: brain->wernicke is NULL");
         return false;
     }
 
@@ -270,6 +271,7 @@ bool nimcp_brain_factory_init_wernicke_substrate_bridge(brain_t brain) {
 
     if (!brain->wernicke_substrate_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Wernicke substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_substrate_bridge: brain->wernicke_substrate_bridge is NULL");
         return false;
     }
 
@@ -322,6 +324,7 @@ bool nimcp_brain_factory_init_wernicke_quantum_bridge(brain_t brain) {
 
     if (!brain->wernicke_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Wernicke quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_quantum_bridge: brain->wernicke_quantum_bridge is NULL");
         return false;
     }
 
@@ -359,6 +362,7 @@ bool nimcp_brain_factory_init_wernicke_broca_bridge(brain_t brain) {
 
     if (!brain->wernicke_broca_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Wernicke-Broca bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_broca_bridge: brain->wernicke_broca_bridge is NULL");
         return false;
     }
 
@@ -398,6 +402,7 @@ bool nimcp_brain_factory_init_wernicke_omni_bridge(brain_t brain) {
 
     if (!brain->omni_wernicke_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create omni-Wernicke bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_omni_bridge: brain->omni_wernicke_bridge is NULL");
         return false;
     }
 
@@ -625,6 +630,7 @@ bool nimcp_brain_factory_init_wernicke_immune_bridge(brain_t brain) {
 
     if (!brain->wernicke_immune_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Wernicke immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_immune_bridge: brain->wernicke_immune_bridge is NULL");
         return false;
     }
 
@@ -664,6 +670,7 @@ bool nimcp_brain_factory_init_wernicke_nlp_bridge(brain_t brain) {
 
     if (!brain->wernicke_nlp_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Wernicke NLP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_wernicke_nlp_bridge: brain->wernicke_nlp_bridge is NULL");
         return false;
     }
 

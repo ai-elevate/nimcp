@@ -942,6 +942,7 @@ int sec_percept_get_quarantined(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_percept_get_quarantined: validation failed");
     return -1;  /* Not found */
 }
 
@@ -978,6 +979,7 @@ int sec_percept_release_quarantine(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_percept_release_quarantine: operation failed");
     return -1;  /* Not found */
 }
 
@@ -1104,6 +1106,7 @@ int sec_percept_match_signature(
         return 0;  /* Match found */
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_percept_match_signature: capacity exceeded");
     return -1;  /* No match */
 }
 
@@ -1112,7 +1115,10 @@ int sec_percept_get_signature(
     uint32_t signature_id,
     const attack_signature_t** signature
 ) {
-    if (!bridge || !signature) return -1;
+    if (!bridge || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_percept_get_signature: required parameter is NULL (bridge, signature)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->signature_count; i++) {
         if (bridge->signatures[i].id == signature_id) {
@@ -1121,6 +1127,7 @@ int sec_percept_get_signature(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sec_percept_get_signature: validation failed");
     return -1;  /* Not found */
 }
 
@@ -1240,7 +1247,10 @@ sec_percept_state_t sec_percept_get_state(
  * ============================================================================ */
 
 int sec_percept_connect_bio_async(security_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_percept_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->bio_async_connected) return 0;
 
     /* Register with bio-async router */
@@ -1279,8 +1289,14 @@ int sec_percept_send_threat_alert(
     security_perception_bridge_t* bridge,
     const sensory_threat_result_t* threat
 ) {
-    if (!bridge || !threat) return -1;
-    if (!bridge->bio_async_connected) return -1;
+    if (!bridge || !threat) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_percept_send_threat_alert: required parameter is NULL (bridge, threat)");
+        return -1;
+    }
+    if (!bridge->bio_async_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_percept_send_threat_alert: bridge->bio_async_connected is NULL");
+        return -1;
+    }
 
     /* Create threat alert message payload */
     struct {

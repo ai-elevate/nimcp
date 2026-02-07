@@ -111,7 +111,10 @@ void nac_destroy(nucleus_accumbens_t* nac) {
 }
 
 int nac_reset(nucleus_accumbens_t* nac) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_reset: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac->dopamine = NAC_DA_BASELINE;
     nac->wanting = 0;
@@ -124,7 +127,10 @@ int nac_reset(nucleus_accumbens_t* nac) {
 }
 
 int nac_register_reward(nucleus_accumbens_t* nac, const nac_reward_t* reward, uint32_t* out_id) {
-    if (!nac || !reward || nac->num_rewards >= NAC_MAX_REWARDS) return -1;
+    if (!nac || !reward || nac->num_rewards >= NAC_MAX_REWARDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_register_reward: required parameter is NULL (nac, reward)");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac->rewards[nac->num_rewards] = *reward;
     nac->rewards[nac->num_rewards].id = nac->num_rewards;
@@ -135,7 +141,10 @@ int nac_register_reward(nucleus_accumbens_t* nac, const nac_reward_t* reward, ui
 }
 
 int nac_process_reward(nucleus_accumbens_t* nac, uint32_t reward_id, float magnitude) {
-    if (!nac || reward_id >= nac->num_rewards) return -1;
+    if (!nac || reward_id >= nac->num_rewards) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nac_process_reward: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac_reward_t* r = &nac->rewards[reward_id];
     r->current_satiation += magnitude * r->satiation_rate;
@@ -148,7 +157,10 @@ int nac_process_reward(nucleus_accumbens_t* nac, uint32_t reward_id, float magni
 }
 
 int nac_process_reward_prediction(nucleus_accumbens_t* nac, uint32_t reward_id, float predicted_value) {
-    if (!nac || reward_id >= nac->num_rewards) return -1;
+    if (!nac || reward_id >= nac->num_rewards) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nac_process_reward_prediction: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac->wanting = predicted_value * nac->dopamine;
     if (nac->wanting > nac->config.craving_threshold && nac->config.enable_craving) {
@@ -171,7 +183,10 @@ float nac_get_liking(const nucleus_accumbens_t* nac, uint32_t reward_id) {
 }
 
 int nac_register_cue(nucleus_accumbens_t* nac, const nac_cue_t* cue, uint32_t* out_id) {
-    if (!nac || !cue || nac->num_cues >= NAC_MAX_CUES) return -1;
+    if (!nac || !cue || nac->num_cues >= NAC_MAX_CUES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_register_cue: required parameter is NULL (nac, cue)");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac->cues[nac->num_cues] = *cue;
     nac->cues[nac->num_cues].id = nac->num_cues;
@@ -183,7 +198,10 @@ int nac_register_cue(nucleus_accumbens_t* nac, const nac_cue_t* cue, uint32_t* o
 }
 
 int nac_process_cue(nucleus_accumbens_t* nac, uint32_t cue_id, float intensity) {
-    if (!nac || cue_id >= nac->num_cues) return -1;
+    if (!nac || cue_id >= nac->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nac_process_cue: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac_cue_t* c = &nac->cues[cue_id];
     c->conditioned_response = c->association_strength * intensity * nac->dopamine;
@@ -194,7 +212,10 @@ int nac_process_cue(nucleus_accumbens_t* nac, uint32_t cue_id, float intensity) 
 }
 
 int nac_associate_cue_reward(nucleus_accumbens_t* nac, uint32_t cue_id, uint32_t reward_id, float reward_magnitude) {
-    if (!nac || cue_id >= nac->num_cues || reward_id >= nac->num_rewards) return -1;
+    if (!nac || cue_id >= nac->num_cues || reward_id >= nac->num_rewards) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nac_associate_cue_reward: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     nac_cue_t* c = &nac->cues[cue_id];
     c->associated_reward = reward_id;
@@ -210,7 +231,10 @@ float nac_get_conditioned_response(const nucleus_accumbens_t* nac, uint32_t cue_
 }
 
 int nac_compute_pit(nucleus_accumbens_t* nac, const float* cue_activations, uint32_t num_cues, nac_pit_state_t* out_pit) {
-    if (!nac || !out_pit) return -1;
+    if (!nac || !out_pit) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_compute_pit: required parameter is NULL (nac, out_pit)");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     out_pit->pavlovian_bias = 0;
     out_pit->general_activation = 0;
@@ -228,7 +252,10 @@ int nac_compute_pit(nucleus_accumbens_t* nac, const float* cue_activations, uint
 }
 
 int nac_get_action_bias(const nucleus_accumbens_t* nac, float* action_biases, uint32_t num_actions) {
-    if (!nac || !action_biases) return -1;
+    if (!nac || !action_biases) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_get_action_bias: required parameter is NULL (nac, action_biases)");
+        return -1;
+    }
     for (uint32_t i = 0; i < num_actions; i++) {
         action_biases[i] = nac->pit.pavlovian_bias * nac->config.pavlovian_weight;
     }
@@ -236,26 +263,38 @@ int nac_get_action_bias(const nucleus_accumbens_t* nac, float* action_biases, ui
 }
 
 int nac_set_pit_balance(nucleus_accumbens_t* nac, float pavlovian_weight, float instrumental_weight) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_set_pit_balance: nac is NULL");
+        return -1;
+    }
     nac->config.pavlovian_weight = clamp_f(pavlovian_weight, 0, 1);
     nac->config.instrumental_weight = clamp_f(instrumental_weight, 0, 1);
     return 0;
 }
 
 int nac_set_dopamine(nucleus_accumbens_t* nac, float level) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_set_dopamine: nac is NULL");
+        return -1;
+    }
     nac->dopamine = clamp_f(level, 0, 1);
     return 0;
 }
 
 int nac_trigger_dopamine_burst(nucleus_accumbens_t* nac, float magnitude) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_trigger_dopamine_burst: nac is NULL");
+        return -1;
+    }
     nac->dopamine = clamp_f(nac->dopamine + magnitude * NAC_DA_BURST_MULTIPLIER * 0.1f, 0, 1);
     return 0;
 }
 
 int nac_trigger_dopamine_pause(nucleus_accumbens_t* nac, float magnitude) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_trigger_dopamine_pause: nac is NULL");
+        return -1;
+    }
     nac->dopamine = clamp_f(nac->dopamine * NAC_DA_PAUSE_MULTIPLIER, 0, 1);
     return 0;
 }
@@ -265,7 +304,10 @@ float nac_get_dopamine(const nucleus_accumbens_t* nac) {
 }
 
 int nac_step(nucleus_accumbens_t* nac, float dt_ms) {
-    if (!nac || dt_ms <= 0) return -1;
+    if (!nac || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nac_step: nac is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(nac->mutex);
     float decay = nac->config.satiation_decay * dt_ms / 1000.0f;
     for (uint32_t i = 0; i < nac->num_rewards; i++) {
@@ -285,7 +327,10 @@ int nac_step(nucleus_accumbens_t* nac, float dt_ms) {
 }
 
 int nac_get_output(const nucleus_accumbens_t* nac, float* core_output, float* shell_output) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_get_output: nac is NULL");
+        return -1;
+    }
     if (core_output) *core_output = nac->wanting;
     if (shell_output) *shell_output = nac->liking;
     return 0;
@@ -296,13 +341,19 @@ nac_motivation_state_t nac_get_motivation_state(const nucleus_accumbens_t* nac) 
 }
 
 int nac_get_stats(const nucleus_accumbens_t* nac, nac_stats_t* stats) {
-    if (!nac || !stats) return -1;
+    if (!nac || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_get_stats: required parameter is NULL (nac, stats)");
+        return -1;
+    }
     *stats = nac->stats;
     return 0;
 }
 
 int nac_receive_vta_input(nucleus_accumbens_t* nac, float dopamine, float rpe) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_receive_vta_input: nac is NULL");
+        return -1;
+    }
     nac_set_dopamine(nac, dopamine);
     if (rpe > 0) nac_trigger_dopamine_burst(nac, rpe);
     else if (rpe < 0) nac_trigger_dopamine_pause(nac, -rpe);
@@ -310,7 +361,10 @@ int nac_receive_vta_input(nucleus_accumbens_t* nac, float dopamine, float rpe) {
 }
 
 int nac_receive_amygdala_input(nucleus_accumbens_t* nac, float valence, float arousal) {
-    if (!nac) return -1;
+    if (!nac) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac_receive_amygdala_input: nac is NULL");
+        return -1;
+    }
     if (valence < 0) nac->state = NAC_STATE_AVERSIVE;
     nac->wanting *= (1.0f + valence * arousal);
     return 0;

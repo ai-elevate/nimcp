@@ -68,7 +68,10 @@ trit_vector_t* trit_vector_from_tensor(
     }
 
     size_t numel = tensor_numel(tensor);
-    if (numel == 0) return NULL;
+    if (numel == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trit_vector_from_tensor: numel is zero");
+        return NULL;
+    }
 
     trit_vector_t* vec = trit_vector_create(numel, pack_mode);
     if (!vec) {
@@ -102,7 +105,10 @@ trit_matrix_t* trit_matrix_from_tensor(
     }
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
-    if (!shape || shape->rank != 2) return NULL;
+    if (!shape || shape->rank != 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_matrix_from_tensor: shape is NULL");
+        return NULL;
+    }
 
     size_t rows = shape->dims[0];
     size_t cols = shape->dims[1];
@@ -146,7 +152,10 @@ nimcp_tensor_t* trit_vector_to_tensor(
     float scale,
     nimcp_dtype_t dtype
 ) {
-    if (!vec || vec->magic != TERNARY_MAGIC) return NULL;
+    if (!vec || vec->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_vector_to_tensor: vec is NULL");
+        return NULL;
+    }
 
     uint32_t dims[1] = { (uint32_t)vec->length };
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, dtype);
@@ -171,7 +180,10 @@ nimcp_tensor_t* trit_matrix_to_tensor(
     float scale,
     nimcp_dtype_t dtype
 ) {
-    if (!mat || mat->magic != TERNARY_MAGIC) return NULL;
+    if (!mat || mat->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_matrix_to_tensor: mat is NULL");
+        return NULL;
+    }
 
     uint32_t dims[2] = { (uint32_t)mat->rows, (uint32_t)mat->cols };
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, dtype);
@@ -201,8 +213,14 @@ nimcp_tensor_t* trit_vector_to_tensor_shaped(
     float scale,
     nimcp_dtype_t dtype
 ) {
-    if (!vec || vec->magic != TERNARY_MAGIC) return NULL;
-    if (!dims || rank == 0) return NULL;
+    if (!vec || vec->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_vector_to_tensor_shaped: vec is NULL");
+        return NULL;
+    }
+    if (!dims || rank == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trit_vector_to_tensor_shaped: dims is NULL");
+        return NULL;
+    }
 
     /* Calculate expected numel */
     size_t numel = 1;
@@ -210,7 +228,10 @@ nimcp_tensor_t* trit_vector_to_tensor_shaped(
         numel *= dims[i];
     }
 
-    if (numel != vec->length) return NULL;
+    if (numel != vec->length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trit_vector_to_tensor_shaped: validation failed");
+        return NULL;
+    }
 
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, rank, dtype);
     if (!tensor) {
@@ -305,7 +326,10 @@ trit_vector_t* trit_quantize_adaptive(
     }
 
     size_t numel = tensor_numel(tensor);
-    if (numel == 0) return NULL;
+    if (numel == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trit_quantize_adaptive: numel is zero");
+        return NULL;
+    }
 
     /* Compute std for threshold estimation */
     double sum = 0.0, sum_sq = 0.0;
@@ -387,10 +411,16 @@ nimcp_tensor_t* trit_gate_tensor(
     const nimcp_tensor_t* tensor,
     const trit_vector_t* gate
 ) {
-    if (!tensor || !gate || gate->magic != TERNARY_MAGIC) return NULL;
+    if (!tensor || !gate || gate->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_gate_tensor: required parameter is NULL (tensor, gate)");
+        return NULL;
+    }
 
     size_t numel = tensor_numel(tensor);
-    if (numel != gate->length) return NULL;
+    if (numel != gate->length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trit_gate_tensor: validation failed");
+        return NULL;
+    }
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
     nimcp_dtype_t dtype = nimcp_tensor_dtype(tensor);
@@ -418,7 +448,10 @@ nimcp_tensor_t* trit_matmul_tensor(
     const nimcp_tensor_t* input,
     float weight_scale
 ) {
-    if (!weights || weights->magic != TERNARY_MAGIC) return NULL;
+    if (!weights || weights->magic != TERNARY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_matmul_tensor: weights is NULL");
+        return NULL;
+    }
     if (!input) {
 
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input is NULL");
@@ -428,7 +461,10 @@ nimcp_tensor_t* trit_matmul_tensor(
     }
 
     size_t input_numel = tensor_numel(input);
-    if (input_numel != weights->cols) return NULL;
+    if (input_numel != weights->cols) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trit_matmul_tensor: validation failed");
+        return NULL;
+    }
 
     /* Output is 1D tensor with weights->rows elements */
     uint32_t dims[1] = { (uint32_t)weights->rows };

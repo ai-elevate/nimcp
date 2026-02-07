@@ -105,7 +105,10 @@ static uint64_t get_timestamp_us(void);
  */
 static int training_event_callback(const training_event_data_t* event, void* user_data) {
     training_logic_hub_bridge_t* bridge = (training_logic_hub_bridge_t*)user_data;
-    if (!bridge || !event) return -1;
+    if (!bridge || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_event_callback: required parameter is NULL (bridge, event)");
+        return -1;
+    }
 
     bridge->stats.events_received++;
 
@@ -142,7 +145,10 @@ static int training_event_callback(const training_event_data_t* event, void* use
  * ============================================================================ */
 
 int training_logic_hub_default_config(training_logic_hub_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -201,6 +207,7 @@ training_logic_hub_bridge_t* training_logic_hub_create(
     bridge->rules = nimcp_calloc(bridge->max_rules, sizeof(training_logic_rule_t));
     if (!bridge->rules) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_logic_hub_create: bridge->rules is NULL");
         return NULL;
     }
 
@@ -210,6 +217,7 @@ training_logic_hub_bridge_t* training_logic_hub_create(
     if (!bridge->tracking) {
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "training_logic_hub_create: bridge->tracking is NULL");
         return NULL;
     }
 
@@ -254,8 +262,14 @@ int training_logic_hub_connect(
     training_logic_hub_bridge_t* bridge,
     training_integration_hub_t hub)
 {
-    if (!bridge || !hub) return -1;
-    if (bridge->state.is_connected) return -1;
+    if (!bridge || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_connect: required parameter is NULL (bridge, hub)");
+        return -1;
+    }
+    if (bridge->state.is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_connect: validation failed");
+        return -1;
+    }
 
     bridge->hub = hub;
 
@@ -267,7 +281,10 @@ int training_logic_hub_connect(
         TRAINING_LOGIC_MODULE_NAME,
         bridge
     );
-    if (result != 0) return -1;
+    if (result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_connect: validation failed");
+        return -1;
+    }
 
     bridge->state.is_registered = true;
 
@@ -315,7 +332,10 @@ int training_logic_hub_connect(
 }
 
 int training_logic_hub_disconnect(training_logic_hub_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_disconnect: bridge is NULL");
+        return -1;
+    }
     if (!bridge->state.is_connected) return 0;
 
     /* Unregister from hub */
@@ -335,7 +355,10 @@ int training_logic_hub_connect_cognitive_logic(
     training_logic_hub_bridge_t* bridge,
     symbolic_logic_t* logic)
 {
-    if (!bridge || !logic) return -1;
+    if (!bridge || !logic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_connect_cognitive_logic: required parameter is NULL (bridge, logic)");
+        return -1;
+    }
 
     bridge->cognitive_logic = logic;
 
@@ -350,8 +373,14 @@ int training_logic_hub_add_rule(
     training_logic_hub_bridge_t* bridge,
     const training_logic_rule_t* rule)
 {
-    if (!bridge || !rule) return -1;
-    if (bridge->num_rules >= bridge->max_rules) return -1;
+    if (!bridge || !rule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_add_rule: required parameter is NULL (bridge, rule)");
+        return -1;
+    }
+    if (bridge->num_rules >= bridge->max_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "training_logic_hub_add_rule: capacity exceeded");
+        return -1;
+    }
 
     /* Copy rule */
     int rule_id = (int)bridge->num_rules;
@@ -366,8 +395,14 @@ int training_logic_hub_remove_rule(
     training_logic_hub_bridge_t* bridge,
     int rule_id)
 {
-    if (!bridge) return -1;
-    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_remove_rule: bridge is NULL");
+        return -1;
+    }
+    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_remove_rule: capacity exceeded");
+        return -1;
+    }
 
     /* Shift remaining rules */
     for (uint32_t i = (uint32_t)rule_id; i < bridge->num_rules - 1; i++) {
@@ -384,15 +419,24 @@ int training_logic_hub_get_rule(
     int rule_id,
     training_logic_rule_t* rule)
 {
-    if (!bridge || !rule) return -1;
-    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) return -1;
+    if (!bridge || !rule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_get_rule: required parameter is NULL (bridge, rule)");
+        return -1;
+    }
+    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_get_rule: capacity exceeded");
+        return -1;
+    }
 
     *rule = bridge->rules[rule_id];
     return 0;
 }
 
 int training_logic_hub_add_default_rules(training_logic_hub_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_add_default_rules: bridge is NULL");
+        return -1;
+    }
 
     int rules_added = 0;
     training_logic_rule_t rule;
@@ -485,7 +529,10 @@ int training_logic_hub_update_metrics(
     training_logic_hub_bridge_t* bridge,
     const training_logic_metrics_t* metrics)
 {
-    if (!bridge || !metrics) return -1;
+    if (!bridge || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_update_metrics: required parameter is NULL (bridge, metrics)");
+        return -1;
+    }
 
     bridge->state.current_metrics = *metrics;
 
@@ -502,7 +549,10 @@ int training_logic_hub_evaluate_rules(
     training_rule_result_t* results,
     uint32_t max_results)
 {
-    if (!bridge || !results) return -1;
+    if (!bridge || !results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_evaluate_rules: required parameter is NULL (bridge, results)");
+        return -1;
+    }
 
     uint32_t count = 0;
 
@@ -543,8 +593,14 @@ int training_logic_hub_evaluate_rule(
     int rule_id,
     training_rule_result_t* result)
 {
-    if (!bridge || !result) return -1;
-    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_evaluate_rule: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (rule_id < 0 || (uint32_t)rule_id >= bridge->num_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_evaluate_rule: capacity exceeded");
+        return -1;
+    }
 
     training_logic_rule_t* rule = &bridge->rules[rule_id];
     bool satisfied = evaluate_rule_condition(bridge, rule);
@@ -580,6 +636,7 @@ bool training_logic_hub_is_action_safe(
 {
     if (!bridge || !action) {
         if (confidence) *confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "training_logic_hub_is_action_safe: validation failed");
         return false;
     }
 
@@ -639,6 +696,7 @@ bool training_logic_hub_is_action_safe(
 
     if (any_blocking) {
         bridge->stats.constraints_violated++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "training_logic_hub_is_action_safe: validation failed");
         return false;
     }
 
@@ -654,7 +712,10 @@ int training_logic_hub_report_outcome(
     bool loss_improved,
     bool validation_improved)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_report_outcome: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_rule_learning) return 0;
 
     float current_loss = bridge->state.current_metrics.current_loss;
@@ -714,7 +775,10 @@ int training_logic_hub_query_lr(
     float* suggested_lr,
     float* confidence)
 {
-    if (!bridge || !suggested_lr || !confidence) return -1;
+    if (!bridge || !suggested_lr || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_query_lr: required parameter is NULL (bridge, suggested_lr, confidence)");
+        return -1;
+    }
 
     /* Evaluate LR safety rules */
     training_rule_result_t results[4];
@@ -766,7 +830,10 @@ int training_logic_hub_query_difficulty(
     float* suggested_difficulty,
     float* confidence)
 {
-    if (!bridge || !suggested_difficulty || !confidence) return -1;
+    if (!bridge || !suggested_difficulty || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_query_difficulty: required parameter is NULL (bridge, suggested_difficulty, confidence)");
+        return -1;
+    }
 
     /* Check prerequisite rules */
     training_rule_result_t prereq_results[4];
@@ -820,7 +887,10 @@ int training_logic_hub_query_early_stop(
     bool* should_stop,
     float* confidence)
 {
-    if (!bridge || !should_stop || !confidence) return -1;
+    if (!bridge || !should_stop || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_query_early_stop: required parameter is NULL (bridge, should_stop, confidence)");
+        return -1;
+    }
 
     training_rule_result_t results[4];
     int count = training_logic_hub_evaluate_rules(
@@ -851,7 +921,10 @@ int training_logic_hub_get_state(
     training_logic_hub_bridge_t* bridge,
     training_logic_hub_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     *state = bridge->state;
     return 0;
@@ -861,7 +934,10 @@ int training_logic_hub_get_stats(
     training_logic_hub_bridge_t* bridge,
     training_logic_hub_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Calculate average rule confidence */
     float total_conf = 0.0f;
@@ -876,7 +952,10 @@ int training_logic_hub_get_stats(
 }
 
 int training_logic_hub_reset_stats(training_logic_hub_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_logic_hub_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -1080,6 +1159,7 @@ static bool evaluate_rule_condition(training_logic_hub_bridge_t* bridge,
             return m->epochs_since_improvement > 5;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_rule_condition: operation failed");
             return false;
     }
 }

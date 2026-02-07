@@ -365,7 +365,10 @@ int synaptic_scaling_immune_apply_tnf_effects(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_tnf_scaling_modulation) return -1;
+    if (!bridge || !bridge->enable_tnf_scaling_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_apply_tnf_effects: required parameter is NULL (bridge, bridge->enable_tnf_scaling_modulation)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -415,7 +418,10 @@ int synaptic_scaling_immune_apply_il1_effects(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_il1_threshold_modulation) return -1;
+    if (!bridge || !bridge->enable_il1_threshold_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_apply_il1_effects: required parameter is NULL (bridge, bridge->enable_il1_threshold_modulation)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -452,7 +458,10 @@ int synaptic_scaling_immune_apply_inflammation_effects(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_inflammation_rate_modulation) return -1;
+    if (!bridge || !bridge->enable_inflammation_rate_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->enable_inflammation_rate_modulation)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -519,7 +528,10 @@ int synaptic_scaling_immune_restore_from_il10(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_il10_restoration) return -1;
+    if (!bridge || !bridge->enable_il10_restoration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_restore_from_il10: required parameter is NULL (bridge, bridge->enable_il10_restoration)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -569,7 +581,10 @@ int synaptic_scaling_immune_detect_aberrance(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_aberrance_detection) return -1;
+    if (!bridge || !bridge->enable_aberrance_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_detect_aberrance: required parameter is NULL (bridge, bridge->enable_aberrance_detection)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -620,7 +635,10 @@ int synaptic_scaling_immune_trigger_from_aberrance(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_trigger_from_aberrance: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
 
     /* Guard: only trigger if aberrant */
     if (!synaptic_scaling_immune_is_aberrant(bridge)) return 0;
@@ -680,7 +698,10 @@ int synaptic_scaling_immune_signal_recovery(
     synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge || !bridge->enable_recovery_tracking) return -1;
+    if (!bridge || !bridge->enable_recovery_tracking) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_signal_recovery: required parameter is NULL (bridge, bridge->enable_recovery_tracking)");
+        return -1;
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -738,7 +759,10 @@ bool synaptic_scaling_immune_check_runaway_excitation(
     const synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_check_runaway_excitation: bridge is NULL");
+        return false;
+    }
 
     return bridge->inflammation_state.runaway_excitation;
 }
@@ -747,7 +771,10 @@ bool synaptic_scaling_immune_check_global_silencing(
     const synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_check_global_silencing: bridge is NULL");
+        return false;
+    }
 
     return bridge->inflammation_state.global_silencing;
 }
@@ -819,7 +846,10 @@ int synaptic_scaling_immune_get_tnf_effects(
     tnf_alpha_scaling_effects_t* effects
 ) {
     /* Guard: validate inputs */
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_get_tnf_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Copy effects */
     *effects = bridge->tnf_effects;
@@ -832,7 +862,10 @@ int synaptic_scaling_immune_get_inflammation_state(
     inflammation_scaling_state_t* state
 ) {
     /* Guard: validate inputs */
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Copy state */
     *state = bridge->inflammation_state;
@@ -845,7 +878,10 @@ bool synaptic_scaling_immune_is_aberrant(
     const synaptic_scaling_immune_bridge_t* bridge
 ) {
     /* Guard: validate input */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_is_aberrant: bridge is NULL");
+        return false;
+    }
 
     /* Aberrant if any detection flag is set */
     return bridge->aberrance.excessive_scale_up ||
@@ -949,6 +985,9 @@ int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_
  * @brief Check if bio-async is connected
  */
 bool synaptic_scaling_immune_is_bio_async_connected(const synaptic_scaling_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synaptic_scaling_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

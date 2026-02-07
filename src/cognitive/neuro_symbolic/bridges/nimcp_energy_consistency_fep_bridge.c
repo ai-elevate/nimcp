@@ -108,6 +108,7 @@ NIMCP_API energy_fep_bridge_t* energy_fep_bridge_create_with_config(
     if (bridge_base_init(&bridge->base, BIO_MODULE_ENERGY_CONSISTENCY_FEP_BRIDGE,
                          "energy_fep_bridge") != NIMCP_SUCCESS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_fep_bridge_create: operation failed");
         return NULL;
     }
 

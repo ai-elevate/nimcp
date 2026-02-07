@@ -98,7 +98,10 @@ static float randf(void) {
  * ============================================================================ */
 
 int soma_quantum_default_config(soma_quantum_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(soma_quantum_config_t));
 
@@ -160,7 +163,10 @@ void soma_quantum_bridge_destroy(soma_quantum_bridge_t* bridge) {
  * ============================================================================ */
 
 int soma_quantum_connect(soma_quantum_bridge_t* bridge, nimcp_somatosensory_t* soma) {
-    if (!bridge || !soma) return -1;
+    if (!bridge || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_connect: required parameter is NULL (bridge, soma)");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->is_connected = true;
@@ -170,7 +176,10 @@ int soma_quantum_connect(soma_quantum_bridge_t* bridge, nimcp_somatosensory_t* s
 }
 
 int soma_quantum_disconnect(soma_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->is_connected = false;
@@ -194,8 +203,14 @@ soma_quantum_status_t soma_quantum_get_status(const soma_quantum_bridge_t* bridg
 int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
                                      const soma_threshold_opt_spec_t* spec,
                                      soma_qmc_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_qmc) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_qmc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
@@ -203,6 +218,7 @@ int soma_quantum_optimize_thresholds(soma_quantum_bridge_t* bridge,
     result->optimal_thresholds = (float*)nimcp_calloc(spec->num_thresholds, sizeof(float));
     if (!result->optimal_thresholds) {
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: result->optimal_thresholds is NULL");
         return -1;
     }
 
@@ -257,7 +273,10 @@ int soma_quantum_sample_receptor_response(soma_quantum_bridge_t* bridge,
                                           body_segment_t region,
                                           uint32_t num_samples,
                                           float* samples) {
-    if (!bridge || !samples) return -1;
+    if (!bridge || !samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, samples)");
+        return -1;
+    }
     (void)region;
 
     for (uint32_t i = 0; i < num_samples; i++) {
@@ -270,7 +289,10 @@ int soma_quantum_sample_receptor_response(soma_quantum_bridge_t* bridge,
 int soma_quantum_estimate_sensitivity(soma_quantum_bridge_t* bridge,
                                       body_segment_t region,
                                       float* sensitivity) {
-    if (!bridge || !sensitivity) return -1;
+    if (!bridge || !sensitivity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, sensitivity)");
+        return -1;
+    }
     (void)region;
 
     *sensitivity = 0.5f + randf() * 0.3f;  /* Placeholder */
@@ -285,8 +307,14 @@ int soma_quantum_estimate_sensitivity(soma_quantum_bridge_t* bridge,
 int soma_quantum_search_body_map(soma_quantum_bridge_t* bridge,
                                  const soma_body_map_search_spec_t* spec,
                                  soma_quantum_walk_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_walks) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_walks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
@@ -297,6 +325,7 @@ int soma_quantum_search_body_map(soma_quantum_bridge_t* bridge,
         nimcp_free(result->visited_regions);
         nimcp_free(result->region_probabilities);
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: required parameter is NULL (result->visited_regions, result->region_probabilities)");
         return -1;
     }
 
@@ -346,7 +375,10 @@ int soma_quantum_localize_stimulus(soma_quantum_bridge_t* bridge,
                                    const float* activation,
                                    uint32_t dim,
                                    uint32_t* region) {
-    if (!bridge || !activation || !region) return -1;
+    if (!bridge || !activation || !region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, activation, region)");
+        return -1;
+    }
 
     /* Find max activation */
     uint32_t max_idx = 0;
@@ -366,7 +398,10 @@ int soma_quantum_localize_stimulus(soma_quantum_bridge_t* bridge,
 int soma_quantum_propagate_activation(soma_quantum_bridge_t* bridge,
                                       uint32_t source_region,
                                       float* propagated) {
-    if (!bridge || !propagated) return -1;
+    if (!bridge || !propagated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_status: required parameter is NULL (bridge, propagated)");
+        return -1;
+    }
     (void)source_region;
 
     /* Placeholder - would implement propagation */
@@ -380,14 +415,21 @@ int soma_quantum_propagate_activation(soma_quantum_bridge_t* bridge,
 int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
                                     const soma_attention_alloc_spec_t* spec,
                                     soma_quantum_anneal_result_t* result) {
-    if (!bridge || !spec || !result) return -1;
-    if (!bridge->config.enable_annealing) return -1;
+    if (!bridge || !spec || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: required parameter is NULL (bridge, spec, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_annealing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_quantum_get_status: bridge->config is NULL");
+        return -1;
+    }
 
     bridge->status = SOMA_QUANTUM_STATUS_COMPUTING;
 
     result->solution_vector = (float*)nimcp_calloc(spec->num_regions, sizeof(float));
     if (!result->solution_vector) {
         bridge->status = SOMA_QUANTUM_STATUS_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: result->solution_vector is NULL");
         return -1;
     }
     result->solution_dim = spec->num_regions;
@@ -455,7 +497,10 @@ int soma_quantum_optimize_attention(soma_quantum_bridge_t* bridge,
 int soma_quantum_optimize_pain_modulation(soma_quantum_bridge_t* bridge,
                                           float pain_level,
                                           float* modulation) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     /* Simple modulation based on pain level */
     *modulation = 1.0f / (1.0f + expf(-5.0f * (pain_level - 0.5f)));
@@ -467,7 +512,10 @@ int soma_quantum_bind_features(soma_quantum_bridge_t* bridge,
                                const float* features,
                                uint32_t num_features,
                                float* binding_weights) {
-    if (!bridge || !features || !binding_weights) return -1;
+    if (!bridge || !features || !binding_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, features, binding_weights)");
+        return -1;
+    }
 
     /* Simple softmax-like binding */
     float sum = 0.0f;
@@ -490,7 +538,10 @@ int soma_quantum_mcts_explore(soma_quantum_bridge_t* bridge,
                               const float* state,
                               uint32_t state_dim,
                               uint32_t* action) {
-    if (!bridge || !state || !action) return -1;
+    if (!bridge || !state || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, state, action)");
+        return -1;
+    }
     (void)state_dim;
 
     /* Placeholder - random action */
@@ -505,7 +556,10 @@ int soma_quantum_mcts_evaluate(soma_quantum_bridge_t* bridge,
                                const float* state,
                                uint32_t state_dim,
                                float* value) {
-    if (!bridge || !state || !value) return -1;
+    if (!bridge || !state || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, state, value)");
+        return -1;
+    }
 
     /* Placeholder - average of state */
     float sum = 0.0f;
@@ -546,13 +600,19 @@ void soma_quantum_anneal_result_free(soma_quantum_anneal_result_t* result) {
  * ============================================================================ */
 
 int soma_quantum_get_stats(const soma_quantum_bridge_t* bridge, soma_quantum_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(soma_quantum_stats_t));
     return 0;
 }
 
 int soma_quantum_reset_stats(soma_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_quantum_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(soma_quantum_stats_t));
     return 0;
 }

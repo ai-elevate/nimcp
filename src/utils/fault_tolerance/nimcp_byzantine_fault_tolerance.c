@@ -94,6 +94,7 @@ static bft_trust_info_t* bft_find_trust(bft_context_t* ctx, uint32_t node_id) {
             return &ctx->trust[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_find_trust: validation failed");
     return NULL;
 }
 
@@ -104,7 +105,10 @@ static bft_trust_info_t* bft_get_or_create_trust(bft_context_t* ctx, uint32_t no
     bft_trust_info_t* trust = bft_find_trust(ctx, node_id);
     if (trust) return trust;
 
-    if (ctx->trust_count >= BFT_MAX_NODES) return NULL;
+    if (ctx->trust_count >= BFT_MAX_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bft_get_or_create_trust: capacity exceeded");
+        return NULL;
+    }
 
     trust = &ctx->trust[ctx->trust_count++];
     trust->node_id = node_id;
@@ -168,6 +172,7 @@ bft_context_t* bft_create(const bft_config_t* config) {
     if (config->total_nodes < 3 * config->max_byzantine + 1) {
         LOG_ERROR("BFT", "Insufficient nodes for PBFT: need %u, have %u",
                        3 * config->max_byzantine + 1, config->total_nodes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_create: validation failed");
         return NULL;
     }
 
@@ -192,6 +197,7 @@ bft_context_t* bft_create(const bft_config_t* config) {
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         LOG_ERROR("BFT", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bft_create: validation failed");
         return NULL;
     }
 
@@ -223,7 +229,10 @@ void bft_destroy(bft_context_t* ctx) {
 }
 
 bool bft_start(bft_context_t* ctx) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_start: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
     if (ctx->running) return true;
 
     ctx->running = true;
@@ -232,7 +241,10 @@ bool bft_start(bft_context_t* ctx) {
 }
 
 bool bft_stop(bft_context_t* ctx) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_stop: required parameter is NULL (ctx, ctx->initialized)");
+        return false;
+    }
     if (!ctx->running) return true;
 
     ctx->running = false;
@@ -245,7 +257,10 @@ bool bft_stop(bft_context_t* ctx) {
 //=============================================================================
 
 bool bft_generate_keys(bft_identity_t* identity) {
-    if (!identity) return false;
+    if (!identity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_generate_keys: identity is NULL");
+        return false;
+    }
 
     // Simple key generation (in real implementation, use Ed25519)
     for (int i = 0; i < BFT_PUBLIC_KEY_SIZE; i++) {
@@ -260,7 +275,10 @@ bool bft_generate_keys(bft_identity_t* identity) {
 }
 
 bool bft_set_identity(bft_context_t* ctx, const bft_identity_t* identity) {
-    if (!ctx || !identity) return false;
+    if (!ctx || !identity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_set_identity: required parameter is NULL (ctx, identity)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->identity = *identity;
@@ -270,8 +288,14 @@ bool bft_set_identity(bft_context_t* ctx, const bft_identity_t* identity) {
 }
 
 bool bft_register_peer_key(bft_context_t* ctx, uint32_t node_id, const uint8_t* public_key) {
-    if (!ctx || !public_key) return false;
-    if (ctx->peer_count >= BFT_MAX_NODES) return false;
+    if (!ctx || !public_key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_peer_key: required parameter is NULL (ctx, public_key)");
+        return false;
+    }
+    if (ctx->peer_count >= BFT_MAX_NODES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bft_register_peer_key: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -294,12 +318,19 @@ bool bft_register_peer_key(bft_context_t* ctx, uint32_t node_id, const uint8_t* 
 //=============================================================================
 
 bool bft_submit_request(bft_context_t* ctx, const void* data, size_t data_size, uint64_t* sequence) {
-    if (!ctx || !data || data_size == 0 || !sequence) return false;
-    if (!ctx->running) return false;
+    if (!ctx || !data || data_size == 0 || !sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_submit_request: required parameter is NULL (ctx, data, sequence)");
+        return false;
+    }
+    if (!ctx->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_submit_request: ctx->running is NULL");
+        return false;
+    }
 
     // Validate with BBB
     if (!bbb_check_pointer((void*)data, "consensus_request")) {
         LOG_ERROR("BFT", "BBB rejected consensus request");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_submit_request: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -315,8 +346,14 @@ bool bft_submit_request(bft_context_t* ctx, const void* data, size_t data_size, 
 }
 
 bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, const void* payload, size_t payload_size) {
-    if (!ctx || !header) return false;
-    if (!ctx->running) return false;
+    if (!ctx || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_process_message: required parameter is NULL (ctx, header)");
+        return false;
+    }
+    if (!ctx->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_process_message: ctx->running is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -327,6 +364,7 @@ bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, con
             // Report to security
             bft_notify_security(ctx, header->sender_id, BFT_BEHAV_INVALID_SIG);
             nimcp_mutex_unlock(&ctx->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_process_message: bft_verify_signature is NULL");
             return false;
         }
     }
@@ -364,14 +402,20 @@ bool bft_process_message(bft_context_t* ctx, const bft_msg_header_t* header, con
 }
 
 bool bft_is_consensus_reached(bft_context_t* ctx, uint64_t sequence) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_is_consensus_reached: ctx is NULL");
+        return false;
+    }
 
     // Simple implementation: consensus reached if sequence is past
     return (sequence <= ctx->sequence_number);
 }
 
 bool bft_get_consensus_result(bft_context_t* ctx, uint64_t sequence, void* data_buffer, size_t buffer_size, size_t* actual_size) {
-    if (!ctx || !data_buffer || !actual_size) return false;
+    if (!ctx || !data_buffer || !actual_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_get_consensus_result: required parameter is NULL (ctx, data_buffer, actual_size)");
+        return false;
+    }
 
     // In real implementation, would retrieve committed value
     *actual_size = 0;
@@ -383,7 +427,10 @@ bool bft_get_consensus_result(bft_context_t* ctx, uint64_t sequence, void* data_
 //=============================================================================
 
 bool bft_verify_signature(bft_context_t* ctx, const bft_msg_header_t* header, const void* payload, size_t payload_size) {
-    if (!ctx || !header) return false;
+    if (!ctx || !header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_verify_signature: required parameter is NULL (ctx, header)");
+        return false;
+    }
 
     // Simple signature check (in real implementation, use Ed25519)
     uint8_t expected_hash[BFT_HASH_SIZE];
@@ -393,12 +440,16 @@ bool bft_verify_signature(bft_context_t* ctx, const bft_msg_header_t* header, co
 }
 
 bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_t behavior, const bft_evidence_t* evidence, uint32_t evidence_count) {
-    if (!ctx || accused_id == ctx->config.node_id) return false;
+    if (!ctx || accused_id == ctx->config.node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_report_byzantine: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
     if (ctx->accusation_count >= 32) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bft_report_byzantine: capacity exceeded");
         return false;
     }
 
@@ -456,7 +507,10 @@ bool bft_report_byzantine(bft_context_t* ctx, uint32_t accused_id, bft_behavior_
 }
 
 bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusation) {
-    if (!ctx || !accusation) return false;
+    if (!ctx || !accusation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_process_accusation: required parameter is NULL (ctx, accusation)");
+        return false;
+    }
 
     // Invoke accusation callback BEFORE processing (immune antigen presentation)
     if (ctx->accusation_callback) {
@@ -493,6 +547,7 @@ bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusati
         }
         ctx->stats.false_accusations++;
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_process_accusation: validation failed");
         return false;
     }
 
@@ -501,7 +556,10 @@ bool bft_process_accusation(bft_context_t* ctx, const bft_accusation_t* accusati
 }
 
 bool bft_vote_accusation(bft_context_t* ctx, const bft_accusation_t* accusation, bool support) {
-    if (!ctx || !accusation) return false;
+    if (!ctx || !accusation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_vote_accusation: required parameter is NULL (ctx, accusation)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -520,11 +578,15 @@ bool bft_vote_accusation(bft_context_t* ctx, const bft_accusation_t* accusation,
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_vote_accusation: operation failed");
     return false;
 }
 
 bool bft_check_equivocation(bft_context_t* ctx, const bft_msg_header_t* msg1, const bft_msg_header_t* msg2) {
-    if (!ctx || !msg1 || !msg2) return false;
+    if (!ctx || !msg1 || !msg2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_check_equivocation: required parameter is NULL (ctx, msg1, msg2)");
+        return false;
+    }
 
     // Equivocation: same sender, same sequence, different content
     if (msg1->sender_id == msg2->sender_id &&
@@ -536,6 +598,7 @@ bool bft_check_equivocation(bft_context_t* ctx, const bft_msg_header_t* msg1, co
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_check_equivocation: operation failed");
     return false;
 }
 
@@ -544,7 +607,10 @@ bool bft_check_equivocation(bft_context_t* ctx, const bft_msg_header_t* msg1, co
 //=============================================================================
 
 bool bft_get_trust_info(bft_context_t* ctx, uint32_t node_id, bft_trust_info_t* trust) {
-    if (!ctx || !trust) return false;
+    if (!ctx || !trust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_get_trust_info: required parameter is NULL (ctx, trust)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -556,6 +622,7 @@ bool bft_get_trust_info(bft_context_t* ctx, uint32_t node_id, bft_trust_info_t* 
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_get_trust_info: validation failed");
     return false;
 }
 
@@ -607,7 +674,10 @@ float bft_update_trust(bft_context_t* ctx, uint32_t node_id, bool correct_behavi
 }
 
 bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration_ms) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_quarantine_node: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -632,17 +702,22 @@ bool bft_quarantine_node(bft_context_t* ctx, uint32_t node_id, uint64_t duration
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_quarantine_node: operation failed");
     return false;
 }
 
 bool bft_is_quarantined(bft_context_t* ctx, uint32_t node_id) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_is_quarantined: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
     bft_trust_info_t* trust = bft_find_trust(ctx, node_id);
     if (!trust) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_is_quarantined: trust is NULL");
         return false;
     }
 
@@ -659,7 +734,10 @@ bool bft_is_quarantined(bft_context_t* ctx, uint32_t node_id) {
 }
 
 bool bft_release_quarantine(bft_context_t* ctx, uint32_t node_id) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_release_quarantine: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -676,6 +754,7 @@ bool bft_release_quarantine(bft_context_t* ctx, uint32_t node_id) {
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_release_quarantine: operation failed");
     return false;
 }
 
@@ -684,7 +763,10 @@ bool bft_release_quarantine(bft_context_t* ctx, uint32_t node_id) {
 //=============================================================================
 
 bool bft_request_view_change(bft_context_t* ctx, bft_view_reason_t reason) {
-    if (!ctx || !ctx->running) return false;
+    if (!ctx || !ctx->running) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_request_view_change: required parameter is NULL (ctx, ctx->running)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -712,7 +794,10 @@ uint32_t bft_get_leader(bft_context_t* ctx) {
 }
 
 bool bft_is_leader(bft_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_is_leader: ctx is NULL");
+        return false;
+    }
     return (bft_get_leader(ctx) == ctx->config.node_id);
 }
 
@@ -721,7 +806,10 @@ bool bft_is_leader(bft_context_t* ctx) {
 //=============================================================================
 
 bool bft_create_checkpoint(bft_context_t* ctx, const uint8_t* state_hash) {
-    if (!ctx || !state_hash) return false;
+    if (!ctx || !state_hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_create_checkpoint: required parameter is NULL (ctx, state_hash)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -753,8 +841,14 @@ bool bft_create_checkpoint(bft_context_t* ctx, const uint8_t* state_hash) {
 }
 
 bool bft_get_stable_checkpoint(bft_context_t* ctx, bft_checkpoint_t* checkpoint) {
-    if (!ctx || !checkpoint) return false;
-    if (ctx->checkpoint_count == 0) return false;
+    if (!ctx || !checkpoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_get_stable_checkpoint: required parameter is NULL (ctx, checkpoint)");
+        return false;
+    }
+    if (ctx->checkpoint_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bft_get_stable_checkpoint: ctx->checkpoint_count is zero");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -770,11 +864,15 @@ bool bft_get_stable_checkpoint(bft_context_t* ctx, bft_checkpoint_t* checkpoint)
     }
 
     nimcp_mutex_unlock(&ctx->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bft_get_stable_checkpoint: capacity exceeded");
     return false;
 }
 
 bool bft_verify_checkpoint(bft_context_t* ctx, const bft_checkpoint_t* checkpoint) {
-    if (!ctx || !checkpoint) return false;
+    if (!ctx || !checkpoint) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_verify_checkpoint: required parameter is NULL (ctx, checkpoint)");
+        return false;
+    }
 
     // Verify required signatures
     uint32_t required = 2 * ctx->config.max_byzantine + 1;
@@ -786,7 +884,10 @@ bool bft_verify_checkpoint(bft_context_t* ctx, const bft_checkpoint_t* checkpoin
 //=============================================================================
 
 bool bft_register_consensus_callback(bft_context_t* ctx, bft_consensus_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_consensus_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->consensus_callback = callback;
@@ -797,7 +898,10 @@ bool bft_register_consensus_callback(bft_context_t* ctx, bft_consensus_callback_
 }
 
 bool bft_register_byzantine_callback(bft_context_t* ctx, bft_byzantine_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_byzantine_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->byzantine_callback = callback;
@@ -815,7 +919,10 @@ bool bft_register_byzantine_callback(bft_context_t* ctx, bft_byzantine_callback_
  * HOW:  Store in context, invoke before processing
  */
 bool bft_register_accusation_callback(bft_context_t* ctx, bft_accusation_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_accusation_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->accusation_callback = callback;
@@ -833,7 +940,10 @@ bool bft_register_accusation_callback(bft_context_t* ctx, bft_accusation_callbac
  * HOW:  Store in context, invoke on quarantine
  */
 bool bft_register_quarantine_callback(bft_context_t* ctx, bft_quarantine_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_quarantine_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->quarantine_callback = callback;
@@ -851,7 +961,10 @@ bool bft_register_quarantine_callback(bft_context_t* ctx, bft_quarantine_callbac
  * HOW:  Store in context, invoke on trust recovery
  */
 bool bft_register_trust_recovery_callback(bft_context_t* ctx, bft_trust_recovery_callback_t callback, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_register_trust_recovery_callback: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->trust_recovery_callback = callback;
@@ -866,7 +979,10 @@ bool bft_register_trust_recovery_callback(bft_context_t* ctx, bft_trust_recovery
 //=============================================================================
 
 bool bft_get_stats(bft_context_t* ctx, bft_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -892,7 +1008,10 @@ void bft_reset_stats(bft_context_t* ctx) {
 }
 
 bool bft_is_cluster_healthy(bft_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_is_cluster_healthy: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -917,7 +1036,10 @@ bool bft_is_cluster_healthy(bft_context_t* ctx) {
 //=============================================================================
 
 bool bft_sign(bft_context_t* ctx, const void* data, size_t data_size, uint8_t* signature) {
-    if (!ctx || !data || !signature) return false;
+    if (!ctx || !data || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_sign: required parameter is NULL (ctx, data, signature)");
+        return false;
+    }
 
     // Simple signature (in real implementation, use Ed25519)
     bft_simple_hash(data, data_size, signature);
@@ -927,7 +1049,10 @@ bool bft_sign(bft_context_t* ctx, const void* data, size_t data_size, uint8_t* s
 }
 
 bool bft_verify(const uint8_t* public_key, const void* data, size_t data_size, const uint8_t* signature) {
-    if (!public_key || !data || !signature) return false;
+    if (!public_key || !data || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bft_verify: required parameter is NULL (public_key, data, signature)");
+        return false;
+    }
 
     uint8_t expected[BFT_HASH_SIZE];
     bft_simple_hash(data, data_size, expected);

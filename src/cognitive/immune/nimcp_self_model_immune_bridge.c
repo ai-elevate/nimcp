@@ -235,6 +235,7 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
     if (!immune_system || !self_model) {
         LOG_MODULE_ERROR("self_model_immune_bridge",
                   "Cannot create bridge without immune and self-model systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_model_immune_bridge_create: required parameter is NULL (immune_system, self_model)");
         return NULL;
     }
 
@@ -320,7 +321,10 @@ int self_model_immune_generate_interoceptive_signals(
 
     }
     if (!bridge->enable_interoceptive_signaling) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_generate_interoceptive_signals: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
@@ -377,7 +381,10 @@ int self_model_immune_update_health_status(
 
     }
     if (!bridge->enable_self_model_health_update) return 0;
-    if (!bridge->immune_system || !bridge->self_model) return -1;
+    if (!bridge->immune_system || !bridge->self_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_update_health_status: required parameter is NULL (bridge->immune_system, bridge->self_model)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_up", 0.0f);
@@ -447,7 +454,10 @@ int self_model_immune_modulate_capabilities(
 
     }
     if (!bridge->enable_capability_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_modulate_capabilities: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_mo", 0.0f);
@@ -494,7 +504,10 @@ int self_model_immune_integrate_chronic_illness(
 
     }
     if (!bridge->enable_identity_integration) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_integrate_chronic_illness: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_in", 0.0f);
@@ -593,7 +606,10 @@ int self_model_immune_boost_from_health_beliefs(
 
     }
     if (!bridge->enable_health_belief_immune_effects) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_boost_from_health_beliefs: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_bo", 0.0f);
@@ -755,7 +771,10 @@ int self_model_immune_get_interoceptive_signals(
     const self_model_immune_bridge_t* bridge,
     interoceptive_immune_signals_t* signals
 ) {
-    if (!bridge || !signals) return -1;
+    if (!bridge || !signals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_get_interoceptive_signals: required parameter is NULL (bridge, signals)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
@@ -772,7 +791,10 @@ int self_model_immune_get_self_model_updates(
     const self_model_immune_bridge_t* bridge,
     self_model_immune_modulation_t* updates
 ) {
-    if (!bridge || !updates) return -1;
+    if (!bridge || !updates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_get_self_model_updates: required parameter is NULL (bridge, updates)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_ge", 0.0f);
@@ -799,7 +821,10 @@ self_health_status_t self_model_immune_get_health_status(
 bool self_model_immune_is_aware_of_sickness(
     const self_model_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_is_aware_of_sickness: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_is", 0.0f);
 
@@ -907,7 +932,10 @@ int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool self_model_immune_is_bio_async_connected(const self_model_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_immune_bridge_heartbeat("self_model_i_self_model_immune_is", 0.0f);
 

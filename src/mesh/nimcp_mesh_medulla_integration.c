@@ -608,6 +608,7 @@ mesh_medulla_integration_t* mesh_medulla_create(
     if (!integration->mutex) {
         LOG_ERROR("Failed to create medulla integration mutex");
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_medulla_create: integration->mutex is NULL");
         return NULL;
     }
 
@@ -770,6 +771,7 @@ mesh_participant_id_t mesh_medulla_get_participant_id(
 
 bool mesh_medulla_is_registered(const mesh_medulla_integration_t* integration) {
     if (!integration || integration->magic != MESH_MEDULLA_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_medulla_is_registered: integration is NULL");
         return false;
     }
     return integration->registered;
@@ -1078,6 +1080,7 @@ mesh_medulla_protection_level_t mesh_medulla_get_protection_level(
 
 bool mesh_medulla_is_emergency_mode(const mesh_medulla_integration_t* integration) {
     if (!integration || integration->magic != MESH_MEDULLA_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_medulla_is_emergency_mode: integration is NULL");
         return false;
     }
     return integration->in_emergency_mode;

@@ -225,12 +225,14 @@ ro_config_t ro_default_config(void) {
 ro_context_t* ro_create(const ro_config_t* config) {
     if (!config) {
         LOG_ERROR("RO", "NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ro_create: config is NULL");
         return NULL;
     }
 
     ro_context_t* ctx = (ro_context_t*)nimcp_malloc(sizeof(ro_context_t));
     if (!ctx) {
         LOG_ERROR("RO", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ro_create: ctx is NULL");
         return NULL;
     }
 
@@ -242,6 +244,7 @@ ro_context_t* ro_create(const ro_config_t* config) {
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("RO", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ro_create: validation failed");
         return NULL;
     }
 
@@ -292,7 +295,10 @@ void ro_destroy(ro_context_t* ctx) {
 }
 
 bool ro_start(ro_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->running = true;
@@ -306,7 +312,10 @@ bool ro_start(ro_context_t* ctx) {
 }
 
 bool ro_stop(ro_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_stop: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
@@ -324,12 +333,16 @@ bool ro_stop(ro_context_t* ctx) {
 
 ro_counter_t* ro_create_counter(ro_context_t* ctx, const char* name,
                                  const ro_label_t* labels, uint32_t label_count) {
-    if (!ctx || !name) return NULL;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ro_stop: required parameter is NULL (ctx, name)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->counter_count >= RO_MAX_METRICS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ro_stop: capacity exceeded");
         return NULL;
     }
 
@@ -364,12 +377,16 @@ uint64_t ro_counter_get(const ro_counter_t* counter) {
 
 ro_gauge_t* ro_create_gauge(ro_context_t* ctx, const char* name,
                              const ro_label_t* labels, uint32_t label_count) {
-    if (!ctx || !name) return NULL;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ro_counter_get: required parameter is NULL (ctx, name)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->gauge_count >= RO_MAX_METRICS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ro_counter_get: capacity exceeded");
         return NULL;
     }
 
@@ -415,12 +432,16 @@ double ro_gauge_get(const ro_gauge_t* gauge) {
 ro_histogram_t* ro_create_histogram(ro_context_t* ctx, const char* name,
                                      const double* buckets, uint32_t bucket_count,
                                      const ro_label_t* labels, uint32_t label_count) {
-    if (!ctx || !name) return NULL;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ro_gauge_get: required parameter is NULL (ctx, name)");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->histogram_count >= RO_MAX_METRICS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ro_gauge_get: capacity exceeded");
         return NULL;
     }
 
@@ -486,8 +507,14 @@ double ro_histogram_mean(const ro_histogram_t* hist) {
 //=============================================================================
 
 ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
-    if (!ctx || !name) return NULL;
-    if (!ctx->config.enable_tracing) return NULL;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: required parameter is NULL (ctx, name)");
+        return NULL;
+    }
+    if (!ctx->config.enable_tracing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_trace: ctx->config is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -515,8 +542,14 @@ ro_span_t* ro_start_trace(ro_context_t* ctx, const char* name) {
 }
 
 ro_span_t* ro_start_span(ro_context_t* ctx, const ro_span_t* parent, const char* name) {
-    if (!ctx || !parent || !name) return NULL;
-    if (!ctx->config.enable_tracing) return NULL;
+    if (!ctx || !parent || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_span: required parameter is NULL (ctx, parent, name)");
+        return NULL;
+    }
+    if (!ctx->config.enable_tracing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_start_span: ctx->config is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -729,7 +762,10 @@ void ro_record_recovery_attempt(ro_recovery_context_t* recovery, const char* str
 }
 
 bool ro_get_mttr_stats(ro_context_t* ctx, ro_mttr_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_get_mttr_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     memset(stats, 0, sizeof(ro_mttr_stats_t));
 
@@ -781,7 +817,10 @@ bool ro_get_mttr_stats(ro_context_t* ctx, ro_mttr_stats_t* stats) {
 }
 
 bool ro_get_mtbf_stats(ro_context_t* ctx, ro_mtbf_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_get_mtbf_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     memset(stats, 0, sizeof(ro_mtbf_stats_t));
 
@@ -878,7 +917,10 @@ void ro_record_failure(ro_context_t* ctx, uint32_t node_id, uint32_t fault_type)
 //=============================================================================
 
 bool ro_log_event(ro_context_t* ctx, const ro_event_t* event) {
-    if (!ctx || !event) return false;
+    if (!ctx || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_log_event: required parameter is NULL (ctx, event)");
+        return false;
+    }
     if (!ctx->config.enable_events) return true;
 
     nimcp_mutex_lock(&ctx->mutex);
@@ -1019,12 +1061,16 @@ size_t ro_export_traces(ro_context_t* ctx, ro_export_format_t format, char* buff
 
 bool ro_register_exporter(ro_context_t* ctx, ro_export_callback_t callback,
                            ro_export_format_t format, void* user_data) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_export_traces: required parameter is NULL (ctx, callback)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
     if (ctx->exporter_count >= RO_MAX_EXPORTERS) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ro_export_traces: capacity exceeded");
         return false;
     }
 
@@ -1040,7 +1086,10 @@ bool ro_register_exporter(ro_context_t* ctx, ro_export_callback_t callback,
 }
 
 bool ro_flush(ro_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ro_flush: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 

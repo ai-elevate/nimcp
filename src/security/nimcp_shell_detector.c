@@ -262,13 +262,19 @@ static const char* environment_patterns[] = {
  */
 static const char* case_insensitive_strstr(const char* text, const char* pattern)
 {
-    if (!text || !pattern) return NULL;
+    if (!text || !pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "case_insensitive_strstr: required parameter is NULL (text, pattern)");
+        return NULL;
+    }
     if (!*pattern) return text;
 
     size_t pattern_len = strlen(pattern);
     size_t text_len = strlen(text);
 
-    if (pattern_len > text_len) return NULL;
+    if (pattern_len > text_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "case_insensitive_strstr: validation failed");
+        return NULL;
+    }
 
     for (size_t i = 0; i <= text_len - pattern_len; i++) {
         size_t j;
@@ -282,6 +288,7 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
             return &text[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "case_insensitive_strstr: validation failed");
     return NULL;
 }
 
@@ -292,7 +299,10 @@ static bool check_patterns(const char* input, const char* patterns[],
                           size_t* offset, char* detected_cmd,
                           size_t detected_cmd_size)
 {
-    if (!input || !patterns) return false;
+    if (!input || !patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
+        return false;
+    }
 
     for (int i = 0; patterns[i] != NULL; i++) {
         const char* found = case_insensitive_strstr(input, patterns[i]);
@@ -334,7 +344,10 @@ static uint32_t count_pattern_occurrences(const char* input,
  */
 static bool check_exact_patterns(const char* input, const char* patterns[])
 {
-    if (!input || !patterns) return false;
+    if (!input || !patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_exact_patterns: required parameter is NULL (input, patterns)");
+        return false;
+    }
 
     for (int i = 0; patterns[i] != NULL; i++) {
         if (strchr(input, patterns[i][0]) != NULL) {

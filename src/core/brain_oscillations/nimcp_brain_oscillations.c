@@ -227,6 +227,7 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     brain_oscillation_analyzer_t* analyzer =
         (brain_oscillation_analyzer_t*)nimcp_calloc(1, sizeof(brain_oscillation_analyzer_t));
     if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_create: analyzer is NULL");
         return NULL;
     }
 
@@ -245,6 +246,7 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->activity_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
     if (!analyzer->activity_buffer) {
         brain_oscillation_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_create: analyzer->activity_buffer is NULL");
         return NULL;
     }
 
@@ -252,12 +254,14 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->fft_plan = fft_plan_create(analyzer->buffer_size, FFT_REAL);
     if (!analyzer->fft_plan) {
         brain_oscillation_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_create: analyzer->fft_plan is NULL");
         return NULL;
     }
 
     // Set Hann window to reduce spectral leakage
     if (!fft_plan_set_window(analyzer->fft_plan, FFT_WINDOW_HANN)) {
         brain_oscillation_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_create: fft_plan_set_window is NULL");
         return NULL;
     }
 
@@ -268,6 +272,7 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
 
     if (!analyzer->spectrum || !analyzer->power_spectrum) {
         brain_oscillation_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_create: required parameter is NULL (analyzer->spectrum, analyzer->power_spectrum)");
         return NULL;
     }
 
@@ -284,6 +289,7 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     analyzer->buffer_mutex = nimcp_mutex_create(NULL);
     if (!analyzer->buffer_mutex) {
         brain_oscillation_destroy(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_create: analyzer->buffer_mutex is NULL");
         return NULL;
     }
 
@@ -369,6 +375,7 @@ bool brain_oscillation_record_activity(brain_oscillation_analyzer_t* analyzer)
 {
     // Guard: Validate analyzer
     if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_record_activity: analyzer is NULL");
         return false;
     }
 
@@ -443,6 +450,7 @@ bool brain_oscillation_get_wave_power(
     // Check if buffer is full enough
     if (analyzer->samples_recorded < analyzer->min_samples) {
         nimcp_mutex_unlock(analyzer->buffer_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_get_wave_power: validation failed");
         return false;  // Need full window
     }
 
@@ -450,6 +458,7 @@ bool brain_oscillation_get_wave_power(
     float* ordered_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
     if (!ordered_buffer) {
         nimcp_mutex_unlock(analyzer->buffer_mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_oscillation_get_wave_power: ordered_buffer is NULL");
         return false;
     }
 
@@ -465,12 +474,14 @@ bool brain_oscillation_get_wave_power(
     nimcp_free(ordered_buffer);
 
     if (!fft_success) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_wave_power: fft_success is NULL");
         return false;
     }
 
     // Compute power spectrum
     if (!fft_power_spectrum(analyzer->spectrum, analyzer->power_spectrum,
                             analyzer->spectrum_size)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_wave_power: fft_success is NULL");
         return false;
     }
 
@@ -578,6 +589,7 @@ bool brain_oscillation_get_state(
     // Get wave power
     brain_wave_power_t wave_power;
     if (!brain_oscillation_get_wave_power(analyzer, &wave_power)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_get_state: brain_oscillation_get_wave_power is NULL");
         return false;
     }
 
@@ -655,12 +667,14 @@ bool brain_oscillation_analyze(
 
     // Get wave power
     if (!brain_oscillation_get_wave_power(analyzer, &results->wave_power)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_analyze: brain_oscillation_get_wave_power is NULL");
         return false;
     }
 
     // Get cognitive state
     if (!brain_oscillation_get_state(analyzer, &results->state,
                                      &results->state_confidence)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_analyze: brain_oscillation_get_wave_power is NULL");
         return false;
     }
 
@@ -744,6 +758,7 @@ bool brain_oscillation_get_spectrum(
 
     // Check if we have data
     if (analyzer->samples_recorded < analyzer->min_samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_get_spectrum: validation failed");
         return false;
     }
 
@@ -811,6 +826,7 @@ static bool extract_band_filtered_signal(
 {
     // Guard: Validate inputs
     if (!analyzer || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_band_filtered_signal: required parameter is NULL (analyzer, output)");
         return false;
     }
 
@@ -828,6 +844,7 @@ static bool extract_band_filtered_signal(
     // Allocate temporary buffer for chronologically ordered data
     float* ordered_buffer = (float*)nimcp_calloc(analyzer->buffer_size, sizeof(float));
     if (!ordered_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "extract_band_filtered_signal: ordered_buffer is NULL");
         return false;
     }
 
@@ -839,6 +856,7 @@ static bool extract_band_filtered_signal(
         analyzer->spectrum_size, sizeof(fft_complex_t));
     if (!half_spectrum) {
         nimcp_free(ordered_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "extract_band_filtered_signal: half_spectrum is NULL");
         return false;
     }
 
@@ -847,6 +865,7 @@ static bool extract_band_filtered_signal(
                           half_spectrum)) {
         nimcp_free(ordered_buffer);
         nimcp_free(half_spectrum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_band_filtered_signal: operation failed");
         return false;
     }
 
@@ -858,6 +877,7 @@ static bool extract_band_filtered_signal(
         analyzer->buffer_size, sizeof(fft_complex_t));
     if (!full_spectrum) {
         nimcp_free(half_spectrum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "extract_band_filtered_signal: full_spectrum is NULL");
         return false;
     }
 
@@ -884,6 +904,7 @@ static bool extract_band_filtered_signal(
     if (!ifft_plan) {
         nimcp_free(half_spectrum);
         nimcp_free(full_spectrum);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_band_filtered_signal: ifft_plan is NULL");
         return false;
     }
 
@@ -893,6 +914,7 @@ static bool extract_band_filtered_signal(
         nimcp_free(half_spectrum);
         nimcp_free(full_spectrum);
         fft_plan_destroy(ifft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_band_filtered_signal: complex_output is NULL");
         return false;
     }
 
@@ -940,12 +962,14 @@ static bool extract_instantaneous_phase(
 {
     // Guard: Validate inputs
     if (!signal || !phase || size < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_instantaneous_phase: required parameter is NULL (signal, phase)");
         return false;
     }
 
     // Create FFT plan for Hilbert transform
     fft_plan_t* fft_plan = fft_plan_create(size, FFT_REAL);
     if (!fft_plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_instantaneous_phase: fft_plan is NULL");
         return false;
     }
 
@@ -960,6 +984,7 @@ static bool extract_instantaneous_phase(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_instantaneous_phase: required parameter is NULL (spectrum, full_spectrum, analytic)");
         return false;
     }
 
@@ -969,6 +994,7 @@ static bool extract_instantaneous_phase(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_instantaneous_phase: fft_execute_real is NULL");
         return false;
     }
 
@@ -990,6 +1016,7 @@ static bool extract_instantaneous_phase(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_instantaneous_phase: ifft_plan is NULL");
         return false;
     }
 
@@ -999,6 +1026,7 @@ static bool extract_instantaneous_phase(
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         fft_plan_destroy(ifft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_instantaneous_phase: fft_execute_inverse_complex is NULL");
         return false;
     }
 
@@ -1044,12 +1072,14 @@ static bool extract_amplitude_envelope(
 {
     // Guard: Validate inputs
     if (!signal || !amplitude || size < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_amplitude_envelope: required parameter is NULL (signal, amplitude)");
         return false;
     }
 
     // Create FFT plan
     fft_plan_t* fft_plan = fft_plan_create(size, FFT_REAL);
     if (!fft_plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_amplitude_envelope: fft_plan is NULL");
         return false;
     }
 
@@ -1064,6 +1094,7 @@ static bool extract_amplitude_envelope(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_amplitude_envelope: required parameter is NULL (spectrum, full_spectrum, analytic)");
         return false;
     }
 
@@ -1073,6 +1104,7 @@ static bool extract_amplitude_envelope(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_amplitude_envelope: fft_execute_real is NULL");
         return false;
     }
 
@@ -1094,6 +1126,7 @@ static bool extract_amplitude_envelope(
         nimcp_free(full_spectrum);
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extract_amplitude_envelope: ifft_plan is NULL");
         return false;
     }
 
@@ -1103,6 +1136,7 @@ static bool extract_amplitude_envelope(
         nimcp_free(analytic);
         fft_plan_destroy(fft_plan);
         fft_plan_destroy(ifft_plan);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "extract_amplitude_envelope: fft_execute_inverse_complex is NULL");
         return false;
     }
 
@@ -1833,6 +1867,7 @@ bool brain_oscillation_detect_abnormality(
 
     // Get current wave power (must have been computed)
     if (analyzer->last_wave_power.total_power < 1e-6F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_detect_abnormality: validation failed");
         return false;  // No data
     }
 
@@ -1926,6 +1961,7 @@ bool brain_oscillation_notify_immune_abnormality(
     if (!analyzer->immune_system) {
         LOG_WARNING(LOG_MODULE,
             "Cannot notify immune system: not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_notify_immune_abnormality: analyzer->immune_system is NULL");
         return false;
     }
 
@@ -1965,6 +2001,7 @@ bool brain_oscillation_notify_immune_abnormality(
     if (result != 0) {
         LOG_ERROR(LOG_MODULE,
             "Failed to present oscillation abnormality to immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_notify_immune_abnormality: validation failed");
         return false;
     }
 

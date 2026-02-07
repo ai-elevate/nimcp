@@ -317,21 +317,25 @@ bool explanation_generate_from_decision(
 
     if (!gen) {
         set_error("NULL explanation generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_generate_from_decision: gen is NULL");
         return false;
     }
 
     if (!brain) {
         set_error("NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_generate_from_decision: brain is NULL");
         return false;
     }
 
     if (!decision) {
         set_error("NULL decision");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_generate_from_decision: decision is NULL");
         return false;
     }
 
     if (!explanation) {
         set_error("NULL explanation output");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_generate_from_decision: explanation is NULL");
         return false;
     }
 
@@ -446,6 +450,7 @@ bool explanation_generate_from_multimodal(
 
     if (!gen || !brain || !output || !explanation) {
         set_error("NULL parameter in brain_explain_multimodal_decision");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_generate_from_multimodal: required parameter is NULL (gen, brain, output, explanation)");
         return false;
     }
 
@@ -558,6 +563,7 @@ bool explain_with_symbolic_logic(
 
     if (!gen || !brain || !decision || !proof_buffer || buffer_size == 0) {
         set_error("Invalid parameters for symbolic logic explanation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explain_with_symbolic_logic: required parameter is NULL (gen, brain, decision, proof_buffer)");
         return false;
     }
 
@@ -610,6 +616,7 @@ bool generate_causal_chain(
     if (!gen || !brain || !input_description || !output_label ||
         !causal_chain || buffer_size == 0) {
         set_error("Invalid parameters for causal chain generation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_causal_chain: operation failed");
         return false;
     }
 
@@ -661,6 +668,7 @@ bool generate_counterfactual(
     if (!gen || !brain || !original_decision || !modified_feature ||
         !modification || !counterfactual || buffer_size == 0) {
         set_error("Invalid parameters for counterfactual generation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_counterfactual: operation failed");
         return false;
     }
 
@@ -966,6 +974,7 @@ bool explanation_to_json(
     size_t buffer_size)
 {
     if (!explanation || !json_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "explanation_to_json: required parameter is NULL (explanation, json_buffer)");
         return false;
     }
 

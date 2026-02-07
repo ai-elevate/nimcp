@@ -66,6 +66,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
         sizeof(snn_buffer_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN buffer bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_buffer_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -103,6 +104,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
     if (!bridge->buffers) {
         NIMCP_LOGGING_ERROR("Failed to allocate buffer array");
         snn_buffer_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_buffer_bridge_create: bridge->buffers is NULL");
         return NULL;
     }
 
@@ -116,6 +118,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
         if (!bridge->buffers[i]) {
             NIMCP_LOGGING_ERROR("Failed to create circular buffer %u", i);
             snn_buffer_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_buffer_bridge_create: bridge->buffers is NULL");
             return NULL;
         }
     }
@@ -126,6 +129,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
     if (!bridge->buffer_map) {
         NIMCP_LOGGING_ERROR("Failed to allocate buffer map");
         snn_buffer_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_buffer_bridge_create: bridge->buffer_map is NULL");
         return NULL;
     }
     for (uint32_t i = 0; i < bridge->n_buffers; i++) {
@@ -143,6 +147,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
         if (!bridge->delayed_spike_times || !bridge->delayed_spike_neurons) {
             NIMCP_LOGGING_ERROR("Failed to allocate delay line storage");
             snn_buffer_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_buffer_bridge_create: required parameter is NULL (bridge->delayed_spike_times, bridge->delayed_spike_neurons)");
             return NULL;
         }
         memset(bridge->delayed_spike_times, 0, max_delayed * sizeof(uint64_t));

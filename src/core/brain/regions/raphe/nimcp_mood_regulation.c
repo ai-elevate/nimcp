@@ -161,7 +161,10 @@ int nimcp_mood_reset(nimcp_mood_system_t* system) {
  *===========================================================================*/
 
 int nimcp_mood_update(nimcp_mood_system_t* system, float ht_level, float dt) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_update: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     float dt_sec = dt / 1000.0f;
     system->current_5ht = ht_level;
@@ -269,28 +272,40 @@ int nimcp_mood_update(nimcp_mood_system_t* system, float ht_level, float dt) {
  *===========================================================================*/
 
 int nimcp_mood_apply_stress(nimcp_mood_system_t* system, float stress) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_apply_stress: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     system->stress_input = clamp_f(system->stress_input + stress, 0.0f, 1.0f);
     return 0;
 }
 
 int nimcp_mood_apply_reward(nimcp_mood_system_t* system, float reward) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_apply_reward: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     system->reward_input = clamp_f(system->reward_input + reward, 0.0f, 1.0f);
     return 0;
 }
 
 int nimcp_mood_apply_social(nimcp_mood_system_t* system, float social_input) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_apply_social: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     system->social_input = clamp_f(system->social_input + social_input, -1.0f, 1.0f);
     return 0;
 }
 
 int nimcp_mood_set_circadian_phase(nimcp_mood_system_t* system, float phase) {
-    if (!system || !system->initialized) return -1;
+    if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_set_circadian_phase: required parameter is NULL (system, system->initialized)");
+        return -1;
+    }
 
     /* Phase: 0-1 represents 24-hour cycle */
     system->circadian_phase = fmodf(phase, 1.0f);
@@ -305,35 +320,50 @@ int nimcp_mood_set_circadian_phase(nimcp_mood_system_t* system, float phase) {
  *===========================================================================*/
 
 int nimcp_mood_get_valence(nimcp_mood_system_t* system, float* valence) {
-    if (!system || !system->initialized || !valence) return -1;
+    if (!system || !system->initialized || !valence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_valence: required parameter is NULL (system, system->initialized, valence)");
+        return -1;
+    }
 
     *valence = system->valence;
     return 0;
 }
 
 int nimcp_mood_get_stability(nimcp_mood_system_t* system, float* stability) {
-    if (!system || !system->initialized || !stability) return -1;
+    if (!system || !system->initialized || !stability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_stability: required parameter is NULL (system, system->initialized, stability)");
+        return -1;
+    }
 
     *stability = system->stability;
     return 0;
 }
 
 int nimcp_mood_get_anxiety(nimcp_mood_system_t* system, float* anxiety) {
-    if (!system || !system->initialized || !anxiety) return -1;
+    if (!system || !system->initialized || !anxiety) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_anxiety: required parameter is NULL (system, system->initialized, anxiety)");
+        return -1;
+    }
 
     *anxiety = system->anxiety;
     return 0;
 }
 
 int nimcp_mood_get_energy(nimcp_mood_system_t* system, float* energy) {
-    if (!system || !system->initialized || !energy) return -1;
+    if (!system || !system->initialized || !energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_energy: required parameter is NULL (system, system->initialized, energy)");
+        return -1;
+    }
 
     *energy = system->energy;
     return 0;
 }
 
 int nimcp_mood_get_state(nimcp_mood_system_t* system, nimcp_mood_snapshot_t* state) {
-    if (!system || !system->initialized || !state) return -1;
+    if (!system || !system->initialized || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_state: required parameter is NULL (system, system->initialized, state)");
+        return -1;
+    }
 
     state->valence = system->valence;
     state->stability = system->stability;
@@ -350,7 +380,10 @@ int nimcp_mood_get_state(nimcp_mood_system_t* system, nimcp_mood_snapshot_t* sta
  *===========================================================================*/
 
 int nimcp_mood_get_trend(nimcp_mood_system_t* system, float* trend) {
-    if (!system || !system->initialized || !trend) return -1;
+    if (!system || !system->initialized || !trend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_trend: required parameter is NULL (system, system->initialized, trend)");
+        return -1;
+    }
 
     /* Compute trend from history */
     if (system->history_count < 2) {
@@ -368,7 +401,10 @@ int nimcp_mood_get_trend(nimcp_mood_system_t* system, float* trend) {
 }
 
 int nimcp_mood_get_variability(nimcp_mood_system_t* system, float* variability) {
-    if (!system || !system->initialized || !variability) return -1;
+    if (!system || !system->initialized || !variability) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_get_variability: required parameter is NULL (system, system->initialized, variability)");
+        return -1;
+    }
 
     /* Variability as sqrt of variance */
     *variability = sqrtf(system->valence_variance);
@@ -376,7 +412,10 @@ int nimcp_mood_get_variability(nimcp_mood_system_t* system, float* variability) 
 }
 
 int nimcp_mood_is_depressed(nimcp_mood_system_t* system, bool* depressed) {
-    if (!system || !system->initialized || !depressed) return -1;
+    if (!system || !system->initialized || !depressed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mood_is_depressed: required parameter is NULL (system, system->initialized, depressed)");
+        return -1;
+    }
 
     /* Depression indicators:
      * - Low valence (< -0.4)

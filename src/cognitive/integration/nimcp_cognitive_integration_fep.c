@@ -141,6 +141,7 @@ static int ensure_initialized(void) {
 
     g_cog_integ_fep_state.mutex = nimcp_mutex_create(NULL);
     if (!g_cog_integ_fep_state.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "ensure_initialized: g_cog_integ_fep_state is NULL");
         return -1;
     }
 
@@ -488,9 +489,15 @@ int cognitive_hub_fep_register(
     cognitive_integration_hub_t hub,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !hub) return -1;
+    if (!orchestrator || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_hub_fep_register: required parameter is NULL (orchestrator, hub)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cognitive_hub_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_cognitive_hub_fep_re", 0.0f);
@@ -535,9 +542,15 @@ int emotion_memory_bridge_fep_register(
     emotion_memory_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_memory_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_memory_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_emotion_memory_bridg", 0.0f);
@@ -579,9 +592,15 @@ int attention_wm_bridge_fep_register(
     attention_wm_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_wm_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "attention_wm_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_attention_wm_bridge_", 0.0f);
@@ -623,9 +642,15 @@ int curiosity_reasoning_bridge_fep_register(
     curiosity_reasoning_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_reasoning_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "curiosity_reasoning_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_curiosity_reasoning_", 0.0f);
@@ -667,9 +692,15 @@ int ethics_executive_bridge_fep_register(
     ethics_executive_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_executive_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_executive_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_ethics_executive_bri", 0.0f);
@@ -711,9 +742,15 @@ int tom_social_bridge_fep_register(
     tom_social_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom_social_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "tom_social_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_tom_social_bridge_fe", 0.0f);
@@ -755,9 +792,15 @@ int self_introspection_bridge_fep_register(
     self_introspection_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_introspection_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "self_introspection_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_self_introspection_b", 0.0f);
@@ -799,9 +842,15 @@ int emotion_executive_bridge_fep_register(
     emotion_executive_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_executive_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_executive_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_emotion_executive_br", 0.0f);
@@ -843,9 +892,15 @@ int gw_cognitive_bridge_fep_register(
     gw_cognitive_bridge_t* bridge,
     uint32_t* bridge_id_out
 ) {
-    if (!orchestrator || !bridge) return -1;
+    if (!orchestrator || !bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gw_cognitive_bridge_fep_register: required parameter is NULL (orchestrator, bridge)");
+        return -1;
+    }
 
-    if (ensure_initialized() != 0) return -1;
+    if (ensure_initialized() != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "gw_cognitive_bridge_fep_register: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_gw_cognitive_bridge_", 0.0f);
@@ -898,7 +953,10 @@ int cognitive_integration_fep_register_all(
     emotion_executive_bridge_t* emotion_executive,
     gw_cognitive_bridge_t* gw_cognitive
 ) {
-    if (!orchestrator || !hub) return -1;
+    if (!orchestrator || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_integration_fep_register_all: required parameter is NULL (orchestrator, hub)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     cognitive_integration_fep_heartbeat("cognitive_in_register_all", 0.0f);
@@ -910,6 +968,7 @@ int cognitive_integration_fep_register_all(
     if (cognitive_hub_fep_register(orchestrator, hub, NULL) == 0) {
         registered_count++;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_integration_fep_register_all: validation failed");
         return -1; /* Hub registration failure is critical */
     }
 
@@ -1000,7 +1059,10 @@ int cognitive_integration_fep_get_metrics(
     cognitive_integration_fep_id_t bridge_type,
     cognitive_integration_fep_metrics_t* metrics_out
 ) {
-    if (bridge_type >= COG_INTEG_FEP_COUNT || !metrics_out) return -1;
+    if (bridge_type >= COG_INTEG_FEP_COUNT || !metrics_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_integration_fep_get_metrics: metrics_out is NULL");
+        return -1;
+    }
 
     if (!g_cog_integ_fep_state.initialized) {
         memset(metrics_out, 0, sizeof(cognitive_integration_fep_metrics_t));

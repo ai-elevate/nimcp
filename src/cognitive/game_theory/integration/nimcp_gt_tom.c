@@ -256,6 +256,7 @@ nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
         ctx->mutex = nimcp_mutex_create(&attr);
         if (!ctx->mutex) {
             nimcp_free(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_tom_create: ctx->mutex is NULL");
             return NULL;
         }
     } else {
@@ -300,6 +301,7 @@ static tom_opponent_record_t* find_opponent(nimcp_gt_tom_t ctx, nimcp_player_id_
             return &ctx->opponents[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_opponent: validation failed");
     return NULL;
 }
 
@@ -328,6 +330,7 @@ static tom_opponent_record_t* get_or_create_opponent(nimcp_gt_tom_t ctx, nimcp_p
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_opponent: operation failed");
     return NULL;  // No space for new opponent
 }
 
@@ -1400,6 +1403,7 @@ bool nimcp_gt_tom_is_opponent_tracked(
     nimcp_player_id_t opponent_id
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_tom_is_opponent_tracked: ctx is NULL");
         return false;
     }
 

@@ -105,6 +105,7 @@ meta_learning_fep_bridge_t* meta_learning_fep_bridge_create(const meta_learning_
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
     NIMCP_LOGGING_INFO("Created meta-learning FEP bridge");
@@ -246,7 +247,10 @@ int meta_learning_fep_bridge_disconnect_bio_async(meta_learning_fep_bridge_t* br
 }
 
 bool meta_learning_fep_bridge_is_bio_async_connected(const meta_learning_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     meta_learning_fep_bridge_heartbeat("meta_learnin_is_bio_async_connect", 0.0f);
 

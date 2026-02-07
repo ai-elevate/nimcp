@@ -233,39 +233,49 @@ NIMCP_EXPORT pr_sleep_config_t pr_sleep_config_default(void) {
 
 NIMCP_EXPORT bool pr_sleep_config_validate(const pr_sleep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_config_validate: config is NULL");
         return false;
     }
 
     // Check replay configuration
     if (config->replay_buffer_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: config->replay_buffer_capacity is zero");
         return false;
     }
     if (config->max_replay_per_cycle == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: config->max_replay_per_cycle is zero");
         return false;
     }
     if (config->replay_compression <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
 
     // Check factors are in valid range
     if (config->min_replay_strength < 0.0f || config->min_replay_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
     if (config->sws_promotion_boost < 0.0f || config->sws_promotion_boost > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
     if (config->rem_emotional_factor < 0.0f || config->rem_emotional_factor > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
     if (config->rem_prune_threshold < 0.0f || config->rem_prune_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
 
     // Check deltas are positive
     if (config->consolidation_delta <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
     if (config->association_strengthen_delta <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_config_validate: validation failed");
         return false;
     }
 
@@ -281,6 +291,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
 
     if (config) {
         if (!pr_sleep_config_validate(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_sleep_bridge_create: pr_sleep_config_validate is NULL");
             return NULL;
         }
         cfg = *config;
@@ -307,6 +318,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         bridge->replay_buffer_capacity, sizeof(pr_replay_candidate_t));
     if (!bridge->replay_buffer) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_sleep_bridge_create: bridge->replay_buffer is NULL");
         return NULL;
     }
     bridge->replay_buffer_count = 0;
@@ -319,6 +331,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         if (!bridge->replay_history) {
             nimcp_free(bridge->replay_buffer);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_sleep_bridge_create: bridge->replay_history is NULL");
             return NULL;
         }
     }
@@ -345,6 +358,7 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
         nimcp_free(bridge->replay_history);
         nimcp_free(bridge->replay_buffer);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 #endif
@@ -630,6 +644,7 @@ NIMCP_EXPORT pr_sleep_stage_t pr_sleep_bridge_advance_stage(pr_sleep_bridge_t br
 
 NIMCP_EXPORT bool pr_sleep_bridge_is_sleeping(const pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_is_sleeping: bridge is NULL");
         return false;
     }
     return bridge->current_stage != PR_SLEEP_STAGE_WAKE;
@@ -637,6 +652,7 @@ NIMCP_EXPORT bool pr_sleep_bridge_is_sleeping(const pr_sleep_bridge_t bridge) {
 
 NIMCP_EXPORT bool pr_sleep_bridge_is_deep_sleep(const pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_is_deep_sleep: bridge is NULL");
         return false;
     }
     return bridge->current_stage == PR_SLEEP_STAGE_N3;
@@ -648,10 +664,12 @@ NIMCP_EXPORT bool pr_sleep_bridge_is_deep_sleep(const pr_sleep_bridge_t bridge) 
 
 NIMCP_EXPORT int pr_sleep_bridge_consolidate(pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_consolidate: bridge is NULL");
         return -1;
     }
 
     if (!bridge->ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_consolidate: bridge->ladder is NULL");
         return -1;
     }
 
@@ -699,6 +717,7 @@ NIMCP_EXPORT int pr_sleep_bridge_consolidate_cycles(
     uint32_t num_cycles
 ) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_consolidate_cycles: bridge is NULL");
         return -1;
     }
 
@@ -729,6 +748,7 @@ NIMCP_EXPORT int pr_sleep_bridge_run_sleep_cycles(
     uint32_t num_cycles
 ) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_run_sleep_cycles: bridge is NULL");
         return -1;
     }
 
@@ -994,6 +1014,7 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
     pr_replay_direction_t direction
 ) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC || !node_ids || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_replay_sequence: required parameter is NULL (bridge, node_ids)");
         return -1;
     }
 
@@ -1070,10 +1091,12 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
 
 NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_promote_z_ladder: bridge is NULL");
         return -1;
     }
 
     if (!bridge->ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_promote_z_ladder: bridge->ladder is NULL");
         return -1;
     }
 
@@ -1154,10 +1177,12 @@ NIMCP_EXPORT bool pr_sleep_bridge_promote_memory(
     uint64_t node_id
 ) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_promote_memory: bridge is NULL");
         return false;
     }
 
     if (!bridge->ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_promote_memory: bridge->ladder is NULL");
         return false;
     }
 
@@ -1167,6 +1192,7 @@ NIMCP_EXPORT bool pr_sleep_bridge_promote_memory(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_promote_memory: validation failed");
     return false;
 }
 
@@ -1197,6 +1223,7 @@ NIMCP_EXPORT float pr_sleep_bridge_get_promotion_eligibility(
 
 NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
     if (!bridge || bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_emotional_process: bridge is NULL");
         return -1;
     }
 
@@ -1206,6 +1233,7 @@ NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
     }
 
     if (!bridge->ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_emotional_process: bridge->ladder is NULL");
         return -1;
     }
 
@@ -1708,23 +1736,28 @@ NIMCP_EXPORT uint64_t pr_sleep_current_time_ms(void) {
 
 NIMCP_EXPORT bool pr_sleep_bridge_validate(const pr_sleep_bridge_t bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_sleep_bridge_validate: bridge is NULL");
         return false;
     }
 
     if (bridge->magic != PR_SLEEP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_validate: validation failed");
         return false;
     }
 
     if (bridge->current_stage >= PR_SLEEP_STAGE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_sleep_bridge_validate: capacity exceeded");
         return false;
     }
 
     if (bridge->replay_buffer_count > bridge->replay_buffer_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_validate: validation failed");
         return false;
     }
 
     if (bridge->config.track_replay_history) {
         if (bridge->replay_history_count > bridge->replay_history_capacity) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_sleep_bridge_validate: validation failed");
             return false;
         }
     }
@@ -1816,7 +1849,10 @@ static int compare_replay_priority(const void* a, const void* b) {
     const pr_replay_candidate_t* cb = (const pr_replay_candidate_t*)b;
 
     // Descending order (highest priority first)
-    if (ca->replay_priority > cb->replay_priority) return -1;
+    if (ca->replay_priority > cb->replay_priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_replay_priority: validation failed");
+        return -1;
+    }
     if (ca->replay_priority < cb->replay_priority) return 1;
     return 0;
 }

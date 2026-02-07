@@ -289,6 +289,7 @@ bool nimcp_brain_save_working_memory_state(working_memory_t* wm, FILE* file)
 {
     // Guard: NULL file handle
     if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_save_working_memory_state: file is NULL");
         return false;
     }
 
@@ -350,11 +351,13 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(meta_path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_save_metadata: nimcp_path_is_safe is NULL");
         return false;
     }
 
     FILE* meta_file = fopen(meta_path, "wb");
     if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_save_metadata: meta_file is NULL");
         return false;
     }
 
@@ -383,6 +386,7 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
     bool wm_success = nimcp_brain_save_working_memory_state(brain->working_memory, meta_file);
     if (!wm_success) {
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_save_metadata: wm_success is NULL");
         return false;
     }
 
@@ -499,6 +503,7 @@ bool brain_save(brain_t brain, const char* filepath)
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(filepath)) {
         set_error("Path validation failed: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save: nimcp_path_is_safe is NULL");
         return false;
     }
 
@@ -510,6 +515,7 @@ bool brain_save(brain_t brain, const char* filepath)
 
     if (!success) {
         set_error("Failed to save adaptive network to %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save: success is NULL");
         return false;
     }
 
@@ -519,6 +525,7 @@ bool brain_save(brain_t brain, const char* filepath)
     // Save metadata
     if (!nimcp_brain_save_metadata(brain, filepath)) {
         set_error("Failed to save metadata");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save: nimcp_brain_save_metadata is NULL");
         return false;
     }
 
@@ -548,28 +555,33 @@ static bool load_working_memory_item(working_memory_t* wm, FILE* file)
 
     // Guard: NULL parameters
     if (!wm || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_working_memory_item: required parameter is NULL (wm, file)");
         return false;
     }
 
     uint32_t item_size = 0;
     if (fread(&item_size, sizeof(uint32_t), 1, file) != 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
         return false;
     }
 
     // Guard: Invalid size
     if (item_size == 0 || item_size > MAX_ITEM_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: item_size is zero");
         return false;
     }
 
     // Allocate temporary buffer
     float* item = nimcp_malloc(item_size * sizeof(float));
     if (!item) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "load_working_memory_item: item is NULL");
         return false;
     }
 
     // Read item data
     if (fread(item, sizeof(float), item_size, file) != item_size) {
         nimcp_free(item);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_working_memory_item: validation failed");
         return false;
     }
 
@@ -600,6 +612,7 @@ bool nimcp_brain_load_working_memory_state(brain_t brain, FILE* file)
 {
     // Guard: NULL parameters
     if (!brain || !file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_load_working_memory_state: required parameter is NULL (brain, file)");
         return false;
     }
 
@@ -665,12 +678,15 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(meta_path)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: nimcp_path_is_safe is NULL");
         return false;
     }
 
     FILE* meta_file = fopen(meta_path, "rb");
-    if (!meta_file)
+    if (!meta_file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_load_metadata: meta_file is NULL");
         return false;
+    }
 
     // Try to read version header
     nimcp_file_header_t header;
@@ -692,6 +708,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                         header.version_major, header.version_minor,
                         NIMCP_FORMAT_VERSION_MAJOR);
                 fclose(meta_file);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: validation failed");
                 return false;
             }
 
@@ -727,6 +744,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                                     sizeof(brain->config.learning_rate))) {
         fprintf(stderr, "ERROR: Invalid learning_rate in loaded config (NaN or Inf)\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: operation failed");
         return false;
     }
 
@@ -735,6 +753,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                                     sizeof(brain->config.sparsity_target))) {
         fprintf(stderr, "ERROR: Invalid sparsity_target in loaded config (NaN or Inf)\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: operation failed");
         return false;
     }
 
@@ -743,11 +762,13 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->config.num_inputs))) {
         fprintf(stderr, "ERROR: Invalid num_inputs in loaded config\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_inputs < 1 || brain->config.num_inputs > 10000) {
         fprintf(stderr, "ERROR: num_inputs out of range (1-10000): %u\n", brain->config.num_inputs);
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: validation failed");
         return false;
     }
 
@@ -756,12 +777,14 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->config.num_outputs))) {
         fprintf(stderr, "ERROR: Invalid num_outputs in loaded config\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: operation failed");
         return false;
     }
     if (brain->config.num_outputs < 1 || brain->config.num_outputs > 10000) {
         fprintf(stderr, "ERROR: num_outputs out of range (1-10000): %u\n",
                 brain->config.num_outputs);
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: validation failed");
         return false;
     }
 
@@ -776,6 +799,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                                       sizeof(brain->num_output_labels))) {
         fprintf(stderr, "ERROR: Invalid num_output_labels in loaded metadata\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: operation failed");
         return false;
     }
     if (brain->num_output_labels > MAX_OUTPUT_LABELS) {
@@ -783,6 +807,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
                 brain->num_output_labels, MAX_OUTPUT_LABELS);
         fprintf(stderr, "This file may be maliciously crafted\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_load_metadata: validation failed");
         return false;
     }
 
@@ -797,6 +822,7 @@ bool nimcp_brain_load_metadata(brain_t brain, const char* filepath)
     if (!brain->output_labels) {
         fprintf(stderr, "ERROR: Failed to allocate output_labels array\n");
         fclose(meta_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_load_metadata: brain->output_labels is NULL");
         return false;
     }
 
@@ -943,6 +969,7 @@ cleanup:
     nimcp_free(brain->output_labels);
     brain->output_labels = NULL;
     fclose(meta_file);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return false;
 }
 
@@ -962,12 +989,14 @@ brain_t brain_load(const char* filepath)
     // Guard: Validate filepath
     if (!filepath) {
         set_error("Null filepath provided to brain_load");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load: filepath is NULL");
         return NULL;
     }
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(filepath)) {
         set_error("Path validation failed: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load: nimcp_path_is_safe is NULL");
         return NULL;
     }
 
@@ -975,6 +1004,7 @@ brain_t brain_load(const char* filepath)
     adaptive_network_t network = adaptive_network_load(filepath);
     if (!network) {
         set_error("Failed to load adaptive network from %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load: network is NULL");
         return NULL;
     }
 
@@ -982,6 +1012,7 @@ brain_t brain_load(const char* filepath)
     brain_t brain = allocate_brain();
     if (!brain) {
         adaptive_network_destroy(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_load: brain is NULL");
         return NULL;
     }
 
@@ -1021,6 +1052,7 @@ brain_t brain_load(const char* filepath)
     if (!brain->strategy) {
         set_error("Failed to create task strategy");
         brain_destroy(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_load: brain->strategy is NULL");
         return NULL;
     }
 
@@ -1109,6 +1141,7 @@ brain_t brain_load(const char* filepath)
 static bool ensure_snapshot_dir(const char* snapshot_dir)
 {
     if (!snapshot_dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_snapshot_dir: snapshot_dir is NULL");
         return false;
     }
 
@@ -1141,6 +1174,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
     // Guard: Validate parameters
     if (!brain || !name) {
         set_error("Invalid parameters to brain_save_snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_snapshot: required parameter is NULL (brain, name)");
         return false;
     }
 
@@ -1161,6 +1195,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
         // Route to KG-based snapshot storage
         if (!brain->kg_persistence) {
             set_error("KG persistence not available but SNAPSHOT_BACKEND_KG requested");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_snapshot: brain->kg_persistence is NULL");
             return false;
         }
         int result = brain_save_snapshot_kg(brain, name, description, brain->kg_persistence);
@@ -1177,6 +1212,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
     const char* snapshot_dir = get_snapshot_dir(brain);
     if (!ensure_snapshot_dir(snapshot_dir)) {
         set_error("Failed to create snapshot directory: %s", snapshot_dir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save_snapshot: ensure_snapshot_dir is NULL");
         return false;
     }
 
@@ -1192,6 +1228,7 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
     // Save brain state to snapshot file
     if (!brain_save(brain, snapshot_path)) {
         set_error("Failed to save snapshot to %s", snapshot_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_save_snapshot: brain_save is NULL");
         return false;
     }
 
@@ -1226,6 +1263,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
     // Guard: Validate parameters
     if (!name) {
         set_error("Null snapshot name provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot: name is NULL");
         return NULL;
     }
 
@@ -1251,6 +1289,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
         // Explicit KG backend requested
         if (!brain || !brain->kg_persistence) {
             set_error("KG persistence not available but SNAPSHOT_BACKEND_KG requested");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot: required parameter is NULL (brain, brain->kg_persistence)");
             return NULL;
         }
         brain_t restored = brain_restore_snapshot_kg(name, brain->kg_persistence);
@@ -1271,6 +1310,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
     DIR* dir = opendir(snapshot_dir);
     if (!dir) {
         set_error("Failed to open snapshot directory: %s", snapshot_dir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot: dir is NULL");
         return NULL;
     }
 
@@ -1310,6 +1350,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
 
     if (best_snapshot[0] == '\0') {
         set_error("No snapshot found with name: %s", name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot: validation failed");
         return NULL;
     }
 
@@ -1323,6 +1364,7 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
     brain_t loaded_brain = brain_load(snapshot_path);
     if (!loaded_brain) {
         set_error("Failed to load snapshot: %s", snapshot_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_restore_snapshot: loaded_brain is NULL");
         return NULL;
     }
 
@@ -1342,6 +1384,7 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
     // Guard: Validate required parameters (out_count is optional)
     if (!brain || !infos) {
         set_error("Invalid parameters to brain_list_snapshots");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_snapshots: required parameter is NULL (brain, infos)");
         return false;
     }
 
@@ -1354,6 +1397,7 @@ bool brain_list_snapshots(brain_t brain, brain_snapshot_info_t* infos,
     const char* snapshot_dir = get_snapshot_dir(brain);
     if (!snapshot_dir) {
         set_error("Failed to get snapshot directory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_snapshots: snapshot_dir is NULL");
         return false;
     }
 
@@ -1443,6 +1487,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
     // Guard: Validate parameters
     if (!brain || !name) {
         set_error("Invalid parameters to brain_delete_snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_delete_snapshot: required parameter is NULL (brain, name)");
         return false;
     }
 
@@ -1453,6 +1498,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
     DIR* dir = opendir(snapshot_dir);
     if (!dir) {
         set_error("Failed to open snapshot directory: %s", snapshot_dir);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_delete_snapshot: dir is NULL");
         return false;
     }
 
@@ -1492,6 +1538,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
 
     if (best_snapshot[0] == '\0') {
         set_error("No snapshot found with name: %s", name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_delete_snapshot: validation failed");
         return false;
     }
 
@@ -1501,6 +1548,7 @@ bool brain_delete_snapshot(brain_t brain, const char* name)
 
     if (remove(snapshot_path) != 0) {
         set_error("Failed to delete snapshot: %s", snapshot_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_delete_snapshot: validation failed");
         return false;
     }
 
@@ -1550,6 +1598,7 @@ bool persistence_init(nimcp_sec_integration_t* security_ctx)
     // Initialize statistics mutex (non-recursive)
     if (nimcp_platform_mutex_init(&g_persistence_state.stats_mutex, false) != 0) {
         fprintf(stderr, "ERROR: Failed to initialize persistence stats mutex\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "persistence_init: validation failed");
         return false;
     }
 
@@ -1634,12 +1683,14 @@ bool persistence_get_stats(persistence_stats_t* stats)
 {
     // Guard: NULL parameter
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "persistence_get_stats: stats is NULL");
         return false;
     }
 
     // Guard: Not initialized
     if (!g_persistence_state.initialized) {
         memset(stats, 0, sizeof(persistence_stats_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "persistence_get_stats: g_persistence_state is NULL");
         return false;
     }
 
@@ -1814,6 +1865,7 @@ bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config
     // Guard: Validate parameters
     if (!brain || !filepath) {
         set_error("Invalid parameters to brain_save_ex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_ex: required parameter is NULL (brain, filepath)");
         return false;
     }
 
@@ -1908,6 +1960,7 @@ brain_t brain_load_ex(const char* filepath, const persistence_config_t* config)
     // Guard: Validate filepath
     if (!filepath) {
         set_error("Null filepath provided to brain_load_ex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load_ex: filepath is NULL");
         return NULL;
     }
 
@@ -1958,6 +2011,7 @@ brain_t brain_load_ex(const char* filepath, const persistence_config_t* config)
                     update_stats_checksum_failure();
                     record_security_interaction(false, 1.0);
                     set_error("Checksum verification failed for %s", filepath);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load_ex: checksum_valid is NULL");
                     return NULL;
                 }
             }
@@ -2007,6 +2061,7 @@ bool brain_save_snapshot_cow(brain_t brain, const char* name,
     // Guard: Validate parameters
     if (!brain || !name) {
         set_error("Invalid parameters to brain_save_snapshot_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save_snapshot_cow: required parameter is NULL (brain, name)");
         return false;
     }
 

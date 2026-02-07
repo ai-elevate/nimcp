@@ -209,6 +209,7 @@ int hypo_wellbeing_bridge_compute_distress(hypo_wellbeing_bridge_t* bridge) {
     /* Get current drive states */
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_wellbeing_bridge_compute_distress: hypo_drive_get_system_state is NULL");
         return -1;
     }
 
@@ -343,7 +344,10 @@ int hypo_wellbeing_bridge_get_distress_report(
 }
 
 bool hypo_wellbeing_bridge_needs_intervention(const hypo_wellbeing_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_needs_intervention: bridge is NULL");
+        return false;
+    }
     return bridge->distress_report.requires_intervention;
 }
 
@@ -468,7 +472,10 @@ static nimcp_error_t wellbeing_handle_distress_request(
 }
 
 bool hypo_wellbeing_bridge_register_bio(hypo_wellbeing_bridge_t* bridge, bool use_kg_wiring) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_register_bio: bridge is NULL");
+        return false;
+    }
     if (bridge->bio_registered) return true;
 
     (void)use_kg_wiring;  /* Future KG wiring integration */
@@ -483,6 +490,7 @@ bool hypo_wellbeing_bridge_register_bio(hypo_wellbeing_bridge_t* bridge, bool us
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_wellbeing_bridge: failed to register with bio-router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_register_bio: bridge->bio_ctx is NULL");
         return false;
     }
 

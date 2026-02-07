@@ -95,7 +95,10 @@ static float apply_attention_and_inhibition(float signal, float attention, float
 //=============================================================================
 
 int dragonfly_thalamic_bridge_default_config(dragonfly_thalamic_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -129,16 +132,43 @@ int dragonfly_thalamic_bridge_default_config(dragonfly_thalamic_config_t* config
 }
 
 int dragonfly_thalamic_bridge_validate_config(const dragonfly_thalamic_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_bridge_validate_config: config is NULL");
+        return -1;
+    }
 
-    if (config->lgn_channels == 0 || config->lgn_channels > THAL_BRIDGE_MAX_VISUAL_CHANNELS) return -1;
-    if (config->lgn_attention_baseline < 0 || config->lgn_attention_baseline > 1.0f) return -1;
-    if (config->pulvinar_gain < 0) return -1;
-    if (config->pulvinar_threshold < 0 || config->pulvinar_threshold > 1.0f) return -1;
-    if (config->motor_channels == 0 || config->motor_channels > THAL_BRIDGE_MAX_MOTOR_CHANNELS) return -1;
-    if (config->motor_gain < 0) return -1;
-    if (config->decision_threshold < 0 || config->decision_threshold > 1.0f) return -1;
-    if (config->update_rate_hz <= 0) return -1;
+    if (config->lgn_channels == 0 || config->lgn_channels > THAL_BRIDGE_MAX_VISUAL_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: config->lgn_channels is zero");
+        return -1;
+    }
+    if (config->lgn_attention_baseline < 0 || config->lgn_attention_baseline > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->pulvinar_gain < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->pulvinar_threshold < 0 || config->pulvinar_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->motor_channels == 0 || config->motor_channels > THAL_BRIDGE_MAX_MOTOR_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: config->motor_channels is zero");
+        return -1;
+    }
+    if (config->motor_gain < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->decision_threshold < 0 || config->decision_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
+    if (config->update_rate_hz <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_thalamic_bridge_validate_config: validation failed");
+        return -1;
+    }
 
     return 0;
 }
@@ -199,7 +229,10 @@ void dragonfly_thalamic_bridge_destroy(dragonfly_thalamic_bridge_t* bridge) {
 }
 
 int dragonfly_thalamic_bridge_reset(dragonfly_thalamic_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_bridge_reset: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->current_mode = bridge->config.initial_mode;
     bridge->visual_attention = bridge->config.lgn_attention_baseline;
@@ -233,7 +266,10 @@ int dragonfly_thalamic_relay_visual(
     dragonfly_thalamic_bridge_t* bridge,
     const thal_visual_target_t* target
 ) {
-    if (!bridge || !bridge->initialized || !target) return -1;
+    if (!bridge || !bridge->initialized || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_relay_visual: required parameter is NULL (bridge, bridge->initialized, target)");
+        return -1;
+    }
 
     uint64_t start = get_time_us();
 
@@ -278,7 +314,10 @@ int dragonfly_thalamic_relay_motor(
     dragonfly_thalamic_bridge_t* bridge,
     const thal_motor_command_t* command
 ) {
-    if (!bridge || !bridge->initialized || !command) return -1;
+    if (!bridge || !bridge->initialized || !command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_relay_motor: required parameter is NULL (bridge, bridge->initialized, command)");
+        return -1;
+    }
 
     uint64_t start = get_time_us();
 
@@ -319,7 +358,10 @@ int dragonfly_thalamic_relay_attention(
     dragonfly_thalamic_bridge_t* bridge,
     const thal_attention_signal_t* attention
 ) {
-    if (!bridge || !bridge->initialized || !attention) return -1;
+    if (!bridge || !bridge->initialized || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_relay_attention: required parameter is NULL (bridge, bridge->initialized, attention)");
+        return -1;
+    }
 
     uint64_t start = get_time_us();
 
@@ -360,7 +402,10 @@ int dragonfly_thalamic_relay_decision(
     dragonfly_thalamic_bridge_t* bridge,
     const thal_decision_signal_t* decision
 ) {
-    if (!bridge || !bridge->initialized || !decision) return -1;
+    if (!bridge || !bridge->initialized || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_relay_decision: required parameter is NULL (bridge, bridge->initialized, decision)");
+        return -1;
+    }
 
     uint64_t start = get_time_us();
 
@@ -403,7 +448,10 @@ int dragonfly_thalamic_relay_tsdn(
     float heading_angle,
     float confidence
 ) {
-    if (!bridge || !bridge->initialized || !tsdn_population) return -1;
+    if (!bridge || !bridge->initialized || !tsdn_population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_relay_tsdn: required parameter is NULL (bridge, bridge->initialized, tsdn_population)");
+        return -1;
+    }
 
     /* Store TSDN state */
     memcpy(bridge->last_tsdn, tsdn_population, sizeof(float) * THAL_BRIDGE_TSDN_CHANNELS);
@@ -447,7 +495,10 @@ int dragonfly_thalamic_set_mode(
     dragonfly_thalamic_bridge_t* bridge,
     thal_routing_mode_t mode
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_set_mode: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     if (bridge->current_mode != mode) {
         bridge->current_mode = mode;
@@ -507,7 +558,10 @@ int dragonfly_thalamic_set_attention(
     thal_signal_type_t signal_type,
     float attention
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_set_attention: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     attention = clamp_f(attention, 0.0f, 1.0f);
 
@@ -535,7 +589,10 @@ int dragonfly_thalamic_apply_inhibition(
     thal_signal_type_t signal_type,
     float inhibition
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_apply_inhibition: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     inhibition = clamp_f(inhibition, 0.0f, 1.0f);
 
@@ -566,7 +623,10 @@ int dragonfly_thalamic_connect_dragonfly(
     dragonfly_thalamic_bridge_t* bridge,
     dragonfly_system_t* dragonfly
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_connect_dragonfly: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     bridge->dragonfly = dragonfly;
     return 0;
 }
@@ -575,7 +635,10 @@ int dragonfly_thalamic_connect_thalamus(
     dragonfly_thalamic_bridge_t* bridge,
     void* thalamus
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_connect_thalamus: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     bridge->thalamus = thalamus;
     return 0;
 }
@@ -593,7 +656,10 @@ bool dragonfly_thalamic_has_thalamus(const dragonfly_thalamic_bridge_t* bridge) 
 //=============================================================================
 
 int dragonfly_thalamic_update(dragonfly_thalamic_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_update: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     /* If dragonfly is connected, pull current state */
     if (bridge->dragonfly) {
@@ -643,7 +709,10 @@ int dragonfly_thalamic_step(
     dragonfly_thalamic_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_step: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     (void)dt_ms;
 
     return dragonfly_thalamic_update(bridge);
@@ -657,7 +726,10 @@ int dragonfly_thalamic_bridge_get_stats(
     const dragonfly_thalamic_bridge_t* bridge,
     thal_bridge_stats_t* stats
 ) {
-    if (!bridge || !bridge->initialized || !stats) return -1;
+    if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -674,7 +746,10 @@ int dragonfly_thalamic_bridge_get_stats(
 }
 
 int dragonfly_thalamic_bridge_reset_stats(dragonfly_thalamic_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_thalamic_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

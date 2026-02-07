@@ -225,6 +225,7 @@ static void pa_calculate_trend(pa_series_data_t* series) {
 static bool pa_detect_zscore(pa_series_data_t* series, double value, double threshold, double* score) {
     if (!series || series->count < 10) {
         if (score) *score = 0.0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_detect_zscore: validation failed");
         return false;
     }
 
@@ -243,6 +244,7 @@ static bool pa_detect_zscore(pa_series_data_t* series, double value, double thre
 static bool pa_detect_iqr(pa_series_data_t* series, double value, double* score) {
     if (!series || series->count < 20) {
         if (score) *score = 0.0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_detect_iqr: validation failed");
         return false;
     }
 
@@ -390,6 +392,7 @@ pa_context_t* pa_create(const pa_config_t* config) {
     if (nimcp_mutex_init(&ctx->mutex, NULL) != 0) {
         LOG_ERROR("PA", "Failed to initialize mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "pa_create: validation failed");
         return NULL;
     }
 
@@ -431,7 +434,10 @@ void pa_destroy(pa_context_t* ctx) {
 }
 
 bool pa_start(pa_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_start: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->running = true;
@@ -444,7 +450,10 @@ bool pa_start(pa_context_t* ctx) {
 }
 
 bool pa_stop(pa_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_stop: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     ctx->running = false;
@@ -466,8 +475,14 @@ bool pa_add_sample(pa_context_t* ctx, pa_series_type_t series, double value) {
 }
 
 bool pa_add_sample_timed(pa_context_t* ctx, pa_series_type_t series, double value, uint64_t timestamp_ms) {
-    if (!ctx) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_add_sample_timed: ctx is NULL");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_add_sample_timed: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -518,8 +533,14 @@ uint32_t pa_add_samples(pa_context_t* ctx, pa_series_type_t series,
 }
 
 bool pa_get_series_meta(pa_context_t* ctx, pa_series_type_t series, pa_series_meta_t* meta) {
-    if (!ctx || !meta) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx || !meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_get_series_meta: required parameter is NULL (ctx, meta)");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_series_meta: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     *meta = ctx->series[series].meta;
@@ -630,8 +651,14 @@ uint32_t pa_detect_all_anomalies(pa_context_t* ctx, pa_anomaly_t* anomalies, uin
 }
 
 bool pa_is_anomalous(pa_context_t* ctx, pa_series_type_t series, double value) {
-    if (!ctx) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_is_anomalous: ctx is NULL");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_is_anomalous: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -665,9 +692,18 @@ double pa_get_anomaly_score(pa_context_t* ctx, pa_series_type_t series, double v
 
 bool pa_calculate_correlation(pa_context_t* ctx, pa_series_type_t series_a,
                                pa_series_type_t series_b, pa_correlation_t* correlation) {
-    if (!ctx || !correlation) return false;
-    if (series_a < 0 || series_a >= PA_MAX_SERIES) return false;
-    if (series_b < 0 || series_b >= PA_MAX_SERIES) return false;
+    if (!ctx || !correlation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_get_anomaly_score: required parameter is NULL (ctx, correlation)");
+        return false;
+    }
+    if (series_a < 0 || series_a >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_anomaly_score: capacity exceeded");
+        return false;
+    }
+    if (series_b < 0 || series_b >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_get_anomaly_score: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -677,6 +713,7 @@ bool pa_calculate_correlation(pa_context_t* ctx, pa_series_type_t series_a,
     uint32_t n = a->count < b->count ? a->count : b->count;
     if (n < 10) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_get_anomaly_score: validation failed");
         return false;
     }
 
@@ -745,7 +782,10 @@ uint32_t pa_find_correlations(pa_context_t* ctx, pa_correlation_t* correlations,
 }
 
 bool pa_build_failure_graph(pa_context_t* ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_build_failure_graph: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     /* Note: Do NOT clear edge_count here - edges are added by pa_record_failure_sequence */
@@ -772,7 +812,10 @@ uint32_t pa_get_failure_edges(pa_context_t* ctx, pa_failure_edge_t* edges, uint3
 
 bool pa_record_failure_sequence(pa_context_t* ctx, const uint32_t* failure_types,
                                   uint32_t count, const uint32_t* time_deltas_ms) {
-    if (!ctx || !failure_types || count < 2) return false;
+    if (!ctx || !failure_types || count < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_get_failure_edges: required parameter is NULL (ctx, failure_types)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -830,8 +873,14 @@ bool pa_forecast(pa_context_t* ctx, pa_series_type_t series, pa_forecast_t* fore
 bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
                               pa_model_type_t model, uint32_t horizon,
                               pa_forecast_t* forecast) {
-    if (!ctx || !forecast) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx || !forecast) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_forecast: required parameter is NULL (ctx, forecast)");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_forecast: capacity exceeded");
+        return false;
+    }
     if (horizon > PA_FORECAST_HORIZON) horizon = PA_FORECAST_HORIZON;
 
     nimcp_mutex_lock(&ctx->mutex);
@@ -840,6 +889,7 @@ bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
 
     if (s->count < 10) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_forecast: validation failed");
         return false;
     }
 
@@ -890,8 +940,14 @@ bool pa_forecast_with_model(pa_context_t* ctx, pa_series_type_t series,
 
 bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
                            double threshold, uint64_t* time_ms) {
-    if (!ctx || !time_ms) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx || !time_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_forecast: required parameter is NULL (ctx, time_ms)");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_forecast: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -899,6 +955,7 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
 
     if (s->count < 10) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_forecast: validation failed");
         return false;
     }
 
@@ -917,6 +974,7 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
     if (fabs(s->slope) < 1e-10) {
         /* No trend, won't reach threshold */
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_forecast: validation failed");
         return false;
     }
 
@@ -924,6 +982,7 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
     if ((s->slope > 0 && delta < 0) || (s->slope < 0 && delta > 0)) {
         /* Moving away from threshold */
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_forecast: validation failed");
         return false;
     }
 
@@ -936,8 +995,14 @@ bool pa_time_to_threshold(pa_context_t* ctx, pa_series_type_t series,
 }
 
 bool pa_detect_seasonality(pa_context_t* ctx, pa_series_type_t series, pa_seasonality_t* seasonality) {
-    if (!ctx || !seasonality) return false;
-    if (series < 0 || series >= PA_MAX_SERIES) return false;
+    if (!ctx || !seasonality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_detect_seasonality: required parameter is NULL (ctx, seasonality)");
+        return false;
+    }
+    if (series < 0 || series >= PA_MAX_SERIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pa_detect_seasonality: capacity exceeded");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -945,6 +1010,7 @@ bool pa_detect_seasonality(pa_context_t* ctx, pa_series_type_t series, pa_season
 
     if (s->count < ctx->config.seasonality_period * 2) {
         nimcp_mutex_unlock(&ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_detect_seasonality: validation failed");
         return false;
     }
 
@@ -1056,12 +1122,18 @@ uint32_t pa_predict_failures(pa_context_t* ctx, pa_failure_prediction_t* predict
 }
 
 bool pa_get_highest_risk_failure(pa_context_t* ctx, pa_failure_prediction_t* prediction) {
-    if (!ctx || !prediction) return false;
+    if (!ctx || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_get_highest_risk_failure: required parameter is NULL (ctx, prediction)");
+        return false;
+    }
 
     pa_failure_prediction_t predictions[16];
     uint32_t count = pa_predict_failures(ctx, predictions, 16);
 
-    if (count == 0) return false;
+    if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_get_highest_risk_failure: count is zero");
+        return false;
+    }
 
     /* Find highest probability */
     pa_failure_prediction_t* highest = &predictions[0];
@@ -1076,7 +1148,10 @@ bool pa_get_highest_risk_failure(pa_context_t* ctx, pa_failure_prediction_t* pre
 }
 
 bool pa_predict_failure_type(pa_context_t* ctx, uint32_t failure_type, pa_failure_prediction_t* prediction) {
-    if (!ctx || !prediction) return false;
+    if (!ctx || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_predict_failure_type: required parameter is NULL (ctx, prediction)");
+        return false;
+    }
 
     pa_failure_prediction_t predictions[16];
     uint32_t count = pa_predict_failures(ctx, predictions, 16);
@@ -1088,11 +1163,15 @@ bool pa_predict_failure_type(pa_context_t* ctx, uint32_t failure_type, pa_failur
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_predict_failure_type: validation failed");
     return false;
 }
 
 bool pa_record_actual_failure(pa_context_t* ctx, uint32_t failure_type, uint64_t timestamp_ms) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_record_actual_failure: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1169,7 +1248,10 @@ uint32_t pa_get_alerts_by_severity(pa_context_t* ctx, pa_alert_severity_t severi
 }
 
 bool pa_acknowledge_alert(pa_context_t* ctx, uint32_t alert_id) {
-    if (!ctx || alert_id == 0) return false;
+    if (!ctx || alert_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_acknowledge_alert: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1186,11 +1268,15 @@ bool pa_acknowledge_alert(pa_context_t* ctx, uint32_t alert_id) {
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_acknowledge_alert: validation failed");
     return false;
 }
 
 bool pa_suppress_alert(pa_context_t* ctx, uint32_t alert_id, uint64_t duration_ms) {
-    if (!ctx || alert_id == 0) return false;
+    if (!ctx || alert_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_suppress_alert: ctx is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
 
@@ -1208,6 +1294,7 @@ bool pa_suppress_alert(pa_context_t* ctx, uint32_t alert_id, uint64_t duration_m
     }
 
     nimcp_mutex_unlock(&ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pa_suppress_alert: validation failed");
     return false;
 }
 
@@ -1241,7 +1328,10 @@ uint32_t pa_clear_expired_alerts(pa_context_t* ctx) {
 //=============================================================================
 
 bool pa_get_stats(pa_context_t* ctx, pa_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pa_get_stats: required parameter is NULL (ctx, stats)");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->mutex);
     *stats = ctx->stats;

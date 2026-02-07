@@ -226,7 +226,10 @@ int entorhinal_brain_init_initialize(
     nimcp_entorhinal_t* entorhinal,
     nimcp_brain_t* brain)
 {
-    if (!bridge || !entorhinal) return -1;
+    if (!bridge || !entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_initialize: required parameter is NULL (bridge, entorhinal)");
+        return -1;
+    }
 
     bridge->entorhinal = entorhinal;
     bridge->brain = brain;
@@ -236,24 +239,28 @@ int entorhinal_brain_init_initialize(
     /* Phase 1: Pre-initialization */
     if (entorhinal_brain_init_execute_phase(bridge,
         ENTORHINAL_INIT_PHASE_PRE_INIT) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: operation failed");
         return -1;
     }
 
     /* Phase 2: Resource allocation */
     if (entorhinal_brain_init_execute_phase(bridge,
         ENTORHINAL_INIT_PHASE_RESOURCE_ALLOC) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: operation failed");
         return -1;
     }
 
     /* Phase 3: Core initialization */
     if (entorhinal_brain_init_execute_phase(bridge,
         ENTORHINAL_INIT_PHASE_CORE_INIT) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: operation failed");
         return -1;
     }
 
     /* Phase 4: Bridge connections */
     if (entorhinal_brain_init_execute_phase(bridge,
         ENTORHINAL_INIT_PHASE_BRIDGE_CONNECT) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: operation failed");
         return -1;
     }
 
@@ -261,7 +268,10 @@ int entorhinal_brain_init_initialize(
     if (!bridge->config.skip_calibration) {
         if (entorhinal_brain_init_execute_phase(bridge,
             ENTORHINAL_INIT_PHASE_CALIBRATION) != 0) {
-            if (bridge->config.fail_fast) return -1;
+            if (bridge->config.fail_fast) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: validation failed");
+                return -1;
+            }
         }
     }
 
@@ -269,14 +279,20 @@ int entorhinal_brain_init_initialize(
     if (!bridge->config.skip_self_test) {
         if (entorhinal_brain_init_execute_phase(bridge,
             ENTORHINAL_INIT_PHASE_SELF_TEST) != 0) {
-            if (bridge->config.fail_fast) return -1;
+            if (bridge->config.fail_fast) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: validation failed");
+                return -1;
+            }
         }
     }
 
     /* Phase 7: Registration */
     if (entorhinal_brain_init_execute_phase(bridge,
         ENTORHINAL_INIT_PHASE_REGISTRATION) != 0) {
-        if (bridge->config.fail_fast) return -1;
+        if (bridge->config.fail_fast) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_initialize: validation failed");
+            return -1;
+        }
     }
 
     /* Complete */
@@ -293,7 +309,10 @@ bool entorhinal_brain_init_check_dependencies(
     entorhinal_brain_init_bridge_t* bridge,
     uint32_t required_deps)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_check_dependencies: bridge is NULL");
+        return false;
+    }
 
     bridge->status.dependencies_required = required_deps;
 
@@ -348,7 +367,10 @@ int entorhinal_brain_init_wait_dependencies(
     uint32_t required_deps,
     uint32_t timeout_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_wait_dependencies: bridge is NULL");
+        return -1;
+    }
 
     uint64_t start_time = get_current_time_ms();
 
@@ -357,6 +379,7 @@ int entorhinal_brain_init_wait_dependencies(
         if (elapsed >= timeout_ms) {
             set_error(bridge, ENTORHINAL_INIT_PHASE_PRE_INIT, -1,
                 "Dependency timeout");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_wait_dependencies: capacity exceeded");
             return -1;
         }
         /* Would sleep briefly here */
@@ -369,7 +392,10 @@ int entorhinal_brain_init_execute_phase(
     entorhinal_brain_init_bridge_t* bridge,
     entorhinal_init_phase_t phase)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_execute_phase: bridge is NULL");
+        return -1;
+    }
 
     transition_phase(bridge, phase);
 
@@ -379,6 +405,7 @@ int entorhinal_brain_init_execute_phase(
             /* Validate entorhinal configuration */
             if (!bridge->entorhinal) {
                 set_error(bridge, phase, -1, "Entorhinal instance is NULL");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_execute_phase: bridge->entorhinal is NULL");
                 return -1;
             }
             report_progress(bridge, 0.5f, "Checking dependencies");
@@ -386,6 +413,7 @@ int entorhinal_brain_init_execute_phase(
                 if (entorhinal_brain_init_wait_dependencies(bridge,
                     ENTORHINAL_DEP_MEMORY_POOL | ENTORHINAL_DEP_LOGGING,
                     bridge->config.dependency_timeout_ms) != 0) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_execute_phase: validation failed");
                     return -1;
                 }
             }
@@ -422,6 +450,7 @@ int entorhinal_brain_init_execute_phase(
             if (entorhinal_brain_init_connect_all_bridges(bridge) != 0) {
                 if (bridge->config.fail_fast) {
                     set_error(bridge, phase, -1, "Bridge connection failed");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_execute_phase: validation failed");
                     return -1;
                 }
             }
@@ -442,6 +471,7 @@ int entorhinal_brain_init_execute_phase(
                 bridge->status.self_test_passed = false;
                 if (bridge->config.fail_fast) {
                     set_error(bridge, phase, -1, "Self-test failed");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_execute_phase: validation failed");
                     return -1;
                 }
             } else {
@@ -471,10 +501,14 @@ int entorhinal_brain_init_execute_phase(
 int entorhinal_brain_init_advance_phase(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_advance_phase: bridge is NULL");
+        return -1;
+    }
 
     entorhinal_init_phase_t next_phase = bridge->status.current_phase + 1;
     if (next_phase >= ENTORHINAL_INIT_PHASE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "entorhinal_brain_init_advance_phase: capacity exceeded");
         return -1;
     }
 
@@ -485,7 +519,10 @@ int entorhinal_brain_init_connect_bridge(
     entorhinal_brain_init_bridge_t* bridge,
     bridge_init_order_t bridge_order)
 {
-    if (!bridge || bridge_order >= BRIDGE_INIT_ORDER_COUNT) return -1;
+    if (!bridge || bridge_order >= BRIDGE_INIT_ORDER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "entorhinal_brain_init_connect_bridge: bridge is NULL");
+        return -1;
+    }
 
     int result = 0;
 
@@ -569,7 +606,10 @@ int entorhinal_brain_init_connect_bridge(
 int entorhinal_brain_init_connect_all_bridges(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_connect_all_bridges: bridge is NULL");
+        return -1;
+    }
 
     int failures = 0;
 
@@ -580,6 +620,7 @@ int entorhinal_brain_init_connect_all_bridges(
         if (entorhinal_brain_init_connect_bridge(bridge, (bridge_init_order_t)i) != 0) {
             failures++;
             if (bridge->config.fail_fast && !bridge->config.optional_bridges_can_fail) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_connect_all_bridges: bridge->config is NULL");
                 return -1;
             }
         }
@@ -595,7 +636,10 @@ int entorhinal_brain_init_connect_all_bridges(
 int entorhinal_brain_init_shutdown(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_shutdown: bridge is NULL");
+        return -1;
+    }
 
     /* Execute shutdown phases in order */
     for (int phase = ENTORHINAL_SHUTDOWN_PHASE_PREPARE;
@@ -611,7 +655,10 @@ int entorhinal_brain_init_execute_shutdown_phase(
     entorhinal_brain_init_bridge_t* bridge,
     entorhinal_shutdown_phase_t phase)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_execute_shutdown_phase: bridge is NULL");
+        return -1;
+    }
 
     bridge->status.shutdown_phase = phase;
 
@@ -650,7 +697,10 @@ int entorhinal_brain_init_execute_shutdown_phase(
 int entorhinal_brain_init_force_shutdown(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_force_shutdown: bridge is NULL");
+        return -1;
+    }
 
     /* Skip directly to cleanup */
     bridge->status.shutdown_phase = ENTORHINAL_SHUTDOWN_PHASE_CLEANUP;
@@ -667,7 +717,10 @@ int entorhinal_brain_init_register_factory(
     entorhinal_brain_init_bridge_t* bridge,
     nimcp_brain_factory_t* factory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_register_factory: bridge is NULL");
+        return -1;
+    }
 
     bridge->factory = factory;
     /* Would call factory registration API here */
@@ -680,7 +733,10 @@ int entorhinal_brain_init_register_kg(
     entorhinal_brain_init_bridge_t* bridge,
     brain_kg_t* kg)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_register_kg: bridge is NULL");
+        return -1;
+    }
 
     bridge->kg = kg;
     /* Would call KG registration API here */
@@ -692,7 +748,10 @@ int entorhinal_brain_init_register_kg(
 int entorhinal_brain_init_deregister(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_deregister: bridge is NULL");
+        return -1;
+    }
 
     /* Deregister from factory */
     if (bridge->registered_with_factory) {
@@ -716,7 +775,10 @@ int entorhinal_brain_init_deregister(
 int entorhinal_brain_init_self_test(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_self_test: bridge is NULL");
+        return -1;
+    }
 
     bridge->status.self_test_failures = 0;
 
@@ -751,11 +813,15 @@ int entorhinal_brain_init_self_test(
 int entorhinal_brain_init_test_grid_cells(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_test_grid_cells: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Test basic grid cell update */
     float position[3] = {1.0f, 1.0f, 0.0f};
     if (entorhinal_update_grid_cells(bridge->entorhinal, position, 3) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_test_grid_cells: validation failed");
         return -1;
     }
 
@@ -765,11 +831,15 @@ int entorhinal_brain_init_test_grid_cells(
 int entorhinal_brain_init_test_path_integration(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_test_path_integration: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Test basic path integration */
     float velocity[3] = {1.0f, 0.0f, 0.0f};
     if (entorhinal_path_integrate(bridge->entorhinal, velocity, 0.0f, 0.1f) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_test_path_integration: validation failed");
         return -1;
     }
 
@@ -779,10 +849,14 @@ int entorhinal_brain_init_test_path_integration(
 int entorhinal_brain_init_test_memory_gateway(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_test_memory_gateway: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Test encoding gate */
     if (entorhinal_set_encoding_gate(bridge->entorhinal, 0.5f) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_test_memory_gateway: validation failed");
         return -1;
     }
 
@@ -792,10 +866,14 @@ int entorhinal_brain_init_test_memory_gateway(
 int entorhinal_brain_init_test_bridges(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_test_bridges: bridge is NULL");
+        return -1;
+    }
 
     /* Verify bridges are connected */
     if (bridge->status.bridges_connected == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "entorhinal_brain_init_test_bridges: bridge->status.bridges_connected is zero");
         return -1;
     }
 
@@ -809,7 +887,10 @@ int entorhinal_brain_init_test_bridges(
 int entorhinal_brain_init_calibrate(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_calibrate: bridge is NULL");
+        return -1;
+    }
 
     /* Calibrate grid cells */
     entorhinal_brain_init_calibrate_grid_cells(bridge);
@@ -823,7 +904,10 @@ int entorhinal_brain_init_calibrate(
 int entorhinal_brain_init_calibrate_grid_cells(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_calibrate_grid_cells: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Reset grid phases to known position */
     float known_position[3] = {0.0f, 0.0f, 0.0f};
@@ -833,7 +917,10 @@ int entorhinal_brain_init_calibrate_grid_cells(
 int entorhinal_brain_init_calibrate_hd_cells(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_calibrate_hd_cells: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     /* Calibrate to known heading */
     return entorhinal_calibrate_hd_cells(bridge->entorhinal, 0.0f);
@@ -847,7 +934,10 @@ int entorhinal_brain_init_get_status(
     const entorhinal_brain_init_bridge_t* bridge,
     entorhinal_init_status_t* status_out)
 {
-    if (!bridge || !status_out) return -1;
+    if (!bridge || !status_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_get_status: required parameter is NULL (bridge, status_out)");
+        return -1;
+    }
 
     *status_out = bridge->status;
 
@@ -864,7 +954,10 @@ entorhinal_init_phase_t entorhinal_brain_init_get_phase(
 bool entorhinal_brain_init_is_ready(
     const entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_is_ready: bridge is NULL");
+        return false;
+    }
     return bridge->status.current_phase == ENTORHINAL_INIT_PHASE_READY;
 }
 
@@ -881,7 +974,10 @@ int entorhinal_brain_init_get_error(
     char* error_message,
     size_t message_size)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_get_error: bridge is NULL");
+        return -1;
+    }
 
     if (error_code) *error_code = bridge->status.error_code;
     if (error_message && message_size > 0) {
@@ -907,7 +1003,10 @@ const char* entorhinal_brain_init_phase_string(
 int entorhinal_brain_init_update_health(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge || !bridge->entorhinal) return -1;
+    if (!bridge || !bridge->entorhinal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_update_health: required parameter is NULL (bridge, bridge->entorhinal)");
+        return -1;
+    }
 
     bridge->current_health_score = entorhinal_get_health_status(bridge->entorhinal);
     bridge->last_health_check_ms = get_current_time_ms();
@@ -925,7 +1024,10 @@ float entorhinal_brain_init_get_health(
 int entorhinal_brain_init_report_health(
     entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_report_health: bridge is NULL");
+        return -1;
+    }
 
     /* Would report health to brain KG here */
 
@@ -939,7 +1041,10 @@ int entorhinal_brain_init_report_health(
 int entorhinal_brain_init_log_diagnostics(
     const entorhinal_brain_init_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_log_diagnostics: bridge is NULL");
+        return -1;
+    }
 
     /* Would log to nimcp_logger here */
 
@@ -951,7 +1056,10 @@ int entorhinal_brain_init_get_timing_report(
     char* report_out,
     size_t report_size)
 {
-    if (!bridge || !report_out || report_size == 0) return -1;
+    if (!bridge || !report_out || report_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entorhinal_brain_init_get_timing_report: required parameter is NULL (bridge, report_out)");
+        return -1;
+    }
 
     snprintf(report_out, report_size,
         "Initialization Timing Report:\n"

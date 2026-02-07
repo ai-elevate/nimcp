@@ -120,6 +120,7 @@ pink_noise_multiscale_t* pink_noise_multiscale_create(
         if (!ms->generators[i]) {
             NIMCP_LOGGING_ERROR("Failed to create generator for scale %u", i);
             pink_noise_multiscale_destroy(ms);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pink_noise_multiscale_create: ms->generators is NULL");
             return NULL;
         }
     }
@@ -164,6 +165,7 @@ int pink_noise_multiscale_step(pink_noise_multiscale_t* ms) {
     for (uint32_t i = 0; i < ms->config.num_scales; i++) {
         float sample;
         if (!pink_noise_generate_sample(ms->generators[i], &sample)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_multiscale_step: pink_noise_generate_sample is NULL");
             return -1;
         }
         ms->current_values[i] = sample;
@@ -389,6 +391,7 @@ int pink_noise_multiscale_reset(
     for (uint32_t i = 0; i < ms->config.num_scales; i++) {
         uint32_t seed = (new_seed == 0) ? ms->config.seed + i : new_seed + i;
         if (!pink_noise_reset(ms->generators[i], seed)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pink_noise_multiscale_reset: pink_noise_reset is NULL");
             return -1;
         }
         ms->current_values[i] = 0.0f;

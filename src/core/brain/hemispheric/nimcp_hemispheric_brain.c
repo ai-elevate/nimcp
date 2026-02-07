@@ -104,19 +104,23 @@ hemispheric_brain_config_t hemispheric_brain_default_config(void) {
 
 bool hemispheric_brain_validate_config(const hemispheric_brain_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_brain_validate_config: config is NULL");
         return false;
     }
 
     if (config->left_resource_fraction < 0.0f ||
         config->left_resource_fraction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemispheric_brain_validate_config: config is NULL");
         return false;
     }
 
     if (!lateralization_validate(&config->lateralization)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_brain_validate_config: lateralization_validate is NULL");
         return false;
     }
 
     if (!callosum_validate_config(&config->callosum_config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_brain_validate_config: callosum_validate_config is NULL");
         return false;
     }
 
@@ -232,6 +236,7 @@ hemispheric_brain_t* hemispheric_brain_create(
         hemisphere_destroy(brain->left);
         hemisphere_destroy(brain->right);
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hemispheric_brain_create: brain->mutex is NULL");
         return NULL;
     }
     nimcp_mutex_init(brain->mutex, NULL);
@@ -1161,6 +1166,7 @@ int hemispheric_brain_connect_bio_async(hemispheric_brain_t* brain) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemispheric_brain_connect_bio_async: validation failed");
     return -1;
 }
 

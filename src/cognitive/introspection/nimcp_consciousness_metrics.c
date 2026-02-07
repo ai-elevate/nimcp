@@ -236,6 +236,7 @@ static transition_probability_matrix_t* build_tpm(
     tpm->probabilities = (float*)nimcp_calloc(tpm_size, sizeof(float));
     if (!tpm->probabilities) {
         nimcp_free(tpm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_tpm: tpm->probabilities is NULL");
         return NULL;
     }
 
@@ -363,6 +364,7 @@ static phi_partition_t* find_mip_internal(
     uint32_t num_partitions
 ) {
     if (!tpm || !partitions || num_partitions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_mip_internal: required parameter is NULL (tpm, partitions)");
         return NULL;
     }
 
@@ -507,6 +509,7 @@ consciousness_phi_result_t* introspection_compute_phi(
 ) {
     /* WHAT: Validate inputs */
     if (!bbb_check_pointer(context, "introspection_compute_phi")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_compute_phi: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -527,6 +530,7 @@ consciousness_phi_result_t* introspection_compute_phi(
         (consciousness_phi_result_t*)nimcp_calloc(1, sizeof(consciousness_phi_result_t));
     if (!result) {
         LOG_ERROR("Failed to allocate Φ result structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_compute_phi: result is NULL");
         return NULL;
     }
 
@@ -560,6 +564,7 @@ consciousness_phi_result_t* introspection_compute_phi(
     if (!tpm) {
         LOG_ERROR("Failed to build TPM");
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_compute_phi: tpm is NULL");
         return NULL;
     }
 
@@ -575,6 +580,7 @@ consciousness_phi_result_t* introspection_compute_phi(
         LOG_ERROR("Failed to generate partitions");
         tpm_free(tpm);
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_compute_phi: num_partitions is zero");
         return NULL;
     }
 
@@ -750,6 +756,7 @@ conceptual_structure_t* introspection_get_conceptual_structure(
     const consciousness_phi_config_t* config
 ) {
     if (!bbb_check_pointer(context, "introspection_get_conceptual_structure")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_conceptual_structure: bbb_check_pointer is NULL");
         return NULL;
     }
 
@@ -887,6 +894,7 @@ static void* consciousness_monitoring_thread(void* arg) {
     }
 
     LOG_INFO("Consciousness monitoring thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consciousness_monitoring_thread: operation failed");
     return NULL;
 }
 
@@ -903,6 +911,7 @@ bool brain_enable_consciousness_monitoring(
     void* callback_context
 ) {
     if (!bbb_check_pointer(brain, "brain_enable_consciousness_monitoring")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_consciousness_monitoring: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -918,6 +927,7 @@ bool brain_enable_consciousness_monitoring(
     consciousness_monitor_t* monitor =
         (consciousness_monitor_t*)nimcp_calloc(1, sizeof(consciousness_monitor_t));
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_enable_consciousness_monitoring: monitor is NULL");
         return false;
     }
 
@@ -967,6 +977,7 @@ bool brain_enable_consciousness_monitoring(
         }
         nimcp_mutex_destroy(&monitor->lock);
         nimcp_free(monitor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_enable_consciousness_monitoring: validation failed");
         return false;
     }
 
@@ -1041,6 +1052,7 @@ bool brain_get_consciousness_stats(
     consciousness_monitoring_stats_t* stats
 ) {
     if (!brain || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_consciousness_stats: required parameter is NULL (brain, stats)");
         return false;
     }
 
@@ -1050,6 +1062,7 @@ bool brain_get_consciousness_stats(
 
 
     memset(stats, 0, sizeof(consciousness_monitoring_stats_t));
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_consciousness_stats: operation failed");
     return false;
 }
 
@@ -1251,7 +1264,10 @@ void consciousness_metrics_set_instance_health_agent(void* ctx, nimcp_health_age
 }
 
 int consciousness_metrics_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consciousness_metrics_training_begin: ctx is NULL");
+        return -1;
+    }
     consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
         "consc_met_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("[CONSCIOUSNESS_METRICS] Training begin: module state reset");
@@ -1259,7 +1275,10 @@ int consciousness_metrics_training_begin(void* ctx) {
 }
 
 int consciousness_metrics_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consciousness_metrics_training_step: ctx is NULL");
+        return -1;
+    }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
@@ -1268,7 +1287,10 @@ int consciousness_metrics_training_step(void* ctx, float progress) {
 }
 
 int consciousness_metrics_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consciousness_metrics_training_end: ctx is NULL");
+        return -1;
+    }
     consciousness_metrics_heartbeat_instance(g_consciousness_metrics_instance_health_agent,
         "consc_met_training_end", 1.0f);
     NIMCP_LOGGING_INFO("[CONSCIOUSNESS_METRICS] Training end: metrics finalized");

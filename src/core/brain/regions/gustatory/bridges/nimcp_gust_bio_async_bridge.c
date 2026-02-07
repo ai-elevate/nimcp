@@ -127,6 +127,7 @@ static gust_bio_subscription_t* find_subscription(gust_bio_async_bridge_t* bridg
             return &bridge->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: operation failed");
     return NULL;
 }
 
@@ -144,7 +145,10 @@ static uint64_t get_timestamp_us(void) {
  * ============================================================================ */
 
 int gust_bio_async_default_config(gust_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(gust_bio_async_config_t));
 
@@ -215,7 +219,10 @@ void gust_bio_async_bridge_destroy(gust_bio_async_bridge_t* bridge) {
  * ============================================================================ */
 
 int gust_bio_async_connect(gust_bio_async_bridge_t* bridge, nimcp_gustatory_t* gust, bio_router_t router) {
-    if (!bridge || !gust) return -1;
+    if (!bridge || !gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_connect: required parameter is NULL (bridge, gust)");
+        return -1;
+    }
 
     bridge->gust = gust;
     bridge->router = router;
@@ -229,7 +236,10 @@ int gust_bio_async_connect(gust_bio_async_bridge_t* bridge, nimcp_gustatory_t* g
 }
 
 int gust_bio_async_disconnect(gust_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->gust = NULL;
     bridge->router = NULL;
@@ -246,7 +256,10 @@ int gust_bio_async_disconnect(gust_bio_async_bridge_t* bridge) {
 }
 
 bool gust_bio_async_is_connected(const gust_bio_async_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->is_connected;
 }
 
@@ -255,7 +268,10 @@ bool gust_bio_async_is_connected(const gust_bio_async_bridge_t* bridge) {
  * ============================================================================ */
 
 int gust_bio_async_process_inbox(gust_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_process_inbox: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     /* In a full implementation, this would pull messages from the bio-router
      * and process incoming satiety modulation, attention requests, etc. */
@@ -265,7 +281,10 @@ int gust_bio_async_process_inbox(gust_bio_async_bridge_t* bridge, uint32_t max_m
 }
 
 int gust_bio_async_update(gust_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_update: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -292,8 +311,14 @@ int gust_bio_async_update(gust_bio_async_bridge_t* bridge, uint32_t delta_ms) {
  * ============================================================================ */
 
 int gust_bio_async_broadcast_taste_detected(gust_bio_async_bridge_t* bridge, const taste_stimulus_t* stimulus, bool is_novel) {
-    if (!bridge || !bridge->is_connected || !stimulus) return -1;
-    if (!bridge->gust) return -1;
+    if (!bridge || !bridge->is_connected || !stimulus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_taste_detected: required parameter is NULL (bridge, bridge->is_connected, stimulus)");
+        return -1;
+    }
+    if (!bridge->gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_taste_detected: bridge->gust is NULL");
+        return -1;
+    }
 
     bridge->current_taste_id = bridge->next_taste_id++;
 
@@ -328,7 +353,10 @@ int gust_bio_async_broadcast_taste_detected(gust_bio_async_bridge_t* bridge, con
 }
 
 int gust_bio_async_broadcast_flavor_result(gust_bio_async_bridge_t* bridge, const char* name, food_category_t category, float confidence) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_flavor_result: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     gust_bio_flavor_result_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -353,7 +381,10 @@ int gust_bio_async_broadcast_flavor_result(gust_bio_async_bridge_t* bridge, cons
 }
 
 int gust_bio_async_broadcast_reward(gust_bio_async_bridge_t* bridge, float magnitude, food_category_t category) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_reward: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     if (!bridge->config.enable_reward_signals) return 0;
 
     if (magnitude < bridge->config.reward_threshold) return 0;
@@ -378,7 +409,10 @@ int gust_bio_async_broadcast_reward(gust_bio_async_bridge_t* bridge, float magni
 }
 
 int gust_bio_async_broadcast_disgust(gust_bio_async_bridge_t* bridge, disgust_level_t level, float intensity) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_disgust: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     if (!bridge->config.enable_disgust_alerts) return 0;
 
     if (intensity < bridge->config.disgust_threshold) return 0;
@@ -406,7 +440,10 @@ int gust_bio_async_broadcast_disgust(gust_bio_async_bridge_t* bridge, disgust_le
 }
 
 int gust_bio_async_broadcast_satiety(gust_bio_async_bridge_t* bridge, float satiety, float hunger) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_satiety: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     if (!bridge->config.enable_satiety_integration) return 0;
 
     gust_bio_satiety_update_msg_t msg;
@@ -430,7 +467,10 @@ int gust_bio_async_broadcast_satiety(gust_bio_async_bridge_t* bridge, float sati
 }
 
 int gust_bio_async_broadcast_toxic_warning(gust_bio_async_bridge_t* bridge, float toxicity, bool recommend_spit) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_toxic_warning: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     if (!bridge->config.enable_toxic_warnings) return 0;
 
     if (toxicity < bridge->config.toxic_threshold) return 0;
@@ -458,7 +498,10 @@ int gust_bio_async_broadcast_toxic_warning(gust_bio_async_bridge_t* bridge, floa
 }
 
 int gust_bio_async_broadcast_preference_update(gust_bio_async_bridge_t* bridge, basic_taste_t taste, float old_pref, float new_pref) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_preference_update: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
     if (!bridge->config.enable_preference_learning) return 0;
 
     gust_bio_preference_update_msg_t msg;
@@ -483,7 +526,10 @@ int gust_bio_async_broadcast_preference_update(gust_bio_async_bridge_t* bridge, 
 }
 
 int gust_bio_async_broadcast_hedonic(gust_bio_async_bridge_t* bridge, taste_hedonic_t valence, float score) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_hedonic: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     gust_bio_hedonic_value_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -505,7 +551,10 @@ int gust_bio_async_broadcast_hedonic(gust_bio_async_bridge_t* bridge, taste_hedo
 }
 
 int gust_bio_async_broadcast_palatability(gust_bio_async_bridge_t* bridge, float palatability, food_category_t category) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_palatability: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     gust_bio_palatability_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -526,7 +575,10 @@ int gust_bio_async_broadcast_palatability(gust_bio_async_bridge_t* bridge, float
 }
 
 int gust_bio_async_broadcast_adaptation(gust_bio_async_bridge_t* bridge, const float* adaptation_levels, bool fully_adapted) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_broadcast_adaptation: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     gust_bio_adaptation_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -561,7 +613,10 @@ int gust_bio_async_broadcast_adaptation(gust_bio_async_bridge_t* bridge, const f
  * ============================================================================ */
 
 int gust_bio_async_subscribe_module(gust_bio_async_bridge_t* bridge, uint32_t module_id, uint32_t msg_types) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     gust_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -572,6 +627,7 @@ int gust_bio_async_subscribe_module(gust_bio_async_bridge_t* bridge, uint32_t mo
 
     /* Find free slot */
     if (bridge->num_subscriptions >= bridge->config.max_subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gust_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -591,10 +647,16 @@ int gust_bio_async_subscribe_module(gust_bio_async_bridge_t* bridge, uint32_t mo
 }
 
 int gust_bio_async_unsubscribe_module(gust_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     gust_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     bridge->stats.active_subscriptions--;
@@ -623,14 +685,20 @@ uint32_t gust_bio_async_get_subscriber_count(const gust_bio_async_bridge_t* brid
  * ============================================================================ */
 
 int gust_bio_async_get_stats(const gust_bio_async_bridge_t* bridge, gust_bio_async_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memcpy(stats, &bridge->stats, sizeof(gust_bio_async_stats_t));
     return 0;
 }
 
 int gust_bio_async_reset_stats(gust_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

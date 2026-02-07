@@ -165,6 +165,7 @@ int occipital_thalamic_set_attention(occipital_thalamic_bridge_t* bridge, float 
     }
 
     if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "occipital_thalamic_set_attention: validation failed");
         return -1;
     }
 

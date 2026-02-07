@@ -142,7 +142,10 @@ void gust_destroy(nimcp_gustatory_t* gust) {
 }
 
 int gust_reset(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_reset: gust is NULL");
+        return -1;
+    }
     memset(gust->insula_activation, 0, gust->num_insula * sizeof(float));
     memset(gust->ofc_activation, 0, gust->num_ofc * sizeof(float));
     for (int i = 0; i < TASTE_COUNT; i++) {
@@ -155,7 +158,10 @@ int gust_reset(nimcp_gustatory_t* gust) {
 }
 
 int gust_update(nimcp_gustatory_t* gust, float dt) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_update: gust is NULL");
+        return -1;
+    }
 
     /* Decay activations */
     float decay = expf(-dt / 100.0f);
@@ -178,7 +184,10 @@ int gust_update(nimcp_gustatory_t* gust, float dt) {
 }
 
 int gust_process_taste(nimcp_gustatory_t* gust, const taste_stimulus_t* stimulus) {
-    if (!gust || !stimulus) return -1;
+    if (!gust || !stimulus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_process_taste: required parameter is NULL (gust, stimulus)");
+        return -1;
+    }
 
     gust->status = GUST_STATUS_TASTING;
     memcpy(&gust->current_stimulus, stimulus, sizeof(taste_stimulus_t));
@@ -273,7 +282,10 @@ int gust_process_taste(nimcp_gustatory_t* gust, const taste_stimulus_t* stimulus
 }
 
 int gust_get_perception(nimcp_gustatory_t* gust, taste_perception_t* perception) {
-    if (!gust || !perception) return -1;
+    if (!gust || !perception) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_get_perception: required parameter is NULL (gust, perception)");
+        return -1;
+    }
     memcpy(perception, &gust->current_perception, sizeof(taste_perception_t));
     return 0;
 }
@@ -301,7 +313,10 @@ float gust_get_palatability(nimcp_gustatory_t* gust) {
 }
 
 int gust_compute_reward(nimcp_gustatory_t* gust, food_reward_t* reward) {
-    if (!gust || !reward) return -1;
+    if (!gust || !reward) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_compute_reward: required parameter is NULL (gust, reward)");
+        return -1;
+    }
 
     float satiety_mod = 1.0f;
     if (gust->hypothalamus_bridge.initialized) {
@@ -322,7 +337,10 @@ int gust_compute_reward(nimcp_gustatory_t* gust, food_reward_t* reward) {
 }
 
 int gust_learn_preference(nimcp_gustatory_t* gust, basic_taste_t taste, float preference_change) {
-    if (!gust || taste >= TASTE_COUNT) return -1;
+    if (!gust || taste >= TASTE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "gust_learn_preference: gust is NULL");
+        return -1;
+    }
     gust->learned_preferences[taste] += preference_change;
     if (gust->learned_preferences[taste] < 0.0f) gust->learned_preferences[taste] = 0.0f;
     if (gust->learned_preferences[taste] > 1.0f) gust->learned_preferences[taste] = 1.0f;
@@ -335,7 +353,10 @@ disgust_level_t gust_evaluate_disgust(nimcp_gustatory_t* gust) {
 }
 
 bool gust_is_toxic_warning(nimcp_gustatory_t* gust) {
-    if (!gust) return false;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_is_toxic_warning: gust is NULL");
+        return false;
+    }
     return gust->current_perception.perceived_bitter > 0.8f;
 }
 
@@ -345,7 +366,10 @@ float gust_get_adaptation(nimcp_gustatory_t* gust, basic_taste_t taste) {
 }
 
 int gust_reset_adaptation(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_reset_adaptation: gust is NULL");
+        return -1;
+    }
     for (int i = 0; i < TASTE_COUNT; i++) {
         gust->adaptation_level[i] = 0.0f;
     }
@@ -354,14 +378,20 @@ int gust_reset_adaptation(nimcp_gustatory_t* gust) {
 
 /* Bridge initialization */
 int gust_init_prime_resonance_bridge(nimcp_gustatory_t* gust, void* pr_memory) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_prime_resonance_bridge: gust is NULL");
+        return -1;
+    }
     gust->prime_resonance_bridge.pr_memory_ctx = pr_memory;
     gust->prime_resonance_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_immune_bridge(nimcp_gustatory_t* gust, void* immune) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_immune_bridge: gust is NULL");
+        return -1;
+    }
     gust->immune_bridge.immune_system = immune;
     gust->immune_bridge.initialized = true;
     gust->immune_bridge.health_score = 1.0f;
@@ -369,42 +399,60 @@ int gust_init_immune_bridge(nimcp_gustatory_t* gust, void* immune) {
 }
 
 int gust_init_hypothalamus_bridge(nimcp_gustatory_t* gust, void* hypothalamus) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_hypothalamus_bridge: gust is NULL");
+        return -1;
+    }
     gust->hypothalamus_bridge.hypothalamus = hypothalamus;
     gust->hypothalamus_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_amygdala_bridge(nimcp_gustatory_t* gust, void* amygdala) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_amygdala_bridge: gust is NULL");
+        return -1;
+    }
     gust->amygdala_bridge.amygdala = amygdala;
     gust->amygdala_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_olfactory_bridge(nimcp_gustatory_t* gust, void* olfactory) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_olfactory_bridge: gust is NULL");
+        return -1;
+    }
     gust->olfactory_bridge.olfactory = olfactory;
     gust->olfactory_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_insula_bridge(nimcp_gustatory_t* gust, void* insula) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_insula_bridge: gust is NULL");
+        return -1;
+    }
     gust->insula_bridge.insula = insula;
     gust->insula_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_ofc_bridge(nimcp_gustatory_t* gust, void* ofc) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_ofc_bridge: gust is NULL");
+        return -1;
+    }
     gust->ofc_bridge.orbitofrontal = ofc;
     gust->ofc_bridge.initialized = true;
     return 0;
 }
 
 int gust_init_logging_bridge(nimcp_gustatory_t* gust, void* logger) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_logging_bridge: gust is NULL");
+        return -1;
+    }
     gust->logging_bridge.logger = logger;
     gust->logging_bridge.initialized = true;
     strncpy(gust->logging_bridge.log_prefix, "GUST", sizeof(gust->logging_bridge.log_prefix) - 1);
@@ -412,7 +460,10 @@ int gust_init_logging_bridge(nimcp_gustatory_t* gust, void* logger) {
 }
 
 int gust_init_snn_bridge(nimcp_gustatory_t* gust, void* snn) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_snn_bridge: gust is NULL");
+        return -1;
+    }
     gust->snn_bridge.snn = snn;
     gust->snn_bridge.neuron_ids = NULL;
     gust->snn_bridge.num_mapped_neurons = 0;
@@ -422,7 +473,10 @@ int gust_init_snn_bridge(nimcp_gustatory_t* gust, void* snn) {
 }
 
 int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void* stdp) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_plasticity_bridge: gust is NULL");
+        return -1;
+    }
     gust->plasticity_bridge.plasticity_coordinator = plasticity;
     gust->plasticity_bridge.stdp_context = stdp;
     gust->plasticity_bridge.learning_rate = 0.01f;
@@ -433,7 +487,10 @@ int gust_init_plasticity_bridge(nimcp_gustatory_t* gust, void* plasticity, void*
 }
 
 int gust_init_bio_async_bridge(nimcp_gustatory_t* gust, void* runtime) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_init_bio_async_bridge: gust is NULL");
+        return -1;
+    }
     gust->bio_async_embed.runtime = runtime;
     gust->bio_async_embed.subscription_mask = 0xFFFFFFFF; /* Subscribe to all */
     gust->bio_async_embed.messages_sent = 0;
@@ -444,17 +501,26 @@ int gust_init_bio_async_bridge(nimcp_gustatory_t* gust, void* runtime) {
 
 /* Bidirectional flow */
 int gust_process_incoming(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_process_incoming: gust is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int gust_send_outgoing(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_send_outgoing: gust is NULL");
+        return -1;
+    }
     return 0;
 }
 
 int gust_bidirectional_update(nimcp_gustatory_t* gust, float dt) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_bidirectional_update: gust is NULL");
+        return -1;
+    }
     gust_process_incoming(gust);
     gust_update(gust, dt);
     gust_send_outgoing(gust);
@@ -462,21 +528,30 @@ int gust_bidirectional_update(nimcp_gustatory_t* gust, float dt) {
 }
 
 int gust_sync_hypothalamus(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_sync_hypothalamus: gust is NULL");
+        return -1;
+    }
     if (!gust->hypothalamus_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with hypothalamus for satiety modulation */
     return 0;
 }
 
 int gust_sync_olfactory(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_sync_olfactory: gust is NULL");
+        return -1;
+    }
     if (!gust->olfactory_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with olfactory for flavor integration */
     return 0;
 }
 
 int gust_sync_ofc(nimcp_gustatory_t* gust) {
-    if (!gust) return -1;
+    if (!gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_sync_ofc: gust is NULL");
+        return -1;
+    }
     if (!gust->ofc_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with orbitofrontal cortex for valuation */
     return 0;
@@ -518,7 +593,10 @@ const char* gust_status_string(gust_status_t status) {
 }
 
 int gust_get_stats(nimcp_gustatory_t* gust, gust_stats_t* stats) {
-    if (!gust || !stats) return -1;
+    if (!gust || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_get_stats: required parameter is NULL (gust, stats)");
+        return -1;
+    }
     stats->tastes_processed = gust->updates_processed;
     stats->avg_palatability = gust->current_perception.palatability;
     for (int i = 0; i < TASTE_COUNT; i++) {
@@ -576,9 +654,15 @@ size_t gust_get_serialization_size(nimcp_gustatory_t* gust) {
 }
 
 int gust_serialize(nimcp_gustatory_t* gust, uint8_t* buffer, size_t size, size_t* written) {
-    if (!gust || !buffer || !written) return -1;
+    if (!gust || !buffer || !written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_serialize: required parameter is NULL (gust, buffer, written)");
+        return -1;
+    }
     size_t needed = gust_get_serialization_size(gust);
-    if (size < needed) return -1;
+    if (size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gust_serialize: validation failed");
+        return -1;
+    }
 
     size_t offset = 0;
     memcpy(buffer + offset, &gust->config, sizeof(gust_config_t));
@@ -591,9 +675,15 @@ int gust_serialize(nimcp_gustatory_t* gust, uint8_t* buffer, size_t size, size_t
 }
 
 nimcp_gustatory_t* gust_deserialize(const uint8_t* buffer, size_t size, size_t* bytes_read) {
-    if (!buffer || !bytes_read) return NULL;
+    if (!buffer || !bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust_deserialize: required parameter is NULL (buffer, bytes_read)");
+        return NULL;
+    }
     size_t needed = sizeof(gust_config_t) + sizeof(float) * TASTE_COUNT;
-    if (size < needed) return NULL;
+    if (size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "gust_deserialize: validation failed");
+        return NULL;
+    }
 
     size_t offset = 0;
     gust_config_t config;

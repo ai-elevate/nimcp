@@ -469,7 +469,10 @@ int protein_immune_get_inflammation_state(
 bool protein_immune_is_synthesis_impaired(
     const protein_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_is_synthesis_impaired: bridge is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -565,7 +568,10 @@ int protein_immune_disconnect_bio_async(protein_immune_bridge_t* bridge) {
 bool protein_immune_is_bio_async_connected(
     const protein_immune_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bool connected = bridge->base.bio_async_enabled;

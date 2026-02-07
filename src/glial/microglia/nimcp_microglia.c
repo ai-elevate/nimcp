@@ -417,14 +417,21 @@ void microglia_unregister_bio_handlers(void)
  */
 static int32_t find_synapse_index(const microglia_t* mg, uint32_t synapse_id)
 {
-    if (!mg || !mg->synapses) return -1;
-    if (mg->num_monitored_synapses > mg->max_monitored_synapses) return -1;
+    if (!mg || !mg->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse_index: required parameter is NULL (mg, mg->synapses)");
+        return -1;
+    }
+    if (mg->num_monitored_synapses > mg->max_monitored_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_synapse_index: validation failed");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < mg->num_monitored_synapses; i++) {
         if (mg->synapses[i].synapse_id == synapse_id) {
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_synapse_index: validation failed");
     return -1;
 }
 
@@ -541,6 +548,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
 
     if (surveillance_radius <= 0.0F) {
         LOG_MODULE_ERROR("MICROGLIA", "Invalid surveillance radius: %.2f", surveillance_radius);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_create: validation failed");
         return NULL;
     }
 
@@ -577,6 +585,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
         mg->max_monitored_synapses * sizeof(monitored_synapse_t));
     if (!mg->synapses) {
         nimcp_free(mg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_create: mg->synapses is NULL");
         return NULL;
     }
     memset(mg->synapses, 0, mg->max_monitored_synapses * sizeof(monitored_synapse_t));
@@ -592,6 +601,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
     if (!mg->monitored_synapse_ids || !mg->synapse_activity_scores ||
         !mg->last_activity_times) {
         microglia_destroy(mg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_create: operation failed");
         return NULL;
     }
 
@@ -661,6 +671,7 @@ microglia_network_t* microglia_network_create_enhanced(
     const microglia_network_config_t* config)
 {
     if (!config || config->capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_network_create_enhanced: config is NULL");
         return NULL;
     }
 
@@ -681,6 +692,7 @@ microglia_network_t* microglia_network_create_enhanced(
         config->capacity * sizeof(microglia_t*));
     if (!network->microglia) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_network_create_enhanced: network->microglia is NULL");
         return NULL;
     }
 
@@ -1304,7 +1316,10 @@ uint32_t microglia_prune_weak_synapses(microglia_t* mg)
 
 bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
 {
-    if (!mg) return false;
+    if (!mg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_should_prune_synapse: mg is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < mg->num_monitored_synapses; i++) {
         if (mg->synapses[i].synapse_id == synapse_id) {
@@ -1312,6 +1327,7 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
             float effective_threshold = compute_effective_threshold(mg, syn);
 
             if (syn->filtered_activity >= effective_threshold) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_should_prune_synapse: capacity exceeded");
                 return false;  // Activity above threshold
             }
 
@@ -1319,6 +1335,7 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
             if (syn->protected_by_centrality &&
                 syn->centrality_score >= NIMCP_CENTRALITY_PROTECTION_MIN &&
                 syn->complement.tag != COMPLEMENT_C3) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_should_prune_synapse: capacity exceeded");
                 return false;  // Protected by centrality
             }
 
@@ -1326,6 +1343,7 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_should_prune_synapse: operation failed");
     return false;  // Not found
 }
 
@@ -1498,6 +1516,7 @@ microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
     }
 
     nimcp_mutex_unlock(&network->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "microglia_network_find_by_synapse: capacity exceeded");
     return NULL;
 }
 
@@ -1739,6 +1758,7 @@ microglia_synapse_pool_t* microglia_synapse_pool_create(uint32_t capacity)
         capacity * sizeof(monitored_synapse_t));
     if (!pool->buffer) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_synapse_pool_create: pool->buffer is NULL");
         return NULL;
     }
     memset(pool->buffer, 0, capacity * sizeof(monitored_synapse_t));
@@ -1749,6 +1769,7 @@ microglia_synapse_pool_t* microglia_synapse_pool_create(uint32_t capacity)
     if (!pool->bitmap) {
         nimcp_free(pool->buffer);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_synapse_pool_create: pool->bitmap is NULL");
         return NULL;
     }
 
@@ -1820,6 +1841,7 @@ monitored_synapse_t* microglia_synapse_pool_alloc(microglia_synapse_pool_t* pool
     }
 
     nimcp_spinlock_unlock(&pool->lock);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_synapse_pool_alloc: operation failed");
     return NULL;  // Pool exhausted
 }
 
@@ -1880,6 +1902,7 @@ microglia_t* microglia_cow_copy(microglia_t* mg)
     microglia_t* copy = (microglia_t*)nimcp_malloc(sizeof(microglia_t));
     if (!copy) {
         nimcp_spinlock_unlock(&mg->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "microglia_cow_copy: copy is NULL");
         return NULL;
     }
 
@@ -2003,6 +2026,9 @@ void microglia_cow_release(microglia_t* mg)
 
 bool microglia_is_cow_copy(const microglia_t* mg)
 {
-    if (!mg) return false;
+    if (!mg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_is_cow_copy: mg is NULL");
+        return false;
+    }
     return (mg->cow_original != NULL);
 }

@@ -175,6 +175,7 @@ static void generate_replica_id(char* buf, size_t size) {
  */
 static kg_replica_status_t* find_replica(kg_dr_context_t* dr, const char* replica_id) {
     if (!dr || !replica_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_replica: required parameter is NULL (dr, replica_id)");
         return NULL;
     }
 
@@ -183,6 +184,7 @@ static kg_replica_status_t* find_replica(kg_dr_context_t* dr, const char* replic
             return &dr->replicas[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_replica: validation failed");
     return NULL;
 }
 
@@ -272,6 +274,7 @@ kg_dr_context_t* kg_dr_create(brain_kg_t* kg, const kg_dr_config_t* config) {
     dr->replicas = nimcp_calloc(dr->max_replicas, sizeof(kg_replica_status_t));
     if (!dr->replicas) {
         nimcp_free(dr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_dr_create: dr->replicas is NULL");
         return NULL;
     }
 
@@ -280,6 +283,7 @@ kg_dr_context_t* kg_dr_create(brain_kg_t* kg, const kg_dr_config_t* config) {
     if (!dr->backups) {
         nimcp_free(dr->replicas);
         nimcp_free(dr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_dr_create: dr->backups is NULL");
         return NULL;
     }
 
@@ -291,6 +295,7 @@ kg_dr_context_t* kg_dr_create(brain_kg_t* kg, const kg_dr_config_t* config) {
         nimcp_free(dr->backups);
         nimcp_free(dr->replicas);
         nimcp_free(dr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_dr_create: dr->mutex is NULL");
         return NULL;
     }
 
@@ -339,6 +344,7 @@ void kg_dr_destroy(kg_dr_context_t* dr) {
 
 int kg_dr_add_replica(kg_dr_context_t* dr, const char* host, uint16_t port) {
     if (!dr || !host) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_add_replica: required parameter is NULL (dr, host)");
         return -1;
     }
 
@@ -346,6 +352,7 @@ int kg_dr_add_replica(kg_dr_context_t* dr, const char* host, uint16_t port) {
 
     if (dr->replica_count >= dr->max_replicas) {
         nimcp_mutex_unlock(dr->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_dr_add_replica: capacity exceeded");
         return -1;
     }
 
@@ -371,6 +378,7 @@ int kg_dr_add_replica(kg_dr_context_t* dr, const char* host, uint16_t port) {
 
 int kg_dr_remove_replica(kg_dr_context_t* dr, const char* replica_id) {
     if (!dr || !replica_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_remove_replica: required parameter is NULL (dr, replica_id)");
         return -1;
     }
 
@@ -389,11 +397,13 @@ int kg_dr_remove_replica(kg_dr_context_t* dr, const char* replica_id) {
     }
 
     nimcp_mutex_unlock(dr->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_dr_remove_replica: operation failed");
     return -1;
 }
 
 int kg_dr_get_replica_status(const kg_dr_context_t* dr, kg_replica_status_t* status, uint32_t* count) {
     if (!dr || !status || !count || *count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_get_replica_status: required parameter is NULL (dr, status, count)");
         return -1;
     }
 
@@ -414,6 +424,7 @@ int kg_dr_get_replica_status(const kg_dr_context_t* dr, kg_replica_status_t* sta
 
 int kg_dr_promote_replica(kg_dr_context_t* dr, const char* replica_id) {
     if (!dr || !replica_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_promote_replica: required parameter is NULL (dr, replica_id)");
         return -1;
     }
 
@@ -422,6 +433,7 @@ int kg_dr_promote_replica(kg_dr_context_t* dr, const char* replica_id) {
     kg_replica_status_t* replica = find_replica(dr, replica_id);
     if (!replica) {
         nimcp_mutex_unlock(dr->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_promote_replica: replica is NULL");
         return -1;
     }
 
@@ -454,6 +466,7 @@ int kg_dr_backup_full(kg_dr_context_t* dr, const char* label) {
 
     if (dr->backup_count >= MAX_BACKUPS) {
         nimcp_mutex_unlock(dr->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_dr_backup_full: capacity exceeded");
         return -1;
     }
 
@@ -497,6 +510,7 @@ int kg_dr_backup_incremental(kg_dr_context_t* dr) {
 
     if (dr->backup_count >= MAX_BACKUPS) {
         nimcp_mutex_unlock(dr->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_dr_backup_incremental: capacity exceeded");
         return -1;
     }
 
@@ -525,6 +539,7 @@ int kg_dr_backup_incremental(kg_dr_context_t* dr) {
 
 int kg_dr_list_backups(const kg_dr_context_t* dr, kg_backup_info_t* backups, uint32_t* count) {
     if (!dr || !backups || !count || *count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_list_backups: required parameter is NULL (dr, backups, count)");
         return -1;
     }
 
@@ -545,6 +560,7 @@ int kg_dr_list_backups(const kg_dr_context_t* dr, kg_backup_info_t* backups, uin
 
 int kg_dr_verify_backup(const kg_dr_context_t* dr, const char* backup_id) {
     if (!dr || !backup_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_verify_backup: required parameter is NULL (dr, backup_id)");
         return -1;
     }
 
@@ -560,11 +576,13 @@ int kg_dr_verify_backup(const kg_dr_context_t* dr, const char* backup_id) {
     }
 
     nimcp_mutex_unlock(((kg_dr_context_t*)dr)->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_dr_verify_backup: validation failed");
     return -1;
 }
 
 int kg_dr_delete_backup(kg_dr_context_t* dr, const char* backup_id) {
     if (!dr || !backup_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_delete_backup: required parameter is NULL (dr, backup_id)");
         return -1;
     }
 
@@ -583,6 +601,7 @@ int kg_dr_delete_backup(kg_dr_context_t* dr, const char* backup_id) {
     }
 
     nimcp_mutex_unlock(dr->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_dr_delete_backup: operation failed");
     return -1;
 }
 
@@ -592,6 +611,7 @@ int kg_dr_delete_backup(kg_dr_context_t* dr, const char* backup_id) {
 
 int kg_dr_pitr_recover(kg_dr_context_t* dr, const kg_pitr_target_t* target) {
     if (!dr || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_pitr_recover: required parameter is NULL (dr, target)");
         return -1;
     }
 
@@ -628,6 +648,7 @@ int kg_dr_pitr_recover(kg_dr_context_t* dr, const kg_pitr_target_t* target) {
 
 int kg_dr_pitr_list_recovery_points(const kg_dr_context_t* dr, uint64_t* timestamps, uint32_t* count) {
     if (!dr || !timestamps || !count || *count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_pitr_list_recovery_points: required parameter is NULL (dr, timestamps, count)");
         return -1;
     }
 
@@ -651,6 +672,7 @@ int kg_dr_pitr_list_recovery_points(const kg_dr_context_t* dr, uint64_t* timesta
 
 int kg_dr_pitr_estimate_recovery_time(const kg_dr_context_t* dr, const kg_pitr_target_t* target, uint32_t* est_seconds) {
     if (!dr || !target || !est_seconds) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_pitr_estimate_recovery_time: required parameter is NULL (dr, target, est_seconds)");
         return -1;
     }
 
@@ -675,6 +697,7 @@ int kg_dr_pitr_estimate_recovery_time(const kg_dr_context_t* dr, const kg_pitr_t
 
 int kg_dr_pitr_create_checkpoint(kg_dr_context_t* dr, const char* checkpoint_name) {
     if (!dr || !checkpoint_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_pitr_create_checkpoint: required parameter is NULL (dr, checkpoint_name)");
         return -1;
     }
 
@@ -682,6 +705,7 @@ int kg_dr_pitr_create_checkpoint(kg_dr_context_t* dr, const char* checkpoint_nam
 
     if (dr->checkpoint_count >= MAX_CHECKPOINTS) {
         nimcp_mutex_unlock(dr->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_dr_pitr_create_checkpoint: capacity exceeded");
         return -1;
     }
 
@@ -731,6 +755,7 @@ int kg_dr_trigger_failover(kg_dr_context_t* dr, const char* new_primary_id) {
         kg_replica_status_t* replica = find_replica(dr, new_primary_id);
         if (!replica) {
             nimcp_mutex_unlock(dr->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_trigger_failover: replica is NULL");
             return -1;
         }
 
@@ -764,6 +789,7 @@ int kg_dr_trigger_failover(kg_dr_context_t* dr, const char* new_primary_id) {
 
 int kg_dr_failback(kg_dr_context_t* dr, const char* original_primary_id) {
     if (!dr || !original_primary_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_failback: required parameter is NULL (dr, original_primary_id)");
         return -1;
     }
 
@@ -790,6 +816,7 @@ int kg_dr_failback(kg_dr_context_t* dr, const char* original_primary_id) {
 
 bool kg_dr_is_primary(const kg_dr_context_t* dr) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_is_primary: dr is NULL");
         return false;
     }
     return dr->is_primary;
@@ -797,6 +824,7 @@ bool kg_dr_is_primary(const kg_dr_context_t* dr) {
 
 int kg_dr_get_primary_id(const kg_dr_context_t* dr, char* primary_id, size_t buffer_size) {
     if (!dr || !primary_id || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_get_primary_id: required parameter is NULL (dr, primary_id)");
         return -1;
     }
 
@@ -871,6 +899,7 @@ float kg_dr_get_replication_lag(const kg_dr_context_t* dr) {
 int kg_dr_get_stats(const kg_dr_context_t* dr, uint32_t* total_replicas,
                     uint32_t* healthy_replicas, uint64_t* pending_wal_bytes) {
     if (!dr || !total_replicas || !healthy_replicas || !pending_wal_bytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_get_replication_lag: required parameter is NULL (dr, total_replicas, healthy_replicas, pending_wal_bytes)");
         return -1;
     }
 
@@ -896,6 +925,7 @@ int kg_dr_register_health_callback(kg_dr_context_t* dr,
                                    kg_dr_health_callback_fn callback,
                                    void* user_data) {
     if (!dr || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_get_replication_lag: required parameter is NULL (dr, callback)");
         return -1;
     }
 
@@ -913,6 +943,7 @@ int kg_dr_register_health_callback(kg_dr_context_t* dr,
     }
 
     nimcp_mutex_unlock(dr->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_dr_get_replication_lag: operation failed");
     return -1;
 }
 
@@ -941,6 +972,7 @@ int kg_dr_wal_flush(kg_dr_context_t* dr) {
 
 int kg_dr_wal_position(const kg_dr_context_t* dr, uint64_t* segment, uint64_t* offset) {
     if (!dr || !segment || !offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_dr_wal_position: required parameter is NULL (dr, segment, offset)");
         return -1;
     }
 

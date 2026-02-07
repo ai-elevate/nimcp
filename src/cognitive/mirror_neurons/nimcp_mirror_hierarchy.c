@@ -150,6 +150,7 @@ static goal_motor_binding_t* find_binding(goal_representation_t* goal, uint32_t 
             return &goal->bindings[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_binding: validation failed");
     return NULL;
 }
 
@@ -259,6 +260,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
     if (!hierarchy->goals) {
         LOG_ERROR("Failed to allocate goal storage");
         nimcp_free(hierarchy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hierarchy_create: hierarchy->goals is NULL");
         return NULL;
     }
 
@@ -270,6 +272,7 @@ mirror_hierarchy_t mirror_hierarchy_create(const mirror_hierarchy_config_t* conf
         LOG_ERROR("Failed to allocate motor storage");
         nimcp_free(hierarchy->goals);
         nimcp_free(hierarchy);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_hierarchy_create: hierarchy->motors is NULL");
         return NULL;
     }
 
@@ -594,6 +597,7 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
 
     // Create new binding
     if (goal->num_bindings >= hierarchy->config.max_bindings_per_goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "mirror_hierarchy_get_selected_goal: capacity exceeded");
         return false;  // No room for more bindings
     }
 

@@ -50,6 +50,7 @@ temporal_coding_encoder_t temporal_coding_create(const temporal_coding_config_t*
         1, sizeof(struct temporal_coding_encoder_struct)
     );
     if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_coding_create: encoder is NULL");
         return NULL;
     }
 
@@ -100,6 +101,7 @@ bool temporal_coding_encode(
     temporal_features_t* features_out
 ) {
     if (!encoder || !spike_train || !features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_coding_encode: required parameter is NULL (encoder, spike_train, features_out)");
         return false;
     }
 
@@ -134,6 +136,7 @@ bool temporal_coding_encode(
     uint32_t num_isi = spike_train->num_spikes - 1;
     float* isi = (float*)nimcp_malloc(num_isi * sizeof(float));
     if (!isi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_coding_encode: isi is NULL");
         return false;
     }
 
@@ -231,6 +234,7 @@ bool temporal_coding_decode(
     spike_train_t* spike_train_out
 ) {
     if (!encoder || !features || !spike_train_out || duration_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_coding_decode: required parameter is NULL (encoder, features, spike_train_out)");
         return false;
     }
 
@@ -245,6 +249,7 @@ bool temporal_coding_decode(
     while (current_time < duration_ms) {
         // Add spike
         if (!spike_train_add_spike(spike_train_out, (uint64_t)current_time)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_coding_decode: spike_train_add_spike is NULL");
             return false;
         }
 
@@ -277,6 +282,7 @@ bool temporal_coding_compute_correlation(
     float* correlation_out
 ) {
     if (!encoder || !train1 || !train2 || !correlation_out || max_lag_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_coding_compute_correlation: required parameter is NULL (encoder, train1, train2, correlation_out)");
         return false;
     }
 
@@ -312,10 +318,12 @@ bool temporal_coding_compute_jitter(
     float* jitter_out
 ) {
     if (!spike_train || !jitter_out || expected_isi_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_coding_compute_jitter: required parameter is NULL (spike_train, jitter_out)");
         return false;
     }
 
     if (spike_train->num_spikes < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_coding_compute_jitter: validation failed");
         return false;
     }
 
@@ -374,11 +382,13 @@ void temporal_features_destroy(temporal_features_t* features) {
 
 temporal_features_t* temporal_features_copy(const temporal_features_t* src) {
     if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temporal_features_copy: src is NULL");
         return NULL;
     }
 
     temporal_features_t* copy = temporal_features_create(src->num_isi_bins);
     if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_features_copy: copy is NULL");
         return NULL;
     }
 

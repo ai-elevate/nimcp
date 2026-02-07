@@ -215,6 +215,7 @@ static bool get_models_directory(char* buffer, size_t buffer_size) {
 #endif
 
     LOG_WARN("No models directory found in any standard location");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_models_directory: validation failed");
     return false;
 }
 
@@ -270,6 +271,7 @@ static bool build_model_path(const char* model_name, const char* models_dir,
         snprintf(base_dir, sizeof(base_dir), "%s", models_dir);
     } else if (!get_models_directory(base_dir, sizeof(base_dir))) {
         fprintf(stderr, "Error: Could not find models directory\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_model_name: validation failed");
         return false;
     }
 
@@ -300,6 +302,7 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     if (!build_model_path(model_name, models_dir, METADATA_EXTENSION,
                          metadata_path, sizeof(metadata_path))) {
         LOG_ERROR("Failed to build metadata path for model: %s", model_name);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_model_metadata: operation failed");
         return NULL;
     }
 
@@ -308,6 +311,7 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     // Check if metadata file exists
     if (access(metadata_path, R_OK) != 0) {
         LOG_ERROR("Model metadata not found: %s", metadata_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "load_model_metadata: validation failed");
         return NULL;
     }
 
@@ -343,6 +347,7 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     if (bytes_read != (size_t)file_size) {
         LOG_ERROR("Failed to read metadata file: expected %ld bytes, got %zu", file_size, bytes_read);
         nimcp_free(content);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "load_model_metadata: validation failed");
         return NULL;
     }
     content[file_size] = '\0';
@@ -374,6 +379,7 @@ static bool validate_metadata(const cJSON* metadata) {
 
     if (!metadata) {
         LOG_ERROR("Metadata is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_metadata: metadata is NULL");
         return false;
     }
 
@@ -385,6 +391,7 @@ static bool validate_metadata(const cJSON* metadata) {
     for (size_t i = 0; i < sizeof(required_fields) / sizeof(required_fields[0]); i++) {
         if (!cJSON_GetObjectItem(metadata, required_fields[i])) {
             LOG_ERROR("Missing required metadata field: %s", required_fields[i]);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_metadata: cJSON_GetObjectItem is NULL");
             return false;
         }
     }
@@ -393,6 +400,7 @@ static bool validate_metadata(const cJSON* metadata) {
     cJSON* arch = cJSON_GetObjectItem(metadata, "architecture");
     if (!cJSON_GetObjectItem(arch, "neurons")) {
         LOG_ERROR("Missing 'neurons' field in architecture section");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_metadata: cJSON_GetObjectItem is NULL");
         return false;
     }
 
@@ -447,6 +455,7 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
         cJSON_Delete(metadata);
         publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
                            model_name, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load_pretrained: validate_metadata is NULL");
         return NULL;
     }
 
@@ -468,6 +477,7 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
         cJSON_Delete(metadata);
         publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
                            model_name, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_load_pretrained: operation failed");
         return NULL;
     }
 
@@ -548,6 +558,7 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
  */
 static bool parse_version(const char* version, int* major, int* minor, int* patch) {
     if (!version || !major || !minor || !patch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse_version: required parameter is NULL (version, major, minor, patch)");
         return false;
     }
 
@@ -577,20 +588,28 @@ static bool is_version_older(const char* version_a, const char* version_b) {
     int b_major = 0, b_minor = 0, b_patch = 0;
 
     if (!parse_version(version_a, &a_major, &a_minor, &a_patch)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: parse_version is NULL");
         return false;  // Invalid version, assume not older
     }
 
     if (!parse_version(version_b, &b_major, &b_minor, &b_patch)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: parse_version is NULL");
         return false;  // Invalid version, assume not older
     }
 
     // Compare major version
     if (a_major < b_major) return true;
-    if (a_major > b_major) return false;
+    if (a_major > b_major) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: validation failed");
+        return false;
+    }
 
     // Major versions equal, compare minor
     if (a_minor < b_minor) return true;
-    if (a_minor > b_minor) return false;
+    if (a_minor > b_minor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: validation failed");
+        return false;
+    }
 
     // Minor versions equal, compare patch
     return (a_patch < b_patch);
@@ -614,6 +633,7 @@ static bool query_remote_registry(const char* model_id,
                                    char* latest_version,
                                    size_t latest_version_size) {
     if (!model_id || !latest_version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_version_older: required parameter is NULL (model_id, latest_version)");
         return false;
     }
 
@@ -623,6 +643,7 @@ static bool query_remote_registry(const char* model_id,
     const char* enable_remote = getenv("NIMCP_ENABLE_REMOTE_REGISTRY");
     if (!enable_remote || strcmp(enable_remote, "1") != 0) {
         // Remote registry checks disabled (default: local-only for privacy)
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: enable_remote is NULL");
         return false;
     }
 
@@ -643,6 +664,7 @@ static bool query_remote_registry(const char* model_id,
     // This preserves privacy and works offline by default.
 
     (void)api_url;  // Suppress unused warning
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: operation failed");
     return false;  // Remote check not implemented yet
 }
 
@@ -672,6 +694,7 @@ static bool check_model_version_update(const char* model_id,
                                        char* latest_version,
                                        size_t latest_version_size) {
     if (!model_id || !current_version || !latest_version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_version_older: required parameter is NULL (model_id, current_version, latest_version)");
         return false;
     }
 
@@ -695,6 +718,7 @@ static bool check_model_version_update(const char* model_id,
     // HOW:  Use get_models_directory helper
     char models_dir[512];
     if (!get_models_directory(models_dir, sizeof(models_dir))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_version_older: get_models_directory is NULL");
         return false;  // Can't check without directory
     }
 
@@ -713,6 +737,7 @@ static bool check_model_version_update(const char* model_id,
 
     DIR* dir = opendir(size_dir);
     if (!dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_version_older: dir is NULL");
         return false;  // Can't scan, assume no update
     }
 
@@ -765,6 +790,7 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
 
     if (!model_id || !info) {
         LOG_ERROR("Invalid parameters: model_id=%p, info=%p", (void*)model_id, (void*)info);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_model_info: required parameter is NULL (model_id, info)");
         return false;
     }
 
@@ -772,6 +798,7 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
     cJSON* metadata = load_model_metadata(model_id, NULL);
     if (!metadata) {
         LOG_WARN("Could not load metadata for model: %s", model_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_model_info: metadata is NULL");
         return false;
     }
 
@@ -843,11 +870,15 @@ bool brain_get_model_info(const char* model_id, brain_model_info_t* info) {
  * @return true if model is cached locally
  */
 bool brain_model_exists(const char* model_id) {
-    if (!model_id) return false;
+    if (!model_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_model_exists: model_id is NULL");
+        return false;
+    }
 
     char model_path[1024];
     if (!build_model_path(model_id, NULL, MODEL_EXTENSION,
                          model_path, sizeof(model_path))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_model_exists: model_id is NULL");
         return false;
     }
 
@@ -863,6 +894,7 @@ bool brain_model_exists(const char* model_id) {
 bool brain_download_model(const char* model_id) {
     fprintf(stderr, "Model download not yet implemented.\n");
     fprintf(stderr, "Models should be trained and saved to: %s\n", MODEL_REPO_BASE);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: operation failed");
     return false;
 }
 
@@ -974,6 +1006,7 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
     // Guard: Validate inputs
     if (!brain || !training_data || !labels || !cfg) {
         LOG_ERROR("Invalid parameters to finetune_with_layer_freezing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_download_model: required parameter is NULL (brain, training_data, labels, cfg)");
         return false;
     }
 
@@ -981,6 +1014,7 @@ static bool finetune_with_layer_freezing(brain_t brain, const float* training_da
     brain_stats_t stats;
     if (!brain_get_stats(brain, &stats)) {
         LOG_ERROR("Failed to get brain stats for fine-tuning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_download_model: brain_get_stats is NULL");
         return false;
     }
 
@@ -1087,6 +1121,7 @@ bool brain_finetune(brain_t brain, const float* training_data, const float* labe
         LOG_ERROR("Invalid parameters: brain=%p, training_data=%p, labels=%p, num_samples=%u",
                   (void*)brain, (const void*)training_data,
                   (const void*)labels, num_samples);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (brain, training_data, labels)");
         return false;
     }
 

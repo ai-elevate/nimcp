@@ -213,6 +213,7 @@ stdp_health_metrics_t* stdp_health_create(
     metrics->mutex = nimcp_mutex_create(&attr);
     if (!metrics->mutex) {
         nimcp_free(metrics);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_health_create: metrics->mutex is NULL");
         return NULL;
     }
 
@@ -248,6 +249,7 @@ int stdp_health_register_stdp(
     const char* name
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC || !stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_health_register_stdp: required parameter is NULL (metrics, stdp)");
         return -1;
     }
 
@@ -255,6 +257,7 @@ int stdp_health_register_stdp(
 
     if (metrics->context_count >= STDP_HEALTH_MAX_CONTEXTS) {
         nimcp_mutex_unlock(metrics->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_register_stdp: capacity exceeded");
         return -1;
     }
 
@@ -269,6 +272,7 @@ int stdp_health_register_stdp(
 
     if (context_id < 0) {
         nimcp_mutex_unlock(metrics->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_register_stdp: validation failed");
         return -1;
     }
 
@@ -296,6 +300,7 @@ int stdp_health_register_bcm(
     const char* name
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC || !bcm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_health_register_bcm: required parameter is NULL (metrics, bcm)");
         return -1;
     }
 
@@ -303,6 +308,7 @@ int stdp_health_register_bcm(
 
     if (metrics->context_count >= STDP_HEALTH_MAX_CONTEXTS) {
         nimcp_mutex_unlock(metrics->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_register_bcm: capacity exceeded");
         return -1;
     }
 
@@ -317,6 +323,7 @@ int stdp_health_register_bcm(
 
     if (context_id < 0) {
         nimcp_mutex_unlock(metrics->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_register_bcm: validation failed");
         return -1;
     }
 
@@ -343,6 +350,7 @@ int stdp_health_register_coordinator(
     plasticity_coordinator_t* coordinator
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_register_coordinator: metrics is NULL");
         return -1;
     }
 
@@ -358,10 +366,12 @@ int stdp_health_unregister(
     int context_id
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_unregister: metrics is NULL");
         return -1;
     }
 
     if (context_id < 0 || context_id >= STDP_HEALTH_MAX_CONTEXTS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stdp_health_unregister: capacity exceeded");
         return -1;
     }
 
@@ -386,6 +396,7 @@ int stdp_health_unregister(
 
 int stdp_health_check(stdp_health_metrics_t* metrics) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_check: metrics is NULL");
         return -1;
     }
 
@@ -430,6 +441,7 @@ int stdp_health_check_weights(
     const char* context_name
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC || !weights || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_check_weights: required parameter is NULL (metrics, weights)");
         return -1;
     }
 
@@ -448,6 +460,7 @@ int stdp_health_check_timing(
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC ||
         !pre_times || !post_times || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_check_timing: operation failed");
         return -1;
     }
 
@@ -507,6 +520,7 @@ int stdp_health_check_learning_rate(
     const char* context_name
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_check_learning_rate: metrics is NULL");
         return -1;
     }
 
@@ -561,6 +575,7 @@ int stdp_health_check_traces(
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC ||
         !traces || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_check_traces: operation failed");
         return -1;
     }
 
@@ -607,6 +622,7 @@ int stdp_health_set_anomaly_callback(
     void* user_data
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_set_anomaly_callback: metrics is NULL");
         return -1;
     }
 
@@ -624,6 +640,7 @@ int stdp_health_set_check_callback(
     void* user_data
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_set_check_callback: metrics is NULL");
         return -1;
     }
 
@@ -644,6 +661,7 @@ int stdp_health_get_stats(
     stdp_health_stats_t* stats
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_health_get_stats: required parameter is NULL (metrics, stats)");
         return -1;
     }
 
@@ -681,6 +699,7 @@ void stdp_health_reset_stats(stdp_health_metrics_t* metrics) {
 
 bool stdp_health_is_healthy(const stdp_health_metrics_t* metrics) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_is_healthy: metrics is NULL");
         return false;
     }
     return metrics->stats.overall_health_score > 0.5f &&
@@ -696,6 +715,7 @@ int stdp_health_connect_bio_async(
     bio_router_t router
 ) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_connect_bio_async: metrics is NULL");
         return -1;
     }
 
@@ -709,6 +729,7 @@ int stdp_health_connect_bio_async(
 
 int stdp_health_broadcast_status(stdp_health_metrics_t* metrics) {
     if (!metrics || metrics->magic != STDP_HEALTH_METRICS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_health_broadcast_status: metrics is NULL");
         return -1;
     }
 

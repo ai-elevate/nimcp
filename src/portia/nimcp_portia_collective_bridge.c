@@ -184,7 +184,10 @@ void portia_collective_destroy(portia_collective_bridge_t* bridge) {
 }
 
 int portia_collective_reset(portia_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -269,6 +272,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
     return -1;
 }
 
@@ -390,7 +394,10 @@ static nimcp_error_t portia_collective_message_handler(
     void* user_data
 ) {
     portia_collective_bridge_t* bridge = (portia_collective_bridge_t*)user_data;
-    if (!bridge || !msg) return -1;
+    if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_message_handler: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     (void)response_promise;  /* Currently unused - fire-and-forget messages */
 
@@ -400,7 +407,10 @@ static nimcp_error_t portia_collective_message_handler(
 
     switch (header->type) {
         case BIO_MSG_PORTIA_COLLECTIVE_TIER_CHANGE: {
-            if (payload_size < sizeof(uint32_t) * 2) return -1;
+            if (payload_size < sizeof(uint32_t) * 2) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
+                return -1;
+            }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t instance_id = data[0];
             uint32_t new_tier = data[1];
@@ -408,7 +418,10 @@ static nimcp_error_t portia_collective_message_handler(
         }
         case BIO_MSG_PORTIA_COLLECTIVE_STATE_UPDATE: {
             /* Handle state update from remote instance */
-            if (payload_size < sizeof(collective_instance_state_t)) return -1;
+            if (payload_size < sizeof(collective_instance_state_t)) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
+                return -1;
+            }
             const collective_instance_state_t* state =
                 (const collective_instance_state_t*)payload;
 
@@ -427,7 +440,10 @@ static nimcp_error_t portia_collective_message_handler(
         }
         case BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST: {
             /* Handle offload request from remote instance */
-            if (payload_size < sizeof(uint32_t) * 2) return -1;
+            if (payload_size < sizeof(uint32_t) * 2) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
+                return -1;
+            }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t source_id = data[0];
             /* uint32_t task_complexity_bits = data[1]; */
@@ -440,7 +456,10 @@ static nimcp_error_t portia_collective_message_handler(
         }
         case BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION: {
             /* Handle degradation notification from remote instance */
-            if (payload_size < sizeof(uint32_t) * 2) return -1;
+            if (payload_size < sizeof(uint32_t) * 2) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: validation failed");
+                return -1;
+            }
             const uint32_t* data = (const uint32_t*)payload;
             uint32_t instance_id = data[0];
             bool is_degraded = (data[1] != 0);
@@ -459,6 +478,7 @@ static nimcp_error_t portia_collective_message_handler(
         }
         default:
             LOG_DEBUG("Unknown message type: 0x%04X", header->type);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_message_handler: operation failed");
             return -1;
     }
 }
@@ -510,7 +530,10 @@ int portia_collective_update(
     portia_collective_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -555,7 +578,10 @@ int portia_collective_broadcast_tier(
     portia_collective_bridge_t* bridge,
     uint32_t new_tier
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_broadcast_tier: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -602,7 +628,10 @@ int portia_collective_handle_remote_tier(
     uint32_t instance_id,
     uint32_t new_tier
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_handle_remote_tier: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -617,6 +646,7 @@ int portia_collective_handle_remote_tier(
         if (bridge->instance_count >= PORTIA_COLLECTIVE_MAX_INSTANCES) {
             LOG_WARNING("Cannot add instance %u: max instances reached", instance_id);
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "portia_collective_handle_remote_tier: capacity exceeded");
             return -1;
         }
         idx = (int)bridge->instance_count++;
@@ -680,6 +710,7 @@ static int request_offload_unlocked(
     }
 
     if (best_score < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "request_offload_unlocked: validation failed");
         return -1;  /* No suitable target found */
     }
 
@@ -694,7 +725,10 @@ int portia_collective_request_offload(
     float task_complexity,
     uint32_t* target_instance
 ) {
-    if (!bridge || !target_instance) return -1;
+    if (!bridge || !target_instance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_request_offload: required parameter is NULL (bridge, target_instance)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -711,7 +745,10 @@ int portia_collective_request_offload(
 }
 
 bool portia_collective_can_receive(const portia_collective_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_can_receive: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -724,7 +761,10 @@ bool portia_collective_can_receive(const portia_collective_bridge_t* bridge) {
 }
 
 int portia_collective_rebalance(portia_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_rebalance: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -780,7 +820,10 @@ int portia_collective_coordinate_degradation(
     portia_collective_bridge_t* bridge,
     bool local_degraded
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_coordinate_degradation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -818,7 +861,10 @@ int portia_collective_coordinate_degradation(
 }
 
 int portia_collective_request_compensation(portia_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_request_compensation: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -837,7 +883,10 @@ int portia_collective_get_summary(
     const portia_collective_bridge_t* bridge,
     collective_resource_summary_t* summary
 ) {
-    if (!bridge || !summary) return -1;
+    if (!bridge || !summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_get_summary: required parameter is NULL (bridge, summary)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -882,13 +931,17 @@ int portia_collective_get_instance_state(
     uint32_t instance_id,
     collective_instance_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_get_instance_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_instance_index(bridge, instance_id);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_collective_get_instance_state: validation failed");
         return -1;
     }
 
@@ -910,7 +963,10 @@ uint32_t portia_collective_get_local_id(const portia_collective_bridge_t* bridge
 }
 
 bool portia_collective_is_leader(const portia_collective_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_is_leader: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool is_leader = bridge->is_leader;
@@ -927,7 +983,10 @@ int portia_collective_get_stats(
     const portia_collective_bridge_t* bridge,
     portia_collective_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -949,7 +1008,10 @@ void portia_collective_reset_stats(portia_collective_bridge_t* bridge) {
 //=============================================================================
 
 int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_connect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -981,6 +1043,7 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
         LOG_WARNING("Failed to register with bio-async router");
         bridge->bio_async_connected = false;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_connect_bio_async: bridge->bio_ctx is NULL");
         return -1;
     }
 
@@ -1025,7 +1088,10 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
 }
 
 int portia_collective_disconnect_bio_async(portia_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia_collective_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

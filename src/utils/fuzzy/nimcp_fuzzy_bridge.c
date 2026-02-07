@@ -179,7 +179,10 @@ static fuzzy_inference_engine_t* build_convergence_fis(void) {
     fuzzy_inference_config_t cfg = fuzzy_inference_default_config();
     cfg.fis_type = FUZZY_FIS_SUGENO;
     fuzzy_inference_engine_t* fis = fuzzy_inference_create_custom(&cfg);
-    if (!fis) return NULL;
+    if (!fis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_convergence_fis: fis is NULL");
+        return NULL;
+    }
 
     /* Input 0: loss_delta — how much loss changed */
     fuzzy_variable_t loss_delta;
@@ -372,6 +375,7 @@ int fuzzy_bridge_set_kg_wiring(fuzzy_bridge_t* bridge, kg_wiring_t* kg) {
 
 kg_module_wiring_t* fuzzy_bridge_create_kg_wiring(void) {
     /* Placeholder - actual implementation would create wiring descriptor */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fuzzy_bridge_create_kg_wiring: operation failed");
     return NULL;
 }
 

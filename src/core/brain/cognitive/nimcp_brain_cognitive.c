@@ -132,6 +132,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->working_memory = working_memory_create_custom(&wm_config);
     if (!brain->working_memory) {
         set_error("Failed to create working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_working_memory_subsystem: brain->working_memory is NULL");
         return false;
     }
 
@@ -146,6 +147,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->emotional_system = emotion_system_create(NULL);  // NULL = use defaults
     if (!brain->emotional_system) {
         set_error("Failed to create emotional system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_working_memory_subsystem: brain->emotional_system is NULL");
         return false;
     }
 
@@ -161,6 +163,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->sleep_system = sleep_system_create(NULL);  // NULL = use defaults
     if (!brain->sleep_system) {
         set_error("Failed to create sleep system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_working_memory_subsystem: brain->sleep_system is NULL");
         return false;
     }
 
@@ -179,6 +182,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->engram_system = engram_system_create();
     if (!brain->engram_system) {
         set_error("Failed to create engram system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_working_memory_subsystem: brain->engram_system is NULL");
         return false;
     }
 
@@ -194,6 +198,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->systems_consolidation = systems_consolidation_create();
     if (!brain->systems_consolidation) {
         set_error("Failed to create systems consolidation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_working_memory_subsystem: brain->systems_consolidation is NULL");
         return false;
     }
 
@@ -215,6 +220,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->wm_transfer_system = wm_transfer_create();
     if (!brain->wm_transfer_system) {
         set_error("Failed to create working memory transfer system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_working_memory_subsystem: brain->wm_transfer_system is NULL");
         return false;
     }
 
@@ -239,6 +245,7 @@ bool init_working_memory_subsystem(brain_t brain)
     brain->semantic_memory = semantic_memory_create();
     if (!brain->semantic_memory) {
         set_error("Failed to create semantic memory network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_working_memory_subsystem: brain->semantic_memory is NULL");
         return false;
     }
 
@@ -275,6 +282,7 @@ bool init_theory_of_mind_subsystem(brain_t brain)
     brain->theory_of_mind = tom_create(brain);
     if (!brain->theory_of_mind) {
         set_error("Failed to create Theory of Mind module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_theory_of_mind_subsystem: brain->theory_of_mind is NULL");
         return false;
     }
 
@@ -332,6 +340,7 @@ bool init_mirror_neurons(brain_t brain)
     brain->mirror_neurons = mirror_neurons_create(&mirror_config);
     if (!brain->mirror_neurons) {
         set_error("Failed to create mirror neuron system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_mirror_neurons: brain->mirror_neurons is NULL");
         return false;
     }
 
@@ -380,6 +389,7 @@ bool init_curiosity_subsystem(brain_t brain)
     brain->curiosity = curiosity_engine_create(brain, "nimcp_brain");
     if (!brain->curiosity) {
         set_error("Failed to create curiosity engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_curiosity_subsystem: brain->curiosity is NULL");
         return false;
     }
 
@@ -420,6 +430,7 @@ bool init_salience_subsystem(brain_t brain)
 
     if (!brain->salience) {
         set_error("Failed to create salience evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_salience_subsystem: brain->salience is NULL");
         return false;
     }
 
@@ -460,6 +471,7 @@ bool init_introspection_subsystem(brain_t brain)
 
     if (!brain->introspection) {
         set_error("Failed to create introspection context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_introspection_subsystem: brain->introspection is NULL");
         return false;
     }
 
@@ -510,6 +522,7 @@ bool init_ethics_engine_subsystem(brain_t brain)
 
     if (!brain->ethics) {
         set_error("Failed to create ethics engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_ethics_engine_subsystem: brain->ethics is NULL");
         return false;
     }
 
@@ -553,6 +566,7 @@ bool init_empathy_network_subsystem(brain_t brain)
 
     if (!brain->empathy_network) {
         set_error("Failed to create empathy network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_empathy_network_subsystem: brain->empathy_network is NULL");
         return false;
     }
 
@@ -593,6 +607,7 @@ bool init_empathetic_response_subsystem(brain_t brain)
 
     if (!brain->empathetic_response_engine) {
         set_error("Failed to create empathetic response engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_empathetic_response_subsystem: brain->empathetic_response_engine is NULL");
         return false;
     }
 
@@ -623,6 +638,7 @@ bool init_autobiographical_memory_subsystem(brain_t brain)
 
     if (!brain->autobio) {
         set_error("Failed to create autobiographical memory system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_autobiographical_memory_subsystem: brain->autobio is NULL");
         return false;
     }
 
@@ -657,6 +673,7 @@ bool init_self_model_subsystem(brain_t brain)
 
     if (!brain->self_model) {
         set_error("Failed to create self-model system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_self_model_subsystem: brain->self_model is NULL");
         return false;
     }
 
@@ -664,6 +681,7 @@ bool init_self_model_subsystem(brain_t brain)
     if (brain->personality) {
         if (!self_model_set_personality(brain->self_model, brain->personality)) {
             set_error("Failed to wire personality into self-model");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_self_model_subsystem: self_model_set_personality is NULL");
             return false;
         }
     }
@@ -720,6 +738,7 @@ bool init_global_workspace_subsystem(brain_t brain)
     brain->global_workspace = global_workspace_create_custom(&gw_config);
     if (!brain->global_workspace) {
         set_error("Failed to create global workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_global_workspace_subsystem: brain->global_workspace is NULL");
         return false;
     }
 

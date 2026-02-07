@@ -208,6 +208,7 @@ static authority_entry_t* find_authority(
             return &system->authorities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_authority: validation failed");
     return NULL;
 }
 
@@ -354,6 +355,7 @@ corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
     corrigibility_t* system = nimcp_calloc(1, sizeof(corrigibility_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate corrigibility system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "corrigibility_create: validation failed");
         return NULL;
     }
 
@@ -362,6 +364,7 @@ corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "corrigibility_create: validation failed");
         return NULL;
     }
 
@@ -378,6 +381,7 @@ corrigibility_t* corrigibility_create(const corrigibility_config_t* config)
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Invalid configuration: %s", error_msg);
         nimcp_mutex_destroy(system->mutex);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility_create: validation failed");
         return NULL;
     }
 
@@ -926,6 +930,7 @@ float corrigibility_get_human_authority_weight(const corrigibility_t* system)
 bool corrigibility_defers_to_human(const corrigibility_t* system)
 {
     if (!is_valid_handle(system)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "corrigibility_defers_to_human: is_valid_handle is NULL");
         return false;
     }
     return system->config.defers_to_human_judgment;

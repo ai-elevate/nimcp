@@ -327,6 +327,7 @@ bool swarm_consciousness_register_peer_callback(
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
         LOG_ERROR("Invalid context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_register_peer_callback: ctx is NULL");
         return false;
     }
 
@@ -367,6 +368,7 @@ bool swarm_consciousness_on_peer_joined(
     uint16_t drone_id)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_on_peer_joined: ctx is NULL");
         return false;
     }
 
@@ -407,6 +409,7 @@ bool swarm_consciousness_on_peer_left(
     bool graceful)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_on_peer_left: ctx is NULL");
         return false;
     }
 
@@ -456,11 +459,13 @@ bool swarm_consciousness_request_phi(
     uint16_t drone_id)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_request_phi: ctx is NULL");
         return false;
     }
 
     if (!ctx->attached || !ctx->attached_swarm) {
         LOG_WARN("Not attached to swarm, cannot request phi");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_request_phi: required parameter is NULL (ctx->attached, ctx->attached_swarm)");
         return false;
     }
 
@@ -504,6 +509,7 @@ bool swarm_consciousness_request_phi(
     // No signal adapter configured - caller should set one via
     // swarm_consciousness_set_signal_adapter()
     LOG_DEBUG("No signal adapter configured for phi requests");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_request_phi: validation failed");
     return false;
 }
 
@@ -554,6 +560,7 @@ bool swarm_consciousness_handle_phi_response(
     float phi_value)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_handle_phi_response: ctx is NULL");
         return false;
     }
 
@@ -563,6 +570,7 @@ bool swarm_consciousness_handle_phi_response(
         LOG_WARN("Invalid phi value from drone %u: %.3f", drone_id, phi_value);
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "invalid_phi",
                       "drone=%u phi=%.3f", drone_id, phi_value);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_handle_phi_response: operation failed");
         return false;
     }
 
@@ -623,6 +631,7 @@ bool swarm_consciousness_get_remote_phi(
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC ||
         !phi_values || !drone_ids || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_get_remote_phi: operation failed");
         return false;
     }
 
@@ -653,6 +662,7 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
     swarm_brain_t* swarm)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC || !swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_enhanced_metrics: required parameter is NULL (ctx, swarm)");
         return NULL;
     }
 
@@ -661,6 +671,7 @@ swarm_consciousness_enhanced_metrics_t* swarm_compute_enhanced_metrics(
         (swarm_consciousness_enhanced_metrics_t*)nimcp_calloc(1, sizeof(*metrics));
     if (!metrics) {
         LOG_ERROR("Failed to allocate enhanced metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_compute_enhanced_metrics: metrics is NULL");
         return NULL;
     }
 
@@ -770,6 +781,7 @@ bool swarm_compute_information_geometry(
     information_geometry_t* geometry)
 {
     if (!ctx || !geometry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_information_geometry: required parameter is NULL (ctx, geometry)");
         return false;
     }
 
@@ -778,6 +790,7 @@ bool swarm_compute_information_geometry(
     if (ctx->history_count < MIN_GEOMETRY_SAMPLES) {
         nimcp_mutex_unlock(&ctx->lock);
         memset(geometry, 0, sizeof(*geometry));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_information_geometry: validation failed");
         return false;
     }
 
@@ -817,6 +830,7 @@ bool swarm_compute_consciousness_dynamics(
     consciousness_dynamics_t* dynamics)
 {
     if (!ctx || !dynamics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_consciousness_dynamics: required parameter is NULL (ctx, dynamics)");
         return false;
     }
 
@@ -826,6 +840,7 @@ bool swarm_compute_consciousness_dynamics(
         nimcp_mutex_unlock(&ctx->lock);
         memset(dynamics, 0, sizeof(*dynamics));
         dynamics->current_phase = CONSCIOUSNESS_PHASE_CHAOS;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_consciousness_dynamics: validation failed");
         return false;
     }
 
@@ -899,6 +914,7 @@ bool swarm_compute_neural_binding(
     neural_binding_t* binding)
 {
     if (!ctx || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_neural_binding: required parameter is NULL (ctx, binding)");
         return false;
     }
 
@@ -908,6 +924,7 @@ bool swarm_compute_neural_binding(
 
     if (ctx->history_count < 10) {
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_compute_neural_binding: validation failed");
         return false;
     }
 
@@ -966,6 +983,7 @@ bool swarm_compute_hierarchical_consciousness(
     hierarchical_consciousness_t* hierarchy)
 {
     if (!ctx || !swarm || !hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_hierarchical_consciousness: required parameter is NULL (ctx, swarm, hierarchy)");
         return false;
     }
 
@@ -1050,6 +1068,7 @@ bool swarm_compute_consciousness_resilience(
     consciousness_resilience_t* resilience)
 {
     if (!ctx || !swarm || !resilience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_compute_consciousness_resilience: required parameter is NULL (ctx, swarm, resilience)");
         return false;
     }
 
@@ -1124,6 +1143,7 @@ bool swarm_consciousness_register_phase_callback(
     void* user_data)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_register_phase_callback: ctx is NULL");
         return false;
     }
 
@@ -1193,6 +1213,7 @@ bool swarm_consciousness_register_binding_callback(
     void* user_data)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_register_binding_callback: ctx is NULL");
         return false;
     }
 
@@ -1214,6 +1235,7 @@ bool swarm_consciousness_is_bound(
     float coherence_threshold)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_is_bound: ctx is NULL");
         return false;
     }
 
@@ -1234,6 +1256,7 @@ bool swarm_consciousness_get_binding(
     neural_binding_t* binding)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC || !binding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_get_binding: required parameter is NULL (ctx, binding)");
         return false;
     }
 
@@ -1258,6 +1281,7 @@ bool swarm_consciousness_attach_to_swarm(
     swarm_brain_t* swarm)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC || !swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_attach_to_swarm: required parameter is NULL (ctx, swarm)");
         return false;
     }
 
@@ -1266,6 +1290,7 @@ bool swarm_consciousness_attach_to_swarm(
     if (ctx->attached) {
         LOG_WARN("Already attached to a swarm");
         nimcp_mutex_unlock(&ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_attach_to_swarm: validation failed");
         return false;
     }
 
@@ -1337,6 +1362,7 @@ bool swarm_consciousness_set_signal_adapter(
     nimcp_swarm_signal_adapter_t* adapter)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_set_signal_adapter: ctx is NULL");
         return false;
     }
 
@@ -1362,6 +1388,7 @@ bool swarm_consciousness_handle_protocol_message(
     uint16_t source_drone_id)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_handle_protocol_message: ctx is NULL");
         return false;
     }
 
@@ -1369,6 +1396,7 @@ bool swarm_consciousness_handle_protocol_message(
         case SWARM_MSG_PHI_REQUEST: {
             // Respond with our phi
             if (!ctx->attached || !ctx->attached_swarm) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_handle_protocol_message: required parameter is NULL (ctx->attached, ctx->attached_swarm)");
                 return false;
             }
 
@@ -1389,7 +1417,10 @@ bool swarm_consciousness_handle_protocol_message(
         }
 
         case SWARM_MSG_PHI_RESPONSE: {
-            if (len < 4) return false;
+            if (len < 4) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_handle_protocol_message: validation failed");
+                return false;
+            }
 
             float phi_value;
             memcpy(&phi_value, data, sizeof(float));
@@ -1398,6 +1429,7 @@ bool swarm_consciousness_handle_protocol_message(
         }
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_handle_protocol_message: validation failed");
             return false;
     }
 }
@@ -1415,11 +1447,13 @@ bool swarm_consciousness_enhanced_register_bio_async(
     swarm_consciousness_enhanced_ctx_t* ctx)
 {
     if (!ctx || ctx->magic != ENHANCED_CONSCIOUSNESS_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_register_bio_async: ctx is NULL");
         return false;
     }
 
     if (!nimcp_bio_async_is_initialized()) {
         LOG_WARN("Bio-async not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "swarm_consciousness_enhanced_register_bio_async: nimcp_bio_async_is_initialized is NULL");
         return false;
     }
 
@@ -1485,11 +1519,13 @@ bool swarm_consciousness_enhanced_bbb_validate(
 {
     if (!metrics) {
         LOG_ERROR("Null metrics in BBB validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_enhanced_bbb_validate: metrics is NULL");
         return false;
     }
 
     // Validate base metrics
     if (!swarm_consciousness_bbb_validate(&metrics->base)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: swarm_consciousness_bbb_validate is NULL");
         return false;
     }
 
@@ -1499,6 +1535,7 @@ bool swarm_consciousness_enhanced_bbb_validate(
         isinf(metrics->geometry.total_correlation)) {
         LOG_ERROR("Invalid geometry: total_correlation=%.3f",
                   metrics->geometry.total_correlation);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: operation failed");
         return false;
     }
 
@@ -1506,12 +1543,14 @@ bool swarm_consciousness_enhanced_bbb_validate(
     if (metrics->dynamics.current_phase < CONSCIOUSNESS_PHASE_CHAOS ||
         metrics->dynamics.current_phase > CONSCIOUSNESS_PHASE_FROZEN) {
         LOG_ERROR("Invalid phase: %d", metrics->dynamics.current_phase);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: operation failed");
         return false;
     }
 
     // Validate binding bounds
     if (metrics->binding.phase_coherence < 0 || metrics->binding.phase_coherence > 1.0f) {
         LOG_ERROR("Invalid binding coherence: %.3f", metrics->binding.phase_coherence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: validation failed");
         return false;
     }
 
@@ -1521,6 +1560,7 @@ bool swarm_consciousness_enhanced_bbb_validate(
             isnan(metrics->hierarchy.phi_by_level[i])) {
             LOG_ERROR("Invalid hierarchy phi[%d]: %.3f",
                       i, metrics->hierarchy.phi_by_level[i]);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: operation failed");
             return false;
         }
     }
@@ -1529,6 +1569,7 @@ bool swarm_consciousness_enhanced_bbb_validate(
     if (metrics->resilience.fragility_index < 0 ||
         metrics->resilience.fragility_index > 1.0f) {
         LOG_ERROR("Invalid fragility: %.3f", metrics->resilience.fragility_index);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_enhanced_bbb_validate: operation failed");
         return false;
     }
 
@@ -1548,6 +1589,7 @@ bool swarm_consciousness_validate_phi_message(
     // Check minimum length
     if (!data || len < 4) {
         LOG_WARN("Invalid phi message length: %u", len);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_validate_phi_message: data is NULL");
         return false;
     }
 
@@ -1561,6 +1603,7 @@ bool swarm_consciousness_validate_phi_message(
         LOG_WARN("Invalid phi value from drone %u: %.3f", source_drone_id, phi_value);
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "invalid_phi_msg",
                       "drone=%u phi=%.3f", source_drone_id, phi_value);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_consciousness_validate_phi_message: operation failed");
         return false;
     }
 

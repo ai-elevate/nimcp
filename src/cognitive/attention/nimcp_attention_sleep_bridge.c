@@ -306,7 +306,10 @@ float attention_sleep_get_capacity(const attention_sleep_bridge_t bridge) {
 }
 
 bool attention_sleep_is_offline(const attention_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     attention_sleep_bridge_heartbeat("attention_sl_attention_sleep_is_o", 0.0f);
 

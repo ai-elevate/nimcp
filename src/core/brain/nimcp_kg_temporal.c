@@ -98,6 +98,7 @@ int kg_temporal_query_node(
     size_t* result_size
 ) {
     if (!kg || !query || !result || !result_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_query_node: required parameter is NULL (kg, query, result, result_size)");
         return -1;
     }
 
@@ -124,11 +125,13 @@ int kg_temporal_query_node(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_query_node: operation failed");
             return -1;
     }
 
     (void)node_id;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_query_node: operation failed");
     return -1; /* Node not found (placeholder) */
 }
 
@@ -140,6 +143,7 @@ int kg_temporal_query_subgraph(
     brain_kg_t** result
 ) {
     if (!kg || !query || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_query_subgraph: required parameter is NULL (kg, query, result)");
         return -1;
     }
 
@@ -155,6 +159,7 @@ int kg_temporal_query_subgraph(
     (void)root;
     (void)depth;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_query_subgraph: operation failed");
     return -1; /* Not implemented (placeholder) */
 }
 
@@ -167,6 +172,7 @@ int kg_temporal_query_nodes(
     size_t* result_sizes
 ) {
     if (!kg || !node_ids || node_count == 0 || !query || !results || !result_sizes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_query_nodes: required parameter is NULL (kg, node_ids, query, results, result_sizes)");
         return -1;
     }
 
@@ -195,6 +201,7 @@ int kg_temporal_get_versions(
     uint32_t* count
 ) {
     if (!kg || !versions || max == 0 || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_versions: required parameter is NULL (kg, versions, count)");
         return -1;
     }
 
@@ -213,6 +220,7 @@ int kg_temporal_get_version_at(
     kg_node_version_t* version
 ) {
     if (!kg || !version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_version_at: required parameter is NULL (kg, version)");
         return -1;
     }
 
@@ -224,6 +232,7 @@ int kg_temporal_get_version_at(
      * 2. Binary search for version where valid_from <= timestamp < valid_to
      */
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_get_version_at: operation failed");
     return -1; /* Version not found */
 }
 
@@ -247,6 +256,7 @@ bool kg_temporal_node_existed_at(
     uint64_t timestamp
 ) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_node_existed_at: kg is NULL");
         return false;
     }
 
@@ -291,6 +301,7 @@ int kg_temporal_diff(
     kg_temporal_diff_t* diff
 ) {
     if (!kg || !diff || from_timestamp >= to_timestamp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_diff: required parameter is NULL (kg, diff)");
         return -1;
     }
 
@@ -326,6 +337,7 @@ int kg_temporal_diff_subgraph(
     kg_temporal_diff_t* diff
 ) {
     if (!kg || !diff || from_timestamp >= to_timestamp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_diff_subgraph: required parameter is NULL (kg, diff)");
         return -1;
     }
 
@@ -345,10 +357,12 @@ int kg_temporal_get_node_changes(
     kg_node_version_t* after_version
 ) {
     if (!kg || !before_version || !after_version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_node_changes: required parameter is NULL (kg, before_version, after_version)");
         return -1;
     }
 
     if (from_timestamp >= to_timestamp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_get_node_changes: capacity exceeded");
         return -1;
     }
 
@@ -357,11 +371,13 @@ int kg_temporal_get_node_changes(
     int rc2 = kg_temporal_get_version_at(kg, node_id, to_timestamp, after_version);
 
     if (rc1 != 0 || rc2 != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_get_node_changes: validation failed");
         return -1;
     }
 
     /* Check if versions are different */
     if (before_version->version == after_version->version) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_temporal_get_node_changes: validation failed");
         return -1; /* No change */
     }
 
@@ -404,6 +420,7 @@ int kg_temporal_get_topology_evolution(
     kg_topology_snapshot_t* snapshots
 ) {
     if (!kg || !snapshots || sample_count == 0 || start >= end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_topology_evolution: required parameter is NULL (kg, snapshots)");
         return -1;
     }
 
@@ -437,6 +454,7 @@ int kg_temporal_get_node_count_trend(
     uint32_t sample_count
 ) {
     if (!kg || !timestamps || !node_counts || sample_count == 0 || start >= end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_node_count_trend: required parameter is NULL (kg, timestamps, node_counts)");
         return -1;
     }
 
@@ -462,6 +480,7 @@ int kg_temporal_get_node_activity_trend(
     uint32_t sample_count
 ) {
     if (!kg || !timestamps || !states || sample_count == 0 || start >= end) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_get_node_activity_trend: required parameter is NULL (kg, timestamps, states)");
         return -1;
     }
 
@@ -515,6 +534,7 @@ bool kg_temporal_in_range(
     bool use_transaction_time
 ) {
     if (!bitemporal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_temporal_in_range: bitemporal is NULL");
         return false;
     }
 

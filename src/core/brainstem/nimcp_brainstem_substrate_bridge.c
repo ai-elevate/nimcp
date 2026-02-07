@@ -122,6 +122,7 @@ int brainstem_substrate_bridge_update(brainstem_substrate_bridge_t* bridge) {
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_substrate_bridge_update: validation failed");
         return -1;
     }
 

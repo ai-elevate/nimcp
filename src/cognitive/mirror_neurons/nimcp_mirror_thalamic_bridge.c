@@ -116,6 +116,7 @@ mirror_thalamic_bridge_t* mirror_thalamic_bridge_create(void* mirror, thalamic_r
     if (bridge_base_init(&bridge->base, 0, "mirror_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->mirror = mirror;
@@ -284,7 +285,10 @@ int mirror_thalamic_query_self_knowledge(kg_reader_t* kg) {
 }
 
 bool mirror_thalamic_register_bio_async(mirror_thalamic_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_registered) return false;
+    if (!bridge || bridge->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_thalamic_register_bio_async: bridge is NULL");
+        return false;
+    }
     mirror_thalamic_bridge_heartbeat_instance(bridge->health_agent, "register_bio_async", 0.0f);
     NIMCP_LOGGING_DEBUG("Mirror thalamic bridge: registering bio-async");
     bridge->bio_async_registered = true;

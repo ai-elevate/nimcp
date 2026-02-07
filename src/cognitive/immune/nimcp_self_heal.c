@@ -285,6 +285,7 @@ static int init_lnn_network(self_heal_engine_t* engine)
 
     if (engine->lnn_network == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create LNN network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_lnn_network: validation failed");
         return -1;
     }
 
@@ -335,6 +336,7 @@ static int init_training_buffer(self_heal_engine_t* engine)
     engine->training_samples = nimcp_calloc(capacity, sizeof(training_sample_t));
     if (engine->training_samples == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate training buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_training_buffer: validation failed");
         return -1;
     }
 
@@ -354,6 +356,7 @@ static int apply_template_substitution(
     size_t output_size)
 {
     if (template_str == NULL || output == NULL || output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_template_substitution: output_size is zero");
         return -1;
     }
 
@@ -415,6 +418,7 @@ static int generate_pattern_fix(
     heal_result_t* result)
 {
     if (engine == NULL || pattern == NULL || source_code == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "generate_pattern_fix: validation failed");
         return -1;
     }
 
@@ -626,6 +630,7 @@ static int generate_pattern_fix(
             /* Unknown pattern - just copy original */
             strncpy(result->fixed_code, source_code, SELF_HEAL_MAX_CODE_SIZE - 1);
             result->status = HEAL_STATUS_NO_PATTERN;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
             return -1;
     }
 
@@ -642,6 +647,7 @@ static int generate_pattern_fix(
         /* Failed to generate fix */
         strncpy(result->fixed_code, source_code, SELF_HEAL_MAX_CODE_SIZE - 1);
         result->status = HEAL_STATUS_NO_PATTERN;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return -1;
     }
 
@@ -681,6 +687,7 @@ static int lnn_predict_fix_type(
     float* input_data = (float*)nimcp_tensor_data(input);
     if (input_data == NULL) {
         nimcp_tensor_destroy(input);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_predict_fix_type: validation failed");
         return -1;
     }
     memcpy(input_data, features->features, SELF_HEAL_FEATURE_DIM * sizeof(float));
@@ -690,6 +697,7 @@ static int lnn_predict_fix_type(
     nimcp_tensor_t* output = nimcp_tensor_create(out_dims, 1, NIMCP_DTYPE_F32);
     if (output == NULL) {
         nimcp_tensor_destroy(input);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_predict_fix_type: validation failed");
         return -1;
     }
 
@@ -698,6 +706,7 @@ static int lnn_predict_fix_type(
     if (ret != 0) {
         nimcp_tensor_destroy(input);
         nimcp_tensor_destroy(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_predict_fix_type: validation failed");
         return -1;
     }
 
@@ -706,6 +715,7 @@ static int lnn_predict_fix_type(
     if (output_data == NULL) {
         nimcp_tensor_destroy(input);
         nimcp_tensor_destroy(output);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_predict_fix_type: validation failed");
         return -1;
     }
 
@@ -830,6 +840,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
     self_heal_engine_t* engine = nimcp_calloc(1, sizeof(self_heal_engine_t));
     if (engine == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_heal_create: validation failed");
         return NULL;
     }
 
@@ -845,6 +856,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
     if (engine->mutex == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create mutex");
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
         return NULL;
     }
 
@@ -854,6 +866,7 @@ self_heal_engine_t* self_heal_create(const self_heal_config_t* config)
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create pattern library");
         nimcp_mutex_free(engine->mutex);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_heal_create: validation failed");
         return NULL;
     }
 
@@ -985,6 +998,7 @@ int self_heal_extract_features(
     crash_features_t* features)
 {
     if (engine == NULL || antigen == NULL || features == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_extract_features: validation failed");
         return -1;
     }
 
@@ -1071,6 +1085,7 @@ int self_heal_extract_features_from_context(
     crash_features_t* features)
 {
     if (engine == NULL || crash_ctx == NULL || features == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_extract_features_from_context: validation failed");
         return -1;
     }
 
@@ -1198,6 +1213,7 @@ int self_heal_generate_fix(
     heal_result_t* result)
 {
     if (engine == NULL || antigen == NULL || source_code == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_generate_fix: validation failed");
         return -1;
     }
 
@@ -1218,6 +1234,7 @@ int self_heal_generate_fix(
     /* Check code size */
     if (strlen(source_code) >= SELF_HEAL_MAX_CODE_SIZE) {
         result->status = HEAL_STATUS_CODE_TOO_LARGE;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "self_heal_generate_fix: capacity exceeded");
         return -1;
     }
 
@@ -1420,6 +1437,7 @@ int self_heal_train_on_success(
 
     crash_features_t features = {0};
     if (self_heal_extract_features(engine, antigen, &features) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_on_success: validation failed");
         return -1;
     }
 
@@ -1458,6 +1476,7 @@ int self_heal_train_on_failure(
 
     crash_features_t features = {0};
     if (self_heal_extract_features(engine, antigen, &features) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_on_failure: validation failed");
         return -1;
     }
 
@@ -1515,6 +1534,7 @@ int self_heal_train_online(
     nimcp_tensor_t* target = nimcp_tensor_create(target_dims, 1, NIMCP_DTYPE_F32);
     if (target == NULL) {
         nimcp_tensor_destroy(input);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_online: validation failed");
         return -1;
     }
 
@@ -1523,6 +1543,7 @@ int self_heal_train_online(
     if (input_data == NULL) {
         nimcp_tensor_destroy(input);
         nimcp_tensor_destroy(target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_online: validation failed");
         return -1;
     }
     memcpy(input_data, features->features, SELF_HEAL_FEATURE_DIM * sizeof(float));
@@ -1532,6 +1553,7 @@ int self_heal_train_online(
     if (target_data == NULL) {
         nimcp_tensor_destroy(input);
         nimcp_tensor_destroy(target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_online: validation failed");
         return -1;
     }
 
@@ -1632,6 +1654,7 @@ int self_heal_train_batch(self_heal_engine_t* engine)
     nimcp_tensor_t* inputs = nimcp_tensor_create(input_dims, 2, NIMCP_DTYPE_F32);
     if (inputs == NULL) {
         nimcp_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_batch: validation failed");
         return -1;
     }
 
@@ -1641,6 +1664,7 @@ int self_heal_train_batch(self_heal_engine_t* engine)
     if (targets == NULL) {
         nimcp_tensor_destroy(inputs);
         nimcp_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_batch: validation failed");
         return -1;
     }
 
@@ -1652,6 +1676,7 @@ int self_heal_train_batch(self_heal_engine_t* engine)
         nimcp_tensor_destroy(inputs);
         nimcp_tensor_destroy(targets);
         nimcp_mutex_unlock(engine->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_train_batch: validation failed");
         return -1;
     }
 
@@ -1749,6 +1774,7 @@ int self_heal_load_model(self_heal_engine_t* engine, const char* path)
     if (engine->lnn_network == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to load LNN from %s", path);
         engine->lnn_initialized = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_heal_load_model: validation failed");
         return -1;
     }
 
@@ -1953,6 +1979,7 @@ pattern_library_t* heal_pattern_library_create(void)
     lib->builtin_patterns = nimcp_calloc(lib->builtin_count, sizeof(fix_pattern_t));
     if (lib->builtin_patterns == NULL) {
         nimcp_free(lib);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_pattern_library_create: validation failed");
         return NULL;
     }
 
@@ -1974,6 +2001,7 @@ pattern_library_t* heal_pattern_library_create(void)
     if (lib->custom_patterns == NULL) {
         nimcp_free(lib->builtin_patterns);
         nimcp_free(lib);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_pattern_library_create: validation failed");
         return NULL;
     }
     lib->custom_count = 0;
@@ -1984,6 +2012,7 @@ pattern_library_t* heal_pattern_library_create(void)
         nimcp_free(lib->custom_patterns);
         nimcp_free(lib->builtin_patterns);
         nimcp_free(lib);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_pattern_library_create: validation failed");
         return NULL;
     }
 
@@ -2081,6 +2110,7 @@ const fix_pattern_t* heal_pattern_get_by_id(
     }
     nimcp_mutex_unlock(library->mutex);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_pattern_get_by_id: validation failed");
     return NULL;
 }
 
@@ -2103,6 +2133,7 @@ int heal_pattern_register(
 
     if (library->custom_count >= library->custom_capacity) {
         nimcp_mutex_unlock(library->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "heal_pattern_register: capacity exceeded");
         return -1;
     }
 
@@ -2158,6 +2189,7 @@ int heal_pattern_unregister(pattern_library_t* library, uint32_t id)
     }
 
     nimcp_mutex_unlock(library->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_pattern_unregister: operation failed");
     return -1;
 }
 
@@ -2299,6 +2331,7 @@ int heal_pattern_match(
         return 0;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_pattern_match: operation failed");
     return -1;
 }
 
@@ -2311,6 +2344,7 @@ int heal_pattern_apply(
 {
     if (pattern == NULL || original_code == NULL ||
         fixed_code == NULL || fixed_code_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_pattern_apply: operation failed");
         return -1;
     }
 
@@ -2371,6 +2405,7 @@ int heal_pattern_update_stats(
 
     if (pattern == NULL) {
         nimcp_mutex_unlock(library->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "heal_pattern_update_stats: validation failed");
         return -1;
     }
 

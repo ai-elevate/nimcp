@@ -201,7 +201,10 @@ static bool track_allocation(
     bool is_cow,
     bool borrowed)
 {
-    if (!pools || !ptr) return false;
+    if (!pools || !ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "track_allocation: required parameter is NULL (pools, ptr)");
+        return false;
+    }
 
     /* Get or create entry */
     alloc_entry_t* entry;
@@ -210,7 +213,10 @@ static bool track_allocation(
         pools->entry_free = entry->next;
     } else {
         entry = nimcp_calloc(1, sizeof(alloc_entry_t));
-        if (!entry) return false;
+        if (!entry) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "track_allocation: entry is NULL");
+            return false;
+        }
     }
 
     /* Fill entry */
@@ -237,7 +243,10 @@ static bool track_allocation(
  */
 static alloc_entry_t* untrack_allocation(struct unified_pools* pools, void* ptr)
 {
-    if (!pools || !ptr) return NULL;
+    if (!pools || !ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "untrack_allocation: required parameter is NULL (pools, ptr)");
+        return NULL;
+    }
 
     uint8_t hash = hash_ptr(ptr);
     alloc_entry_t** prev = &pools->alloc_table[hash];
@@ -257,6 +266,7 @@ static alloc_entry_t* untrack_allocation(struct unified_pools* pools, void* ptr)
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "untrack_allocation: operation failed");
     return NULL;
 }
 
@@ -514,6 +524,7 @@ unified_pools_t unified_pools_create(const unified_pools_config_t* config)
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&pools->mutex, false) != 0) {
         nimcp_free(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "unified_pools_create: validation failed");
         return NULL;
     }
 
@@ -522,6 +533,7 @@ unified_pools_t unified_pools_create(const unified_pools_config_t* config)
     if (!pools->brain_pools) {
         nimcp_platform_mutex_destroy(&pools->mutex);
         nimcp_free(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unified_pools_create: pools->brain_pools is NULL");
         return NULL;
     }
 
@@ -531,6 +543,7 @@ unified_pools_t unified_pools_create(const unified_pools_config_t* config)
         brain_pools_destroy(pools->brain_pools);
         nimcp_platform_mutex_destroy(&pools->mutex);
         nimcp_free(pools);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_create: pools->layer_pools is NULL");
         return NULL;
     }
 
@@ -690,7 +703,10 @@ unified_cow_handle_t unified_pools_cow_acquire(
     size_t size,
     unified_pool_type_t pool_hint)
 {
-    if (!pools || !template_data || size == 0) return NULL;
+    if (!pools || !template_data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_cow_acquire: required parameter is NULL (pools, template_data)");
+        return NULL;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -703,6 +719,7 @@ unified_cow_handle_t unified_pools_cow_acquire(
         tmpl = nimcp_calloc(1, sizeof(cow_template_t));
         if (!tmpl) {
             nimcp_platform_mutex_unlock(&pools->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unified_pools_cow_acquire: tmpl is NULL");
             return NULL;
         }
     }
@@ -713,6 +730,7 @@ unified_cow_handle_t unified_pools_cow_acquire(
         tmpl->next = pools->template_free;
         pools->template_free = tmpl;
         nimcp_platform_mutex_unlock(&pools->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unified_pools_cow_acquire: tmpl->data is NULL");
         return NULL;
     }
     memcpy(tmpl->data, template_data, size);
@@ -738,6 +756,7 @@ unified_cow_handle_t unified_pools_cow_acquire(
         tmpl->next = pools->template_free;
         pools->template_free = tmpl;
         nimcp_platform_mutex_unlock(&pools->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_cow_acquire: handle is NULL");
         return NULL;
     }
 
@@ -853,7 +872,10 @@ bool unified_pools_set_quota(
     unified_pool_type_t pool,
     const pool_quota_t* quota)
 {
-    if (!pools || pool >= UNIFIED_POOL_COUNT || !quota) return false;
+    if (!pools || pool >= UNIFIED_POOL_COUNT || !quota) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_set_quota: required parameter is NULL (pools, quota)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     pools->pool_states[pool].quota = *quota;
@@ -867,7 +889,10 @@ bool unified_pools_get_quota(
     unified_pool_type_t pool,
     pool_quota_t* quota)
 {
-    if (!pools || pool >= UNIFIED_POOL_COUNT || !quota) return false;
+    if (!pools || pool >= UNIFIED_POOL_COUNT || !quota) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_quota: required parameter is NULL (pools, quota)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     *quota = pools->pool_states[pool].quota;
@@ -881,7 +906,10 @@ bool unified_pools_check_quota(
     unified_pool_type_t pool,
     size_t size)
 {
-    if (!pools || pool >= UNIFIED_POOL_COUNT) return false;
+    if (!pools || pool >= UNIFIED_POOL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unified_pools_check_quota: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     pool_state_t* state = &pools->pool_states[pool];
@@ -910,7 +938,10 @@ bool unified_pools_get_pressure_metrics(
     unified_pools_t pools,
     pressure_metrics_t* metrics)
 {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_pressure_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -937,7 +968,10 @@ bool unified_pools_on_pressure(
     pressure_callback_t callback,
     void* user_data)
 {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_on_pressure: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     pools->pressure_cb = callback;
@@ -1052,7 +1086,10 @@ bool unified_pools_get_adaptive_metrics(
     unified_pools_t pools,
     adaptive_metrics_t* metrics)
 {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_adaptive_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1072,7 +1109,10 @@ bool unified_pools_get_recommended_config(
     unified_pools_t pools,
     unified_pools_config_t* recommended)
 {
-    if (!pools || !recommended) return false;
+    if (!pools || !recommended) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_recommended_config: required parameter is NULL (pools, recommended)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1102,7 +1142,10 @@ bool unified_pools_get_metrics(
     unified_pools_t pools,
     unified_metrics_t* metrics)
 {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1155,7 +1198,10 @@ bool unified_pools_get_pool_metrics(
     unified_pool_type_t pool,
     pool_metrics_t* metrics)
 {
-    if (!pools || pool >= UNIFIED_POOL_COUNT || !metrics) return false;
+    if (!pools || pool >= UNIFIED_POOL_COUNT || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_pool_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1180,7 +1226,10 @@ bool unified_pools_get_cow_metrics(
     unified_pools_t pools,
     cow_metrics_t* metrics)
 {
-    if (!pools || !metrics) return false;
+    if (!pools || !metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_get_cow_metrics: required parameter is NULL (pools, metrics)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1309,7 +1358,10 @@ const char* unified_pools_get_pressure_name(pressure_level_t level)
 
 bool unified_pools_is_healthy(unified_pools_t pools)
 {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_is_healthy: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -1327,7 +1379,10 @@ bool unified_pools_is_healthy(unified_pools_t pools)
 
 bool unified_pools_is_performant(unified_pools_t pools)
 {
-    if (!pools) return false;
+    if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unified_pools_is_performant: pools is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 

@@ -107,7 +107,10 @@ static int compare_neuron_importance_desc(const void* a, const void* b) {
 
     /* Descending order: higher importance first */
     if (nb->importance > na->importance) return 1;
-    if (nb->importance < na->importance) return -1;
+    if (nb->importance < na->importance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_neuron_importance_desc: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -356,6 +359,7 @@ static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_spike_buffer: pool->in_use is NULL");
     return NULL;  // Pool exhausted
 }
 
@@ -435,8 +439,10 @@ static uint32_t hash_table_lookup_label(hash_table_t* table, const char* label)
  */
 static bool hash_table_insert_label(hash_table_t* table, const char* label, uint32_t index)
 {
-    if (!table || !label)
+    if (!table || !label) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_label: required parameter is NULL (table, label)");
         return false;
+    }
 
     label_index_t value = {.index = index};
     return hash_table_insert_string(table, label, &value, sizeof(label_index_t));
@@ -851,6 +857,7 @@ static bool validate_network_config(const adaptive_network_config_t* config)
     // Guard clause: Check config pointer
     if (!config) {
         fprintf(stderr, "[ERROR] validate_network_config: NULL config\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_network_config: config is NULL");
         return false;
     }
 
@@ -859,25 +866,30 @@ static bool validate_network_config(const adaptive_network_config_t* config)
     if (config->base_config.num_layers > 0 && !config->base_config.layer_sizes) {
         fprintf(stderr, "[ERROR] validate_network_config: num_layers=%u but layer_sizes is NULL\n",
                 config->base_config.num_layers);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_network_config: config->base_config is NULL");
         return false;
     }
 
     // Guard clause: Validate spike parameters
     if (config->spike_params.k_factor <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid k_factor=%f\n", config->spike_params.k_factor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.min_threshold <= 0.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid min_threshold=%f\n", config->spike_params.min_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.max_threshold <= config->spike_params.min_threshold) {
         fprintf(stderr, "[ERROR] validate_network_config: max_threshold=%f <= min_threshold=%f\n",
                 config->spike_params.max_threshold, config->spike_params.min_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
     if (config->spike_params.sparsity_target < 0.0F || config->spike_params.sparsity_target > 1.0F) {
         fprintf(stderr, "[ERROR] validate_network_config: invalid sparsity_target=%f\n", config->spike_params.sparsity_target);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: validation failed");
         return false;
     }
 
@@ -975,6 +987,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 
     // Guard clause: Validate configuration
     if (!validate_network_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_create: validate_network_config is NULL");
         return NULL;
     }
 
@@ -1026,6 +1039,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
         // Guard clause: Check allocation
         if (!layer_sizes_copy) {
             nimcp_free(network);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_create: layer_sizes_copy is NULL");
             return NULL;
         }
         memcpy(layer_sizes_copy, config->base_config.layer_sizes,
@@ -1048,6 +1062,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
             nimcp_free((void*)network->config.base_config.layer_sizes);
         }
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
         return NULL;
     }
 
@@ -1064,6 +1079,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
             nimcp_free((void*)network->config.base_config.layer_sizes);
         }
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
         return NULL;
     }
 
@@ -1077,6 +1093,7 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
             nimcp_free((void*)network->config.base_config.layer_sizes);
         }
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_create: validation failed");
         return NULL;
     }
 
@@ -1294,14 +1311,17 @@ static bool process_neuron_output(adaptive_neuron_state_t* state, float* output_
                                   bool enable_sparsity)
 {
     // Guard clause: Validate inputs
-    if (!state || !output_value)
+    if (!state || !output_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_neuron_output: required parameter is NULL (state, output_value)");
         return false;
+    }
 
     bool is_active = (fabsf(*output_value) > state->adaptive_threshold);
 
     // Apply sparsity if enabled
     if (enable_sparsity && !is_active) {
         *output_value = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_neuron_output: is_active is NULL");
         return false;
     }
 
@@ -1655,13 +1675,17 @@ float adaptive_network_distill(adaptive_network_t network, const float* input, u
 bool adaptive_network_save(adaptive_network_t network, const char* filepath,
                            serialize_format_t format)
 {
-    if (!network || !filepath)
+    if (!network || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_save: required parameter is NULL (network, filepath)");
         return false;
+    }
 
     // Open file for writing
     FILE* file = fopen(filepath, "wb");
-    if (!file)
+    if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_save: file is NULL");
         return false;
+    }
 
     bool success = true;
 
@@ -1841,11 +1865,13 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     uint32_t version = 0;
     if (fread(&magic, sizeof(uint32_t), 1, file) != 1 || magic != 0x4E494D43) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
 
     if (fread(&version, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
 
@@ -1861,6 +1887,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     // that have safe defaults. Critical fields use explicit error checking.
     if (fread(&config.base_config.num_neurons, sizeof(uint32_t), 1, file) != 1) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
     (void)fread(&config.base_config.ei_ratio, sizeof(float), 1, file);
@@ -1884,11 +1911,13 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         layer_sizes = nimcp_malloc(config.base_config.num_layers * sizeof(uint32_t));
         if (!layer_sizes) {
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_load: layer_sizes is NULL");
             return NULL;
         }
         if (fread(layer_sizes, sizeof(uint32_t), config.base_config.num_layers, file) != config.base_config.num_layers) {
             nimcp_free(layer_sizes);
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
         config.base_config.layer_sizes = layer_sizes;
@@ -1928,6 +1957,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
 
     if (!network) {
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_load: network is NULL");
         return NULL;
     }
 
@@ -1936,6 +1966,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     if (fread(&num_neurons, sizeof(uint32_t), 1, file) != 1) {
         adaptive_network_destroy(network);
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
 
@@ -1944,6 +1975,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         if (fread(&network->neuron_states[i], sizeof(adaptive_neuron_state_t), 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
     }
@@ -1953,6 +1985,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
     if (fread(&num_labels, sizeof(uint32_t), 1, file) != 1) {
         adaptive_network_destroy(network);
         fclose(file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
         return NULL;
     }
 
@@ -1964,6 +1997,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         if (fread(&label_len, sizeof(uint32_t), 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
 
@@ -1971,6 +2005,7 @@ adaptive_network_t adaptive_network_load(const char* filepath)
         if (fread(network->label_map[i], label_len, 1, file) != 1) {
             adaptive_network_destroy(network);
             fclose(file);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_load: validation failed");
             return NULL;
         }
     }
@@ -2104,12 +2139,15 @@ size_t adaptive_network_get_size(adaptive_network_t network)
 bool adaptive_network_analyze_activation(adaptive_network_t network, const float* input,
                                          uint32_t input_size, activation_analysis_t* analysis)
 {
-    if (!network || !input || !analysis)
+    if (!network || !input || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_analyze_activation: required parameter is NULL (network, input, analysis)");
         return false;
+    }
 
     // Forward pass (Phase MP: use pool)
     float* output = (float*)alloc_hot_buffer(network->config.base_config.output_size * sizeof(float));
     if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_network_analyze_activation: output is NULL");
         return false;
     }
     uint32_t active_count = adaptive_network_forward(network, input, input_size, output,
@@ -2126,6 +2164,7 @@ bool adaptive_network_analyze_activation(adaptive_network_t network, const float
         nimcp_free(analysis->active_neuron_ids);
         nimcp_free(analysis->activation_strengths);
         free_hot_buffer(output);  // Phase MP: Return to pool
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_analyze_activation: required parameter is NULL (analysis->active_neuron_ids, analysis->activation_strengths)");
         return false;
     }
 
@@ -2226,8 +2265,10 @@ uint32_t adaptive_network_explain(adaptive_network_t network, const float* input
 
 bool adaptive_network_get_performance(adaptive_network_t network, network_performance_t* stats)
 {
-    if (!network || !stats)
+    if (!network || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_get_performance: required parameter is NULL (network, stats)");
         return false;
+    }
 
     stats->total_inferences = network->total_inferences;
     stats->total_learning_steps = network->total_learning_steps;
@@ -2278,6 +2319,7 @@ bool adaptive_network_get_neuron_activation(adaptive_network_t network, uint32_t
                                             float* activation)
 {
     if (!network || !activation || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_get_neuron_activation: required parameter is NULL (network, activation)");
         return false;
     }
 
@@ -2337,6 +2379,7 @@ bool adaptive_network_get_connection_count(adaptive_network_t network, uint32_t 
                                            uint32_t* num_connections)
 {
     if (!network || !num_connections || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_get_connection_count: required parameter is NULL (network, num_connections)");
         return false;
     }
 
@@ -2363,6 +2406,7 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
                                        float* total_weight)
 {
     if (!network || !total_weight || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_get_total_weight: required parameter is NULL (network, total_weight)");
         return false;
     }
 
@@ -2376,6 +2420,7 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_network_get_total_weight: validation failed");
     return false;
 }
 
@@ -2517,6 +2562,7 @@ float adaptive_network_get_synapse_weight(adaptive_network_t network, uint32_t f
 bool adaptive_network_enable_cow_states(adaptive_network_t network)
 {
     if (!network || !network->neuron_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_enable_cow_states: required parameter is NULL (network, network->neuron_states)");
         return false;
     }
 
@@ -2534,6 +2580,7 @@ bool adaptive_network_enable_cow_states(adaptive_network_t network)
 
     network->cow_states_region = page_cow_region_create(&config, network->neuron_states);
     if (!network->cow_states_region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_enable_cow_states: network->cow_states_region is NULL");
         return false;
     }
 
@@ -2542,6 +2589,7 @@ bool adaptive_network_enable_cow_states(adaptive_network_t network)
     if (!network->cow_states_view) {
         page_cow_region_destroy(network->cow_states_region);
         network->cow_states_region = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_enable_cow_states: network->cow_states_view is NULL");
         return false;
     }
 
@@ -2568,6 +2616,7 @@ bool adaptive_network_enable_cow_states(adaptive_network_t network)
 page_cow_snapshot_t adaptive_network_snapshot_states(adaptive_network_t network)
 {
     if (!network || !network->uses_cow_states || !network->cow_states_view) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_snapshot_states: required parameter is NULL (network, network->uses_cow_states, network->cow_states_view)");
         return NULL;
     }
 
@@ -2591,6 +2640,7 @@ bool adaptive_network_restore_states(adaptive_network_t network,
                                      page_cow_snapshot_t snapshot)
 {
     if (!network || !network->uses_cow_states || !network->cow_states_view || !snapshot) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_network_restore_states: required parameter is NULL (network, network->uses_cow_states, network->cow_states_view, snapshot)");
         return false;
     }
 

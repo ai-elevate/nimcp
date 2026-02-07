@@ -230,6 +230,7 @@ qat_ctx_t* qat_create(const qat_config_t* config) {
     ctx->mutex = nimcp_mutex_create(&attr);
     if (!ctx->mutex) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qat_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -289,6 +290,7 @@ int qat_register_observer(
     qat_target_t target
 ) {
     if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_register_observer: required parameter is NULL (ctx, name)");
         return -1;
     }
 
@@ -296,6 +298,7 @@ int qat_register_observer(
 
     if (ctx->num_observers >= QAT_MAX_OBSERVERS) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_register_observer: capacity exceeded");
         return -1;
     }
 
@@ -346,6 +349,7 @@ int qat_observe(
     const nimcp_tensor_t* tensor
 ) {
     if (!ctx || !tensor || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_observe: required parameter is NULL (ctx, tensor)");
         return -1;
     }
 
@@ -362,6 +366,7 @@ int qat_observe(
 
     if (!data || count == 0) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_observe: data is NULL");
         return -1;
     }
 
@@ -470,6 +475,7 @@ int qat_get_params(
     qat_params_t* params
 ) {
     if (!ctx || !params || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_get_params: required parameter is NULL (ctx, params)");
         return -1;
     }
 
@@ -478,6 +484,7 @@ int qat_get_params(
     observer_t* obs = &ctx->observers[observer_id];
     if (!obs->params_valid) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_get_params: obs->params_valid is NULL");
         return -1;
     }
 
@@ -559,6 +566,7 @@ int qat_fake_quantize(
     const qat_params_t* params
 ) {
     if (!ctx || !tensor || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_fake_quantize: required parameter is NULL (ctx, tensor, params)");
         return -1;
     }
 
@@ -566,6 +574,7 @@ int qat_fake_quantize(
     float* data = nimcp_tensor_data(tensor);
 
     if (!data || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_fake_quantize: data is NULL");
         return -1;
     }
 
@@ -604,11 +613,13 @@ int qat_fake_quantize_learned(
     int observer_id
 ) {
     if (!ctx || !tensor || observer_id < 0 || observer_id >= (int)ctx->num_observers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_fake_quantize_learned: required parameter is NULL (ctx, tensor)");
         return -1;
     }
 
     observer_t* obs = &ctx->observers[observer_id];
     if (!obs->params_valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_fake_quantize_learned: obs->params_valid is NULL");
         return -1;
     }
 
@@ -634,6 +645,7 @@ int qat_fake_quantize_backward(
     nimcp_tensor_t* grad_input
 ) {
     if (!ctx || !grad_output || !tensor || !params || !grad_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_fake_quantize_backward: required parameter is NULL (ctx, grad_output, tensor, params, grad_input)");
         return -1;
     }
 
@@ -642,6 +654,7 @@ int qat_fake_quantize_backward(
     size_t grad_input_count = nimcp_tensor_numel(grad_input);
 
     if (count != tensor_count || count != grad_input_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_fake_quantize_backward: validation failed");
         return -1;
     }
 
@@ -650,6 +663,7 @@ int qat_fake_quantize_backward(
     float* grad_in_data = nimcp_tensor_data(grad_input);
 
     if (!grad_out_data || !tensor_data || !grad_in_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_fake_quantize_backward: required parameter is NULL (grad_out_data, tensor_data, grad_in_data)");
         return -1;
     }
 
@@ -726,6 +740,7 @@ int qat_quantize(
     const qat_params_t* params
 ) {
     if (!ctx || !input || !output || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_quantize: required parameter is NULL (ctx, input, output, params)");
         return -1;
     }
 
@@ -733,6 +748,7 @@ int qat_quantize(
     size_t output_count = nimcp_tensor_numel(output);
 
     if (count != output_count || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_quantize: count is zero");
         return -1;
     }
 
@@ -740,6 +756,7 @@ int qat_quantize(
     float* output_data = nimcp_tensor_data(output);
 
     if (!input_data || !output_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_quantize: required parameter is NULL (input_data, output_data)");
         return -1;
     }
 
@@ -769,6 +786,7 @@ int qat_dequantize(
     const qat_params_t* params
 ) {
     if (!ctx || !input || !output || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_dequantize: required parameter is NULL (ctx, input, output, params)");
         return -1;
     }
 
@@ -776,6 +794,7 @@ int qat_dequantize(
     size_t output_count = nimcp_tensor_numel(output);
 
     if (count != output_count || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_dequantize: count is zero");
         return -1;
     }
 
@@ -783,6 +802,7 @@ int qat_dequantize(
     float* output_data = nimcp_tensor_data(output);
 
     if (!input_data || !output_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_dequantize: required parameter is NULL (input_data, output_data)");
         return -1;
     }
 
@@ -807,6 +827,7 @@ int qat_matmul(
     const qat_params_t* c_params
 ) {
     if (!ctx || !a || !b || !c || !a_params || !b_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_matmul: required parameter is NULL (ctx, a, b, c, a_params, b_params)");
         return -1;
     }
 
@@ -821,6 +842,7 @@ int qat_matmul(
     size_t c_count = nimcp_tensor_numel(c);
 
     if (a_count == 0 || b_count == 0 || c_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_matmul: a_count is zero");
         return -1;
     }
 
@@ -842,6 +864,7 @@ int qat_export(
     const char* filepath
 ) {
     if (!ctx || !weights || !params || !filepath || num_weights == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_export: required parameter is NULL (ctx, weights, params, filepath)");
         return -1;
     }
 
@@ -861,6 +884,7 @@ int qat_export(
 
 int qat_connect_brain_factory(qat_ctx_t* ctx, void* brain_factory) {
     if (!ctx || !brain_factory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_connect_brain_factory: required parameter is NULL (ctx, brain_factory)");
         return -1;
     }
 
@@ -877,6 +901,7 @@ int qat_connect_brain_factory(qat_ctx_t* ctx, void* brain_factory) {
 
 int qat_get_stats(const qat_ctx_t* ctx, qat_stats_t* stats) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -932,31 +957,37 @@ int qat_validate_config(const qat_config_t* config) {
     /* Validate dtypes */
     if (config->default_weight_dtype >= QAT_DTYPE_COUNT ||
         config->default_activation_dtype >= QAT_DTYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_validate_config: config is NULL");
         return -1;
     }
 
     /* Validate scheme */
     if (config->default_scheme >= QAT_SCHEME_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate granularity */
     if (config->default_granularity >= QAT_GRANULARITY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate observer method */
     if (config->observer.method >= QAT_OBSERVER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate fake quant method */
     if (config->fake_quant.method >= QAT_FAKE_QUANT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "qat_validate_config: capacity exceeded");
         return -1;
     }
 
     /* Validate EMA decay */
     if (config->observer.ema_decay < 0.0f || config->observer.ema_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_validate_config: validation failed");
         return -1;
     }
 
@@ -1131,6 +1162,7 @@ qat_ctx_t* qat_ternary_create(const qat_ternary_config_t* ternary_config) {
     /* Create base QAT config with ternary dtype */
     qat_config_t base_config;
     if (qat_default_config(&base_config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qat_ternary_create: validation failed");
         return NULL;
     }
 
@@ -1153,6 +1185,7 @@ int qat_ternarize(
     qat_ternary_params_t* params
 ) {
     if (!ctx || !tensor || !ternary_config || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_ternarize: required parameter is NULL (ctx, tensor, ternary_config, params)");
         return -1;
     }
 
@@ -1160,6 +1193,7 @@ int qat_ternarize(
     float* data = nimcp_tensor_data(tensor);
 
     if (!data || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_ternarize: data is NULL");
         return -1;
     }
 
@@ -1280,6 +1314,7 @@ int qat_ternary_backward(
     nimcp_tensor_t* grad_input
 ) {
     if (!ctx || !grad_output || !original_weights || !ternary_config || !grad_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_ternary_backward: required parameter is NULL (ctx, grad_output, original_weights, ternary_config, grad_input)");
         return -1;
     }
 
@@ -1288,6 +1323,7 @@ int qat_ternary_backward(
     size_t grad_count = nimcp_tensor_numel(grad_input);
 
     if (count != weight_count || count != grad_count || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_ternary_backward: count is zero");
         return -1;
     }
 
@@ -1296,6 +1332,7 @@ int qat_ternary_backward(
     float* grad_in_data = nimcp_tensor_data(grad_input);
 
     if (!grad_out_data || !weight_data || !grad_in_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_ternary_backward: required parameter is NULL (grad_out_data, weight_data, grad_in_data)");
         return -1;
     }
 
@@ -1341,6 +1378,7 @@ int qat_compute_optimal_ternary_threshold(
     float* scale_out
 ) {
     if (!tensor || !threshold_out || !scale_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_compute_optimal_ternary_threshold: required parameter is NULL (tensor, threshold_out, scale_out)");
         return -1;
     }
 
@@ -1348,6 +1386,7 @@ int qat_compute_optimal_ternary_threshold(
     const float* data = nimcp_tensor_data((nimcp_tensor_t*)tensor);
 
     if (!data || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "qat_compute_optimal_ternary_threshold: data is NULL");
         return -1;
     }
 
@@ -1405,6 +1444,7 @@ int qat_get_ternary_stats(
     qat_ternary_params_t* params
 ) {
     if (!ctx || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qat_get_ternary_stats: required parameter is NULL (ctx, params)");
         return -1;
     }
 

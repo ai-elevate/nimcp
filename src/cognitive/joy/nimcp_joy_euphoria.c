@@ -767,7 +767,10 @@ void joy_update(joy_system_t* system, float dt, uint64_t current_time_us) {
 //=============================================================================
 
 bool joy_is_joyful(const joy_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_is_joyful: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     joy_euphoria_heartbeat("joy_euphoria_joy_is_joyful", 0.0f);
 
@@ -776,7 +779,10 @@ bool joy_is_joyful(const joy_system_t* system) {
 }
 
 bool joy_is_euphoric(const joy_system_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_is_euphoric: system is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     joy_euphoria_heartbeat("joy_euphoria_joy_is_euphoric", 0.0f);
 
@@ -939,19 +945,28 @@ void joy_euphoria_set_instance_health_agent(void* ctx, nimcp_health_agent_t* age
  * ============================================================================ */
 
 int joy_euphoria_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_euphoria_training_begin: ctx is NULL");
+        return -1;
+    }
     joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_begin", 0.0f);
     return 0;
 }
 
 int joy_euphoria_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_euphoria_training_end: ctx is NULL");
+        return -1;
+    }
     joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_end", 1.0f);
     return 0;
 }
 
 int joy_euphoria_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joy_euphoria_training_step: ctx is NULL");
+        return -1;
+    }
     joy_euphoria_heartbeat_instance(g_joy_euphoria_instance_health_agent, "joy_euphoria_training_step", progress);
     return 0;
 }

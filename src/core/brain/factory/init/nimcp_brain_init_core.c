@@ -148,6 +148,7 @@ brain_t nimcp_brain_factory_allocate_brain(void)
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
         set_error("Failed to initialize cache mutex");
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_brain_factory_allocate_brain: validation failed");
         return NULL;
     }
 
@@ -196,6 +197,7 @@ adaptive_network_t nimcp_brain_factory_create_brain_network(uint32_t num_inputs,
 
     // Guard: Check if layer_sizes allocation failed in build_base_network_config
     if (!net_config.base_config.layer_sizes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_create_brain_network: net_config is NULL");
         return NULL;
     }
 
@@ -229,6 +231,7 @@ bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
     brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
         set_error("Failed to allocate output labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_output_labels: brain->output_labels is NULL");
         return false;
     }
     brain->num_output_labels = 0;
@@ -256,6 +259,7 @@ bool nimcp_brain_factory_init_event_bus(brain_t brain)
     brain->event_bus = event_bus_create("brain_event_bus", EVENT_DELIVERY_IMMEDIATE);
     if (!brain->event_bus) {
         set_error("Failed to create brain event bus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_event_bus: brain->event_bus is NULL");
         return false;
     }
 

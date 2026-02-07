@@ -107,7 +107,10 @@ ocelli_config_t ocelli_default_config(void) {
 }
 
 bool ocelli_validate_config(const ocelli_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ocelli_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->median_elevation_rad < 0.0f ||
         config->median_elevation_rad > (float)(M_PI / 2.0)) return false;
@@ -119,14 +122,32 @@ bool ocelli_validate_config(const ocelli_config_t* config) {
     if (config->smoothing_factor < 0.0f ||
         config->smoothing_factor > 1.0f) return false;
 
-    if (config->pitch_gain < 0.0f) return false;
-    if (config->roll_gain < 0.0f) return false;
-    if (config->rate_damping < 0.0f) return false;
+    if (config->pitch_gain < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
+    if (config->roll_gain < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
+    if (config->rate_damping < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->max_pitch_correction_rad <= 0.0f) return false;
-    if (config->max_roll_correction_rad <= 0.0f) return false;
+    if (config->max_pitch_correction_rad <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
+    if (config->max_roll_correction_rad <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->prediction_horizon_ms < 0.0f) return false;
+    if (config->prediction_horizon_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ocelli_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -176,7 +197,10 @@ void dragonfly_ocelli_destroy(dragonfly_ocelli_t ocelli) {
 }
 
 int dragonfly_ocelli_reset(dragonfly_ocelli_t ocelli) {
-    if (!ocelli) return -1;
+    if (!ocelli) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_reset: ocelli is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ocelli->mutex);
 
@@ -202,7 +226,10 @@ int dragonfly_ocelli_process(
     dragonfly_ocelli_t ocelli,
     const ocelli_input_t* input
 ) {
-    if (!ocelli || !input) return -1;
+    if (!ocelli || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_process: required parameter is NULL (ocelli, input)");
+        return -1;
+    }
 
     uint64_t start_time = get_time_us();
 
@@ -293,7 +320,10 @@ int dragonfly_ocelli_get_attitude(
     const dragonfly_ocelli_t ocelli,
     ocelli_attitude_t* attitude
 ) {
-    if (!ocelli || !attitude) return -1;
+    if (!ocelli || !attitude) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_get_attitude: required parameter is NULL (ocelli, attitude)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)ocelli->mutex);
     *attitude = ocelli->attitude;
@@ -308,7 +338,10 @@ int dragonfly_ocelli_get_correction(
     float target_roll,
     ocelli_correction_t* correction
 ) {
-    if (!ocelli || !correction) return -1;
+    if (!ocelli || !correction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_get_correction: required parameter is NULL (ocelli, correction)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)ocelli->mutex);
 
@@ -363,7 +396,10 @@ int dragonfly_ocelli_simulate_input(
     float sun_elevation_rad,
     ocelli_input_t* input
 ) {
-    if (!input) return -1;
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_simulate_input: input is NULL");
+        return -1;
+    }
 
     /* Simulate ocelli readings based on body attitude */
     /* Median ocellus sees more sky when pitched down */
@@ -388,7 +424,10 @@ int dragonfly_ocelli_get_stats(
     const dragonfly_ocelli_t ocelli,
     ocelli_stats_t* stats
 ) {
-    if (!ocelli || !stats) return -1;
+    if (!ocelli || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_get_stats: required parameter is NULL (ocelli, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)ocelli->mutex);
     *stats = ocelli->stats;
@@ -398,7 +437,10 @@ int dragonfly_ocelli_get_stats(
 }
 
 int dragonfly_ocelli_reset_stats(dragonfly_ocelli_t ocelli) {
-    if (!ocelli) return -1;
+    if (!ocelli) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_reset_stats: ocelli is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ocelli->mutex);
     memset(&ocelli->stats, 0, sizeof(ocelli->stats));
@@ -411,8 +453,14 @@ int dragonfly_ocelli_set_config(
     dragonfly_ocelli_t ocelli,
     const ocelli_config_t* config
 ) {
-    if (!ocelli || !config) return -1;
-    if (!ocelli_validate_config(config)) return -1;
+    if (!ocelli || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_set_config: required parameter is NULL (ocelli, config)");
+        return -1;
+    }
+    if (!ocelli_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_ocelli_set_config: ocelli_validate_config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ocelli->mutex);
     ocelli->config = *config;
@@ -425,7 +473,10 @@ int dragonfly_ocelli_get_config(
     const dragonfly_ocelli_t ocelli,
     ocelli_config_t* config
 ) {
-    if (!ocelli || !config) return -1;
+    if (!ocelli || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_ocelli_get_config: required parameter is NULL (ocelli, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)ocelli->mutex);
     *config = ocelli->config;

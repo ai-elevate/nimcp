@@ -377,7 +377,10 @@ static void free_map(echo_environment_map_t* map) {
  */
 static echo_map_cell_t* get_or_create_cell(echo_environment_map_t* map,
                                            echo_point3d_t position) {
-    if (!map || !map->cells) return NULL;
+    if (!map || !map->cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "free_map: required parameter is NULL (map, map->cells)");
+        return NULL;
+    }
 
     /* Quantize position to grid */
     int32_t gx = (int32_t)(position.x / map->resolution);
@@ -408,6 +411,7 @@ static echo_map_cell_t* get_or_create_cell(echo_environment_map_t* map,
         return cell;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "free_map: operation failed");
     return NULL;
 }
 
@@ -492,6 +496,7 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
         NIMCP_LOGGING_ERROR("Failed to generate pulse template");
         /* Exception already thrown in generate_*_pulse */
         echolocation_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "echolocation_create: validation failed");
         return NULL;
     }
 
@@ -544,6 +549,7 @@ echolocation_system_t* echolocation_create(const echolocation_config_t* config) 
             NIMCP_LOGGING_ERROR("Failed to allocate environment map");
             /* Exception already thrown in alloc_map */
             echolocation_destroy(sys);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "echolocation_create: sys->map is NULL");
             return NULL;
         }
     }

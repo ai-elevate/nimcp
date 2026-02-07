@@ -177,6 +177,7 @@ fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
         sys->buffer_capacity, sizeof(fep_experience_t));
     if (!sys->experience_buffer) {
         fep_sleep_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_sleep_create: sys->experience_buffer is NULL");
         return NULL;
     }
 
@@ -184,6 +185,7 @@ fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         fep_sleep_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_sleep_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -390,8 +392,14 @@ int fep_sleep_add_experience(
     size_t dim,
     size_t obs_dim
 ) {
-    if (!sys || !state || !observation || !next_state) return -1;
-    if (dim == 0) return -1;
+    if (!sys || !state || !observation || !next_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_add_experience: required parameter is NULL (sys, state, observation, next_state)");
+        return -1;
+    }
+    if (dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_sleep_add_experience: dim is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_add_experience", 0.0f);
@@ -420,6 +428,7 @@ int fep_sleep_add_experience(
     if (!exp->state || !exp->next_state) {
         free_experience(exp);
         nimcp_platform_mutex_unlock(sys->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_add_experience: required parameter is NULL (exp->state, exp->next_state)");
         return -1;
     }
 
@@ -444,7 +453,10 @@ int fep_sleep_replay_consolidation(
     fep_system_t* fep,
     uint32_t num_replays
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_replay_consolidation: required parameter is NULL (sys, fep)");
+        return -1;
+    }
     if (sys->buffer_count == 0) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -511,7 +523,10 @@ int fep_sleep_apply_downscaling(
     fep_system_t* fep,
     float factor
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_apply_downscaling: required parameter is NULL (sys, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_apply_downscaling", 0.0f);
@@ -568,7 +583,10 @@ int fep_sleep_rem_integration(
     fep_sleep_system_t* sys,
     fep_system_t* fep
 ) {
-    if (!sys || !fep) return -1;
+    if (!sys || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_rem_integration: required parameter is NULL (sys, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_rem_integration", 0.0f);
@@ -637,7 +655,10 @@ int fep_sleep_get_state(
     const fep_sleep_system_t* sys,
     fep_sleep_state_t* state
 ) {
-    if (!sys || !state) return -1;
+    if (!sys || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_state: required parameter is NULL (sys, state)");
+        return -1;
+    }
     *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_state", 0.0f);
@@ -650,7 +671,10 @@ int fep_sleep_get_stats(
     const fep_sleep_system_t* sys,
     fep_sleep_stats_t* stats
 ) {
-    if (!sys || !stats) return -1;
+    if (!sys || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_stats: required parameter is NULL (sys, stats)");
+        return -1;
+    }
     *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_stats", 0.0f);
@@ -681,7 +705,10 @@ float fep_sleep_get_precision_modifier(const fep_sleep_system_t* sys) {
  * ============================================================================ */
 
 int fep_sleep_connect(fep_sleep_system_t* sleep, fep_system_t* fep) {
-    if (!sleep || !fep) return -1;
+    if (!sleep || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_connect: required parameter is NULL (sleep, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_connect", 0.0f);
@@ -899,7 +926,10 @@ float fep_sleep_get_pressure(const fep_sleep_system_t* sys) {
 }
 
 int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressure_t* pressure) {
-    if (!sys || !pressure) return -1;
+    if (!sys || !pressure) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_get_pressure_state: required parameter is NULL (sys, pressure)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_get_pressure_state", 0.0f);
@@ -913,7 +943,10 @@ int fep_sleep_get_pressure_state(const fep_sleep_system_t* sys, fep_sleep_pressu
 }
 
 bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys) {
-    if (!sys) return false;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_sleep_is_sleep_recommended: sys is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     fep_sleep_heartbeat("fep_sleep_is_sleep_recommended", 0.0f);
 

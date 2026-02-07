@@ -338,6 +338,7 @@ rcog_health_integration_t* rcog_health_create(
     integration->pending_goals = nimcp_calloc(integration->max_pending, sizeof(pending_health_goal_t));
     if (!integration->pending_goals) {
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->pending_goals is NULL");
         return NULL;
     }
     integration->num_pending = 0;
@@ -350,6 +351,7 @@ rcog_health_integration_t* rcog_health_create(
         if (!integration->cache) {
             nimcp_free(integration->pending_goals);
             nimcp_free(integration);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->cache is NULL");
             return NULL;
         }
         integration->cache_size = 0;
@@ -362,6 +364,7 @@ rcog_health_integration_t* rcog_health_create(
         nimcp_free(integration->cache);
         nimcp_free(integration->pending_goals);
         nimcp_free(integration);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_health_create: integration->custom_tools is NULL");
         return NULL;
     }
     integration->num_custom_tools = 0;
@@ -609,6 +612,7 @@ int rcog_health_submit_goal(
     rcog_health_answer_t* answer
 ) {
     if (!integration || !goal || !answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_submit_goal: required parameter is NULL (integration, goal, answer)");
         return -1;
     }
 
@@ -690,6 +694,7 @@ int rcog_health_submit_goal_async(
     uint64_t* goal_id
 ) {
     if (!integration || !goal || !goal_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_submit_goal_async: required parameter is NULL (integration, goal, goal_id)");
         return -1;
     }
 
@@ -698,6 +703,7 @@ int rcog_health_submit_goal_async(
 
 
     if (integration->num_pending >= integration->max_pending) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_submit_goal_async: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -724,6 +730,7 @@ int rcog_health_get_answer(
     uint32_t timeout_ms
 ) {
     if (!integration || !answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_get_answer: required parameter is NULL (integration, answer)");
         return -1;
     }
 
@@ -771,6 +778,7 @@ int rcog_health_get_answer(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_health_get_answer: operation failed");
     return -1;  /* Not found */
 }
 
@@ -779,6 +787,7 @@ bool rcog_health_is_complete(
     uint64_t goal_id
 ) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_is_complete: integration is NULL");
         return false;
     }
 
@@ -837,6 +846,7 @@ int rcog_health_cancel_goal(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_health_cancel_goal: operation failed");
     return -1;  /* Not found */
 }
 
@@ -852,6 +862,7 @@ int rcog_health_diagnose_anomaly(
     rcog_health_answer_t* answer
 ) {
     if (!integration || !answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_diagnose_anomaly: required parameter is NULL (integration, answer)");
         return -1;
     }
 
@@ -883,6 +894,7 @@ int rcog_health_plan_recovery(
     rcog_health_recovery_plan_t* plan
 ) {
     if (!integration || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_plan_recovery: required parameter is NULL (integration, plan)");
         return -1;
     }
 
@@ -907,6 +919,7 @@ int rcog_health_predict_failure(
     uint32_t* time_to_failure_ms
 ) {
     if (!integration || !failure_probability || !time_to_failure_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_predict_failure: required parameter is NULL (integration, failure_probability, time_to_failure_ms)");
         return -1;
     }
 
@@ -969,6 +982,7 @@ int rcog_health_register_tool(
     const rcog_health_tool_t* tool
 ) {
     if (!integration || !tool || !tool->tool_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_register_tool: required parameter is NULL (integration, tool, tool->tool_name)");
         return -1;
     }
 
@@ -977,6 +991,7 @@ int rcog_health_register_tool(
 
 
     if (integration->num_custom_tools >= integration->max_custom_tools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_register_tool: capacity exceeded");
         return -1;  /* No room */
     }
 
@@ -991,6 +1006,7 @@ int rcog_health_unregister_tool(
     const char* tool_name
 ) {
     if (!integration || !tool_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_unregister_tool: required parameter is NULL (integration, tool_name)");
         return -1;
     }
 
@@ -1017,6 +1033,7 @@ int rcog_health_unregister_tool(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_health_unregister_tool: operation failed");
     return -1;  /* Not found */
 }
 
@@ -1026,6 +1043,7 @@ const rcog_health_tool_t* rcog_health_get_builtin_tool(rcog_health_tool_id_t too
 
 
     if (tool_id >= RCOG_TOOL_ID_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rcog_health_get_builtin_tool: capacity exceeded");
         return NULL;
     }
 
@@ -1041,6 +1059,7 @@ int rcog_health_get_stats(
     rcog_health_stats_t* stats
 ) {
     if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_health_get_stats: required parameter is NULL (integration, stats)");
         return -1;
     }
 

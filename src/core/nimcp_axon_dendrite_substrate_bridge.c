@@ -106,6 +106,7 @@ int axon_dendrite_substrate_default_config(axon_dendrite_substrate_config_t* con
      */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_default_config: config is NULL");
         return -1;
     }
 
@@ -149,6 +150,7 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
 
     if (!axon && !dendrite) {
         NIMCP_LOGGING_ERROR("Must provide at least axon or dendrite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_bridge_create: required parameter is NULL (axon, dendrite)");
         return NULL;
     }
 
@@ -170,12 +172,14 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_dendrite_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "axon_dendrite_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -295,7 +299,10 @@ bool axon_dendrite_substrate_is_bio_async_connected(
     const axon_dendrite_substrate_bridge_t* bridge
 )
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -845,7 +852,10 @@ int axon_dendrite_substrate_get_axon_effects(
     axon_substrate_effects_t* effects
 )
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_get_axon_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->axon_effects;
@@ -859,7 +869,10 @@ int axon_dendrite_substrate_get_dendrite_effects(
     dendrite_substrate_effects_t* effects
 )
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_get_dendrite_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->dendrite_effects;
@@ -876,7 +889,10 @@ bool axon_dendrite_substrate_is_axon_limited(
      * WHY:  Detect substrate stress
      * HOW:  Check critical thresholds
      */
-    if (!bridge || !bridge->axon) return false;
+    if (!bridge || !bridge->axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_axon_limited: required parameter is NULL (bridge, bridge->axon)");
+        return false;
+    }
 
     substrate_metabolic_state_t metabolic;
     substrate_physical_state_t physical;
@@ -889,6 +905,7 @@ bool axon_dendrite_substrate_is_axon_limited(
     if (physical.ion_balance < bridge->config.min_ion_balance_for_conduct) return true;
     if (physical.membrane_integrity < SUBSTRATE_MEMBRANE_THRESHOLD) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_dendrite_substrate_is_axon_limited: validation failed");
     return false;
 }
 
@@ -896,7 +913,10 @@ bool axon_dendrite_substrate_is_dendrite_limited(
     const axon_dendrite_substrate_bridge_t* bridge
 )
 {
-    if (!bridge || !bridge->dendrite) return false;
+    if (!bridge || !bridge->dendrite) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_is_dendrite_limited: required parameter is NULL (bridge, bridge->dendrite)");
+        return false;
+    }
 
     substrate_metabolic_state_t metabolic;
     substrate_physical_state_t physical;
@@ -908,6 +928,7 @@ bool axon_dendrite_substrate_is_dendrite_limited(
     if (physical.membrane_integrity < bridge->config.min_membrane_for_integration) return true;
     if (physical.ion_balance < 0.5f) return true;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_dendrite_substrate_is_dendrite_limited: validation failed");
     return false;
 }
 
@@ -916,7 +937,10 @@ int axon_dendrite_substrate_get_stats(
     axon_dendrite_substrate_stats_t* stats
 )
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_dendrite_substrate_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;

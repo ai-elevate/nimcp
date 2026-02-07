@@ -69,26 +69,31 @@ bool integration_step(
     // Input validation
     if (state == NULL) {
         integration_error("state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: validation failed");
         return false;
     }
 
     if (derivative_fn == NULL) {
         integration_error("derivative_fn is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: validation failed");
         return false;
     }
 
     if (n == 0) {
         integration_error("dimension n is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: n is zero");
         return false;
     }
 
     if (dt <= 0.0F) {
         integration_error("timestep dt must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: validation failed");
         return false;
     }
 
     if (!isfinite(t) || !isfinite(dt)) {
         integration_error("time or timestep is not finite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "integration_step: required parameter is NULL (isfinite, isfinite)");
         return false;
     }
 
@@ -111,10 +116,12 @@ bool integration_step(
 
         case INTEGRATION_IMPLICIT:
             integration_error("Implicit integration not yet implemented (future: A1.3)");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: operation failed");
             return false;
 
         default:
             integration_error("Unknown integration method");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_step: operation failed");
             return false;
     }
 }
@@ -134,21 +141,25 @@ bool integration_integrate(
     // Input validation
     if (state == NULL || derivative_fn == NULL) {
         integration_error("NULL pointer in integration_integrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: validation failed");
         return false;
     }
 
     if (t_end < t_start) {
         integration_error("t_end must be >= t_start");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: validation failed");
         return false;
     }
 
     if (dt <= 0.0F) {
         integration_error("timestep dt must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: validation failed");
         return false;
     }
 
     if (n == 0) {
         integration_error("dimension n is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: n is zero");
         return false;
     }
 
@@ -168,6 +179,7 @@ bool integration_integrate(
         *trajectory = (float*)nimcp_malloc(steps * n * sizeof(float));
         if (*trajectory == NULL) {
             integration_error("Failed to allocate trajectory memory");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate: validation failed");
             return false;
         }
     }
@@ -227,6 +239,7 @@ bool integration_euler_step(
         derivatives = (float*)nimcp_malloc(n * sizeof(float));
         if (derivatives == NULL) {
             integration_error("Euler: Failed to allocate derivatives");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_euler_step: validation failed");
             return false;
         }
         heap_allocated = true;
@@ -272,6 +285,7 @@ bool integration_rk4_step(
         temp_storage = (float*)nimcp_malloc(5 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("RK4: Failed to allocate temporary storage");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_rk4_step: validation failed");
             return false;
         }
         heap_allocated = true;
@@ -381,6 +395,7 @@ bool integration_adaptive_step(
         temp_storage = (float*)nimcp_malloc(7 * n * sizeof(float));
         if (temp_storage == NULL) {
             integration_error("Adaptive: Failed to allocate temporary storage");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_adaptive_step: validation failed");
             return false;
         }
         heap_allocated = true;
@@ -518,21 +533,25 @@ bool integration_integrate_adaptive(
     // Input validation
     if (state == NULL || derivative_fn == NULL) {
         integration_error("NULL pointer in integration_integrate_adaptive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate_adaptive: validation failed");
         return false;
     }
 
     if (t_end < t_start) {
         integration_error("t_end must be >= t_start");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate_adaptive: validation failed");
         return false;
     }
 
     if (dt_initial <= 0.0F) {
         integration_error("initial timestep must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "integration_integrate_adaptive: validation failed");
         return false;
     }
 
     if (n == 0) {
         integration_error("dimension n is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_integrate_adaptive: n is zero");
         return false;
     }
 

@@ -861,6 +861,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     omni_wm_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM plasticity bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -868,6 +869,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_WM_PLASTICITY_BRIDGE,
                          "wm_plasticity_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_plasticity_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -877,6 +879,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
             NIMCP_LOGGING_ERROR("Invalid WM plasticity bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_plasticity_bridge_create: validation failed");
             return NULL;
         }
         memcpy(&bridge->config, config, sizeof(omni_wm_plasticity_bridge_config_t));
@@ -889,6 +892,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to create mutex for WM plasticity bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: bridge->base is NULL");
         return NULL;
     }
     /* Alias the legacy mutex field to base.mutex for backward compatibility */
@@ -898,6 +902,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (allocate_stdp_event_buffer(bridge) != NIMCP_SUCCESS) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -905,6 +910,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -913,6 +919,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -922,6 +929,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_wm_plasticity_bridge_create: validation failed");
         return NULL;
     }
 
@@ -1123,7 +1131,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_snn(
 }
 
 bool omni_wm_plasticity_bridge_is_connected(const omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_plasticity_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_plasticity_bridge_heartbeat("omni_wm_plas_is_connected", 0.0f);
 
@@ -1537,9 +1548,11 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
 
     nimcp_mutex_lock(bridge->base.mutex);
 
-    /* Update plasticity state */
-    bridge->current_plasticity_state.stp_facilitation = clamp_float(facilitation, 0.0f, 1.0f);
-    bridge->current_plasticity_state.stp_depression = clamp_float(depression, 0.0f, 1.0f);
+    /* Update plasticity state
+     * Facilitation/depression can exceed 1.0 (multiplicative factors),
+     * utilization is bounded [0, 1] */
+    bridge->current_plasticity_state.stp_facilitation = clamp_float(facilitation, 0.0f, 10.0f);
+    bridge->current_plasticity_state.stp_depression = clamp_float(depression, 0.0f, 10.0f);
     bridge->current_plasticity_state.stp_avg_utilization = clamp_float(utilization, 0.0f, 1.0f);
 
     /* Update effects */

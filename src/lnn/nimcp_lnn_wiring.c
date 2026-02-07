@@ -147,7 +147,10 @@ static bool lnn_wiring_binary_search(const uint32_t* col_idx, uint32_t start, ui
 static int lnn_wiring_compare_uint32(const void* a, const void* b) {
     uint32_t ua = *(const uint32_t*)a;
     uint32_t ub = *(const uint32_t*)b;
-    if (ua < ub) return -1;
+    if (ua < ub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_wiring_compare_uint32: validation failed");
+        return -1;
+    }
     if (ua > ub) return 1;
     return 0;
 }
@@ -160,6 +163,7 @@ lnn_wiring_t* lnn_wiring_create_full(uint32_t n_neurons) {
     // Guard clause: validate inputs
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_full: n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_full: n_neurons is zero");
         return NULL;
     }
 
@@ -297,18 +301,22 @@ lnn_wiring_t* lnn_wiring_create_small_world(uint32_t n_neurons, uint32_t k, floa
     // Guard clauses
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: n_neurons is zero");
         return NULL;
     }
     if (k == 0 || k >= n_neurons) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: k must be in (0, n_neurons)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: k is zero");
         return NULL;
     }
     if (k % 2 != 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: k must be even");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: validation failed");
         return NULL;
     }
     if (p < 0.0f || p > 1.0f) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: p must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: validation failed");
         return NULL;
     }
 
@@ -410,10 +418,12 @@ lnn_wiring_t* lnn_wiring_create_scale_free(uint32_t n_neurons, uint32_t m, uint6
     // Guard clauses
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: n_neurons is zero");
         return NULL;
     }
     if (m == 0 || m >= n_neurons) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: m must be in (0, n_neurons)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: m is zero");
         return NULL;
     }
 
@@ -546,6 +556,7 @@ lnn_wiring_t* lnn_wiring_create_ncp(uint32_t n_sensory, uint32_t n_inter,
     // Guard clauses
     if (n_sensory == 0 || n_inter == 0 || n_command == 0 || n_motor == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_ncp: All neuron counts must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: n_sensory is zero");
         return NULL;
     }
 
@@ -672,10 +683,12 @@ lnn_wiring_t* lnn_wiring_create_from_adjacency(const uint8_t* adj, uint32_t n_ne
     // Guard clauses
     if (!adj) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_from_adjacency: adj is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_from_adjacency: adj is NULL");
         return NULL;
     }
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_from_adjacency: n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_from_adjacency: n_neurons is zero");
         return NULL;
     }
 
@@ -765,9 +778,11 @@ void lnn_wiring_destroy(lnn_wiring_t* wiring) {
 bool lnn_wiring_has_edge(const lnn_wiring_t* wiring, uint32_t from, uint32_t to) {
     // Guard clauses
     if (!wiring || !wiring->row_ptr || !wiring->col_idx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_wiring_has_edge: required parameter is NULL (wiring, wiring->row_ptr, wiring->col_idx)");
         return false;
     }
     if (from >= wiring->n_neurons || to >= wiring->n_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_wiring_has_edge: capacity exceeded");
         return false;
     }
 
@@ -815,10 +830,12 @@ const uint32_t* lnn_wiring_get_neighbors(const lnn_wiring_t* wiring, uint32_t ne
     // Guard clauses
     if (!wiring || !wiring->row_ptr || !wiring->col_idx || !count) {
         if (count) *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_wiring_get_neighbors: validation failed");
         return NULL;
     }
     if (neuron >= wiring->n_neurons) {
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_wiring_get_neighbors: capacity exceeded");
         return NULL;
     }
 
@@ -884,6 +901,7 @@ lnn_wiring_t* lnn_wiring_create(lnn_wiring_type_t type, uint32_t n_neurons, floa
     /* Guard: validate inputs */
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("n_neurons must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create: n_neurons is zero");
         return NULL;
     }
 

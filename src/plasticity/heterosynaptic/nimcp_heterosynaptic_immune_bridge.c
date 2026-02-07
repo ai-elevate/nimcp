@@ -539,7 +539,10 @@ int hetero_immune_get_instability_state(
 }
 
 bool hetero_immune_is_competition_impaired(const hetero_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_is_competition_impaired: bridge is NULL");
+        return false;
+    }
     return (bridge->cytokine_effects.competition_factor < 1.0f ||
             bridge->inflammation_state.competition_suppression < 1.0f);
 }

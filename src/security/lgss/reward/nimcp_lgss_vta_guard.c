@@ -499,15 +499,18 @@ int vta_guard_get_da_rate(const vta_guard_t* guard, float* rate) {
 
 bool vta_guard_emission_allowed(const vta_guard_t* guard) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_emission_allowed: guard is NULL");
         return false;
     }
 
     float current_rate = calculate_da_rate(guard);
     if (current_rate >= guard->config.max_da_rate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_guard_emission_allowed: capacity exceeded");
         return false;
     }
 
     if (guard->current_da >= guard->config.max_da_concentration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_guard_emission_allowed: capacity exceeded");
         return false;
     }
 
@@ -547,9 +550,11 @@ int vta_guard_protect_pathway(vta_guard_t* guard, da_pathway_t pathway) {
 
 bool vta_guard_verify_pathway(const vta_guard_t* guard, da_pathway_t pathway) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_verify_pathway: guard is NULL");
         return false;
     }
     if (pathway >= DA_PATHWAY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_guard_verify_pathway: capacity exceeded");
         return false;
     }
     if (!guard->pathways_protected[pathway]) {
@@ -562,9 +567,11 @@ bool vta_guard_verify_pathway(const vta_guard_t* guard, da_pathway_t pathway) {
 
 bool vta_guard_pathway_protected(const vta_guard_t* guard, da_pathway_t pathway) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_pathway_protected: guard is NULL");
         return false;
     }
     if (pathway >= DA_PATHWAY_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "vta_guard_pathway_protected: capacity exceeded");
         return false;
     }
     return guard->pathways_protected[pathway];
@@ -601,6 +608,7 @@ int vta_guard_update_receptor_activation(
             guard->alert_callback(VTA_ALERT_RECEPTOR_IMBALANCE,
                                  guard->callback_user_data);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_update_receptor_activation: validation failed");
         return -1;  /* Imbalanced */
     }
 
@@ -622,11 +630,13 @@ int vta_guard_get_d1_d2_ratio(const vta_guard_t* guard, float* ratio) {
 
 bool vta_guard_receptor_balance_ok(const vta_guard_t* guard) {
     if (!guard || guard->magic != VTA_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_receptor_balance_ok: guard is NULL");
         return false;
     }
 
     float ratio;
     if (vta_guard_get_d1_d2_ratio(guard, &ratio) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vta_guard_receptor_balance_ok: validation failed");
         return false;
     }
 

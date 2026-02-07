@@ -147,12 +147,14 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for cortical substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for cortical substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -306,6 +308,7 @@ int cortical_substrate_disconnect_bio_async(cortical_substrate_bridge_t* bridge)
 bool cortical_substrate_is_bio_async_connected(const cortical_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -619,6 +622,7 @@ int cortical_substrate_get_effects(
 bool cortical_substrate_is_impaired(const cortical_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_substrate_is_impaired: bridge is NULL");
         return false;
     }
     return bridge->effects.is_impaired;

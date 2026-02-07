@@ -105,7 +105,10 @@ static uint64_t get_current_time_us(void) {
  * HOW:  Compare time since last observation to threshold
  */
 static bool check_isolation(const mirror_hypo_bridge_t* bridge, uint64_t current_time) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_isolation: bridge is NULL");
+        return false;
+    }
 
     /* Use 5 minutes (300 seconds) as isolation threshold */
     const uint64_t ISOLATION_THRESHOLD_US = 300 * 1000000;
@@ -203,6 +206,7 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_HYPOTHALAMUS_BRIDGE, "mirror_hypothalamus") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_hypo_create: validation failed");
         return NULL;
     }
 

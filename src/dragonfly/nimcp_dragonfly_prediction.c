@@ -371,13 +371,34 @@ prediction_config_t prediction_imm_config(void) {
 }
 
 bool prediction_validate_config(const prediction_config_t* config) {
-    if (!config) return false;
-    if (config->num_models == 0 || config->num_models > PREDICTOR_MAX_MODELS) return false;
-    if (config->prediction_steps == 0 || config->prediction_steps > PREDICTOR_MAX_TRAJECTORY) return false;
-    if (config->max_prediction_ms <= 0.0f) return false;
-    if (config->process_noise < 0.0f) return false;
-    if (config->measurement_noise < 0.0f) return false;
-    if (config->facilitation_width <= 0.0f) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction_validate_config: config is NULL");
+        return false;
+    }
+    if (config->num_models == 0 || config->num_models > PREDICTOR_MAX_MODELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: config->num_models is zero");
+        return false;
+    }
+    if (config->prediction_steps == 0 || config->prediction_steps > PREDICTOR_MAX_TRAJECTORY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: config->prediction_steps is zero");
+        return false;
+    }
+    if (config->max_prediction_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
+        return false;
+    }
+    if (config->process_noise < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
+        return false;
+    }
+    if (config->measurement_noise < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
+        return false;
+    }
+    if (config->facilitation_width <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prediction_validate_config: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -432,7 +453,10 @@ void dragonfly_predictor_destroy(dragonfly_predictor_t* pred) {
 }
 
 int dragonfly_predictor_reset(dragonfly_predictor_t* pred) {
-    if (!pred) return -1;
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_reset: pred is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
 
@@ -462,8 +486,14 @@ int dragonfly_predictor_update(
     const float velocity[3],
     float dt
 ) {
-    if (!pred || !position) return -1;
-    if (dt <= 0.0f) return -1;
+    if (!pred || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_update: required parameter is NULL (pred, position)");
+        return -1;
+    }
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_predictor_update: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
 
@@ -562,14 +592,24 @@ int dragonfly_predictor_predict(
     float lookahead_ms,
     trajectory_prediction_t* prediction
 ) {
-    if (!pred || !prediction) return -1;
-    if (lookahead_ms <= 0.0f) return -1;
-    if (!prediction->trajectory || prediction->num_points == 0) return -1;
+    if (!pred || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_predict: required parameter is NULL (pred, prediction)");
+        return -1;
+    }
+    if (lookahead_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_predictor_predict: validation failed");
+        return -1;
+    }
+    if (!prediction->trajectory || prediction->num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_predict: prediction->trajectory is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
 
     if (!pred->models[0].initialized) {
         nimcp_mutex_unlock(pred->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_predict: pred->models is NULL");
         return -1;
     }
 
@@ -632,13 +672,20 @@ int dragonfly_predictor_get_state_at(
     float time_offset_ms,
     predicted_state_t* state
 ) {
-    if (!pred || !state) return -1;
-    if (time_offset_ms < 0.0f) return -1;
+    if (!pred || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_state_at: required parameter is NULL (pred, state)");
+        return -1;
+    }
+    if (time_offset_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_predictor_get_state_at: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
 
     if (!pred->models[0].initialized) {
         nimcp_mutex_unlock(pred->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_state_at: pred->models is NULL");
         return -1;
     }
 
@@ -673,7 +720,10 @@ int dragonfly_predictor_get_evasion(
     const dragonfly_predictor_t* pred,
     evasion_state_t* evasion
 ) {
-    if (!pred || !evasion) return -1;
+    if (!pred || !evasion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_evasion: required parameter is NULL (pred, evasion)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)pred->mutex);
     *evasion = pred->evasion;
@@ -730,8 +780,14 @@ int dragonfly_forward_model(
     float dt,
     float predicted_state[9]
 ) {
-    if (!current_state || !action || !predicted_state) return -1;
-    if (dt <= 0.0f) return -1;
+    if (!current_state || !action || !predicted_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_forward_model: required parameter is NULL (current_state, action, predicted_state)");
+        return -1;
+    }
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_forward_model: validation failed");
+        return -1;
+    }
 
     /* pos' = pos + vel*dt + 0.5*accel*dt^2 + 0.5*action*dt^2 */
     predicted_state[0] = current_state[0] + current_state[3] * dt +
@@ -761,8 +817,14 @@ int dragonfly_inverse_model(
     float dt,
     float required_action[3]
 ) {
-    if (!current_state || !desired_state || !required_action) return -1;
-    if (dt <= 0.0f) return -1;
+    if (!current_state || !desired_state || !required_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_inverse_model: required parameter is NULL (current_state, desired_state, required_action)");
+        return -1;
+    }
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_inverse_model: validation failed");
+        return -1;
+    }
 
     /* Solve for action that achieves desired velocity */
     /* vel' = vel + (accel + action) * dt */
@@ -783,7 +845,10 @@ int dragonfly_predictor_get_model_probabilities(
     float* probabilities,
     uint32_t num_models
 ) {
-    if (!pred || !probabilities) return -1;
+    if (!pred || !probabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_model_probabilities: required parameter is NULL (pred, probabilities)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)pred->mutex);
 
@@ -858,7 +923,10 @@ int dragonfly_predictor_get_stats(
     const dragonfly_predictor_t* pred,
     prediction_stats_t* stats
 ) {
-    if (!pred || !stats) return -1;
+    if (!pred || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_stats: required parameter is NULL (pred, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)pred->mutex);
     *stats = pred->stats;
@@ -868,7 +936,10 @@ int dragonfly_predictor_get_stats(
 }
 
 int dragonfly_predictor_reset_stats(dragonfly_predictor_t* pred) {
-    if (!pred) return -1;
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_reset_stats: pred is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
     memset(&pred->stats, 0, sizeof(pred->stats));
@@ -881,8 +952,14 @@ int dragonfly_predictor_set_config(
     dragonfly_predictor_t* pred,
     const prediction_config_t* config
 ) {
-    if (!pred || !config) return -1;
-    if (!prediction_validate_config(config)) return -1;
+    if (!pred || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_set_config: required parameter is NULL (pred, config)");
+        return -1;
+    }
+    if (!prediction_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_predictor_set_config: prediction_validate_config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(pred->mutex);
     pred->config = *config;
@@ -895,7 +972,10 @@ int dragonfly_predictor_get_config(
     const dragonfly_predictor_t* pred,
     prediction_config_t* config
 ) {
-    if (!pred || !config) return -1;
+    if (!pred || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_predictor_get_config: required parameter is NULL (pred, config)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)pred->mutex);
     *config = pred->config;
@@ -933,7 +1013,10 @@ const char* dragonfly_model_name(prediction_motion_model_t model) {
 }
 
 predicted_state_t* dragonfly_trajectory_alloc(uint32_t num_points) {
-    if (num_points == 0) return NULL;
+    if (num_points == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_trajectory_alloc: num_points is zero");
+        return NULL;
+    }
     return nimcp_calloc(num_points, sizeof(predicted_state_t));
 }
 

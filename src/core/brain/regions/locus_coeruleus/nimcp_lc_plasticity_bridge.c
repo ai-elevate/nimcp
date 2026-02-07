@@ -116,6 +116,7 @@ static nimcp_lc_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -277,6 +278,7 @@ nimcp_lc_plasticity_bridge_t* nimcp_lc_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(nimcp_lc_plasticity_synapse_t));
     if (!bridge->synapses) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_lc_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -301,7 +303,10 @@ void nimcp_lc_plasticity_destroy(nimcp_lc_plasticity_bridge_t* bridge) {
 }
 
 int nimcp_lc_plasticity_reset(nimcp_lc_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset synapses */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -331,7 +336,10 @@ int nimcp_lc_plasticity_connect_lc(
     nimcp_lc_plasticity_bridge_t* bridge,
     nimcp_lc_adapter_t lc_adapter
 ) {
-    if (!bridge || !lc_adapter) return -1;
+    if (!bridge || !lc_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_connect_lc: required parameter is NULL (bridge, lc_adapter)");
+        return -1;
+    }
     bridge->lc_adapter = lc_adapter;
     return 0;
 }
@@ -340,7 +348,10 @@ int nimcp_lc_plasticity_connect_coordinator(
     nimcp_lc_plasticity_bridge_t* bridge,
     struct nimcp_plasticity_coordinator* coordinator
 ) {
-    if (!bridge || !coordinator) return -1;
+    if (!bridge || !coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_connect_coordinator: required parameter is NULL (bridge, coordinator)");
+        return -1;
+    }
     bridge->plasticity_coordinator = coordinator;
     return 0;
 }
@@ -355,8 +366,14 @@ int nimcp_lc_plasticity_register_synapse(
     nimcp_lc_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
-    if (bridge->synapse_count >= bridge->synapse_capacity) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
+    if (bridge->synapse_count >= bridge->synapse_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_lc_plasticity_register_synapse: capacity exceeded");
+        return -1;
+    }
 
     nimcp_lc_plasticity_synapse_t* synapse = &bridge->synapses[bridge->synapse_count++];
     synapse->synapse_id = synapse_id;
@@ -372,7 +389,10 @@ int nimcp_lc_plasticity_unregister_synapse(
     nimcp_lc_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
         if (bridge->synapses[i].synapse_id == synapse_id) {
@@ -385,6 +405,7 @@ int nimcp_lc_plasticity_unregister_synapse(
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_lc_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
@@ -393,10 +414,16 @@ int nimcp_lc_plasticity_get_synapse(
     uint32_t synapse_id,
     nimcp_lc_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     nimcp_lc_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_get_synapse: found is NULL");
+        return -1;
+    }
 
     *synapse = *found;
     return 0;
@@ -411,10 +438,16 @@ int nimcp_lc_plasticity_pre_spike(
     uint32_t synapse_id,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_pre_spike: bridge is NULL");
+        return -1;
+    }
 
     nimcp_lc_plasticity_synapse_t* synapse = find_synapse(bridge, synapse_id);
-    if (!synapse) return -1;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_pre_spike: synapse is NULL");
+        return -1;
+    }
 
     synapse->last_pre_spike_us = timestamp_us;
     bridge->stats.total_pre_spikes++;
@@ -430,10 +463,16 @@ int nimcp_lc_plasticity_post_spike(
     uint32_t synapse_id,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_post_spike: bridge is NULL");
+        return -1;
+    }
 
     nimcp_lc_plasticity_synapse_t* synapse = find_synapse(bridge, synapse_id);
-    if (!synapse) return -1;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_post_spike: synapse is NULL");
+        return -1;
+    }
 
     synapse->last_post_spike_us = timestamp_us;
     bridge->stats.total_post_spikes++;
@@ -449,7 +488,10 @@ int nimcp_lc_plasticity_ne_burst(
     float intensity,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_ne_burst: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.phasic_burst_active = true;
     bridge->state.ne.last_burst_us = timestamp_us;
@@ -478,7 +520,10 @@ int nimcp_lc_plasticity_set_ne_level(
     float ne_level,
     float arousal
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_set_ne_level: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.ne.ne_level = clamp(ne_level, 0.0f, 100.0f);
     bridge->state.ne.arousal = clamp(arousal, 0.0f, 1.0f);
@@ -496,7 +541,10 @@ int nimcp_lc_plasticity_update(
     nimcp_lc_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = LC_PLASTICITY_STATE_UPDATING;
     bridge->stats.total_updates++;
@@ -552,7 +600,10 @@ int nimcp_lc_plasticity_update(
 }
 
 int nimcp_lc_plasticity_consolidate(nimcp_lc_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = LC_PLASTICITY_STATE_CONSOLIDATING;
 
@@ -576,7 +627,10 @@ int nimcp_lc_plasticity_get_modulation(
     nimcp_lc_plasticity_bridge_t* bridge,
     nimcp_lc_plasticity_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     *modulation = bridge->current_modulation;
     return 0;
 }
@@ -623,7 +677,10 @@ int nimcp_lc_plasticity_get_state(
     const nimcp_lc_plasticity_bridge_t* bridge,
     nimcp_lc_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -632,7 +689,10 @@ int nimcp_lc_plasticity_get_stats(
     const nimcp_lc_plasticity_bridge_t* bridge,
     nimcp_lc_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -651,7 +711,10 @@ int nimcp_lc_plasticity_set_weight_callback(
     nimcp_lc_weight_change_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
     bridge->weight_callback = callback;
     bridge->callback_user_data = user_data;
     return 0;
@@ -662,18 +725,27 @@ int nimcp_lc_plasticity_set_weight_callback(
  *===========================================================================*/
 
 int nimcp_lc_plasticity_connect_bio_async(nimcp_lc_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = true;
     return 0;
 }
 
 int nimcp_lc_plasticity_disconnect_bio_async(nimcp_lc_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = false;
     return 0;
 }
 
 bool nimcp_lc_plasticity_is_bio_async_connected(const nimcp_lc_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_lc_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state.bio_async_connected;
 }

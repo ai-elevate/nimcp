@@ -257,26 +257,31 @@ bool nimcp_brain_factory_validate_creation_params(const char* task_name, uint32_
 {
     if (!task_name) {
         set_error("task_name cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_validate_creation_params: task_name is NULL");
         return false;
     }
 
     if (num_inputs == 0) {
         set_error("num_inputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: num_inputs is zero");
         return false;
     }
 
     if (num_inputs > 10000) {
         set_error("num_inputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: validation failed");
         return false;
     }
 
     if (num_outputs == 0) {
         set_error("num_outputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: num_outputs is zero");
         return false;
     }
 
     if (num_outputs > 10000) {
         set_error("num_outputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_validate_creation_params: validation failed");
         return false;
     }
 

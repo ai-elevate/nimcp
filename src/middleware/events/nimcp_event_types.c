@@ -241,7 +241,10 @@ const char* event_priority_name(mw_event_priority_t priority) {
 }
 
 bool event_copy(event_t* dest, const event_t* src) {
-    if (!dest || !src) return false;
+    if (!dest || !src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_copy: required parameter is NULL (dest, src)");
+        return false;
+    }
 
     // Copy basic structure
     *dest = *src;

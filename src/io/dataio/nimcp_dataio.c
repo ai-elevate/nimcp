@@ -202,12 +202,14 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
     // Guard clause: validate input
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid CSV configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "csv_initialize: required parameter is NULL (context, config, config->location)");
         return false;
     }
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(config->location)) {
         dataio_set_error("Path validation failed: %s", config->location);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_initialize: nimcp_path_is_safe is NULL");
         return false;
     }
 
@@ -242,6 +244,7 @@ static bool csv_initialize(void** context, const dataset_config_t* config)
             dataio_set_error("Failed to read CSV header");
             fclose(csv_ctx->file);
             nimcp_free(csv_ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_initialize: fgets is NULL");
             return false;
         }
 
@@ -311,8 +314,10 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
 
     // Parse features
     for (uint32_t i = 0; i < num_features; i++) {
-        if (!token)
+        if (!token) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "csv_parse_line: token is NULL");
             return false;
+        }
 
         // Store token for error reporting before parsing
         char token_copy[256];
@@ -332,6 +337,7 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
         if (!nimcp_validate_float_field(&features[i], sizeof(float))) {
             fprintf(stderr, "[DataIO] Invalid feature value at index %u: %f from token '%s'\n", i,
                     features[i], token_copy);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_parse_line: nimcp_validate_float_field is NULL");
             return false;
         }
 
@@ -339,8 +345,10 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
     }
 
     // Parse label (last column)
-    if (!token)
+    if (!token) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "csv_parse_line: token is NULL");
         return false;
+    }
 
     // Remove trailing newline/whitespace
     char* newline = strchr(token, '\n');
@@ -363,8 +371,10 @@ static bool csv_parse_line(const char* line, char delimiter, uint32_t num_featur
  */
 static bool csv_next_batch(void* context, data_batch_t* batch)
 {
-    if (!context || !batch)
+    if (!context || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "csv_next_batch: required parameter is NULL (context, batch)");
         return false;
+    }
 
     csv_context_t* csv_ctx = (csv_context_t*) context;
 
@@ -373,6 +383,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: batch->features is NULL");
         return false;
     }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
@@ -380,6 +391,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "csv_next_batch: batch->labels is NULL");
         return false;
     }
     batch->num_samples = 0;
@@ -437,6 +449,7 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
         batch->end_of_dataset = true;
         nimcp_free(batch->features);
         nimcp_free(batch->labels);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_next_batch: batch->num_samples is zero");
         return false;
     }
 
@@ -450,13 +463,16 @@ static bool csv_next_batch(void* context, data_batch_t* batch)
  */
 static bool csv_reset(void* context)
 {
-    if (!context)
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "csv_reset: context is NULL");
         return false;
+    }
 
     csv_context_t* csv_ctx = (csv_context_t*) context;
 
     if (fseek(csv_ctx->file, csv_ctx->file_start_offset, SEEK_SET) != 0) {
         dataio_set_error("Failed to reset CSV file: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "csv_reset: validation failed");
         return false;
     }
 
@@ -530,6 +546,7 @@ typedef struct {
 #ifdef HAVE_LIBPQ
 static bool postgres_validate_query(const char* query) {
     if (!query || !*query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: query is NULL");
         return false;
     }
 
@@ -541,6 +558,7 @@ static bool postgres_validate_query(const char* query) {
     /* Query must start with SELECT (case-insensitive) */
     if (strncasecmp(query, "SELECT", 6) != 0) {
         dataio_set_error("Only SELECT queries are allowed for data loading");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
         return false;
     }
 
@@ -571,6 +589,7 @@ static bool postgres_validate_query(const char* query) {
     char* upper_query = nimcp_malloc(qlen + 1);
     if (!upper_query) {
         dataio_set_error("Failed to allocate memory for query validation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_validate_query: upper_query is NULL");
         return false;
     }
 
@@ -586,6 +605,7 @@ static bool postgres_validate_query(const char* query) {
             if (strchr(upper_query, ';') != NULL) {
                 nimcp_free(upper_query);
                 dataio_set_error("Multiple SQL statements not allowed (semicolon found)");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                 return false;
             }
         }
@@ -594,6 +614,7 @@ static bool postgres_validate_query(const char* query) {
             if (strstr(upper_query, dangerous_patterns[i]) != NULL) {
                 nimcp_free(upper_query);
                 dataio_set_error("SQL comments not allowed in query");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                 return false;
             }
         }
@@ -615,6 +636,7 @@ static bool postgres_validate_query(const char* query) {
                 if (word_start && word_end) {
                     nimcp_free(upper_query);
                     dataio_set_error("Dangerous SQL keyword '%s' not allowed", dangerous_patterns[i]);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_validate_query: validation failed");
                     return false;
                 }
                 found = strstr(found + 1, dangerous_patterns[i]);
@@ -640,23 +662,27 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
 #ifdef HAVE_LIBPQ
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid PostgreSQL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "postgres_initialize: required parameter is NULL (context, config, config->location)");
         return false;
     }
     postgres_context_t* pg_ctx = nimcp_calloc(1, sizeof(postgres_context_t));
     if (!pg_ctx) {
         dataio_set_error("Failed to allocate PostgreSQL context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_initialize: pg_ctx is NULL");
         return false;
     }
     const char* separator = strchr(config->location, '|');
     if (!separator) {
         dataio_set_error("PostgreSQL location must be 'connection_string|query'");
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "postgres_initialize: separator is NULL");
         return false;
     }
     size_t conn_len = separator - config->location;
     if (conn_len >= sizeof(pg_ctx->connection_string)) {
         dataio_set_error("PostgreSQL connection string too long");
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: capacity exceeded");
         return false;
     }
     strncpy(pg_ctx->connection_string, config->location, conn_len);
@@ -668,6 +694,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
     if (!postgres_validate_query(pg_ctx->query)) {
         /* Error message already set by postgres_validate_query */
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: postgres_validate_query is NULL");
         return false;
     }
 
@@ -679,6 +706,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
         dataio_set_error("PostgreSQL connection failed: %s", PQerrorMessage(pg_ctx->db_conn));
         PQfinish(pg_ctx->db_conn);
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: validation failed");
         return false;
     }
 
@@ -690,6 +718,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
         PQclear(prepare_result);
         PQfinish(pg_ctx->db_conn);
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: validation failed");
         return false;
     }
     PQclear(prepare_result);
@@ -701,6 +730,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
         PQclear(pg_ctx->result);
         PQfinish(pg_ctx->db_conn);
         nimcp_free(pg_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: validation failed");
         return false;
     }
     pg_ctx->total_rows = (uint32_t)PQntuples(pg_ctx->result);
@@ -711,6 +741,7 @@ static bool postgres_initialize(void** context, const dataset_config_t* config)
     (void)context;
     (void)config;
     dataio_set_error("PostgreSQL backend not available (compile with HAVE_LIBPQ)");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_initialize: operation failed");
     return false;
 #endif
 }
@@ -731,11 +762,15 @@ static void postgres_shutdown(void* context)
 static bool postgres_next_batch(void* context, data_batch_t* batch)
 {
 #ifdef HAVE_LIBPQ
-    if (!context || !batch) return false;
+    if (!context || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "postgres_next_batch: required parameter is NULL (context, batch)");
+        return false;
+    }
     postgres_context_t* pg_ctx = (postgres_context_t*)context;
     if (pg_ctx->current_row >= pg_ctx->total_rows) {
         batch->end_of_dataset = true;
         batch->num_samples = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_next_batch: capacity exceeded");
         return false;
     }
     uint32_t remaining = pg_ctx->total_rows - pg_ctx->current_row;
@@ -743,6 +778,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: batch->features is NULL");
         return false;
     }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
@@ -750,6 +786,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "postgres_next_batch: batch->labels is NULL");
         return false;
     }
     batch->num_samples = 0;
@@ -783,6 +820,7 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
 #else
     (void)context;
     (void)batch;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_next_batch: capacity exceeded");
     return false;
 #endif
 }
@@ -790,19 +828,26 @@ static bool postgres_next_batch(void* context, data_batch_t* batch)
 static bool postgres_reset(void* context)
 {
 #ifdef HAVE_LIBPQ
-    if (!context) return false;
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "postgres_reset: context is NULL");
+        return false;
+    }
     postgres_context_t* pg_ctx = (postgres_context_t*)context;
     if (pg_ctx->result) PQclear(pg_ctx->result);
     /* SECURITY: Use prepared statement (created during initialize) instead of PQexec
      * to ensure the query was validated and prevent SQL injection.
      * The prepared statement "nimcp_data_query" was created in postgres_initialize(). */
     pg_ctx->result = PQexecPrepared(pg_ctx->db_conn, "nimcp_data_query", 0, NULL, NULL, NULL, 0);
-    if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) return false;
+    if (PQresultStatus(pg_ctx->result) != PGRES_TUPLES_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_reset: validation failed");
+        return false;
+    }
     pg_ctx->total_rows = (uint32_t)PQntuples(pg_ctx->result);
     pg_ctx->current_row = 0;
     return true;
 #else
     (void)context;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "postgres_reset: validation failed");
     return false;
 #endif
 }
@@ -846,11 +891,13 @@ static bool json_initialize(void** context, const dataset_config_t* config)
 {
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid JSON configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_initialize: required parameter is NULL (context, config, config->location)");
         return false;
     }
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(config->location)) {
         dataio_set_error("Path validation failed: %s", config->location);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_initialize: nimcp_path_is_safe is NULL");
         return false;
     }
     json_context_t* json_ctx = nimcp_calloc(1, sizeof(json_context_t));
@@ -893,6 +940,7 @@ static bool json_initialize(void** context, const dataset_config_t* config)
         dataio_set_error("JSON parse error or root not array");
         nimcp_free(json_ctx->json_buffer);
         nimcp_free(json_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_initialize: required parameter is NULL (json_ctx->root, cJSON_IsArray)");
         return false;
     }
     json_ctx->total_items = cJSON_GetArraySize(json_ctx->root);
@@ -914,10 +962,14 @@ static void json_shutdown(void* context)
 
 static bool json_next_batch(void* context, data_batch_t* batch)
 {
-    if (!context || !batch) return false;
+    if (!context || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_next_batch: required parameter is NULL (context, batch)");
+        return false;
+    }
     json_context_t* json_ctx = (json_context_t*)context;
     if (json_ctx->current_item >= json_ctx->total_items) {
         batch->end_of_dataset = true;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_next_batch: capacity exceeded");
         return false;
     }
     int remaining = json_ctx->total_items - json_ctx->current_item;
@@ -925,6 +977,7 @@ static bool json_next_batch(void* context, data_batch_t* batch)
     batch->features = nimcp_calloc(batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_next_batch: batch->features is NULL");
         return false;
     }
     batch->labels = nimcp_calloc(batch_size, sizeof(char*));
@@ -932,6 +985,7 @@ static bool json_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_next_batch: batch->labels is NULL");
         return false;
     }
     batch->num_samples = 0;
@@ -963,7 +1017,10 @@ static bool json_next_batch(void* context, data_batch_t* batch)
 
 static bool json_reset(void* context)
 {
-    if (!context) return false;
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_reset: context is NULL");
+        return false;
+    }
     json_context_t* json_ctx = (json_context_t*)context;
     json_ctx->current_item = 0;
     return true;
@@ -991,6 +1048,7 @@ static data_source_strategy_t g_json_strategy = {
 static bool json_initialize_stub(void** context, const dataset_config_t* config) {
     (void)context; (void)config;
     dataio_set_error("JSON format not available - cJSON library not compiled in");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_initialize_stub: operation failed");
     return false;
 }
 static void json_shutdown_stub(void* context) { (void)context; }
@@ -1020,6 +1078,7 @@ static bool parquet_initialize(void** context, const dataset_config_t* config)
     (void)context;
     (void)config;
     dataio_set_error("Parquet format not yet implemented. Convert to CSV/JSON using pandas.");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parquet_initialize: operation failed");
     return false;
 }
 
@@ -1062,10 +1121,14 @@ static bool sqlite_initialize(void** context, const dataset_config_t* config)
 #ifdef HAVE_SQLITE3
     if (!context || !config || !config->location[0]) {
         dataio_set_error("Invalid SQLite configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sqlite_initialize: required parameter is NULL (context, config, config->location)");
         return false;
     }
     sqlite_context_t* sqlite_ctx = nimcp_calloc(1, sizeof(sqlite_context_t));
-    if (!sqlite_ctx) return false;
+    if (!sqlite_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sqlite_initialize: sqlite_ctx is NULL");
+        return false;
+    }
     const char* separator = strchr(config->location, '|');
     if (separator) {
         size_t path_len = separator - config->location;
@@ -1083,6 +1146,7 @@ static bool sqlite_initialize(void** context, const dataset_config_t* config)
     if (rc != SQLITE_OK) {
         dataio_set_error("SQLite open failed");
         nimcp_free(sqlite_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sqlite_initialize: validation failed");
         return false;
     }
     rc = sqlite3_prepare_v2(sqlite_ctx->db, sqlite_ctx->query, -1, &sqlite_ctx->stmt, NULL);
@@ -1090,6 +1154,7 @@ static bool sqlite_initialize(void** context, const dataset_config_t* config)
         dataio_set_error("SQLite prepare failed");
         sqlite3_close(sqlite_ctx->db);
         nimcp_free(sqlite_ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sqlite_initialize: validation failed");
         return false;
     }
     *context = sqlite_ctx;
@@ -1098,6 +1163,7 @@ static bool sqlite_initialize(void** context, const dataset_config_t* config)
     (void)context;
     (void)config;
     dataio_set_error("SQLite backend not available (compile with HAVE_SQLITE3)");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sqlite_initialize: operation failed");
     return false;
 #endif
 }
@@ -1118,11 +1184,15 @@ static void sqlite_shutdown(void* context)
 static bool sqlite_next_batch(void* context, data_batch_t* batch)
 {
 #ifdef HAVE_SQLITE3
-    if (!context || !batch) return false;
+    if (!context || !batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sqlite_next_batch: required parameter is NULL (context, batch)");
+        return false;
+    }
     sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
     batch->features = nimcp_calloc(sqlite_ctx->batch_size, sizeof(float*));
     if (!batch->features) {
         dataio_set_error("Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sqlite_next_batch: batch->features is NULL");
         return false;
     }
     batch->labels = nimcp_calloc(sqlite_ctx->batch_size, sizeof(char*));
@@ -1130,6 +1200,7 @@ static bool sqlite_next_batch(void* context, data_batch_t* batch)
         nimcp_free(batch->features);
         batch->features = NULL;
         dataio_set_error("Failed to allocate labels array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sqlite_next_batch: batch->labels is NULL");
         return false;
     }
     batch->num_samples = 0;
@@ -1161,6 +1232,7 @@ static bool sqlite_next_batch(void* context, data_batch_t* batch)
 #else
     (void)context;
     (void)batch;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sqlite_next_batch: operation failed");
     return false;
 #endif
 }
@@ -1168,13 +1240,17 @@ static bool sqlite_next_batch(void* context, data_batch_t* batch)
 static bool sqlite_reset(void* context)
 {
 #ifdef HAVE_SQLITE3
-    if (!context) return false;
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sqlite_reset: context is NULL");
+        return false;
+    }
     sqlite_context_t* sqlite_ctx = (sqlite_context_t*)context;
     sqlite3_reset(sqlite_ctx->stmt);
     sqlite_ctx->total_rows = 0;
     return true;
 #else
     (void)context;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sqlite_reset: context is NULL");
     return false;
 #endif
 }
@@ -1230,11 +1306,15 @@ typedef struct {
 static bool stream_push_sample(stream_context_t* ctx, const float* features,
                                uint32_t num_features, const char* label)
 {
-    if (!ctx || !ctx->active) return false;
+    if (!ctx || !ctx->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_push_sample: required parameter is NULL (ctx, ctx->active)");
+        return false;
+    }
     nimcp_mutex_lock(&ctx->queue_lock);
     if (ctx->queue_size >= ctx->max_queue_size) {
         ctx->samples_dropped++;
         nimcp_mutex_unlock(&ctx->queue_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "stream_push_sample: capacity exceeded");
         return false;
     }
     stream_sample_t* sample = nimcp_calloc(1, sizeof(stream_sample_t));
@@ -1243,6 +1323,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
     if (!sample->features) {
         nimcp_free(sample);
         nimcp_mutex_unlock(&ctx->queue_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stream_push_sample: sample->features is NULL");
         return false;
     }
     memcpy(sample->features, features, num_features * sizeof(float));
@@ -1252,6 +1333,7 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
         nimcp_free(sample->features);
         nimcp_free(sample);
         nimcp_mutex_unlock(&ctx->queue_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_push_sample: sample->label is NULL");
         return false;
     }
     sample->next = NULL;
@@ -1280,6 +1362,7 @@ static stream_sample_t* stream_pop_sample(stream_context_t* ctx, int32_t timeout
         else if (timeout_ms > 0) {
             if (nimcp_cond_timedwait(&ctx->queue_cond, &ctx->queue_lock, (uint32_t)timeout_ms) == NIMCP_TIMEOUT) {
                 nimcp_mutex_unlock(&ctx->queue_lock);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "stream_pop_sample: validation failed");
                 return NULL;
             }
         } else {
@@ -1309,6 +1392,7 @@ static void stream_free_sample(stream_sample_t* sample)
 static bool stream_initialize(void** context, const dataset_config_t* config)
 {
     dataio_set_error("Use dataset_create_stream() for streaming data");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream_initialize: sample is NULL");
     return false;
 }
 
@@ -1364,13 +1448,16 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source, dat
                 case DATA_FORMAT_JSON:
                     // TODO: Implement JSON backend
                     dataio_set_error("JSON format not yet implemented");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
                 case DATA_FORMAT_PARQUET:
                     // TODO: Implement Parquet backend
                     dataio_set_error("Parquet format not yet implemented");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
                 default:
                     dataio_set_error("Unsupported file format: %d", format);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
             }
 
@@ -1382,9 +1469,11 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source, dat
                 case DATA_FORMAT_SQLITE:
                     // TODO: Implement SQLite backend
                     dataio_set_error("SQLite format not yet implemented");
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
                 default:
                     dataio_set_error("Unsupported database format: %d", format);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
                     return NULL;
             }
 
@@ -1393,6 +1482,7 @@ static data_source_strategy_t* select_backend_strategy(data_source_t source, dat
 
         default:
             dataio_set_error("Unsupported data source: %d", source);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "select_backend_strategy: operation failed");
             return NULL;
     }
 }
@@ -1414,6 +1504,7 @@ dataset_t dataset_open(const dataset_config_t* config)
     // Guard clause: validate input
     if (!config) {
         dataio_set_error("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_open: config is NULL");
         return NULL;
     }
 
@@ -1421,6 +1512,7 @@ dataset_t dataset_open(const dataset_config_t* config)
     data_source_strategy_t* strategy = select_backend_strategy(config->source, config->format);
 
     if (!strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_open: strategy is NULL");
         return NULL;  // Error already set
     }
 
@@ -1428,6 +1520,7 @@ dataset_t dataset_open(const dataset_config_t* config)
     dataset_t dataset = nimcp_calloc(1, sizeof(struct dataset_struct));
     if (!dataset) {
         dataio_set_error("Failed to allocate dataset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dataset_open: dataset is NULL");
         return NULL;
     }
 
@@ -1438,6 +1531,7 @@ dataset_t dataset_open(const dataset_config_t* config)
     // Initialize backend
     if (!strategy->initialize(&dataset->source_context, config)) {
         nimcp_free(dataset);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_open: strategy->initialize is NULL");
         return NULL;  // Error already set by backend
     }
 
@@ -1465,6 +1559,7 @@ dataset_t dataset_open(const dataset_config_t* config)
                 strategy->shutdown(dataset->source_context);
                 nimcp_mutex_destroy(&dataset->read_lock);
                 nimcp_free(dataset);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dataset_open: dataset->memory_manager is NULL");
                 return NULL;
             }
         }
@@ -1560,11 +1655,13 @@ bool dataset_next_batch(dataset_t dataset, data_batch_t* batch)
     // Guard clauses
     if (!dataset || !batch) {
         dataio_set_error("Invalid dataset or batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_next_batch: required parameter is NULL (dataset, batch)");
         return false;
     }
 
     if (!dataset->strategy || !dataset->strategy->next_batch) {
         dataio_set_error("Backend does not support batch reading");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_next_batch: required parameter is NULL (dataset->strategy, dataset->strategy->next_batch)");
         return false;
     }
 
@@ -1616,6 +1713,7 @@ bool dataset_reset(dataset_t dataset)
 {
     if (!dataset || !dataset->strategy || !dataset->strategy->reset) {
         dataio_set_error("Invalid dataset or backend does not support reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_reset: required parameter is NULL (dataset, dataset->strategy, dataset->strategy->reset)");
         return false;
     }
 
@@ -1773,6 +1871,7 @@ static void* producer_thread_func(void* arg)
 
     // Signal producer completion
     ctx->producer_done = true;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "producer_thread_func: validation failed");
     return NULL;
 }
 
@@ -1851,6 +1950,7 @@ static void* consumer_thread_func(void* arg)
         nimcp_free(batch);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consumer_thread_func: operation failed");
     return NULL;
 }
 
@@ -2052,17 +2152,20 @@ bool brain_export_predictions(brain_t brain, dataset_t input_dataset, const char
     // Guard clauses
     if (!brain || !input_dataset || !output_file) {
         dataio_set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_export_predictions: required parameter is NULL (brain, input_dataset, output_file)");
         return false;
     }
 
     if (format != DATA_FORMAT_CSV) {
         dataio_set_error("Only CSV export supported currently");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_export_predictions: validation failed");
         return false;
     }
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(output_file)) {
         dataio_set_error("Path validation failed: %s", output_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_export_predictions: nimcp_path_is_safe is NULL");
         return false;
     }
 
@@ -2133,11 +2236,13 @@ bool brain_export_training_data(brain_t brain, const char* output_file, data_for
 {
     if (!brain || !output_file) {
         dataio_set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_export_training_data: required parameter is NULL (brain, output_file)");
         return false;
     }
 
     // TODO: Implement when brain internal structure is available
     dataio_set_error("brain_export_training_data not yet implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_export_training_data: required parameter is NULL (brain, output_file)");
     return false;
 }
 
@@ -2155,6 +2260,7 @@ dataset_t dataset_load_csv(const char* filepath, uint32_t num_feature_columns,
 {
     if (!filepath) {
         dataio_set_error("NULL filepath");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_load_csv: filepath is NULL");
         return NULL;
     }
 
@@ -2184,6 +2290,7 @@ dataset_t dataset_load_postgres(const char* connection_string, const char* query
 {
     if (!connection_string || !query) {
         dataio_set_error("NULL connection_string or query");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_load_postgres: required parameter is NULL (connection_string, query)");
         return NULL;
     }
 
@@ -2211,12 +2318,14 @@ bool dataset_save_csv(float** features, char** labels, uint32_t num_samples, uin
 {
     if (!features || !labels || !filepath) {
         dataio_set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_save_csv: required parameter is NULL (features, labels, filepath)");
         return false;
     }
 
     // P1-3 fix: Path traversal validation
     if (!nimcp_path_is_safe(filepath)) {
         dataio_set_error("Path validation failed: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dataset_save_csv: nimcp_path_is_safe is NULL");
         return false;
     }
 
@@ -2262,6 +2371,7 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
 {
     if (!callback) {
         dataio_set_error("NULL callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dataset_create_stream: callback is NULL");
         return NULL;
     }
 
@@ -2269,6 +2379,7 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
     dataset_t dataset = nimcp_calloc(1, sizeof(struct dataset_struct));
     if (!dataset) {
         dataio_set_error("Failed to allocate dataset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dataset_create_stream: dataset is NULL");
         return NULL;
     }
 
@@ -2278,6 +2389,7 @@ dataset_t dataset_create_stream(stream_callback_fn_t callback, void* user_data,
     stream_context_t* stream_ctx = nimcp_calloc(1, sizeof(stream_context_t));
     if (!stream_ctx) {
         nimcp_free(dataset);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dataset_create_stream: stream_ctx is NULL");
         return NULL;
     }
     stream_ctx->callback = callback;
@@ -2444,6 +2556,7 @@ dataset_config_t dataset_default_config(void)
 bool dataset_get_stats(dataset_t dataset, dataset_stats_t* stats)
 {
     if (!dataset || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dataset_get_stats: required parameter is NULL (dataset, stats)");
         return false;
     }
 

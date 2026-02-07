@@ -124,7 +124,10 @@ static bool init_buffers(wernicke_nlp_bridge_t* bridge) {
         bridge->phoneme_buffer_capacity,
         sizeof(wernicke_phoneme_input_t)
     );
-    if (!bridge->phoneme_buffer) return false;
+    if (!bridge->phoneme_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_buffers: bridge->phoneme_buffer is NULL");
+        return false;
+    }
 
     bridge->concept_buffer_capacity = WERNICKE_NLP_MAX_CONCEPTS;
     bridge->concept_buffer = nimcp_calloc(
@@ -133,6 +136,7 @@ static bool init_buffers(wernicke_nlp_bridge_t* bridge) {
     );
     if (!bridge->concept_buffer) {
         nimcp_free(bridge->phoneme_buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_buffers: bridge->concept_buffer is NULL");
         return false;
     }
 
@@ -164,7 +168,10 @@ static int perform_lexical_access(
     uint32_t* word_count,
     float* confidence)
 {
-    if (!bridge || !phonemes || !word_ids || !word_count) return -1;
+    if (!bridge || !phonemes || !word_ids || !word_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perform_lexical_access: required parameter is NULL (bridge, phonemes, word_ids, word_count)");
+        return -1;
+    }
 
     uint64_t start = nimcp_time_get_ms();
 
@@ -213,7 +220,10 @@ static int perform_semantic_integration(
     uint32_t* concept_count,
     float* coherence)
 {
-    if (!bridge || !word_ids || !concepts || !concept_count) return -1;
+    if (!bridge || !word_ids || !concepts || !concept_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perform_semantic_integration: required parameter is NULL (bridge, word_ids, concepts, concept_count)");
+        return -1;
+    }
 
     uint64_t start = nimcp_time_get_ms();
 
@@ -268,7 +278,10 @@ static int perform_syntactic_parsing(
     uint32_t* constituent_count,
     float* wellformedness)
 {
-    if (!bridge || !word_ids || !constituents || !constituent_count) return -1;
+    if (!bridge || !word_ids || !constituents || !constituent_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perform_syntactic_parsing: required parameter is NULL (bridge, word_ids, constituents, constituent_count)");
+        return -1;
+    }
 
     *constituent_count = 0;
     *wellformedness = 0.0f;
@@ -386,6 +399,7 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
     if (!init_buffers(bridge)) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate buffers");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_nlp_bridge_create: init_buffers is NULL");
         return NULL;
     }
 
@@ -577,7 +591,10 @@ int wernicke_nlp_process_phonemes(
     uint32_t count,
     wernicke_comprehension_result_t* result)
 {
-    if (!bridge || !phonemes || !result || count == 0) return -1;
+    if (!bridge || !phonemes || !result || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_nlp_process_phonemes: required parameter is NULL (bridge, phonemes, result)");
+        return -1;
+    }
 
     uint64_t start = nimcp_time_get_ms();
     bridge->state = WERNICKE_NLP_STATE_RECEIVING;
@@ -598,6 +615,7 @@ int wernicke_nlp_process_phonemes(
     if (!result->word_ids || !result->concepts || !result->constituent_ids) {
         wernicke_nlp_free_result(result);
         bridge->state = WERNICKE_NLP_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_nlp_process_phonemes: required parameter is NULL (result->word_ids, result->concepts, result->constituent_ids)");
         return -1;
     }
 
@@ -607,6 +625,7 @@ int wernicke_nlp_process_phonemes(
                                 result->word_ids, &result->word_count,
                                 &result->lexical_confidence) != 0) {
         bridge->state = WERNICKE_NLP_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_nlp_process_phonemes: operation failed");
         return -1;
     }
 
@@ -617,6 +636,7 @@ int wernicke_nlp_process_phonemes(
                                       result->concepts, &result->concept_count,
                                       &result->semantic_coherence) != 0) {
         bridge->state = WERNICKE_NLP_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_nlp_process_phonemes: operation failed");
         return -1;
     }
 
@@ -627,6 +647,7 @@ int wernicke_nlp_process_phonemes(
                                    result->constituent_ids, &result->constituent_count,
                                    &result->syntactic_wellformedness) != 0) {
         bridge->state = WERNICKE_NLP_STATE_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_nlp_process_phonemes: operation failed");
         return -1;
     }
 
@@ -674,7 +695,10 @@ int wernicke_nlp_process_tokens(
     uint32_t count,
     wernicke_comprehension_result_t* result)
 {
-    if (!bridge || !tokens || !result || count == 0) return -1;
+    if (!bridge || !tokens || !result || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_nlp_process_tokens: required parameter is NULL (bridge, tokens, result)");
+        return -1;
+    }
 
     bridge->stats.nlp_network_calls++;
 
@@ -686,6 +710,7 @@ int wernicke_nlp_process_tokens(
 
     if (!result->word_ids || !result->concepts || !result->constituent_ids) {
         wernicke_nlp_free_result(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wernicke_nlp_process_tokens: required parameter is NULL (result->word_ids, result->concepts, result->constituent_ids)");
         return -1;
     }
 
@@ -699,6 +724,7 @@ int wernicke_nlp_process_tokens(
                                       result->word_ids, result->word_count,
                                       result->concepts, &result->concept_count,
                                       &result->semantic_coherence) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_nlp_process_tokens: operation failed");
         return -1;
     }
 
@@ -707,6 +733,7 @@ int wernicke_nlp_process_tokens(
                                    result->word_ids, result->word_count,
                                    result->constituent_ids, &result->constituent_count,
                                    &result->syntactic_wellformedness) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_nlp_process_tokens: operation failed");
         return -1;
     }
 
@@ -722,7 +749,10 @@ int wernicke_nlp_process_crossmodal(
     const wernicke_crossmodal_input_t* input,
     wernicke_comprehension_result_t* result)
 {
-    if (!bridge || !input || !result) return -1;
+    if (!bridge || !input || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_nlp_process_crossmodal: required parameter is NULL (bridge, input, result)");
+        return -1;
+    }
 
     bridge->stats.multimodal_fusions++;
 
@@ -794,7 +824,10 @@ int wernicke_nlp_query_semantic(
     wernicke_concept_activation_t* results,
     uint32_t max_results)
 {
-    if (!bridge || !query || !results || max_results == 0) return -1;
+    if (!bridge || !query || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_nlp_query_semantic: required parameter is NULL (bridge, query, results)");
+        return -1;
+    }
 
     bridge->stats.semantic_queries++;
 
@@ -874,7 +907,10 @@ int wernicke_nlp_get_stats(
     const wernicke_nlp_bridge_t* bridge,
     wernicke_nlp_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_nlp_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

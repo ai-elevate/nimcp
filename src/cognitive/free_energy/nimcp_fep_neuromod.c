@@ -171,6 +171,7 @@ fep_neuromod_system_t* fep_neuromod_create(const fep_neuromod_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_neuromod_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -378,7 +379,10 @@ int fep_neuromod_apply_to_fep(
     fep_neuromod_system_t* neuromod,
     fep_system_t* fep
 ) {
-    if (!neuromod || !fep) return -1;
+    if (!neuromod || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_apply_to_fep: required parameter is NULL (neuromod, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_apply_to_fep", 0.0f);
@@ -515,7 +519,10 @@ int fep_neuromod_get_state(
     const fep_neuromod_system_t* sys,
     fep_neuromod_state_t* state
 ) {
-    if (!sys || !state) return -1;
+    if (!sys || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_get_state: required parameter is NULL (sys, state)");
+        return -1;
+    }
     *state = sys->state;
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_get_state", 0.0f);
@@ -532,7 +539,10 @@ int fep_neuromod_connect(
     fep_neuromod_system_t* neuromod,
     fep_system_t* fep
 ) {
-    if (!neuromod || !fep) return -1;
+    if (!neuromod || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_connect: required parameter is NULL (neuromod, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_connect", 0.0f);
@@ -604,7 +614,10 @@ int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
 }
 
 bool fep_neuromod_is_bio_async_connected(const fep_neuromod_system_t* sys) {
-    if (!sys) return false;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_neuromod_is_bio_async_connected: sys is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     fep_neuromod_heartbeat("fep_neuromod_is_bio_async_connect", 0.0f);
 

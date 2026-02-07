@@ -54,6 +54,7 @@ swarm_consciousness_fep_bridge_t* swarm_consciousness_fep_create(
     if (bridge_base_init(&bridge->base, 0, "swarm_consciousness_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_fep_create: bridge->base is NULL");
         return NULL;
     }
 

@@ -185,6 +185,7 @@ static bool json_expect(json_ctx_t* ctx, char expected) {
     if (ctx->pos >= ctx->len || ctx->json[ctx->pos] != expected) {
         snprintf(ctx->error, sizeof(ctx->error),
                  "Expected '%c' at line %d, column %d", expected, ctx->line, ctx->column);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_expect: capacity exceeded");
         return false;
     }
     json_next(ctx);
@@ -204,6 +205,7 @@ static json_value_t* json_parse_null(json_ctx_t* ctx) {
         return json_alloc_value(JSON_NULL);
     }
     snprintf(ctx->error, sizeof(ctx->error), "Invalid null at line %d", ctx->line);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_parse_null: validation failed");
     return NULL;
 }
 
@@ -228,6 +230,7 @@ static json_value_t* json_parse_bool(json_ctx_t* ctx) {
     } else {
         nimcp_free(val);
         snprintf(ctx->error, sizeof(ctx->error), "Invalid boolean at line %d", ctx->line);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_bool: operation failed");
         return NULL;
     }
     return val;
@@ -238,6 +241,7 @@ static json_value_t* json_parse_number(json_ctx_t* ctx) {
     double num = strtod(ctx->json + ctx->pos, &end);
     if (end == ctx->json + ctx->pos) {
         snprintf(ctx->error, sizeof(ctx->error), "Invalid number at line %d", ctx->line);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_number: validation failed");
         return NULL;
     }
 
@@ -258,7 +262,10 @@ static json_value_t* json_parse_number(json_ctx_t* ctx) {
 }
 
 static json_value_t* json_parse_string(json_ctx_t* ctx) {
-    if (!json_expect(ctx, '"')) return NULL;
+    if (!json_expect(ctx, '"')) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_string: json_expect is NULL");
+        return NULL;
+    }
 
     size_t start = ctx->pos;
     size_t esc_count = 0;
@@ -278,6 +285,7 @@ static json_value_t* json_parse_string(json_ctx_t* ctx) {
 
     if (ctx->pos >= ctx->len) {
         snprintf(ctx->error, sizeof(ctx->error), "Unterminated string at line %d", ctx->line);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_parse_string: capacity exceeded");
         return NULL;
     }
 
@@ -294,6 +302,7 @@ static json_value_t* json_parse_string(json_ctx_t* ctx) {
     val->str_val = (char*)nimcp_malloc(str_len + 1);
     if (!val->str_val) {
         nimcp_free(val);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_string: val->str_val is NULL");
         return NULL;
     }
 
@@ -324,7 +333,10 @@ static json_value_t* json_parse_string(json_ctx_t* ctx) {
 }
 
 static json_value_t* json_parse_array(json_ctx_t* ctx) {
-    if (!json_expect(ctx, '[')) return NULL;
+    if (!json_expect(ctx, '[')) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_array: json_expect is NULL");
+        return NULL;
+    }
 
     json_value_t* val = json_alloc_value(JSON_ARRAY);
     if (!val) {
@@ -342,6 +354,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
     val->array.items = (json_value_t**)nimcp_malloc(capacity * sizeof(json_value_t*));
     if (!val->array.items) {
         nimcp_free(val);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_array: val->array is NULL");
         return NULL;
     }
 
@@ -354,6 +367,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
         json_value_t* item = json_parse_value(ctx);
         if (!item) {
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_array: item is NULL");
             return NULL;
         }
 
@@ -364,6 +378,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
             if (!new_items) {
                 json_free_value(item);
                 json_free_value(val);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_array: new_items is NULL");
                 return NULL;
             }
             val->array.items = new_items;
@@ -378,6 +393,7 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
         }
         if (!json_expect(ctx, ',')) {
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_array: json_expect is NULL");
             return NULL;
         }
     }
@@ -386,7 +402,10 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
 }
 
 static json_value_t* json_parse_object(json_ctx_t* ctx) {
-    if (!json_expect(ctx, '{')) return NULL;
+    if (!json_expect(ctx, '{')) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_object: json_expect is NULL");
+        return NULL;
+    }
 
     json_value_t* val = json_alloc_value(JSON_OBJECT);
     if (!val) {
@@ -413,12 +432,14 @@ static json_value_t* json_parse_object(json_ctx_t* ctx) {
         json_value_t* key_val = json_parse_string(ctx);
         if (!key_val) {
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_object: key_val is NULL");
             return NULL;
         }
 
         if (!json_expect(ctx, ':')) {
             json_free_value(key_val);
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_object: json_expect is NULL");
             return NULL;
         }
 
@@ -427,6 +448,7 @@ static json_value_t* json_parse_object(json_ctx_t* ctx) {
         if (!item) {
             json_free_value(key_val);
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_object: item is NULL");
             return NULL;
         }
 
@@ -436,6 +458,7 @@ static json_value_t* json_parse_object(json_ctx_t* ctx) {
             json_free_value(key_val);
             json_free_value(item);
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "json_parse_object: pair is NULL");
             return NULL;
         }
         pair->key = key_val->str_val;
@@ -459,6 +482,7 @@ static json_value_t* json_parse_object(json_ctx_t* ctx) {
         }
         if (!json_expect(ctx, ',')) {
             json_free_value(val);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_object: json_expect is NULL");
             return NULL;
         }
     }
@@ -479,6 +503,7 @@ static json_value_t* json_parse_value(json_ctx_t* ctx) {
 
     snprintf(ctx->error, sizeof(ctx->error),
              "Unexpected character '%c' at line %d, column %d", c, ctx->line, ctx->column);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_parse_value: validation failed");
     return NULL;
 }
 
@@ -546,18 +571,25 @@ static json_value_t* json_parse(const char* json, size_t len, char* error, size_
 }
 
 static json_value_t* json_object_get(json_value_t* obj, const char* key) {
-    if (!obj || obj->type != JSON_OBJECT || !key) return NULL;
+    if (!obj || obj->type != JSON_OBJECT || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_object_get: required parameter is NULL (obj, key)");
+        return NULL;
+    }
 
     for (json_pair_t* pair = obj->object; pair; pair = pair->next) {
         if (strcmp(pair->key, key) == 0) {
             return pair->value;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_object_get: validation failed");
     return NULL;
 }
 
 static const char* json_get_string(json_value_t* val) {
-    if (!val || val->type != JSON_STRING) return NULL;
+    if (!val || val->type != JSON_STRING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json_get_string: val is NULL");
+        return NULL;
+    }
     return val->str_val;
 }
 
@@ -567,7 +599,10 @@ static double json_get_number(json_value_t* val) {
 }
 
 static bool json_get_bool(json_value_t* val) {
-    if (!val || val->type != JSON_BOOL) return false;
+    if (!val || val->type != JSON_BOOL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "json_get_bool: val is NULL");
+        return false;
+    }
     return val->bool_val;
 }
 
@@ -577,7 +612,10 @@ static size_t json_array_length(json_value_t* arr) {
 }
 
 static json_value_t* json_array_get(json_value_t* arr, size_t index) {
-    if (!arr || arr->type != JSON_ARRAY || index >= arr->array.count) return NULL;
+    if (!arr || arr->type != JSON_ARRAY || index >= arr->array.count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "json_array_get: arr is NULL");
+        return NULL;
+    }
     return arr->array.items[index];
 }
 
@@ -586,7 +624,10 @@ static json_value_t* json_array_get(json_value_t* arr, size_t index) {
 //=============================================================================
 
 bool symbolic_logic_lgss_parse_domain(const char* domain_str, safety_domain_t* domain_out) {
-    if (!domain_str || !domain_out) return false;
+    if (!domain_str || !domain_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_parse_domain: required parameter is NULL (domain_str, domain_out)");
+        return false;
+    }
 
     if (strcmp(domain_str, "HUMAN_HARM") == 0) { *domain_out = SAFETY_DOMAIN_HUMAN_HARM; return true; }
     if (strcmp(domain_str, "BIO") == 0) { *domain_out = SAFETY_DOMAIN_BIO; return true; }
@@ -600,11 +641,15 @@ bool symbolic_logic_lgss_parse_domain(const char* domain_str, safety_domain_t* d
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_domain: validation failed");
     return false;
 }
 
 bool symbolic_logic_lgss_parse_severity(const char* severity_str, safety_severity_t* severity_out) {
-    if (!severity_str || !severity_out) return false;
+    if (!severity_str || !severity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_parse_severity: required parameter is NULL (severity_str, severity_out)");
+        return false;
+    }
 
     if (strcmp(severity_str, "CRITICAL") == 0) { *severity_out = SAFETY_SEVERITY_CRITICAL; return true; }
     if (strcmp(severity_str, "HIGH") == 0) { *severity_out = SAFETY_SEVERITY_HIGH; return true; }
@@ -616,11 +661,15 @@ bool symbolic_logic_lgss_parse_severity(const char* severity_str, safety_severit
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_severity: validation failed");
     return false;
 }
 
 bool symbolic_logic_lgss_parse_action(const char* action_str, safety_action_t* action_out) {
-    if (!action_str || !action_out) return false;
+    if (!action_str || !action_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_parse_action: required parameter is NULL (action_str, action_out)");
+        return false;
+    }
 
     if (strcmp(action_str, "ALLOW") == 0) { *action_out = SAFETY_ACTION_ALLOW; return true; }
     if (strcmp(action_str, "DENY") == 0) { *action_out = SAFETY_ACTION_DENY; return true; }
@@ -632,11 +681,15 @@ bool symbolic_logic_lgss_parse_action(const char* action_str, safety_action_t* a
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_action: validation failed");
     return false;
 }
 
 bool symbolic_logic_lgss_parse_operator(const char* op_str, safety_condition_op_t* op_out) {
-    if (!op_str || !op_out) return false;
+    if (!op_str || !op_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_parse_operator: required parameter is NULL (op_str, op_out)");
+        return false;
+    }
 
     if (strcmp(op_str, "EQ") == 0) { *op_out = SAFETY_COND_OP_EQ; return true; }
     if (strcmp(op_str, "NEQ") == 0) { *op_out = SAFETY_COND_OP_NEQ; return true; }
@@ -653,6 +706,7 @@ bool symbolic_logic_lgss_parse_operator(const char* op_str, safety_condition_op_
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_parse_operator: validation failed");
     return false;
 }
 
@@ -1023,7 +1077,10 @@ bool symbolic_logic_lgss_get_version(
     char* version_out,
     size_t version_size)
 {
-    if (!json_string || !version_out || version_size == 0) return false;
+    if (!json_string || !version_out || version_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_get_version: required parameter is NULL (json_string, version_out)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
 
@@ -1032,17 +1089,22 @@ bool symbolic_logic_lgss_get_version(
 
     char error[256];
     json_value_t* root = json_parse(json_string, json_length, error, sizeof(error));
-    if (!root) return false;
+    if (!root) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_get_version: root is NULL");
+        return false;
+    }
 
     json_value_t* version_val = json_object_get(root, "version");
     if (!version_val) {
         json_free_value(root);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_get_version: version_val is NULL");
         return false;
     }
 
     const char* ver_str = json_get_string(version_val);
     if (!ver_str) {
         json_free_value(root);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_get_version: ver_str is NULL");
         return false;
     }
 
@@ -1073,16 +1135,19 @@ int symbolic_logic_lgss_load_file(
     if (!filepath) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL filepath");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: filepath is NULL");
         return -1;
     }
     if (!kb) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL kb");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: kb is NULL");
         return -1;
     }
     if (kb->is_locked) {
         result->error_code = LGSS_ERROR_KB_LOCKED;
         snprintf(result->error_message, sizeof(result->error_message), "Safety KB is locked");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_lgss_load_file: validation failed");
         return -1;
     }
 
@@ -1092,6 +1157,7 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_FILE_NOT_FOUND;
         snprintf(result->error_message, sizeof(result->error_message),
                  "Cannot open file: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_file: f is NULL");
         return -1;
     }
 
@@ -1104,6 +1170,7 @@ int symbolic_logic_lgss_load_file(
         fclose(f);
         result->error_code = LGSS_ERROR_FILE_READ;
         snprintf(result->error_message, sizeof(result->error_message), "Cannot determine file size");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
         return -1;
     }
 
@@ -1112,6 +1179,7 @@ int symbolic_logic_lgss_load_file(
         result->error_code = LGSS_ERROR_FILE_TOO_LARGE;
         snprintf(result->error_message, sizeof(result->error_message),
                  "File too large: %ld bytes (max %d)", file_size, LGSS_MAX_FILE_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
         return -1;
     }
 
@@ -1121,6 +1189,7 @@ int symbolic_logic_lgss_load_file(
         fclose(f);
         result->error_code = LGSS_ERROR_MEMORY;
         snprintf(result->error_message, sizeof(result->error_message), "Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_lgss_load_file: json_buffer is NULL");
         return -1;
     }
 
@@ -1131,6 +1200,7 @@ int symbolic_logic_lgss_load_file(
         nimcp_free(json_buffer);
         result->error_code = LGSS_ERROR_FILE_READ;
         snprintf(result->error_message, sizeof(result->error_message), "File read error");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_file: validation failed");
         return -1;
     }
     json_buffer[file_size] = '\0';
@@ -1159,16 +1229,19 @@ int symbolic_logic_lgss_load_string(
     if (!json_string) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL json_string");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: json_string is NULL");
         return -1;
     }
     if (!kb) {
         result->error_code = LGSS_ERROR_NULL_ARG;
         snprintf(result->error_message, sizeof(result->error_message), "NULL kb");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: kb is NULL");
         return -1;
     }
     if (kb->is_locked) {
         result->error_code = LGSS_ERROR_KB_LOCKED;
         snprintf(result->error_message, sizeof(result->error_message), "Safety KB is locked");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_lgss_load_string: validation failed");
         return -1;
     }
 
@@ -1179,6 +1252,7 @@ int symbolic_logic_lgss_load_string(
         json_string, json_length, result->error_message, sizeof(result->error_message));
     if (validate_err != LGSS_OK) {
         result->error_code = validate_err;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_load_string: validation failed");
         return -1;
     }
 
@@ -1188,6 +1262,7 @@ int symbolic_logic_lgss_load_string(
     if (!root) {
         result->error_code = LGSS_ERROR_INVALID_JSON;
         snprintf(result->error_message, sizeof(result->error_message), "JSON parse error: %s", parse_error);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_load_string: root is NULL");
         return -1;
     }
 
@@ -1302,7 +1377,10 @@ int symbolic_logic_lgss_export(
     char* output_buffer,
     size_t buffer_size)
 {
-    if (!kb || !output_buffer || buffer_size == 0) return -1;
+    if (!kb || !output_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_lgss_export: required parameter is NULL (kb, output_buffer)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_lgss_loader_heartbeat("symbolic_log_symbolic_logic_lgss_", 0.0f);
@@ -1315,7 +1393,10 @@ int symbolic_logic_lgss_export(
     // Start JSON
     written = snprintf(pos, remaining, "{\n  \"version\": \"%s\",\n  \"name\": \"Exported Safety Rules\",\n  \"rules\": [\n",
                        LGSS_SCHEMA_VERSION);
-    if (written < 0 || (size_t)written >= remaining) return -1;
+    if (written < 0 || (size_t)written >= remaining) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+        return -1;
+    }
     pos += written;
     remaining -= (size_t)written;
 
@@ -1331,7 +1412,10 @@ int symbolic_logic_lgss_export(
 
         if (i > 0) {
             written = snprintf(pos, remaining, ",\n");
-            if (written < 0 || (size_t)written >= remaining) return -1;
+            if (written < 0 || (size_t)written >= remaining) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+                return -1;
+            }
             pos += written;
             remaining -= (size_t)written;
         }
@@ -1354,7 +1438,10 @@ int symbolic_logic_lgss_export(
                            safety_action_name(rule->action),
                            rule->priority,
                            rule->enabled ? "true" : "false");
-        if (written < 0 || (size_t)written >= remaining) return -1;
+        if (written < 0 || (size_t)written >= remaining) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+            return -1;
+        }
         pos += written;
         remaining -= (size_t)written;
 
@@ -1370,7 +1457,10 @@ int symbolic_logic_lgss_export(
 
             if (j > 0) {
                 written = snprintf(pos, remaining, ",");
-                if (written < 0 || (size_t)written >= remaining) return -1;
+                if (written < 0 || (size_t)written >= remaining) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+                    return -1;
+                }
                 pos += written;
                 remaining -= (size_t)written;
             }
@@ -1385,21 +1475,30 @@ int symbolic_logic_lgss_export(
                                safety_condition_op_name(cond->op),
                                cond->value,
                                cond->is_negated ? ",\n          \"negated\": true" : "");
-            if (written < 0 || (size_t)written >= remaining) return -1;
+            if (written < 0 || (size_t)written >= remaining) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+                return -1;
+            }
             pos += written;
             remaining -= (size_t)written;
         }
 
         // Close conditions and rule
         written = snprintf(pos, remaining, "\n      ]\n    }");
-        if (written < 0 || (size_t)written >= remaining) return -1;
+        if (written < 0 || (size_t)written >= remaining) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+            return -1;
+        }
         pos += written;
         remaining -= (size_t)written;
     }
 
     // Close JSON
     written = snprintf(pos, remaining, "\n  ]\n}\n");
-    if (written < 0 || (size_t)written >= remaining) return -1;
+    if (written < 0 || (size_t)written >= remaining) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_lgss_export: capacity exceeded");
+        return -1;
+    }
     pos += written;
 
     return (int)(pos - output_buffer);

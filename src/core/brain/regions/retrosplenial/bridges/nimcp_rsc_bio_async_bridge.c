@@ -98,6 +98,7 @@ static rsc_bio_subscription_t* find_subscription(rsc_bio_async_router_t* b, uint
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -117,7 +118,10 @@ static int count_subscribers_for_type(const rsc_bio_async_router_t* b, nimcp_rsc
  * ============================================================================ */
 
 int rsc_bio_async_default_config(rsc_bio_async_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     config->navigation_broadcast_interval_ms = RSC_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->context_broadcast_interval_ms = 100;  /* Context at 10Hz */
@@ -159,6 +163,7 @@ rsc_bio_async_router_t* rsc_bio_async_router_create(const rsc_bio_async_bridge_c
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity, sizeof(rsc_bio_subscription_t));
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rsc_bio_async_router_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -188,7 +193,10 @@ int rsc_bio_async_router_connect(
     nimcp_retrosplenial_t* rsc,
     bio_router_t router
 ) {
-    if (!bridge || !rsc) return -1;
+    if (!bridge || !rsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_router_connect: required parameter is NULL (bridge, rsc)");
+        return -1;
+    }
 
     bridge->rsc = rsc;
     bridge->router = router;
@@ -198,7 +206,10 @@ int rsc_bio_async_router_connect(
 }
 
 int rsc_bio_async_router_disconnect(rsc_bio_async_router_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_router_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->rsc = NULL;
     bridge->router = NULL;
@@ -216,7 +227,10 @@ bool rsc_bio_async_router_is_connected(const rsc_bio_async_router_t* bridge) {
  * ============================================================================ */
 
 int rsc_bio_async_router_process_inbox(rsc_bio_async_router_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_router_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -229,7 +243,10 @@ int rsc_bio_async_router_process_inbox(rsc_bio_async_router_t* bridge, uint32_t 
 }
 
 int rsc_bio_async_router_update(rsc_bio_async_router_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_router_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_nav_broadcast_ms += delta_ms;
     bridge->time_since_context_broadcast_ms += delta_ms;
@@ -256,8 +273,14 @@ int rsc_bio_async_broadcast_frame_transform(
     const float* output_pos,
     float accuracy
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!input_pos || !output_pos) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_frame_transform: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!input_pos || !output_pos) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_frame_transform: required parameter is NULL (input_pos, output_pos)");
+        return -1;
+    }
     if (!bridge->config.enable_frame_transform_routing) return 0;
 
     rsc_bio_frame_transform_msg_t msg = {0};
@@ -296,8 +319,14 @@ int rsc_bio_async_broadcast_context(
     nimcp_rsc_context_type_t dominant_type,
     float strength
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!context_vector || context_dim == 0) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_context: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!context_vector || context_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_bio_async_broadcast_context: context_vector is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_context_routing) return 0;
 
     rsc_bio_context_update_msg_t msg = {0};
@@ -332,7 +361,10 @@ int rsc_bio_async_broadcast_head_direction(
     float angular_velocity,
     float confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_head_direction: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     rsc_bio_head_direction_msg_t msg = {0};
     msg.header.type = RSC_BIO_MSG_HEAD_DIRECTION;
@@ -368,8 +400,14 @@ int rsc_bio_async_broadcast_landmark(
     const float* position,
     float recognition_strength
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_landmark: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_landmark: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_landmark_routing) return 0;
 
     rsc_bio_landmark_msg_t msg = {0};
@@ -405,7 +443,10 @@ int rsc_bio_async_broadcast_scene_familiarity(
     float familiarity_score,
     float scene_coherence
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_scene_familiarity: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     rsc_bio_scene_familiarity_msg_t msg = {0};
     msg.header.type = RSC_BIO_MSG_SCENE_FAMILIARITY;
@@ -444,7 +485,10 @@ int rsc_bio_async_broadcast_imagination_state(
     float vividness,
     float plausibility
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_imagination_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_imagination_routing) return 0;
 
     rsc_bio_imagination_state_msg_t msg = {0};
@@ -479,8 +523,14 @@ int rsc_bio_async_broadcast_navigation(
     float speed,
     float pose_confidence
 ) {
-    if (!bridge || !bridge->connected) return -1;
-    if (!position) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_navigation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_broadcast_navigation: position is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_navigation_routing) return 0;
 
     rsc_bio_navigation_msg_t msg = {0};
@@ -513,7 +563,10 @@ int rsc_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check for existing subscription */
     rsc_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -525,6 +578,7 @@ int rsc_bio_async_subscribe_module(
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
         bridge->stats.routing_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "rsc_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -546,6 +600,7 @@ int rsc_bio_async_subscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rsc_bio_async_subscribe_module: validation failed");
     return -1;
 }
 
@@ -553,10 +608,16 @@ int rsc_bio_async_unsubscribe_module(
     rsc_bio_async_router_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     rsc_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_unsubscribe_module: sub is NULL");
+        return -1;
+    }
 
     sub->active = false;
     sub->msg_type_mask = 0;
@@ -571,10 +632,16 @@ int rsc_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     rsc_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -596,14 +663,20 @@ int rsc_bio_async_get_stats(
     const rsc_bio_async_router_t* bridge,
     rsc_bio_async_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int rsc_bio_async_reset_stats(rsc_bio_async_router_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     uint32_t active_subs = bridge->stats.active_subscriptions;
     uint32_t peak_subs = bridge->stats.peak_subscriptions;

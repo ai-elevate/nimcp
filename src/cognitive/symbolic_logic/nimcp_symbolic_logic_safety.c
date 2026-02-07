@@ -290,6 +290,7 @@ safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
     if (region == MAP_FAILED) {
         LOG_ERROR("Failed to mmap safety KB region: %zu bytes", mmap_size);
         nimcp_free(kb);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_kb_create: validation failed");
         return NULL;
     }
 
@@ -391,6 +392,7 @@ uint32_t symbolic_logic_safety_add_rule(safety_kb_t* kb, const safety_rule_t* ru
 bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
     if (!kb) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: kb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_remove_rule: kb is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -399,10 +401,12 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 
     if (kb->is_locked) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: KB is locked");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_safety_remove_rule: validation failed");
         return false;
     }
     if (rule_id == 0) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: invalid rule_id 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_remove_rule: rule_id is zero");
         return false;
     }
 
@@ -423,6 +427,7 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 
     if (found_idx < 0) {
         LOG_ERROR("symbolic_logic_safety_remove_rule: rule_id %u not found", rule_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_remove_rule: validation failed");
         return false;
     }
 
@@ -445,7 +450,10 @@ bool symbolic_logic_safety_remove_rule(safety_kb_t* kb, uint32_t rule_id) {
 }
 
 const safety_rule_t* symbolic_logic_safety_get_rule(const safety_kb_t* kb, uint32_t rule_id) {
-    if (!kb || rule_id == 0) return NULL;
+    if (!kb || rule_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_get_rule: kb is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_get_rule", 0.0f);
@@ -462,6 +470,7 @@ const safety_rule_t* symbolic_logic_safety_get_rule(const safety_kb_t* kb, uint3
             return &kb->rules[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_rule: validation failed");
     return NULL;
 }
 
@@ -560,6 +569,7 @@ static void compile_rule_to_fol(safety_rule_t* rule) {
 bool symbolic_logic_safety_compile_rules(safety_kb_t* kb) {
     if (!kb) {
         LOG_ERROR("symbolic_logic_safety_compile_rules: kb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_compile_rules: kb is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -568,6 +578,7 @@ bool symbolic_logic_safety_compile_rules(safety_kb_t* kb) {
 
     if (kb->is_locked) {
         LOG_ERROR("symbolic_logic_safety_compile_rules: KB is locked");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "symbolic_logic_safety_compile_rules: validation failed");
         return false;
     }
 
@@ -602,10 +613,12 @@ bool symbolic_logic_safety_compile_rules(safety_kb_t* kb) {
 bool symbolic_logic_safety_lock(safety_kb_t* kb) {
     if (!kb) {
         LOG_ERROR("symbolic_logic_safety_lock: kb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_lock: kb is NULL");
         return false;
     }
     if (!kb->is_compiled) {
         LOG_ERROR("symbolic_logic_safety_lock: KB must be compiled before locking");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_lock: kb->is_compiled is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -622,6 +635,7 @@ bool symbolic_logic_safety_lock(safety_kb_t* kb) {
     // Apply mprotect to make region read-only
     if (mprotect(kb->mmap_region, kb->mmap_size, PROT_READ) != 0) {
         LOG_ERROR("symbolic_logic_safety_lock: mprotect failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_lock: validation failed");
         return false;
     }
 
@@ -635,7 +649,10 @@ bool symbolic_logic_safety_lock(safety_kb_t* kb) {
 }
 
 bool symbolic_logic_safety_is_locked(const safety_kb_t* kb) {
-    if (!kb) return false;
+    if (!kb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_is_locked: kb is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_is_locked", 0.0f);
 
@@ -650,10 +667,12 @@ bool symbolic_logic_safety_is_locked(const safety_kb_t* kb) {
 bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
     if (!kb) {
         LOG_ERROR("symbolic_logic_safety_verify_integrity: kb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_verify_integrity: kb is NULL");
         return false;
     }
     if (!kb->hash_computed) {
         LOG_ERROR("symbolic_logic_safety_verify_integrity: hash not computed (not compiled)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_verify_integrity: kb->hash_computed is NULL");
         return false;
     }
 
@@ -671,6 +690,7 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
     if (memcmp(computed_hash, kb->integrity_hash, SAFETY_HASH_SIZE) != 0) {
         LOG_ERROR("SAFETY KB INTEGRITY VERIFICATION FAILED - POSSIBLE TAMPERING");
         g_stats.integrity_failures++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_verify_integrity: validation failed");
         return false;
     }
 
@@ -679,8 +699,14 @@ bool symbolic_logic_safety_verify_integrity(const safety_kb_t* kb) {
 }
 
 bool symbolic_logic_safety_get_hash(const safety_kb_t* kb, uint8_t* hash_out) {
-    if (!kb || !hash_out) return false;
-    if (!kb->hash_computed) return false;
+    if (!kb || !hash_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_hash: required parameter is NULL (kb, hash_out)");
+        return false;
+    }
+    if (!kb->hash_computed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_hash: kb->hash_computed is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_get_hash", 0.0f);
@@ -709,6 +735,7 @@ static const char* find_string_field(const safety_action_context_t* ctx, const c
             return ctx->string_fields[i].value;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_string_field: validation failed");
     return NULL;
 }
 
@@ -868,6 +895,7 @@ static bool evaluate_rule_conditions(const safety_rule_t* rule, const safety_act
         }
 
         if (!evaluate_condition(&rule->conditions[i], ctx)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_rule_conditions: evaluate_condition is NULL");
             return false;  // AND logic - any failure means rule doesn't match
         }
     }
@@ -886,14 +914,17 @@ bool symbolic_logic_safety_evaluate(
 {
     if (!kb) {
         LOG_ERROR("symbolic_logic_safety_evaluate: kb is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_evaluate: kb is NULL");
         return false;
     }
     if (!context) {
         LOG_ERROR("symbolic_logic_safety_evaluate: context is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_evaluate: context is NULL");
         return false;
     }
     if (!result) {
         LOG_ERROR("symbolic_logic_safety_evaluate: result is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_evaluate: result is NULL");
         return false;
     }
 
@@ -917,6 +948,7 @@ bool symbolic_logic_safety_evaluate(
         snprintf(result->explanation, sizeof(result->explanation),
                  "INTEGRITY CHECK FAILED - EVALUATION ABORTED");
         result->action = SAFETY_ACTION_DENY;  // Fail-safe to deny
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_evaluate: result->integrity_verified is NULL");
         return false;
     }
 
@@ -924,6 +956,7 @@ bool symbolic_logic_safety_evaluate(
     result->triggered_rule_ids = (uint32_t*)nimcp_calloc(kb->num_rules, sizeof(uint32_t));
     if (!result->triggered_rule_ids && kb->num_rules > 0) {
         LOG_ERROR("Failed to allocate triggered_rule_ids array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "symbolic_logic_safety_evaluate: result->triggered_rule_ids is NULL");
         return false;
     }
     result->num_triggered = 0;
@@ -1048,7 +1081,10 @@ void symbolic_logic_safety_free_evaluation(safety_evaluation_t* result) {
 //=============================================================================
 
 bool symbolic_logic_safety_get_stats(const safety_kb_t* kb, safety_stats_t* stats) {
-    if (!kb || !stats) return false;
+    if (!kb || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_get_stats: required parameter is NULL (kb, stats)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_get_stats", 0.0f);
@@ -1121,8 +1157,14 @@ bool symbolic_logic_safety_context_add_string(
     const char* key,
     const char* value)
 {
-    if (!context || !key || !value) return false;
-    if (context->num_string_fields >= 32) return false;
+    if (!context || !key || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_context_add_string: required parameter is NULL (context, key, value)");
+        return false;
+    }
+    if (context->num_string_fields >= 32) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_context_add_string: capacity exceeded");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_context_add_string", 0.0f);
@@ -1141,8 +1183,14 @@ bool symbolic_logic_safety_context_add_numeric(
     const char* key,
     float value)
 {
-    if (!context || !key) return false;
-    if (context->num_numeric_fields >= 16) return false;
+    if (!context || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_safety_context_add_numeric: required parameter is NULL (context, key)");
+        return false;
+    }
+    if (context->num_numeric_fields >= 16) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "symbolic_logic_safety_context_add_numeric: capacity exceeded");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_safety_heartbeat("symbolic_log_context_add_numeric", 0.0f);

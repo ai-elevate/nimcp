@@ -211,6 +211,7 @@ int anomaly_fep_detect(
     nimcp_error_t err = nimcp_anomaly_detect(bridge->detector, input, input_len, result);
     if (err != NIMCP_SUCCESS) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "anomaly_fep_detect: validation failed");
         return -1;
     }
 

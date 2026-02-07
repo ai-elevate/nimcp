@@ -162,6 +162,7 @@ static int HealthAgent_init(HealthAgentObject* self, PyObject* args, PyObject* k
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|sIII", kwlist,
                                       &name, &heartbeat_ms, &watchdog_ms, &check_ms)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "HealthAgent_init: operation failed");
         return -1;
     }
 
@@ -177,6 +178,7 @@ static int HealthAgent_init(HealthAgentObject* self, PyObject* args, PyObject* k
     self->agent = nimcp_health_agent_create(&config);
     if (self->agent == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to create health agent");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "HealthAgent_init: validation failed");
         return -1;
     }
 
@@ -257,6 +259,7 @@ static PyObject* HealthAgent_use_portia_set_tier(HealthAgentObject* self, PyObje
     unsigned int tier;
 
     if (!PyArg_ParseTuple(args, "I", &tier)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_portia_set_tier: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -277,11 +280,13 @@ static PyObject* HealthAgent_use_portia_degrade(HealthAgentObject* self, PyObjec
     unsigned int level;
 
     if (!PyArg_ParseTuple(args, "I", &level)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_portia_degrade: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (level > 4) {
         PyErr_SetString(PyExc_ValueError, "Degradation level must be 0-4");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_portia_degrade: validation failed");
         return NULL;
     }
 
@@ -308,6 +313,7 @@ static PyObject* HealthAgent_use_portia_get_recommended_neurons(HealthAgentObjec
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get recommended neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_portia_get_recommended_neurons: validation failed");
         return NULL;
     }
 
@@ -330,6 +336,7 @@ static PyObject* HealthAgent_use_portia_get_status(HealthAgentObject* self, PyOb
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get Portia status");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_portia_get_status: validation failed");
         return NULL;
     }
 
@@ -351,6 +358,7 @@ static PyObject* HealthAgent_use_dragonfly_track_anomaly(HealthAgentObject* self
     const char* description;
 
     if (!PyArg_ParseTuple(args, "iiis", &msg_type, &severity, &source, &description)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_dragonfly_track_anomaly: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -370,6 +378,7 @@ static PyObject* HealthAgent_use_dragonfly_track_anomaly(HealthAgentObject* self
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to track anomaly");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_dragonfly_track_anomaly: validation failed");
         return NULL;
     }
 
@@ -384,6 +393,7 @@ static PyObject* HealthAgent_use_dragonfly_predict(HealthAgentObject* self, PyOb
     unsigned int target_id;
 
     if (!PyArg_ParseTuple(args, "I", &target_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_dragonfly_predict: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -397,6 +407,7 @@ static PyObject* HealthAgent_use_dragonfly_predict(HealthAgentObject* self, PyOb
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get prediction");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_dragonfly_predict: validation failed");
         return NULL;
     }
 
@@ -445,6 +456,7 @@ static PyObject* HealthAgent_use_dragonfly_get_mode(HealthAgentObject* self, PyO
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get Dragonfly mode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_dragonfly_get_mode: validation failed");
         return NULL;
     }
 
@@ -464,6 +476,7 @@ static PyObject* HealthAgent_use_swarm_detect_threat(HealthAgentObject* self, Py
     unsigned int source_id;
 
     if (!PyArg_ParseTuple(args, "y*I", &data, &source_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_detect_threat: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -486,6 +499,7 @@ static PyObject* HealthAgent_use_swarm_detect_threat(HealthAgentObject* self, Py
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to detect threat");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_detect_threat: validation failed");
         return NULL;
     }
 
@@ -500,6 +514,7 @@ static PyObject* HealthAgent_use_swarm_generate_response(HealthAgentObject* self
     unsigned int threat_id;
 
     if (!PyArg_ParseTuple(args, "I", &threat_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_generate_response: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -512,6 +527,7 @@ static PyObject* HealthAgent_use_swarm_generate_response(HealthAgentObject* self
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to generate response");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_generate_response: validation failed");
         return NULL;
     }
 
@@ -526,6 +542,7 @@ static PyObject* HealthAgent_use_swarm_check_behavior(HealthAgentObject* self, P
     unsigned int component_id;
 
     if (!PyArg_ParseTuple(args, "I", &component_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_check_behavior: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -538,6 +555,7 @@ static PyObject* HealthAgent_use_swarm_check_behavior(HealthAgentObject* self, P
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to check behavior");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_check_behavior: validation failed");
         return NULL;
     }
 
@@ -553,6 +571,7 @@ static PyObject* HealthAgent_use_swarm_add_memory_cell(HealthAgentObject* self, 
     unsigned int response_type;
 
     if (!PyArg_ParseTuple(args, "y*I", &pattern, &response_type)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_add_memory_cell: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -573,6 +592,7 @@ static PyObject* HealthAgent_use_swarm_add_memory_cell(HealthAgentObject* self, 
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to add memory cell");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_add_memory_cell: validation failed");
         return NULL;
     }
 
@@ -593,12 +613,14 @@ static PyObject* HealthAgent_use_swarm_memory_store(HealthAgentObject* self, PyO
     unsigned int importance;
 
     if (!PyArg_ParseTuple(args, "y*II", &data, &pattern_type, &importance)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_store: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (importance > 3) {
         PyBuffer_Release(&data);
         PyErr_SetString(PyExc_ValueError, "Importance must be 0-3");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_store: validation failed");
         return NULL;
     }
 
@@ -621,6 +643,7 @@ static PyObject* HealthAgent_use_swarm_memory_store(HealthAgentObject* self, PyO
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to store memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_store: validation failed");
         return NULL;
     }
 
@@ -635,6 +658,7 @@ static PyObject* HealthAgent_use_swarm_memory_replay(HealthAgentObject* self, Py
     unsigned int count;
 
     if (!PyArg_ParseTuple(args, "I", &count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_replay: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -646,6 +670,7 @@ static PyObject* HealthAgent_use_swarm_memory_replay(HealthAgentObject* self, Py
 
     if (result < 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to replay memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_replay: validation failed");
         return NULL;
     }
 
@@ -682,6 +707,7 @@ static PyObject* HealthAgent_use_swarm_memory_get_stats(HealthAgentObject* self,
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get memory stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_swarm_memory_get_stats: validation failed");
         return NULL;
     }
 
@@ -703,6 +729,7 @@ static PyObject* HealthAgent_use_engram_encode(HealthAgentObject* self, PyObject
     const char* description;
 
     if (!PyArg_ParseTuple(args, "iiis", &msg_type, &severity, &source, &description)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_engram_encode: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -722,6 +749,7 @@ static PyObject* HealthAgent_use_engram_encode(HealthAgentObject* self, PyObject
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to encode engram");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_engram_encode: validation failed");
         return NULL;
     }
 
@@ -740,6 +768,7 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
     unsigned int max_recalls = 10;
 
     if (!PyArg_ParseTuple(args, "iiis|I", &msg_type, &severity, &source, &description, &max_recalls)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_engram_recall: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -772,6 +801,7 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
     if (result != 0) {
         nimcp_free(recalled_ids);
         PyErr_SetString(PyExc_RuntimeError, "Failed to recall engrams");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_engram_recall: validation failed");
         return NULL;
     }
 
@@ -800,6 +830,7 @@ static PyObject* HealthAgent_use_engram_get_stats(HealthAgentObject* self, PyObj
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get engram stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_engram_get_stats: validation failed");
         return NULL;
     }
 
@@ -818,6 +849,7 @@ static PyObject* HealthAgent_use_consolidation_replay(HealthAgentObject* self, P
     unsigned int count;
 
     if (!PyArg_ParseTuple(args, "I", &count)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_consolidation_replay: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -860,6 +892,7 @@ static PyObject* HealthAgent_use_consolidation_get_stats(HealthAgentObject* self
 
     if (result != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get consolidation stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_use_consolidation_get_stats: validation failed");
         return NULL;
     }
 
@@ -878,6 +911,7 @@ static PyObject* HealthAgent_trigger_gc(HealthAgentObject* self, PyObject* args)
     int force = 0;
 
     if (!PyArg_ParseTuple(args, "|p", &force)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_trigger_gc: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -898,6 +932,7 @@ static PyObject* HealthAgent_create_checkpoint(HealthAgentObject* self, PyObject
     const char* name;
 
     if (!PyArg_ParseTuple(args, "s", &name)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "HealthAgent_create_checkpoint: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -920,6 +955,7 @@ static PyObject* HealthAgent_rollback(HealthAgentObject* self, PyObject* args)
     unsigned long long checkpoint_id = 0;
 
     if (!PyArg_ParseTuple(args, "|K", &checkpoint_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_rollback: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -940,11 +976,13 @@ static PyObject* HealthAgent_reduce_load(HealthAgentObject* self, PyObject* args
     float factor;
 
     if (!PyArg_ParseTuple(args, "f", &factor)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_reduce_load: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (factor < 0.0f || factor > 1.0f) {
         PyErr_SetString(PyExc_ValueError, "Factor must be 0.0-1.0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HealthAgent_reduce_load: validation failed");
         return NULL;
     }
 
@@ -1106,21 +1144,27 @@ int init_health_agent_module(PyObject* module)
     LOG_MODULE_INFO("bindings.python.health_agent", "Initializing health agent module");
 
     /* Ready types */
-    if (PyType_Ready(&HealthAgentStatsType) < 0)
+    if (PyType_Ready(&HealthAgentStatsType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_health_agent_module: validation failed");
         return -1;
-    if (PyType_Ready(&HealthAgentType) < 0)
+    }
+    if (PyType_Ready(&HealthAgentType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_health_agent_module: validation failed");
         return -1;
+    }
 
     /* Add types */
     Py_INCREF(&HealthAgentStatsType);
     if (PyModule_AddObject(module, "HealthAgentStats", (PyObject*)&HealthAgentStatsType) < 0) {
         Py_DECREF(&HealthAgentStatsType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_health_agent_module: validation failed");
         return -1;
     }
 
     Py_INCREF(&HealthAgentType);
     if (PyModule_AddObject(module, "HealthAgent", (PyObject*)&HealthAgentType) < 0) {
         Py_DECREF(&HealthAgentType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_health_agent_module: validation failed");
         return -1;
     }
 

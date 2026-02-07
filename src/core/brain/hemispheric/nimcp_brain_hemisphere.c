@@ -176,6 +176,7 @@ brain_hemisphere_t* hemisphere_create(const hemisphere_config_t* config) {
             neuromodulator_system_destroy(hemi->neuromod);
         }
         nimcp_free(hemi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemisphere_create: validation failed");
         return NULL;
     }
     nimcp_mutex_init(hemi->mutex, NULL);
@@ -662,6 +663,7 @@ int hemisphere_connect_bio_async(brain_hemisphere_t* hemisphere) {
 
     NIMCP_LOGGING_WARN("Bio-async router not available for %s hemisphere",
                        hemisphere_name(hemisphere->id));
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hemisphere_connect_bio_async: validation failed");
     return -1;
 }
 

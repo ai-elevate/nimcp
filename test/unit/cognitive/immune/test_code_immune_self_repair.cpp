@@ -28,6 +28,8 @@
 #include "cognitive/fault_tolerance/nimcp_self_repair.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Test Fixture
@@ -43,6 +45,11 @@ protected:
         nimcp_memory_init();
         nimcp_memory_enable_tracking(true);
 
+        // Force-initialize exception system singletons so their allocations
+        // are part of the baseline (handler mutex, exception mutex, etc.)
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "warmup");
+        nimcp_exception_clear_current();
+
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
         baseline_allocated = stats.current_allocated;
@@ -56,6 +63,10 @@ protected:
         // Cleanup dependencies
         if (self_repair) self_repair_destroy(self_repair);
         if (code_immune) code_immune_destroy(code_immune);
+
+        // Clear thread-local exception state (exceptions from bio_router
+        // not being initialized leave a ref that appears as a memory leak)
+        nimcp_exception_clear_current();
 
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);

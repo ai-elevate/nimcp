@@ -123,7 +123,10 @@ static int fep_compute_elbo_internal(
     size_t obs_dim,
     float* elbo
 ) {
-    if (!sys || !fep || !observation || !elbo) return -1;
+    if (!sys || !fep || !observation || !elbo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_elbo_internal: required parameter is NULL (sys, fep, observation, elbo)");
+        return -1;
+    }
 
     /* ELBO = E_q[log p(o,s)] - E_q[log q(s)]
      *      = E_q[log p(o|s)] + E_q[log p(s)] - E_q[log q(s)]
@@ -203,6 +206,7 @@ fep_evidence_system_t* fep_evidence_create(const fep_evidence_config_t* config) 
         1, sizeof(fep_evidence_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate evidence system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_evidence_create: sys is NULL");
         return NULL;
     }
 
@@ -218,6 +222,7 @@ fep_evidence_system_t* fep_evidence_create(const fep_evidence_config_t* config) 
     sys->mutex = nimcp_platform_mutex_create();
     if (!sys->mutex) {
         fep_evidence_destroy(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fep_evidence_create: sys->mutex is NULL");
         return NULL;
     }
 
@@ -258,8 +263,14 @@ int fep_compute_log_evidence(
     size_t obs_dim,
     fep_evidence_result_t* result
 ) {
-    if (!sys || !fep || !observations || !result) return -1;
-    if (n_obs == 0 || obs_dim == 0) return -1;
+    if (!sys || !fep || !observations || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_log_evidence: required parameter is NULL (sys, fep, observations, result)");
+        return -1;
+    }
+    if (n_obs == 0 || obs_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_compute_log_evidence: n_obs is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_fep_compute_log_evid", 0.0f);
@@ -321,7 +332,10 @@ int fep_compute_elbo(
     size_t obs_dim,
     float* elbo
 ) {
-    if (!sys || !fep || !observation || !elbo) return -1;
+    if (!sys || !fep || !observation || !elbo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_elbo: required parameter is NULL (sys, fep, observation, elbo)");
+        return -1;
+    }
 
     /* Use internal computation */
     /* Phase 8: Heartbeat at operation start */
@@ -345,7 +359,10 @@ int fep_compute_model_complexity(
     fep_system_t* fep,
     float* complexity
 ) {
-    if (!sys || !fep || !complexity) return -1;
+    if (!sys || !fep || !complexity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_model_complexity: required parameter is NULL (sys, fep, complexity)");
+        return -1;
+    }
 
     /* Complexity = KL[q(s)||p(s)] = E_q[log q(s)] - E_q[log p(s)]
      * For Gaussian: KL = 0.5 * (tr(Σ_prior^-1 Σ_post) + (μ_prior - μ_post)^T Σ_prior^-1 (μ_prior - μ_post)
@@ -398,7 +415,10 @@ int fep_compute_model_accuracy(
     size_t obs_dim,
     float* accuracy
 ) {
-    if (!sys || !fep || !observation || !accuracy) return -1;
+    if (!sys || !fep || !observation || !accuracy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_model_accuracy: required parameter is NULL (sys, fep, observation, accuracy)");
+        return -1;
+    }
 
     /* Accuracy = E_q[log p(o|s)]
      * For Gaussian likelihood: -0.5 * (o - pred)^T Σ^-1 (o - pred) - 0.5 * k * log(2π) - 0.5 * log|Σ| */
@@ -447,7 +467,10 @@ int fep_compute_bayes_factor(
     size_t obs_dim,
     float* log_bf
 ) {
-    if (!sys || !model1 || !model2 || !observations || !log_bf) return -1;
+    if (!sys || !model1 || !model2 || !observations || !log_bf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compute_bayes_factor: required parameter is NULL (sys, model1, model2, observations, log_bf)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_fep_compute_bayes_fa", 0.0f);
@@ -476,8 +499,14 @@ int fep_compare_models(
     size_t obs_dim,
     fep_model_score_t* scores
 ) {
-    if (!sys || !models || !observations || !scores) return -1;
-    if (n_models == 0) return -1;
+    if (!sys || !models || !observations || !scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_compare_models: required parameter is NULL (sys, models, observations, scores)");
+        return -1;
+    }
+    if (n_models == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_compare_models: n_models is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_fep_compare_models", 0.0f);
@@ -537,7 +566,10 @@ int fep_select_best_model(
     size_t n_models,
     uint32_t* best_model_id
 ) {
-    if (!sys || !scores || !best_model_id || n_models == 0) return -1;
+    if (!sys || !scores || !best_model_id || n_models == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_select_best_model: required parameter is NULL (sys, scores, best_model_id)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_fep_select_best_mode", 0.0f);
@@ -569,8 +601,14 @@ int fep_model_average_prediction(
     float* averaged_prediction,
     size_t pred_dim
 ) {
-    if (!sys || !models || !scores || !averaged_prediction) return -1;
-    if (n_models == 0 || pred_dim == 0) return -1;
+    if (!sys || !models || !scores || !averaged_prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_model_average_prediction: required parameter is NULL (sys, models, scores, averaged_prediction)");
+        return -1;
+    }
+    if (n_models == 0 || pred_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fep_model_average_prediction: n_models is zero");
+        return -1;
+    }
 
     /* Initialize to zero */
     /* Phase 8: Heartbeat at operation start */
@@ -613,7 +651,10 @@ int fep_model_average_prediction(
  * ============================================================================ */
 
 int fep_evidence_connect(fep_evidence_system_t* evidence, fep_system_t* fep) {
-    if (!evidence || !fep) return -1;
+    if (!evidence || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evidence_connect: required parameter is NULL (evidence, fep)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_connect", 0.0f);
@@ -634,7 +675,10 @@ int fep_evidence_set_reference(
     size_t n_obs,
     size_t obs_dim
 ) {
-    if (!sys || !reference || !observations) return -1;
+    if (!sys || !reference || !observations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evidence_set_reference: required parameter is NULL (sys, reference, observations)");
+        return -1;
+    }
 
     /* Compute reference evidence BEFORE locking (avoids deadlock) */
     /* Phase 8: Heartbeat at operation start */
@@ -659,7 +703,10 @@ int fep_evidence_set_reference(
  * ============================================================================ */
 
 int fep_evidence_connect_bio_async(fep_evidence_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evidence_connect_bio_async: sys is NULL");
+        return -1;
+    }
     if (sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -684,7 +731,10 @@ int fep_evidence_connect_bio_async(fep_evidence_system_t* sys) {
 }
 
 int fep_evidence_disconnect_bio_async(fep_evidence_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evidence_disconnect_bio_async: sys is NULL");
+        return -1;
+    }
     if (!sys->bio_async_enabled) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -712,7 +762,10 @@ bool fep_evidence_is_bio_async_connected(const fep_evidence_system_t* sys) {
  * ============================================================================ */
 
 int fep_evidence_get_stats(const fep_evidence_system_t* sys, fep_evidence_stats_t* stats) {
-    if (!sys || !stats) return -1;
+    if (!sys || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_evidence_get_stats: required parameter is NULL (sys, stats)");
+        return -1;
+    }
     *stats = sys->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_evidence_heartbeat("fep_evidence_get_stats", 0.0f);

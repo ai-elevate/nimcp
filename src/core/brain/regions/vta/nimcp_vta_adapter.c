@@ -114,6 +114,7 @@ static float clampf(float x, float lo, float hi) {
 
 static int enqueue_message(nimcp_vta_adapter_t adapter, const nimcp_vta_message_t* msg) {
     if (adapter->queue_count >= VTA_ADAPTER_MSG_QUEUE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_message: capacity exceeded");
         return -1;  /* Queue full */
     }
 
@@ -127,6 +128,7 @@ static int enqueue_message(nimcp_vta_adapter_t adapter, const nimcp_vta_message_
 
 static int dequeue_message(nimcp_vta_adapter_t adapter, nimcp_vta_message_t* msg) {
     if (adapter->queue_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_message: adapter->queue_count is zero");
         return -1;  /* Queue empty */
     }
 
@@ -206,6 +208,7 @@ nimcp_vta_adapter_t nimcp_vta_adapter_create(const nimcp_vta_adapter_config_t* c
     /* Initialize VTA system */
     if (nimcp_vta_init(&adapter->vta, NULL) != VTA_OK) {
         nimcp_free(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_vta_adapter_create: validation failed");
         return NULL;
     }
 
@@ -325,6 +328,7 @@ int nimcp_vta_adapter_send_message(
     const nimcp_vta_message_t* msg
 ) {
     if (!adapter || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_adapter_send_message: required parameter is NULL (adapter, msg)");
         return -1;
     }
 
@@ -376,10 +380,12 @@ int nimcp_vta_adapter_register_callback(
     void* user_data
 ) {
     if (!adapter || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_adapter_register_callback: required parameter is NULL (adapter, callback)");
         return -1;
     }
 
     if (adapter->num_callbacks >= VTA_ADAPTER_MAX_CALLBACKS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_vta_adapter_register_callback: capacity exceeded");
         return -1;
     }
 
@@ -406,6 +412,7 @@ int nimcp_vta_adapter_update(nimcp_vta_adapter_t adapter, float dt) {
     /* Update VTA system */
     nimcp_vta_error_t err = nimcp_vta_update(&adapter->vta, dt);
     if (err != VTA_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_vta_adapter_update: validation failed");
         return -1;
     }
 
@@ -605,6 +612,7 @@ int nimcp_vta_adapter_get_state(
     nimcp_vta_adapter_state_t* state
 ) {
     if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_adapter_get_state: required parameter is NULL (adapter, state)");
         return -1;
     }
 
@@ -804,6 +812,7 @@ int nimcp_vta_adapter_get_training_modulation(
     nimcp_vta_training_modulation_t* modulation
 ) {
     if (!adapter || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_adapter_get_training_modulation: required parameter is NULL (adapter, modulation)");
         return -1;
     }
 
@@ -840,6 +849,7 @@ int nimcp_vta_adapter_compute_training_rpe(
     float* rpe
 ) {
     if (!adapter || !rpe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_adapter_compute_training_rpe: required parameter is NULL (adapter, rpe)");
         return -1;
     }
 

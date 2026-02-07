@@ -125,10 +125,16 @@ NIMCP_EXPORT knowledge_cow_base_t knowledge_cow_base_create(
     const void* initial_data,
     size_t data_size
 ) {
-    if (!config || config->max_knowledge_size == 0) return NULL;
+    if (!config || config->max_knowledge_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_base_create: config is NULL");
+        return NULL;
+    }
 
     // Ensure page COW subsystem is initialized
-    if (!page_cow_init()) return NULL;
+    if (!page_cow_init()) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "knowledge_cow_base_create: page_cow_init is NULL");
+        return NULL;
+    }
 
     // Allocate base structure
     knowledge_cow_base_t base = nimcp_calloc(1, sizeof(struct knowledge_cow_base_struct));
@@ -152,6 +158,7 @@ NIMCP_EXPORT knowledge_cow_base_t knowledge_cow_base_create(
     base->region = page_cow_region_create(&page_config, initial_data);
     if (!base->region) {
         nimcp_free(base);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_base_create: base->region is NULL");
         return NULL;
     }
 
@@ -175,7 +182,10 @@ NIMCP_EXPORT bool knowledge_cow_base_get_stats(
     knowledge_cow_base_t base,
     knowledge_cow_stats_t* stats
 ) {
-    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC || !stats) return false;
+    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_base_get_stats: required parameter is NULL (base, stats)");
+        return false;
+    }
 
     memset(stats, 0, sizeof(knowledge_cow_stats_t));
 
@@ -201,20 +211,33 @@ NIMCP_EXPORT bool knowledge_cow_base_update(
     size_t data_size,
     size_t offset
 ) {
-    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC) return false;
-    if (!data || data_size == 0) return false;
-    if (offset + data_size > base->config.max_knowledge_size) return false;
+    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_base_update: base is NULL");
+        return false;
+    }
+    if (!data || data_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_base_update: data is NULL");
+        return false;
+    }
+    if (offset + data_size > base->config.max_knowledge_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_base_update: validation failed");
+        return false;
+    }
 
     // For base updates, we need to recreate the region
     // This is a heavyweight operation - use sparingly
 
     // Get current data
     page_cow_view_t temp_view = page_cow_view_create(base->region);
-    if (!temp_view) return false;
+    if (!temp_view) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_base_update: temp_view is NULL");
+        return false;
+    }
 
     const void* current_data = page_cow_view_read(temp_view);
     if (!current_data) {
         page_cow_view_destroy(temp_view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_base_update: current_data is NULL");
         return false;
     }
 
@@ -223,6 +246,7 @@ NIMCP_EXPORT bool knowledge_cow_base_update(
     void* merged = nimcp_malloc(total_size);
     if (!merged) {
         page_cow_view_destroy(temp_view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_base_update: merged is NULL");
         return false;
     }
 
@@ -242,6 +266,7 @@ NIMCP_EXPORT bool knowledge_cow_base_update(
 
     if (!base->region) {
         base->initialized = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_base_update: base->region is NULL");
         return false;
     }
 
@@ -257,8 +282,14 @@ NIMCP_EXPORT bool knowledge_cow_base_update(
 //=============================================================================
 
 NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_create(knowledge_cow_base_t base) {
-    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC) return NULL;
-    if (!base->initialized || !base->region) return NULL;
+    if (!base || base->magic != KNOWLEDGE_COW_BASE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_view_create: base is NULL");
+        return NULL;
+    }
+    if (!base->initialized || !base->region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_view_create: required parameter is NULL (base->initialized, base->region)");
+        return NULL;
+    }
 
     knowledge_cow_view_t view = nimcp_calloc(1, sizeof(struct knowledge_cow_view_struct));
     if (!view) {
@@ -276,6 +307,7 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_create(knowledge_cow_base_t
     view->page_view = page_cow_view_create(base->region);
     if (!view->page_view) {
         nimcp_free(view);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_view_create: view->page_view is NULL");
         return NULL;
     }
 
@@ -283,7 +315,10 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_create(knowledge_cow_base_t
 }
 
 NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_clone(knowledge_cow_view_t source) {
-    if (!source || source->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
+    if (!source || source->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_view_clone: source is NULL");
+        return NULL;
+    }
 
     knowledge_cow_view_t clone = nimcp_calloc(1, sizeof(struct knowledge_cow_view_struct));
     if (!clone) {
@@ -301,6 +336,7 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_clone(knowledge_cow_view_t 
     clone->page_view = page_cow_view_clone(source->page_view);
     if (!clone->page_view) {
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_view_clone: clone->page_view is NULL");
         return NULL;
     }
 
@@ -319,12 +355,18 @@ NIMCP_EXPORT void knowledge_cow_view_destroy(knowledge_cow_view_t view) {
 }
 
 NIMCP_EXPORT const void* knowledge_cow_view_read(knowledge_cow_view_t view) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_view_read: view is NULL");
+        return NULL;
+    }
     return page_cow_view_read(view->page_view);
 }
 
 NIMCP_EXPORT void* knowledge_cow_view_write(knowledge_cow_view_t view) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_cow_view_write: view is NULL");
+        return NULL;
+    }
     return page_cow_view_write(view->page_view);
 }
 
@@ -333,7 +375,10 @@ NIMCP_EXPORT bool knowledge_cow_view_make_region_private(
     size_t offset,
     size_t size
 ) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return false;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_view_make_region_private: view is NULL");
+        return false;
+    }
 
     // Calculate page range
     size_t start_page = page_cow_offset_to_page(offset);
@@ -355,7 +400,10 @@ NIMCP_EXPORT size_t knowledge_cow_view_get_memory_saved(knowledge_cow_view_t vie
 }
 
 NIMCP_EXPORT bool knowledge_cow_view_is_modified(knowledge_cow_view_t view) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return false;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_view_is_modified: view is NULL");
+        return false;
+    }
     return page_cow_view_get_private_page_count(view->page_view) > 0;
 }
 
@@ -369,7 +417,10 @@ NIMCP_EXPORT size_t knowledge_cow_view_get_private_page_count(knowledge_cow_view
 //=============================================================================
 
 NIMCP_EXPORT knowledge_cow_snapshot_t knowledge_cow_snapshot_create(knowledge_cow_view_t view) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_snapshot_create: view is NULL");
+        return NULL;
+    }
 
     knowledge_cow_snapshot_t snap = nimcp_calloc(1, sizeof(struct knowledge_cow_snapshot_struct));
     if (!snap) {
@@ -387,6 +438,7 @@ NIMCP_EXPORT knowledge_cow_snapshot_t knowledge_cow_snapshot_create(knowledge_co
     snap->page_snapshot = page_cow_snapshot_create(view->page_view);
     if (!snap->page_snapshot) {
         nimcp_free(snap);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_cow_snapshot_create: snap->page_snapshot is NULL");
         return NULL;
     }
 
@@ -397,9 +449,18 @@ NIMCP_EXPORT bool knowledge_cow_snapshot_restore(
     knowledge_cow_view_t view,
     knowledge_cow_snapshot_t snapshot
 ) {
-    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return false;
-    if (!snapshot || snapshot->magic != KNOWLEDGE_COW_SNAP_MAGIC) return false;
-    if (view != snapshot->source_view) return false;
+    if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_snapshot_restore: view is NULL");
+        return false;
+    }
+    if (!snapshot || snapshot->magic != KNOWLEDGE_COW_SNAP_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_snapshot_restore: snapshot is NULL");
+        return false;
+    }
+    if (view != snapshot->source_view) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_cow_snapshot_restore: validation failed");
+        return false;
+    }
 
     return page_cow_snapshot_restore(view->page_view, snapshot->page_snapshot);
 }

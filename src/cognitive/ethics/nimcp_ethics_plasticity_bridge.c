@@ -131,6 +131,7 @@ static ethics_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -216,6 +217,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "ethics_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -226,6 +228,7 @@ ethics_plasticity_bridge_t* ethics_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -262,7 +265,10 @@ void ethics_plasticity_destroy(ethics_plasticity_bridge_t* bridge) {
 }
 
 int ethics_plasticity_reset(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
@@ -311,7 +317,10 @@ int ethics_plasticity_register_synapse(
     ethics_synapse_type_t type,
     float initial_weight)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
@@ -322,12 +331,14 @@ int ethics_plasticity_register_synapse(
     /* Check if already exists */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_register_synapse: validation failed");
         return -1;
     }
 
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ethics_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -365,7 +376,10 @@ int ethics_plasticity_unregister_synapse(
     ethics_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_un", 0.0f);
@@ -392,6 +406,7 @@ int ethics_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_unregister_synapse: operation failed");
     return -1;
 }
 
@@ -400,7 +415,10 @@ int ethics_plasticity_get_synapse(
     uint32_t synapse_id,
     ethics_plasticity_synapse_t* synapse)
 {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
@@ -416,6 +434,7 @@ int ethics_plasticity_get_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_get_synapse: validation failed");
     return -1;
 }
 
@@ -430,7 +449,10 @@ int ethics_plasticity_learn(
     float outcome_value,
     uint64_t timestamp)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_le", 0.0f);
@@ -625,7 +647,10 @@ int ethics_plasticity_apply_reward(
     ethics_plasticity_bridge_t* bridge,
     float reward)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ap", 0.0f);
@@ -669,7 +694,10 @@ int ethics_plasticity_update_traces(
     ethics_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge || dt_ms <= 0) return -1;
+    if (!bridge || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_up", 0.0f);
@@ -698,7 +726,10 @@ int ethics_plasticity_update_bcm(
     ethics_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge || dt_ms <= 0) return -1;
+    if (!bridge || dt_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_up", 0.0f);
@@ -731,7 +762,10 @@ int ethics_plasticity_homeostatic_update(
     ethics_plasticity_bridge_t* bridge,
     float target_activity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ho", 0.0f);
@@ -783,7 +817,10 @@ int ethics_plasticity_homeostatic_update(
 }
 
 int ethics_plasticity_consolidate(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_co", 0.0f);
@@ -838,7 +875,10 @@ int ethics_plasticity_protect_synapse(
     ethics_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
@@ -854,6 +894,7 @@ int ethics_plasticity_protect_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_protect_synapse: validation failed");
     return -1;
 }
 
@@ -861,7 +902,10 @@ int ethics_plasticity_unprotect_synapse(
     ethics_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_unprotect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_un", 0.0f);
@@ -877,11 +921,15 @@ int ethics_plasticity_unprotect_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_plasticity_unprotect_synapse: validation failed");
     return -1;
 }
 
 int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_protect_first_law: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
@@ -908,7 +956,10 @@ int ethics_plasticity_protect_first_law(ethics_plasticity_bridge_t* bridge) {
 }
 
 int ethics_plasticity_protect_golden_rule(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_protect_golden_rule: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_pr", 0.0f);
@@ -942,7 +993,10 @@ int ethics_plasticity_get_principle_state(
     ethics_plasticity_bridge_t* bridge,
     ethics_principle_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_get_principle_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
@@ -959,7 +1013,10 @@ int ethics_plasticity_get_state(
     ethics_plasticity_bridge_t* bridge,
     ethics_plasticity_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
@@ -1011,7 +1068,10 @@ int ethics_plasticity_get_stats(
     ethics_plasticity_bridge_t* bridge,
     ethics_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_ge", 0.0f);
@@ -1025,7 +1085,10 @@ int ethics_plasticity_get_stats(
 }
 
 int ethics_plasticity_reset_stats(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_re", 0.0f);
@@ -1047,7 +1110,10 @@ int ethics_plasticity_set_weight_callback(
     ethics_weight_change_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_se", 0.0f);
@@ -1066,7 +1132,10 @@ int ethics_plasticity_set_principle_callback(
     ethics_principle_update_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_set_principle_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_se", 0.0f);
@@ -1085,8 +1154,14 @@ int ethics_plasticity_set_principle_callback(
 //=============================================================================
 
 int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_bi", 0.0f);
@@ -1100,7 +1175,10 @@ int ethics_plasticity_bio_async_connect(ethics_plasticity_bridge_t* bridge) {
 }
 
 int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_bi", 0.0f);
@@ -1114,7 +1192,10 @@ int ethics_plasticity_bio_async_disconnect(ethics_plasticity_bridge_t* bridge) {
 }
 
 bool ethics_plasticity_is_bio_async_connected(ethics_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_plasticity_bridge_heartbeat("ethics_plast_ethics_plasticity_is", 0.0f);

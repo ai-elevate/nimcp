@@ -209,6 +209,7 @@ vestibular_processor_t* vestibular_create(const vestibular_config_t* config) {
     vestibular_processor_t* p = nimcp_calloc(1, sizeof(vestibular_processor_t));
     if (!p) {
         LOG_ERROR("[%s] Failed to allocate processor", VESTIBULAR_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vestibular_create: p is NULL");
         return NULL;
     }
 
@@ -622,7 +623,10 @@ bool vestibular_report_retinal_slip(vestibular_processor_t* p,
 
 bool vestibular_get_postural_command(const vestibular_processor_t* p,
                                       float postural_command[3]) {
-    if (!p || !postural_command) return false;
+    if (!p || !postural_command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (p, postural_command)");
+        return false;
+    }
 
     postural_command[0] = p->vsr.postural_command[0];
     postural_command[1] = p->vsr.postural_command[1];
@@ -633,7 +637,10 @@ bool vestibular_get_postural_command(const vestibular_processor_t* p,
 
 bool vestibular_get_head_position(const vestibular_processor_t* p,
                                    float position[3]) {
-    if (!p || !position) return false;
+    if (!p || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (p, position)");
+        return false;
+    }
 
     position[0] = p->vsr.head_position[0];
     position[1] = p->vsr.head_position[1];
@@ -648,7 +655,10 @@ bool vestibular_get_head_position(const vestibular_processor_t* p,
 
 bool vestibular_get_mossy_signal(const vestibular_processor_t* p,
                                   vestibular_mossy_signal_t* signal) {
-    if (!p || !signal) return false;
+    if (!p || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (p, signal)");
+        return false;
+    }
 
     memset(signal, 0, sizeof(*signal));
 
@@ -679,10 +689,14 @@ bool vestibular_get_mossy_signal(const vestibular_processor_t* p,
 bool vestibular_apply_cerebellar_modulation(vestibular_processor_t* p,
                                              vestibular_nucleus_type_t nucleus,
                                              float modulation) {
-    if (!p) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: p is NULL");
+        return false;
+    }
 
     if (nucleus >= VESTIBULAR_NUM_NUCLEI) {
         set_error(p, VESTIBULAR_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
         return false;
     }
 
@@ -720,7 +734,10 @@ vestibular_error_t vestibular_get_last_error(const vestibular_processor_t* p) {
 
 bool vestibular_get_stats(const vestibular_processor_t* p,
                            vestibular_stats_t* stats) {
-    if (!p || !stats) return false;
+    if (!p || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_last_error: required parameter is NULL (p, stats)");
+        return false;
+    }
     *stats = p->stats;
     return true;
 }
@@ -728,9 +745,13 @@ bool vestibular_get_stats(const vestibular_processor_t* p,
 bool vestibular_get_nucleus_state(const vestibular_processor_t* p,
                                    vestibular_nucleus_type_t nucleus,
                                    vestibular_nucleus_state_t* state) {
-    if (!p || !state) return false;
+    if (!p || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_last_error: required parameter is NULL (p, state)");
+        return false;
+    }
 
     if (nucleus >= VESTIBULAR_NUM_NUCLEI) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vestibular_get_last_error: capacity exceeded");
         return false;
     }
 

@@ -1274,6 +1274,7 @@ static void* async_learn_thread(void* arg)
     nimcp_promise_destroy(ctx->promise);
     nimcp_free(ctx);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_learn_thread: operation failed");
     return NULL;
 }
 
@@ -1314,17 +1315,20 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
     // Validate parameters
     if (!brain || !features || !label) {
         LOG_MODULE_ERROR("core_brain_learning", "Invalid parameters to nimcp_brain_learn_async");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_learn_async: required parameter is NULL (brain, features, label)");
         return NULL;
     }
 
     if (num_features == 0) {
         LOG_MODULE_ERROR("core_brain_learning", "Invalid num_features=0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_learn_async: num_features is zero");
         return NULL;
     }
 
     // Validate confidence range
     if (confidence < 0.0f || confidence > 1.0f) {
         LOG_MODULE_ERROR("core_brain_learning", "Invalid confidence=%.2f (must be 0.0-1.0)", confidence);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_learn_async: validation failed");
         return NULL;
     }
 
@@ -1332,6 +1336,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
     async_learn_context_t* ctx = nimcp_malloc(sizeof(async_learn_context_t));
     if (!ctx) {
         LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate async learning context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_learn_async: ctx is NULL");
         return NULL;
     }
 
@@ -1340,6 +1345,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
     if (!ctx->features) {
         LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate features array (%u floats)", num_features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_learn_async: ctx->features is NULL");
         return NULL;
     }
     memcpy(ctx->features, features, num_features * sizeof(float));
@@ -1351,6 +1357,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
         LOG_MODULE_ERROR("core_brain_learning", "Failed to allocate label string");
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_learn_async: ctx->label is NULL");
         return NULL;
     }
     memcpy(ctx->label, label, label_len + 1);
@@ -1367,6 +1374,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
         nimcp_free(ctx->label);
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_learn_async: ctx->promise is NULL");
         return NULL;
     }
 
@@ -1378,6 +1386,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
         nimcp_free(ctx->label);
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_learn_async: future is NULL");
         return NULL;
     }
 
@@ -1397,6 +1406,7 @@ nimcp_future_t nimcp_brain_learn_async(brain_t brain, const float* features,
         nimcp_free(ctx->label);
         nimcp_free(ctx->features);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_learn_async: validation failed");
         return NULL;
     }
 

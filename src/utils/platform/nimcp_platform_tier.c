@@ -570,6 +570,7 @@ bool platform_tier_can_enable_module(platform_tier_t tier,
 {
     // Validate tier
     if (tier >= PLATFORM_TIER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "platform_tier_can_enable_module: capacity exceeded");
         return false;
     }
 

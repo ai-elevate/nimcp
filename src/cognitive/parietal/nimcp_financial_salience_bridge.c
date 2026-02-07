@@ -283,7 +283,10 @@ static int bridge_kg_publish(financial_salience_bridge_t* bridge, const char* ms
  * @brief Find symbol relevance entry
  */
 static symbol_relevance_entry_t* find_symbol_entry(financial_salience_bridge_t* bridge, const char* symbol) {
-    if (!bridge->symbol_relevance || !symbol) return NULL;
+    if (!bridge->symbol_relevance || !symbol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_symbol_entry: required parameter is NULL (bridge->symbol_relevance, symbol)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < bridge->symbol_count; i++) {
         if (bridge->symbol_relevance[i].active &&
@@ -291,6 +294,7 @@ static symbol_relevance_entry_t* find_symbol_entry(financial_salience_bridge_t* 
             return &bridge->symbol_relevance[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_symbol_entry: required parameter is NULL (bridge->symbol_relevance, symbol)");
     return NULL;
 }
 
@@ -456,7 +460,10 @@ static int compare_scored_events_desc(const void* a, const void* b) {
     const fin_scored_event_t* eb = (const fin_scored_event_t*)b;
 
     if (eb->score.combined > ea->score.combined) return 1;
-    if (eb->score.combined < ea->score.combined) return -1;
+    if (eb->score.combined < ea->score.combined) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_scored_events_desc: validation failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -532,6 +539,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_FINANCIAL_SALIENCE, "financial_salience") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: validation failed");
         return NULL;
     }
 
@@ -541,6 +549,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error("Failed to allocate symbol_relevance array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: bridge->symbol_relevance is NULL");
         return NULL;
     }
     bridge->symbol_count = MAX_TRACKED_SYMBOLS;
@@ -554,6 +563,7 @@ financial_salience_bridge_t* financial_salience_bridge_create(
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             set_error("Failed to allocate event_history array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_salience_bridge_create: bridge->event_history is NULL");
             return NULL;
         }
     }

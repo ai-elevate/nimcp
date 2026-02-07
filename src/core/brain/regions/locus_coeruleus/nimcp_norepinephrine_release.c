@@ -221,6 +221,7 @@ int nimcp_ne_release_reset(nimcp_ne_release_system_t* system) {
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_release_reset: system->initialized is NULL");
         return -1;
     }
 
@@ -263,10 +264,12 @@ int nimcp_ne_release_update(
     float firing_rate
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_release_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ne_release_update: validation failed");
         return -1;
     }
 
@@ -370,6 +373,7 @@ int nimcp_ne_release_update(
 
 int nimcp_ne_release_trigger(nimcp_ne_release_system_t* system, uint32_t num_spikes) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_release_trigger: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -405,14 +409,17 @@ int nimcp_ne_get_receptor_activation(
     float* activation
 ) {
     if (!system || !activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_receptor_activation: required parameter is NULL (system, activation)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_receptor_activation: system->initialized is NULL");
         return -1;
     }
 
     if (receptor >= NE_RECEPTOR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_ne_get_receptor_activation: capacity exceeded");
         return -1;
     }
 
@@ -426,10 +433,12 @@ int nimcp_ne_get_concentration(
     float* concentration
 ) {
     if (!system || !concentration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_concentration: required parameter is NULL (system, concentration)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_concentration: system->initialized is NULL");
         return -1;
     }
 
@@ -447,6 +456,7 @@ int nimcp_ne_get_concentration(
             *concentration = system->concentrations.extrasynaptic;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_ne_get_concentration: operation failed");
             return -1;
     }
 
@@ -455,6 +465,7 @@ int nimcp_ne_get_concentration(
 
 int nimcp_ne_apply_net_inhibition(nimcp_ne_release_system_t* system, float inhibition) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_apply_net_inhibition: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -467,10 +478,12 @@ int nimcp_ne_get_autoreceptor_feedback(
     float* feedback
 ) {
     if (!system || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_autoreceptor_feedback: required parameter is NULL (system, feedback)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_ne_get_autoreceptor_feedback: system->initialized is NULL");
         return -1;
     }
 

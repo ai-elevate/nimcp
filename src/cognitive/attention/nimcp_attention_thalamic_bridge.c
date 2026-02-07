@@ -237,6 +237,7 @@ int attention_thalamic_route_signal(
 
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_thalamic_route_signal: operation failed");
             return -1;
     }
 

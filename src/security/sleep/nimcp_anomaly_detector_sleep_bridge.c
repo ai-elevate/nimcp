@@ -128,7 +128,10 @@ static void anomaly_detector_on_sleep_state_change(sleep_state_t new_state, void
 
 int anomaly_detector_sleep_default_config(anomaly_detector_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_detector_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_threshold_modulation = true;
     config->enable_learning_modulation = true;
@@ -206,7 +209,10 @@ void anomaly_detector_sleep_bridge_destroy(anomaly_detector_sleep_bridge_t bridg
 
 int anomaly_detector_sleep_update(anomaly_detector_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_detector_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.sleep_pressure = sleep_get_pressure(bridge->sleep_system);
@@ -218,7 +224,10 @@ int anomaly_detector_sleep_update(anomaly_detector_sleep_bridge_t bridge)
 int anomaly_detector_sleep_get_effects(const anomaly_detector_sleep_bridge_t bridge,
                                         anomaly_detector_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_detector_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(anomaly_detector_sleep_effects_t));

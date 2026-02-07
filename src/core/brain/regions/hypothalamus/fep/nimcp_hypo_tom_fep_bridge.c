@@ -161,6 +161,7 @@ hypo_tom_fep_bridge_t* hypo_tom_fep_create(
     /* Validate required parameters */
     if (!drive_system || !fep_system) {
         NIMCP_LOGGING_ERROR("Hypo ToM FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_create: required parameter is NULL (drive_system, fep_system)");
         return NULL;
     }
 
@@ -170,6 +171,7 @@ hypo_tom_fep_bridge_t* hypo_tom_fep_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Hypo ToM FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_tom_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -192,6 +194,7 @@ hypo_tom_fep_bridge_t* hypo_tom_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo ToM FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -463,6 +466,7 @@ int hypo_tom_fep_modulate_precision(
         model = allocate_agent_slot(bridge);
         if (!model) {
             nimcp_platform_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_tom_fep_modulate_precision: model is NULL");
             return -1;
         }
         model->agent_id = agent_id;
@@ -561,6 +565,7 @@ int hypo_tom_fep_register_agent(
         model = allocate_agent_slot(bridge);
         if (!model) {
             nimcp_platform_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_tom_fep_register_agent: model is NULL");
             return -1;
         }
         bridge->state.agent_count++;
@@ -608,6 +613,7 @@ int hypo_tom_fep_get_agent_model(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_tom_fep_get_agent_model: operation failed");
     return -1;  /* Agent not found */
 }
 
@@ -635,6 +641,7 @@ int hypo_tom_fep_report_prediction(
     hypo_tom_agent_model_t* model = find_agent_model(bridge, agent_id);
     if (!model) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_report_prediction: model is NULL");
         return -1;
     }
 
@@ -705,6 +712,7 @@ int hypo_tom_fep_focus_agent(
     hypo_tom_agent_model_t* model = find_agent_model(bridge, agent_id);
     if (!model) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_focus_agent: model is NULL");
         return -1;
     }
 
@@ -908,6 +916,7 @@ static hypo_tom_agent_model_t* find_agent_model(hypo_tom_fep_bridge_t* bridge,
             return &bridge->state.agent_models[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_print_summary: operation failed");
     return NULL;
 }
 
@@ -922,6 +931,7 @@ static hypo_tom_agent_model_t* allocate_agent_slot(hypo_tom_fep_bridge_t* bridge
             return &bridge->state.agent_models[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_agent_slot: bridge->state is NULL");
     return NULL;  /* No free slots */
 }
 

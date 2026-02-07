@@ -155,6 +155,7 @@ static int compare_vector_clocks(
     if (equal) {
         return 0;  // Same event
     } else if (a_less_or_equal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_vector_clocks: validation failed");
         return -1; // a happened-before b
     } else if (b_less_or_equal) {
         return 1;  // b happened-before a
@@ -289,6 +290,7 @@ static bool types_compatible(
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "types_compatible: validation failed");
     return false;
 }
 
@@ -314,6 +316,7 @@ static int32_t find_item_by_id(
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_item_by_id: validation failed");
     return -1;
 }
 
@@ -370,6 +373,7 @@ static int32_t insert_item_sorted(
     // Workspace full - check if new item displaces lowest
     uint32_t lowest_idx = workspace->item_count - 1;
     if (item->salience <= workspace->items[lowest_idx].salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "insert_item_sorted: validation failed");
         return -1;  // New item too low salience
     }
 
@@ -557,6 +561,7 @@ static bool validate_workspace_item(
         LOG_ERROR("Invalid salience: %.3f", item->salience);
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "validation_failed",
                      "Invalid salience: %.3f", item->salience);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: validation failed");
         return false;
     }
 
@@ -566,6 +571,7 @@ static bool validate_workspace_item(
             LOG_ERROR("Vector clock[%u] too large: %lu", i, item->vector_clock[i]);
             bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "validation_failed",
                          "Vector clock[%u] too large", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "validate_workspace_item: validation failed");
             return false;
         }
     }
@@ -576,12 +582,14 @@ static bool validate_workspace_item(
             LOG_ERROR("Invalid content[%u]: NaN or Inf", i);
             bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "validation_failed",
                          "Invalid content: NaN or Inf");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: validation failed");
             return false;
         }
         if (fabsf(item->content[i]) > MAX_CONTENT_VALUE) {
             LOG_ERROR("Content[%u] out of bounds: %.3f", i, item->content[i]);
             bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "validation_failed",
                          "Content out of bounds");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: validation failed");
             return false;
         }
     }
@@ -590,12 +598,14 @@ static bool validate_workspace_item(
     if (item->type < WORKSPACE_ITEM_NONE ||
         (item->type > WORKSPACE_ITEM_META && item->type < WORKSPACE_ITEM_CUSTOM)) {
         LOG_ERROR("Invalid item type: %d", item->type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: operation failed");
         return false;
     }
 
     // Validate source drone
     if (item->source_drone >= swarm_size) {
         LOG_ERROR("Source drone %u >= swarm_size %u", item->source_drone, swarm_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_workspace_item: capacity exceeded");
         return false;
     }
 
@@ -650,6 +660,7 @@ collective_workspace_t* collective_workspace_create(
         LOG_ERROR("Invalid config: %s", error_msg);
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",
                      "Invalid configuration: %s", error_msg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_create: collective_workspace_validate_config is NULL");
         return NULL;
     }
 
@@ -729,16 +740,19 @@ bool collective_workspace_add_item(
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_add_item")) {
         LOG_ERROR("NULL workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(item, "collective_workspace_add_item")) {
         LOG_ERROR("NULL item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: bbb_check_pointer is NULL");
         return false;
     }
 
     // Validate item structure
     if (!validate_workspace_item(item, workspace->swarm_size)) {
         LOG_ERROR("Item validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: validate_workspace_item is NULL");
         return false;
     }
 
@@ -765,6 +779,7 @@ bool collective_workspace_add_item(
         LOG_DEBUG("Item rejected (workspace full, salience too low): id=0x%08x, salience=%.3f",
                   local_item.item_id, local_item.salience);
         nimcp_mutex_unlock(&workspace->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_add_item: validation failed");
         return false;
     }
 
@@ -796,10 +811,12 @@ bool collective_workspace_merge_item(
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_merge_item")) {
         LOG_ERROR("NULL workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(item, "collective_workspace_merge_item")) {
         LOG_ERROR("NULL item");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -808,12 +825,14 @@ bool collective_workspace_merge_item(
         LOG_ERROR("Item validation failed");
         bbb_audit_log(BBB_AUDIT_WARNING, MODULE_NAME, "merge_rejected",
                      "Item validation failed: id=0x%08x", item->item_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: validate_workspace_item is NULL");
         return false;
     }
 
     // Additional network data validation
     if (!bbb_validate_network_data(item, sizeof(*item), "collective_workspace_merge_item")) {
         LOG_ERROR("Network data validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: bbb_validate_network_data is NULL");
         return false;
     }
 
@@ -834,6 +853,7 @@ bool collective_workspace_merge_item(
             LOG_DEBUG("Received item rejected (workspace full, salience too low): id=0x%08x",
                       item->item_id);
             nimcp_mutex_unlock(&workspace->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_merge_item: validation failed");
             return false;
         }
 
@@ -979,14 +999,17 @@ bool collective_workspace_get_top_items(
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_top_items")) {
         LOG_ERROR("NULL workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(top_items, "collective_workspace_get_top_items")) {
         LOG_ERROR("NULL top_items");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(actual_count, "collective_workspace_get_top_items")) {
         LOG_ERROR("NULL actual_count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_top_items: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1013,14 +1036,17 @@ bool collective_workspace_get_broadcast_items(
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_broadcast_items")) {
         LOG_ERROR("NULL workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(broadcast_items, "collective_workspace_get_broadcast_items")) {
         LOG_ERROR("NULL broadcast_items");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(actual_count, "collective_workspace_get_broadcast_items")) {
         LOG_ERROR("NULL actual_count");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_broadcast_items: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1058,19 +1084,23 @@ bool collective_workspace_should_broadcast(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_should_broadcast")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_should_broadcast: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(item, "collective_workspace_should_broadcast")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_should_broadcast: bbb_check_pointer is NULL");
         return false;
     }
 
     // Check salience threshold
     if (item->salience < workspace->config.broadcast_threshold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_should_broadcast: validation failed");
         return false;
     }
 
     // Check broadcast count (prevent storms)
     if (item->broadcast_count >= 3) {  // Max 3 broadcasts per item
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "collective_workspace_should_broadcast: capacity exceeded");
         return false;
     }
 
@@ -1078,6 +1108,7 @@ bool collective_workspace_should_broadcast(
     uint64_t current_time_ms = get_time_ms();
     uint64_t age_ms = current_time_ms - item->timestamp_ms;
     if (age_ms > workspace->config.item_ttl_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_should_broadcast: validation failed");
         return false;
     }
 
@@ -1090,6 +1121,7 @@ bool collective_workspace_mark_for_broadcast(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_mark_for_broadcast")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_mark_for_broadcast: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1098,6 +1130,7 @@ bool collective_workspace_mark_for_broadcast(
     int32_t idx = find_item_by_id(workspace, item_id);
     if (idx < 0) {
         nimcp_mutex_unlock(&workspace->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_mark_for_broadcast: validation failed");
         return false;
     }
 
@@ -1187,9 +1220,11 @@ bool collective_workspace_get_focus_vector(
 ) {
     // BBB validation
     if (!bbb_check_pointer(workspace, "collective_workspace_get_focus_vector")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_focus_vector: bbb_check_pointer is NULL");
         return false;
     }
     if (!bbb_check_pointer(focus_vector, "collective_workspace_get_focus_vector")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_focus_vector: bbb_check_pointer is NULL");
         return false;
     }
 
@@ -1223,6 +1258,7 @@ bool collective_workspace_get_statistics(
     uint64_t* items_pruned
 ) {
     if (!bbb_check_pointer(workspace, "collective_workspace_get_statistics")) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "collective_workspace_get_statistics: bbb_check_pointer is NULL");
         return false;
     }
 

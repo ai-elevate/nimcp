@@ -126,24 +126,31 @@ int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
 
 
     if (config->confidence_threshold < 0.0f || config->confidence_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->max_prediction_horizon == 0 || config->max_prediction_horizon > 100) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: config->max_prediction_horizon is zero");
         return -1;
     }
     if (config->prediction_decay < 0.0f || config->prediction_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->learning_rate < 0.0f || config->learning_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->novelty_bonus < 0.0f || config->novelty_bonus > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->constraint_softness < 0.0f || config->constraint_softness > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -182,6 +189,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "jepa_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -191,6 +199,7 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
             NIMCP_LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -378,7 +387,10 @@ int jepa_imagination_disconnect_imagination(jepa_imagination_bridge_t* bridge) {
 }
 
 bool jepa_imagination_is_connected(const jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_is_", 0.0f);
 
@@ -436,7 +448,10 @@ int jepa_imagination_update(
 }
 
 int jepa_imagination_compute_jepa_effects(jepa_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->jepa) return -1;
+    if (!bridge || !bridge->jepa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_compute_jepa_effects: required parameter is NULL (bridge, bridge->jepa)");
+        return -1;
+    }
 
     /* Query JEPA for current prediction state */
     /* In full implementation, this would call JEPA predictor APIs */
@@ -465,7 +480,10 @@ int jepa_imagination_compute_jepa_effects(jepa_imagination_bridge_t* bridge) {
 }
 
 int jepa_imagination_compute_imag_effects(jepa_imagination_bridge_t* bridge) {
-    if (!bridge || !bridge->imagination) return -1;
+    if (!bridge || !bridge->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_compute_imag_effects: required parameter is NULL (bridge, bridge->imagination)");
+        return -1;
+    }
 
     /* Query imagination engine for current state */
     /* In full implementation, this would call imagination engine APIs */
@@ -603,8 +621,14 @@ int jepa_imagination_query_world_model(
     const nimcp_tensor_t* action,
     nimcp_tensor_t** outcome)
 {
-    if (!bridge || !context || !action || !outcome) return -1;
-    if (!bridge->jepa) return -1;
+    if (!bridge || !context || !action || !outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_query_world_model: required parameter is NULL (bridge, context, action, outcome)");
+        return -1;
+    }
+    if (!bridge->jepa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_query_world_model: bridge->jepa is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_que", 0.0f);
@@ -627,8 +651,14 @@ int jepa_imagination_provide_training_signal(
     const struct imagination_scenario* scenario,
     float emotional_weight)
 {
-    if (!bridge || !scenario) return -1;
-    if (!bridge->jepa) return -1;
+    if (!bridge || !scenario) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_provide_training_signal: required parameter is NULL (bridge, scenario)");
+        return -1;
+    }
+    if (!bridge->jepa) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_provide_training_signal: bridge->jepa is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_pro", 0.0f);
@@ -657,7 +687,10 @@ int jepa_imagination_get_jepa_effects(
     const jepa_imagination_bridge_t* bridge,
     jepa_to_imagination_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_get_jepa_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->jepa_to_imag;
     /* Phase 8: Heartbeat at operation start */
@@ -671,7 +704,10 @@ int jepa_imagination_get_imagination_effects(
     const jepa_imagination_bridge_t* bridge,
     imagination_to_jepa_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_get_imagination_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->imag_to_jepa;
     /* Phase 8: Heartbeat at operation start */
@@ -689,7 +725,10 @@ int jepa_imagination_get_stats(
     const jepa_imagination_bridge_t* bridge,
     jepa_imagination_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -782,7 +821,10 @@ int jepa_imagination_disconnect_bio_async(jepa_imagination_bridge_t* bridge) {
 bool jepa_imagination_is_bio_async_connected(
     const jepa_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_imagination_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     jepa_imagination_bridge_heartbeat("jepa_imagina_jepa_imagination_is_", 0.0f);
 

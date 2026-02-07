@@ -148,7 +148,10 @@ static void compute_model_hash(
  * @brief Compare two hashes
  */
 static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
-    if (!h1 || !h2) return false;
+    if (!h1 || !h2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_equals: required parameter is NULL (h1, h2)");
+        return false;
+    }
     return memcmp(h1, h2, SECURITY_TRAINING_HASH_SIZE) == 0;
 }
 
@@ -159,13 +162,17 @@ static int find_data_source(
     const security_training_bridge_t* bridge,
     const char* source_name)
 {
-    if (!bridge || !source_name) return -1;
+    if (!bridge || !source_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_data_source: required parameter is NULL (bridge, source_name)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_data_sources; i++) {
         if (strcmp(bridge->data_sources[i].name, source_name) == 0) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_data_source: validation failed");
     return -1;
 }
 
@@ -176,13 +183,17 @@ static int find_checkpoint(
     const security_training_bridge_t* bridge,
     const char* checkpoint_name)
 {
-    if (!bridge || !checkpoint_name) return -1;
+    if (!bridge || !checkpoint_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_checkpoint: required parameter is NULL (bridge, checkpoint_name)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_checkpoints; i++) {
         if (strcmp(bridge->checkpoints[i].name, checkpoint_name) == 0) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_checkpoint: validation failed");
     return -1;
 }
 
@@ -285,6 +296,7 @@ security_training_bridge_t* security_training_bridge_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY,
                          SECURITY_TRAINING_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_bridge_create: operation failed");
         return NULL;
     }
 
@@ -520,6 +532,7 @@ bool security_training_validate_data_source(
         if (bridge->num_data_sources >= SECURITY_TRAINING_MAX_DATA_SOURCES) {
             BRIDGE_UNLOCK(bridge);
             NIMCP_LOGGING_WARN("Max data sources reached");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "security_training_validate_data_source: capacity exceeded");
             return false;
         }
 
@@ -536,6 +549,7 @@ bool security_training_validate_data_source(
     if (bridge->data_sources[idx].blocked) {
         BRIDGE_UNLOCK(bridge);
         stats->total_validations++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_training_validate_data_source: validation failed");
         return false;
     }
 
@@ -995,6 +1009,7 @@ bool security_training_check_gradient_anomaly(
 
     if (num_params == 0) {
         if (anomaly_score) *anomaly_score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_training_check_gradient_anomaly: validation failed");
         return false;
     }
 
@@ -1252,10 +1267,12 @@ bool security_training_detect_concept_drift(
     if (drift_score) *drift_score = 0.0f;
 
     if (!bridge->config.enable_concept_drift_detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_detect_concept_drift: bridge->config is NULL");
         return false;
     }
 
     if (!current_features || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_training_detect_concept_drift: current_features is NULL");
         return false;
     }
 
@@ -1267,6 +1284,7 @@ bool security_training_detect_concept_drift(
     /* Check if baseline exists */
     if (!bridge->drift_baseline || bridge->drift_baseline_samples == 0) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_detect_concept_drift: bridge->drift_baseline is NULL");
         return false;
     }
 
@@ -1553,7 +1571,10 @@ float security_training_get_threat_level(
 bool security_training_is_under_attack(
     const security_training_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_training_is_under_attack: bridge is NULL");
+        return false;
+    }
     return bridge->security_effects.under_attack;
 }
 

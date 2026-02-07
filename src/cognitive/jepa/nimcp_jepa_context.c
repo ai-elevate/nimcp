@@ -318,6 +318,7 @@ jepa_context_encoder_t* jepa_context_encoder_create(
 
 cleanup:
     jepa_context_encoder_destroy(encoder);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "jepa_context_encoder_create: operation failed");
     return NULL;
 }
 

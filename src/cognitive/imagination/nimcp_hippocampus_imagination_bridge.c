@@ -132,25 +132,32 @@ int hippocampus_imagination_validate_config(const hippocampus_imagination_config
 
 
     if (config->relevance_threshold < 0.0f || config->relevance_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->max_memories_per_request == 0 ||
         config->max_memories_per_request > HIPP_IMAG_MAX_RETRIEVED_MEMORIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->pattern_completion_weight < 0.0f || config->pattern_completion_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->consolidation_boost < 0.0f || config->consolidation_boost > 10.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->spatial_context_weight < 0.0f || config->spatial_context_weight > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
     if (config->update_interval_ms < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_imagination_validate_config: validation failed");
         return -1;
     }
 
@@ -189,6 +196,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_imagination_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -198,6 +206,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
             NIMCP_LOG_ERROR("Invalid bridge configuration");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_bridge_create: validation failed");
             return NULL;
         }
         bridge->config = *config;
@@ -383,7 +392,10 @@ int hippocampus_imagination_disconnect_imagination(
 bool hippocampus_imagination_is_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
 
@@ -441,7 +453,10 @@ int hippocampus_imagination_update(
 int hippocampus_imagination_compute_hipp_effects(
     hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge || !bridge->hippocampus) return -1;
+    if (!bridge || !bridge->hippocampus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_compute_hipp_effects: required parameter is NULL (bridge, bridge->hippocampus)");
+        return -1;
+    }
 
     /* Query hippocampus for current state */
     /* In a full implementation, this would call hippocampus adapter APIs */
@@ -471,7 +486,10 @@ int hippocampus_imagination_compute_hipp_effects(
 int hippocampus_imagination_compute_imag_effects(
     hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge || !bridge->imagination) return -1;
+    if (!bridge || !bridge->imagination) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_compute_imag_effects: required parameter is NULL (bridge, bridge->imagination)");
+        return -1;
+    }
 
     /* Query imagination engine for current state */
     /* In a full implementation, this would call imagination engine APIs */
@@ -619,9 +637,18 @@ int hippocampus_imagination_encode_as_memory(
     const struct imagination_scenario* scenario,
     float emotional_weight)
 {
-    if (!bridge || !scenario) return -1;
-    if (!bridge->hippocampus) return -1;
-    if (!bridge->config.enable_pseudo_memory_encoding) return -1;
+    if (!bridge || !scenario) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_encode_as_memory: required parameter is NULL (bridge, scenario)");
+        return -1;
+    }
+    if (!bridge->hippocampus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_encode_as_memory: bridge->hippocampus is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_pseudo_memory_encoding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_imagination_encode_as_memory: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
@@ -650,9 +677,18 @@ int hippocampus_imagination_trigger_replay(
     hippocampus_imagination_bridge_t* bridge,
     const nimcp_tensor_t* trigger_cue)
 {
-    if (!bridge || !trigger_cue) return -1;
-    if (!bridge->hippocampus) return -1;
-    if (!bridge->config.enable_replay_triggering) return -1;
+    if (!bridge || !trigger_cue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_trigger_replay: required parameter is NULL (bridge, trigger_cue)");
+        return -1;
+    }
+    if (!bridge->hippocampus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_trigger_replay: bridge->hippocampus is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_replay_triggering) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_trigger_replay: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
@@ -677,7 +713,10 @@ int hippocampus_imagination_get_memory_effects(
     const hippocampus_imagination_bridge_t* bridge,
     hippocampus_to_imagination_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_get_memory_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->hipp_to_imag;
     /* Phase 8: Heartbeat at operation start */
@@ -691,7 +730,10 @@ int hippocampus_imagination_get_imagination_effects(
     const hippocampus_imagination_bridge_t* bridge,
     imagination_to_hippocampus_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_get_imagination_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     *effects = bridge->imag_to_hipp;
     /* Phase 8: Heartbeat at operation start */
@@ -709,7 +751,10 @@ int hippocampus_imagination_get_stats(
     const hippocampus_imagination_bridge_t* bridge,
     hippocampus_imagination_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -806,7 +851,10 @@ int hippocampus_imagination_disconnect_bio_async(
 bool hippocampus_imagination_is_bio_async_connected(
     const hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_imagination_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     hippocampus_imagination_bridge_heartbeat("hippocampus__hippocampus_imaginat", 0.0f);
 

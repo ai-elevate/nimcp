@@ -439,15 +439,21 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     // Initialize NIMCP library
     nimcp_init();
 
-    if (PyType_Ready(&BrainType) < 0)
+    if (PyType_Ready(&BrainType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
-    if (PyType_Ready(&NetworkType) < 0)
+    if (PyType_Ready(&NetworkType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
     m = PyModule_Create(&nimcp_module);
-    if (m == NULL)
+    if (m == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PyInit_nimcp: validation failed");
         return NULL;
+    }
 
     // Add constants for brain sizes
     PyModule_AddIntConstant(m, "BRAIN_TINY", NIMCP_BRAIN_TINY);
@@ -467,6 +473,7 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
     if (PyModule_AddObject(m, "Brain", (PyObject*)&BrainType) < 0) {
         Py_DECREF(&BrainType);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
     }
 
@@ -475,6 +482,7 @@ PyMODINIT_FUNC PyInit_nimcp(void) {
         Py_DECREF(&NetworkType);
         Py_DECREF(&BrainType);
         Py_DECREF(m);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PyInit_nimcp: validation failed");
         return NULL;
     }
 

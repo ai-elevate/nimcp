@@ -144,11 +144,14 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(p2pnode)
 static bool validate_ip_address(const char* ip)
 {
     // Guard clause: NULL check
-    if (!ip)
+    if (!ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_ip_address: ip is NULL");
         return false;
+    }
 
     // Validate as string field (NULL termination, UTF-8, control chars)
     if (!nimcp_validate_string_field(ip, strnlen(ip, MAX_IP_LENGTH) + 1)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: nimcp_validate_string_field is NULL");
         return false;
     }
 
@@ -156,6 +159,7 @@ static bool validate_ip_address(const char* ip)
 
     // Guard clause: Length check (minimum: "0.0.0.0" = 7, maximum: "255.255.255.255" = 15)
     if (len < 7 || len > 15) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: validation failed");
         return false;
     }
 
@@ -163,6 +167,7 @@ static bool validate_ip_address(const char* ip)
     // WHY: Ensures IP can be converted to network format
     struct in_addr addr;
     if (inet_aton(ip, &addr) == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: validation failed");
         return false;
     }
 
@@ -189,6 +194,7 @@ static bool validate_port_number(uint16_t port, bool binding)
 {
     // Guard clause: Zero port (invalid)
     if (port == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_port_number: port is zero");
         return false;
     }
 
@@ -201,6 +207,7 @@ static bool validate_port_number(uint16_t port, bool binding)
 
     // Validate as integer field
     if (!nimcp_validate_integer_field(&port, sizeof(uint16_t))) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_port_number: nimcp_validate_integer_field is NULL");
         return false;
     }
 
@@ -319,8 +326,10 @@ static int create_tcp_socket(void)
 {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     // Guard clause: Check creation
-    if (sock < 0)
+    if (sock < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_tcp_socket: validation failed");
         return -1;
+    }
 
     return sock;
 }
@@ -337,13 +346,17 @@ static int create_tcp_socket(void)
 static bool set_socket_nonblocking(int sock)
 {
     // Guard clause: Validate socket
-    if (sock < 0)
+    if (sock < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "set_socket_nonblocking: validation failed");
         return false;
+    }
 
     int flags = fcntl(sock, F_GETFL, 0);
     // Guard clause: Check fcntl
-    if (flags < 0)
+    if (flags < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "set_socket_nonblocking: validation failed");
         return false;
+    }
 
     return fcntl(sock, F_SETFL, flags | O_NONBLOCK) >= 0;
 }
@@ -361,8 +374,10 @@ static bool set_socket_nonblocking(int sock)
 static bool enable_socket_reuse(int sock)
 {
     // Guard clause: Validate socket
-    if (sock < 0)
+    if (sock < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "enable_socket_reuse: validation failed");
         return false;
+    }
 
     int opt = SOCKET_REUSE_ENABLED;
     return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) >= 0;
@@ -381,8 +396,10 @@ static bool enable_socket_reuse(int sock)
 static bool bind_socket(int sock, uint16_t port)
 {
     // Guard clause: Validate socket
-    if (sock < 0)
+    if (sock < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bind_socket: validation failed");
         return false;
+    }
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -405,8 +422,10 @@ static bool bind_socket(int sock, uint16_t port)
 static bool start_listening(int sock)
 {
     // Guard clause: Validate socket
-    if (sock < 0)
+    if (sock < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "start_listening: validation failed");
         return false;
+    }
 
     return listen(sock, LISTEN_BACKLOG) >= 0;
 }
@@ -432,8 +451,10 @@ static bool start_listening(int sock)
 static bool setup_listen_socket(p2p_node_t node)
 {
     // Guard clause: Validate input
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "setup_listen_socket: node is NULL");
         return false;
+    }
 
     // Step 1: Create socket
     node->listen_socket = create_tcp_socket();
@@ -508,13 +529,16 @@ static bool setup_listen_socket(p2p_node_t node)
 static bool validate_config(const node_config_t* config)
 {
     // Guard clause: Check null
-    if (!config)
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_config: config is NULL");
         return false;
+    }
 
     // Validate listen_port using nimcp_validate
     // WHY: Ensure port is valid and bindable
     if (!validate_port_number(config->listen_port, true)) {
         fprintf(stderr, "[P2P] Invalid listen port in config: %u\n", config->listen_port);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validate_port_number is NULL");
         return false;
     }
 
@@ -522,12 +546,14 @@ static bool validate_config(const node_config_t* config)
     // WHY: Ensure max_peers is reasonable and will fit in memory
     if (!nimcp_validate_integer_field(&config->max_peers, sizeof(uint32_t))) {
         fprintf(stderr, "[P2P] Invalid max_peers in config\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: nimcp_validate_integer_field is NULL");
         return false;
     }
 
     // Guard clause: Check max_peers not zero
     if (config->max_peers == 0) {
         fprintf(stderr, "[P2P] max_peers cannot be zero\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: config->max_peers is zero");
         return false;
     }
 
@@ -535,6 +561,7 @@ static bool validate_config(const node_config_t* config)
     // WHY: Prevent memory exhaustion
     if (config->max_peers > 10000) {
         fprintf(stderr, "[P2P] max_peers too large: %u (max: 10000)\n", config->max_peers);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
@@ -554,8 +581,10 @@ static bool validate_config(const node_config_t* config)
 static bool allocate_peer_storage(p2p_node_t node)
 {
     // Guard clause: Validate input
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_peer_storage: node is NULL");
         return false;
+    }
 
     node->peers = nimcp_calloc(node->config.max_peers, sizeof(peer_info_t));
     return node->peers != NULL;
@@ -610,6 +639,7 @@ p2p_node_t p2p_node_create(const node_config_t* config)
     // Guard clause: Validate configuration
     if (!validate_config(config)) {
         LOG_ERROR(LOG_MODULE, "Node creation failed: invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "p2p_node_create: validate_config is NULL");
         return NULL;
     }
 
@@ -684,6 +714,7 @@ p2p_node_t p2p_node_create(const node_config_t* config)
         hash_table_destroy(node->peer_table);
         nimcp_free(node->peers);
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "p2p_node_create: node->topology_graph is NULL");
         return NULL;
     }
 
@@ -805,8 +836,10 @@ void p2p_node_destroy(p2p_node_t node)
 NimcpGraph* p2p_node_get_topology_graph(p2p_node_t node)
 {
     // Guard clause: Validate input
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_get_topology_graph: node is NULL");
         return NULL;
+    }
 
     return node->topology_graph;
 }
@@ -842,8 +875,10 @@ node_status_t p2p_node_get_status(p2p_node_t node)
 bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer_ip)
+    if (!node || !peer_ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_is_peer_connected: required parameter is NULL (node, peer_ip)");
         return false;
+    }
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
@@ -860,6 +895,7 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
     // Guard clause: Check if peer found
     if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_is_peer_connected: peer_ptr is NULL");
         return false;
     }
 
@@ -886,8 +922,10 @@ bool p2p_node_is_peer_connected(p2p_node_t node, const char* peer_ip, uint16_t p
 static bool peer_already_exists(p2p_node_t node, const char* key)
 {
     // Guard clause: Validate inputs
-    if (!node || !key)
+    if (!node || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "peer_already_exists: required parameter is NULL (node, key)");
         return false;
+    }
 
     return hash_table_lookup_string(node->peer_table, key) != NULL;
 }
@@ -905,8 +943,10 @@ static bool peer_already_exists(p2p_node_t node, const char* key)
 static bool create_sockaddr(struct sockaddr_in* addr, const char* ip, uint16_t port)
 {
     // Guard clause: Validate inputs
-    if (!addr || !ip)
+    if (!addr || !ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_sockaddr: required parameter is NULL (addr, ip)");
         return false;
+    }
 
     memset(addr, 0, sizeof(*addr));
     addr->sin_family = AF_INET;
@@ -928,13 +968,16 @@ static bool create_sockaddr(struct sockaddr_in* addr, const char* ip, uint16_t p
 static bool attempt_connection(int sock, const struct sockaddr_in* addr)
 {
     // Guard clause: Validate inputs
-    if (sock < 0 || !addr)
+    if (sock < 0 || !addr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attempt_connection: addr is NULL");
         return false;
+    }
 
     int result = connect(sock, (struct sockaddr*) addr, sizeof(*addr));
 
     // Connection is non-blocking, EINPROGRESS means in progress (success)
     if (result < 0 && errno != EINPROGRESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attempt_connection: validation failed");
         return false;
     }
 
@@ -974,12 +1017,16 @@ static void initialize_peer_info(peer_info_t* peer, const char* ip, uint16_t por
 static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int socket_fd)
 {
     // Guard clause: Validate inputs
-    if (!node || !ip)
+    if (!node || !ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_peer_to_node: required parameter is NULL (node, ip)");
         return false;
+    }
 
     // Guard clause: Check capacity
-    if (node->peer_count >= node->config.max_peers)
+    if (node->peer_count >= node->config.max_peers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_peer_to_node: capacity exceeded");
         return false;
+    }
 
     // Initialize peer info in array
     peer_info_t* peer = &node->peers[node->peer_count];
@@ -994,6 +1041,7 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
     // FIX: Pass &peer to copy the pointer VALUE (address), not what it points to
     if (!hash_table_insert_string(node->peer_table, key, &peer, sizeof(peer_info_t*))) {
         LOG_ERROR(LOG_MODULE, "Failed to insert peer %s into hash table", key);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_peer_to_node: hash_table_insert_string is NULL");
         return false;
     }
 
@@ -1028,13 +1076,16 @@ static bool add_peer_to_node(p2p_node_t node, const char* ip, uint16_t port, int
 bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer_ip)
+    if (!node || !peer_ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_connect_peer: required parameter is NULL (node, peer_ip)");
         return false;
+    }
 
     // Validate IP address format
     // WHY: Prevent malformed addresses from causing crashes or errors
     if (!validate_ip_address(peer_ip)) {
         fprintf(stderr, "[P2P] Invalid IP address format: %s\n", peer_ip);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_connect_peer: validate_ip_address is NULL");
         return false;
     }
 
@@ -1042,6 +1093,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // WHY: Ensure port is usable for connection
     if (!validate_port_number(peer_port, false)) {
         fprintf(stderr, "[P2P] Invalid port number: %u\n", peer_port);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_connect_peer: validate_port_number is NULL");
         return false;
     }
 
@@ -1051,6 +1103,7 @@ bool p2p_node_connect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Check capacity
     if (node->peer_count >= node->config.max_peers) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "p2p_node_connect_peer: capacity exceeded");
         return false;
     }
 
@@ -1164,8 +1217,10 @@ static void close_peer_socket(peer_info_t* peer)
 static int find_peer_index(p2p_node_t node, const char* ip, uint16_t port)
 {
     // Guard clause: Validate inputs
-    if (!node || !ip)
+    if (!node || !ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_peer_index: required parameter is NULL (node, ip)");
         return -1;
+    }
 
     for (uint32_t i = 0; i < node->peer_count; i++) {
         if (strcmp(node->peers[i].ip, ip) == 0 && node->peers[i].port == port) {
@@ -1173,6 +1228,7 @@ static int find_peer_index(p2p_node_t node, const char* ip, uint16_t port)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_peer_index: validation failed");
     return -1;
 }
 
@@ -1222,13 +1278,16 @@ static void compact_peer_array(p2p_node_t node, uint32_t index)
 bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer_ip)
+    if (!node || !peer_ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_disconnect_peer: required parameter is NULL (node, peer_ip)");
         return false;
+    }
 
     // Validate IP address format
     // WHY: Ensure we're disconnecting with valid address
     if (!validate_ip_address(peer_ip)) {
         fprintf(stderr, "[P2P] Invalid IP address format: %s\n", peer_ip);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_disconnect_peer: validate_ip_address is NULL");
         return false;
     }
 
@@ -1236,6 +1295,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // WHY: Ensure port is valid
     if (!validate_port_number(peer_port, false)) {
         fprintf(stderr, "[P2P] Invalid port number: %u\n", peer_port);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_disconnect_peer: validate_port_number is NULL");
         return false;
     }
 
@@ -1252,6 +1312,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Guard clause: Check if peer exists
     if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_disconnect_peer: peer_ptr is NULL");
         return false;
     }
 
@@ -1267,6 +1328,7 @@ bool p2p_node_disconnect_peer(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Guard clause: Check if found in array
     if (index < 0) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "p2p_node_disconnect_peer: validation failed");
         return false;
     }
 
@@ -1332,8 +1394,10 @@ static void update_node_status(p2p_node_t node, node_status_t status, bool runni
 bool p2p_node_start(p2p_node_t node)
 {
     // Guard clause: Validate input
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_start: node is NULL");
         return false;
+    }
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
@@ -1341,6 +1405,7 @@ bool p2p_node_start(p2p_node_t node)
     // Guard clause: Check if already running
     if (node->running) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_start: validation failed");
         return false;
     }
 
@@ -1348,6 +1413,7 @@ bool p2p_node_start(p2p_node_t node)
     if (!setup_listen_socket(node)) {
         update_node_status(node, NODE_STATUS_ERROR, false);
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_start: setup_listen_socket is NULL");
         return false;
     }
 
@@ -1421,8 +1487,10 @@ static void disconnect_all_peers(p2p_node_t node)
 bool p2p_node_stop(p2p_node_t node)
 {
     // Guard clause: Validate input
-    if (!node)
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_stop: node is NULL");
         return false;
+    }
 
     // Lock for thread safety
     nimcp_mutex_lock(&node->lock);
@@ -1430,6 +1498,7 @@ bool p2p_node_stop(p2p_node_t node)
     // Guard clause: Check if running
     if (!node->running) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_stop: node->running is NULL");
         return false;
     }
 
@@ -1465,16 +1534,20 @@ bool p2p_node_stop(p2p_node_t node)
 static bool send_ping_to_peer(peer_info_t* peer)
 {
     // Guard clause: Validate input
-    if (!peer || !peer->connected || peer->socket_fd < 0)
+    if (!peer || !peer->connected || peer->socket_fd < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_ping_to_peer: required parameter is NULL (peer, peer->connected)");
         return false;
+    }
 
     // Create PING message using protocol
     uint8_t buffer[sizeof(msg_header_t)];
     int bytes = protocol_serialize_message(MSG_TYPE_PING, NULL, 0, buffer, sizeof(buffer));
 
     // Guard clause: Check serialization
-    if (bytes <= 0)
+    if (bytes <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "send_ping_to_peer: validation failed");
         return false;
+    }
 
     // Send PING message
     ssize_t sent = send(peer->socket_fd, buffer, bytes, MSG_NOSIGNAL);
@@ -1488,6 +1561,7 @@ static bool send_ping_to_peer(peer_info_t* peer)
 
     LOG_WARN(LOG_MODULE, "Failed to send PING to %s:%u (sent %zd/%d bytes)",
              peer->ip, peer->port, sent, bytes);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "send_ping_to_peer: validation failed");
     return false;
 }
 
@@ -1571,8 +1645,10 @@ uint32_t p2p_node_send_heartbeats(p2p_node_t node)
 bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_port)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer_ip)
+    if (!node || !peer_ip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_process_pong: required parameter is NULL (node, peer_ip)");
         return false;
+    }
 
     nimcp_mutex_lock(&node->lock);
 
@@ -1587,6 +1663,7 @@ bool p2p_node_process_pong(p2p_node_t node, const char* peer_ip, uint16_t peer_p
     // Guard clause: Peer not found
     if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_process_pong: peer_ptr is NULL");
         return false;
     }
 
@@ -1620,12 +1697,16 @@ static bool peer_has_timed_out(const peer_info_t* peer, uint64_t timeout_us,
                                 uint64_t current_time_us)
 {
     // Guard clause: Validate input
-    if (!peer || !peer->connected)
+    if (!peer || !peer->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "peer_has_timed_out: required parameter is NULL (peer, peer->connected)");
         return false;
+    }
 
     // Guard clause: Never received a pong (initial state)
-    if (peer->last_pong_received == 0)
+    if (peer->last_pong_received == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "peer_has_timed_out: peer->last_pong_received is zero");
         return false;
+    }
 
     // Calculate elapsed time since last pong
     uint64_t elapsed_us = current_time_us - peer->last_pong_received;
@@ -1741,12 +1822,16 @@ uint32_t p2p_node_check_peer_health(p2p_node_t node, uint32_t timeout_ms)
 static bool attempt_peer_reconnect(p2p_node_t node, peer_info_t* peer)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer)
+    if (!node || !peer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attempt_peer_reconnect: required parameter is NULL (node, peer)");
         return false;
+    }
 
     // Guard clause: Skip healthy peers
-    if (peer->healthy)
+    if (peer->healthy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attempt_peer_reconnect: validation failed");
         return false;
+    }
 
     // Close old socket if open
     if (peer->socket_fd >= 0) {
@@ -1847,8 +1932,10 @@ bool p2p_node_get_peer_health(p2p_node_t node, const char* peer_ip, uint16_t pee
                                 bool* out_health)
 {
     // Guard clause: Validate inputs
-    if (!node || !peer_ip || !out_health)
+    if (!node || !peer_ip || !out_health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node_get_peer_health: required parameter is NULL (node, peer_ip, out_health)");
         return false;
+    }
 
     nimcp_mutex_lock(&node->lock);
 
@@ -1863,6 +1950,7 @@ bool p2p_node_get_peer_health(p2p_node_t node, const char* peer_ip, uint16_t pee
     // Guard clause: Peer not found
     if (!peer_ptr || !*peer_ptr) {
         nimcp_mutex_unlock(&node->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "p2p_node_get_peer_health: peer_ptr is NULL");
         return false;
     }
 

@@ -829,6 +829,7 @@ bool spatial_neuromod_system_update(
         bool success = spatial_neuromod_update(system->fields[i], network, dt);
         if (!success) {
             LOG_ERROR("Failed to update field %d in system", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_update: success is NULL");
             return false;
         }
     }
@@ -1037,6 +1038,7 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
         // 1. Compute graph Laplacian
         if (!spatial_neuromod_compute_laplacian(field, network, laplacian)) {
             LOG_ERROR("Failed to compute Laplacian");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: spatial_neuromod_compute_laplacian is NULL");
             return false;
         }
 
@@ -1182,6 +1184,7 @@ bool spatial_neuromod_set_concentration(spatial_neuromod_field_t* field,
     // HOW:  Direct array write with clamping
 
     if (!field || !is_valid_neuron_id(neuron_id, field->num_neurons)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (field, is_valid_neuron_id)");
         return false;
     }
 
@@ -1282,6 +1285,7 @@ bool spatial_neuromod_sync_to_global(const spatial_neuromod_field_t* field,
     // HOW:  Set global level = avg(spatial concentrations)
 
     if (!field || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_get_average: required parameter is NULL (field, system)");
         return false;
     }
 
@@ -1296,6 +1300,7 @@ bool spatial_neuromod_init_from_global(spatial_neuromod_field_t* field,
     // HOW:  Set all c_i = global_level
 
     if (!field || !system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_get_average: required parameter is NULL (field, system)");
         return false;
     }
 
@@ -1338,7 +1343,10 @@ bool spatial_neuromod_compute_stats(const spatial_neuromod_field_t* field,
     // WHY:  Quantitative analysis of distribution
     // HOW:  Single pass over arrays
 
-    if (!field) return false;
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_get_average: field is NULL");
+        return false;
+    }
 
     // Mean
     float mean = spatial_neuromod_get_average(field);
@@ -1376,7 +1384,10 @@ bool spatial_neuromod_reset(spatial_neuromod_field_t* field) {
     // WHY:  Clean state for new simulation
     // HOW:  Set all c_i = baseline, S_i = 0
 
-    if (!field) return false;
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_reset: field is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < field->num_neurons; i++) {
         field->concentration[i] = field->baseline;
@@ -1398,7 +1409,10 @@ bool spatial_neuromod_validate(const spatial_neuromod_field_t* field) {
     // WHY:  Catch numerical issues early
     // HOW:  Check for NaN, inf, out-of-range values
 
-    if (!field) return false;
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_validate: field is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < field->num_neurons; i++) {
         float c = field->concentration[i];
@@ -1406,6 +1420,7 @@ bool spatial_neuromod_validate(const spatial_neuromod_field_t* field) {
         // Check for NaN/inf
         if (!isfinite(c)) {
             LOG_ERROR("Non-finite concentration at neuron %u: %.3f", i, c);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "spatial_neuromod_validate: isfinite is NULL");
             return false;
         }
 
@@ -1413,6 +1428,7 @@ bool spatial_neuromod_validate(const spatial_neuromod_field_t* field) {
         if (c < field->min_concentration - EPSILON ||
             c > field->max_concentration + EPSILON) {
             LOG_ERROR("Concentration out of range at neuron %u: %.3f", i, c);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "spatial_neuromod_validate: isfinite is NULL");
             return false;
         }
     }
@@ -1490,7 +1506,10 @@ static int compare_neuron_scores(const void* a, const void* b) {
     const neuron_score_t* na = (const neuron_score_t*)a;
     const neuron_score_t* nb = (const neuron_score_t*)b;
 
-    if (na->score > nb->score) return -1;
+    if (na->score > nb->score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_neuron_scores: validation failed");
+        return -1;
+    }
     if (na->score < nb->score) return 1;
     return 0;
 }
@@ -1512,12 +1531,14 @@ bool spatial_neuromod_select_optimal_sources(
     // Guard: Validate parameters
     if (!field || !config || !selected_ids || !num_selected) {
         LOG_ERROR("Invalid parameters for optimal source selection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_optimal_sources: required parameter is NULL (field, config, selected_ids, num_selected)");
         return false;
     }
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
         LOG_WARN("Quantum-Shannon not enabled, cannot select optimal sources");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_optimal_sources: required parameter is NULL (field->use_quantum_shannon, field->quantum_shannon_diffusion)");
         return false;
     }
 
@@ -1534,6 +1555,7 @@ bool spatial_neuromod_select_optimal_sources(
     neuron_score_t* scores = (neuron_score_t*)nimcp_malloc(num_neurons * sizeof(neuron_score_t));
     if (!scores) {
         LOG_ERROR("Failed to allocate memory for neuron scoring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_select_optimal_sources: scores is NULL");
         return false;
     }
 
@@ -1579,6 +1601,7 @@ bool spatial_neuromod_release_adaptive(
     // Guard: Validate parameters
     if (!field || !network || !config) {
         LOG_ERROR("Invalid parameters for adaptive release");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_adaptive: required parameter is NULL (field, network, config)");
         return false;
     }
 
@@ -1602,6 +1625,7 @@ bool spatial_neuromod_release_adaptive(
     uint32_t* selected_ids = (uint32_t*)nimcp_malloc(max_sources * sizeof(uint32_t));
     if (!selected_ids) {
         LOG_ERROR("Failed to allocate memory for source selection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_release_adaptive: selected_ids is NULL");
         return false;
     }
 
@@ -1647,6 +1671,7 @@ bool spatial_neuromod_release_adaptive_batch(
     // Guard: Validate parameters
     if (!field || !network || !config || !amounts) {
         LOG_ERROR("Invalid parameters for adaptive batch release");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_adaptive_batch: required parameter is NULL (field, network, config, amounts)");
         return false;
     }
 
@@ -1679,21 +1704,25 @@ bool spatial_neuromod_update_dynamic_adaptation(
     // Guard: Validate parameters
     if (!field || !config) {
         LOG_ERROR("Invalid parameters for dynamic adaptation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update_dynamic_adaptation: required parameter is NULL (field, config)");
         return false;
     }
 
     // Guard: Dynamic adaptation must be enabled
     if (!config->enable_dynamic_adaptation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update_dynamic_adaptation: config->enable_dynamic_adaptation is NULL");
         return false;  // Silent return (not an error, just disabled)
     }
 
     // Guard: Requires quantum-Shannon for efficiency metrics
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update_dynamic_adaptation: required parameter is NULL (field->use_quantum_shannon, field->quantum_shannon_diffusion)");
         return false;
     }
 
     // Guard: Requires adaptive routing to be enabled
     if (!config->enable_adaptive_routing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update_dynamic_adaptation: config->enable_adaptive_routing is NULL");
         return false;
     }
 
@@ -1779,26 +1808,31 @@ bool spatial_neuromod_score_neuron_multi_objective(
     // Guard: Validate parameters
     if (!field || !config || !scores) {
         LOG_ERROR("Invalid parameters for multi-objective scoring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_score_neuron_multi_objective: required parameter is NULL (field, config, scores)");
         return false;
     }
 
     // Guard: Multi-objective must be enabled
     if (!config->enable_multi_objective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_score_neuron_multi_objective: config->enable_multi_objective is NULL");
         return false;
     }
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_score_neuron_multi_objective: required parameter is NULL (field->use_quantum_shannon, field->quantum_shannon_diffusion)");
         return false;
     }
 
     // Guard: Valid neuron ID
     if (neuron_id >= field->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_score_neuron_multi_objective: capacity exceeded");
         return false;
     }
 
     // Guard: Valid number of objectives
     if (config->num_objectives < 2 || config->num_objectives > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_score_neuron_multi_objective: validation failed");
         return false;
     }
 
@@ -1837,6 +1871,7 @@ bool spatial_neuromod_pareto_dominates(
 
     // Guard: Validate parameters
     if (!scores_a || !scores_b || num_objectives == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_pareto_dominates: required parameter is NULL (scores_a, scores_b)");
         return false;
     }
 
@@ -1845,6 +1880,7 @@ bool spatial_neuromod_pareto_dominates(
     // Check all objectives
     for (uint32_t i = 0; i < num_objectives; i++) {
         if (scores_a[i] < scores_b[i] - epsilon) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_pareto_dominates: validation failed");
             return false;  // A is worse on objective i
         }
         if (scores_a[i] > scores_b[i] + epsilon) {
@@ -1891,16 +1927,19 @@ bool spatial_neuromod_select_pareto_optimal(
     // Guard: Validate parameters
     if (!field || !config || !selected_ids || !num_selected) {
         LOG_ERROR("Invalid parameters for Pareto selection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_pareto_optimal: required parameter is NULL (field, config, selected_ids, num_selected)");
         return false;
     }
 
     // Guard: Multi-objective must be enabled
     if (!config->enable_multi_objective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_pareto_optimal: config->enable_multi_objective is NULL");
         return false;
     }
 
     // Guard: Quantum-Shannon must be enabled
     if (!field->use_quantum_shannon || !field->quantum_shannon_diffusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_pareto_optimal: required parameter is NULL (field->use_quantum_shannon, field->quantum_shannon_diffusion)");
         return false;
     }
 
@@ -1916,6 +1955,7 @@ bool spatial_neuromod_select_pareto_optimal(
         LOG_ERROR("Memory allocation failed");
         if (all_scores) nimcp_free(all_scores);
         if (is_dominated) nimcp_free(is_dominated);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_select_pareto_optimal: validation failed");
         return false;
     }
 
@@ -1952,6 +1992,7 @@ bool spatial_neuromod_select_pareto_optimal(
         LOG_WARN("Empty Pareto front");
         nimcp_free(all_scores);
         nimcp_free(is_dominated);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_select_pareto_optimal: front_size is zero");
         return false;
     }
 
@@ -1978,6 +2019,7 @@ bool spatial_neuromod_select_pareto_optimal(
         if (!weighted) {
             nimcp_free(all_scores);
             nimcp_free(is_dominated);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_select_pareto_optimal: weighted is NULL");
             return false;
         }
 
@@ -2033,11 +2075,13 @@ bool spatial_neuromod_release_multi_objective(
     // Guard: Validate parameters
     if (!field || !network || !config) {
         LOG_ERROR("Invalid parameters for multi-objective release");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_multi_objective: required parameter is NULL (field, network, config)");
         return false;
     }
 
     // Guard: Multi-objective must be enabled
     if (!config->enable_multi_objective) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_multi_objective: config->enable_multi_objective is NULL");
         return false;
     }
 
@@ -2049,6 +2093,7 @@ bool spatial_neuromod_release_multi_objective(
         field, network, config, selected_ids, NULL, &num_selected);
 
     if (!success || num_selected == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_release_multi_objective: success is NULL");
         return false;
     }
 

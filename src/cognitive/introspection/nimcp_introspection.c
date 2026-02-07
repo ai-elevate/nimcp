@@ -460,6 +460,7 @@ introspection_context_t introspection_context_create(brain_t brain,
         }
         nimcp_mutex_destroy(&context->lock);
         nimcp_free(context);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_context_create: validation failed");
         return NULL;
     }
 
@@ -1280,6 +1281,7 @@ static uint32_t hash_string(const char* str)
 static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry, const char* name)
 {
     if (registry == NULL || name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern_registry_lookup: validation failed");
         return NULL;
     }
 
@@ -1293,6 +1295,7 @@ static pattern_entry_t* pattern_registry_lookup(pattern_registry_t* registry, co
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_registry_lookup: validation failed");
     return NULL;
 }
 
@@ -1363,10 +1366,12 @@ bool brain_is_pattern_active(introspection_context_t context, const char* patter
     }
 
     if (context == NULL || pattern_name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_is_pattern_active: validation failed");
         return false;
     }
 
     if (!context->config.enable_pattern_tracking || context->pattern_registry == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_is_pattern_active: context->config is NULL");
         return false;
     }
 
@@ -1394,10 +1399,12 @@ bool brain_is_pattern_active(introspection_context_t context, const char* patter
 pattern_info_t* brain_get_pattern_info(introspection_context_t context, const char* pattern_name)
 {
     if (context == NULL || pattern_name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_pattern_info: validation failed");
         return NULL;
     }
 
     if (!context->config.enable_pattern_tracking || context->pattern_registry == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_pattern_info: context->config is NULL");
         return NULL;
     }
 
@@ -1410,6 +1417,7 @@ pattern_info_t* brain_get_pattern_info(introspection_context_t context, const ch
 
     if (entry == NULL) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_pattern_info: validation failed");
         return NULL;
     }
 
@@ -1417,6 +1425,7 @@ pattern_info_t* brain_get_pattern_info(introspection_context_t context, const ch
     pattern_info_t* info = (pattern_info_t*) nimcp_malloc(sizeof(pattern_info_t));
     if (info == NULL) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_pattern_info: validation failed");
         return NULL;
     }
 
@@ -1462,11 +1471,13 @@ void pattern_info_free(pattern_info_t* info)
 char** brain_list_patterns(introspection_context_t context, uint32_t* num_patterns)
 {
     if (context == NULL || num_patterns == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_patterns: validation failed");
         return NULL;
     }
 
     if (!context->config.enable_pattern_tracking || context->pattern_registry == NULL) {
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_patterns: context->config is NULL");
         return NULL;
     }
 
@@ -1475,6 +1486,7 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
     *num_patterns = context->pattern_registry->num_patterns;
     if (*num_patterns == 0) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_list_patterns: num_patterns is zero");
         return NULL;
     }
 
@@ -1483,6 +1495,7 @@ char** brain_list_patterns(introspection_context_t context, uint32_t* num_patter
     if (pattern_list == NULL) {
         nimcp_mutex_unlock(&context->pattern_registry->lock);
         *num_patterns = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_list_patterns: validation failed");
         return NULL;
     }
 
@@ -1560,6 +1573,7 @@ static uint32_t* clone_neurons_per_layer(const uint32_t* source, uint32_t num_la
 {
     /* Guard clause: validate inputs */
     if (source == NULL || num_layers == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clone_neurons_per_layer: num_layers is zero");
         return NULL;
     }
 
@@ -1568,6 +1582,7 @@ static uint32_t* clone_neurons_per_layer(const uint32_t* source, uint32_t num_la
 
     /* Guard clause: allocation failed */
     if (clone == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "clone_neurons_per_layer: validation failed");
         return NULL;
     }
 
@@ -1779,6 +1794,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
                                                      uint32_t* num_entries)
 {
     if (context == NULL || num_entries == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_activity_history: validation failed");
         return NULL;
     }
 
@@ -1791,6 +1807,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
     *num_entries = (uint32_t) queue_size;
 
     if (queue_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_activity_history: queue_size is zero");
         return NULL;  // No history available
     }
 
@@ -1800,6 +1817,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
 
     if (history == NULL) {
         *num_entries = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_activity_history: validation failed");
         return NULL;
     }
 
@@ -1818,6 +1836,7 @@ activity_history_entry_t* brain_get_activity_history(introspection_context_t con
             *num_entries = i;
             if (i == 0) {
                 nimcp_free(history);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_activity_history: i is zero");
                 return NULL;
             }
             break;
@@ -1842,6 +1861,7 @@ bool introspection_set_ensemble(introspection_context_t context,
                                 ensemble_context_t ensemble)
 {
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_set_ensemble: validation failed");
         return false;
     }
 
@@ -1869,6 +1889,7 @@ bool introspection_set_ensemble(introspection_context_t context,
 ensemble_context_t introspection_get_ensemble(introspection_context_t context)
 {
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_ensemble: validation failed");
         return NULL;
     }
 
@@ -1897,6 +1918,7 @@ ensemble_context_t introspection_get_ensemble(introspection_context_t context)
 bool introspection_get_stats(introspection_context_t context, introspection_stats_t* stats)
 {
     if (context == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_get_stats: validation failed");
         return false;
     }
 
@@ -1958,6 +1980,7 @@ bool introspection_sample_activity(introspection_context_t context)
 {
     /* WHAT: Validate input */
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_sample_activity: validation failed");
         return false;
     }
 
@@ -1968,12 +1991,14 @@ bool introspection_sample_activity(introspection_context_t context)
 
     adaptive_network_t network = brain_get_network(context->brain);
     if (network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_sample_activity: validation failed");
         return false;
     }
 
     /* WHAT: Get network size */
     uint32_t total_neurons = adaptive_network_get_neuron_count(network);
     if (total_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_sample_activity: total_neurons is zero");
         return false;
     }
 
@@ -2105,6 +2130,7 @@ bool introspection_set_sample_interval(introspection_context_t context, uint32_t
 {
     /* WHAT: Validate input */
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_set_sample_interval: validation failed");
         return false;
     }
 
@@ -2135,6 +2161,7 @@ bool introspection_get_history_stats(introspection_context_t context,
 {
     /* WHAT: Validate inputs */
     if (context == NULL || current_size == NULL || capacity == NULL || utilization == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_get_history_stats: validation failed");
         return false;
     }
 
@@ -2166,6 +2193,7 @@ bool introspection_clear_history(introspection_context_t context)
 {
     /* WHAT: Validate input */
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_clear_history: validation failed");
         return false;
     }
 
@@ -2177,6 +2205,7 @@ bool introspection_clear_history(introspection_context_t context)
     nimcp_result_t result = nimcp_queue_clear(context->activity_queue);
     if (result != NIMCP_SUCCESS) {
         LOG_WARN(LOG_MODULE, "Failed to clear activity history: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_clear_history: validation failed");
         return false;
     }
 
@@ -2203,6 +2232,7 @@ bool introspection_set_activity_callback(introspection_context_t context,
 {
     /* WHAT: Validate input */
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_set_activity_callback: validation failed");
         return false;
     }
 
@@ -2241,6 +2271,7 @@ bool introspection_connect_immune(introspection_context_t context,
 {
     /* WHAT: Validate inputs */
     if (context == NULL || immune_system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_connect_immune: validation failed");
         return false;
     }
 
@@ -2270,6 +2301,7 @@ struct brain_immune_system* introspection_get_immune(introspection_context_t con
 {
     /* WHAT: Validate input */
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_immune: validation failed");
         return NULL;
     }
 
@@ -2367,6 +2399,7 @@ static float compute_cosine_similarity(const float* a, const float* b, uint32_t 
 bool introspection_connect_internal_kg(introspection_context_t context, brain_t brain)
 {
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_connect_internal_kg: validation failed");
         return false;
     }
 
@@ -2381,6 +2414,7 @@ bool introspection_connect_internal_kg(introspection_context_t context, brain_t 
 
     if (result != 0) {
         nimcp_mutex_unlock(&context->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_connect_internal_kg: validation failed");
         return false;
     }
 
@@ -2424,6 +2458,7 @@ void introspection_disconnect_internal_kg(introspection_context_t context)
 brain_kg_node_list_t* introspection_get_active_modules(introspection_context_t context)
 {
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_active_modules: validation failed");
         return NULL;
     }
 
@@ -2436,6 +2471,7 @@ brain_kg_node_list_t* introspection_get_active_modules(introspection_context_t c
     /* Check if KG is connected */
     if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
         nimcp_mutex_unlock(&context->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_active_modules: required parameter is NULL (context->kg_connected, kg_is_available)");
         return NULL;
     }
 
@@ -2456,6 +2492,7 @@ brain_kg_node_list_t* introspection_get_module_topology(
 )
 {
     if (context == NULL || center_name == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_module_topology: validation failed");
         return NULL;
     }
 
@@ -2468,6 +2505,7 @@ brain_kg_node_list_t* introspection_get_module_topology(
     /* Check if KG is connected */
     if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
         nimcp_mutex_unlock(&context->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_module_topology: required parameter is NULL (context->kg_connected, kg_is_available)");
         return NULL;
     }
 
@@ -2475,6 +2513,7 @@ brain_kg_node_list_t* introspection_get_module_topology(
     brain_kg_node_id_t center_id = kg_find_node_safe(&context->kg_context, center_name);
     if (center_id == BRAIN_KG_INVALID_NODE) {
         nimcp_mutex_unlock(&context->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_get_module_topology: validation failed");
         return NULL;
     }
 
@@ -2495,6 +2534,7 @@ bool introspection_is_module_set_active(
 )
 {
     if (context == NULL || module_names == NULL || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_is_module_set_active: count is zero");
         return false;
     }
 
@@ -2507,6 +2547,7 @@ bool introspection_is_module_set_active(
     /* Check if KG is connected */
     if (!context->kg_connected || !kg_is_available(&context->kg_context)) {
         nimcp_mutex_unlock(&context->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_is_module_set_active: required parameter is NULL (context->kg_connected, kg_is_available)");
         return false;  /* Can't check - assume not active */
     }
 
@@ -2520,6 +2561,7 @@ bool introspection_is_module_set_active(
 
         if (module_names[i] == NULL) {
             nimcp_mutex_unlock(&context->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_is_module_set_active: validation failed");
             return false;
         }
 
@@ -2531,6 +2573,7 @@ bool introspection_is_module_set_active(
 
         if (node_id == BRAIN_KG_INVALID_NODE) {
             nimcp_mutex_unlock(&context->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_is_module_set_active: validation failed");
             return false;  /* Module not found */
         }
 
@@ -2538,6 +2581,7 @@ bool introspection_is_module_set_active(
         const brain_kg_node_t* node = kg_get_node_safe(&context->kg_context, node_id);
         if (node == NULL || node->state != BRAIN_KG_STATE_ACTIVE) {
             nimcp_mutex_unlock(&context->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "introspection_is_module_set_active: validation failed");
             return false;  /* Module not active */
         }
     }
@@ -2616,7 +2660,10 @@ void introspection_set_instance_health_agent(void* ctx, nimcp_health_agent_t* ag
  * @brief Begin training - reset counters, set flags, log start
  */
 int introspection_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_training_begin: ctx is NULL");
+        return -1;
+    }
     introspection_heartbeat_instance(g_introspection_instance_health_agent,
                                      "introspection_training_begin", 0.0f);
     /* Cast to opaque context and reset via public API */
@@ -2630,7 +2677,10 @@ int introspection_training_begin(void* ctx) {
  * @brief Training step - clamp progress [0,1], adapt internal parameters
  */
 int introspection_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_training_step: ctx is NULL");
+        return -1;
+    }
     /* Clamp progress to [0,1] */
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
@@ -2646,7 +2696,10 @@ int introspection_training_step(void* ctx, float progress) {
  * @brief End training - compute final metrics, log results
  */
 int introspection_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_training_end: ctx is NULL");
+        return -1;
+    }
     introspection_heartbeat_instance(g_introspection_instance_health_agent,
                                      "introspection_training_end", 1.0f);
     introspection_context_t context = (introspection_context_t)ctx;

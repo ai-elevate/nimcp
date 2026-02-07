@@ -443,7 +443,10 @@ int health_emotion_report_event(
 
     }
 
-    if (event_type >= HEALTH_EMOTION_EVENT_COUNT) return -1;
+    if (event_type >= HEALTH_EMOTION_EVENT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "health_emotion_report_event: capacity exceeded");
+        return -1;
+    }
     if (severity < 0.0f || severity > 1.0f) severity = 0.5f;
 
     /* Get emotion mapping */
@@ -492,6 +495,7 @@ bool health_emotion_permits_action(
     if (state.stability < LOW_STABILITY_THRESHOLD) {
         /* Only allow low-impact actions during instability */
         if (action >= HEALTH_RECOVERY_FULL_RESTART) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_emotion_permits_action: capacity exceeded");
             return false;
         }
     }
@@ -500,6 +504,7 @@ bool health_emotion_permits_action(
     if (state.is_stressed) {
         /* Avoid aggressive actions under stress unless critical */
         if (action >= HEALTH_RECOVERY_EMERGENCY_SHUTDOWN) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_emotion_permits_action: capacity exceeded");
             return false;
         }
     }
@@ -508,6 +513,7 @@ bool health_emotion_permits_action(
     if (state.valence < -0.5f) {
         /* Avoid irreversible actions during emotional crisis */
         if (action >= HEALTH_RECOVERY_QUARANTINE) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_emotion_permits_action: capacity exceeded");
             return false;
         }
     }
@@ -557,7 +563,10 @@ int health_agent_detect_shadow_patterns(
     uint32_t max_patterns,
     uint32_t* num_detected
 ) {
-    if (!detected_patterns || !num_detected || max_patterns == 0) return -1;
+    if (!detected_patterns || !num_detected || max_patterns == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_agent_detect_shadow_patterns: required parameter is NULL (detected_patterns, num_detected)");
+        return -1;
+    }
 
     *num_detected = 0;
 

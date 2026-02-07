@@ -165,6 +165,7 @@ static int find_source_index(
     const char* source_name
 ) {
     if (!security || !source_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source_index: required parameter is NULL (security, source_name)");
         return -1;
     }
 
@@ -174,6 +175,7 @@ static int find_source_index(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_source_index: validation failed");
     return -1;
 }
 
@@ -269,6 +271,7 @@ security_train_fep_bridge_t* security_train_fep_create(
 ) {
     if (!fep_system || !security_bridge) {
         NIMCP_LOGGING_ERROR("Security training FEP bridge: NULL system pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_create: required parameter is NULL (fep_system, security_bridge)");
         return NULL;
     }
 
@@ -276,6 +279,7 @@ security_train_fep_bridge_t* security_train_fep_create(
     security_train_fep_bridge_t* bridge = nimcp_malloc(sizeof(security_train_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Security training FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_train_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -285,6 +289,7 @@ security_train_fep_bridge_t* security_train_fep_create(
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_TRAINING_FEP,
                          SECURITY_TRAINING_FEP_MODULE_NAME) != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_create: operation failed");
         return NULL;
     }
 
@@ -426,6 +431,7 @@ int security_train_fep_get_config(
     security_train_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_get_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -438,6 +444,7 @@ int security_train_fep_set_config(
     const security_train_fep_config_t* config
 ) {
     if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_set_config: required parameter is NULL (bridge, config)");
         return -1;
     }
 
@@ -460,6 +467,7 @@ int security_train_fep_compute_effects(security_train_fep_bridge_t* bridge) {
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_compute_effects: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -598,10 +606,12 @@ int security_train_fep_update_from_poisoning(
     const security_poisoning_result_t* poisoning_result
 ) {
     if (!bridge || !poisoning_result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_from_poisoning: required parameter is NULL (bridge, poisoning_result)");
         return -1;
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_from_poisoning: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -686,6 +696,7 @@ int security_train_fep_update_from_gradient_anomaly(
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_from_gradient_anomaly: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -755,6 +766,7 @@ int security_train_fep_update_from_extraction_attempt(
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_from_extraction_attempt: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -819,6 +831,7 @@ int security_train_fep_update_from_backdoor_detection(
     }
 
     if (!bridge->state.active || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_from_backdoor_detection: required parameter is NULL (bridge->state, bridge->fep_system)");
         return -1;
     }
 
@@ -880,6 +893,7 @@ int security_train_fep_update_source_precision(
     security_data_trust_t trust_level
 ) {
     if (!bridge || !source_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_update_source_precision: required parameter is NULL (bridge, source_name)");
         return -1;
     }
 
@@ -889,6 +903,7 @@ int security_train_fep_update_source_precision(
     int idx = find_source_index(bridge->security_bridge, source_name);
     if (idx < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_train_fep_update_source_precision: validation failed");
         return -1;
     }
 
@@ -896,6 +911,7 @@ int security_train_fep_update_source_precision(
     if (!bridge->fep_effects.source_precisions ||
         (uint32_t)idx >= bridge->fep_effects.num_source_precisions) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_train_fep_update_source_precision: validation failed");
         return -1;
     }
 
@@ -1031,6 +1047,7 @@ int security_train_fep_get_fep_effects(
     security_train_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_get_fep_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1044,6 +1061,7 @@ int security_train_fep_get_security_effects(
     fep_security_train_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_get_security_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -1056,6 +1074,7 @@ int security_train_fep_get_stats(
     security_train_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1127,6 +1146,7 @@ security_train_policy_t security_train_fep_get_recommended_policy(
 
 bool security_train_fep_should_act(const security_train_fep_bridge_t* bridge) {
     if (!bridge || !bridge->fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_should_act: required parameter is NULL (bridge, bridge->fep_system)");
         return false;
     }
 
@@ -1182,6 +1202,7 @@ int security_train_fep_disconnect_bio_async(security_train_fep_bridge_t* bridge)
 
 int security_train_fep_process_messages(security_train_fep_bridge_t* bridge) {
     if (!bridge || !bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_train_fep_process_messages: required parameter is NULL (bridge, bridge->base)");
         return -1;
     }
 

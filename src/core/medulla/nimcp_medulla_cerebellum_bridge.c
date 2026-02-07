@@ -631,6 +631,7 @@ int med_cereb_bridge_queue_error(med_cereb_bridge_t bridge,
     if (bridge->error_queue_count >= MED_CEREB_MAX_ERROR_QUEUE) {
         bridge->stats.errors_dropped++;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "med_cereb_bridge_is_connected: capacity exceeded");
         return -1;
     }
 

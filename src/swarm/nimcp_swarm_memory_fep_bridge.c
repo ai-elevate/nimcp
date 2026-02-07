@@ -41,6 +41,7 @@ swarm_memory_fep_bridge_t* swarm_memory_fep_create(const swarm_memory_fep_config
     swarm_memory_fep_bridge_t* bridge = (swarm_memory_fep_bridge_t*)nimcp_malloc(sizeof(swarm_memory_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm_memory_fep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_fep_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(swarm_memory_fep_bridge_t));

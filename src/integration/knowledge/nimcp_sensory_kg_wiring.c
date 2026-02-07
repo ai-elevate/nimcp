@@ -93,6 +93,7 @@ static sensory_kg_node_t* find_node(sensory_kg_wiring_t* wiring, uint32_t node_i
             return &wiring->nodes[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_node: validation failed");
     return NULL;
 }
 
@@ -101,6 +102,7 @@ static sensory_kg_node_t* find_node(sensory_kg_wiring_t* wiring, uint32_t node_i
  */
 static sensory_kg_node_t* allocate_node(sensory_kg_wiring_t* wiring) {
     if (!wiring || wiring->num_nodes >= wiring->config.max_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_node: wiring is NULL");
         return NULL;
     }
     return &wiring->nodes[wiring->num_nodes++];
@@ -111,6 +113,7 @@ static sensory_kg_node_t* allocate_node(sensory_kg_wiring_t* wiring) {
  */
 static sensory_kg_edge_t* allocate_edge(sensory_kg_wiring_t* wiring) {
     if (!wiring || wiring->num_edges >= wiring->config.max_edges) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_edge: wiring is NULL");
         return NULL;
     }
     return &wiring->edges[wiring->num_edges++];
@@ -122,11 +125,15 @@ static sensory_kg_edge_t* allocate_edge(sensory_kg_wiring_t* wiring) {
 static int create_node(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
                        const char* name, const char* description,
                        uint32_t module_id, uint32_t* out_node_id) {
-    if (!wiring || !name || !out_node_id) return -1;
+    if (!wiring || !name || !out_node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "allocate_edge: required parameter is NULL (wiring, name, out_node_id)");
+        return -1;
+    }
 
     sensory_kg_node_t* node = allocate_node(wiring);
     if (!node) {
         wiring->stats.registration_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_edge: node is NULL");
         return -1;
     }
 
@@ -156,7 +163,10 @@ static int create_node(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
  * ============================================================================ */
 
 int sensory_kg_default_config(sensory_kg_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(sensory_kg_config_t));
 
@@ -193,6 +203,7 @@ sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config)
     wiring->nodes = (sensory_kg_node_t*)nimcp_calloc(wiring->config.max_nodes, sizeof(sensory_kg_node_t));
     if (!wiring->nodes) {
         nimcp_free(wiring);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_wiring_create: wiring->nodes is NULL");
         return NULL;
     }
 
@@ -201,6 +212,7 @@ sensory_kg_wiring_t* sensory_kg_wiring_create(const sensory_kg_config_t* config)
     if (!wiring->edges) {
         nimcp_free(wiring->nodes);
         nimcp_free(wiring);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_wiring_create: wiring->edges is NULL");
         return NULL;
     }
 
@@ -258,8 +270,14 @@ void sensory_kg_wiring_destroy(sensory_kg_wiring_t* wiring) {
  * ============================================================================ */
 
 int sensory_kg_register_somatosensory(sensory_kg_wiring_t* wiring, nimcp_somatosensory_t* soma) {
-    if (!wiring || !soma) return -1;
-    if (!wiring->config.enable_somatosensory) return -1;
+    if (!wiring || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: required parameter is NULL (wiring, soma)");
+        return -1;
+    }
+    if (!wiring->config.enable_somatosensory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: wiring->config is NULL");
+        return -1;
+    }
 
     wiring->soma = soma;
 
@@ -283,7 +301,10 @@ int sensory_kg_register_somatosensory(sensory_kg_wiring_t* wiring, nimcp_somatos
 
 int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* name,
                                     body_segment_t region, uint32_t* node_id) {
-    if (!wiring || !name || !node_id) return -1;
+    if (!wiring || !name || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: required parameter is NULL (wiring, name, node_id)");
+        return -1;
+    }
 
     char desc[256];
     snprintf(desc, sizeof(desc), "Body region: %s (type %d)", name, region);
@@ -300,7 +321,10 @@ int sensory_kg_register_body_region(sensory_kg_wiring_t* wiring, const char* nam
 
 int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char* name,
                                         soma_receptor_type_t type, uint32_t* node_id) {
-    if (!wiring || !name || !node_id) return -1;
+    if (!wiring || !name || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_somatosensory: required parameter is NULL (wiring, name, node_id)");
+        return -1;
+    }
 
     char desc[256];
     snprintf(desc, sizeof(desc), "Mechanoreceptor: %s (type %d)", name, type);
@@ -315,7 +339,10 @@ int sensory_kg_register_mechanoreceptor(sensory_kg_wiring_t* wiring, const char*
 }
 
 int sensory_kg_register_touch_pathway(sensory_kg_wiring_t* wiring, uint32_t source_id, uint32_t target_id) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_touch_pathway: wiring is NULL");
+        return -1;
+    }
     return sensory_kg_add_edge(wiring, SENSORY_KG_EDGE_PROJECTS_TO, source_id, target_id, 1.0f);
 }
 
@@ -324,8 +351,14 @@ int sensory_kg_register_touch_pathway(sensory_kg_wiring_t* wiring, uint32_t sour
  * ============================================================================ */
 
 int sensory_kg_register_olfactory(sensory_kg_wiring_t* wiring, nimcp_olfactory_t* olfact) {
-    if (!wiring || !olfact) return -1;
-    if (!wiring->config.enable_olfactory) return -1;
+    if (!wiring || !olfact) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_olfactory: required parameter is NULL (wiring, olfact)");
+        return -1;
+    }
+    if (!wiring->config.enable_olfactory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_olfactory: wiring->config is NULL");
+        return -1;
+    }
 
     wiring->olfact = olfact;
 
@@ -348,7 +381,10 @@ int sensory_kg_register_olfactory(sensory_kg_wiring_t* wiring, nimcp_olfactory_t
 }
 
 int sensory_kg_register_glomerulus(sensory_kg_wiring_t* wiring, uint32_t glom_id, uint32_t* node_id) {
-    if (!wiring || !node_id) return -1;
+    if (!wiring || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_glomerulus: required parameter is NULL (wiring, node_id)");
+        return -1;
+    }
 
     char name[64];
     snprintf(name, sizeof(name), "Glomerulus_%u", glom_id);
@@ -365,7 +401,10 @@ int sensory_kg_register_glomerulus(sensory_kg_wiring_t* wiring, uint32_t glom_id
 
 int sensory_kg_register_odor_category(sensory_kg_wiring_t* wiring, const char* name,
                                       odor_category_t category, uint32_t* node_id) {
-    if (!wiring || !name || !node_id) return -1;
+    if (!wiring || !name || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_glomerulus: required parameter is NULL (wiring, name, node_id)");
+        return -1;
+    }
 
     char desc[256];
     snprintf(desc, sizeof(desc), "Odor category: %s", name);
@@ -381,7 +420,10 @@ int sensory_kg_register_odor_category(sensory_kg_wiring_t* wiring, const char* n
 }
 
 int sensory_kg_register_odor_memory(sensory_kg_wiring_t* wiring, uint32_t odor_node, uint32_t memory_id) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_odor_memory: wiring is NULL");
+        return -1;
+    }
 
     char name[64];
     snprintf(name, sizeof(name), "Odor_Memory_%u", memory_id);
@@ -402,8 +444,14 @@ int sensory_kg_register_odor_memory(sensory_kg_wiring_t* wiring, uint32_t odor_n
  * ============================================================================ */
 
 int sensory_kg_register_gustatory(sensory_kg_wiring_t* wiring, nimcp_gustatory_t* gust) {
-    if (!wiring || !gust) return -1;
-    if (!wiring->config.enable_gustatory) return -1;
+    if (!wiring || !gust) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_gustatory: required parameter is NULL (wiring, gust)");
+        return -1;
+    }
+    if (!wiring->config.enable_gustatory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_gustatory: wiring->config is NULL");
+        return -1;
+    }
 
     wiring->gust = gust;
 
@@ -429,7 +477,10 @@ int sensory_kg_register_gustatory(sensory_kg_wiring_t* wiring, nimcp_gustatory_t
 }
 
 int sensory_kg_register_taste_quality(sensory_kg_wiring_t* wiring, basic_taste_t taste, uint32_t* node_id) {
-    if (!wiring || !node_id) return -1;
+    if (!wiring || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_taste_quality: required parameter is NULL (wiring, node_id)");
+        return -1;
+    }
 
     const char* taste_names[] = {"Sweet", "Salty", "Sour", "Bitter", "Umami"};
     const char* name = (taste < TASTE_COUNT) ? taste_names[taste] : "Unknown";
@@ -448,7 +499,10 @@ int sensory_kg_register_taste_quality(sensory_kg_wiring_t* wiring, basic_taste_t
 }
 
 int sensory_kg_register_tongue_region(sensory_kg_wiring_t* wiring, tongue_region_t region, uint32_t* node_id) {
-    if (!wiring || !node_id) return -1;
+    if (!wiring || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, node_id)");
+        return -1;
+    }
 
     const char* region_names[] = {"Tip", "Front_Sides", "Back_Sides", "Back", "Center"};
     const char* name = (region < TONGUE_REGION_COUNT) ? region_names[region] : "Unknown";
@@ -467,7 +521,10 @@ int sensory_kg_register_tongue_region(sensory_kg_wiring_t* wiring, tongue_region
 
 int sensory_kg_register_food_category(sensory_kg_wiring_t* wiring, const char* name,
                                       food_category_t category, uint32_t* node_id) {
-    if (!wiring || !name || !node_id) return -1;
+    if (!wiring || !name || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, name, node_id)");
+        return -1;
+    }
 
     char desc[256];
     snprintf(desc, sizeof(desc), "Food category: %s", name);
@@ -488,13 +545,22 @@ int sensory_kg_register_food_category(sensory_kg_wiring_t* wiring, const char* n
 
 int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
                                uint32_t odor_node, uint32_t* flavor_node_id) {
-    if (!wiring || !flavor_node_id) return -1;
-    if (!wiring->config.enable_cross_modal) return -1;
+    if (!wiring || !flavor_node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, flavor_node_id)");
+        return -1;
+    }
+    if (!wiring->config.enable_cross_modal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring->config is NULL");
+        return -1;
+    }
 
     /* Get taste and odor names for the flavor name */
     sensory_kg_node_t* taste = find_node(wiring, taste_node);
     sensory_kg_node_t* odor = find_node(wiring, odor_node);
-    if (!taste || !odor) return -1;
+    if (!taste || !odor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (taste, odor)");
+        return -1;
+    }
 
     char name[64];
     snprintf(name, sizeof(name), "Flavor_%s_%s", taste->name, odor->name);
@@ -517,8 +583,14 @@ int sensory_kg_register_flavor(sensory_kg_wiring_t* wiring, uint32_t taste_node,
 
 int sensory_kg_register_chemosensory(sensory_kg_wiring_t* wiring, uint32_t olfact_node,
                                      uint32_t gust_node, uint32_t* node_id) {
-    if (!wiring || !node_id) return -1;
-    if (!wiring->config.enable_cross_modal) return -1;
+    if (!wiring || !node_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: required parameter is NULL (wiring, node_id)");
+        return -1;
+    }
+    if (!wiring->config.enable_cross_modal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring->config is NULL");
+        return -1;
+    }
 
     int result = create_node(wiring, SENSORY_KG_NODE_CHEMOSENSORY, "Chemosensory_Unit",
                              "Combined chemical sense processing", 0, node_id);
@@ -536,7 +608,10 @@ int sensory_kg_register_chemosensory(sensory_kg_wiring_t* wiring, uint32_t olfac
 
 int sensory_kg_create_integration_edge(sensory_kg_wiring_t* wiring, uint32_t node_a,
                                        uint32_t node_b, float weight) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring is NULL");
+        return -1;
+    }
 
     int result = sensory_kg_add_edge(wiring, SENSORY_KG_EDGE_INTEGRATES_WITH, node_a, node_b, weight);
     if (result == 0) {
@@ -551,15 +626,22 @@ int sensory_kg_create_integration_edge(sensory_kg_wiring_t* wiring, uint32_t nod
 
 int sensory_kg_add_edge(sensory_kg_wiring_t* wiring, sensory_kg_edge_type_t type,
                         uint32_t source, uint32_t target, float weight) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_register_tongue_region: wiring is NULL");
+        return -1;
+    }
 
     /* Verify nodes exist */
     if (!find_node(wiring, source) || !find_node(wiring, target)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_register_tongue_region: required parameter is NULL (find_node, find_node)");
         return -1;
     }
 
     sensory_kg_edge_t* edge = allocate_edge(wiring);
-    if (!edge) return -1;
+    if (!edge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_register_tongue_region: edge is NULL");
+        return -1;
+    }
 
     edge->edge_id = wiring->next_edge_id++;
     edge->type = type;
@@ -587,7 +669,10 @@ int sensory_kg_add_edge(sensory_kg_wiring_t* wiring, sensory_kg_edge_type_t type
 }
 
 int sensory_kg_remove_edge(sensory_kg_wiring_t* wiring, uint32_t edge_id) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_remove_edge: wiring is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < wiring->num_edges; i++) {
         if (wiring->edges[i].edge_id == edge_id) {
@@ -597,11 +682,15 @@ int sensory_kg_remove_edge(sensory_kg_wiring_t* wiring, uint32_t edge_id) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_remove_edge: validation failed");
     return -1;
 }
 
 int sensory_kg_update_edge_weight(sensory_kg_wiring_t* wiring, uint32_t edge_id, float new_weight) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_update_edge_weight: wiring is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < wiring->num_edges; i++) {
         if (wiring->edges[i].edge_id == edge_id && wiring->edges[i].active) {
@@ -610,6 +699,7 @@ int sensory_kg_update_edge_weight(sensory_kg_wiring_t* wiring, uint32_t edge_id,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_update_edge_weight: validation failed");
     return -1;
 }
 
@@ -618,10 +708,16 @@ int sensory_kg_update_edge_weight(sensory_kg_wiring_t* wiring, uint32_t edge_id,
  * ============================================================================ */
 
 int sensory_kg_query_node(sensory_kg_wiring_t* wiring, uint32_t node_id, sensory_kg_node_t* node) {
-    if (!wiring || !node) return -1;
+    if (!wiring || !node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, node)");
+        return -1;
+    }
 
     sensory_kg_node_t* found = find_node(wiring, node_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: found is NULL");
+        return -1;
+    }
 
     memcpy(node, found, sizeof(sensory_kg_node_t));
     wiring->stats.queries_processed++;
@@ -631,7 +727,10 @@ int sensory_kg_query_node(sensory_kg_wiring_t* wiring, uint32_t node_id, sensory
 
 int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t type,
                              sensory_kg_query_result_t* result) {
-    if (!wiring || !result) return -1;
+    if (!wiring || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        return -1;
+    }
 
     /* Count matching nodes */
     uint32_t count = 0;
@@ -652,7 +751,10 @@ int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t
 
     /* Allocate result */
     result->nodes = (sensory_kg_node_t**)nimcp_calloc(count, sizeof(sensory_kg_node_t*));
-    if (!result->nodes) return -1;
+    if (!result->nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_node: result->nodes is NULL");
+        return -1;
+    }
 
     /* Fill result */
     uint32_t idx = 0;
@@ -675,7 +777,10 @@ int sensory_kg_query_by_type(sensory_kg_wiring_t* wiring, sensory_kg_node_type_t
 int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
                                sensory_kg_edge_type_t edge_type,
                                sensory_kg_query_result_t* result) {
-    if (!wiring || !result) return -1;
+    if (!wiring || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        return -1;
+    }
 
     /* Count connected nodes */
     uint32_t count = 0;
@@ -701,6 +806,7 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
     if (!result->nodes || !result->edges) {
         nimcp_free(result->nodes);
         nimcp_free(result->edges);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sensory_kg_query_node: required parameter is NULL (result->nodes, result->edges)");
         return -1;
     }
 
@@ -726,7 +832,10 @@ int sensory_kg_query_connected(sensory_kg_wiring_t* wiring, uint32_t node_id,
 
 int sensory_kg_query_path(sensory_kg_wiring_t* wiring, uint32_t source_id,
                           uint32_t target_id, sensory_kg_query_result_t* result) {
-    if (!wiring || !result) return -1;
+    if (!wiring || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_query_node: required parameter is NULL (wiring, result)");
+        return -1;
+    }
 
     /* Simple BFS path finding - placeholder implementation */
     result->nodes = NULL;
@@ -757,10 +866,16 @@ void sensory_kg_free_query_result(sensory_kg_query_result_t* result) {
  * ============================================================================ */
 
 int sensory_kg_activate_node(sensory_kg_wiring_t* wiring, uint32_t node_id, float activation) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_activate_node: wiring is NULL");
+        return -1;
+    }
 
     sensory_kg_node_t* node = find_node(wiring, node_id);
-    if (!node) return -1;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_activate_node: node is NULL");
+        return -1;
+    }
 
     node->activation = (activation < 0.0f) ? 0.0f : (activation > 1.0f) ? 1.0f : activation;
     node->last_updated = get_timestamp();
@@ -769,10 +884,16 @@ int sensory_kg_activate_node(sensory_kg_wiring_t* wiring, uint32_t node_id, floa
 }
 
 int sensory_kg_propagate_activation(sensory_kg_wiring_t* wiring, uint32_t source_id, float decay_rate) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_propagate_activation: wiring is NULL");
+        return -1;
+    }
 
     sensory_kg_node_t* source = find_node(wiring, source_id);
-    if (!source) return -1;
+    if (!source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_propagate_activation: source is NULL");
+        return -1;
+    }
 
     /* Propagate to connected nodes */
     for (uint32_t i = 0; i < wiring->num_edges; i++) {
@@ -793,7 +914,10 @@ int sensory_kg_propagate_activation(sensory_kg_wiring_t* wiring, uint32_t source
 }
 
 int sensory_kg_decay_activations(sensory_kg_wiring_t* wiring, float decay_factor) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_decay_activations: wiring is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < wiring->num_nodes; i++) {
         if (wiring->nodes[i].is_active) {
@@ -812,12 +936,16 @@ int sensory_kg_decay_activations(sensory_kg_wiring_t* wiring, float decay_factor
  * ============================================================================ */
 
 int sensory_kg_validate_node(sensory_kg_wiring_t* wiring, uint32_t node_id, void* bbb_context) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_validate_node: wiring is NULL");
+        return -1;
+    }
     (void)bbb_context;  /* Would integrate with BBB in full implementation */
 
     sensory_kg_node_t* node = find_node(wiring, node_id);
     if (!node) {
         wiring->stats.validation_errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_validate_node: node is NULL");
         return -1;
     }
 
@@ -826,20 +954,32 @@ int sensory_kg_validate_node(sensory_kg_wiring_t* wiring, uint32_t node_id, void
 }
 
 int sensory_kg_set_security_level(sensory_kg_wiring_t* wiring, uint32_t node_id, uint32_t level) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_set_security_level: wiring is NULL");
+        return -1;
+    }
 
     sensory_kg_node_t* node = find_node(wiring, node_id);
-    if (!node) return -1;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_set_security_level: node is NULL");
+        return -1;
+    }
 
     node->security_level = level;
     return 0;
 }
 
 bool sensory_kg_check_access(sensory_kg_wiring_t* wiring, uint32_t node_id, uint32_t requester_level) {
-    if (!wiring) return false;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_check_access: wiring is NULL");
+        return false;
+    }
 
     sensory_kg_node_t* node = find_node(wiring, node_id);
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_check_access: node is NULL");
+        return false;
+    }
 
     return requester_level >= node->security_level;
 }
@@ -849,13 +989,19 @@ bool sensory_kg_check_access(sensory_kg_wiring_t* wiring, uint32_t node_id, uint
  * ============================================================================ */
 
 int sensory_kg_get_stats(const sensory_kg_wiring_t* wiring, sensory_kg_stats_t* stats) {
-    if (!wiring || !stats) return -1;
+    if (!wiring || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_get_stats: required parameter is NULL (wiring, stats)");
+        return -1;
+    }
     memcpy(stats, &wiring->stats, sizeof(sensory_kg_stats_t));
     return 0;
 }
 
 int sensory_kg_reset_stats(sensory_kg_wiring_t* wiring) {
-    if (!wiring) return -1;
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_reset_stats: wiring is NULL");
+        return -1;
+    }
 
     /* Preserve structural counts */
     uint32_t total_nodes = wiring->stats.total_nodes;
@@ -954,10 +1100,16 @@ size_t sensory_kg_get_serialization_size(const sensory_kg_wiring_t* wiring) {
 
 int sensory_kg_serialize(const sensory_kg_wiring_t* wiring, uint8_t* buffer,
                          size_t size, size_t* written) {
-    if (!wiring || !buffer || !written) return -1;
+    if (!wiring || !buffer || !written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_get_serialization_size: required parameter is NULL (wiring, buffer, written)");
+        return -1;
+    }
 
     size_t required = sensory_kg_get_serialization_size(wiring);
-    if (size < required) return -1;
+    if (size < required) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sensory_kg_get_serialization_size: validation failed");
+        return -1;
+    }
 
     /* Placeholder - full implementation would serialize all data */
     *written = 0;
@@ -966,11 +1118,15 @@ int sensory_kg_serialize(const sensory_kg_wiring_t* wiring, uint8_t* buffer,
 }
 
 sensory_kg_wiring_t* sensory_kg_deserialize(const uint8_t* buffer, size_t size, size_t* bytes_read) {
-    if (!buffer || !bytes_read) return NULL;
+    if (!buffer || !bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_deserialize: required parameter is NULL (buffer, bytes_read)");
+        return NULL;
+    }
     (void)size;
 
     /* Placeholder - full implementation would deserialize all data */
     *bytes_read = 0;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sensory_kg_deserialize: required parameter is NULL (buffer, bytes_read)");
     return NULL;
 }

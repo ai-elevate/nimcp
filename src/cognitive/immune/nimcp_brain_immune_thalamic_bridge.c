@@ -118,7 +118,10 @@ void brain_immune_thalamic_bridge_destroy(brain_immune_thalamic_bridge_t* bridge
 }
 
 int brain_immune_thalamic_bridge_reset(brain_immune_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_reset", 0.0f);
 
@@ -129,7 +132,10 @@ int brain_immune_thalamic_bridge_reset(brain_immune_thalamic_bridge_t* bridge) {
 }
 
 int brain_immune_thalamic_route_threat(brain_immune_thalamic_bridge_t* bridge, const brain_immune_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_route_threat: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* High-severity threats bypass attention gating */
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_brain_immune_thalami", 0.0f);
@@ -147,7 +153,10 @@ int brain_immune_thalamic_route_threat(brain_immune_thalamic_bridge_t* bridge, c
 }
 
 int brain_immune_thalamic_route_response(brain_immune_thalamic_bridge_t* bridge, const void* response, float intensity) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_route_response: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_brain_immune_thalami", 0.0f);
 
@@ -157,7 +166,10 @@ int brain_immune_thalamic_route_response(brain_immune_thalamic_bridge_t* bridge,
 }
 
 int brain_immune_thalamic_set_attention(brain_immune_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_brain_immune_thalami", 0.0f);
 
@@ -167,7 +179,10 @@ int brain_immune_thalamic_set_attention(brain_immune_thalamic_bridge_t* bridge, 
 }
 
 int brain_immune_thalamic_get_attention(const brain_immune_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_brain_immune_thalami", 0.0f);
@@ -177,7 +192,10 @@ int brain_immune_thalamic_get_attention(const brain_immune_thalamic_bridge_t* br
 }
 
 int brain_immune_thalamic_bridge_get_stats(const brain_immune_thalamic_bridge_t* bridge, brain_immune_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_immune_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     brain_immune_thalamic_bridge_heartbeat("brain_immune_get_stats", 0.0f);

@@ -43,6 +43,7 @@ static cortical_column_plasticity_state_t* find_column_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_column_state: validation failed");
     return NULL;
 }
 
@@ -136,6 +137,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     } else {
         if (cortical_plasticity_default_config(&bridge->config) != 0) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_bridge_create: validation failed");
             return NULL;
         }
     }
@@ -429,7 +431,10 @@ int cortical_plasticity_apply_stdp(
     if (!bridge->config.enable_stdp) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_apply_stdp: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -480,7 +485,10 @@ int cortical_plasticity_update_bcm_threshold(
     if (!bridge->config.enable_bcm) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_update_bcm_threshold: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -543,7 +551,10 @@ int cortical_plasticity_apply_homeostatic_scaling(
     if (!bridge->config.enable_homeostatic) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_apply_homeostatic_scaling: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -621,7 +632,10 @@ int cortical_plasticity_set_critical_period(
 bool cortical_plasticity_is_critical_period(
     const cortical_plasticity_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_is_critical_period: bridge is NULL");
+        return false;
+    }
     return bridge->config.in_critical_period;
 }
 
@@ -642,7 +656,10 @@ int cortical_plasticity_update_eligibility(
     if (!bridge->config.enable_eligibility) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_update_eligibility: state is NULL");
+        return -1;
+    }
     if (!state->eligibility_traces) return 0;  /* No traces allocated */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -676,7 +693,10 @@ int cortical_plasticity_apply_reward(
     if (!bridge->config.enable_eligibility) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_apply_reward: state is NULL");
+        return -1;
+    }
     if (!state->eligibility_traces) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -770,6 +790,7 @@ int cortical_plasticity_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_plasticity_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -796,6 +817,9 @@ int cortical_plasticity_disconnect_bio_async(
 bool cortical_plasticity_is_bio_async_connected(
     const cortical_plasticity_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

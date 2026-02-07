@@ -137,6 +137,7 @@ static emotion_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -388,7 +389,10 @@ void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
 }
 
 int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
@@ -446,8 +450,14 @@ int emotion_plasticity_register_synapse(
     emotion_category_t associated_emotion,
     float initial_weight)
 {
-    if (!bridge) return -1;
-    if (associated_emotion >= EMOTION_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
+    if (associated_emotion >= EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_register_synapse: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
@@ -464,6 +474,7 @@ int emotion_plasticity_register_synapse(
     /* Check capacity */
     if (bridge->n_synapses >= EMOTION_PLASTICITY_MAX_SYNAPSES) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -493,7 +504,10 @@ int emotion_plasticity_unregister_synapse(
     emotion_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_u", 0.0f);
@@ -520,6 +534,7 @@ int emotion_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_plasticity_unregister_synapse: operation failed");
     return -1;  /* Not found */
 }
 
@@ -528,7 +543,10 @@ int emotion_plasticity_get_synapse(
     uint32_t synapse_id,
     emotion_plasticity_synapse_t* synapse)
 {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
@@ -544,6 +562,7 @@ int emotion_plasticity_get_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_plasticity_get_synapse: validation failed");
     return -1;
 }
 
@@ -557,8 +576,14 @@ int emotion_plasticity_stimulus(
     float intensity,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (emotion >= EMOTION_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_stimulus: bridge is NULL");
+        return -1;
+    }
+    if (emotion >= EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_stimulus: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
@@ -630,8 +655,14 @@ int emotion_plasticity_response(
     float response_strength,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (emotion >= EMOTION_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_response: bridge is NULL");
+        return -1;
+    }
+    if (emotion >= EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_response: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
@@ -703,7 +734,10 @@ int emotion_plasticity_reward(
     float reward,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_r", 0.0f);
@@ -727,8 +761,14 @@ int emotion_plasticity_extinction_trial(
     emotion_category_t emotion,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (emotion >= EMOTION_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_extinction_trial: bridge is NULL");
+        return -1;
+    }
+    if (emotion >= EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_extinction_trial: capacity exceeded");
+        return -1;
+    }
     if (!bridge->config.enable_extinction) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -792,7 +832,10 @@ int emotion_plasticity_update(
     emotion_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_u", 0.0f);
@@ -888,7 +931,10 @@ int emotion_plasticity_update(
 }
 
 int emotion_plasticity_consolidate(emotion_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_c", 0.0f);
@@ -941,9 +987,15 @@ int emotion_plasticity_get_response_modulation(
     emotion_category_t emotion,
     float* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_get_response_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, modulation, sizeof(*modulation));
-    if (emotion >= EMOTION_COUNT) return -1;
+    if (emotion >= EMOTION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "emotion_plasticity_get_response_modulation: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
@@ -1004,7 +1056,10 @@ int emotion_plasticity_get_state(
     const emotion_plasticity_bridge_t* bridge,
     emotion_plasticity_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
@@ -1029,7 +1084,10 @@ int emotion_plasticity_get_stats(
     const emotion_plasticity_bridge_t* bridge,
     emotion_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_g", 0.0f);
@@ -1073,7 +1131,10 @@ int emotion_plasticity_set_weight_callback(
     emotion_weight_change_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
@@ -1096,7 +1157,10 @@ int emotion_plasticity_set_valence_modulation(
     emotion_plasticity_bridge_t* bridge,
     float valence)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_set_valence_modulation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
@@ -1113,7 +1177,10 @@ int emotion_plasticity_set_arousal_modulation(
     emotion_plasticity_bridge_t* bridge,
     float arousal)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_set_arousal_modulation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_s", 0.0f);
@@ -1133,7 +1200,7 @@ int emotion_plasticity_set_arousal_modulation(
 int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_plasticity_connect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
     if (!bridge->config.enable_bio_async) return 0;
 
@@ -1151,7 +1218,7 @@ int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
 int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_plasticity_disconnect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
+        return -1;
     }
 
     /* Phase 8: Heartbeat at operation start */
@@ -1166,7 +1233,10 @@ int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge)
 }
 
 bool emotion_plasticity_is_bio_async_connected(const emotion_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_plasticity_bridge_heartbeat("emotion_plas_emotion_plasticity_i", 0.0f);
 

@@ -132,7 +132,10 @@ int physics_train_get_modulation(
     physics_train_bridge_t* bridge,
     physics_train_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_train_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     float atp_level = 1.0f;
 
@@ -188,7 +191,10 @@ int physics_train_report_feedback(
     physics_train_bridge_t* bridge,
     const physics_train_feedback_t* feedback
 ) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_train_report_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
 
     /* Compute metabolic cost */
     float cost = feedback->update_magnitude *
@@ -208,7 +214,10 @@ int physics_train_report_feedback(
 }
 
 bool physics_train_is_plasticity_enabled(const physics_train_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_train_is_plasticity_enabled: bridge is NULL");
+        return false;
+    }
     return bridge->current_modulation.plasticity_enabled;
 }
 
@@ -236,7 +245,10 @@ int physics_train_get_stats(
     const physics_train_bridge_t* bridge,
     physics_train_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_train_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

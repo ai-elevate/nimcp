@@ -77,6 +77,7 @@ static hh_bio_subscription_t* find_subscription(hh_bio_async_bridge_t* b, uint32
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: validation failed");
     return NULL;
 }
 
@@ -162,8 +163,14 @@ int hh_bio_async_connect(
     nimcp_hh_population_t* population,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
-    if (!neuron && !population) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!neuron && !population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_connect: required parameter is NULL (neuron, population)");
+        return -1;
+    }
 
     bridge->neuron = neuron;
     bridge->population = population;
@@ -180,7 +187,10 @@ int hh_bio_async_connect(
 }
 
 int hh_bio_async_disconnect(hh_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->neuron = NULL;
     bridge->population = NULL;
@@ -199,7 +209,10 @@ bool hh_bio_async_is_connected(const hh_bio_async_bridge_t* bridge) {
  * ============================================================================ */
 
 int hh_bio_async_process_inbox(hh_bio_async_bridge_t* bridge, uint32_t max_messages) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Process incoming modulation requests (current injection, temp changes) */
     uint32_t processed = 0;
@@ -210,7 +223,10 @@ int hh_bio_async_process_inbox(hh_bio_async_bridge_t* bridge, uint32_t max_messa
 }
 
 int hh_bio_async_update(hh_bio_async_bridge_t* bridge, uint32_t delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -261,9 +277,15 @@ int hh_bio_async_broadcast_voltage(
     hh_bio_async_bridge_t* bridge,
     const nimcp_hh_neuron_t* neuron
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_voltage: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!neuron) neuron = bridge->neuron;
-    if (!neuron) return -1;
+    if (!neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_voltage: neuron is NULL");
+        return -1;
+    }
 
     hh_bio_voltage_msg_t msg = {0};
     msg.header.type = 0x1300;  /* BIO_MSG_PHYSICS_HH_VOLTAGE */
@@ -297,7 +319,10 @@ int hh_bio_async_broadcast_spike(
     const nimcp_hh_neuron_t* neuron,
     uint64_t spike_time_us
 ) {
-    if (!bridge || !bridge->connected || !neuron) return -1;
+    if (!bridge || !bridge->connected || !neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_spike: required parameter is NULL (bridge, bridge->connected, neuron)");
+        return -1;
+    }
 
     hh_bio_spike_msg_t msg = {0};
     msg.header.type = 0x1301;  /* BIO_MSG_PHYSICS_HH_SPIKE */
@@ -325,9 +350,15 @@ int hh_bio_async_broadcast_conductance(
     hh_bio_async_bridge_t* bridge,
     const nimcp_hh_neuron_t* neuron
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_conductance: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!neuron) neuron = bridge->neuron;
-    if (!neuron) return -1;
+    if (!neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_conductance: neuron is NULL");
+        return -1;
+    }
 
     hh_bio_conductance_msg_t msg = {0};
     msg.header.type = 0x1302;
@@ -359,9 +390,15 @@ int hh_bio_async_broadcast_gating(
     hh_bio_async_bridge_t* bridge,
     const nimcp_hh_neuron_t* neuron
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_gating: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!neuron) neuron = bridge->neuron;
-    if (!neuron) return -1;
+    if (!neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_gating: neuron is NULL");
+        return -1;
+    }
 
     hh_bio_gating_msg_t msg = {0};
     msg.header.type = 0x1303;
@@ -396,9 +433,15 @@ int hh_bio_async_broadcast_population_rate(
     hh_bio_async_bridge_t* bridge,
     const nimcp_hh_population_t* population
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_population_rate: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!population) population = bridge->population;
-    if (!population) return -1;
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_population_rate: population is NULL");
+        return -1;
+    }
 
     hh_bio_population_rate_msg_t msg = {0};
     msg.header.type = 0x1306;
@@ -434,7 +477,10 @@ int hh_bio_async_send_threshold_alert(
     hh_bio_async_bridge_t* bridge,
     const nimcp_hh_neuron_t* neuron
 ) {
-    if (!bridge || !bridge->connected || !neuron) return -1;
+    if (!bridge || !bridge->connected || !neuron) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_send_threshold_alert: required parameter is NULL (bridge, bridge->connected, neuron)");
+        return -1;
+    }
 
     hh_bio_threshold_alert_msg_t msg = {0};
     msg.header.type = 0x1307;
@@ -462,7 +508,10 @@ int hh_bio_async_broadcast_temperature(
     float old_temp,
     float new_temp
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_broadcast_temperature: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     hh_bio_temperature_msg_t msg = {0};
     msg.header.type = 0x1305;
@@ -490,7 +539,10 @@ int hh_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_subscribe_module: bridge is NULL");
+        return -1;
+    }
 
     /* Check if already subscribed */
     hh_bio_subscription_t* existing = find_subscription(bridge, module_id);
@@ -501,6 +553,7 @@ int hh_bio_async_subscribe_module(
 
     /* Find free slot */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hh_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -520,7 +573,10 @@ int hh_bio_async_subscribe_module(
 }
 
 int hh_bio_async_unsubscribe_module(hh_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_unsubscribe_module: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -529,6 +585,7 @@ int hh_bio_async_unsubscribe_module(hh_bio_async_bridge_t* bridge, uint32_t modu
             return 0;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hh_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
@@ -537,10 +594,16 @@ int hh_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_update_subscription: bridge is NULL");
+        return -1;
+    }
 
     hh_bio_subscription_t* sub = find_subscription(bridge, module_id);
-    if (!sub) return -1;
+    if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_update_subscription: sub is NULL");
+        return -1;
+    }
 
     sub->msg_type_mask = msg_types;
     return 0;
@@ -573,13 +636,19 @@ int hh_bio_async_get_stats(
     const hh_bio_async_bridge_t* bridge,
     hh_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int hh_bio_async_reset_stats(hh_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hh_bio_async_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(hh_bio_async_stats_t));
     return 0;
 }

@@ -161,6 +161,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
     /* WHAT: Validate input */
     if (base_network == NULL) {
         LOG_ERROR("Base network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_create: validation failed");
         return NULL;
     }
 
@@ -173,6 +174,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
         nimcp_calloc(1, sizeof(struct ensemble_context_struct));
     if (ensemble == NULL) {
         LOG_ERROR("Failed to allocate ensemble context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_create: validation failed");
         return NULL;
     }
 
@@ -187,6 +189,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
     if (ensemble->models == NULL) {
         LOG_ERROR("Failed to allocate models array");
         nimcp_free(ensemble);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_create: validation failed");
         return NULL;
     }
 
@@ -236,6 +239,7 @@ ensemble_context_t ensemble_create(adaptive_network_t base_network,
         nimcp_mutex_destroy(&ensemble->lock);
         nimcp_free(ensemble->models);
         nimcp_free(ensemble);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_create: ensemble->num_models is zero");
         return NULL;
     }
 
@@ -302,6 +306,7 @@ bool ensemble_add_model(ensemble_context_t ensemble,
                        uint32_t training_epoch)
 {
     if (ensemble == NULL || network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensemble_add_model: validation failed");
         return false;
     }
 
@@ -316,6 +321,7 @@ bool ensemble_add_model(ensemble_context_t ensemble,
         nimcp_mutex_unlock(&ensemble->lock);
         LOG_WARN("Ensemble is full (%u/%u models)",
                 ensemble->num_models, ensemble->max_models);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ensemble_add_model: capacity exceeded");
         return false;
     }
 
@@ -840,6 +846,7 @@ void ensemble_compute_mean(const float** predictions,
 bool ensemble_get_stats(ensemble_context_t ensemble, ensemble_stats_t* stats)
 {
     if (ensemble == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ensemble_get_stats: validation failed");
         return false;
     }
 
@@ -881,6 +888,7 @@ static adaptive_network_t perturb_network_weights(adaptive_network_t base,
     const adaptive_network_config_t* base_config = adaptive_network_get_config(base);
     if (base_config == NULL) {
         LOG_ERROR("Failed to get base network config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "perturb_network_weights: validation failed");
         return NULL;
     }
 
@@ -892,6 +900,7 @@ static adaptive_network_t perturb_network_weights(adaptive_network_t base,
 
     if (perturbed == NULL) {
         LOG_ERROR("Failed to create perturbed network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "perturb_network_weights: validation failed");
         return NULL;
     }
 
@@ -947,6 +956,7 @@ ensemble_context_t ensemble_train_from_brain(
     /* HOW: Load checkpoints and create ensemble */
 
     if (brain == NULL || checkpoint_paths == NULL || num_checkpoints == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_train_from_brain: num_checkpoints is zero");
         return NULL;
     }
 
@@ -958,6 +968,7 @@ ensemble_context_t ensemble_train_from_brain(
     adaptive_network_t base_network = brain_get_network(brain);
     if (base_network == NULL) {
         LOG_ERROR("Failed to get network from brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_train_from_brain: validation failed");
         return NULL;
     }
 
@@ -965,6 +976,7 @@ ensemble_context_t ensemble_train_from_brain(
     ensemble_context_t ensemble = ensemble_create(base_network, config);
     if (ensemble == NULL) {
         LOG_ERROR("Failed to create ensemble");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_train_from_brain: validation failed");
         return NULL;
     }
 
@@ -1042,7 +1054,10 @@ void ensemble_uncertainty_set_instance_health_agent(void* ctx, nimcp_health_agen
 }
 
 int ensemble_uncertainty_training_begin(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_uncertainty_training_begin: ctx is NULL");
+        return -1;
+    }
     ensemble_uncertainty_heartbeat_instance(g_ensemble_uncertainty_instance_health_agent,
         "ens_uncert_training_begin", 0.0f);
     NIMCP_LOGGING_INFO("[ENSEMBLE_UNCERTAINTY] Training begin: module state reset");
@@ -1050,7 +1065,10 @@ int ensemble_uncertainty_training_begin(void* ctx) {
 }
 
 int ensemble_uncertainty_training_step(void* ctx, float progress) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_uncertainty_training_step: ctx is NULL");
+        return -1;
+    }
     if (progress < 0.0f) progress = 0.0f;
     if (progress > 1.0f) progress = 1.0f;
     ensemble_uncertainty_heartbeat_instance(g_ensemble_uncertainty_instance_health_agent,
@@ -1059,7 +1077,10 @@ int ensemble_uncertainty_training_step(void* ctx, float progress) {
 }
 
 int ensemble_uncertainty_training_end(void* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_uncertainty_training_end: ctx is NULL");
+        return -1;
+    }
     ensemble_uncertainty_heartbeat_instance(g_ensemble_uncertainty_instance_health_agent,
         "ens_uncert_training_end", 1.0f);
     NIMCP_LOGGING_INFO("[ENSEMBLE_UNCERTAINTY] Training end: metrics finalized");

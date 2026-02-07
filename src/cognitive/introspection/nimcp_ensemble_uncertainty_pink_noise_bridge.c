@@ -173,6 +173,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
         int ret = ensemble_pink_default_config(&bridge->config);
         if (ret != NIMCP_SUCCESS) {
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_create: validation failed");
             return NULL;
         }
     }
@@ -182,6 +183,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ensemble_pink_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -382,6 +384,7 @@ int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
 
 bool ensemble_pink_is_connected(const ensemble_pink_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -825,6 +828,7 @@ const float* ensemble_pink_get_noise_samples(
     uint32_t* num_samples)
 {
     if (!bridge || !num_samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_get_noise_samples: required parameter is NULL (bridge, num_samples)");
         return NULL;
     }
 
@@ -1029,6 +1033,7 @@ bool ensemble_pink_is_bio_async_connected(
     const ensemble_pink_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensemble_pink_is_bio_async_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

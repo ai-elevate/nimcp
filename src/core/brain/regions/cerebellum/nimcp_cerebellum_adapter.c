@@ -430,6 +430,7 @@ static granule_layer_t* create_granule_layer(uint32_t num_cells, uint32_t num_mo
     layer->cells = nimcp_calloc(num_cells, sizeof(granule_cell_t));
     if (!layer->cells) {
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_granule_layer: layer->cells is NULL");
         return NULL;
     }
 
@@ -437,6 +438,7 @@ static granule_layer_t* create_granule_layer(uint32_t num_cells, uint32_t num_mo
     if (!layer->mossy_input_buffer) {
         nimcp_free(layer->cells);
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_granule_layer: layer->mossy_input_buffer is NULL");
         return NULL;
     }
 
@@ -496,6 +498,7 @@ static purkinje_layer_t* create_purkinje_layer(uint32_t num_cells, uint32_t num_
     layer->cells = nimcp_calloc(num_cells, sizeof(purkinje_cell_t));
     if (!layer->cells) {
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_granule_layer: layer->cells is NULL");
         return NULL;
     }
 
@@ -503,6 +506,7 @@ static purkinje_layer_t* create_purkinje_layer(uint32_t num_cells, uint32_t num_
     if (!layer->parallel_input_buffer) {
         nimcp_free(layer->cells);
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_granule_layer: layer->parallel_input_buffer is NULL");
         return NULL;
     }
 
@@ -568,6 +572,7 @@ static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_inte
     nuclei->dentate = nimcp_calloc(num_dentate, sizeof(nucleus_neuron_t));
     if (!nuclei->dentate) {
         nimcp_free(nuclei);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_purkinje_layer: nuclei->dentate is NULL");
         return NULL;
     }
 
@@ -576,6 +581,7 @@ static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_inte
     if (!nuclei->interposed) {
         nimcp_free(nuclei->dentate);
         nimcp_free(nuclei);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_purkinje_layer: nuclei->interposed is NULL");
         return NULL;
     }
 
@@ -585,6 +591,7 @@ static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_inte
         nimcp_free(nuclei->interposed);
         nimcp_free(nuclei->dentate);
         nimcp_free(nuclei);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_purkinje_layer: nuclei->fastigial is NULL");
         return NULL;
     }
 
@@ -692,6 +699,7 @@ static climbing_fiber_system_t* create_climbing_fibers(uint32_t num_fibers, uint
         if (cf->error_signals) nimcp_free(cf->error_signals);
         if (cf->purkinje_targets) nimcp_free(cf->purkinje_targets);
         nimcp_free(cf);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create_climbing_fibers: validation failed");
         return NULL;
     }
 
@@ -742,6 +750,7 @@ static glomerular_layer_t* create_glomerular_layer(uint32_t num_mossy,
     layer->glomeruli = nimcp_calloc(num_mossy, sizeof(glomerulus_t));
     if (!layer->glomeruli) {
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_climbing_fibers: layer->glomeruli is NULL");
         return NULL;
     }
 
@@ -766,6 +775,7 @@ static glomerular_layer_t* create_glomerular_layer(uint32_t num_mossy,
             }
             nimcp_free(layer->glomeruli);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "destroy_climbing_fibers: validation failed");
             return NULL;
         }
 
@@ -833,6 +843,7 @@ static molecular_layer_interneurons_t* create_molecular_interneurons(
     layer->parallel_input_buffer = nimcp_calloc(num_parallel, sizeof(float));
     if (!layer->parallel_input_buffer) {
         nimcp_free(layer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_glomerular_layer: layer->parallel_input_buffer is NULL");
         return NULL;
     }
 
@@ -842,6 +853,7 @@ static molecular_layer_interneurons_t* create_molecular_interneurons(
         if (!layer->basket_cells) {
             nimcp_free(layer->parallel_input_buffer);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_glomerular_layer: layer->basket_cells is NULL");
             return NULL;
         }
 
@@ -883,6 +895,7 @@ static molecular_layer_interneurons_t* create_molecular_interneurons(
             }
             nimcp_free(layer->parallel_input_buffer);
             nimcp_free(layer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "destroy_glomerular_layer: validation failed");
             return NULL;
         }
 
@@ -972,6 +985,7 @@ static golgi_cell_network_t* create_golgi_network(uint32_t num_golgi,
     network->granule_activity_buffer = nimcp_calloc(num_granule, sizeof(float));
     if (!network->granule_activity_buffer) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_molecular_interneurons: network->granule_activity_buffer is NULL");
         return NULL;
     }
 
@@ -980,6 +994,7 @@ static golgi_cell_network_t* create_golgi_network(uint32_t num_golgi,
     if (!network->cells) {
         nimcp_free(network->granule_activity_buffer);
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "destroy_molecular_interneurons: network->cells is NULL");
         return NULL;
     }
 
@@ -1567,6 +1582,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     cerebellum_adapter_t* adapter = nimcp_calloc(1, sizeof(cerebellum_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", CEREBELLUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter is NULL");
         return NULL;
     }
 
@@ -1587,6 +1603,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->granule) {
         LOG_ERROR("[%s] Failed to create granule layer", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->granule is NULL");
         return NULL;
     }
 
@@ -1600,6 +1617,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->purkinje) {
         LOG_ERROR("[%s] Failed to create Purkinje layer", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->purkinje is NULL");
         return NULL;
     }
 
@@ -1612,6 +1630,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->nuclei) {
         LOG_ERROR("[%s] Failed to create deep nuclei", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->nuclei is NULL");
         return NULL;
     }
 
@@ -1622,6 +1641,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->climbing) {
         LOG_ERROR("[%s] Failed to create climbing fiber system", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->climbing is NULL");
         return NULL;
     }
 
@@ -1633,6 +1653,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->forward_model.weights) {
         LOG_ERROR("[%s] Failed to allocate forward model weights", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->forward_model is NULL");
         return NULL;
     }
     /* Initialize as identity matrix */
@@ -1651,6 +1672,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
     if (!adapter->output_buffer) {
         LOG_ERROR("[%s] Failed to allocate output buffer", CEREBELLUM_LOG_MODULE);
         cerebellum_destroy(adapter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->output_buffer is NULL");
         return NULL;
     }
 
@@ -1667,6 +1689,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         if (!adapter->glomerular) {
             LOG_ERROR("[%s] Failed to create glomerular layer", CEREBELLUM_LOG_MODULE);
             cerebellum_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->glomerular is NULL");
             return NULL;
         }
     }
@@ -1689,6 +1712,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         if (!adapter->molecular) {
             LOG_ERROR("[%s] Failed to create molecular interneurons", CEREBELLUM_LOG_MODULE);
             cerebellum_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->molecular is NULL");
             return NULL;
         }
     }
@@ -1705,6 +1729,7 @@ cerebellum_adapter_t* cerebellum_create(const cerebellum_config_t* config) {
         if (!adapter->golgi) {
             LOG_ERROR("[%s] Failed to create Golgi network", CEREBELLUM_LOG_MODULE);
             cerebellum_destroy(adapter);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cerebellum_create: adapter->golgi is NULL");
             return NULL;
         }
     }
@@ -1783,7 +1808,10 @@ void cerebellum_destroy(cerebellum_adapter_t* adapter) {
 }
 
 bool cerebellum_reset(cerebellum_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", CEREBELLUM_LOG_MODULE);
 
@@ -1831,11 +1859,13 @@ bool cerebellum_process_mossy_input(cerebellum_adapter_t* adapter,
                                      const mossy_fiber_input_t* input) {
     if (!adapter || !input) {
         set_error(adapter, CEREBELLUM_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: required parameter is NULL (adapter, input)");
         return false;
     }
 
     if (!adapter->granule) {
         set_error(adapter, CEREBELLUM_ERROR_GRANULE_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: adapter->granule is NULL");
         return false;
     }
 
@@ -1855,11 +1885,13 @@ bool cerebellum_process_mossy_batch(cerebellum_adapter_t* adapter,
                                      uint32_t count) {
     if (!adapter || !inputs || count == 0) {
         set_error(adapter, CEREBELLUM_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: required parameter is NULL (adapter, inputs)");
         return false;
     }
 
     for (uint32_t i = 0; i < count; i++) {
         if (!cerebellum_process_mossy_input(adapter, &inputs[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_reset: cerebellum_process_mossy_input is NULL");
             return false;
         }
     }
@@ -1875,11 +1907,13 @@ bool cerebellum_process_climbing_signal(cerebellum_adapter_t* adapter,
                                          const climbing_fiber_signal_t* signal) {
     if (!adapter || !signal) {
         set_error(adapter, CEREBELLUM_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: required parameter is NULL (adapter, signal)");
         return false;
     }
 
     if (!adapter->climbing || !adapter->purkinje) {
         set_error(adapter, CEREBELLUM_ERROR_LEARNING_FAILURE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: required parameter is NULL (adapter->climbing, adapter->purkinje)");
         return false;
     }
 
@@ -1911,6 +1945,7 @@ bool cerebellum_broadcast_error(cerebellum_adapter_t* adapter,
                                  uint8_t error_type) {
     if (!adapter) {
         set_error(adapter, CEREBELLUM_ERROR_INVALID_INPUT);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_reset: adapter is NULL");
         return false;
     }
 
@@ -1934,7 +1969,10 @@ bool cerebellum_broadcast_error(cerebellum_adapter_t* adapter,
  *===========================================================================*/
 
 bool cerebellum_begin_coordination(cerebellum_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_begin_coordination: adapter is NULL");
+        return false;
+    }
 
     cerebellum_reset(adapter);
     adapter->status = CEREBELLUM_STATUS_IDLE;
@@ -1944,7 +1982,10 @@ bool cerebellum_begin_coordination(cerebellum_adapter_t* adapter) {
 
 bool cerebellum_process(cerebellum_adapter_t* adapter,
                          motor_coordination_result_t* result) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_begin_coordination: adapter is NULL");
+        return false;
+    }
 
     adapter->status = CEREBELLUM_STATUS_PROCESSING;
 
@@ -2042,7 +2083,10 @@ bool cerebellum_process(cerebellum_adapter_t* adapter,
 
 bool cerebellum_get_nuclei_output(cerebellum_adapter_t* adapter,
                                    nuclei_output_t* output) {
-    if (!adapter || !output || !adapter->nuclei) return false;
+    if (!adapter || !output || !adapter->nuclei) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_begin_coordination: required parameter is NULL (adapter, output, adapter->nuclei)");
+        return false;
+    }
 
     /* Aggregate output from all nuclei */
     memset(output, 0, sizeof(nuclei_output_t));
@@ -2090,7 +2134,10 @@ bool cerebellum_get_nuclei_output(cerebellum_adapter_t* adapter,
  *===========================================================================*/
 
 bool cerebellum_set_target_timing(cerebellum_adapter_t* adapter, float target_ms) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_set_target_timing: adapter is NULL");
+        return false;
+    }
 
     adapter->timing.target_timing_ms = target_ms;
     return true;
@@ -2099,7 +2146,10 @@ bool cerebellum_set_target_timing(cerebellum_adapter_t* adapter, float target_ms
 bool cerebellum_predict_timing(cerebellum_adapter_t* adapter,
                                 float* predicted_ms,
                                 float* confidence) {
-    if (!adapter || !predicted_ms) return false;
+    if (!adapter || !predicted_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_set_target_timing: required parameter is NULL (adapter, predicted_ms)");
+        return false;
+    }
 
     *predicted_ms = adapter->timing.predicted_timing_ms;
 
@@ -2132,7 +2182,10 @@ bool cerebellum_predict_timing(cerebellum_adapter_t* adapter,
 }
 
 bool cerebellum_report_timing(cerebellum_adapter_t* adapter, float actual_ms) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: adapter is NULL");
+        return false;
+    }
 
     adapter->timing.actual_timing_ms = actual_ms;
 
@@ -2169,7 +2222,10 @@ bool cerebellum_update_forward_model(cerebellum_adapter_t* adapter,
                                       const float* motor_command,
                                       const float* outcome,
                                       uint32_t num_dims) {
-    if (!adapter || !motor_command || !outcome || num_dims == 0) return false;
+    if (!adapter || !motor_command || !outcome || num_dims == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: required parameter is NULL (adapter, motor_command, outcome)");
+        return false;
+    }
     if (!adapter->config.enable_forward_models) return true;
 
     forward_model_t* fm = &adapter->forward_model;
@@ -2210,7 +2266,10 @@ bool cerebellum_predict_outcome(cerebellum_adapter_t* adapter,
                                  uint32_t num_dims,
                                  float* predicted_outcome,
                                  float* confidence) {
-    if (!adapter || !motor_command || !predicted_outcome) return false;
+    if (!adapter || !motor_command || !predicted_outcome) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: required parameter is NULL (adapter, motor_command, predicted_outcome)");
+        return false;
+    }
 
     forward_model_t* fm = &adapter->forward_model;
     uint32_t dims = (num_dims < 8) ? num_dims : 8;
@@ -2241,7 +2300,10 @@ bool cerebellum_adapt_gains(cerebellum_adapter_t* adapter,
                              float* gains,
                              uint32_t num_dims,
                              float adaptation_rate) {
-    if (!adapter || !gains || num_dims == 0) return false;
+    if (!adapter || !gains || num_dims == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: required parameter is NULL (adapter, gains)");
+        return false;
+    }
     if (!adapter->config.enable_motor_adaptation) return true;
 
     uint32_t dims = (num_dims < 8) ? num_dims : 8;
@@ -2264,7 +2326,10 @@ bool cerebellum_adapt_gains(cerebellum_adapter_t* adapter,
 
 bool cerebellum_get_adaptation_state(cerebellum_adapter_t* adapter,
                                       float* adaptation_level) {
-    if (!adapter || !adaptation_level) return false;
+    if (!adapter || !adaptation_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: required parameter is NULL (adapter, adaptation_level)");
+        return false;
+    }
 
     *adaptation_level = adapter->adaptation_level;
     return true;
@@ -2277,7 +2342,10 @@ bool cerebellum_get_adaptation_state(cerebellum_adapter_t* adapter,
 bool cerebellum_set_motor_callback(cerebellum_adapter_t* adapter,
                                     cerebellum_motor_callback_t callback,
                                     void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: adapter is NULL");
+        return false;
+    }
     adapter->motor_callback = callback;
     adapter->motor_user_data = user_data;
     return true;
@@ -2286,7 +2354,10 @@ bool cerebellum_set_motor_callback(cerebellum_adapter_t* adapter,
 bool cerebellum_set_error_callback(cerebellum_adapter_t* adapter,
                                     cerebellum_error_callback_t callback,
                                     void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: adapter is NULL");
+        return false;
+    }
     adapter->error_callback = callback;
     adapter->error_user_data = user_data;
     return true;
@@ -2295,7 +2366,10 @@ bool cerebellum_set_error_callback(cerebellum_adapter_t* adapter,
 bool cerebellum_set_event_callback(cerebellum_adapter_t* adapter,
                                     cerebellum_event_callback_t callback,
                                     void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_report_timing: adapter is NULL");
+        return false;
+    }
     adapter->event_callback = callback;
     adapter->event_user_data = user_data;
     return true;
@@ -2344,13 +2418,19 @@ const char* cerebellum_status_string(cerebellum_status_t status) {
 }
 
 bool cerebellum_get_stats(const cerebellum_adapter_t* adapter, cerebellum_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_stats: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool cerebellum_get_config(const cerebellum_adapter_t* adapter, cerebellum_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_config: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -2424,6 +2504,7 @@ nimcp_bio_future_t cerebellum_request_coordination_async(
 
     if (!adapter || !adapter->bio_ctx || !motor_command) {
         LOG_WARNING("[%s] Cannot request coordination: invalid arguments", CEREBELLUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_process_bio_messages: required parameter is NULL (adapter, adapter->bio_ctx, motor_command)");
         return NULL;
     }
 
@@ -2449,6 +2530,7 @@ nimcp_bio_future_t cerebellum_request_coordination_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send coordination request", CEREBELLUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_process_bio_messages: promise is NULL");
         return NULL;
     }
 
@@ -2536,10 +2618,12 @@ bool cerebellum_get_basket_activity(const cerebellum_adapter_t* adapter,
                                      float* activation,
                                      float* firing_rate) {
     if (!adapter || !adapter->molecular || !adapter->molecular->basket_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: required parameter is NULL (adapter, adapter->molecular, adapter->molecular->basket_cells)");
         return false;
     }
 
     if (basket_id >= adapter->molecular->num_basket_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_get_golgi_network: capacity exceeded");
         return false;
     }
 
@@ -2560,10 +2644,12 @@ bool cerebellum_get_purkinje_inhibition(const cerebellum_adapter_t* adapter,
                                          float* somatic_inhibition,
                                          float* dendritic_inhibition) {
     if (!adapter || !adapter->purkinje) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: required parameter is NULL (adapter, adapter->purkinje)");
         return false;
     }
 
     if (purkinje_id >= adapter->purkinje->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cerebellum_get_golgi_network: capacity exceeded");
         return false;
     }
 
@@ -2607,6 +2693,7 @@ bool cerebellum_get_golgi_feedback(const cerebellum_adapter_t* adapter,
                                     float* total_feedback,
                                     float* avg_granule_inhibition) {
     if (!adapter || !adapter->golgi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: required parameter is NULL (adapter, adapter->golgi)");
         return false;
     }
 
@@ -2637,6 +2724,7 @@ bool cerebellum_get_golgi_feedback(const cerebellum_adapter_t* adapter,
 bool cerebellum_process_vestibular_input(cerebellum_adapter_t* adapter,
                                           const vestibular_mossy_signal_t* input) {
     if (!adapter || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: required parameter is NULL (adapter, input)");
         return false;
     }
 
@@ -2654,6 +2742,7 @@ bool cerebellum_process_vestibular_input(cerebellum_adapter_t* adapter,
 bool cerebellum_get_vor_output(cerebellum_adapter_t* adapter,
                                 float vor_output[3]) {
     if (!adapter || !vor_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: required parameter is NULL (adapter, vor_output)");
         return false;
     }
 
@@ -2677,6 +2766,7 @@ bool cerebellum_set_metabolic_modulation(cerebellum_adapter_t* adapter,
                                           float timing_precision,
                                           float learning_capacity) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cerebellum_get_golgi_network: adapter is NULL");
         return false;
     }
 

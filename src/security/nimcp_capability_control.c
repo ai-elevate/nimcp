@@ -206,6 +206,7 @@ static bool is_domain_allowed(
     const char* domain)
 {
     if (domain == NULL || domain[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_domain_allowed: validation failed");
         return false;
     }
 
@@ -299,6 +300,7 @@ capability_control_t* capability_control_create(
     capability_control_t* system = nimcp_calloc(1, sizeof(capability_control_t));
     if (system == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to allocate capability control");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capability_control_create: validation failed");
         return NULL;
     }
 
@@ -307,6 +309,7 @@ capability_control_t* capability_control_create(
     if (system->mutex == NULL) {
         NIMCP_LOG_ERROR(LOG_CATEGORY, "Failed to create mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "capability_control_create: validation failed");
         return NULL;
     }
 
@@ -323,6 +326,7 @@ capability_control_t* capability_control_create(
             "Configuration error: self-modification must be disabled");
         nimcp_mutex_destroy(system->mutex);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "capability_control_create: check_self_mod_disabled is NULL");
         return NULL;
     }
 
@@ -938,6 +942,7 @@ const char* capability_category_name(capability_category_t category)
 bool capability_domain_matches(const char* domain, const char* pattern)
 {
     if (domain == NULL || pattern == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capability_domain_matches: validation failed");
         return false;
     }
 
@@ -959,6 +964,7 @@ bool capability_domain_matches(const char* domain, const char* pattern)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "capability_domain_matches: validation failed");
     return false;
 }
 

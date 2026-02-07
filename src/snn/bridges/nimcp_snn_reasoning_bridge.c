@@ -97,6 +97,7 @@ int snn_reasoning_bridge_connect_bio_async(snn_reasoning_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_reasoning_bridge_connect_bio_async: validation failed");
     return -1;
 }
 
@@ -238,7 +239,10 @@ int snn_reasoning_compete_populations(
 }
 
 bool snn_reasoning_check_decision_threshold(const snn_reasoning_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_check_decision_threshold: bridge is NULL");
+        return false;
+    }
     return bridge->state.evidence_accumulation >= bridge->config.decision_threshold;
 }
 

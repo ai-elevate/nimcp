@@ -168,6 +168,7 @@ int snn_sleep_bridge_connect_bio_async(snn_sleep_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_sleep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

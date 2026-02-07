@@ -333,7 +333,10 @@ int symbolic_logic_fep_query_self_knowledge(kg_reader_t* kg) {
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 
 int symbolic_logic_fep_bridge_update_wrapper(void* bridge_handle) {
-    if (!bridge_handle) return -1;
+    if (!bridge_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "symbolic_logic_fep_bridge_update_wrapper: bridge_handle is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     symbolic_logic_fep_bridge_heartbeat("symbolic_log_update_wrapper", 0.0f);
 

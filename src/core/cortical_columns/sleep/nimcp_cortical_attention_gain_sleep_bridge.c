@@ -63,7 +63,10 @@ static void cortical_attention_gain_on_sleep_state_change(sleep_state_t new_stat
 
 int cortical_attention_gain_sleep_default_config(cortical_attention_gain_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_gain_modulation = true;
     config->modulation_strength = 1.0f;
     return 0;
@@ -74,7 +77,10 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
     void* attention_gain_module,
     sleep_system_t sleep)
 {
-    if (!attention_gain_module || !sleep) return NULL;
+    if (!attention_gain_module || !sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_attention_gain_sleep_bridge_create: required parameter is NULL (attention_gain_module, sleep)");
+        return NULL;
+    }
 
     struct cortical_attention_gain_sleep_bridge_struct* bridge =
         (struct cortical_attention_gain_sleep_bridge_struct*)nimcp_malloc(
@@ -98,6 +104,7 @@ cortical_attention_gain_sleep_bridge_t cortical_attention_gain_sleep_bridge_crea
     if (bridge_base_init(&bridge->base, 0, "cortical_attention_gain_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -124,7 +131,10 @@ void cortical_attention_gain_sleep_bridge_destroy(cortical_attention_gain_sleep_
 
 int cortical_attention_gain_sleep_update(cortical_attention_gain_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_update: bridge is NULL");
+        return -1;
+    }
     return 0;
 }
 
@@ -139,7 +149,10 @@ float cortical_attention_gain_sleep_get_gain_factor(const cortical_attention_gai
 
 bool cortical_attention_gain_sleep_is_offline(const cortical_attention_gain_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_attention_gain_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bool offline = bridge->effects.gain_offline;
     nimcp_mutex_unlock(bridge->base.mutex);

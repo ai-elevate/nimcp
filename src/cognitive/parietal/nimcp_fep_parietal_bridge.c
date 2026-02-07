@@ -562,7 +562,10 @@ int fep_parietal_get_stats(
     const fep_parietal_bridge_t* bridge,
     fep_parietal_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_parietal_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     fep_parietal_bridge_heartbeat("fep_parietal_fep_parietal_get_sta", 0.0f);

@@ -79,6 +79,7 @@ int signal_exception_queue_init(void)
     nimcp_result_t result = nimcp_queue_create(&config, &g_signal_queue);
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR("Failed to create signal exception queue: %d", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_exception_queue_init: validation failed");
         return -1;
     }
 

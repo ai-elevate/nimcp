@@ -376,6 +376,7 @@ hypothalamus_adapter_t* hypothalamus_create(const hypothalamus_config_t* config)
         1, sizeof(hypothalamus_adapter_t));
     if (!adapter) {
         LOG_ERROR(HYPOTHALAMUS_LOG_MODULE, "Failed to allocate adapter memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypothalamus_create: adapter is NULL");
         return NULL;
     }
 
@@ -516,7 +517,10 @@ void hypothalamus_destroy(hypothalamus_adapter_t* adapter) {
 }
 
 bool hypothalamus_reset(hypothalamus_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG(HYPOTHALAMUS_LOG_MODULE, "Resetting adapter state");
 
@@ -566,7 +570,10 @@ bool hypothalamus_reset(hypothalamus_adapter_t* adapter) {
 
 bool hypothalamus_update_circadian(hypothalamus_adapter_t* adapter,
                                     uint64_t delta_time_us) {
-    if (!adapter || !adapter->config.enable_circadian) return false;
+    if (!adapter || !adapter->config.enable_circadian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_reset: required parameter is NULL (adapter, adapter->config)");
+        return false;
+    }
 
     /* Convert delta time to hours for circadian calculation */
     float delta_hours = (float)delta_time_us / (float)US_PER_HOUR;
@@ -652,7 +659,10 @@ hypo_circadian_phase_t hypothalamus_get_circadian_phase(
 
 bool hypothalamus_get_circadian_state(const hypothalamus_adapter_t* adapter,
                                        hypo_circadian_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_reset: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.circadian;
     return true;
 }
@@ -726,7 +736,10 @@ float hypothalamus_apply_light(hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
                                       uint64_t delta_time_us) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
 
     float dt = (float)delta_time_us / (float)US_PER_SECOND;
 
@@ -862,42 +875,60 @@ bool hypothalamus_update_homeostasis(hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_set_temperature(hypothalamus_adapter_t* adapter,
                                    float temperature_c) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->state.thermoregulation.core_temp.current_value = temperature_c;
     return true;
 }
 
 bool hypothalamus_set_blood_glucose(hypothalamus_adapter_t* adapter,
                                      float glucose_mg_dl) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->state.appetite.blood_glucose.current_value = glucose_mg_dl;
     return true;
 }
 
 bool hypothalamus_set_osmolality(hypothalamus_adapter_t* adapter,
                                   float osmolality_mosm) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: adapter is NULL");
+        return false;
+    }
     adapter->state.hydration.osmolality.current_value = osmolality_mosm;
     return true;
 }
 
 bool hypothalamus_get_thermoregulation(const hypothalamus_adapter_t* adapter,
                                         thermoregulation_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.thermoregulation;
     return true;
 }
 
 bool hypothalamus_get_appetite(const hypothalamus_adapter_t* adapter,
                                 appetite_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.appetite;
     return true;
 }
 
 bool hypothalamus_get_hydration(const hypothalamus_adapter_t* adapter,
                                  hydration_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.hydration;
     return true;
 }
@@ -908,7 +939,10 @@ bool hypothalamus_get_hydration(const hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_update_hpa_axis(hypothalamus_adapter_t* adapter,
                                    uint64_t delta_time_us) {
-    if (!adapter || !adapter->config.enable_hpa_axis) return false;
+    if (!adapter || !adapter->config.enable_hpa_axis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, adapter->config)");
+        return false;
+    }
 
     float dt = (float)delta_time_us / (float)US_PER_SECOND;
     hpa_axis_state_t* hpa = &adapter->state.hpa_axis;
@@ -998,7 +1032,10 @@ float hypothalamus_apply_stress(hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_get_hpa_state(const hypothalamus_adapter_t* adapter,
                                  hpa_axis_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.hpa_axis;
     return true;
 }
@@ -1014,7 +1051,10 @@ float hypothalamus_get_cortisol(const hypothalamus_adapter_t* adapter) {
 
 bool hypothalamus_update_autonomic(hypothalamus_adapter_t* adapter,
                                     uint64_t delta_time_us) {
-    if (!adapter || !adapter->config.enable_autonomic) return false;
+    if (!adapter || !adapter->config.enable_autonomic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_get_cortisol: required parameter is NULL (adapter, adapter->config)");
+        return false;
+    }
 
     float dt = (float)delta_time_us / (float)US_PER_SECOND;
     autonomic_state_t* ans = &adapter->state.autonomic;
@@ -1091,7 +1131,10 @@ bool hypothalamus_update_autonomic(hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_get_autonomic(const hypothalamus_adapter_t* adapter,
                                  autonomic_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_get_cortisol: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state.autonomic;
     return true;
 }
@@ -1113,7 +1156,10 @@ float hypothalamus_get_autonomic_balance(const hypothalamus_adapter_t* adapter) 
 
 bool hypothalamus_update(hypothalamus_adapter_t* adapter,
                           uint64_t delta_time_us) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_get_autonomic_balance: adapter is NULL");
+        return false;
+    }
 
     uint64_t start_time = adapter->state.current_time_us;
 
@@ -1146,7 +1192,10 @@ bool hypothalamus_update(hypothalamus_adapter_t* adapter,
 
 bool hypothalamus_get_state(const hypothalamus_adapter_t* adapter,
                              hypothalamus_state_t* state) {
-    if (!adapter || !state) return false;
+    if (!adapter || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_get_autonomic_balance: required parameter is NULL (adapter, state)");
+        return false;
+    }
     *state = adapter->state;
     return true;
 }
@@ -1198,14 +1247,20 @@ const char* hypothalamus_status_string(hypothalamus_status_t status) {
 
 bool hypothalamus_get_stats(const hypothalamus_adapter_t* adapter,
                              hypothalamus_stats_t* stats) {
-    if (!adapter || !stats) return false;
+    if (!adapter || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_status_string: required parameter is NULL (adapter, stats)");
+        return false;
+    }
     *stats = adapter->stats;
     return true;
 }
 
 bool hypothalamus_get_config(const hypothalamus_adapter_t* adapter,
                               hypothalamus_config_t* config) {
-    if (!adapter || !config) return false;
+    if (!adapter || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_status_string: required parameter is NULL (adapter, config)");
+        return false;
+    }
     *config = adapter->config;
     return true;
 }
@@ -1217,7 +1272,10 @@ bool hypothalamus_get_config(const hypothalamus_adapter_t* adapter,
 bool hypothalamus_set_alert_callback(hypothalamus_adapter_t* adapter,
                                       hypothalamus_alert_callback_t callback,
                                       void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_status_string: adapter is NULL");
+        return false;
+    }
     adapter->alert_callback = callback;
     adapter->alert_user_data = user_data;
     return true;
@@ -1226,7 +1284,10 @@ bool hypothalamus_set_alert_callback(hypothalamus_adapter_t* adapter,
 bool hypothalamus_set_hormone_callback(hypothalamus_adapter_t* adapter,
                                         hypothalamus_hormone_callback_t callback,
                                         void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_status_string: adapter is NULL");
+        return false;
+    }
     adapter->hormone_callback = callback;
     adapter->hormone_user_data = user_data;
     return true;
@@ -1235,7 +1296,10 @@ bool hypothalamus_set_hormone_callback(hypothalamus_adapter_t* adapter,
 bool hypothalamus_set_autonomic_callback(hypothalamus_adapter_t* adapter,
                                           hypothalamus_autonomic_callback_t callback,
                                           void* user_data) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_status_string: adapter is NULL");
+        return false;
+    }
     adapter->autonomic_callback = callback;
     adapter->autonomic_user_data = user_data;
     return true;

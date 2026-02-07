@@ -122,8 +122,10 @@ bool ethics_validate_learning_inputs(ethics_engine_t engine, const action_contex
         }
 
     // Guard clause: Check if learning enabled
-    if (!ethics_engine_is_learning_enabled(engine))
+    if (!ethics_engine_is_learning_enabled(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_validate_learning_inputs: ethics_engine_is_learning_enabled is NULL");
         return false;
+    }
 
     return true;
 }
@@ -229,6 +231,7 @@ bool ethics_learn_from_outcome(ethics_engine_t engine, const action_context_t* a
 {
     // Guard clause: Validate all inputs
     if (!ethics_validate_learning_inputs(engine, action, outcome)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ethics_learn_from_outcome: ethics_validate_learning_inputs is NULL");
         return false;
     }
 

@@ -189,7 +189,10 @@ static size_t hash_id(uint64_t id, size_t capacity) {
  * @brief Find entry by memory ID
  */
 static source_hash_entry_t* find_entry(source_memory_t sm, uint64_t memory_id) {
-    if (!sm || sm->entry_capacity == 0) return NULL;
+    if (!sm || sm->entry_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: sm is NULL");
+        return NULL;
+    }
 
     size_t idx = hash_id(memory_id, sm->entry_capacity);
     source_hash_entry_t* entry = &sm->entries[idx];
@@ -201,6 +204,7 @@ static source_hash_entry_t* find_entry(source_memory_t sm, uint64_t memory_id) {
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_entry: validation failed");
     return NULL;
 }
 
@@ -208,7 +212,10 @@ static source_hash_entry_t* find_entry(source_memory_t sm, uint64_t memory_id) {
  * @brief Find agent record by ID
  */
 static agent_hash_entry_t* find_agent(source_memory_t sm, uint64_t agent_id) {
-    if (!sm || sm->agent_capacity == 0 || !sm->config.track_agents) return NULL;
+    if (!sm || sm->agent_capacity == 0 || !sm->config.track_agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent: required parameter is NULL (sm, sm->config)");
+        return NULL;
+    }
 
     size_t idx = hash_id(agent_id, sm->agent_capacity);
     agent_hash_entry_t* agent = &sm->agents[idx];
@@ -220,6 +227,7 @@ static agent_hash_entry_t* find_agent(source_memory_t sm, uint64_t agent_id) {
         agent = agent->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent: validation failed");
     return NULL;
 }
 
@@ -512,12 +520,24 @@ NIMCP_EXPORT source_memory_config_t source_memory_config_default(void) {
 }
 
 NIMCP_EXPORT bool source_memory_config_validate(const source_memory_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_memory_config_validate: config is NULL");
+        return false;
+    }
 
     // Validate capacities
-    if (config->initial_capacity == 0) return false;
-    if (config->max_entries == 0) return false;
-    if (config->initial_capacity > config->max_entries) return false;
+    if (config->initial_capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "source_memory_config_validate: config->initial_capacity is zero");
+        return false;
+    }
+    if (config->max_entries == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_memory_config_validate: config->max_entries is zero");
+        return false;
+    }
+    if (config->initial_capacity > config->max_entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "source_memory_config_validate: validation failed");
+        return false;
+    }
 
     // Validate thresholds in [0, 1]
     if (config->perceptual_threshold < 0.0f ||
@@ -528,7 +548,10 @@ NIMCP_EXPORT bool source_memory_config_validate(const source_memory_config_t* co
         config->false_memory_threshold > 1.0f) return false;
 
     // Validate decay rate
-    if (config->source_decay_rate < 0.0f) return false;
+    if (config->source_decay_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_memory_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -549,6 +572,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
     source_memory_config_t cfg = config ? *config : source_memory_config_default();
     if (!source_memory_config_validate(&cfg)) {
         set_error("invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: source_memory_config_validate is NULL");
         return NULL;
     }
 
@@ -556,6 +580,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
     source_memory_t sm = (source_memory_t)nimcp_calloc(1, sizeof(struct source_memory_struct));
     if (!sm) {
         set_error("memory allocation failed for source_memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: sm is NULL");
         return NULL;
     }
 
@@ -571,6 +596,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
     if (!sm->entries) {
         set_error("memory allocation failed for entry hash table");
         nimcp_free(sm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: sm->entries is NULL");
         return NULL;
     }
 
@@ -583,6 +609,7 @@ NIMCP_EXPORT source_memory_t source_memory_create(
             set_error("memory allocation failed for agent hash table");
             nimcp_free(sm->entries);
             nimcp_free(sm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_create: sm->agents is NULL");
             return NULL;
         }
     }
@@ -1998,13 +2025,17 @@ NIMCP_EXPORT source_memory_t source_memory_deserialize(
     pr_node_manager_t node_manager,
     size_t* bytes_read
 ) {
-    if (!buffer || !bytes_read) return NULL;
+    if (!buffer || !bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_memory_deserialize: required parameter is NULL (buffer, bytes_read)");
+        return NULL;
+    }
 
     *bytes_read = 0;
 
     // Read header
     if (buffer_size < sizeof(source_serial_header_t)) {
         set_error("buffer too small for header");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_memory_deserialize: validation failed");
         return NULL;
     }
 
@@ -2016,14 +2047,17 @@ NIMCP_EXPORT source_memory_t source_memory_deserialize(
     // Validate header
     if (header.magic != SOURCE_MEMORY_MAGIC) {
         set_error("invalid magic number");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_deserialize: validation failed");
         return NULL;
     }
     if (header.version != SOURCE_MEMORY_VERSION) {
         set_error("version mismatch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "source_memory_deserialize: validation failed");
         return NULL;
     }
     if (buffer_size < header.total_size) {
         set_error("buffer too small for data");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "source_memory_deserialize: validation failed");
         return NULL;
     }
 

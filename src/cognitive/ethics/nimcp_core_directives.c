@@ -247,6 +247,7 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         if (!directives->action_history) {
             NIMCP_LOGGING_ERROR("Failed to allocate action history");
             nimcp_free(directives);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "core_directives_create: directives->action_history is NULL");
             return NULL;
         }
     }
@@ -256,6 +257,7 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
         NIMCP_LOGGING_ERROR("Failed to initialize directives mutex");
         nimcp_free(directives->action_history);
         nimcp_free(directives);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "core_directives_create: validation failed");
         return NULL;
     }
 
@@ -387,6 +389,7 @@ static bool evaluate_third_law(const float* action_vector, uint32_t action_dim, 
 {
     if (action_dim < 3) {
         *severity = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_third_law: validation failed");
         return false;
     }
 
@@ -403,6 +406,7 @@ static bool evaluate_third_law(const float* action_vector, uint32_t action_dim, 
         return (*severity >= 0.5f);
     }
     *severity = 0.0f;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_third_law: validation failed");
     return false;
 }
 
@@ -412,6 +416,7 @@ static bool evaluate_golden_rule(const float* action_vector, uint32_t action_dim
 {
     if (action_dim < 6) {
         *severity = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_golden_rule: validation failed");
         return false;
     }
 
@@ -442,6 +447,7 @@ static bool evaluate_combinatorial_harm(core_directives_system_t* directives,
 {
     *severity = 0.0f;
     if (!directives->action_history || directives->history_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "evaluate_combinatorial_harm: directives->action_history is NULL");
         return false;
     }
 

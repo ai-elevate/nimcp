@@ -219,6 +219,7 @@ static shannon_workspace_state_t* get_shannon_state(const global_workspace_t* wo
             return g_shannon_mappings[i].state;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_shannon_state: validation failed");
     return NULL;
 }
 
@@ -270,6 +271,7 @@ static subscriber_shannon_state_t* find_subscriber(
             return &state->subscribers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscriber: operation failed");
     return NULL;
 }
 
@@ -334,7 +336,10 @@ bool global_workspace_enable_shannon(
      * WHY:  Add information-theoretic monitoring without recreation
      * HOW:  Allocate state, initialize subscribers, register mapping */
 
-    if (!workspace) return false;
+    if (!workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_enable_shannon: workspace is NULL");
+        return false;
+    }
 
     /* Check if already enabled */
     if (get_shannon_state(workspace) != NULL) {
@@ -347,6 +352,7 @@ bool global_workspace_enable_shannon(
 
 
     if (g_num_mappings >= MAX_SHANNON_WORKSPACES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_enable_shannon: capacity exceeded");
         return false;  /* Too many workspaces */
     }
 
@@ -354,6 +360,7 @@ bool global_workspace_enable_shannon(
     shannon_workspace_state_t* state =
         (shannon_workspace_state_t*)nimcp_calloc(1, sizeof(shannon_workspace_state_t));
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "global_workspace_enable_shannon: state is NULL");
         return false;  /* Allocation failed */
     }
 
@@ -564,6 +571,7 @@ bool global_workspace_compete_with_info(
      */
 
     if (!workspace || !content || content_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_compete_with_info: required parameter is NULL (workspace, content)");
         return false;
     }
 
@@ -588,6 +596,7 @@ bool global_workspace_compete_with_info(
         if (info_bits < state->config.info_threshold_bits) {
             /* Too little information - reject */
             state->stats.low_info_rejections++;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_compete_with_info: validation failed");
             return false;
         }
 
@@ -803,6 +812,7 @@ bool global_workspace_set_subscriber_capacity(
      * HOW:  Find or create subscriber entry, set capacity */
 
     if (!workspace || capacity_bits_per_sec < 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "global_workspace_set_subscriber_capacity: workspace is NULL");
         return false;
     }
 
@@ -812,6 +822,7 @@ bool global_workspace_set_subscriber_capacity(
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_set_subscriber_capacity: state is NULL");
         return false;  /* Shannon not enabled */
     }
 
@@ -826,6 +837,7 @@ bool global_workspace_set_subscriber_capacity(
 
     /* Add new subscriber */
     if (state->num_subscribers >= GLOBAL_WORKSPACE_MAX_SUBSCRIBERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "global_workspace_set_subscriber_capacity: capacity exceeded");
         return false;  /* Full */
     }
 
@@ -918,7 +930,10 @@ bool global_workspace_set_broadcast_rate(
 
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_set_broadcast_rate: state is NULL");
+        return false;
+    }
 
     rate_multiplier = clamp_float(rate_multiplier,
                                    state->config.min_broadcast_rate,
@@ -1002,14 +1017,20 @@ bool global_workspace_get_shannon_stats(
      * WHY:  Analysis and debugging
      * HOW:  Copy internal stats */
 
-    if (!stats) return false;
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_shannon_stats: stats is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
 
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    if (!state) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_shannon_stats: state is NULL");
+        return false;
+    }
 
     *stats = state->stats;
     return true;
@@ -1056,14 +1077,20 @@ bool global_workspace_get_last_broadcast_metrics(
      * WHY:  Inspect individual broadcast
      * HOW:  Copy cached metrics */
 
-    if (!metrics) return false;
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_last_broadcast_metrics: metrics is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     global_workspace_shannon_heartbeat("global_works_global_workspace_get", 0.0f);
 
 
     shannon_workspace_state_t* state = get_shannon_state(workspace);
-    if (!state || !state->has_last_metrics) return false;
+    if (!state || !state->has_last_metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_get_last_broadcast_metrics: required parameter is NULL (state, state->has_last_metrics)");
+        return false;
+    }
 
     *metrics = state->last_metrics;
     return true;
@@ -1085,7 +1112,10 @@ bool global_workspace_on_salience_peak_shannon(
      *       circular dependency. Caller must ensure correct type.
      */
 
-    if (!workspace || !peak_data) return false;
+    if (!workspace || !peak_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_on_salience_peak_shannon: required parameter is NULL (workspace, peak_data)");
+        return false;
+    }
 
     /* Cast to expected structure layout
      * Expected fields:
@@ -1106,6 +1136,7 @@ bool global_workspace_on_salience_peak_shannon(
     const generic_peak_t* peak = (const generic_peak_t*)peak_data;
 
     if (!peak->feature_vector || peak->dimension == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "global_workspace_on_salience_peak_shannon: peak->feature_vector is NULL");
         return false;
     }
 

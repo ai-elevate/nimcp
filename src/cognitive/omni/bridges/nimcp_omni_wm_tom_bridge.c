@@ -339,7 +339,10 @@ static void free_cf_cache(omni_wm_tom_bridge_t* bridge) {
  * @return Index if found, -1 if not found
  */
 static int32_t find_tracked_agent(const omni_wm_tom_bridge_t* bridge, agent_id_t agent_id) {
-    if (!bridge || !bridge->tracked_agents) return -1;
+    if (!bridge || !bridge->tracked_agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tracked_agent: required parameter is NULL (bridge, bridge->tracked_agents)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -352,6 +355,7 @@ static int32_t find_tracked_agent(const omni_wm_tom_bridge_t* bridge, agent_id_t
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tracked_agent: validation failed");
     return -1;
 }
 
@@ -360,7 +364,10 @@ static int32_t find_tracked_agent(const omni_wm_tom_bridge_t* bridge, agent_id_t
  * @return Index if found, -1 if not found
  */
 static int32_t find_belief_gap(const omni_wm_tom_bridge_t* bridge, agent_id_t agent_id) {
-    if (!bridge || !bridge->belief_gaps) return -1;
+    if (!bridge || !bridge->belief_gaps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_belief_gap: required parameter is NULL (bridge, bridge->belief_gaps)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->belief_gap_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -373,6 +380,7 @@ static int32_t find_belief_gap(const omni_wm_tom_bridge_t* bridge, agent_id_t ag
             return (int32_t)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_belief_gap: validation failed");
     return -1;
 }
 
@@ -718,6 +726,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
     omni_wm_tom_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_tom_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM ToM bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: bridge is NULL");
         return NULL;
     }
 
@@ -726,6 +735,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
                          "wm_tom_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
         return NULL;
     }
 
@@ -742,6 +752,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate agent tracking");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -752,6 +763,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate belief gap tracking");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -763,6 +775,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate interaction buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -775,6 +788,7 @@ omni_wm_tom_bridge_t* omni_wm_tom_bridge_create(
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to allocate counterfactual cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: validation failed");
         return NULL;
     }
 
@@ -990,7 +1004,10 @@ nimcp_error_t omni_wm_tom_bridge_connect_social(
 }
 
 bool omni_wm_tom_bridge_is_connected(const omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_tom_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_tom_bridge_heartbeat("omni_wm_tom__is_connected", 0.0f);
 

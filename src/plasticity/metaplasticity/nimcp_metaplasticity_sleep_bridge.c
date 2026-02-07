@@ -196,6 +196,7 @@ int metaplasticity_sleep_apply_threshold_reset(metaplasticity_sleep_bridge_t* br
                 bridge->metaplasticity_controller, sleep_state) != 0) {
             nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Failed to apply sleep state");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_sleep_apply_threshold_reset: validation failed");
             return -1;
         }
 
@@ -298,6 +299,7 @@ int metaplasticity_sleep_monitor_threshold_drift(
     if (metaplasticity_controller_get_stats(bridge->metaplasticity_controller, &stats) != 0) {
         nimcp_platform_mutex_unlock((nimcp_platform_mutex_t*)bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Failed to get metaplasticity stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_sleep_monitor_threshold_drift: validation failed");
         return -1;
     }
 
@@ -369,7 +371,10 @@ int metaplasticity_sleep_compute_sleep_pressure(
 }
 
 bool metaplasticity_sleep_is_reset_complete(const metaplasticity_sleep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_is_reset_complete: bridge is NULL");
+        return false;
+    }
     return bridge->effects.baseline_drift < (METAPLASTICITY_THRESHOLD_DRIFT_TOLERANCE * 0.1f);
 }
 
@@ -459,7 +464,10 @@ int metaplasticity_sleep_get_drift_stats(
 }
 
 bool metaplasticity_sleep_is_adaptation_frozen(const metaplasticity_sleep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_is_adaptation_frozen: bridge is NULL");
+        return false;
+    }
     return bridge->effects.adaptation_frozen;
 }
 

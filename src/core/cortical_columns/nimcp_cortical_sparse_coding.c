@@ -261,11 +261,13 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     /* Guard clause: validate configuration */
     if (config->num_columns == 0 || config->num_columns > SPARSE_CODING_MAX_COLUMNS) {
         NIMCP_LOGGING_ERROR("Invalid num_columns");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_sparse_create: config->num_columns is zero");
         return NULL;
     }
     if (config->target_sparsity < SPARSE_CODING_MIN_SPARSITY ||
         config->target_sparsity > SPARSE_CODING_MAX_SPARSITY) {
         NIMCP_LOGGING_ERROR("Invalid target_sparsity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_sparse_create: config->num_columns is zero");
         return NULL;
     }
 
@@ -274,6 +276,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
         nimcp_malloc(sizeof(cortical_sparse_coding_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate sparse coding system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system is NULL");
         return NULL;
     }
     memset(system, 0, sizeof(cortical_sparse_coding_system_t));
@@ -288,6 +291,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
     if (!system->column_states) {
         NIMCP_LOGGING_ERROR("Failed to allocate column states");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->column_states is NULL");
         return NULL;
     }
 
@@ -310,6 +314,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
         NIMCP_LOGGING_ERROR("Failed to allocate activity history");
         nimcp_free(system->column_states);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->activity_history is NULL");
         return NULL;
     }
     system->history_index = 0;
@@ -331,6 +336,7 @@ cortical_sparse_coding_system_t* cortical_sparse_create(
         nimcp_free(system->activity_history);
         nimcp_free(system->column_states);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_sparse_create: system->mutex is NULL");
         return NULL;
     }
     nimcp_platform_mutex_init(system->mutex, false);
@@ -931,6 +937,7 @@ bool cortical_sparse_is_bio_async_connected(
 ) {
     /* Guard clause: validate parameter */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_sparse_is_bio_async_connected: system is NULL");
         return false;
     }
 
@@ -1164,6 +1171,7 @@ trit_vector_t* cortical_sparse_create_ternary_vector(
     uint32_t num_activations
 ) {
     if (!system || !activations || num_activations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_sparse_create_ternary_vector: required parameter is NULL (system, activations)");
         return NULL;
     }
 
@@ -1262,6 +1270,7 @@ bool cortical_sparse_is_ternary_mode(
     const cortical_sparse_coding_system_t* system
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_sparse_is_ternary_mode: system is NULL");
         return false;
     }
 

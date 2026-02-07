@@ -226,6 +226,7 @@ bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
 
 cleanup:
     bg_mb_destroy(mb);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_create: operation failed");
     return NULL;
 }
 
@@ -288,7 +289,10 @@ void bg_mb_destroy(bg_model_based_t* mb) {
 }
 
 int bg_mb_reset(bg_model_based_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -341,7 +345,10 @@ int bg_mb_update_transition(bg_model_based_t* mb,
                              uint32_t state,
                              uint32_t action,
                              uint32_t next_state) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: mb is NULL");
+        return -1;
+    }
     if (state >= mb->config.num_states ||
         action >= mb->config.num_actions ||
         next_state >= mb->config.num_states) return -1;
@@ -378,7 +385,10 @@ int bg_mb_update_reward(bg_model_based_t* mb,
                          uint32_t state,
                          uint32_t action,
                          float reward) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: mb is NULL");
+        return -1;
+    }
     if (state >= mb->config.num_states ||
         action >= mb->config.num_actions) return -1;
 
@@ -443,8 +453,14 @@ float bg_mb_get_uncertainty(const bg_model_based_t* mb,
 int bg_mb_plan(bg_model_based_t* mb,
                 uint32_t current_state,
                 bg_mb_plan_result_t* result) {
-    if (!mb || !result) return -1;
-    if (current_state >= mb->config.num_states) return -1;
+    if (!mb || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_reset: required parameter is NULL (mb, result)");
+        return -1;
+    }
+    if (current_state >= mb->config.num_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_mb_reset: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -495,8 +511,14 @@ int bg_mb_simulate_trajectory(bg_model_based_t* mb,
                                uint32_t start_state,
                                uint32_t horizon,
                                bg_mb_trajectory_t* trajectory) {
-    if (!mb || !trajectory) return -1;
-    if (start_state >= mb->config.num_states) return -1;
+    if (!mb || !trajectory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (mb, trajectory)");
+        return -1;
+    }
+    if (start_state >= mb->config.num_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -548,7 +570,10 @@ int bg_mb_simulate_trajectory(bg_model_based_t* mb,
 }
 
 int bg_mb_prioritized_sweep(bg_model_based_t* mb, uint32_t num_updates) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_prioritized_sweep: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -596,7 +621,10 @@ int bg_mb_arbitrate(bg_model_based_t* mb,
                      uint32_t num_actions,
                      float* combined_q_values,
                      bg_mb_arbitration_t* arbit_state) {
-    if (!mb || !mb_q_values || !mf_q_values || !combined_q_values) return -1;
+    if (!mb || !mb_q_values || !mf_q_values || !combined_q_values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: required parameter is NULL (mb, mb_q_values, mf_q_values, combined_q_values)");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -618,7 +646,10 @@ int bg_mb_arbitrate(bg_model_based_t* mb,
 int bg_mb_update_arbitration(bg_model_based_t* mb,
                               float prediction_error,
                               bool was_mb_action) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -653,14 +684,20 @@ int bg_mb_update_arbitration(bg_model_based_t* mb,
 
 int bg_mb_get_arbitration(const bg_model_based_t* mb,
                            bg_mb_arbitration_t* arbit) {
-    if (!mb || !arbit) return -1;
+    if (!mb || !arbit) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: required parameter is NULL (mb, arbit)");
+        return -1;
+    }
     *arbit = mb->arbitration;
     return 0;
 }
 
 int bg_mb_set_arbitration_mode(bg_model_based_t* mb,
                                 bg_mb_arbitration_mode_t mode) {
-    if (!mb || mode >= BG_MB_ARBIT_COUNT) return -1;
+    if (!mb || mode >= BG_MB_ARBIT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bg_mb_get_state_value: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
     mb->arbit_mode = mode;
@@ -677,7 +714,10 @@ int bg_mb_store_experience(bg_model_based_t* mb,
                             uint32_t action,
                             float reward,
                             uint32_t next_state) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_state_value: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -698,7 +738,10 @@ int bg_mb_store_experience(bg_model_based_t* mb,
 }
 
 int bg_mb_replay(bg_model_based_t* mb, uint32_t num_replays) {
-    if (!mb || mb->replay_count == 0) return -1;
+    if (!mb || mb->replay_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bg_mb_replay: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
 
@@ -720,7 +763,10 @@ int bg_mb_replay(bg_model_based_t* mb, uint32_t num_replays) {
 }
 
 int bg_mb_clear_replay(bg_model_based_t* mb) {
-    if (!mb) return -1;
+    if (!mb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_clear_replay: mb is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(mb->mutex);
     mb->replay_head = 0;
@@ -734,7 +780,10 @@ int bg_mb_clear_replay(bg_model_based_t* mb) {
  * ============================================================================ */
 
 int bg_mb_get_stats(const bg_model_based_t* mb, bg_mb_stats_t* stats) {
-    if (!mb || !stats) return -1;
+    if (!mb || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bg_mb_get_stats: required parameter is NULL (mb, stats)");
+        return -1;
+    }
     *stats = mb->stats;
     return 0;
 }

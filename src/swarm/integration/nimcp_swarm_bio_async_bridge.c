@@ -31,12 +31,16 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(swarm_bio_async_bridge)
  * @brief Find agent by ID (unlocked)
  */
 static swarm_agent_info_t* find_agent_unlocked(swarm_bio_bridge_t* bridge, swarm_agent_id_t id) {
-    if (!bridge || !bridge->agents) return NULL;
+    if (!bridge || !bridge->agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_unlocked: required parameter is NULL (bridge, bridge->agents)");
+        return NULL;
+    }
     for (uint32_t i = 0; i < bridge->agent_count; i++) {
         if (bridge->agents[i].id == id) {
             return &bridge->agents[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_unlocked: validation failed");
     return NULL;
 }
 
@@ -288,6 +292,7 @@ swarm_bio_bridge_t* swarm_bio_bridge_create(const swarm_bio_bridge_config_t* con
     /* Initialize base */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SWARM_BIO_ASYNC_BRIDGE, "swarm_bio_async_bridge") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "swarm_bio_bridge_create: validation failed");
         return NULL;
     }
 

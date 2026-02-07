@@ -99,7 +99,10 @@ static float compute_string_similarity(const char* s1, const char* s2) {
  * HOW:  Keyword matching against harm patterns
  */
 static bool contains_harmful_keywords(const char* action) {
-    if (!action) return false;
+    if (!action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_harmful_keywords: action is NULL");
+        return false;
+    }
 
     /* Common harmful action patterns */
     const char* harmful_keywords[] = {
@@ -124,6 +127,7 @@ static bool contains_harmful_keywords(const char* action) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_harmful_keywords: validation failed");
     return false;
 }
 
@@ -135,7 +139,10 @@ static bool contains_harmful_keywords(const char* action) {
  * HOW:  Keyword matching against benefit patterns
  */
 static bool contains_beneficial_keywords(const char* action) {
-    if (!action) return false;
+    if (!action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_beneficial_keywords: action is NULL");
+        return false;
+    }
 
     /* Common beneficial action patterns */
     const char* beneficial_keywords[] = {
@@ -160,6 +167,7 @@ static bool contains_beneficial_keywords(const char* action) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_beneficial_keywords: validation failed");
     return false;
 }
 
@@ -171,6 +179,7 @@ int reciprocity_eval_default_config(reciprocity_config_t* config) {
     /* Guard: validate input */
     if (!config) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_default_config: config is NULL");
         return -1;
     }
 
@@ -211,12 +220,14 @@ reciprocity_evaluator_t reciprocity_eval_create(const reciprocity_config_t* conf
     if (!eval->mutex) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: mutex malloc failed");
         nimcp_free(eval);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reciprocity_eval_create: eval->mutex is NULL");
         return NULL;
     }
 
     if (nimcp_mutex_init(eval->mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_create: mutex init failed");
         nimcp_free(eval);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "reciprocity_eval_create: validation failed");
         return NULL;
     }
 
@@ -259,6 +270,7 @@ int reciprocity_eval_check(
     /* Guard: validate inputs */
     if (!evaluator || !action || !target || !evaluation) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_check: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_check: required parameter is NULL (evaluator, action, target, evaluation)");
         return -1;
     }
 
@@ -340,6 +352,7 @@ int reciprocity_eval_reverse_perspective(
     /* Guard: validate inputs */
     if (!evaluator || !action || !reversed_action) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_reverse_perspective: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_reverse_perspective: required parameter is NULL (evaluator, action, reversed_action)");
         return -1;
     }
 
@@ -357,11 +370,13 @@ bool reciprocity_eval_would_accept(
     /* Guard: validate inputs */
     if (!evaluator || !action_if_received) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_would_accept: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_would_accept: required parameter is NULL (evaluator, action_if_received)");
         return false;
     }
 
     /* Check for harmful keywords - reject immediately */
     if (contains_harmful_keywords(action_if_received)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reciprocity_eval_would_accept: validation failed");
         return false;
     }
 
@@ -371,6 +386,7 @@ bool reciprocity_eval_would_accept(
     }
 
     /* Neutral actions - default to cautious rejection unless explicitly beneficial */
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reciprocity_eval_would_accept: validation failed");
     return false;
 }
 
@@ -431,6 +447,7 @@ int reciprocity_eval_get_stats(
     /* Guard: validate inputs */
     if (!evaluator || !stats) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_get_stats: NULL parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_get_stats: required parameter is NULL (evaluator, stats)");
         return -1;
     }
 
@@ -450,6 +467,7 @@ int reciprocity_eval_reset_stats(reciprocity_evaluator_t evaluator) {
     /* Guard: validate input */
     if (!evaluator) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_reset_stats: NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_reset_stats: evaluator is NULL");
         return -1;
     }
 
@@ -474,6 +492,7 @@ int reciprocity_eval_connect_bio_async(reciprocity_evaluator_t evaluator) {
     /* Guard: validate input */
     if (!evaluator) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_connect_bio_async: NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_connect_bio_async: evaluator is NULL");
         return -1;
     }
 
@@ -498,6 +517,7 @@ int reciprocity_eval_connect_bio_async(reciprocity_evaluator_t evaluator) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "reciprocity_eval_connect_bio_async: validation failed");
         return -1;
     }
 }
@@ -506,6 +526,7 @@ int reciprocity_eval_disconnect_bio_async(reciprocity_evaluator_t evaluator) {
     /* Guard: validate input */
     if (!evaluator) {
         NIMCP_LOGGING_ERROR("reciprocity_eval_disconnect_bio_async: NULL evaluator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_disconnect_bio_async: evaluator is NULL");
         return -1;
     }
 
@@ -529,6 +550,7 @@ int reciprocity_eval_disconnect_bio_async(reciprocity_evaluator_t evaluator) {
 bool reciprocity_eval_is_bio_async_connected(reciprocity_evaluator_t evaluator) {
     /* Guard: validate input */
     if (!evaluator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reciprocity_eval_is_bio_async_connected: evaluator is NULL");
         return false;
     }
 

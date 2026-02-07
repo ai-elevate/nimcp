@@ -319,6 +319,7 @@ error:
         nimcp_free(layer->bias_v);
         nimcp_free(layer);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "xavier_init: operation failed");
     return NULL;
 }
 
@@ -361,6 +362,7 @@ static float vector_norm(const float* v, uint32_t n) {
 static bool clip_gradients(physics_nn_t* nn, float max_norm, float* actual_norm) {
     if (max_norm <= 0.0f) {
         *actual_norm = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clip_gradients: validation failed");
         return false;
     }
 
@@ -433,6 +435,7 @@ static bool clip_gradients(physics_nn_t* nn, float max_norm, float* actual_norm)
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "clip_gradients: operation failed");
     return false;
 }
 
@@ -483,7 +486,10 @@ physics_nn_config_t physics_nn_default_config(void) {
 }
 
 bool physics_nn_validate_config(const physics_nn_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     physics_nn_heartbeat("physics_nn_validate_config", 0.0f);
@@ -492,24 +498,28 @@ bool physics_nn_validate_config(const physics_nn_config_t* config) {
     if (config->state_dim == 0 || config->state_dim > PHYSICS_NN_MAX_NEURONS) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Invalid state_dim: %u (max %u)", config->state_dim, PHYSICS_NN_MAX_NEURONS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_validate_config: config->state_dim is zero");
         return false;
     }
 
     if (config->num_layers < 2 || config->num_layers > PHYSICS_NN_MAX_LAYERS) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Invalid num_layers: %u (must be 2-%u)", config->num_layers, PHYSICS_NN_MAX_LAYERS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_validate_config: validation failed");
         return false;
     }
 
     if (config->hidden_size == 0 || config->hidden_size > PHYSICS_NN_MAX_NEURONS) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Invalid hidden_size: %u (max %u)", config->hidden_size, PHYSICS_NN_MAX_NEURONS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_validate_config: config->hidden_size is zero");
         return false;
     }
 
     if (config->learning_rate <= 0.0f || config->learning_rate > 1.0f) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Invalid learning_rate: %f (must be 0 < lr <= 1)", config->learning_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_validate_config: validation failed");
         return false;
     }
 
@@ -517,6 +527,7 @@ bool physics_nn_validate_config(const physics_nn_config_t* config) {
     if (config->use_hamiltonian && (config->state_dim % 2 != 0)) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Hamiltonian mode requires even state_dim (got %u)", config->state_dim);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_validate_config: validation failed");
         return false;
     }
 
@@ -544,12 +555,14 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     }
 
     if (!physics_nn_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_create_custom: physics_nn_validate_config is NULL");
         return NULL;
     }
 
     physics_nn_t* nn = (physics_nn_t*)nimcp_calloc(1, sizeof(physics_nn_t));
     if (!nn) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate physics_nn_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create_custom: nn is NULL");
         return NULL;
     }
 
@@ -562,6 +575,7 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
     if (!sizes) {
         nimcp_free(nn);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate layer sizes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create_custom: sizes is NULL");
         return NULL;
     }
 
@@ -577,6 +591,7 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
         nimcp_free(sizes);
         nimcp_free(nn);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate layers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create_custom: nn->layers is NULL");
         return NULL;
     }
 
@@ -604,6 +619,7 @@ physics_nn_t* physics_nn_create_custom(const physics_nn_config_t* config) {
             nimcp_free(sizes);
             nimcp_free(nn);
             snprintf(s_last_error, sizeof(s_last_error), "Failed to create layer %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_create_custom: operation failed");
             return NULL;
         }
         nn->layers[i] = *layer;
@@ -665,6 +681,7 @@ error:
     nimcp_free(sizes);
     physics_nn_destroy(nn);
     snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate internal buffers");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_create_custom: operation failed");
     return NULL;
 }
 
@@ -746,7 +763,10 @@ void physics_nn_destroy(physics_nn_t* nn) {
 }
 
 int physics_nn_reset(physics_nn_t* nn) {
-    if (!nn) return -1;
+    if (!nn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_reset: nn is NULL");
+        return -1;
+    }
 
     /* Re-initialize weights */
     /* Phase 8: Heartbeat at operation start */
@@ -789,6 +809,7 @@ int physics_nn_reset(physics_nn_t* nn) {
 int physics_nn_forward(physics_nn_t* nn, const float* state, float* derivative) {
     if (!nn || !state || !derivative) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in forward pass");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_forward: required parameter is NULL (nn, state, derivative)");
         return -1;
     }
 
@@ -1150,6 +1171,7 @@ int physics_nn_train_step(
 ) {
     if (!nn || !state || !target_derivative) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in train_step");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_train_step: required parameter is NULL (nn, state, target_derivative)");
         return -1;
     }
 
@@ -1161,6 +1183,7 @@ int physics_nn_train_step(
 
     /* Forward pass */
     if (physics_nn_forward(nn, state, nn->temp_deriv) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_train_step: validation failed");
         return -1;
     }
 
@@ -1251,6 +1274,7 @@ int physics_nn_train_batch(
 ) {
     if (!nn || !states || !derivatives || batch_size == 0) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in train_batch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_train_batch: required parameter is NULL (nn, states, derivatives)");
         return -1;
     }
 
@@ -1273,6 +1297,7 @@ int physics_nn_train_batch(
 
         physics_nn_train_result_t step_result;
         if (physics_nn_train_step(nn, states[b], derivatives[b], &step_result) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_train_batch: validation failed");
             return -1;
         }
 
@@ -1307,6 +1332,7 @@ int physics_nn_train_from_trajectory(
 ) {
     if (!nn || !trajectory || num_points < 2 || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in train_from_trajectory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_train_from_trajectory: required parameter is NULL (nn, trajectory)");
         return -1;
     }
 
@@ -1320,6 +1346,7 @@ int physics_nn_train_from_trajectory(
     float* derivative = (float*)nimcp_malloc(state_dim * sizeof(float));
     if (!derivative) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate derivative buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_train_from_trajectory: derivative is NULL");
         return -1;
     }
 
@@ -1358,6 +1385,7 @@ int physics_nn_train_from_trajectory(
         physics_nn_train_result_t step_result;
         if (physics_nn_train_step(nn, trajectory[i], derivative, &step_result) != 0) {
             nimcp_free(derivative);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_train_from_trajectory: validation failed");
             return -1;
         }
 
@@ -1411,6 +1439,7 @@ int physics_nn_predict(
 ) {
     if (!nn || !initial_state || num_steps == 0 || !prediction || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in predict");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_predict: required parameter is NULL (nn, initial_state, prediction)");
         return -1;
     }
 
@@ -1424,6 +1453,7 @@ int physics_nn_predict(
     prediction->trajectory = (float**)nimcp_malloc(num_steps * sizeof(float*));
     if (!prediction->trajectory) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate trajectory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_predict: prediction->trajectory is NULL");
         return -1;
     }
 
@@ -1447,6 +1477,7 @@ int physics_nn_predict(
             }
             nimcp_free(prediction->trajectory);
             snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate trajectory step %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_predict: validation failed");
             return -1;
         }
     }
@@ -1465,6 +1496,7 @@ int physics_nn_predict(
     if (!current_state) {
         physics_nn_free_prediction(prediction);
         snprintf(s_last_error, sizeof(s_last_error), "Failed to allocate current state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_predict: current_state is NULL");
         return -1;
     }
     memcpy(current_state, initial_state, state_dim * sizeof(float));
@@ -1559,6 +1591,7 @@ int physics_nn_predict(
 int physics_nn_step(physics_nn_t* nn, float* state, float dt) {
     if (!nn || !state || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in step");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_step: required parameter is NULL (nn, state)");
         return -1;
     }
 
@@ -1634,6 +1667,7 @@ void physics_nn_free_prediction(physics_nn_prediction_t* prediction) {
 int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) {
     if (!nn || !q || !p || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in symplectic_euler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_symplectic_euler: required parameter is NULL (nn, q, p)");
         return -1;
     }
 
@@ -1656,6 +1690,7 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
     if (!state || !deriv) {
         nimcp_free(state);
         nimcp_free(deriv);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_symplectic_euler: required parameter is NULL (state, deriv)");
         return -1;
     }
 
@@ -1701,6 +1736,7 @@ int physics_nn_symplectic_euler(physics_nn_t* nn, float* q, float* p, float dt) 
 int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
     if (!nn || !q || !p || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in leapfrog");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_leapfrog: required parameter is NULL (nn, q, p)");
         return -1;
     }
 
@@ -1715,6 +1751,7 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
     if (!state || !deriv) {
         nimcp_free(state);
         nimcp_free(deriv);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_leapfrog: required parameter is NULL (state, deriv)");
         return -1;
     }
 
@@ -1779,6 +1816,7 @@ int physics_nn_leapfrog(physics_nn_t* nn, float* q, float* p, float dt) {
 int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
     if (!nn || !q || !p || dt <= 0.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid parameters in velocity_verlet");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_velocity_verlet: required parameter is NULL (nn, q, p)");
         return -1;
     }
 
@@ -1795,6 +1833,7 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
         nimcp_free(state);
         nimcp_free(deriv);
         nimcp_free(force_old);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "physics_nn_velocity_verlet: required parameter is NULL (state, deriv, force_old)");
         return -1;
     }
 
@@ -1848,7 +1887,10 @@ int physics_nn_velocity_verlet(physics_nn_t* nn, float* q, float* p, float dt) {
  * ============================================================================ */
 
 int physics_nn_set_inflammation(physics_nn_t* nn, float level) {
-    if (!nn) return -1;
+    if (!nn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_set_inflammation: nn is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     physics_nn_heartbeat("physics_nn_set_inflammation", 0.0f);
 
@@ -1867,7 +1909,10 @@ int physics_nn_set_inflammation(physics_nn_t* nn, float level) {
 }
 
 int physics_nn_set_fatigue(physics_nn_t* nn, float level) {
-    if (!nn) return -1;
+    if (!nn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_set_fatigue: nn is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     physics_nn_heartbeat("physics_nn_set_fatigue", 0.0f);
 
@@ -1888,6 +1933,7 @@ int physics_nn_set_fatigue(physics_nn_t* nn, float level) {
 int physics_nn_set_learning_rate(physics_nn_t* nn, float lr) {
     if (!nn || lr <= 0.0f || lr > 1.0f) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid learning rate: %f", lr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_set_learning_rate: nn is NULL");
         return -1;
     }
 
@@ -1905,7 +1951,10 @@ int physics_nn_set_learning_rate(physics_nn_t* nn, float lr) {
  * ============================================================================ */
 
 int physics_nn_get_stats(const physics_nn_t* nn, physics_nn_stats_t* stats) {
-    if (!nn || !stats) return -1;
+    if (!nn || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_get_stats: required parameter is NULL (nn, stats)");
+        return -1;
+    }
     *stats = nn->stats;
     /* Phase 8: Heartbeat at operation start */
     physics_nn_heartbeat("physics_nn_get_stats", 0.0f);
@@ -1936,6 +1985,7 @@ const char* physics_nn_get_last_error(void) {
 int physics_nn_save(const physics_nn_t* nn, const char* filename) {
     if (!nn || !filename) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in save");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_save: required parameter is NULL (nn, filename)");
         return -1;
     }
 
@@ -1946,6 +1996,7 @@ int physics_nn_save(const physics_nn_t* nn, const char* filename) {
     FILE* f = fopen(filename, "wb");
     if (!f) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to open file: %s", filename);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_save: f is NULL");
         return -1;
     }
 
@@ -2002,6 +2053,7 @@ int physics_nn_save(const physics_nn_t* nn, const char* filename) {
 int physics_nn_load(physics_nn_t* nn, const char* filename) {
     if (!nn || !filename) {
         snprintf(s_last_error, sizeof(s_last_error), "NULL pointer in load");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_load: required parameter is NULL (nn, filename)");
         return -1;
     }
 
@@ -2012,6 +2064,7 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
     FILE* f = fopen(filename, "rb");
     if (!f) {
         snprintf(s_last_error, sizeof(s_last_error), "Failed to open file: %s", filename);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_nn_load: f is NULL");
         return -1;
     }
 
@@ -2023,12 +2076,14 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
     if (magic != 0x50485958) {
         snprintf(s_last_error, sizeof(s_last_error), "Invalid file format");
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_load: validation failed");
         return -1;
     }
 
     if (version != 2) {
         snprintf(s_last_error, sizeof(s_last_error), "Unsupported version: %u", version);
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_load: validation failed");
         return -1;
     }
 
@@ -2043,6 +2098,7 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
                  nn->config.state_dim, nn->config.num_layers,
                  saved_config.state_dim, saved_config.num_layers);
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_load: operation failed");
         return -1;
     }
 
@@ -2054,6 +2110,7 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
         snprintf(s_last_error, sizeof(s_last_error),
                  "Layer count mismatch: expected %u, got %u", nn->num_layers, num_layers);
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_load: validation failed");
         return -1;
     }
 
@@ -2074,6 +2131,7 @@ int physics_nn_load(physics_nn_t* nn, const char* filename) {
             snprintf(s_last_error, sizeof(s_last_error),
                      "Layer %u size mismatch", l);
             fclose(f);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_nn_load: validation failed");
             return -1;
         }
 

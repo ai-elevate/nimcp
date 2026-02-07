@@ -264,6 +264,7 @@ static int find_speaker(audio_logic_bridge_t* bridge, const char* speaker_id) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_speaker: operation failed");
     return -1;
 }
 
@@ -279,6 +280,7 @@ static int find_free_speaker_slot(audio_logic_bridge_t* bridge) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_speaker_slot: bridge->speakers is NULL");
     return -1;
 }
 
@@ -397,6 +399,7 @@ int audio_logic_ground_observation(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "audio_logic_ground_observation: operation failed");
             return -1;
     }
 
@@ -511,6 +514,7 @@ int audio_logic_request_attention(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_request_attention: capacity exceeded");
         return -1;
     }
 
@@ -542,6 +546,7 @@ int audio_logic_focus_speaker(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_focus_speaker: capacity exceeded");
         return -1;
     }
 
@@ -571,6 +576,7 @@ int audio_logic_expect_word(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_expect_word: capacity exceeded");
         return -1;
     }
 
@@ -663,6 +669,7 @@ int audio_logic_send_command(
 
 
     if (bridge->pending_count >= MAX_PENDING_COMMANDS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "audio_logic_send_command: capacity exceeded");
         return -1;
     }
 

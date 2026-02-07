@@ -287,6 +287,7 @@ static int init_retinotopic_map(occipital_cortical_bridge_t* bridge) {
     bridge->retinotopic_map = (retinotopic_entry_t*)nimcp_calloc(
         total, sizeof(retinotopic_entry_t));
     if (!bridge->retinotopic_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_retinotopic_map: bridge->retinotopic_map is NULL");
         return -1;
     }
 
@@ -470,6 +471,7 @@ occipital_cortical_bridge_t* occipital_cortical_bridge_create(
     if (init_retinotopic_map(bridge) != 0) {
         LOG_ERROR(CORTICAL_BRIDGE_LOG_MODULE, "Failed to init retinotopic map");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "occipital_cortical_default_config: validation failed");
         return NULL;
     }
 

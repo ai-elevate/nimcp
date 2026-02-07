@@ -148,6 +148,7 @@ static bool should_trigger_by_policy(
 ) {
     switch (policy) {
         case HEALTH_TRIGGER_MANUAL:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_by_policy: operation failed");
             return false;
 
         case HEALTH_TRIGGER_FATAL_ONLY:
@@ -164,6 +165,7 @@ static bool should_trigger_by_policy(
             return severity >= DIAG_SEVERITY_ERROR;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_by_policy: operation failed");
             return false;
     }
 }
@@ -214,6 +216,7 @@ static bool check_and_update_rate_limit(
     bridge->window_repair_count++;
     bridge->stats.current_window_count = bridge->window_repair_count;
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_and_update_rate_limit: operation failed");
     return false;
 }
 
@@ -264,6 +267,7 @@ static health_repair_tracking_t* find_tracking_record(
             return &bridge->tracking[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tracking_record: validation failed");
     return NULL;
 }
 
@@ -300,6 +304,7 @@ static int submit_repair(
         uint64_t repair_id = 0;
         int ret = self_repair_initiate_async(bridge->self_repair, &request, &repair_id);
         if (ret != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "submit_repair: validation failed");
             return -1;
         }
         tracking->repair_id = repair_id;
@@ -398,6 +403,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     self_repair_coordinator_t* self_repair
 ) {
     if (!diagnostic_bridge || !self_repair) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_create: required parameter is NULL (diagnostic_bridge, self_repair)");
         return NULL;
     }
 
@@ -428,6 +434,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     bridge->tracking = nimcp_calloc(bridge->tracking_capacity, sizeof(health_repair_tracking_t));
     if (!bridge->tracking) {
         health_self_repair_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_self_repair_bridge_create: bridge->tracking is NULL");
         return NULL;
     }
 
@@ -437,6 +444,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
             bridge->config.aggregation.max_batch_size, sizeof(aggregation_entry_t));
         if (!bridge->aggregation_batch) {
             health_self_repair_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_self_repair_bridge_create: bridge->aggregation_batch is NULL");
             return NULL;
         }
     }
@@ -445,6 +453,7 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "health_self_repair") != 0) {
         health_self_repair_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_self_repair_bridge_create: validation failed");
         return NULL;
     }
 
@@ -529,6 +538,7 @@ int health_self_repair_bridge_connect_health_agent(
     nimcp_health_agent_t* health_agent
 ) {
     if (!bridge || !health_agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_connect_health_agent: required parameter is NULL (bridge, health_agent)");
         return -1;
     }
 
@@ -553,10 +563,12 @@ int health_self_repair_bridge_process_anomaly(
     uint64_t* request_id
 ) {
     if (!bridge || !anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_anomaly: required parameter is NULL (bridge, anomaly)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_anomaly: bridge->initialized is NULL");
         return -1;
     }
 
@@ -568,6 +580,7 @@ int health_self_repair_bridge_process_anomaly(
     diagnostic_result_t* diagnostic = NULL;
     int ret = health_diag_bridge_convert_anomaly(bridge->diagnostic_bridge, anomaly, &diagnostic);
     if (ret != 0 || !diagnostic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_anomaly: diagnostic is NULL");
         return -1;
     }
 
@@ -588,10 +601,12 @@ int health_self_repair_bridge_process_agent_message(
     uint64_t* request_id
 ) {
     if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_agent_message: required parameter is NULL (bridge, message)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_agent_message: bridge->initialized is NULL");
         return -1;
     }
 
@@ -604,6 +619,7 @@ int health_self_repair_bridge_process_agent_message(
     int ret = health_diag_bridge_convert_agent_message(
         bridge->diagnostic_bridge, message, &diagnostic);
     if (ret != 0 || !diagnostic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_process_agent_message: diagnostic is NULL");
         return -1;
     }
 
@@ -624,10 +640,12 @@ int health_self_repair_bridge_trigger_from_diagnostic(
     uint64_t* request_id
 ) {
     if (!bridge || !diagnostic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_trigger_from_diagnostic: required parameter is NULL (bridge, diagnostic)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_trigger_from_diagnostic: bridge->initialized is NULL");
         return -1;
     }
 
@@ -736,10 +754,12 @@ int health_self_repair_bridge_force_trigger(
     uint64_t* request_id
 ) {
     if (!bridge || !diagnostic || !request_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_force_trigger: required parameter is NULL (bridge, diagnostic, request_id)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_force_trigger: bridge->initialized is NULL");
         return -1;
     }
 
@@ -850,6 +870,7 @@ const health_repair_tracking_t* health_self_repair_bridge_get_tracking(
     uint64_t request_id
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_get_tracking: required parameter is NULL (bridge, bridge->initialized)");
         return NULL;
     }
 
@@ -992,6 +1013,7 @@ int health_self_repair_bridge_get_stats(
     health_self_repair_bridge_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1212,6 +1234,7 @@ int health_self_repair_bridge_broadcast_trigger(
     const diagnostic_result_t* diagnostic
 ) {
     if (!bridge || !diagnostic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_broadcast_trigger: required parameter is NULL (bridge, diagnostic)");
         return -1;
     }
 
@@ -1246,6 +1269,7 @@ int health_self_repair_bridge_broadcast_trigger(
         if (bridge->config.verbose_logging) {
             fprintf(stderr, "Failed to broadcast repair trigger: %d\n", err);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_self_repair_bridge_broadcast_trigger: validation failed");
         return -1;
     }
 
@@ -1312,6 +1336,7 @@ int health_self_repair_bridge_broadcast_outcome(
         if (bridge->config.verbose_logging) {
             fprintf(stderr, "Failed to broadcast repair outcome: %d\n", err);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_self_repair_bridge_broadcast_outcome: validation failed");
         return -1;
     }
 
@@ -1350,6 +1375,7 @@ const char* health_self_repair_bridge_version(void) {
 
 bool health_self_repair_bridge_is_ready(const health_self_repair_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_self_repair_bridge_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

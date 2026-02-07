@@ -139,6 +139,7 @@ oligo_immune_bridge_t* oligo_immune_create(
     if (bridge_base_init(&bridge->base, 0, "oligodendrocytes_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligo_immune_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -218,7 +219,10 @@ int oligo_immune_disconnect_bio_async(oligo_immune_bridge_t* bridge)
 
 bool oligo_immune_is_bio_async_connected(const oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -347,7 +351,10 @@ int oligo_immune_accumulate_damage(
 
 bool oligo_immune_check_death(oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo_immune_check_death: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -127,6 +127,7 @@ static surface_geometry_subsystem_t* get_subsystem(brain_t brain) {
 
     surface_geometry_subsystem_t* subsystem = get_or_create_subsystem(brain);
     if (!subsystem || !subsystem->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_subsystem: required parameter is NULL (subsystem, subsystem->initialized)");
         return NULL;
     }
     return subsystem;
@@ -149,12 +150,14 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
 ) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("NULL brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_surface_geometry_with_flags: brain is NULL");
         return false;
     }
 
     surface_geometry_subsystem_t* subsystem = get_or_create_subsystem(brain);
     if (!subsystem) {
         NIMCP_LOGGING_ERROR("Failed to get subsystem storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_surface_geometry_with_flags: subsystem is NULL");
         return false;
     }
 
@@ -183,6 +186,7 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
     subsystem->geometry_ctx = surface_geometry_create(&geo_config);
     if (!subsystem->geometry_ctx) {
         NIMCP_LOGGING_ERROR("Failed to create surface geometry context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_surface_geometry_with_flags: subsystem->geometry_ctx is NULL");
         return false;
     }
 
@@ -199,6 +203,7 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
         NIMCP_LOGGING_ERROR("Failed to create surface geometry bridge");
         surface_geometry_destroy(subsystem->geometry_ctx);
         subsystem->geometry_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_surface_geometry_with_flags: subsystem->bridge is NULL");
         return false;
     }
 
@@ -210,6 +215,7 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
         surface_geometry_destroy(subsystem->geometry_ctx);
         subsystem->bridge = NULL;
         subsystem->geometry_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_surface_geometry_with_flags: operation failed");
         return false;
     }
 
@@ -220,6 +226,7 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
         surface_geometry_destroy(subsystem->geometry_ctx);
         subsystem->bridge = NULL;
         subsystem->geometry_ctx = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_factory_init_surface_geometry_with_flags: validation failed");
         return false;
     }
 
@@ -244,7 +251,10 @@ bool nimcp_brain_factory_init_surface_geometry_with_flags(
 }
 
 bool nimcp_brain_factory_shutdown_surface_geometry_subsystem(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_shutdown_surface_geometry_subsystem: brain is NULL");
+        return false;
+    }
 
     surface_geometry_subsystem_t* subsystem = get_subsystem(brain);
     if (!subsystem) {
@@ -308,7 +318,10 @@ int nimcp_brain_register_dendrite_geometry_callback(
     void* user_data
 ) {
     surface_geometry_subsystem_t* subsystem = get_subsystem(brain);
-    if (!subsystem) return -1;
+    if (!subsystem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_register_dendrite_geometry_callback: subsystem is NULL");
+        return -1;
+    }
 
     subsystem->dendrite_callback = callback;
     subsystem->dendrite_callback_data = user_data;
@@ -322,7 +335,10 @@ int nimcp_brain_register_axon_geometry_callback(
     void* user_data
 ) {
     surface_geometry_subsystem_t* subsystem = get_subsystem(brain);
-    if (!subsystem) return -1;
+    if (!subsystem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_register_axon_geometry_callback: subsystem is NULL");
+        return -1;
+    }
 
     subsystem->axon_callback = callback;
     subsystem->axon_callback_data = user_data;

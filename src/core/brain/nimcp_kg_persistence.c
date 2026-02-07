@@ -211,6 +211,7 @@ static void compute_hash(const void* data, size_t size, uint8_t* hash) {
 
 static int serialize_kg_to_buffer(const brain_kg_t* kg, uint8_t** buffer, size_t* size) {
     if (!kg || !buffer || !size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_kg_to_buffer: required parameter is NULL (kg, buffer, size)");
         return -1;
     }
 
@@ -226,6 +227,7 @@ static int serialize_kg_to_buffer(const brain_kg_t* kg, uint8_t** buffer, size_t
 
     *buffer = nimcp_malloc(estimated_size);
     if (!*buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "serialize_kg_to_buffer: validation failed");
         return -1;
     }
 
@@ -248,6 +250,7 @@ static int serialize_kg_to_buffer(const brain_kg_t* kg, uint8_t** buffer, size_t
 
 static brain_kg_t* deserialize_kg_from_buffer(const uint8_t* buffer, size_t size) {
     if (!buffer || size < 16) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_kg_from_buffer: buffer is NULL");
         return NULL;
     }
 
@@ -261,10 +264,12 @@ static brain_kg_t* deserialize_kg_from_buffer(const uint8_t* buffer, size_t size
     memcpy(&edge_count, ptr, 4); ptr += 4;
 
     if (magic != PERSIST_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_kg_from_buffer: validation failed");
         return NULL;
     }
 
     if (version > PERSIST_VERSION_CURRENT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_kg_from_buffer: validation failed");
         return NULL;  /* Unsupported version */
     }
 
@@ -288,13 +293,17 @@ static brain_kg_t* deserialize_kg_from_buffer(const uint8_t* buffer, size_t size
 static int encrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t input_size,
                            uint8_t** output, size_t* output_size) {
     if (!p || !input || !output || !output_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_kg_from_buffer: required parameter is NULL (p, input, output, output_size)");
         return -1;
     }
 
     if (!p->encryption_initialized || p->active_algorithm == KG_CRYPTO_NONE) {
         /* No encryption - just copy */
         *output = nimcp_malloc(input_size);
-        if (!*output) return -1;
+        if (!*output) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_kg_from_buffer: validation failed");
+            return -1;
+        }
         memcpy(*output, input, input_size);
         *output_size = input_size;
         return 0;
@@ -304,6 +313,7 @@ static int encrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t inpu
     *output_size = input_size + 32;  /* Auth tag + nonce */
     *output = nimcp_malloc(*output_size);
     if (!*output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_kg_from_buffer: validation failed");
         return -1;
     }
 
@@ -321,12 +331,16 @@ static int encrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t inpu
 static int decrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t input_size,
                            uint8_t** output, size_t* output_size) {
     if (!p || !input || !output || !output_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_kg_from_buffer: required parameter is NULL (p, input, output, output_size)");
         return -1;
     }
 
     if (!p->encryption_initialized || p->active_algorithm == KG_CRYPTO_NONE) {
         *output = nimcp_malloc(input_size);
-        if (!*output) return -1;
+        if (!*output) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_kg_from_buffer: validation failed");
+            return -1;
+        }
         memcpy(*output, input, input_size);
         *output_size = input_size;
         return 0;
@@ -334,6 +348,7 @@ static int decrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t inpu
 
     *output = nimcp_malloc(input_size);
     if (!*output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_kg_from_buffer: validation failed");
         return -1;
     }
 
@@ -494,6 +509,7 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     p->mutex = nimcp_mutex_create(&attr);
     if (!p->mutex) {
         nimcp_free(p);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_persistence_create: p->mutex is NULL");
         return NULL;
     }
 
@@ -504,6 +520,7 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     if (!p->io_dispatcher) {
         nimcp_mutex_free(p->mutex);
         nimcp_free(p);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_persistence_create: p->io_dispatcher is NULL");
         return NULL;
     }
 
@@ -512,6 +529,7 @@ kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
         kg_io_dispatcher_destroy(p->io_dispatcher);
         nimcp_mutex_free(p->mutex);
         nimcp_free(p);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create: validation failed");
         return NULL;
     }
 
@@ -591,6 +609,7 @@ void kg_persistence_destroy(kg_persistence_t* p) {
 
 int kg_persistence_save(kg_persistence_t* p, const brain_kg_t* kg) {
     if (!p || !kg || !p->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_save: required parameter is NULL (p, kg, p->initialized)");
         return -1;
     }
 
@@ -607,6 +626,7 @@ int kg_persistence_save(kg_persistence_t* p, const brain_kg_t* kg) {
 
     if (serialize_kg_to_buffer(kg, &serialized, &serialized_size) != 0) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_save: validation failed");
         return -1;
     }
 
@@ -617,6 +637,7 @@ int kg_persistence_save(kg_persistence_t* p, const brain_kg_t* kg) {
     if (encrypt_buffer(p, serialized, serialized_size, &encrypted, &encrypted_size) != 0) {
         nimcp_free(serialized);
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_save: validation failed");
         return -1;
     }
 
@@ -647,6 +668,7 @@ int kg_persistence_save(kg_persistence_t* p, const brain_kg_t* kg) {
 
 brain_kg_t* kg_persistence_load(kg_persistence_t* p) {
     if (!p || !p->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: required parameter is NULL (p, p->initialized)");
         return NULL;
     }
 
@@ -663,6 +685,7 @@ brain_kg_t* kg_persistence_load(kg_persistence_t* p) {
     if (!result || !result->success || !result->result_data) {
         if (result) kg_io_result_free(result);
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: validation failed");
         return NULL;
     }
 
@@ -674,6 +697,7 @@ brain_kg_t* kg_persistence_load(kg_persistence_t* p) {
                         &decrypted, &decrypted_size) != 0) {
         kg_io_result_free(result);
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: operation failed");
         return NULL;
     }
 
@@ -701,6 +725,7 @@ int kg_persistence_compute_diff(kg_persistence_t* p,
                                  const brain_kg_t* current,
                                  kg_diff_result_t* diff) {
     if (!p || !current || !diff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: required parameter is NULL (p, current, diff)");
         return -1;
     }
 
@@ -731,6 +756,7 @@ int kg_persistence_apply_diff(kg_persistence_t* p,
                                brain_kg_t* kg,
                                const kg_diff_result_t* diff) {
     if (!p || !kg || !diff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: required parameter is NULL (p, kg, diff)");
         return -1;
     }
 
@@ -772,6 +798,7 @@ int kg_persistence_apply_diff(kg_persistence_t* p,
 int kg_persistence_save_incremental(kg_persistence_t* p,
                                      const kg_diff_result_t* diff) {
     if (!p || !diff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_load: required parameter is NULL (p, diff)");
         return -1;
     }
 
@@ -810,6 +837,7 @@ uint64_t kg_persistence_get_stored_version(kg_persistence_t* p) {
 
 int kg_persistence_create_checkpoint(kg_persistence_t* p, const char* label) {
     if (!p || !label) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create_checkpoint: required parameter is NULL (p, label)");
         return -1;
     }
 
@@ -817,6 +845,7 @@ int kg_persistence_create_checkpoint(kg_persistence_t* p, const char* label) {
 
     if (p->checkpoint_count >= PERSIST_MAX_CHECKPOINTS) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "kg_persistence_create_checkpoint: capacity exceeded");
         return -1;  /* Too many checkpoints */
     }
 
@@ -844,6 +873,7 @@ int kg_persistence_create_checkpoint(kg_persistence_t* p, const char* label) {
 int kg_persistence_restore_checkpoint(kg_persistence_t* p, const char* label,
                                        brain_kg_t* kg) {
     if (!p || !label || !kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create_checkpoint: required parameter is NULL (p, label, kg)");
         return -1;
     }
 
@@ -860,6 +890,7 @@ int kg_persistence_restore_checkpoint(kg_persistence_t* p, const char* label,
 
     if (!cp) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create_checkpoint: cp is NULL");
         return -1;  /* Checkpoint not found */
     }
 
@@ -878,6 +909,7 @@ int kg_persistence_restore_checkpoint(kg_persistence_t* p, const char* label,
 int kg_persistence_init_encryption(kg_persistence_t* p,
                                     const kg_encryption_config_t* config) {
     if (!p || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create_checkpoint: required parameter is NULL (p, config)");
         return -1;
     }
 
@@ -942,6 +974,7 @@ int kg_persistence_generate_master_key(const char* output_path,
     FILE* f = fopen(output_path, "wb");
     if (!f) {
         kg_persistence_secure_zero(key, sizeof(key));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_create_checkpoint: f is NULL");
         return -1;
     }
 
@@ -955,6 +988,7 @@ int kg_persistence_generate_master_key(const char* output_path,
 
 int kg_persistence_rotate_keys(kg_persistence_t* p) {
     if (!p || !p->encryption_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_rotate_keys: required parameter is NULL (p, p->encryption_initialized)");
         return -1;
     }
 
@@ -1013,6 +1047,7 @@ int kg_persistence_verify_integrity(kg_persistence_t* p) {
 
 int kg_persistence_init_hsm(kg_persistence_t* p, const kg_hsm_config_t* config) {
     if (!p || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_init_hsm: required parameter is NULL (p, config)");
         return -1;
     }
 
@@ -1020,12 +1055,14 @@ int kg_persistence_init_hsm(kg_persistence_t* p, const kg_hsm_config_t* config) 
 
     if (p->hsm) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_init_hsm: validation failed");
         return -1;  /* Already initialized */
     }
 
     p->hsm = nimcp_calloc(1, sizeof(kg_hsm_handle_t));
     if (!p->hsm) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_persistence_init_hsm: p->hsm is NULL");
         return -1;
     }
 
@@ -1055,6 +1092,7 @@ int kg_persistence_init_hsm(kg_persistence_t* p, const kg_hsm_config_t* config) 
 
 int kg_persistence_hsm_generate_key(kg_persistence_t* p, const char* key_label) {
     if (!p || !key_label || !p->hsm_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_hsm_generate_key: required parameter is NULL (p, key_label, p->hsm_initialized)");
         return -1;
     }
 
@@ -1075,6 +1113,7 @@ int kg_persistence_hsm_generate_key(kg_persistence_t* p, const char* key_label) 
 int kg_persistence_hsm_import_key(kg_persistence_t* p, const void* key_material,
                                    size_t key_size, const char* key_label) {
     if (!p || !key_material || !key_label || !p->hsm_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_hsm_generate_key: required parameter is NULL (p, key_material, key_label, p->hsm_initialized)");
         return -1;
     }
 
@@ -1092,6 +1131,7 @@ int kg_persistence_hsm_import_key(kg_persistence_t* p, const void* key_material,
 
 bool kg_persistence_hsm_is_available(const kg_persistence_t* p) {
     if (!p || !p->hsm_initialized || !p->hsm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_hsm_is_available: required parameter is NULL (p, p->hsm_initialized, p->hsm)");
         return false;
     }
     return p->hsm->connected;
@@ -1100,6 +1140,7 @@ bool kg_persistence_hsm_is_available(const kg_persistence_t* p) {
 int kg_persistence_hsm_get_key_info(const kg_persistence_t* p,
                                      kg_hsm_key_info_t* info) {
     if (!p || !info || !p->hsm_initialized || !p->hsm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_hsm_is_available: required parameter is NULL (p, info, p->hsm_initialized, p->hsm)");
         return -1;
     }
 
@@ -1121,6 +1162,7 @@ int kg_persistence_hsm_get_key_info(const kg_persistence_t* p,
 
 int kg_persistence_audit_init(kg_persistence_t* p, const kg_audit_config_t* config) {
     if (!p || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_init: required parameter is NULL (p, config)");
         return -1;
     }
 
@@ -1132,6 +1174,7 @@ int kg_persistence_audit_init(kg_persistence_t* p, const kg_audit_config_t* conf
         p->audit_file = fopen(config->log_path, "ab");
         if (!p->audit_file) {
             nimcp_mutex_unlock(p->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_init: p->audit_file is NULL");
             return -1;
         }
     }
@@ -1146,6 +1189,7 @@ int kg_persistence_audit_init(kg_persistence_t* p, const kg_audit_config_t* conf
 int kg_persistence_audit_log(kg_persistence_t* p, kg_audit_event_type_t event,
                               const char* details) {
     if (!p || !p->audit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_init: required parameter is NULL (p, p->audit_initialized)");
         return -1;
     }
 
@@ -1210,6 +1254,7 @@ int kg_persistence_audit_log(kg_persistence_t* p, kg_audit_event_type_t event,
 
 int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
     if (!p || !p->audit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_verify_chain: required parameter is NULL (p, p->audit_initialized)");
         return -1;
     }
 
@@ -1222,6 +1267,7 @@ int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
         /* Verify prev_hash matches expected */
         if (memcmp(entry->prev_hash, expected_prev, PERSIST_HASH_SIZE) != 0) {
             nimcp_mutex_unlock(p->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_audit_verify_chain: validation failed");
             return -1;  /* Chain broken - tampering detected */
         }
 
@@ -1243,6 +1289,7 @@ int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
 
         if (memcmp(entry->entry_hash, computed_hash, PERSIST_HASH_SIZE) != 0) {
             nimcp_mutex_unlock(p->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_persistence_audit_verify_chain: validation failed");
             return -1;  /* Entry hash mismatch */
         }
 
@@ -1257,6 +1304,7 @@ int kg_persistence_audit_verify_chain(kg_persistence_t* p) {
 int kg_persistence_audit_export(kg_persistence_t* p, const char* output_path,
                                  uint64_t start_time, uint64_t end_time) {
     if (!p || !output_path || !p->audit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_verify_chain: required parameter is NULL (p, output_path, p->audit_initialized)");
         return -1;
     }
 
@@ -1265,6 +1313,7 @@ int kg_persistence_audit_export(kg_persistence_t* p, const char* output_path,
     FILE* out = fopen(output_path, "w");
     if (!out) {
         nimcp_mutex_unlock(p->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_persistence_audit_verify_chain: out is NULL");
         return -1;
     }
 

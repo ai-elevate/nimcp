@@ -157,11 +157,15 @@ static void queue_destroy(wbb_queue_t* queue) {
 
 static bool queue_enqueue(wbb_queue_t* queue, const wbb_message_t* message) {
     if (queue->count >= queue->max_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_enqueue: capacity exceeded");
         return false;  /* Queue full */
     }
 
     wbb_queue_node_t* node = nimcp_calloc(1, sizeof(wbb_queue_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "queue_enqueue: node is NULL");
+        return false;
+    }
 
     node->message = *message;
     node->next = NULL;
@@ -179,6 +183,7 @@ static bool queue_enqueue(wbb_queue_t* queue, const wbb_message_t* message) {
 
 static bool queue_dequeue(wbb_queue_t* queue, wbb_message_t* message) {
     if (!queue->head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_dequeue: queue->head is NULL");
         return false;  /* Queue empty */
     }
 
@@ -197,6 +202,7 @@ static bool queue_dequeue(wbb_queue_t* queue, wbb_message_t* message) {
 
 static bool queue_peek(const wbb_queue_t* queue, wbb_message_t* message) {
     if (!queue->head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_peek: queue->head is NULL");
         return false;
     }
     *message = queue->head->message;
@@ -332,6 +338,7 @@ wernicke_broca_bridge_t* wbb_create(
 
     if (!bridge->semantic_buffer || !bridge->phoneme_buffer) {
         wbb_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_create: required parameter is NULL (bridge->semantic_buffer, bridge->phoneme_buffer)");
         return NULL;
     }
 
@@ -371,7 +378,10 @@ void wbb_destroy(wernicke_broca_bridge_t* bridge) {
 }
 
 int wbb_reset(wernicke_broca_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Clear queues */
     queue_destroy(&bridge->to_broca_queue);
@@ -406,7 +416,10 @@ int wbb_connect_bio_async(
     wernicke_broca_bridge_t* bridge,
     void* router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->bio_router = router;
     return 0;
 }
@@ -415,7 +428,10 @@ int wbb_set_wernicke(
     wernicke_broca_bridge_t* bridge,
     void* wernicke
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_set_wernicke: bridge is NULL");
+        return -1;
+    }
     bridge->wernicke = wernicke;
     return 0;
 }
@@ -424,7 +440,10 @@ int wbb_set_broca(
     wernicke_broca_bridge_t* bridge,
     void* broca
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_set_broca: bridge is NULL");
+        return -1;
+    }
     bridge->broca = broca;
     return 0;
 }
@@ -438,13 +457,18 @@ int wbb_forward_comprehension(
     const wbb_comprehension_t* comprehension,
     wbb_stream_t stream
 ) {
-    if (!bridge || !comprehension) return -1;
+    if (!bridge || !comprehension) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_forward_comprehension: required parameter is NULL (bridge, comprehension)");
+        return -1;
+    }
 
     /* Check stream availability */
     if (stream == WBB_STREAM_DORSAL && !bridge->config.enable_dorsal_stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_forward_comprehension: bridge->config is NULL");
         return -1;
     }
     if (stream == WBB_STREAM_VENTRAL && !bridge->config.enable_ventral_stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_forward_comprehension: bridge->config is NULL");
         return -1;
     }
 
@@ -484,6 +508,7 @@ int wbb_forward_comprehension(
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
         nimcp_free(message.payload.comprehension.semantic_vector);
         nimcp_free(message.payload.comprehension.phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wbb_forward_comprehension: queue_enqueue is NULL");
         return -1;
     }
 
@@ -507,16 +532,23 @@ int wbb_request_repetition(
     const uint8_t* phonemes,
     uint32_t num_phonemes
 ) {
-    if (!bridge || !phonemes || num_phonemes == 0) return -1;
+    if (!bridge || !phonemes || num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_request_repetition: required parameter is NULL (bridge, phonemes)");
+        return -1;
+    }
 
     if (!bridge->config.enable_dorsal_stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_request_repetition: bridge->config is NULL");
         return -1;  /* Dorsal stream required for repetition */
     }
 
     /* Create comprehension with phonemes only */
     wbb_comprehension_t comp = {0};
     comp.phonemes = (uint8_t*)nimcp_malloc(num_phonemes);
-    if (!comp.phonemes) return -1;
+    if (!comp.phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_request_repetition: comp is NULL");
+        return -1;
+    }
     memcpy(comp.phonemes, phonemes, num_phonemes);
     comp.num_phonemes = num_phonemes;
     comp.confidence = 1.0f;  /* Direct repetition request */
@@ -531,6 +563,7 @@ int wbb_request_repetition(
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
         nimcp_free(comp.phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wbb_request_repetition: queue_enqueue is NULL");
         return -1;
     }
 
@@ -546,16 +579,23 @@ int wbb_send_response_intent(
     uint32_t semantic_dim,
     uint8_t intent_type
 ) {
-    if (!bridge || !semantic_vector || semantic_dim == 0) return -1;
+    if (!bridge || !semantic_vector || semantic_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_response_intent: required parameter is NULL (bridge, semantic_vector)");
+        return -1;
+    }
 
     if (!bridge->config.enable_ventral_stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_response_intent: bridge->config is NULL");
         return -1;  /* Ventral stream required for semantic production */
     }
 
     /* Create comprehension with semantic only */
     wbb_comprehension_t comp = {0};
     comp.semantic_vector = nimcp_malloc(semantic_dim * sizeof(float));
-    if (!comp.semantic_vector) return -1;
+    if (!comp.semantic_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_send_response_intent: comp is NULL");
+        return -1;
+    }
     memcpy(comp.semantic_vector, semantic_vector, semantic_dim * sizeof(float));
     comp.semantic_dim = semantic_dim;
     comp.confidence = 1.0f;
@@ -570,6 +610,7 @@ int wbb_send_response_intent(
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
         nimcp_free(comp.semantic_vector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wbb_send_response_intent: queue_enqueue is NULL");
         return -1;
     }
 
@@ -586,7 +627,10 @@ int wbb_receive_efference_copy(
     wernicke_broca_bridge_t* bridge,
     wbb_efference_copy_t* efference
 ) {
-    if (!bridge || !efference) return -1;
+    if (!bridge || !efference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_receive_efference_copy: required parameter is NULL (bridge, efference)");
+        return -1;
+    }
 
     if (!bridge->config.enable_self_monitoring) {
         return 1;  /* Self-monitoring disabled */
@@ -626,7 +670,10 @@ int wbb_compare_production(
     const wbb_efference_copy_t* efference,
     wbb_monitoring_result_t* result
 ) {
-    if (!bridge || !intended || !efference || !result) return -1;
+    if (!bridge || !intended || !efference || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_compare_production: required parameter is NULL (bridge, intended, efference, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(wbb_monitoring_result_t));
 
@@ -674,9 +721,13 @@ int wbb_send_error_signal(
     uint32_t position,
     const uint8_t* correction
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_error_signal: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_error_correction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_send_error_signal: bridge->config is NULL");
         return -1;  /* Error correction disabled */
     }
 
@@ -709,6 +760,7 @@ int wbb_send_error_signal(
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
         nimcp_free(message.payload.comprehension.phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wbb_send_error_signal: queue_enqueue is NULL");
         return -1;
     }
 
@@ -727,16 +779,23 @@ int wbb_request_rehearsal(
     uint32_t num_phonemes,
     uint32_t repetitions
 ) {
-    if (!bridge || !phonemes || num_phonemes == 0) return -1;
+    if (!bridge || !phonemes || num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_request_rehearsal: required parameter is NULL (bridge, phonemes)");
+        return -1;
+    }
 
     if (!bridge->config.enable_working_memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_request_rehearsal: bridge->config is NULL");
         return -1;  /* Working memory disabled */
     }
 
     /* Create rehearsal request */
     wbb_rehearsal_t rehearsal = {0};
     rehearsal.phonemes = nimcp_malloc(num_phonemes);
-    if (!rehearsal.phonemes) return -1;
+    if (!rehearsal.phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wbb_request_rehearsal: rehearsal is NULL");
+        return -1;
+    }
     memcpy(rehearsal.phonemes, phonemes, num_phonemes);
     rehearsal.num_phonemes = num_phonemes;
     rehearsal.repetitions = repetitions;
@@ -752,6 +811,7 @@ int wbb_request_rehearsal(
 
     if (!queue_enqueue(&bridge->to_broca_queue, &message)) {
         nimcp_free(rehearsal.phonemes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wbb_request_rehearsal: queue_enqueue is NULL");
         return -1;
     }
 
@@ -761,7 +821,10 @@ int wbb_request_rehearsal(
 }
 
 int wbb_process_rehearsal(wernicke_broca_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_process_rehearsal: bridge is NULL");
+        return -1;
+    }
 
     /* Check for returning rehearsal */
     wbb_message_t message;
@@ -798,7 +861,10 @@ int wbb_process_messages(
     wernicke_broca_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_process_messages: bridge is NULL");
+        return -1;
+    }
 
     uint32_t processed = 0;
     uint32_t limit = (max_messages == 0) ?
@@ -856,7 +922,10 @@ int wbb_peek_message(
     const wernicke_broca_bridge_t* bridge,
     wbb_message_t* message
 ) {
-    if (!bridge || !message) return -1;
+    if (!bridge || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_peek_message: required parameter is NULL (bridge, message)");
+        return -1;
+    }
 
     /* Check to-Broca queue first */
     if (queue_peek(&bridge->to_broca_queue, message)) {
@@ -879,7 +948,10 @@ int wbb_get_stats(
     const wernicke_broca_bridge_t* bridge,
     wbb_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -897,7 +969,10 @@ int wbb_get_config(
     const wernicke_broca_bridge_t* bridge,
     wbb_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }
@@ -906,7 +981,10 @@ int wbb_set_config(
     wernicke_broca_bridge_t* bridge,
     const wbb_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wbb_set_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     bridge->config = *config;
     return 0;
 }

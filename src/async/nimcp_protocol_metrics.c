@@ -105,7 +105,10 @@ static void make_metric_key(char* key, size_t key_size, const char* name,
  * @brief Find metric entry by key
  */
 static metric_entry_t* find_metric(protocol_metrics_t metrics, const char* key) {
-    if (!metrics || !key) return NULL;
+    if (!metrics || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_metric: required parameter is NULL (metrics, key)");
+        return NULL;
+    }
 
     uint32_t hash = hash_string(key);
     metric_entry_t* entry = metrics->hash_table[hash];
@@ -117,6 +120,7 @@ static metric_entry_t* find_metric(protocol_metrics_t metrics, const char* key) 
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_metric: validation failed");
     return NULL;
 }
 
@@ -258,6 +262,7 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
                             const metric_label_t* labels, uint32_t label_count) {
     if (!metrics || !name) {
         LOG_ERROR("Invalid parameters for metric recording");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: required parameter is NULL (metrics, name)");
         return false;
     }
 
@@ -276,6 +281,7 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
         if (metrics->metric_count >= metrics->config.max_metrics) {
             LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
             nimcp_platform_mutex_unlock(&metrics->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_metrics_destroy: capacity exceeded");
             return false;
         }
 
@@ -283,6 +289,7 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
         if (!entry) {
             LOG_ERROR("Failed to create metric entry");
             nimcp_platform_mutex_unlock(&metrics->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: entry is NULL");
             return false;
         }
 
@@ -310,7 +317,10 @@ bool protocol_metrics_record(protocol_metrics_t metrics, const char* name,
 bool protocol_metrics_increment(protocol_metrics_t metrics, const char* name,
                                double delta, const metric_label_t* labels,
                                uint32_t label_count) {
-    if (!metrics || !name) return false;
+    if (!metrics || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: required parameter is NULL (metrics, name)");
+        return false;
+    }
 
     char key[256];
     make_metric_key(key, sizeof(key), name, labels, label_count);
@@ -352,7 +362,10 @@ bool protocol_metrics_set_gauge(protocol_metrics_t metrics, const char* name,
 bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
                              double value, const metric_label_t* labels,
                              uint32_t label_count) {
-    if (!metrics || !name) return false;
+    if (!metrics || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: required parameter is NULL (metrics, name)");
+        return false;
+    }
 
     char key[256];
     make_metric_key(key, sizeof(key), name, labels, label_count);
@@ -365,12 +378,14 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
         if (metrics->metric_count >= metrics->config.max_metrics) {
             LOG_ERROR("Maximum metrics reached (%u)", metrics->config.max_metrics);
             nimcp_platform_mutex_unlock(&metrics->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "protocol_metrics_destroy: capacity exceeded");
             return false;
         }
 
         entry = create_metric_entry(key, METRIC_TYPE_HISTOGRAM, labels, label_count);
         if (!entry) {
             nimcp_platform_mutex_unlock(&metrics->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: entry is NULL");
             return false;
         }
 
@@ -415,13 +430,17 @@ bool protocol_metrics_observe(protocol_metrics_t metrics, const char* name,
 
 bool protocol_metrics_get(protocol_metrics_t metrics, const char* name,
                          metric_t* out_metric) {
-    if (!metrics || !name || !out_metric) return false;
+    if (!metrics || !name || !out_metric) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_destroy: required parameter is NULL (metrics, name, out_metric)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&metrics->mutex);
 
     metric_entry_t* entry = find_metric(metrics, name);
     if (!entry) {
         nimcp_platform_mutex_unlock(&metrics->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: entry is NULL");
         return false;
     }
 
@@ -433,7 +452,10 @@ bool protocol_metrics_get(protocol_metrics_t metrics, const char* name,
 
 bool protocol_metrics_get_summary(protocol_metrics_t metrics,
                                  metrics_summary_t* out_summary) {
-    if (!metrics || !out_summary) return false;
+    if (!metrics || !out_summary) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (metrics, out_summary)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&metrics->mutex);
 
@@ -496,7 +518,10 @@ bool protocol_metrics_get_summary(protocol_metrics_t metrics,
 bool protocol_metrics_query(protocol_metrics_t metrics, const char* pattern,
                            metric_t* out_metrics, uint32_t max_metrics,
                            uint32_t* out_count) {
-    if (!metrics || !out_metrics || !out_count) return false;
+    if (!metrics || !out_metrics || !out_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (metrics, out_metrics, out_count)");
+        return false;
+    }
 
     *out_count = 0;
 
@@ -610,7 +635,10 @@ static size_t export_prometheus(protocol_metrics_t metrics, char* buffer, size_t
 
 bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
                             char* out_buffer, size_t buffer_size, size_t* out_bytes) {
-    if (!metrics || !out_buffer || !out_bytes) return false;
+    if (!metrics || !out_buffer || !out_bytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: required parameter is NULL (metrics, out_buffer, out_bytes)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&metrics->mutex);
 
@@ -638,19 +666,24 @@ bool protocol_metrics_export(protocol_metrics_t metrics, export_format_t format,
 
 bool protocol_metrics_export_file(protocol_metrics_t metrics,
                                  export_format_t format, const char* filename) {
-    if (!metrics || !filename) return false;
+    if (!metrics || !filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: required parameter is NULL (metrics, filename)");
+        return false;
+    }
 
     char buffer[65536];
     size_t bytes = 0;
 
     if (!protocol_metrics_export(metrics, format, buffer, sizeof(buffer), &bytes)) {
         LOG_ERROR("Export buffer too small");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "export_prometheus: protocol_metrics_export is NULL");
         return false;
     }
 
     FILE* f = fopen(filename, "w");
     if (!f) {
         LOG_ERROR("Failed to open file: %s", filename);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "export_prometheus: f is NULL");
         return false;
     }
 
@@ -660,6 +693,7 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
     if (written != bytes) {
         LOG_ERROR("Failed to write all bytes to file: %s (wrote %zu of %zu)",
                   filename, written, bytes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "export_prometheus: validation failed");
         return false;
     }
 
@@ -672,7 +706,10 @@ bool protocol_metrics_export_file(protocol_metrics_t metrics,
 //=============================================================================
 
 bool protocol_metrics_reset(protocol_metrics_t metrics) {
-    if (!metrics) return false;
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol_metrics_reset: metrics is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(&metrics->mutex);
 

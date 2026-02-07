@@ -105,6 +105,7 @@ struct execution_context_struct {
 static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
 {
     if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_cpu_capabilities: caps is NULL");
         return false;
     }
 
@@ -168,6 +169,7 @@ static bool detect_cpu_capabilities(hardware_capabilities_t* caps)
 static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
 {
     if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_gpu_capabilities_runtime: caps is NULL");
         return false;
     }
 
@@ -182,6 +184,7 @@ static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
         caps->gpu_compute_units = 0;
         caps->gpu_memory_mb = 0;
         caps->gpu_compute_capability = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_gpu_capabilities_runtime: gpu_detect_capabilities is NULL");
         return false;
     }
 
@@ -230,6 +233,7 @@ static bool detect_gpu_capabilities_runtime(hardware_capabilities_t* caps)
 static bool detect_network_capabilities(hardware_capabilities_t* caps)
 {
     if (!caps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detect_network_capabilities: caps is NULL");
         return false;
     }
 
@@ -317,6 +321,7 @@ bool execution_detect_capabilities(hardware_capabilities_t* caps)
     // Guard: Validate output
     if (!caps) {
         LOG_ERROR("NULL capabilities pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_detect_capabilities: caps is NULL");
         return false;
     }
 
@@ -367,6 +372,7 @@ bool execution_mode_is_supported(execution_mode_t mode)
 {
     hardware_capabilities_t caps;
     if (!execution_detect_capabilities(&caps)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execution_mode_is_supported: execution_detect_capabilities is NULL");
         return false;
     }
 
@@ -395,6 +401,7 @@ bool execution_mode_is_supported(execution_mode_t mode)
             return true;  // Auto always supported
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execution_mode_is_supported: operation failed");
             return false;
     }
 }
@@ -517,6 +524,7 @@ execution_context_t execution_context_create(const execution_config_t* config)
             }
         } else {
             nimcp_free(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_context_create: execution_mode_is_supported is NULL");
             return NULL;
         }
     }
@@ -540,6 +548,7 @@ execution_context_t execution_context_create(const execution_config_t* config)
                     // Fall through to CPU_PARALLEL initialization
                 } else {
                     nimcp_free(ctx);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_context_create: validation failed");
                     return NULL;
                 }
             }
@@ -549,6 +558,7 @@ execution_context_t execution_context_create(const execution_config_t* config)
                 ctx->active_mode = EXEC_MODE_CPU_PARALLEL;
             } else {
                 nimcp_free(ctx);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_context_create: validation failed");
                 return NULL;
             }
             #endif
@@ -578,6 +588,7 @@ execution_context_t execution_context_create(const execution_config_t* config)
                         ctx->cpu_thread_count = 1;
                     } else {
                         nimcp_free(ctx);
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_context_create: validation failed");
                         return NULL;
                     }
                 } else {
@@ -741,6 +752,7 @@ static void cleanup_mode_resources(execution_context_t ctx, execution_mode_t mod
 static bool initialize_mode_resources(execution_context_t ctx, execution_mode_t mode)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_mode_resources: ctx is NULL");
         return false;
     }
 
@@ -758,11 +770,13 @@ static bool initialize_mode_resources(execution_context_t ctx, execution_mode_t 
                     return true;
                 } else {
                     LOG_ERROR("Failed to set CUDA device: %s", cudaGetErrorString(err));
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_mode_resources: validation failed");
                     return false;
                 }
             }
             #else
             LOG_ERROR("CUDA not available at compile time");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_mode_resources: operation failed");
             return false;
             #endif
 
@@ -785,6 +799,7 @@ static bool initialize_mode_resources(execution_context_t ctx, execution_mode_t 
                 ctx->thread_pool = nimcp_pool_create(num_threads);
                 if (!ctx->thread_pool) {
                     LOG_ERROR("Failed to create thread pool with %u threads", num_threads);
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_mode_resources: ctx->thread_pool is NULL");
                     return false;
                 }
                 ctx->cpu_thread_count = num_threads;
@@ -827,6 +842,7 @@ static bool initialize_mode_resources(execution_context_t ctx, execution_mode_t 
                     return true;
                 }
                 LOG_ERROR("Failed to initialize hybrid mode resources");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "initialize_mode_resources: validation failed");
                 return false;
             }
 
@@ -866,6 +882,7 @@ bool execution_context_set_mode(execution_context_t ctx, execution_mode_t new_mo
 {
     // Guard: Validate context
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_context_set_mode: ctx is NULL");
         return false;
     }
 
@@ -878,6 +895,7 @@ bool execution_context_set_mode(execution_context_t ctx, execution_mode_t new_mo
     // Check if mode is supported
     if (!execution_mode_is_supported(new_mode)) {
         LOG_WARN("Requested mode %d is not supported on this system", new_mode);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execution_context_set_mode: execution_mode_is_supported is NULL");
         return false;
     }
 
@@ -929,6 +947,7 @@ bool execution_context_set_mode(execution_context_t ctx, execution_mode_t new_mo
 void* execution_alloc(execution_context_t ctx, size_t size)
 {
     if (!ctx || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "execution_alloc: ctx is NULL");
         return NULL;
     }
 
@@ -986,6 +1005,7 @@ bool execution_memcpy(execution_context_t ctx, void* dst, const void* src,
                      size_t size, bool host_to_device)
 {
     if (!ctx || !dst || !src || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_memcpy: required parameter is NULL (ctx, dst, src)");
         return false;
     }
 
@@ -1021,6 +1041,7 @@ bool execution_memcpy(execution_context_t ctx, void* dst, const void* src,
 bool execution_synchronize(execution_context_t ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_synchronize: ctx is NULL");
         return false;
     }
 
@@ -1046,6 +1067,7 @@ bool execution_get_stats(execution_context_t ctx, uint64_t* total_ops,
                         double* total_time_ms)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execution_get_stats: ctx is NULL");
         return false;
     }
 

@@ -144,6 +144,7 @@ hypo_img_fep_bridge_t* hypo_img_fep_create(
     /* Validate required parameters */
     if (!fep_system) {
         NIMCP_LOGGING_ERROR("Hypo IMG FEP bridge: FEP system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_create: fep_system is NULL");
         return NULL;
     }
 
@@ -151,6 +152,7 @@ hypo_img_fep_bridge_t* hypo_img_fep_create(
     hypo_img_fep_bridge_t* bridge = (hypo_img_fep_bridge_t*)nimcp_malloc(sizeof(hypo_img_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Hypo IMG FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_img_fep_create: bridge is NULL");
         return NULL;
     }
 
@@ -172,6 +174,7 @@ hypo_img_fep_bridge_t* hypo_img_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo IMG FEP bridge: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_img_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -183,6 +186,7 @@ hypo_img_fep_bridge_t* hypo_img_fep_create(
     if (!bridge->drive_features || !bridge->scenario_features || !bridge->reality_features) {
         NIMCP_LOGGING_ERROR("Hypo IMG FEP bridge: feature buffer allocation failed");
         hypo_img_fep_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_img_fep_create: required parameter is NULL (bridge->drive_features, bridge->scenario_features, bridge->reality_features)");
         return NULL;
     }
 

@@ -65,12 +65,14 @@ adaptive_normalizer_t* adaptive_normalizer_create(
     norm->mutex = nimcp_mutex_create(NULL);
     if (!norm->mutex) {
         adaptive_normalizer_destroy(norm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_normalizer_create: norm->mutex is NULL");
         return NULL;
     }
 
     norm->channels = nimcp_calloc(num_channels, sizeof(adaptive_channel_t));
     if (!norm->channels) {
         adaptive_normalizer_destroy(norm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_normalizer_create: norm->channels is NULL");
         return NULL;
     }
 
@@ -102,7 +104,10 @@ bool adaptive_normalizer_fit(
     size_t channel,
     float value
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_normalizer_fit: normalizer is NULL");
+        return false;
+    }
 
     /* Thread safety: Lock mutex to protect channel state */
     nimcp_mutex_lock(normalizer->mutex);
@@ -161,7 +166,10 @@ bool adaptive_normalizer_reset_channel(
     adaptive_normalizer_t* normalizer,
     size_t channel
 ) {
-    if (!normalizer || channel >= normalizer->num_channels) return false;
+    if (!normalizer || channel >= normalizer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_normalizer_reset_channel: normalizer is NULL");
+        return false;
+    }
 
     /* Thread safety: Lock mutex to protect channel state */
     nimcp_mutex_lock(normalizer->mutex);

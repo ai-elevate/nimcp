@@ -57,7 +57,10 @@ static inline nimcp_result_t nimcp_hash_table_insert(hash_table_t *table, const 
 }
 
 static inline void *nimcp_hash_table_get(hash_table_t *table, const char *key) {
-    if (!table || !key) return NULL;
+    if (!table || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_hash_table_get: required parameter is NULL (table, key)");
+        return NULL;
+    }
     void **result = (void**)hash_table_lookup_string(table, key);
     return result ? *result : NULL;
 }
@@ -101,7 +104,10 @@ static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
     }
 
     nimcp_heap_element_t elem;
-    if (!nimcp_min_heap_extract_min(heap, &elem)) return NULL;
+    if (!nimcp_min_heap_extract_min(heap, &elem)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_replay_heap_extract: nimcp_min_heap_extract_min is NULL");
+        return NULL;
+    }
 
     void* entry = _replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES];
     _replay_entry_map[elem.vertex_id % MAX_REPLAY_ENTRIES] = NULL;
@@ -355,6 +361,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
     NimcpSwarmMemory *memory = (NimcpSwarmMemory *)nimcp_malloc(sizeof(NimcpSwarmMemory));
     if (!memory) {
         LOG_ERROR("Failed to allocate swarm memory system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory is NULL");
         return NULL;
     }
 
@@ -374,6 +381,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
     if (!memory->memories) {
         LOG_ERROR("Failed to create memories hash table");
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->memories is NULL");
         return NULL;
     }
 
@@ -386,6 +394,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
                 hash_table_destroy(memory->memories_by_type[j]);
             }
             nimcp_free(memory);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->memories_by_type is NULL");
             return NULL;
         }
     }
@@ -399,6 +408,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->replay_queue is NULL");
         return NULL;
     }
 
@@ -412,6 +422,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->hippocampus_nodes is NULL");
         return NULL;
     }
 
@@ -426,6 +437,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->patterns is NULL");
         return NULL;
     }
 
@@ -440,6 +452,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_memory_create: operation failed");
         return NULL;
     }
 
@@ -455,6 +468,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
             hash_table_destroy(memory->memories_by_type[i]);
         }
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_memory_create: operation failed");
         return NULL;
     }
 
@@ -495,6 +509,7 @@ NimcpSwarmMemory *nimcp_swarm_memory_create(
     if (!memory->mutex) {
         LOG_ERROR("Failed to initialize mutex");
         nimcp_free(memory);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_create: memory->mutex is NULL");
         return NULL;
     }
 
@@ -1468,6 +1483,7 @@ nimcp_result_t nimcp_swarm_memory_consolidate(
 bool nimcp_swarm_memory_is_consolidating(const NimcpSwarmMemory *memory)
 {
     if (!memory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_memory_is_consolidating: memory is NULL");
         return false;
     }
 
@@ -2604,10 +2620,12 @@ int32_t swarm_memory_recognize_pattern(
     size_t len)
 {
     if (!memory || !signal || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_recognize_pattern: required parameter is NULL (memory, signal)");
         return -1;
     }
 
     if (!memory->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_recognize_pattern: memory->is_initialized is NULL");
         return -1;
     }
 
@@ -2632,6 +2650,7 @@ int32_t swarm_memory_recognize_pattern(
 
     LOG_DEBUG("No pattern match found (best_similarity=%.3f < threshold=%.3f)",
               best_similarity, memory->pattern_similarity_threshold);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_recognize_pattern: capacity exceeded");
     return -1;
 }
 
@@ -2649,10 +2668,12 @@ int32_t swarm_memory_store_pattern_labeled(
     const char *label)
 {
     if (!memory || !signal || len == 0 || !label) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: required parameter is NULL (memory, signal, label)");
         return -1;
     }
 
     if (!memory->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: memory->is_initialized is NULL");
         return -1;
     }
 
@@ -2669,6 +2690,7 @@ int32_t swarm_memory_store_pattern_labeled(
     swarm_pattern_t *pattern = (swarm_pattern_t *)nimcp_malloc(sizeof(swarm_pattern_t));
     if (!pattern) {
         nimcp_platform_mutex_unlock(memory->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: pattern is NULL");
         return -1;
     }
 
@@ -2686,6 +2708,7 @@ int32_t swarm_memory_store_pattern_labeled(
     if (!pattern->data) {
         nimcp_free(pattern);
         nimcp_platform_mutex_unlock(memory->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: pattern->data is NULL");
         return -1;
     }
     memcpy(pattern->data, signal, len * sizeof(float));
@@ -2713,6 +2736,7 @@ int32_t swarm_memory_store_pattern_labeled(
         nimcp_free(pattern);
         nimcp_platform_mutex_unlock(memory->mutex);
         LOG_ERROR("Failed to insert pattern into hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_store_pattern_labeled: validation failed");
         return -1;
     }
 
@@ -3049,10 +3073,12 @@ int32_t swarm_memory_import_patterns(
     const char *filepath)
 {
     if (!memory || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_import_patterns: required parameter is NULL (memory, filepath)");
         return -1;
     }
 
     if (!memory->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_import_patterns: memory->is_initialized is NULL");
         return -1;
     }
 
@@ -3062,6 +3088,7 @@ int32_t swarm_memory_import_patterns(
     if (!fp) {
         nimcp_platform_mutex_unlock(memory->mutex);
         LOG_ERROR("Failed to open file for import: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_import_patterns: fp is NULL");
         return -1;
     }
 
@@ -3074,6 +3101,7 @@ int32_t swarm_memory_import_patterns(
         fclose(fp);
         nimcp_platform_mutex_unlock(memory->mutex);
         LOG_ERROR("Invalid file format");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_memory_import_patterns: validation failed");
         return -1;
     }
 
@@ -3084,6 +3112,7 @@ int32_t swarm_memory_import_patterns(
         fclose(fp);
         nimcp_platform_mutex_unlock(memory->mutex);
         LOG_ERROR("Unsupported version: %u", version);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_memory_import_patterns: validation failed");
         return -1;
     }
 
@@ -3124,14 +3153,17 @@ int32_t swarm_memory_find_similar_patterns(
     size_t max_results)
 {
     if (!memory || !signal || len == 0 || !results || max_results == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_find_similar_patterns: required parameter is NULL (memory, signal, results)");
         return -1;
     }
 
     if (threshold < 0.0F || threshold > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_memory_find_similar_patterns: validation failed");
         return -1;
     }
 
     if (!memory->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_memory_find_similar_patterns: memory->is_initialized is NULL");
         return -1;
     }
 
@@ -3217,6 +3249,7 @@ static NimcpMemoryEntry *create_memory_entry(
     entry->data = nimcp_malloc(data_size);
     if (!entry->data) {
         nimcp_free(entry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_memory_entry: entry->data is NULL");
         return NULL;
     }
     memcpy(entry->data, data, data_size);
@@ -3320,6 +3353,7 @@ static int compare_replay_priority(const void *a, const void *b)
 
     /* Higher priority comes first (min heap, so negate) */
     if (entry_a->replay_priority > entry_b->replay_priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_replay_priority: validation failed");
         return -1;
     } else if (entry_a->replay_priority < entry_b->replay_priority) {
         return 1;

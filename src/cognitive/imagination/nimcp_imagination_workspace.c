@@ -155,7 +155,10 @@ static uint64_t get_time_ms(void) {
  */
 static int slot_init(scenario_slot_t* slot,
                      const imagination_workspace_config_t* config) {
-    if (!slot || !config) return -1;
+    if (!slot || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_time_ms: required parameter is NULL (slot, config)");
+        return -1;
+    }
 
     memset(slot, 0, sizeof(scenario_slot_t));
 
@@ -190,6 +193,7 @@ error:
     if (slot->audio) nimcp_tensor_destroy(slot->audio);
     if (slot->trajectory) nimcp_free(slot->trajectory);
     memset(slot, 0, sizeof(scenario_slot_t));
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_time_ms: validation failed");
     return -1;
 }
 
@@ -274,7 +278,10 @@ static void slot_reset(scenario_slot_t* slot) {
  */
 static scenario_slot_t* find_slot(imagination_workspace_t* workspace,
                                    scenario_id_t id) {
-    if (!workspace || !workspace->scenarios || id == 0) return NULL;
+    if (!workspace || !workspace->scenarios || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "slot_reset: required parameter is NULL (workspace, workspace->scenarios)");
+        return NULL;
+    }
 
     scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
     for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
@@ -288,6 +295,7 @@ static scenario_slot_t* find_slot(imagination_workspace_t* workspace,
             return &slots[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "slot_reset: validation failed");
     return NULL;
 }
 
@@ -295,7 +303,10 @@ static scenario_slot_t* find_slot(imagination_workspace_t* workspace,
  * @brief Find empty slot
  */
 static scenario_slot_t* find_empty_slot(imagination_workspace_t* workspace) {
-    if (!workspace || !workspace->scenarios) return NULL;
+    if (!workspace || !workspace->scenarios) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: required parameter is NULL (workspace, workspace->scenarios)");
+        return NULL;
+    }
 
     scenario_slot_t* slots = (scenario_slot_t*)workspace->scenarios;
     for (size_t i = 0; i < workspace->config.max_scenarios; i++) {
@@ -309,6 +320,7 @@ static scenario_slot_t* find_empty_slot(imagination_workspace_t* workspace) {
             return &slots[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_slot: slots is NULL");
     return NULL;
 }
 
@@ -417,6 +429,7 @@ imagination_workspace_t* imagination_workspace_create(
 
 error:
     imagination_workspace_destroy(workspace);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_workspace_default_config: operation failed");
     return NULL;
 }
 
@@ -454,7 +467,10 @@ void imagination_workspace_destroy(imagination_workspace_t* workspace) {
 }
 
 int imagination_workspace_reset(imagination_workspace_t* workspace) {
-    if (!workspace) return -1;
+    if (!workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_workspace_reset: workspace is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__reset", 0.0f);
@@ -540,7 +556,10 @@ int imagination_workspace_release_scenario(
     imagination_workspace_t* workspace,
     scenario_id_t id) {
 
-    if (!workspace || id == 0) return -1;
+    if (!workspace || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__release_scenario", 0.0f);
@@ -551,6 +570,7 @@ int imagination_workspace_release_scenario(
     scenario_slot_t* slot = find_slot(workspace, id);
     if (!slot) {
         nimcp_mutex_unlock(workspace->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_workspace_reset: slot is NULL");
         return -1;  /* Not found */
     }
 
@@ -578,7 +598,10 @@ bool imagination_workspace_has_scenario(
     const imagination_workspace_t* workspace,
     scenario_id_t id) {
 
-    if (!workspace || id == 0) return false;
+    if (!workspace || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
+        return false;
+    }
 
     /* Cast away const for mutex - safe since we're only reading */
     /* Phase 8: Heartbeat at operation start */
@@ -613,7 +636,10 @@ nimcp_tensor_t* imagination_workspace_get_latent(
     imagination_workspace_t* workspace,
     scenario_id_t id) {
 
-    if (!workspace || id == 0) return NULL;
+    if (!workspace || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__get_latent", 0.0f);
@@ -631,7 +657,10 @@ nimcp_tensor_t* imagination_workspace_get_visual(
     imagination_workspace_t* workspace,
     scenario_id_t id) {
 
-    if (!workspace || id == 0) return NULL;
+    if (!workspace || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__get_visual", 0.0f);
@@ -649,7 +678,10 @@ nimcp_tensor_t* imagination_workspace_get_audio(
     imagination_workspace_t* workspace,
     scenario_id_t id) {
 
-    if (!workspace || id == 0) return NULL;
+    if (!workspace || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_workspace_reset: workspace is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__get_audio", 0.0f);
@@ -711,7 +743,10 @@ int imagination_workspace_get_stats(
     const imagination_workspace_t* workspace,
     imagination_workspace_stats_t* stats) {
 
-    if (!workspace || !stats) return -1;
+    if (!workspace || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (workspace, stats)");
+        return -1;
+    }
 
     /* Cast away const for mutex - safe since we're only reading */
     /* Phase 8: Heartbeat at operation start */
@@ -728,7 +763,10 @@ int imagination_workspace_get_stats(
 }
 
 int imagination_workspace_reset_stats(imagination_workspace_t* workspace) {
-    if (!workspace) return -1;
+    if (!workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_workspace_reset_stats: workspace is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_workspace_heartbeat("imagination__reset_stats", 0.0f);

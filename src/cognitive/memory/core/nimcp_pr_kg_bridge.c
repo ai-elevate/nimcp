@@ -272,6 +272,7 @@ static int hash_insert_pr(struct pr_kg_bridge_struct* bridge,
     pr_hash_entry_t* entry = (pr_hash_entry_t*)nimcp_malloc(sizeof(pr_hash_entry_t));
     if (!entry) {
         set_error("Failed to allocate PR hash entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_kg_id: entry is NULL");
         return -1;
     }
 
@@ -293,6 +294,7 @@ static int hash_insert_kg(struct pr_kg_bridge_struct* bridge,
     kg_hash_entry_t* entry = (kg_hash_entry_t*)nimcp_malloc(sizeof(kg_hash_entry_t));
     if (!entry) {
         set_error("Failed to allocate KG hash entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_kg_id: entry is NULL");
         return -1;
     }
 
@@ -357,6 +359,7 @@ static int hash_remove_pr(struct pr_kg_bridge_struct* bridge, uint64_t pr_id) {
         pp = &(*pp)->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_remove_pr: validation failed");
     return -1;
 }
 
@@ -378,6 +381,7 @@ static int hash_remove_kg(struct pr_kg_bridge_struct* bridge,
         pp = &(*pp)->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_remove_pr: validation failed");
     return -1;
 }
 
@@ -513,11 +517,13 @@ pr_kg_bridge_config_t pr_kg_bridge_config_default(void) {
 pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: config is NULL");
         return NULL;
     }
 
     if (!config->brain_kg) {
         set_error("brain_kg must be non-NULL in config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_bridge_create: config->brain_kg is NULL");
         return NULL;
     }
 
@@ -530,6 +536,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
         (struct pr_kg_bridge_struct*)nimcp_calloc(1, sizeof(struct pr_kg_bridge_struct));
     if (!bridge) {
         set_error("Failed to allocate bridge structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -544,6 +551,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     if (!bridge->mappings) {
         set_error("Failed to allocate mapping array");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: bridge->mappings is NULL");
         return NULL;
     }
 
@@ -559,6 +567,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
         nimcp_free(bridge->pr_to_kg_hash);
         nimcp_free(bridge->kg_to_pr_hash);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_bridge_create: required parameter is NULL (bridge->pr_to_kg_hash, bridge->kg_to_pr_hash)");
         return NULL;
     }
 
@@ -612,11 +621,13 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
 int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
     if (!bridge) {
         set_error("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_bridge_connect: bridge is NULL");
         return -1;
     }
 
     if (!brain_kg) {
         set_error("NULL brain_kg pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_bridge_connect: brain_kg is NULL");
         return -1;
     }
 
@@ -650,6 +661,7 @@ int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
 
 bool pr_kg_bridge_is_connected(const pr_kg_bridge_t bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -799,6 +811,7 @@ brain_kg_node_id_t pr_kg_register_memory_full(
 int pr_kg_unregister_memory(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_unregister_memory: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -813,6 +826,7 @@ int pr_kg_unregister_memory(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
     if (map_idx == HASH_INVALID) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_unregister_memory: validation failed");
         return -1;
     }
 
@@ -853,6 +867,7 @@ int pr_kg_sync_memory(
 {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_sync_memory: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -867,6 +882,7 @@ int pr_kg_sync_memory(
     if (map_idx == HASH_INVALID) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_sync_memory: validation failed");
         return -1;
     }
 
@@ -886,6 +902,7 @@ int pr_kg_sync_memory(
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to update KG node for PR memory %lu",
                   (unsigned long)pr_node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_sync_memory: validation failed");
         return -1;
     }
 
@@ -1011,6 +1028,7 @@ int pr_kg_remove_entanglement(
 {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_remove_entanglement: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -1027,6 +1045,7 @@ int pr_kg_remove_entanglement(
     if (from_idx == HASH_INVALID || to_idx == HASH_INVALID) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("One or both PR nodes not registered");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_remove_entanglement: validation failed");
         return -1;
     }
 
@@ -1041,6 +1060,7 @@ int pr_kg_remove_entanglement(
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Edge not found between PR nodes %lu and %lu",
                   (unsigned long)from_pr_id, (unsigned long)to_pr_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_remove_entanglement: validation failed");
         return -1;
     }
 
@@ -1050,6 +1070,7 @@ int pr_kg_remove_entanglement(
 
     if (result < 0) {
         set_error("Failed to remove KG edge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_remove_entanglement: validation failed");
         return -1;
     }
 
@@ -1069,11 +1090,13 @@ int pr_kg_query_by_module(
 {
     if (!bridge || !bridge->connected || !result) {
         set_error("Invalid parameters to query_by_module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_query_by_module: required parameter is NULL (bridge, bridge->connected, result)");
         return -1;
     }
 
     if (!result->mappings || result->capacity == 0) {
         set_error("Query result not properly allocated");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_query_by_module: result->mappings is NULL");
         return -1;
     }
 
@@ -1112,6 +1135,7 @@ int pr_kg_query_by_path(
 {
     if (!bridge || !bridge->connected || !path || !pr_node_ids) {
         set_error("Invalid parameters to query_by_path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_query_by_path: required parameter is NULL (bridge, bridge->connected, path, pr_node_ids)");
         return -1;
     }
 
@@ -1147,6 +1171,7 @@ int pr_kg_get_context(
 {
     if (!bridge || !bridge->connected || !context) {
         set_error("Invalid parameters to get_context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_get_context: required parameter is NULL (bridge, bridge->connected, context)");
         return -1;
     }
 
@@ -1162,6 +1187,7 @@ int pr_kg_get_context(
     if (!kg_node) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("KG node %u not found", kg_node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_get_context: kg_node is NULL");
         return -1;
     }
 
@@ -1263,6 +1289,7 @@ int pr_kg_query_by_kg_node(
 {
     if (!bridge || !bridge->connected || !pr_node_ids) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_query_by_kg_node: required parameter is NULL (bridge, bridge->connected, pr_node_ids)");
         return -1;
     }
 
@@ -1376,6 +1403,7 @@ int pr_kg_get_mapping(
 {
     if (!bridge || !bridge->connected || !mapping) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_get_mapping: required parameter is NULL (bridge, bridge->connected, mapping)");
         return -1;
     }
 
@@ -1389,6 +1417,7 @@ int pr_kg_get_mapping(
     if (map_idx == HASH_INVALID) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_get_mapping: validation failed");
         return -1;
     }
 
@@ -1406,6 +1435,7 @@ int pr_kg_list_mappings(
 {
     if (!bridge || !result || !result->mappings) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_list_mappings: required parameter is NULL (bridge, result, result->mappings)");
         return -1;
     }
 
@@ -1454,6 +1484,7 @@ int pr_kg_batch_register(
 {
     if (!bridge || !bridge->connected || !pr_node_ids) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_batch_register: required parameter is NULL (bridge, bridge->connected, pr_node_ids)");
         return -1;
     }
 
@@ -1489,6 +1520,7 @@ int pr_kg_batch_register(
 int pr_kg_batch_sync(pr_kg_bridge_t bridge) {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_batch_sync: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -1538,6 +1570,7 @@ int pr_kg_batch_sync(pr_kg_bridge_t bridge) {
 int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
     if (!bridge) {
         set_error("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_cleanup_stale: bridge is NULL");
         return -1;
     }
 
@@ -1594,6 +1627,7 @@ int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
 int pr_kg_mark_dirty(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_mark_dirty: required parameter is NULL (bridge, bridge->connected)");
         return -1;
     }
 
@@ -1607,6 +1641,7 @@ int pr_kg_mark_dirty(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
     if (map_idx == HASH_INVALID) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node not found");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_kg_mark_dirty: validation failed");
         return -1;
     }
 
@@ -1627,6 +1662,7 @@ prime_signature_t* pr_kg_signature_from_node(
 {
     if (!bridge || !bridge->connected) {
         set_error("Bridge not connected");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_signature_from_node: required parameter is NULL (bridge, bridge->connected)");
         return NULL;
     }
 
@@ -1642,6 +1678,7 @@ prime_signature_t* pr_kg_signature_from_node(
     if (!kg_node) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("KG node not found");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_signature_from_node: kg_node is NULL");
         return NULL;
     }
 
@@ -1650,6 +1687,7 @@ prime_signature_t* pr_kg_signature_from_node(
     if (!sig) {
         MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to create signature");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_signature_from_node: sig is NULL");
         return NULL;
     }
 
@@ -1698,6 +1736,7 @@ int pr_kg_find_similar_memories(
 {
     if (!bridge || !bridge->connected || !pr_node_ids) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_find_similar_memories: required parameter is NULL (bridge, bridge->connected, pr_node_ids)");
         return -1;
     }
 
@@ -1730,6 +1769,7 @@ int pr_kg_find_similar_by_signature(
 {
     if (!bridge || !bridge->connected || !signature || !pr_node_ids) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_find_similar_by_signature: required parameter is NULL (bridge, bridge->connected, signature, pr_node_ids)");
         return -1;
     }
 
@@ -1800,6 +1840,7 @@ int pr_kg_find_similar_by_signature(
 int pr_kg_get_stats(pr_kg_bridge_t bridge, pr_kg_bridge_stats_t* stats) {
     if (!bridge || !stats) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_kg_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1948,6 +1989,7 @@ pr_kg_query_result_t* pr_kg_query_result_create(uint32_t capacity) {
         1, sizeof(pr_kg_query_result_t));
     if (!result) {
         set_error("Failed to allocate query result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_query_result_create: result is NULL");
         return NULL;
     }
 
@@ -1955,6 +1997,7 @@ pr_kg_query_result_t* pr_kg_query_result_create(uint32_t capacity) {
     if (!result->mappings) {
         nimcp_free(result);
         set_error("Failed to allocate mapping array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_kg_query_result_create: result->mappings is NULL");
         return NULL;
     }
 

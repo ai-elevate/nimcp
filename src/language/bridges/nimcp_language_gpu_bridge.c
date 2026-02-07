@@ -127,6 +127,7 @@ language_gpu_bridge_t* language_gpu_bridge_create(
     if (!bridge->pending_ops) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate pending ops array");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_gpu_bridge_create: bridge->pending_ops is NULL");
         return NULL;
     }
     bridge->num_pending = 0;
@@ -230,7 +231,10 @@ int language_gpu_bridge_init(language_gpu_bridge_t* bridge) {
 }
 
 int language_gpu_bridge_start(language_gpu_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
 
     bridge->active = true;
     bridge->status = GPU_STATUS_IDLE;
@@ -300,7 +304,10 @@ int language_gpu_bridge_connect_gpu_context(
 //=============================================================================
 
 bool language_gpu_bridge_is_available(const language_gpu_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_is_available: bridge is NULL");
+        return false;
+    }
     return bridge->gpu_available && bridge->active;
 }
 
@@ -308,7 +315,10 @@ int language_gpu_bridge_get_device_info(
     const language_gpu_bridge_t* bridge,
     gpu_device_info_t* info)
 {
-    if (!bridge || !info) return -1;
+    if (!bridge || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_get_device_info: required parameter is NULL (bridge, info)");
+        return -1;
+    }
     memcpy(info, &bridge->device_info, sizeof(gpu_device_info_t));
     return 0;
 }
@@ -330,7 +340,10 @@ int language_gpu_bridge_upload_word_embeddings(
     uint32_t count,
     uint32_t dim)
 {
-    if (!bridge || !embeddings || count == 0 || dim == 0) return -1;
+    if (!bridge || !embeddings || count == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_upload_word_embeddings: required parameter is NULL (bridge, embeddings)");
+        return -1;
+    }
 
     /* Free existing embeddings */
     if (bridge->word_embeddings_gpu) {
@@ -342,6 +355,7 @@ int language_gpu_bridge_upload_word_embeddings(
     bridge->word_embeddings_gpu = (float*)nimcp_malloc(size);
     if (!bridge->word_embeddings_gpu) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate word embeddings");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_gpu_bridge_upload_word_embeddings: bridge->word_embeddings_gpu is NULL");
         return -1;
     }
 
@@ -365,7 +379,10 @@ int language_gpu_bridge_upload_concept_embeddings(
     uint32_t count,
     uint32_t dim)
 {
-    if (!bridge || !embeddings || count == 0 || dim == 0) return -1;
+    if (!bridge || !embeddings || count == 0 || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_upload_concept_embeddings: required parameter is NULL (bridge, embeddings)");
+        return -1;
+    }
 
     /* Free existing embeddings */
     if (bridge->concept_embeddings_gpu) {
@@ -376,6 +393,7 @@ int language_gpu_bridge_upload_concept_embeddings(
     bridge->concept_embeddings_gpu = (float*)nimcp_malloc(size);
     if (!bridge->concept_embeddings_gpu) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate concept embeddings");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_gpu_bridge_upload_concept_embeddings: bridge->concept_embeddings_gpu is NULL");
         return -1;
     }
 
@@ -399,7 +417,10 @@ int language_gpu_bridge_upload_semantic_graph(
     uint32_t num_nodes,
     uint32_t num_edges)
 {
-    if (!bridge || !adjacency || num_nodes == 0) return -1;
+    if (!bridge || !adjacency || num_nodes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_upload_semantic_graph: required parameter is NULL (bridge, adjacency)");
+        return -1;
+    }
 
     /* Free existing graph */
     if (bridge->adjacency_gpu) {
@@ -413,6 +434,7 @@ int language_gpu_bridge_upload_semantic_graph(
     bridge->adjacency_gpu = (uint32_t*)nimcp_malloc(adj_size);
     if (!bridge->adjacency_gpu) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate adjacency list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_gpu_bridge_upload_semantic_graph: bridge->adjacency_gpu is NULL");
         return -1;
     }
     memcpy(bridge->adjacency_gpu, adjacency, adj_size);
@@ -424,6 +446,7 @@ int language_gpu_bridge_upload_semantic_graph(
             nimcp_free(bridge->adjacency_gpu);
             bridge->adjacency_gpu = NULL;
             LOG_ERROR(LOG_MODULE, "Failed to allocate edge weights");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_gpu_bridge_upload_semantic_graph: bridge->edge_weights_gpu is NULL");
             return -1;
         }
         memcpy(bridge->edge_weights_gpu, weights, weight_size);
@@ -444,13 +467,20 @@ int language_gpu_bridge_submit_phoneme_batch(
     language_gpu_bridge_t* bridge,
     const phoneme_batch_op_t* op)
 {
-    if (!bridge || !op) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !op) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_phoneme_batch: required parameter is NULL (bridge, op)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_phoneme_batch: bridge->active is NULL");
+        return -1;
+    }
 
     /* Add to pending operations */
     if (bridge->num_pending >= bridge->max_pending) {
         LOG_WARN(LOG_MODULE, "Pending ops queue full");
         bridge->stats.errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_phoneme_batch: capacity exceeded");
         return -1;
     }
 
@@ -472,12 +502,19 @@ int language_gpu_bridge_submit_lexical_batch(
     language_gpu_bridge_t* bridge,
     const lexical_batch_op_t* op)
 {
-    if (!bridge || !op) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !op) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_lexical_batch: required parameter is NULL (bridge, op)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_lexical_batch: bridge->active is NULL");
+        return -1;
+    }
 
     if (bridge->num_pending >= bridge->max_pending) {
         LOG_WARN(LOG_MODULE, "Pending ops queue full");
         bridge->stats.errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_lexical_batch: capacity exceeded");
         return -1;
     }
 
@@ -497,11 +534,18 @@ int language_gpu_bridge_submit_semantic_spread(
     language_gpu_bridge_t* bridge,
     const semantic_spread_op_t* op)
 {
-    if (!bridge || !op) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !op) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_semantic_spread: required parameter is NULL (bridge, op)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_semantic_spread: bridge->active is NULL");
+        return -1;
+    }
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_semantic_spread: capacity exceeded");
         return -1;
     }
 
@@ -520,11 +564,18 @@ int language_gpu_bridge_submit_embedding_batch(
     language_gpu_bridge_t* bridge,
     const embedding_batch_op_t* op)
 {
-    if (!bridge || !op) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !op) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_embedding_batch: required parameter is NULL (bridge, op)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_embedding_batch: bridge->active is NULL");
+        return -1;
+    }
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_embedding_batch: capacity exceeded");
         return -1;
     }
 
@@ -543,11 +594,18 @@ int language_gpu_bridge_submit_attention_batch(
     language_gpu_bridge_t* bridge,
     const attention_batch_op_t* op)
 {
-    if (!bridge || !op) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !op) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_attention_batch: required parameter is NULL (bridge, op)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_submit_attention_batch: bridge->active is NULL");
+        return -1;
+    }
 
     if (bridge->num_pending >= bridge->max_pending) {
         bridge->stats.errors++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "language_gpu_bridge_submit_attention_batch: capacity exceeded");
         return -1;
     }
 
@@ -596,9 +654,18 @@ int language_gpu_bridge_word_similarity_sync(
     uint32_t* result_ids,
     float* result_scores)
 {
-    if (!bridge || !query_embedding || !result_ids || !result_scores) return -1;
-    if (!bridge->word_embeddings_gpu || bridge->word_embedding_count == 0) return -1;
-    if (dim != bridge->embedding_dim) return -1;
+    if (!bridge || !query_embedding || !result_ids || !result_scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_word_similarity_sync: required parameter is NULL (bridge, query_embedding, result_ids, result_scores)");
+        return -1;
+    }
+    if (!bridge->word_embeddings_gpu || bridge->word_embedding_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_word_similarity_sync: bridge->word_embeddings_gpu is NULL");
+        return -1;
+    }
+    if (dim != bridge->embedding_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_gpu_bridge_word_similarity_sync: validation failed");
+        return -1;
+    }
 
     /* CPU fallback: compute dot products */
     /* For each word, compute similarity */
@@ -644,8 +711,14 @@ int language_gpu_bridge_semantic_spread_sync(
     float* result_activations,
     uint32_t max_results)
 {
-    if (!bridge || !source_concepts || !source_activations) return -1;
-    if (!result_concepts || !result_activations) return -1;
+    if (!bridge || !source_concepts || !source_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_semantic_spread_sync: required parameter is NULL (bridge, source_concepts, source_activations)");
+        return -1;
+    }
+    if (!result_concepts || !result_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_semantic_spread_sync: required parameter is NULL (result_concepts, result_activations)");
+        return -1;
+    }
 
     (void)max_depth;  /* Would be used for graph traversal depth */
 
@@ -671,7 +744,10 @@ int language_gpu_bridge_get_memory_state(
     const language_gpu_bridge_t* bridge,
     memory_pool_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_get_memory_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     memcpy(state, &bridge->memory_pool, sizeof(memory_pool_state_t));
     return 0;
 }
@@ -714,7 +790,10 @@ int language_gpu_bridge_get_stats(
     const language_gpu_bridge_t* bridge,
     language_gpu_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_gpu_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_gpu_stats_t));
     return 0;
 }

@@ -81,7 +81,10 @@ static void update_energy_state(NimcpEnergyGossip* gossip) {
  * @brief Check if message is already in cache
  */
 static bool is_message_cached(const NimcpEnergyGossip* gossip, uint64_t message_id) {
-    if (!gossip || !gossip->message_cache) return false;
+    if (!gossip || !gossip->message_cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_message_cached: required parameter is NULL (gossip, gossip->message_cache)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < gossip->message_cache_size; i++) {
         if (gossip->message_cache[i] &&
@@ -140,13 +143,17 @@ static nimcp_result_t add_to_cache(NimcpEnergyGossip* gossip, const NimcpGossipM
  * @brief Find relay node by ID
  */
 static NimcpRelayNode* find_relay_node(NimcpEnergyGossip* gossip, uint32_t node_id) {
-    if (!gossip || !gossip->relay_nodes) return NULL;
+    if (!gossip || !gossip->relay_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_relay_node: required parameter is NULL (gossip, gossip->relay_nodes)");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
         if (gossip->relay_nodes[i].node_id == node_id) {
             return &gossip->relay_nodes[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_relay_node: validation failed");
     return NULL;
 }
 
@@ -180,7 +187,10 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
     NimcpEnergyGossip* gossip,
     const float position[3]
 ) {
-    if (!gossip || !gossip->opportunities || !position) return NULL;
+    if (!gossip || !gossip->opportunities || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_harvest_opportunity: required parameter is NULL (gossip, gossip->opportunities, position)");
+        return NULL;
+    }
 
     const float tolerance = 1.0F; /* 1 unit tolerance */
 
@@ -190,6 +200,7 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
             return &gossip->opportunities[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_harvest_opportunity: validation failed");
     return NULL;
 }
 
@@ -278,6 +289,7 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
     if (!gossip->message_cache) {
         LOG_ERROR("Failed to allocate message cache");
         nimcp_free(gossip);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_energy_gossip_create: gossip->message_cache is NULL");
         return NULL;
     }
 
@@ -291,6 +303,7 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
         LOG_ERROR("Failed to allocate relay nodes");
         nimcp_free(gossip->message_cache);
         nimcp_free(gossip);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_energy_gossip_create: gossip->relay_nodes is NULL");
         return NULL;
     }
 
@@ -310,6 +323,7 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
         nimcp_free(gossip->relay_nodes);
         nimcp_free(gossip->message_cache);
         nimcp_free(gossip);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_energy_gossip_create: gossip->mutex is NULL");
         return NULL;
     }
 
@@ -509,7 +523,10 @@ nimcp_result_t nimcp_energy_gossip_configure_reserve(
 }
 
 bool nimcp_energy_gossip_needs_emergency_return(const NimcpEnergyGossip* gossip) {
-    if (!gossip) return false;
+    if (!gossip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_energy_gossip_needs_emergency_return: gossip is NULL");
+        return false;
+    }
 
     /* Need emergency return if:
      * 1. Energy below emergency threshold, OR
@@ -699,7 +716,10 @@ bool nimcp_energy_gossip_should_forward(
     const NimcpEnergyGossip* gossip,
     const NimcpGossipMessage* message
 ) {
-    if (!gossip || !message) return false;
+    if (!gossip || !message) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_energy_gossip_should_forward: required parameter is NULL (gossip, message)");
+        return false;
+    }
 
     /* Always forward critical messages */
     if (message->header.priority == NIMCP_PRIORITY_URGENT) {
@@ -708,6 +728,7 @@ bool nimcp_energy_gossip_should_forward(
 
     /* Never forward in emergency mode unless critical */
     if (gossip->reserve.emergency_mode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_energy_gossip_should_forward: validation failed");
         return false;
     }
 
@@ -951,12 +972,16 @@ nimcp_result_t nimcp_energy_gossip_wake(NimcpEnergyGossip* gossip) {
 }
 
 bool nimcp_energy_gossip_is_sleeping(const NimcpEnergyGossip* gossip) {
-    if (!gossip) return false;
+    if (!gossip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_energy_gossip_is_sleeping: gossip is NULL");
+        return false;
+    }
 
     /* Check if sleep period has expired */
     if (gossip->is_sleeping && gossip->sleep_until > 0) {
         time_t now = time(NULL);
         if (now >= gossip->sleep_until) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_energy_gossip_is_sleeping: capacity exceeded");
             return false;  /* Sleep period expired */
         }
     }
@@ -1197,7 +1222,10 @@ bool nimcp_energy_gossip_should_process(
     const NimcpEnergyGossip* gossip,
     NimcpMessagePriority priority
 ) {
-    if (!gossip) return false;
+    if (!gossip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_energy_gossip_should_process: gossip is NULL");
+        return false;
+    }
 
     /* Always process critical messages */
     if (priority == NIMCP_PRIORITY_URGENT) {

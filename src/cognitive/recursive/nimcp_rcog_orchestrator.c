@@ -278,6 +278,7 @@ static bool task_deps_satisfied(
                 }
             }
             if (!found) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "task_deps_satisfied: found is NULL");
                 return false;
             }
         }
@@ -310,10 +311,16 @@ static bool detect_cycle_dfs(
             break;
         }
     }
-    if (idx == SIZE_MAX) return false;
+    if (idx == SIZE_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
+        return false;
+    }
 
     if (in_stack[idx]) return true;  /* Cycle detected */
-    if (visited[idx]) return false;  /* Already processed */
+    if (visited[idx]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
+        return false;
+    }
 
     visited[idx] = true;
     in_stack[idx] = true;
@@ -335,6 +342,7 @@ static bool detect_cycle_dfs(
     }
 
     in_stack[idx] = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_cycle_dfs: validation failed");
     return false;
 }
 
@@ -423,6 +431,7 @@ rcog_orchestrator_t* rcog_orchestrator_create(
     orch->mutex = nimcp_mutex_create(&attr);
     if (!orch->mutex) {
         nimcp_free(orch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_orchestrator_create: orch->mutex is NULL");
         return NULL;
     }
 
@@ -1519,6 +1528,7 @@ bool rcog_orchestrator_is_answer_ready(
     const rcog_answer_state_t* answer
 ) {
     if (!orch || !answer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_orchestrator_is_answer_ready: required parameter is NULL (orch, answer)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */

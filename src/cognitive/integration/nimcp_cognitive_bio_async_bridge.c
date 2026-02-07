@@ -164,6 +164,7 @@ struct cognitive_bio_bridge {
  */
 static int get_module_index(cog_module_type_t type) {
     if (type >= COG_MODULE_TYPE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_module_index: capacity exceeded");
         return -1;
     }
     return (int)type;
@@ -348,6 +349,7 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
     /* Initialize bridge base (creates mutex) */
     if (bridge_base_init(&bridge->base, 0, "cognitive_bio_async") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cognitive_bio_bridge_create: validation failed");
         return NULL;
     }
 
@@ -472,6 +474,7 @@ int cognitive_bio_bridge_disconnect(cognitive_bio_bridge_t* bridge) {
 
 bool cognitive_bio_bridge_is_connected(const cognitive_bio_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_bio_bridge_is_connected: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -582,10 +585,12 @@ const cog_module_registration_t* cognitive_bio_bridge_get_module(
 
     int idx = get_module_index(type);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_bio_bridge_get_module: validation failed");
         return NULL;
     }
 
     if (!bridge->modules[idx].active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_bio_bridge_get_module: bridge->modules is NULL");
         return NULL;
     }
 
@@ -597,6 +602,7 @@ bool cognitive_bio_bridge_module_registered(
     cog_module_type_t type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cognitive_bio_bridge_module_registered: bridge is NULL");
         return false;
     }
 
@@ -606,6 +612,7 @@ bool cognitive_bio_bridge_module_registered(
 
     int idx = get_module_index(type);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cognitive_bio_bridge_module_registered: validation failed");
         return false;
     }
 

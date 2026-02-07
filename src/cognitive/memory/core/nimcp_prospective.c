@@ -164,6 +164,7 @@ static prospective_intention_t* find_intention(prospective_memory_t pm, uint64_t
             return &pm->intentions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_intention: validation failed");
     return NULL;
 }
 
@@ -197,6 +198,7 @@ static prospective_intention_t* find_free_slot(prospective_memory_t pm) {
         return &pm->intentions[pm->num_intentions++];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: validation failed");
     return NULL;
 }
 
@@ -280,8 +282,14 @@ static prospective_priority_t compute_priority_internal(float importance, float 
  * @brief Add intention to active monitors
  */
 static bool add_to_active_monitors(prospective_memory_t pm, prospective_intention_t* intent) {
-    if (!pm || !intent) return false;
-    if (pm->num_active >= pm->max_active) return false;
+    if (!pm || !intent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "add_to_active_monitors: required parameter is NULL (pm, intent)");
+        return false;
+    }
+    if (pm->num_active >= pm->max_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_to_active_monitors: capacity exceeded");
+        return false;
+    }
 
     // Check if already monitored
     for (size_t i = 0; i < pm->num_active; i++) {
@@ -356,8 +364,14 @@ static float compute_time_activation(prospective_intention_t* intent, float curr
  */
 static bool check_time_trigger_internal(prospective_intention_t* intent, float current_time,
                                         float* strength_out) {
-    if (!intent || intent->type != PROSP_TIME_BASED) return false;
-    if (intent->status != PROSP_PENDING) return false;
+    if (!intent || intent->type != PROSP_TIME_BASED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: intent is NULL");
+        return false;
+    }
+    if (intent->status != PROSP_PENDING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
 
     float target = intent->trigger.time_trigger.target_time;
     float window_after = intent->trigger.time_trigger.window_after;
@@ -380,6 +394,7 @@ static bool check_time_trigger_internal(prospective_intention_t* intent, float c
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -389,9 +404,18 @@ static bool check_time_trigger_internal(prospective_intention_t* intent, float c
 static bool check_event_trigger_internal(prospective_intention_t* intent,
                                          const prime_signature_t* context,
                                          float* strength_out) {
-    if (!intent || !context) return false;
-    if (intent->type != PROSP_EVENT_BASED) return false;
-    if (intent->status != PROSP_PENDING) return false;
+    if (!intent || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: required parameter is NULL (intent, context)");
+        return false;
+    }
+    if (intent->type != PROSP_EVENT_BASED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
+    if (intent->status != PROSP_PENDING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
 
     prosp_event_trigger_t* trigger = &intent->trigger.event_trigger;
 
@@ -403,6 +427,7 @@ static bool check_event_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -413,9 +438,18 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
                                             uint64_t completed_activity_id,
                                             const char* activity_tag,
                                             float* strength_out) {
-    if (!intent) return false;
-    if (intent->type != PROSP_ACTIVITY_BASED) return false;
-    if (intent->status != PROSP_PENDING) return false;
+    if (!intent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: intent is NULL");
+        return false;
+    }
+    if (intent->type != PROSP_ACTIVITY_BASED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
+    if (intent->status != PROSP_PENDING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
 
     prosp_activity_trigger_t* trigger = &intent->trigger.activity_trigger;
 
@@ -424,6 +458,7 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
         // Trigger on any activity (possibly filtered by tag)
         if (trigger->activity_tag[0] != '\0' && activity_tag) {
             if (strstr(activity_tag, trigger->activity_tag) == NULL) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
                 return false;
             }
         }
@@ -437,6 +472,7 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -446,9 +482,18 @@ static bool check_activity_trigger_internal(prospective_intention_t* intent,
 static bool check_location_trigger_internal(prospective_intention_t* intent,
                                             const prime_signature_t* location,
                                             float* strength_out) {
-    if (!intent || !location) return false;
-    if (intent->type != PROSP_LOCATION_BASED) return false;
-    if (intent->status != PROSP_PENDING) return false;
+    if (!intent || !location) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_time_activation: required parameter is NULL (intent, location)");
+        return false;
+    }
+    if (intent->type != PROSP_LOCATION_BASED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
+    if (intent->status != PROSP_PENDING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
+        return false;
+    }
 
     prosp_location_trigger_t* trigger = &intent->trigger.location_trigger;
 
@@ -459,6 +504,7 @@ static bool check_location_trigger_internal(prospective_intention_t* intent,
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_time_activation: validation failed");
     return false;
 }
 
@@ -490,7 +536,10 @@ static void fill_trigger_result(prospective_trigger_result_t* result,
  */
 static pr_memory_node_t* create_intention_memory_node(prospective_memory_t pm,
                                                        prospective_intention_t* intent) {
-    if (!pm || !intent || !pm->node_manager) return NULL;
+    if (!pm || !intent || !pm->node_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_time_activation: required parameter is NULL (pm, intent, pm->node_manager)");
+        return NULL;
+    }
 
     // Create node config with high salience
     pr_node_config_t config = pr_memory_node_default_config();
@@ -528,14 +577,35 @@ NIMCP_EXPORT prospective_config_t prospective_config_default(void) {
 }
 
 NIMCP_EXPORT bool prospective_config_validate(const prospective_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_config_validate: config is NULL");
+        return false;
+    }
 
-    if (config->max_intentions == 0) return false;
-    if (config->max_active_monitors == 0) return false;
-    if (config->default_importance < 0 || config->default_importance > 10) return false;
-    if (config->default_urgency < 0 || config->default_urgency > 10) return false;
-    if (config->activation_decay_rate < 0) return false;
-    if (config->similarity_threshold < 0 || config->similarity_threshold > 1) return false;
+    if (config->max_intentions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: config->max_intentions is zero");
+        return false;
+    }
+    if (config->max_active_monitors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: config->max_active_monitors is zero");
+        return false;
+    }
+    if (config->default_importance < 0 || config->default_importance > 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
+        return false;
+    }
+    if (config->default_urgency < 0 || config->default_urgency > 10) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
+        return false;
+    }
+    if (config->activation_decay_rate < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
+        return false;
+    }
+    if (config->similarity_threshold < 0 || config->similarity_threshold > 1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "prospective_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -556,6 +626,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
         cfg = *config;
         if (!prospective_config_validate(&cfg)) {
             set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_create: prospective_config_validate is NULL");
             return NULL;
         }
     } else {
@@ -566,6 +637,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     prospective_memory_t pm = (prospective_memory_t)nimcp_calloc(1, sizeof(struct prospective_memory_internal));
     if (!pm) {
         set_error("Memory allocation failed for manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_create: pm is NULL");
         return NULL;
     }
 
@@ -579,6 +651,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
     if (!pm->intentions) {
         set_error("Memory allocation failed for intentions");
         nimcp_free(pm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_create: pm->intentions is NULL");
         return NULL;
     }
 
@@ -603,6 +676,7 @@ NIMCP_EXPORT prospective_memory_t prospective_create(
         set_error("Memory allocation failed for active monitors");
         nimcp_free(pm->intentions);
         nimcp_free(pm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "prospective_create: pm->active_monitors is NULL");
         return NULL;
     }
 
@@ -1277,7 +1351,10 @@ NIMCP_EXPORT int prospective_signal_context(
     const prime_signature_t* context,
     const nimcp_quaternion_t* context_state
 ) {
-    if (!pm || !context) return -1;
+    if (!pm || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_signal_context: required parameter is NULL (pm, context)");
+        return -1;
+    }
 
     // Store context for later checks
     pm->current_context = *context;
@@ -1297,7 +1374,10 @@ NIMCP_EXPORT int prospective_signal_activity_complete(
     uint64_t activity_id,
     const char* activity_tag
 ) {
-    if (!pm) return -1;
+    if (!pm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_signal_activity_complete: pm is NULL");
+        return -1;
+    }
 
     int num_triggered = 0;
 
@@ -1331,7 +1411,10 @@ NIMCP_EXPORT int prospective_signal_location(
     prospective_memory_t pm,
     const prime_signature_t* location_signature
 ) {
-    if (!pm || !location_signature) return -1;
+    if (!pm || !location_signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_signal_location: required parameter is NULL (pm, location_signature)");
+        return -1;
+    }
 
     int num_triggered = 0;
 
@@ -1995,7 +2078,10 @@ NIMCP_EXPORT pr_memory_node_t* prospective_get_memory_node(
 }
 
 NIMCP_EXPORT bool prospective_should_check_now(prospective_memory_t pm) {
-    if (!pm) return false;
+    if (!pm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prospective_should_check_now: pm is NULL");
+        return false;
+    }
 
     // If theta-gamma is available, check during encoding phase
     if (pm->theta_gamma) {

@@ -166,6 +166,7 @@ static void sleep_us(uint64_t us) {
  */
 static bool queue_init(request_queue_t* queue) {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_init: queue is NULL");
         return false;
     }
 
@@ -176,12 +177,14 @@ static bool queue_init(request_queue_t* queue) {
 
     if (nimcp_mutex_init(&queue->mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize queue mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "queue_init: validation failed");
         return false;
     }
 
     if (nimcp_cond_init(&queue->not_empty) != NIMCP_SUCCESS) {
         nimcp_mutex_destroy(&queue->mutex);
         NIMCP_LOGGING_ERROR("Failed to initialize not_empty condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "queue_init: validation failed");
         return false;
     }
 
@@ -189,6 +192,7 @@ static bool queue_init(request_queue_t* queue) {
         nimcp_cond_destroy(&queue->not_empty);
         nimcp_mutex_destroy(&queue->mutex);
         NIMCP_LOGGING_ERROR("Failed to initialize not_full condition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "queue_init: validation failed");
         return false;
     }
 
@@ -227,6 +231,7 @@ static void queue_destroy(request_queue_t* queue) {
  */
 static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request_t* request) {
     if (!queue || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_enqueue: required parameter is NULL (queue, request)");
         return false;
     }
 
@@ -236,6 +241,7 @@ static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request
     if (queue->count >= ASYNC_CHECKPOINT_MAX_QUEUE) {
         nimcp_mutex_unlock(&queue->mutex);
         NIMCP_LOGGING_WARN("Checkpoint queue is full (%u requests)", queue->count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "queue_enqueue: capacity exceeded");
         return false;
     }
 
@@ -267,6 +273,7 @@ static bool queue_enqueue(request_queue_t* queue, const async_checkpoint_request
  */
 static bool queue_dequeue(request_queue_t* queue, async_checkpoint_request_t* request, uint32_t timeout_ms) {
     if (!queue || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue_dequeue: required parameter is NULL (queue, request)");
         return false;
     }
 
@@ -277,6 +284,7 @@ static bool queue_dequeue(request_queue_t* queue, async_checkpoint_request_t* re
         // Non-blocking
         if (queue->count == 0) {
             nimcp_mutex_unlock(&queue->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_dequeue: queue->count is zero");
             return false;
         }
     } else {
@@ -285,11 +293,13 @@ static bool queue_dequeue(request_queue_t* queue, async_checkpoint_request_t* re
             int ret = nimcp_cond_timedwait(&queue->not_empty, &queue->mutex, timeout_ms);
             if (ret == ETIMEDOUT) {
                 nimcp_mutex_unlock(&queue->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_dequeue: validation failed");
                 return false;
             }
             if (ret != NIMCP_SUCCESS) {
                 nimcp_mutex_unlock(&queue->mutex);
                 NIMCP_LOGGING_ERROR("nimcp_cond_timedwait failed: %d", ret);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_dequeue: validation failed");
                 return false;
             }
         }
@@ -347,6 +357,7 @@ static uint32_t queue_size(request_queue_t* queue) {
  */
 static bool history_init(request_history_t* history) {
     if (!history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history_init: history is NULL");
         return false;
     }
 
@@ -356,6 +367,7 @@ static bool history_init(request_history_t* history) {
 
     if (nimcp_mutex_init(&history->mutex, NULL) != NIMCP_SUCCESS) {
         NIMCP_LOGGING_ERROR("Failed to initialize history mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "history_init: validation failed");
         return false;
     }
 
@@ -424,6 +436,7 @@ static void history_add(request_history_t* history, const async_checkpoint_reque
  */
 static bool history_find(request_history_t* history, uint64_t request_id, async_checkpoint_request_t* request) {
     if (!history || request_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "history_find: history is NULL");
         return false;
     }
 
@@ -442,6 +455,7 @@ static bool history_find(request_history_t* history, uint64_t request_id, async_
     }
 
     nimcp_mutex_unlock(&history->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "history_find: validation failed");
     return false;
 }
 
@@ -535,6 +549,7 @@ static void update_stats_failed(async_checkpoint_writer_t* writer, const async_c
  */
 static bool process_checkpoint_request(async_checkpoint_writer_t* writer, async_checkpoint_request_t* request) {
     if (!writer || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_checkpoint_request: required parameter is NULL (writer, request)");
         return false;
     }
 
@@ -543,6 +558,7 @@ static bool process_checkpoint_request(async_checkpoint_writer_t* writer, async_
         NIMCP_LOGGING_INFO("Skipping cancelled checkpoint request %lu", request->request_id);
         // Add to history so wait_request can see it was cancelled
         history_add(&writer->history, request);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "process_checkpoint_request: validation failed");
         return false;
     }
 
@@ -658,6 +674,7 @@ static void* worker_thread_func(void* arg) {
     }
 
     NIMCP_LOGGING_INFO("Async checkpoint worker thread stopped");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread_func: operation failed");
     return NULL;
 }
 
@@ -670,6 +687,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     async_checkpoint_writer_t* writer = (async_checkpoint_writer_t*)nimcp_malloc(sizeof(async_checkpoint_writer_t));
     if (!writer) {
         NIMCP_LOGGING_ERROR("Failed to allocate async checkpoint writer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "async_checkpoint_create: writer is NULL");
         return NULL;
     }
 
@@ -678,6 +696,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     // Initialize queue
     if (!queue_init(&writer->queue)) {
         nimcp_free(writer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "async_checkpoint_create: queue_init is NULL");
         return NULL;
     }
 
@@ -685,6 +704,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
     if (!history_init(&writer->history)) {
         queue_destroy(&writer->queue);
         nimcp_free(writer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "async_checkpoint_create: history_init is NULL");
         return NULL;
     }
 
@@ -694,6 +714,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
         nimcp_free(writer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "async_checkpoint_create: validation failed");
         return NULL;
     }
 
@@ -704,6 +725,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
         nimcp_free(writer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "async_checkpoint_create: validation failed");
         return NULL;
     }
 
@@ -720,6 +742,7 @@ async_checkpoint_writer_t* async_checkpoint_create(void) {
         history_destroy(&writer->history);
         queue_destroy(&writer->queue);
         nimcp_free(writer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_create: operation failed");
         return NULL;
     }
 
@@ -848,6 +871,7 @@ uint64_t async_checkpoint_queue_ex(async_checkpoint_writer_t* writer,
 
 bool async_checkpoint_wait_all(async_checkpoint_writer_t* writer, uint32_t timeout_ms) {
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_wait_all: writer is NULL");
         return false;
     }
 
@@ -866,6 +890,7 @@ bool async_checkpoint_wait_all(async_checkpoint_writer_t* writer, uint32_t timeo
             uint64_t elapsed = async_checkpoint_get_time_us() - start_time;
             if (elapsed >= timeout_us) {
                 NIMCP_LOGGING_WARN("Timeout waiting for checkpoints (%u still pending)", pending);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_wait_all: capacity exceeded");
                 return false;
             }
         }
@@ -879,6 +904,7 @@ bool async_checkpoint_wait_request(async_checkpoint_writer_t* writer,
                                     uint64_t request_id,
                                     uint32_t timeout_ms) {
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_wait_all: writer is NULL");
         return false;
     }
 
@@ -894,6 +920,7 @@ bool async_checkpoint_wait_request(async_checkpoint_writer_t* writer,
             }
             if (request.status == CHECKPOINT_STATUS_FAILED ||
                 request.status == CHECKPOINT_STATUS_CANCELLED) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_wait_all: validation failed");
                 return false;
             }
         }
@@ -903,6 +930,7 @@ bool async_checkpoint_wait_request(async_checkpoint_writer_t* writer,
             uint64_t elapsed = async_checkpoint_get_time_us() - start_time;
             if (elapsed >= timeout_us) {
                 NIMCP_LOGGING_WARN("Timeout waiting for request %lu", request_id);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_wait_all: capacity exceeded");
                 return false;
             }
         }
@@ -931,6 +959,7 @@ uint32_t async_checkpoint_get_pending_count(async_checkpoint_writer_t* writer) {
 bool async_checkpoint_get_stats(async_checkpoint_writer_t* writer,
                                  async_checkpoint_stats_t* stats) {
     if (!writer || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_get_pending_count: required parameter is NULL (writer, stats)");
         return false;
     }
 
@@ -945,6 +974,7 @@ bool async_checkpoint_get_request_status(async_checkpoint_writer_t* writer,
                                           uint64_t request_id,
                                           async_checkpoint_request_t* request) {
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_get_pending_count: writer is NULL");
         return false;
     }
 
@@ -970,16 +1000,19 @@ bool async_checkpoint_get_request_status(async_checkpoint_writer_t* writer,
     }
 
     // Not found anywhere
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_get_pending_count: validation failed");
     return false;
 }
 
 bool async_checkpoint_is_healthy(async_checkpoint_writer_t* writer) {
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_is_healthy: writer is NULL");
         return false;
     }
 
     // Check shutdown flag
     if (writer->shutdown) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_is_healthy: validation failed");
         return false;
     }
 
@@ -991,12 +1024,14 @@ bool async_checkpoint_is_healthy(async_checkpoint_writer_t* writer) {
     nimcp_mutex_unlock(&writer->stats_mutex);
 
     if (has_recent_error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_is_healthy: validation failed");
         return false;
     }
 
     // Check queue not stuck (has capacity)
     uint32_t current_queue_size = queue_size(&writer->queue);
     if (current_queue_size >= ASYNC_CHECKPOINT_MAX_QUEUE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "async_checkpoint_is_healthy: capacity exceeded");
         return false;
     }
 
@@ -1035,6 +1070,7 @@ void async_checkpoint_clear_error(async_checkpoint_writer_t* writer) {
 
 bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t request_id) {
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "async_checkpoint_cancel_request: writer is NULL");
         return false;
     }
 
@@ -1061,6 +1097,7 @@ bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t
                 nimcp_mutex_unlock(&writer->queue.mutex);
                 NIMCP_LOGGING_WARN("Cannot cancel request %lu (status: %d)",
                                    request_id, writer->queue.requests[idx].status);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_cancel_request: operation failed");
                 return false;
             }
         }
@@ -1068,6 +1105,7 @@ bool async_checkpoint_cancel_request(async_checkpoint_writer_t* writer, uint64_t
 
     nimcp_mutex_unlock(&writer->queue.mutex);
     NIMCP_LOGGING_WARN("Request %lu not found in queue", request_id);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "async_checkpoint_cancel_request: operation failed");
     return false;
 }
 

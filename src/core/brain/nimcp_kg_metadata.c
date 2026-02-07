@@ -97,6 +97,7 @@ static uint64_t get_current_timestamp_ms(void) {
  */
 static kg_metadata_entry_t* find_entry(const kg_metadata_t* meta, const char* key) {
     if (!meta || !key || !meta->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_entry: required parameter is NULL (meta, key, meta->entries)");
         return NULL;
     }
 
@@ -105,6 +106,7 @@ static kg_metadata_entry_t* find_entry(const kg_metadata_t* meta, const char* ke
             return &meta->entries[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry: validation failed");
     return NULL;
 }
 
@@ -117,6 +119,7 @@ static kg_metadata_entry_t* find_entry(const kg_metadata_t* meta, const char* ke
  */
 static kg_metadata_entry_t* find_or_create_entry(kg_metadata_t* meta, const char* key) {
     if (!meta || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_entry: required parameter is NULL (meta, key)");
         return NULL;
     }
 
@@ -137,6 +140,7 @@ static kg_metadata_entry_t* find_or_create_entry(kg_metadata_t* meta, const char
         );
         if (!new_entries) {
             META_LOG_ERROR("Failed to expand entries array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_entry: new_entries is NULL");
             return NULL;
         }
         meta->entries = new_entries;
@@ -219,6 +223,7 @@ kg_metadata_t* kg_metadata_create(void) {
     kg_metadata_t* meta = nimcp_calloc(1, sizeof(kg_metadata_t));
     if (!meta) {
         META_LOG_ERROR("Failed to allocate metadata container");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_metadata_create: meta is NULL");
         return NULL;
     }
 
@@ -277,6 +282,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
         clone->tags = nimcp_strdup(meta->tags);
         if (!clone->tags) {
             kg_metadata_destroy(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: clone->tags is NULL");
             return NULL;
         }
     }
@@ -286,6 +292,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
         clone->entries = nimcp_calloc(meta->entry_count, sizeof(kg_metadata_entry_t));
         if (!clone->entries) {
             kg_metadata_destroy(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_metadata_clone: clone->entries is NULL");
             return NULL;
         }
         clone->entry_capacity = meta->entry_count;
@@ -320,6 +327,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
                         dst->value.blob_val.data = nimcp_malloc(src->value.blob_val.size);
                         if (!dst->value.blob_val.data) {
                             kg_metadata_destroy(clone);
+                            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_metadata_clone: dst->value is NULL");
                             return NULL;
                         }
                         memcpy(dst->value.blob_val.data, src->value.blob_val.data,
@@ -334,6 +342,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
                         );
                         if (!dst->value.str_array_val.items) {
                             kg_metadata_destroy(clone);
+                            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_metadata_clone: dst->value is NULL");
                             return NULL;
                         }
                         for (uint32_t j = 0; j < src->value.str_array_val.count; j++) {
@@ -342,6 +351,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
                                     nimcp_strdup(src->value.str_array_val.items[j]);
                                 if (!dst->value.str_array_val.items[j]) {
                                     kg_metadata_destroy(clone);
+                                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: dst->value is NULL");
                                     return NULL;
                                 }
                             }
@@ -354,6 +364,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
                         dst->value.json_val = nimcp_strdup(src->value.json_val);
                         if (!dst->value.json_val) {
                             kg_metadata_destroy(clone);
+                            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: dst->value is NULL");
                             return NULL;
                         }
                     }
@@ -374,6 +385,7 @@ kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
 int kg_metadata_set_string(kg_metadata_t* meta, const char* key,
                            const char* value, bool indexed) {
     if (!meta || !key || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: required parameter is NULL (meta, key, value)");
         return -1;
     }
 
@@ -399,6 +411,7 @@ int kg_metadata_set_string(kg_metadata_t* meta, const char* key,
 int kg_metadata_set_int(kg_metadata_t* meta, const char* key,
                         int64_t value, bool indexed) {
     if (!meta || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: required parameter is NULL (meta, key)");
         return -1;
     }
 
@@ -422,6 +435,7 @@ int kg_metadata_set_int(kg_metadata_t* meta, const char* key,
 int kg_metadata_set_float(kg_metadata_t* meta, const char* key,
                           double value, bool indexed) {
     if (!meta || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: required parameter is NULL (meta, key)");
         return -1;
     }
 
@@ -445,6 +459,7 @@ int kg_metadata_set_float(kg_metadata_t* meta, const char* key,
 int kg_metadata_set_bool(kg_metadata_t* meta, const char* key,
                          bool value, bool indexed) {
     if (!meta || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_clone: required parameter is NULL (meta, key)");
         return -1;
     }
 
@@ -468,6 +483,7 @@ int kg_metadata_set_bool(kg_metadata_t* meta, const char* key,
 int kg_metadata_set_timestamp(kg_metadata_t* meta, const char* key,
                               uint64_t value, bool indexed) {
     if (!meta || !key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (meta, key)");
         return -1;
     }
 
@@ -491,6 +507,7 @@ int kg_metadata_set_timestamp(kg_metadata_t* meta, const char* key,
 int kg_metadata_set_json(kg_metadata_t* meta, const char* key,
                          const char* json, bool indexed) {
     if (!meta || !key || !json) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (meta, key, json)");
         return -1;
     }
 
@@ -506,6 +523,7 @@ int kg_metadata_set_json(kg_metadata_t* meta, const char* key,
     entry->type = KG_META_TYPE_JSON;
     entry->value.json_val = nimcp_strdup(json);
     if (!entry->value.json_val) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: entry->value is NULL");
         return -1;
     }
     entry->indexed = indexed;
@@ -531,6 +549,7 @@ int kg_metadata_set_tags(kg_metadata_t* meta, const char* comma_separated_tags) 
     if (comma_separated_tags && comma_separated_tags[0] != '\0') {
         meta->tags = nimcp_strdup(comma_separated_tags);
         if (!meta->tags) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_set_tags: meta->tags is NULL");
             return -1;
         }
     }
@@ -546,6 +565,7 @@ int kg_metadata_set_tags(kg_metadata_t* meta, const char* comma_separated_tags) 
 const char* kg_metadata_get_string(const kg_metadata_t* meta, const char* key) {
     const kg_metadata_entry_t* entry = find_entry(meta, key);
     if (!entry || entry->type != KG_META_TYPE_STRING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_get_string: entry is NULL");
         return NULL;
     }
     return entry->value.str_val;
@@ -584,6 +604,7 @@ bool kg_metadata_has_key(const kg_metadata_t* meta, const char* key) {
 
 bool kg_metadata_has_tag(const kg_metadata_t* meta, const char* tag) {
     if (!meta || !tag || !meta->tags || tag[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_has_tag: required parameter is NULL (meta, tag, meta->tags)");
         return false;
     }
 
@@ -617,6 +638,7 @@ bool kg_metadata_has_tag(const kg_metadata_t* meta, const char* tag) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_metadata_has_tag: validation failed");
     return false;
 }
 
@@ -628,6 +650,7 @@ kg_meta_module_t* kg_module_metadata_create(void) {
     kg_meta_module_t* meta = nimcp_calloc(1, sizeof(kg_meta_module_t));
     if (!meta) {
         META_LOG_ERROR("Failed to allocate module metadata");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_module_metadata_create: meta is NULL");
         return NULL;
     }
 
@@ -671,6 +694,7 @@ kg_layer_metadata_t* kg_layer_metadata_create(void) {
     kg_layer_metadata_t* meta = nimcp_calloc(1, sizeof(kg_layer_metadata_t));
     if (!meta) {
         META_LOG_ERROR("Failed to allocate layer metadata");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_layer_metadata_create: meta is NULL");
         return NULL;
     }
 
@@ -714,6 +738,7 @@ kg_hemisphere_metadata_t* kg_hemisphere_metadata_create(void) {
     kg_hemisphere_metadata_t* meta = nimcp_calloc(1, sizeof(kg_hemisphere_metadata_t));
     if (!meta) {
         META_LOG_ERROR("Failed to allocate hemisphere metadata");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_hemisphere_metadata_create: meta is NULL");
         return NULL;
     }
 
@@ -756,6 +781,7 @@ kg_system_metadata_t* kg_system_metadata_create(void) {
     kg_system_metadata_t* meta = nimcp_calloc(1, sizeof(kg_system_metadata_t));
     if (!meta) {
         META_LOG_ERROR("Failed to allocate system metadata");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_system_metadata_create: meta is NULL");
         return NULL;
     }
 
@@ -867,6 +893,7 @@ int kg_metadata_touch(kg_metadata_t* meta) {
 
 int kg_metadata_remove(kg_metadata_t* meta, const char* key) {
     if (!meta || !key || !meta->entries) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_remove: required parameter is NULL (meta, key, meta->entries)");
         return -1;
     }
 
@@ -888,6 +915,7 @@ int kg_metadata_remove(kg_metadata_t* meta, const char* key) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_metadata_remove: operation failed");
     return -1;  /* Key not found */
 }
 
@@ -901,6 +929,7 @@ uint32_t kg_metadata_entry_count(const kg_metadata_t* meta) {
 const kg_metadata_entry_t* kg_metadata_get_entry(const kg_metadata_t* meta,
                                                   uint32_t index) {
     if (!meta || !meta->entries || index >= meta->entry_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_metadata_entry_count: required parameter is NULL (meta, meta->entries)");
         return NULL;
     }
     return &meta->entries[index];

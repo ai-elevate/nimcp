@@ -180,6 +180,7 @@ static void update_running_average(float* sum, uint32_t* count, float* avg, floa
  */
 static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* user_data) {
     if (!event || !user_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_attn_hub_on_event: required parameter is NULL (event, user_data)");
         return -1;
     }
 
@@ -298,6 +299,7 @@ static int pred_attn_query_handler(
     void* context
 ) {
     if (!query || !result || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred_attn_query_handler: required parameter is NULL (query, result, context)");
         return -1;
     }
 
@@ -451,6 +453,7 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "predictive_attention") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "predictive_attention_bridge_create: validation failed");
         return NULL;
     }
 
@@ -512,6 +515,7 @@ int predictive_attention_bridge_register_with_hub(
     cognitive_integration_hub_t hub
 ) {
     if (!bridge || !bridge->initialized || !hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_register_with_hub: required parameter is NULL (bridge, bridge->initialized, hub)");
         return -1;
     }
 
@@ -524,6 +528,7 @@ int predictive_attention_bridge_register_with_hub(
     /* Check if already connected */
     if (bridge->connected) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_attention_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -545,6 +550,7 @@ int predictive_attention_bridge_register_with_hub(
         nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "predictive_attention_bridge_register_with_hub: validation failed");
         return -1;
     }
 
@@ -603,6 +609,7 @@ int predictive_attention_bridge_unregister_from_hub(
     predictive_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_unregister_from_hub: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -614,6 +621,7 @@ int predictive_attention_bridge_unregister_from_hub(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_unregister_from_hub: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -647,6 +655,7 @@ bool predictive_attention_bridge_is_connected(
     const predictive_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_is_connected: required parameter is NULL (bridge, bridge->initialized)");
         return false;
     }
 
@@ -674,6 +683,7 @@ int predictive_attention_publish_prediction_error(
     uint64_t location
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_publish_prediction_error: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -685,6 +695,7 @@ int predictive_attention_publish_prediction_error(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_publish_prediction_error: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -738,6 +749,7 @@ int predictive_attention_request_attention_to_error(
     const pred_attn_error_data_t* error_data
 ) {
     if (!bridge || !bridge->initialized || !error_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_request_attention_to_error: required parameter is NULL (bridge, bridge->initialized, error_data)");
         return -1;
     }
 
@@ -749,6 +761,7 @@ int predictive_attention_request_attention_to_error(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_request_attention_to_error: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -797,6 +810,7 @@ int predictive_attention_publish_precision_estimate(
     const pred_attn_precision_data_t* precision_data
 ) {
     if (!bridge || !bridge->initialized || !precision_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_publish_precision_estimate: required parameter is NULL (bridge, bridge->initialized, precision_data)");
         return -1;
     }
 
@@ -808,6 +822,7 @@ int predictive_attention_publish_precision_estimate(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_publish_precision_estimate: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -849,6 +864,7 @@ int predictive_attention_notify_attended_prediction(
     const pred_attn_prediction_data_t* prediction
 ) {
     if (!bridge || !bridge->initialized || !prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_notify_attended_prediction: required parameter is NULL (bridge, bridge->initialized, prediction)");
         return -1;
     }
 
@@ -860,6 +876,7 @@ int predictive_attention_notify_attended_prediction(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_notify_attended_prediction: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -895,6 +912,7 @@ int predictive_attention_request_prediction_for_focus(
     const pred_attn_focus_request_t* focus
 ) {
     if (!bridge || !bridge->initialized || !focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_request_prediction_for_focus: required parameter is NULL (bridge, bridge->initialized, focus)");
         return -1;
     }
 
@@ -906,6 +924,7 @@ int predictive_attention_request_prediction_for_focus(
 
     if (!bridge->connected || !bridge->hub) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_request_prediction_for_focus: required parameter is NULL (bridge->connected, bridge->hub)");
         return -1;
     }
 
@@ -945,6 +964,7 @@ int predictive_attention_set_prediction_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_set_prediction_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -966,6 +986,7 @@ int predictive_attention_set_attention_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_set_attention_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -987,6 +1008,7 @@ int predictive_attention_set_error_callback(
     void* user_data
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_set_error_callback: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 
@@ -1011,6 +1033,7 @@ int predictive_attention_bridge_get_stats(
     predictive_attention_bridge_stats_t* stats
 ) {
     if (!bridge || !bridge->initialized || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_get_stats: required parameter is NULL (bridge, bridge->initialized, stats)");
         return -1;
     }
 
@@ -1032,6 +1055,7 @@ int predictive_attention_bridge_reset_stats(
     predictive_attention_bridge_t* bridge
 ) {
     if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_attention_bridge_reset_stats: required parameter is NULL (bridge, bridge->initialized)");
         return -1;
     }
 

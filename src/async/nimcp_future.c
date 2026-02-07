@@ -218,6 +218,7 @@ static void* future_alloc(size_t size) {
         header->size = size;
         return (char*)base + sizeof(future_alloc_header_t);
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_alloc: validation failed");
     return NULL;
 }
 
@@ -367,6 +368,7 @@ static nimcp_future_shared_state_t* shared_state_create(size_t result_size)
         future_alloc(sizeof(nimcp_future_shared_state_t));
     if (!shared) {
         LOG_ERROR("Failed to allocate shared state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "shared_state_create: shared is NULL");
         return NULL;
     }
 
@@ -384,12 +386,14 @@ static nimcp_future_shared_state_t* shared_state_create(size_t result_size)
     // Initialize synchronization
     if (nimcp_platform_mutex_init(&shared->mutex, false) != 0) {
         future_free(shared);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shared_state_create: validation failed");
         return NULL;
     }
 
     if (nimcp_platform_cond_init(&shared->cond) != 0) {
         nimcp_platform_mutex_destroy(&shared->mutex);
         future_free(shared);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "shared_state_create: validation failed");
         return NULL;
     }
 
@@ -530,6 +534,7 @@ nimcp_promise_t nimcp_promise_create(size_t result_size)
     nimcp_promise_t promise = (nimcp_promise_t)future_alloc(sizeof(struct nimcp_promise_struct));
     if (!promise) {
         LOG_ERROR("Failed to allocate promise handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_promise_create: promise is NULL");
         return NULL;
     }
 
@@ -545,6 +550,7 @@ nimcp_promise_t nimcp_promise_create(size_t result_size)
         if (!bio_promise) {
             LOG_ERROR("Failed to create bio-async promise");
             future_free(promise);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_promise_create: bio_promise is NULL");
             return NULL;
         }
 
@@ -560,6 +566,7 @@ nimcp_promise_t nimcp_promise_create(size_t result_size)
         if (!shared) {
             LOG_ERROR("Failed to create shared state for promise");
             future_free(promise);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_promise_create: shared is NULL");
             return NULL;
         }
 
@@ -775,6 +782,7 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
 nimcp_future_t nimcp_promise_get_future(nimcp_promise_t promise)
 {
     if (!promise || promise->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_promise_get_future: promise is NULL");
         return NULL;
     }
 
@@ -782,6 +790,7 @@ nimcp_future_t nimcp_promise_get_future(nimcp_promise_t promise)
     nimcp_future_t future = (nimcp_future_t)future_alloc(sizeof(struct nimcp_future_struct));
     if (!future) {
         LOG_ERROR("Failed to allocate future handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_promise_get_future: future is NULL");
         return NULL;
     }
 
@@ -794,6 +803,7 @@ nimcp_future_t nimcp_promise_get_future(nimcp_promise_t promise)
         if (!promise->bio_promise) {
             LOG_ERROR("Failed to get future: NULL bio-promise");
             future_free(future);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_promise_get_future: promise->bio_promise is NULL");
             return NULL;
         }
 
@@ -801,6 +811,7 @@ nimcp_future_t nimcp_promise_get_future(nimcp_promise_t promise)
         if (!bio_future) {
             LOG_ERROR("Failed to get bio-future from bio-promise");
             future_free(future);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_promise_get_future: bio_future is NULL");
             return NULL;
         }
 
@@ -814,6 +825,7 @@ nimcp_future_t nimcp_promise_get_future(nimcp_promise_t promise)
         nimcp_future_shared_state_t* shared = promise->shared;
         if (!shared || shared->magic != FUTURE_MAGIC) {
             future_free(future);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_promise_get_future: shared is NULL");
             return NULL;
         }
 
@@ -929,6 +941,7 @@ nimcp_future_state_t nimcp_future_state(nimcp_future_t future)
 bool nimcp_future_wait(nimcp_future_t future)
 {
     if (!future || future->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait: future is NULL");
         return false;
     }
 
@@ -937,6 +950,7 @@ bool nimcp_future_wait(nimcp_future_t future)
     // Bio-async backend: use bio-future wait
     if (future->is_bio_mode) {
         if (!future->bio_future) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_wait: future->bio_future is NULL");
             return false;
         }
 
@@ -957,6 +971,7 @@ bool nimcp_future_wait(nimcp_future_t future)
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait: shared is NULL");
         return false;
     }
 
@@ -992,6 +1007,7 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
 {
     /* Guard: validate future handle */
     if (!future || future->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait_timeout: future is NULL");
         return false;
     }
 
@@ -1008,6 +1024,7 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
     // Bio-async backend: use bio-future timed wait
     if (future->is_bio_mode) {
         if (!future->bio_future) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_wait_timeout: future->bio_future is NULL");
             return false;
         }
 
@@ -1025,6 +1042,7 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
         } else {
             // Could be timeout, failure, or decay
             nimcp_atomic_fetch_add_u64(&g_stats_waits_timeout, 1, NIMCP_MEMORY_ORDER_RELAXED);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait_timeout: validation failed");
             return false;
         }
     }
@@ -1032,6 +1050,7 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait_timeout: shared is NULL");
         return false;
     }
 
@@ -1065,6 +1084,7 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
 
     if (wait_result == ETIMEDOUT) {
         nimcp_atomic_fetch_add_u64(&g_stats_waits_timeout, 1, NIMCP_MEMORY_ORDER_RELAXED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_wait_timeout: validation failed");
         return false;
     }
 
@@ -1119,12 +1139,14 @@ nimcp_error_t nimcp_future_get_error(nimcp_future_t future)
 bool nimcp_future_is_ready(nimcp_future_t future)
 {
     if (!future || future->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_is_ready: future is NULL");
         return false;
     }
 
     // Bio-async backend: use bio-future ready check
     if (future->is_bio_mode) {
         if (!future->bio_future) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_is_ready: future->bio_future is NULL");
             return false;
         }
         return nimcp_bio_future_is_ready(future->bio_future);
@@ -1133,6 +1155,7 @@ bool nimcp_future_is_ready(nimcp_future_t future)
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_is_ready: shared is NULL");
         return false;
     }
 
@@ -1143,12 +1166,14 @@ bool nimcp_future_is_ready(nimcp_future_t future)
 bool nimcp_future_cancel(nimcp_future_t future)
 {
     if (!future || future->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_cancel: future is NULL");
         return false;
     }
 
     // Bio-async backend: use bio-future cancel
     if (future->is_bio_mode) {
         if (!future->bio_future) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_cancel: future->bio_future is NULL");
             return false;
         }
         bool cancelled = nimcp_bio_future_cancel(future->bio_future);
@@ -1161,6 +1186,7 @@ bool nimcp_future_cancel(nimcp_future_t future)
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_cancel: shared is NULL");
         return false;
     }
 
@@ -1169,6 +1195,7 @@ bool nimcp_future_cancel(nimcp_future_t future)
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, NIMCP_FUTURE_CANCELLED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
         // Already completed/failed/cancelled
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_cancel: shared is NULL");
         return false;
     }
 
@@ -1462,6 +1489,7 @@ static void all_callback(const void* result, nimcp_error_t error, void* user_dat
 nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
 {
     if (!futures || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_all: futures is NULL");
         return NULL;
     }
 
@@ -1477,6 +1505,7 @@ nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
     nimcp_future_t result_future = nimcp_promise_get_future(combined);
     if (!result_future) {
         nimcp_promise_destroy(combined);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_all: result_future is NULL");
         return NULL;
     }
 
@@ -1486,6 +1515,7 @@ nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
         LOG_ERROR("Failed to allocate all_tracker_t");
         nimcp_future_destroy(result_future);
         nimcp_promise_destroy(combined);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_all: tracker is NULL");
         return NULL;
     }
 
@@ -1496,6 +1526,7 @@ nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
         future_free(tracker);
         nimcp_future_destroy(result_future);
         nimcp_promise_destroy(combined);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_all: tracker->results is NULL");
         return NULL;
     }
     memset(tracker->results, 0, count * sizeof(bool));  // Zero-init like calloc
@@ -1518,6 +1549,7 @@ nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
                 all_tracker_release(tracker);
             }
             nimcp_future_destroy(result_future);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_all: ctx is NULL");
             return NULL;
         }
         ctx->tracker = tracker;
@@ -1615,6 +1647,7 @@ static void any_callback(const void* result, nimcp_error_t error, void* user_dat
 nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
 {
     if (!futures || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_future_any: futures is NULL");
         return NULL;
     }
 
@@ -1630,6 +1663,7 @@ nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
     nimcp_future_t result_future = nimcp_promise_get_future(combined);
     if (!result_future) {
         nimcp_promise_destroy(combined);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_any: result_future is NULL");
         return NULL;
     }
 
@@ -1639,6 +1673,7 @@ nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
         LOG_ERROR("Failed to allocate any_tracker_t");
         nimcp_future_destroy(result_future);
         nimcp_promise_destroy(combined);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_any: tracker is NULL");
         return NULL;
     }
 
@@ -1658,6 +1693,7 @@ nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
                 any_tracker_release(tracker);
             }
             nimcp_future_destroy(result_future);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_any: ctx is NULL");
             return NULL;
         }
         ctx->tracker = tracker;
@@ -1753,6 +1789,7 @@ nimcp_future_t nimcp_future_map(
     void* user_data)
 {
     if (!source || !transform || output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_map: required parameter is NULL (source, transform)");
         return NULL;
     }
 
@@ -1768,6 +1805,7 @@ nimcp_future_t nimcp_future_map(
     nimcp_future_t result_future = nimcp_promise_get_future(output_promise);
     if (!result_future) {
         nimcp_promise_destroy(output_promise);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_future_map: result_future is NULL");
         return NULL;
     }
 
@@ -1777,6 +1815,7 @@ nimcp_future_t nimcp_future_map(
         LOG_ERROR("Failed to allocate map_tracker_t");
         nimcp_future_destroy(result_future);
         nimcp_promise_destroy(output_promise);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_future_map: tracker is NULL");
         return NULL;
     }
 

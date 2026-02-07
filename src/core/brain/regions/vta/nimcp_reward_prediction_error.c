@@ -138,10 +138,12 @@ int nimcp_rpe_compute(
     nimcp_rpe_result_t* result
 ) {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_compute: required parameter is NULL (system, result)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_compute: system->initialized is NULL");
         return -1;
     }
 
@@ -213,6 +215,7 @@ int nimcp_rpe_compute(
 
 int nimcp_rpe_learn(nimcp_rpe_system_t* system, float rpe) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_learn: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -239,10 +242,12 @@ int nimcp_rpe_get_expectation(
     float* expected
 ) {
     if (!system || !expected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_expectation: required parameter is NULL (system, expected)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_expectation: system->initialized is NULL");
         return -1;
     }
 
@@ -255,6 +260,7 @@ int nimcp_rpe_set_expectation(
     float expected
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_set_expectation: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -271,10 +277,12 @@ int nimcp_rpe_transition_state(
     uint32_t new_state
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_transition_state: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (new_state >= RPE_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_rpe_transition_state: capacity exceeded");
         return -1;
     }
 
@@ -300,10 +308,12 @@ int nimcp_rpe_get_state_value(
     float* value
 ) {
     if (!system || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_state_value: required parameter is NULL (system, value)");
         return -1;
     }
 
     if (!system->initialized || state >= RPE_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_state_value: system->initialized is NULL");
         return -1;
     }
 
@@ -317,10 +327,12 @@ int nimcp_rpe_set_state_value(
     float value
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_set_state_value: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
     if (state >= RPE_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_rpe_set_state_value: capacity exceeded");
         return -1;
     }
 
@@ -338,10 +350,12 @@ int nimcp_rpe_add_cue(
     uint32_t* cue_id
 ) {
     if (!system || !cue_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_add_cue: required parameter is NULL (system, cue_id)");
         return -1;
     }
 
     if (!system->initialized || system->num_cues >= RPE_MAX_CUES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_add_cue: system->initialized is NULL");
         return -1;
     }
 
@@ -365,6 +379,7 @@ int nimcp_rpe_cue_onset(
     float delay_hint
 ) {
     if (!system || !system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_cue_onset: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -386,6 +401,7 @@ int nimcp_rpe_cue_offset(
     uint32_t cue_id
 ) {
     if (!system || !system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_cue_offset: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -399,10 +415,12 @@ int nimcp_rpe_get_cue_value(
     float* value
 ) {
     if (!system || !value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_cue_value: required parameter is NULL (system, value)");
         return -1;
     }
 
     if (!system->initialized || cue_id >= system->num_cues) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_cue_value: system->initialized is NULL");
         return -1;
     }
 
@@ -415,6 +433,7 @@ int nimcp_rpe_update_cue_learning(
     float actual_reward
 ) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_update_cue_learning: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -438,6 +457,7 @@ int nimcp_rpe_update_cue_learning(
 
 int nimcp_rpe_update_traces(nimcp_rpe_system_t* system, float dt) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_update_traces: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -461,6 +481,7 @@ int nimcp_rpe_update_traces(nimcp_rpe_system_t* system, float dt) {
 
 int nimcp_rpe_reset_traces(nimcp_rpe_system_t* system) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_reset_traces: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -481,10 +502,12 @@ int nimcp_rpe_get_eligibility(
     float* eligibility
 ) {
     if (!system || !eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_eligibility: required parameter is NULL (system, eligibility)");
         return -1;
     }
 
     if (!system->initialized || state >= RPE_MAX_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_eligibility: system->initialized is NULL");
         return -1;
     }
 
@@ -498,6 +521,7 @@ int nimcp_rpe_get_eligibility(
 
 int nimcp_rpe_update(nimcp_rpe_system_t* system, float dt) {
     if (!system || !system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_update: required parameter is NULL (system, system->initialized)");
         return -1;
     }
 
@@ -518,10 +542,12 @@ int nimcp_rpe_update(nimcp_rpe_system_t* system, float dt) {
 
 int nimcp_rpe_get_current(nimcp_rpe_system_t* system, float* rpe) {
     if (!system || !rpe) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_current: required parameter is NULL (system, rpe)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_current: system->initialized is NULL");
         return -1;
     }
 
@@ -534,10 +560,12 @@ int nimcp_rpe_get_last_result(
     nimcp_rpe_result_t* result
 ) {
     if (!system || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_last_result: required parameter is NULL (system, result)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_get_last_result: system->initialized is NULL");
         return -1;
     }
 
@@ -560,10 +588,12 @@ int nimcp_rpe_to_da_response(
     float* da_response
 ) {
     if (!system || !da_response) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_to_da_response: required parameter is NULL (system, da_response)");
         return -1;
     }
 
     if (!system->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_rpe_to_da_response: system->initialized is NULL");
         return -1;
     }
 

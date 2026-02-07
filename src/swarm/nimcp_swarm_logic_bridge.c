@@ -158,6 +158,7 @@ static uint64_t calculate_state_hash(const swarm_agent_state_t* states, uint32_t
  */
 static swarm_logic_rule_t* find_rule(swarm_logic_bridge_t* bridge, uint32_t rule_id) {
     if (!bridge || !bridge->rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule: required parameter is NULL (bridge, bridge->rules)");
         return NULL;
     }
 
@@ -167,6 +168,7 @@ static swarm_logic_rule_t* find_rule(swarm_logic_bridge_t* bridge, uint32_t rule
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule: validation failed");
     return NULL;
 }
 
@@ -180,6 +182,7 @@ static swarm_logic_rule_t* find_rule(swarm_logic_bridge_t* bridge, uint32_t rule
 static bool check_cache(swarm_logic_bridge_t* bridge, uint32_t rule_id,
                        uint64_t state_hash, swarm_logic_result_t* result) {
     if (!bridge || !bridge->cache || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule: required parameter is NULL (bridge, bridge->cache, result)");
         return false;
     }
 
@@ -199,6 +202,7 @@ static bool check_cache(swarm_logic_bridge_t* bridge, uint32_t rule_id,
     }
 
     bridge->stats.cache_misses++;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_rule: validation failed");
     return false;
 }
 
@@ -625,6 +629,7 @@ nimcp_error_t swarm_logic_bridge_remove_rule(swarm_logic_bridge_t* bridge,
 const swarm_logic_rule_t* swarm_logic_bridge_get_rule(swarm_logic_bridge_t* bridge,
                                                        uint32_t rule_id) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_destroy: bridge is NULL");
         return NULL;
     }
 
@@ -661,6 +666,7 @@ int swarm_logic_bridge_evaluate(swarm_logic_bridge_t* bridge,
                                  uint32_t max_results) {
     if (!bridge || !agent_states || num_agents == 0 || !results || max_results == 0) {
         LOG_ERROR("Invalid parameters for evaluate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_logic_bridge_destroy: required parameter is NULL (bridge, agent_states, results)");
         return -1;
     }
 
@@ -880,6 +886,7 @@ int swarm_logic_bridge_detect_contradiction(swarm_logic_bridge_t* bridge,
                                             uint32_t (*contradictions)[2],
                                             uint32_t max_contradictions) {
     if (!bridge || !beliefs || num_beliefs < 2 || !contradictions || max_contradictions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, beliefs, contradictions)");
         return -1;
     }
 

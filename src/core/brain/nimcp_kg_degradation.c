@@ -261,6 +261,7 @@ kg_degradation_ctx_t* kg_degradation_create(const kg_degradation_config_t* confi
     ctx->write_buffer = nimcp_calloc(ctx->buffer_capacity, sizeof(kg_io_request_t));
     if (!ctx->write_buffer) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_create: ctx->write_buffer is NULL");
         return NULL;
     }
 
@@ -269,6 +270,7 @@ kg_degradation_ctx_t* kg_degradation_create(const kg_degradation_config_t* confi
     if (!ctx->cache) {
         nimcp_free(ctx->write_buffer);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_create: ctx->cache is NULL");
         return NULL;
     }
 
@@ -280,6 +282,7 @@ kg_degradation_ctx_t* kg_degradation_create(const kg_degradation_config_t* confi
         nimcp_free(ctx->cache);
         nimcp_free(ctx->write_buffer);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_create: ctx->mutex is NULL");
         return NULL;
     }
 
@@ -356,6 +359,7 @@ kg_circuit_state_t kg_degradation_get_circuit_state(const kg_degradation_ctx_t* 
 
 bool kg_degradation_can_write(const kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_can_write: ctx is NULL");
         return false;
     }
     return ctx->level == KG_DEGRADE_NONE;
@@ -363,6 +367,7 @@ bool kg_degradation_can_write(const kg_degradation_ctx_t* ctx) {
 
 bool kg_degradation_can_read(const kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_can_read: ctx is NULL");
         return false;
     }
     return ctx->level != KG_DEGRADE_OFFLINE;
@@ -373,6 +378,7 @@ int kg_degradation_get_stats(
     kg_degradation_stats_t* stats
 ) {
     if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_get_stats: required parameter is NULL (ctx, stats)");
         return -1;
     }
 
@@ -392,6 +398,7 @@ int kg_degradation_buffer_write(
     const kg_io_request_t* write
 ) {
     if (!ctx || !write) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_buffer_write: required parameter is NULL (ctx, write)");
         return -1;
     }
 
@@ -414,6 +421,7 @@ int kg_degradation_buffer_write(
         entry->payload = nimcp_malloc(write->payload_size);
         if (!entry->payload) {
             nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_buffer_write: entry->payload is NULL");
             return -1;
         }
         memcpy(entry->payload, write->payload, write->payload_size);
@@ -665,6 +673,7 @@ int kg_degradation_cache_put(
     size_t size
 ) {
     if (!ctx || !data || size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_cache_put: required parameter is NULL (ctx, data)");
         return -1;
     }
 
@@ -680,6 +689,7 @@ int kg_degradation_cache_put(
             void* new_data = nimcp_malloc(size);
             if (!new_data) {
                 nimcp_mutex_unlock(ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_cache_put: new_data is NULL");
                 return -1;
             }
             memcpy(new_data, data, size);
@@ -703,6 +713,7 @@ int kg_degradation_cache_put(
     entry = nimcp_calloc(1, sizeof(kg_cache_entry_t));
     if (!entry) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_cache_put: entry is NULL");
         return -1;
     }
 
@@ -710,6 +721,7 @@ int kg_degradation_cache_put(
     if (!entry->data) {
         nimcp_free(entry);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_cache_put: entry->data is NULL");
         return -1;
     }
 
@@ -775,6 +787,7 @@ int kg_degradation_cache_get(
 
     ((kg_degradation_ctx_t*)ctx)->stats.cache_misses++;
     nimcp_mutex_unlock(((kg_degradation_ctx_t*)ctx)->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_cache_get: operation failed");
     return -1;
 }
 
@@ -814,6 +827,7 @@ int kg_degradation_cache_invalidate(
     }
 
     nimcp_mutex_unlock(ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_cache_invalidate: operation failed");
     return -1;
 }
 
@@ -855,6 +869,7 @@ int kg_degradation_cache_stats(
     uint64_t* memory_bytes
 ) {
     if (!ctx || !entries || !memory_bytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_degradation_cache_stats: required parameter is NULL (ctx, entries, memory_bytes)");
         return -1;
     }
 
@@ -893,6 +908,7 @@ int kg_degradation_attempt_recovery(kg_degradation_ctx_t* ctx) {
             ctx->half_open_requests = 0;
             update_degradation_level(ctx);
             nimcp_mutex_unlock(ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_attempt_recovery: capacity exceeded");
             return -1; /* Still degraded, but testing */
         }
     }
@@ -903,6 +919,7 @@ int kg_degradation_attempt_recovery(kg_degradation_ctx_t* ctx) {
     }
 
     nimcp_mutex_unlock(ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_attempt_recovery: validation failed");
     return -1; /* Still degraded */
 }
 
@@ -944,6 +961,7 @@ int kg_degradation_register_callback(
     void* user_data
 ) {
     if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_register_callback: required parameter is NULL (ctx, callback)");
         return -1;
     }
 
@@ -962,6 +980,7 @@ int kg_degradation_register_callback(
     }
 
     nimcp_mutex_unlock(ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_register_callback: operation failed");
     return -1; /* Max callbacks reached */
 }
 
@@ -970,6 +989,7 @@ int kg_degradation_unregister_callback(
     kg_degradation_callback_fn callback
 ) {
     if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_degradation_unregister_callback: required parameter is NULL (ctx, callback)");
         return -1;
     }
 
@@ -987,6 +1007,7 @@ int kg_degradation_unregister_callback(
     }
 
     nimcp_mutex_unlock(ctx->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_degradation_unregister_callback: operation failed");
     return -1; /* Not found */
 }
 

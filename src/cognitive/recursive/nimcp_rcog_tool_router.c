@@ -227,7 +227,10 @@ static rcog_error_t builtin_output_text(const void* input, size_t input_size,
  *===========================================================================*/
 
 static int find_tool_index(const rcog_tool_router_t* router, const char* name) {
-    if (!router || !name) return -1;
+    if (!router || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_tool_index: required parameter is NULL (router, name)");
+        return -1;
+    }
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_TOOLS; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -241,11 +244,15 @@ static int find_tool_index(const rcog_tool_router_t* router, const char* name) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_tool_index: operation failed");
     return -1;
 }
 
 static int find_category_index(const rcog_tool_router_t* router, const char* name) {
-    if (!router || !name) return -1;
+    if (!router || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_category_index: required parameter is NULL (router, name)");
+        return -1;
+    }
 
     for (size_t i = 0; i < RCOG_ROUTER_MAX_CATEGORIES; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -259,12 +266,14 @@ static int find_category_index(const rcog_tool_router_t* router, const char* nam
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_category_index: operation failed");
     return -1;
 }
 
 static bool check_tier_access(rcog_capability_tier_t caller, rcog_capability_tier_t required) {
     /* Root tier has NO tool access */
     if (caller == RCOG_TIER_ROOT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_tier_access: validation failed");
         return false;
     }
 
@@ -284,6 +293,7 @@ static bool check_rate_limit(rcog_tool_router_t* router, const rcog_tool_entry_t
         }
 
         if (router->calls_this_second >= router->config.access_policy.global_rate_limit) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: capacity exceeded");
             return false;
         }
     }
@@ -292,6 +302,7 @@ static bool check_rate_limit(rcog_tool_router_t* router, const rcog_tool_entry_t
     if (tool->def.rate_limit_per_sec > 0) {
         /* Simplified: just check concurrent count as approximation */
         if (tool->current_invocations >= tool->def.rate_limit_per_sec) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: capacity exceeded");
             return false;
         }
     }
@@ -387,6 +398,7 @@ rcog_tool_router_t* rcog_tool_router_create(
     router->mutex = nimcp_mutex_create(&attr);
     if (!router->mutex) {
         nimcp_free(router);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_tool_router_create: router->mutex is NULL");
         return NULL;
     }
 
@@ -677,7 +689,10 @@ bool rcog_tool_router_has_tool(
     const rcog_tool_router_t* router,
     const char* tool_name
 ) {
-    if (!router || !tool_name) return false;
+    if (!router || !tool_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_tool_router_has_tool: required parameter is NULL (router, tool_name)");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     rcog_tool_router_heartbeat("rcog_tool_ro_has_tool", 0.0f);
 
@@ -1049,14 +1064,20 @@ bool rcog_tool_router_can_access(
     const char* tool_name,
     rcog_capability_tier_t tier
 ) {
-    if (!router || !tool_name) return false;
+    if (!router || !tool_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_tool_router_can_access: required parameter is NULL (router, tool_name)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     rcog_tool_router_heartbeat("rcog_tool_ro_can_access", 0.0f);
 
 
     int idx = find_tool_index(router, tool_name);
-    if (idx < 0) return false;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rcog_tool_router_can_access: validation failed");
+        return false;
+    }
 
     return check_tier_access(tier, router->tools[idx].def.min_tier);
 }

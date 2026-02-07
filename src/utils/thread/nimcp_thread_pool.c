@@ -611,6 +611,7 @@ static void* worker_thread(void* arg)
 {
     nimcp_thread_pool_t* pool = (nimcp_thread_pool_t*) arg;
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread: pool is NULL");
         return NULL;  // Defensive null check
     }
 
@@ -660,6 +661,7 @@ static void* worker_thread(void* arg)
         nimcp_mutex_unlock(&pool->lock);
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread: operation failed");
     return NULL;
 }
 
@@ -799,6 +801,7 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads)
             nimcp_cond_destroy(&pool->task_available);
             nimcp_mutex_destroy(&pool->lock);
             nimcp_free(pool);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_pool_create: operation failed");
             return NULL;
         }
     }

@@ -151,6 +151,7 @@ static epistemic_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -169,6 +170,7 @@ static epistemic_source_learning_t* find_source(
             return &bridge->sources[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source: validation failed");
     return NULL;
 }
 
@@ -290,7 +292,10 @@ void epistemic_plasticity_destroy(epistemic_plasticity_bridge_t* bridge) {
 }
 
 int epistemic_plasticity_reset(epistemic_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -322,11 +327,20 @@ int epistemic_plasticity_register_synapse(
     uint32_t source_id,
     float initial_weight
 ) {
-    if (!bridge) return -1;
-    if (bridge->num_synapses >= bridge->max_synapses) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
+    if (bridge->num_synapses >= bridge->max_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_plasticity_register_synapse: capacity exceeded");
+        return -1;
+    }
 
     // Check for duplicate
-    if (find_synapse(bridge, synapse_id)) return -1;
+    if (find_synapse(bridge, synapse_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_plasticity_register_synapse: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -355,7 +369,10 @@ int epistemic_plasticity_unregister_synapse(
     epistemic_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -378,6 +395,7 @@ int epistemic_plasticity_unregister_synapse(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "epistemic_plasticity_unregister_synapse: validation failed");
     return -1;
 }
 
@@ -386,14 +404,20 @@ int epistemic_plasticity_get_synapse(
     uint32_t synapse_id,
     epistemic_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
 
 
     epistemic_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
-    if (!found) return -1;
+    if (!found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_synapse: found is NULL");
+        return -1;
+    }
 
     *synapse = *found;
     return 0;
@@ -409,7 +433,10 @@ int epistemic_plasticity_evidence_update(
     float evidence_quality,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_evidence_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -450,7 +477,10 @@ int epistemic_plasticity_source_feedback(
     bool was_correct,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_source_feedback: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_source_learning) return 0;
 
@@ -463,7 +493,10 @@ int epistemic_plasticity_source_feedback(
     // Find or create source
     epistemic_source_learning_t* source = find_source(bridge, source_id);
     if (!source) {
-        if (bridge->num_sources >= bridge->max_sources) return -1;
+        if (bridge->num_sources >= bridge->max_sources) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "epistemic_plasticity_source_feedback: capacity exceeded");
+            return -1;
+        }
         source = &bridge->sources[bridge->num_sources++];
         source->source_id = source_id;
         source->learned_reliability = 0.5f;
@@ -548,7 +581,10 @@ int epistemic_plasticity_bias_detected(
     float confidence,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_bias_detected: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_bias_learning) return 0;
 
@@ -597,7 +633,10 @@ int epistemic_plasticity_belief_revision(
     float posterior,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_belief_revision: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -654,7 +693,10 @@ int epistemic_plasticity_reward(
     float reward,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_eligibility) return 0;
 
@@ -711,7 +753,10 @@ int epistemic_plasticity_update(
     epistemic_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     // Decay eligibility traces
     /* Phase 8: Heartbeat at operation start */
@@ -786,7 +831,10 @@ int epistemic_plasticity_update(
 }
 
 int epistemic_plasticity_consolidate(epistemic_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -905,14 +953,20 @@ int epistemic_plasticity_get_source_learning(
     uint32_t source_id,
     epistemic_source_learning_t* learning
 ) {
-    if (!bridge || !learning) return -1;
+    if (!bridge || !learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_source_learning: required parameter is NULL (bridge, learning)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
 
 
     epistemic_source_learning_t* source = find_source(bridge, source_id);
-    if (!source) return -1;
+    if (!source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_source_learning: source is NULL");
+        return -1;
+    }
 
     *learning = *source;
     return 0;
@@ -926,7 +980,10 @@ int epistemic_plasticity_get_state(
     const epistemic_plasticity_bridge_t* bridge,
     epistemic_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -946,7 +1003,10 @@ int epistemic_plasticity_get_stats(
     const epistemic_plasticity_bridge_t* bridge,
     epistemic_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
@@ -974,7 +1034,10 @@ int epistemic_plasticity_set_weight_callback(
     epistemic_weight_change_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -990,7 +1053,10 @@ int epistemic_plasticity_set_source_callback(
     epistemic_source_update_cb callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_set_source_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -1006,8 +1072,14 @@ int epistemic_plasticity_set_source_callback(
 //=============================================================================
 
 int epistemic_plasticity_connect_bio_async(epistemic_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_connect_bio_async: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -1018,7 +1090,10 @@ int epistemic_plasticity_connect_bio_async(epistemic_plasticity_bridge_t* bridge
 }
 
 int epistemic_plasticity_disconnect_bio_async(epistemic_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
@@ -1029,7 +1104,10 @@ int epistemic_plasticity_disconnect_bio_async(epistemic_plasticity_bridge_t* bri
 }
 
 bool epistemic_plasticity_is_bio_async_connected(const epistemic_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     epistemic_plasticity_bridge_heartbeat("epistemic_pl_epistemic_plasticity", 0.0f);
 

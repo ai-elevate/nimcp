@@ -112,7 +112,10 @@ static float clamp_float(float val, float min_val, float max_val) {
  * ============================================================================ */
 
 int neuromod_security_bridge_default_config(neuromod_security_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_lc_security_modulation = true;
     config->enable_vta_security_modulation = true;
@@ -187,7 +190,10 @@ void neuromod_security_bridge_destroy(neuromod_security_bridge_t* bridge) {
  * ============================================================================ */
 
 int neuromod_security_bridge_connect_security(neuromod_security_bridge_t* bridge, nimcp_security_context_t security) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_connect_security: bridge is NULL");
+        return -1;
+    }
 
     bridge->security = security;
     bridge->connected = true;
@@ -196,7 +202,10 @@ int neuromod_security_bridge_connect_security(neuromod_security_bridge_t* bridge
 }
 
 int neuromod_security_bridge_disconnect(neuromod_security_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->security = NULL;
     bridge->connected = false;
@@ -205,7 +214,10 @@ int neuromod_security_bridge_disconnect(neuromod_security_bridge_t* bridge) {
 }
 
 bool neuromod_security_bridge_is_connected(const neuromod_security_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->connected;
 }
 
@@ -214,25 +226,37 @@ bool neuromod_security_bridge_is_connected(const neuromod_security_bridge_t* bri
  * ============================================================================ */
 
 int neuromod_security_bridge_register_lc(neuromod_security_bridge_t* bridge, nimcp_lc_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_register_lc: bridge is NULL");
+        return -1;
+    }
     bridge->lc_adapter = adapter;
     return 0;
 }
 
 int neuromod_security_bridge_register_vta(neuromod_security_bridge_t* bridge, nimcp_vta_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_register_vta: bridge is NULL");
+        return -1;
+    }
     bridge->vta_adapter = adapter;
     return 0;
 }
 
 int neuromod_security_bridge_register_raphe(neuromod_security_bridge_t* bridge, nimcp_raphe_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_register_raphe: bridge is NULL");
+        return -1;
+    }
     bridge->raphe_adapter = adapter;
     return 0;
 }
 
 int neuromod_security_bridge_register_habenula(neuromod_security_bridge_t* bridge, nimcp_habenula_adapter_t adapter) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_register_habenula: bridge is NULL");
+        return -1;
+    }
     bridge->habenula_adapter = adapter;
     return 0;
 }
@@ -242,7 +266,10 @@ int neuromod_security_bridge_register_habenula(neuromod_security_bridge_t* bridg
  * ============================================================================ */
 
 int neuromod_security_bridge_update(neuromod_security_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->time_since_update_ms += delta_ms;
     bridge->modulation.timestamp_us = get_timestamp_us();
@@ -251,7 +278,10 @@ int neuromod_security_bridge_update(neuromod_security_bridge_t* bridge, float de
 }
 
 int neuromod_security_bridge_process_events(neuromod_security_bridge_t* bridge, uint32_t max_events) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_process_events: bridge is NULL");
+        return -1;
+    }
 
     /* Process pending security events - stub for now */
     (void)max_events;
@@ -263,7 +293,10 @@ int neuromod_security_bridge_process_events(neuromod_security_bridge_t* bridge, 
  * ============================================================================ */
 
 int neuromod_security_apply_arousal(neuromod_security_bridge_t* bridge, const neuromod_sec_arousal_payload_t* payload) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_apply_arousal: required parameter is NULL (bridge, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_lc_security_modulation) return 0;
 
     /* Apply arousal effects to security modulation state */
@@ -281,7 +314,10 @@ int neuromod_security_apply_arousal(neuromod_security_bridge_t* bridge, const ne
 }
 
 int neuromod_security_apply_learning(neuromod_security_bridge_t* bridge, const neuromod_sec_learning_payload_t* payload) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_apply_learning: required parameter is NULL (bridge, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_vta_security_modulation) return 0;
 
     /* Apply learning signals to security modulation state */
@@ -299,7 +335,10 @@ int neuromod_security_apply_learning(neuromod_security_bridge_t* bridge, const n
 }
 
 int neuromod_security_apply_patience(neuromod_security_bridge_t* bridge, const neuromod_sec_patience_payload_t* payload) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_apply_patience: required parameter is NULL (bridge, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_raphe_security_modulation) return 0;
 
     /* Apply patience/mood effects to security modulation state */
@@ -317,7 +356,10 @@ int neuromod_security_apply_patience(neuromod_security_bridge_t* bridge, const n
 }
 
 int neuromod_security_apply_aversive(neuromod_security_bridge_t* bridge, const neuromod_sec_aversive_payload_t* payload) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_apply_aversive: required parameter is NULL (bridge, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_habenula_security_modulation) return 0;
 
     /* Apply aversive signals to security modulation state */
@@ -339,7 +381,10 @@ int neuromod_security_apply_aversive(neuromod_security_bridge_t* bridge, const n
  * ============================================================================ */
 
 int neuromod_security_report_threat(neuromod_security_bridge_t* bridge, const neuromod_sec_threat_payload_t* payload) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_report_threat: required parameter is NULL (bridge, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_threat_feedback) return 0;
 
     /* Update security feedback state */
@@ -365,13 +410,19 @@ int neuromod_security_report_threat(neuromod_security_bridge_t* bridge, const ne
  * ============================================================================ */
 
 int neuromod_security_bridge_get_modulation(const neuromod_security_bridge_t* bridge, neuromod_security_modulation_t* modulation) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !modulation) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_bridge_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     *modulation = bridge->modulation;
     return 0;
 }
 
 int neuromod_security_bridge_get_feedback(const neuromod_security_bridge_t* bridge, neuromod_security_feedback_t* feedback) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !feedback) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_bridge_get_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
     *feedback = bridge->feedback;
     return 0;
 }
@@ -381,13 +432,19 @@ int neuromod_security_bridge_get_feedback(const neuromod_security_bridge_t* brid
  * ============================================================================ */
 
 int neuromod_security_bridge_get_stats(const neuromod_security_bridge_t* bridge, neuromod_security_bridge_stats_t* stats) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !stats) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_security_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int neuromod_security_bridge_reset_stats(neuromod_security_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_SECURITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_security_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

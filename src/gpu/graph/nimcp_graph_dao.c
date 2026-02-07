@@ -97,6 +97,7 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
     dao->host_cache = lru_cache_create(dao->cache_size);
     if (!dao->host_cache) {
         nimcp_free(dao);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_dao_create_gpu: dao->host_cache is NULL");
         return NULL;
     }
 
@@ -109,6 +110,7 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
         nimcp_free(dao->gpu_storage);
         nimcp_free(dao->gpu_ids);
         nimcp_free(dao);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_dao_create_gpu: required parameter is NULL (dao->gpu_storage, dao->gpu_ids)");
         return NULL;
     }
 
@@ -126,6 +128,7 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
         nimcp_free(dao->gpu_storage);
         nimcp_free(dao->gpu_ids);
         nimcp_free(dao);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_graph_dao_create_gpu: validation failed");
         return NULL;
     }
 
@@ -151,6 +154,7 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_hybrid(
 
         if (!dao->gpu_storage || !dao->gpu_ids) {
             nimcp_graph_dao_destroy(dao);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_dao_create_hybrid: required parameter is NULL (dao->gpu_storage, dao->gpu_ids)");
             return NULL;
         }
 
@@ -208,6 +212,7 @@ int nimcp_graph_dao_create(
     nimcp_gpu_graph_t* graph)
 {
     if (!dao || !graph || !dao->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_dao_create: required parameter is NULL (dao, graph, dao->initialized)");
         return -1;
     }
 
@@ -229,6 +234,7 @@ int nimcp_graph_dao_create(
         // Store in cache only
         if (!lru_cache_put(dao->host_cache, id, graph)) {
             nimcp_mutex_unlock(&dao->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_graph_dao_create: lru_cache_put is NULL");
             return -1;
         }
     }
@@ -599,6 +605,7 @@ static bool parse_filter_value(const char** str, double* value) {
 
     *value = strtod(s, &end);
     if (end == s) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "parse_filter_value: validation failed");
         return false;  // No number found
     }
 
@@ -910,6 +917,7 @@ bool nimcp_graph_dao_exists(
     int id)
 {
     if (!dao || !dao->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_graph_dao_exists: required parameter is NULL (dao, dao->initialized)");
         return false;
     }
 
@@ -1054,6 +1062,7 @@ static nimcp_graph_lru_cache_t* lru_cache_create(size_t capacity)
         HASH_TABLE_SIZE, sizeof(nimcp_graph_cache_entry_t*));
     if (!cache->entries) {
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lru_cache_create: cache->entries is NULL");
         return NULL;
     }
 
@@ -1111,12 +1120,14 @@ static nimcp_graph_cache_entry_t* lru_cache_get(nimcp_graph_lru_cache_t* cache, 
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lru_cache_get: validation failed");
     return NULL;
 }
 
 static bool lru_cache_put(nimcp_graph_lru_cache_t* cache, int id, void* data)
 {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lru_cache_put: cache is NULL");
         return false;
     }
 
@@ -1141,6 +1152,7 @@ static bool lru_cache_put(nimcp_graph_lru_cache_t* cache, int id, void* data)
     nimcp_graph_cache_entry_t* entry = (nimcp_graph_cache_entry_t*)nimcp_calloc(
         1, sizeof(nimcp_graph_cache_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lru_cache_put: entry is NULL");
         return false;
     }
 
@@ -1250,6 +1262,7 @@ static void lru_cache_touch(nimcp_graph_lru_cache_t* cache, nimcp_graph_cache_en
 static nimcp_graph_cache_entry_t* lru_cache_evict(nimcp_graph_lru_cache_t* cache)
 {
     if (!cache || !cache->tail) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lru_cache_evict: required parameter is NULL (cache, cache->tail)");
         return NULL;
     }
 
@@ -1303,6 +1316,7 @@ static int find_gpu_slot(nimcp_gpu_graph_dao_t* dao, int id)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_gpu_slot: validation failed");
     return -1;
 }
 
@@ -1313,5 +1327,6 @@ static int allocate_gpu_slot(nimcp_gpu_graph_dao_t* dao)
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "allocate_gpu_slot: validation failed");
     return -1;  // No free slot
 }

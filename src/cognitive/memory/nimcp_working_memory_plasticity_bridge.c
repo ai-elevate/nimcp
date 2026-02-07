@@ -147,6 +147,7 @@ static wm_plasticity_synapse_t* find_synapse(
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: validation failed");
     return NULL;
 }
 
@@ -291,6 +292,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "wm_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "wm_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -300,6 +302,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
     bridge->synapse_count = 0;
@@ -311,6 +314,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
         nimcp_free(bridge->synapses);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_plasticity_create: bridge->slot_states is NULL");
         return NULL;
     }
 
@@ -366,7 +370,10 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
 }
 
 int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_reset", 0.0f);
@@ -430,7 +437,10 @@ int wm_plasticity_register_synapse(
     int32_t slot_idx,
     float initial_weight)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_regist", 0.0f);
@@ -441,12 +451,14 @@ int wm_plasticity_register_synapse(
     /* Check if already registered */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_register_synapse: validation failed");
         return -1;
     }
 
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "wm_plasticity_register_synapse: capacity exceeded");
         return -1;
     }
 
@@ -477,7 +489,10 @@ int wm_plasticity_unregister_synapse(
     wm_plasticity_bridge_t* bridge,
     uint32_t synapse_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_unregi", 0.0f);
@@ -503,6 +518,7 @@ int wm_plasticity_unregister_synapse(
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_unregister_synapse: operation failed");
     return -1;
 }
 
@@ -511,7 +527,10 @@ int wm_plasticity_get_synapse(
     uint32_t synapse_id,
     wm_plasticity_synapse_t* synapse)
 {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_sy", 0.0f);
@@ -522,6 +541,7 @@ int wm_plasticity_get_synapse(
     wm_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_get_synapse: found is NULL");
         return -1;
     }
 
@@ -542,8 +562,14 @@ int wm_plasticity_encode(
     float salience,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_encode: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_encode: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_encode", 0.0f);
@@ -612,8 +638,14 @@ int wm_plasticity_maintain(
     float activity_level,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_maintain: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_maintain: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_mainta", 0.0f);
@@ -688,8 +720,14 @@ int wm_plasticity_retrieve(
     float retrieval_strength,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_retrieve: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_retrieve: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_retrie", 0.0f);
@@ -749,8 +787,14 @@ int wm_plasticity_evict(
     uint32_t slot_idx,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_evict: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_evict: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_evict", 0.0f);
@@ -800,8 +844,14 @@ int wm_plasticity_decay(
     float new_strength,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_decay: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_decay: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_decay", 0.0f);
@@ -857,7 +907,10 @@ int wm_plasticity_reward(
     float reward,
     uint64_t timestamp_us)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_reward", 0.0f);
@@ -904,7 +957,10 @@ int wm_plasticity_update(
     wm_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_update", 0.0f);
@@ -989,8 +1045,14 @@ int wm_plasticity_consolidate_slot(
     wm_plasticity_bridge_t* bridge,
     uint32_t slot_idx)
 {
-    if (!bridge) return -1;
-    if (slot_idx >= bridge->num_slots) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_consolidate_slot: bridge is NULL");
+        return -1;
+    }
+    if (slot_idx >= bridge->num_slots) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wm_plasticity_consolidate_slot: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_consol", 0.0f);
@@ -1046,7 +1108,10 @@ int wm_plasticity_consolidate_slot(
 }
 
 int wm_plasticity_consolidate_all(wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_consolidate_all: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1164,7 +1229,10 @@ int wm_plasticity_get_maintenance_modulation(
     float* modulation,
     uint32_t num_slots)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_get_maintenance_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_ma", 0.0f);
@@ -1202,7 +1270,10 @@ int wm_plasticity_get_state(
     const wm_plasticity_bridge_t* bridge,
     wm_plasticity_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_st", 0.0f);
@@ -1242,7 +1313,10 @@ int wm_plasticity_get_stats(
     const wm_plasticity_bridge_t* bridge,
     wm_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_get_st", 0.0f);
@@ -1287,7 +1361,10 @@ int wm_plasticity_set_weight_callback(
     wm_weight_change_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_set_weight_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_we", 0.0f);
@@ -1309,7 +1386,10 @@ int wm_plasticity_set_consolidation_callback(
     wm_consolidation_cb callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_set_consolidation_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_co", 0.0f);
@@ -1334,7 +1414,10 @@ int wm_plasticity_set_capacity_pressure(
     wm_plasticity_bridge_t* bridge,
     float pressure)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_set_capacity_pressure: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_ca", 0.0f);
@@ -1353,7 +1436,10 @@ int wm_plasticity_set_salience_modulation(
     wm_plasticity_bridge_t* bridge,
     float salience_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_set_salience_modulation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_set_sa", 0.0f);
@@ -1373,7 +1459,10 @@ int wm_plasticity_set_salience_modulation(
 //=============================================================================
 
 int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1390,7 +1479,10 @@ int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
 }
 
 int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_discon", 0.0f);
@@ -1408,7 +1500,10 @@ int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
 }
 
 bool wm_plasticity_is_bio_async_connected(const wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     working_memory_plasticity_bridge_heartbeat("working_memo_wm_plasticity_is_bio", 0.0f);
 

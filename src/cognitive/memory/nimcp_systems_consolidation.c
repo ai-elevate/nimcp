@@ -203,6 +203,7 @@ static cortical_memory_node_t* cortical_node_create(
 {
     // WHAT: Guard against invalid input
     if (!features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_node_create: features is NULL");
         return NULL;
     }
 
@@ -218,6 +219,7 @@ static cortical_memory_node_t* cortical_node_create(
     node->features = nimcp_malloc(feature_dim * sizeof(float));
     if (!node->features) {
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_node_create: node->features is NULL");
         return NULL;
     }
     memcpy(node->features, features, feature_dim * sizeof(float));
@@ -232,6 +234,7 @@ static cortical_memory_node_t* cortical_node_create(
         nimcp_free(node->neighbors);
         nimcp_free(node->neighbor_strengths);
         nimcp_free(node);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_node_create: required parameter is NULL (node->neighbors, node->neighbor_strengths)");
         return NULL;
     }
 
@@ -341,11 +344,13 @@ static bool cortical_node_add_neighbor(
 {
     // WHAT: Guard against invalid input
     if (!node || !neighbor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_node_add_neighbor: required parameter is NULL (node, neighbor)");
         return false;
     }
 
     // WHAT: Check capacity
     if (node->neighbor_count >= node->neighbor_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "cortical_node_add_neighbor: capacity exceeded");
         return false;  // Max neighbors reached
     }
 
@@ -374,6 +379,7 @@ systems_consolidation_system_t* systems_consolidation_create(void)
         nimcp_calloc(1, sizeof(systems_consolidation_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate systems consolidation system (%zu bytes)", sizeof(systems_consolidation_system_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "systems_consolidation_create: system is NULL");
         return NULL;
     }
 
@@ -383,6 +389,7 @@ systems_consolidation_system_t* systems_consolidation_create(void)
         nimcp_calloc(system->node_capacity, sizeof(cortical_memory_node_t*));
     if (!system->cortical_nodes) {
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "systems_consolidation_create: system->cortical_nodes is NULL");
         return NULL;
     }
 
@@ -393,6 +400,7 @@ systems_consolidation_system_t* systems_consolidation_create(void)
     if (!system->replay_queue) {
         nimcp_free(system->cortical_nodes);
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "systems_consolidation_create: system->replay_queue is NULL");
         return NULL;
     }
 
@@ -575,6 +583,7 @@ bool systems_consolidation_schedule_replay(
 {
     // WHAT: Guard against invalid input
     if (!system || engram_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "systems_consolidation_schedule_replay: system is NULL");
         return false;
     }
 
@@ -584,6 +593,7 @@ bool systems_consolidation_schedule_replay(
 
 
     if (system->replay_queue_size >= system->replay_queue_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "systems_consolidation_schedule_replay: capacity exceeded");
         return false;  // Queue full
     }
 
@@ -906,6 +916,7 @@ cortical_memory_node_t* systems_consolidation_get_node(
 {
     // WHAT: Guard against invalid input
     if (!system || node_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "systems_consolidation_get_node: system is NULL");
         return NULL;
     }
 
@@ -926,6 +937,7 @@ cortical_memory_node_t* systems_consolidation_get_node(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "systems_consolidation_get_node: validation failed");
     return NULL;  // Not found
 }
 

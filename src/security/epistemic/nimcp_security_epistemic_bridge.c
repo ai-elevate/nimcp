@@ -118,6 +118,7 @@ static int find_belief_index(
 )
 {
     if (!bridge || !bridge->beliefs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_belief_index: required parameter is NULL (bridge, bridge->beliefs)");
         return -1;
     }
 
@@ -126,6 +127,7 @@ static int find_belief_index(
             return (int)i;
         }
     }
+    /* Belief not found - normal case during registration checks, not an error */
     return -1;
 }
 
@@ -138,6 +140,7 @@ static int find_source_index(
 )
 {
     if (!internal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_source_index: internal is NULL");
         return -1;
     }
 
@@ -146,6 +149,7 @@ static int find_source_index(
             return (int)i;
         }
     }
+    /* Source not found - normal case during registration checks, not an error */
     return -1;
 }
 
@@ -353,6 +357,7 @@ security_epist_bridge_t* security_epist_bridge_create(
             nimcp_free(bridge->beliefs);
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: bridge->audit_log is NULL");
             return NULL;
         }
         memset(bridge->audit_log, 0,
@@ -368,6 +373,7 @@ security_epist_bridge_t* security_epist_bridge_create(
         nimcp_free(bridge->beliefs);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_bridge_create: validation failed");
         return NULL;
     }
     memset(internal, 0, sizeof(security_epist_internal_t));
@@ -522,6 +528,7 @@ int security_epist_disconnect_all(security_epist_bridge_t* bridge)
 bool security_epist_is_connected(const security_epist_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_is_connected: bridge is NULL");
         return false;
     }
     return bridge->epistemic_connected;
@@ -540,6 +547,7 @@ bool security_epist_validate_confidence(
 {
     if (!bridge) {
         if (status_out) *status_out = SEC_EPIST_CONF_VALID;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_validate_confidence: validation failed");
         return false;
     }
 
@@ -675,6 +683,7 @@ bool security_epist_verify_belief(
 {
     if (!bridge) {
         if (status_out) *status_out = SEC_EPIST_BELIEF_VALID;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_verify_belief: validation failed");
         return false;
     }
 
@@ -969,6 +978,7 @@ bool security_epist_validate_evidence(
 {
     if (!bridge || !chain) {
         if (status_out) *status_out = SEC_EPIST_EVIDENCE_VALID;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_validate_evidence: validation failed");
         return false;
     }
 
@@ -1045,6 +1055,7 @@ bool security_epist_check_circular_evidence(
 )
 {
     if (!bridge || !chain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_check_circular_evidence: required parameter is NULL (bridge, chain)");
         return false;
     }
 
@@ -1056,6 +1067,7 @@ bool security_epist_check_circular_evidence(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "security_epist_check_circular_evidence: validation failed");
     return false;
 }
 
@@ -1178,6 +1190,7 @@ bool security_epist_detect_attack(
 )
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_detect_attack: bridge is NULL");
         return false;
     }
 
@@ -1591,6 +1604,7 @@ int security_epist_disconnect_bio_async(security_epist_bridge_t* bridge)
 bool security_epist_is_bio_async_connected(const security_epist_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_epist_is_bio_async_connected: bridge is NULL");
         return false;
     }
 

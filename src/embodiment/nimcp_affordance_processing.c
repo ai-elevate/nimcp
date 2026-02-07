@@ -109,6 +109,7 @@ static nimcp_object_properties_t* find_object(
             return &ctx->objects[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_object: validation failed");
     return NULL;
 }
 
@@ -124,6 +125,7 @@ static nimcp_affordance_t* find_affordance(
             return &ctx->affordances[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_affordance: validation failed");
     return NULL;
 }
 
@@ -132,6 +134,7 @@ static nimcp_affordance_t* find_affordance(
  */
 static nimcp_affordance_t* add_affordance(nimcp_affordance_context_t* ctx) {
     if (ctx->num_affordances >= NIMCP_AFFORDANCE_MAX_OBJECTS * NIMCP_AFFORDANCE_MAX_PER_OBJECT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_affordance: capacity exceeded");
         return NULL;
     }
 
@@ -636,6 +639,7 @@ nimcp_affordance_context_t* nimcp_affordance_create(
     nimcp_affordance_error_t err = nimcp_affordance_init(ctx, config);
     if (err != NIMCP_AFFORDANCE_OK) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_affordance_create: validation failed");
         return NULL;
     }
 

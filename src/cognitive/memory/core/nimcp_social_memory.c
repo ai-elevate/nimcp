@@ -175,27 +175,33 @@ NIMCP_EXPORT social_memory_config_t social_memory_config_default(void) {
 
 NIMCP_EXPORT bool social_memory_config_validate(const social_memory_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_config_validate: config is NULL");
         return false;
     }
 
     if (config->max_persons == 0 || config->max_episodes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: config->max_persons is zero");
         return false;
     }
 
     if (config->initial_trust < 0.0f || config->initial_trust > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "social_memory_config_validate: validation failed");
         return false;
     }
 
     if (config->trust_decay_rate < 0.0f || config->trust_learning_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
     if (config->id_threshold < 0.0f || config->id_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
     float weight_sum = config->face_weight + config->voice_weight;
     if (weight_sum < SOCIAL_MEM_EPSILON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_config_validate: validation failed");
         return false;
     }
 
@@ -216,6 +222,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         cfg = *config;
         if (!social_memory_config_validate(&cfg)) {
             set_error("Invalid configuration");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: social_memory_config_validate is NULL");
             return NULL;
         }
     } else {
@@ -225,6 +232,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     social_memory_internal_t* mem = (social_memory_internal_t*)nimcp_calloc(1, sizeof(social_memory_internal_t));
     if (!mem) {
         set_error("Failed to allocate social memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: mem is NULL");
         return NULL;
     }
 
@@ -239,6 +247,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
     if (!mem->person_buckets) {
         set_error("Failed to allocate person buckets");
         nimcp_free(mem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: mem->person_buckets is NULL");
         return NULL;
     }
     mem->max_persons = cfg.max_persons;
@@ -251,6 +260,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         set_error("Failed to allocate episode buckets");
         nimcp_free(mem->person_buckets);
         nimcp_free(mem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "social_memory_create: mem->episode_buckets is NULL");
         return NULL;
     }
     mem->max_episodes = cfg.max_episodes;
@@ -277,6 +287,7 @@ NIMCP_EXPORT social_memory_t social_memory_create(
         nimcp_free(mem->episode_buckets);
         nimcp_free(mem->person_buckets);
         nimcp_free(mem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_create: required parameter is NULL (mem->relationship_matrix, mem->relationship_types, mem->matrix_person_ids)");
         return NULL;
     }
 
@@ -632,6 +643,7 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person(
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_get_person: validation failed");
         return NULL;
     }
 
@@ -644,11 +656,13 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person_by_name(
     const char* name)
 {
     if (!social_mem || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_get_person_by_name: required parameter is NULL (social_mem, name)");
         return NULL;
     }
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_get_person_by_name: validation failed");
         return NULL;
     }
 
@@ -669,6 +683,7 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person_by_name(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_get_person_by_name: validation failed");
     return NULL;
 }
 
@@ -1775,6 +1790,7 @@ NIMCP_EXPORT const social_episode_t* social_memory_get_episode(
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_get_episode: validation failed");
         return NULL;
     }
 
@@ -2016,6 +2032,7 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_degrees_of_separation: validation failed");
         return -1;
     }
 
@@ -2023,6 +2040,7 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
     int idx2 = get_matrix_index(mem, person2_id);
 
     if (idx1 < 0 || idx2 < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_degrees_of_separation: validation failed");
         return -1;
     }
 
@@ -2039,6 +2057,7 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
         nimcp_free(distance);
         nimcp_free(visited);
         nimcp_free(queue);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_degrees_of_separation: required parameter is NULL (distance, visited, queue)");
         return -1;
     }
 
@@ -2532,11 +2551,13 @@ NIMCP_EXPORT void social_memory_print_summary(social_memory_t social_mem) {
 
 NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     if (!social_mem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_memory_validate: social_mem is NULL");
         return false;
     }
 
     social_memory_internal_t* mem = (social_memory_internal_t*)social_mem;
     if (mem->magic != SOCIAL_MEM_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 
@@ -2557,6 +2578,7 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     }
 
     if (actual_persons != mem->num_persons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 
@@ -2577,6 +2599,7 @@ NIMCP_EXPORT bool social_memory_validate(social_memory_t social_mem) {
     }
 
     if (actual_episodes != mem->num_episodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_memory_validate: validation failed");
         return false;
     }
 
@@ -2717,6 +2740,7 @@ static person_entry_t* find_person_entry(social_memory_internal_t* mem, uint64_t
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_person_entry: validation failed");
     return NULL;
 }
 
@@ -2731,6 +2755,7 @@ static episode_entry_t* find_episode_entry(social_memory_internal_t* mem, uint64
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_episode_entry: validation failed");
     return NULL;
 }
 
@@ -2739,6 +2764,7 @@ static bool add_person_entry(social_memory_internal_t* mem, person_node_t* perso
     float load = (float)mem->num_persons / (float)mem->person_bucket_count;
     if (load > HASH_LOAD_FACTOR_THRESHOLD) {
         if (!resize_person_table(mem)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_person_entry: resize_person_table is NULL");
             return false;
         }
     }
@@ -2748,6 +2774,7 @@ static bool add_person_entry(social_memory_internal_t* mem, person_node_t* perso
 
     person_entry_t* entry = (person_entry_t*)nimcp_malloc(sizeof(person_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_person_entry: entry is NULL");
         return false;
     }
 
@@ -2764,6 +2791,7 @@ static bool add_episode_entry(social_memory_internal_t* mem, social_episode_t* e
     float load = (float)mem->num_episodes / (float)mem->episode_bucket_count;
     if (load > HASH_LOAD_FACTOR_THRESHOLD) {
         if (!resize_episode_table(mem)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "add_episode_entry: resize_episode_table is NULL");
             return false;
         }
     }
@@ -2773,6 +2801,7 @@ static bool add_episode_entry(social_memory_internal_t* mem, social_episode_t* e
 
     episode_entry_t* entry = (episode_entry_t*)nimcp_malloc(sizeof(episode_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "add_episode_entry: entry is NULL");
         return false;
     }
 
@@ -2804,6 +2833,7 @@ static bool remove_person_entry(social_memory_internal_t* mem, uint64_t person_i
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "remove_person_entry: operation failed");
     return false;
 }
 
@@ -2811,6 +2841,7 @@ static bool resize_person_table(social_memory_internal_t* mem) {
     size_t new_count = mem->person_bucket_count * 2;
     person_entry_t** new_buckets = (person_entry_t**)nimcp_calloc(new_count, sizeof(person_entry_t*));
     if (!new_buckets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resize_person_table: new_buckets is NULL");
         return false;
     }
 
@@ -2844,6 +2875,7 @@ static bool resize_episode_table(social_memory_internal_t* mem) {
     size_t new_count = mem->episode_bucket_count * 2;
     episode_entry_t** new_buckets = (episode_entry_t**)nimcp_calloc(new_count, sizeof(episode_entry_t*));
     if (!new_buckets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "resize_episode_table: new_buckets is NULL");
         return false;
     }
 
@@ -2878,6 +2910,7 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
         new_capacity = mem->max_persons;
     }
     if (new_capacity <= mem->matrix_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "grow_relationship_matrix: validation failed");
         return false;
     }
 
@@ -2891,6 +2924,7 @@ static bool grow_relationship_matrix(social_memory_internal_t* mem) {
         nimcp_free(new_matrix);
         nimcp_free(new_types);
         nimcp_free(new_ids);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grow_relationship_matrix: required parameter is NULL (new_matrix, new_types, new_ids)");
         return false;
     }
 
@@ -2963,6 +2997,7 @@ static int get_matrix_index(social_memory_internal_t* mem, uint64_t person_id) {
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_matrix_index: validation failed");
     return -1;
 }
 
@@ -2976,6 +3011,7 @@ static int assign_matrix_index(social_memory_internal_t* mem, uint64_t person_id
     // Find free slot or expand
     if (mem->matrix_size >= mem->matrix_capacity) {
         if (!grow_relationship_matrix(mem)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "assign_matrix_index: grow_relationship_matrix is NULL");
             return -1;
         }
     }
@@ -3012,6 +3048,7 @@ static person_node_t* create_person_node(const char* name) {
     person_node_t* person = (person_node_t*)nimcp_calloc(1, sizeof(person_node_t));
     if (!person) {
         set_error("Failed to allocate person node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_person_node: person is NULL");
         return NULL;
     }
 
@@ -3020,6 +3057,7 @@ static person_node_t* create_person_node(const char* name) {
         if (!person->name) {
             nimcp_free(person);
             set_error("Failed to allocate person name");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_person_node: person->name is NULL");
             return NULL;
         }
     }
@@ -3042,6 +3080,7 @@ static social_episode_t* create_episode(void) {
     social_episode_t* episode = (social_episode_t*)nimcp_calloc(1, sizeof(social_episode_t));
     if (!episode) {
         set_error("Failed to allocate episode");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_episode: episode is NULL");
         return NULL;
     }
 

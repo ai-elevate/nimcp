@@ -298,7 +298,7 @@ TEST_F(PatternDBRegressionV2Test, DetectionSqlInjection)
 
     // Add SQL injection pattern
     nimcp_pattern_entry_t entry = {};
-    entry.pattern = "(?i)(union|select).*from";
+    entry.pattern = "(union|select).*from";  // POSIX ERE: (?i) handled by CASE_INSENSITIVE flag
     entry.category = NIMCP_PATTERN_SQL_INJECTION;
     entry.priority = 10;
     entry.weight = 1.0f;
@@ -337,7 +337,7 @@ TEST_F(PatternDBRegressionV2Test, DetectionXss)
 
     // Add XSS pattern
     nimcp_pattern_entry_t entry = {};
-    entry.pattern = "<script.*?>";
+    entry.pattern = "<script.*>";  // POSIX ERE: no non-greedy *? support, use greedy .*
     entry.category = NIMCP_PATTERN_XSS;
     entry.priority = 10;
     entry.weight = 1.0f;

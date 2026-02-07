@@ -81,6 +81,7 @@ static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
     wm->slots = nimcp_calloc(capacity, sizeof(float*));
     if (!wm->slots) {
         nimcp_free(wm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_broca_bridge_mesh_unregister: wm->slots is NULL");
         return NULL;
     }
 
@@ -92,6 +93,7 @@ static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
             }
             nimcp_free(wm->slots);
             nimcp_free(wm);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_bridge_mesh_unregister: wm->slots is NULL");
             return NULL;
         }
     }
@@ -184,6 +186,7 @@ omni_broca_bridge_t* omni_broca_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "omni_broca") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_default_config: bridge->base is NULL");
         return NULL;
     }
 
@@ -193,6 +196,7 @@ omni_broca_bridge_t* omni_broca_bridge_create(
     if (!bridge->phon_wm) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "omni_broca_default_config: bridge->phon_wm is NULL");
         return NULL;
     }
 
@@ -473,7 +477,10 @@ int omni_broca_infer_syntax(omni_broca_bridge_t* bridge,
 }
 
 bool omni_broca_has_syntax_violation(const omni_broca_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_has_syntax_violation: bridge is NULL");
+        return false;
+    }
     return bridge->broca_effects.syntax_violation;
 }
 
@@ -744,7 +751,10 @@ int omni_broca_disconnect_bio_async(omni_broca_bridge_t* bridge) {
 }
 
 bool omni_broca_is_bio_async_connected(const omni_broca_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_broca_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }
 

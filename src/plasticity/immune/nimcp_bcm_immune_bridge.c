@@ -180,6 +180,7 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
     if (!immune_system || !bcm_params) {
         LOG_MODULE_ERROR("bcm_immune_bridge",
                   "Cannot create bridge without immune and BCM systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bcm_immune_bridge_create: required parameter is NULL (immune_system, bcm_params)");
         return NULL;
     }
 
@@ -262,7 +263,10 @@ int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_modulation) return 0;
-    if (!bridge->immune_system || !bridge->bcm_params) return -1;
+    if (!bridge->immune_system || !bridge->bcm_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->bcm_params)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -328,7 +332,10 @@ int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_disruption) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -403,7 +410,10 @@ int bcm_immune_assist_recovery(bcm_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_recovery_assistance) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_assist_recovery: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -439,7 +449,10 @@ int bcm_immune_update_baseline(
 
     }
     if (!bridge->enable_baseline_tracking) return 0;
-    if (!synapses || num_synapses == 0 || !stats) return -1;
+    if (!synapses || num_synapses == 0 || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_update_baseline: required parameter is NULL (synapses, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -501,7 +514,10 @@ int bcm_immune_detect_abnormalities(
 
     }
     if (!bridge->enable_bcm_immune_trigger) return 0;
-    if (!synapses || num_synapses == 0 || !stats) return -1;
+    if (!synapses || num_synapses == 0 || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_detect_abnormalities: required parameter is NULL (synapses, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -580,7 +596,10 @@ int bcm_immune_trigger_from_abnormality(bcm_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_bcm_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_trigger_from_abnormality: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -693,7 +712,10 @@ int bcm_immune_get_cytokine_effects(
     const bcm_immune_bridge_t* bridge,
     cytokine_bcm_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -705,7 +727,10 @@ int bcm_immune_get_inflammation_state(
     const bcm_immune_bridge_t* bridge,
     inflammation_bcm_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->inflammation_state;
@@ -717,7 +742,10 @@ int bcm_immune_get_abnormality_state(
     const bcm_immune_bridge_t* bridge,
     bcm_abnormality_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_get_abnormality_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->abnormality_state;
@@ -726,7 +754,10 @@ int bcm_immune_get_abnormality_state(
 }
 
 bool bcm_immune_is_healthy(const bcm_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_is_healthy: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool healthy = !bridge->abnormality_state.threshold_unstable &&
@@ -815,6 +846,9 @@ int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool bcm_immune_is_bio_async_connected(const bcm_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

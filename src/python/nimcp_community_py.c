@@ -83,6 +83,7 @@ static PyObject* CommunityStructure_get_community_ids(CommunityStructureObject* 
         PyObject* val = PyLong_FromUnsignedLong(self->structure->community_ids[i]);
         if (!val) {
             Py_DECREF(list);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "CommunityStructure_get_community_ids: val is NULL");
             return NULL;
         }
         PyList_SET_ITEM(list, i, val);
@@ -107,6 +108,7 @@ static PyObject* CommunityStructure_get_community_sizes(CommunityStructureObject
         PyObject* val = PyLong_FromUnsignedLong(self->structure->community_sizes[i]);
         if (!val) {
             Py_DECREF(list);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "CommunityStructure_get_community_sizes: val is NULL");
             return NULL;
         }
         PyList_SET_ITEM(list, i, val);
@@ -174,6 +176,7 @@ static PyObject* HubStructure_get_hub_indices(HubStructureObject* self, void* cl
         PyObject* val = PyLong_FromUnsignedLong(self->structure->hub_indices[i]);
         if (!val) {
             Py_DECREF(list);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HubStructure_get_hub_indices: val is NULL");
             return NULL;
         }
         PyList_SET_ITEM(list, i, val);
@@ -198,6 +201,7 @@ static PyObject* HubStructure_get_degree_centrality(HubStructureObject* self, vo
         PyObject* val = PyFloat_FromDouble(self->structure->degree_centrality[i]);
         if (!val) {
             Py_DECREF(list);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "HubStructure_get_degree_centrality: val is NULL");
             return NULL;
         }
         PyList_SET_ITEM(list, i, val);
@@ -291,6 +295,7 @@ static PyObject* py_brain_detect_communities(PyObject* self, PyObject* args) {
     PyObject* brain_obj;
 
     if (!PyArg_ParseTuple(args, "O", &brain_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_communities: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -299,12 +304,14 @@ static PyObject* py_brain_detect_communities(PyObject* self, PyObject* args) {
     PyObject* network_obj = PyObject_GetAttrString(brain_obj, "network");
     if (!network_obj) {
         PyErr_SetString(PyExc_TypeError, "Brain object has no 'network' attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_communities: network_obj is NULL");
         return NULL;
     }
 
     if (!PyObject_TypeCheck(network_obj, &NeuralNetworkType)) {
         Py_DECREF(network_obj);
         PyErr_SetString(PyExc_TypeError, "Brain.network must be NeuralNetwork");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_communities: PyObject_TypeCheck is NULL");
         return NULL;
     }
 
@@ -321,6 +328,7 @@ static PyObject* py_brain_detect_communities(PyObject* self, PyObject* args) {
     if (!structure) {
         const char* error = community_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Community detection failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_communities: structure is NULL");
         return NULL;
     }
 
@@ -340,6 +348,7 @@ static PyObject* py_brain_get_modularity(PyObject* self, PyObject* args) {
     PyObject* brain_obj;
 
     if (!PyArg_ParseTuple(args, "O", &brain_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_get_modularity: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -363,6 +372,7 @@ static PyObject* py_brain_get_num_communities(PyObject* self, PyObject* args) {
     PyObject* brain_obj;
 
     if (!PyArg_ParseTuple(args, "O", &brain_obj)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_get_num_communities: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -387,6 +397,7 @@ static PyObject* py_brain_get_neuron_community(PyObject* self, PyObject* args) {
     uint32_t neuron_id;
 
     if (!PyArg_ParseTuple(args, "OI", &brain_obj, &neuron_id)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_get_neuron_community: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -408,6 +419,7 @@ static PyObject* py_brain_get_neuron_community(PyObject* self, PyObject* args) {
 
     if (comm_id == UINT32_MAX) {
         PyErr_SetString(PyExc_ValueError, "Invalid neuron ID");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_get_neuron_community: validation failed");
         return NULL;
     }
 
@@ -421,6 +433,7 @@ static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* 
 
     static char* kwlist[] = {"brain", "threshold", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|f", kwlist, &brain_obj, &threshold)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_hubs: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -428,12 +441,14 @@ static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* 
     PyObject* network_obj = PyObject_GetAttrString(brain_obj, "network");
     if (!network_obj) {
         PyErr_SetString(PyExc_TypeError, "Brain object has no 'network' attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_hubs: network_obj is NULL");
         return NULL;
     }
 
     if (!PyObject_TypeCheck(network_obj, &NeuralNetworkType)) {
         Py_DECREF(network_obj);
         PyErr_SetString(PyExc_TypeError, "Brain.network must be NeuralNetwork");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_hubs: PyObject_TypeCheck is NULL");
         return NULL;
     }
 
@@ -450,6 +465,7 @@ static PyObject* py_brain_detect_hubs(PyObject* self, PyObject* args, PyObject* 
     if (!hubs) {
         const char* error = community_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Hub detection failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_detect_hubs: hubs is NULL");
         return NULL;
     }
 
@@ -471,6 +487,7 @@ static PyObject* py_brain_validate_topology(PyObject* self, PyObject* args, PyOb
 
     static char* kwlist[] = {"brain", "min_modularity", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|f", kwlist, &brain_obj, &min_modularity)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_validate_topology: PyArg_ParseTupleAndKeywords is NULL");
         return NULL;
     }
 
@@ -478,12 +495,14 @@ static PyObject* py_brain_validate_topology(PyObject* self, PyObject* args, PyOb
     PyObject* network_obj = PyObject_GetAttrString(brain_obj, "network");
     if (!network_obj) {
         PyErr_SetString(PyExc_TypeError, "Brain object has no 'network' attribute");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_validate_topology: network_obj is NULL");
         return NULL;
     }
 
     if (!PyObject_TypeCheck(network_obj, &NeuralNetworkType)) {
         Py_DECREF(network_obj);
         PyErr_SetString(PyExc_TypeError, "Brain.network must be NeuralNetwork");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_brain_validate_topology: PyObject_TypeCheck is NULL");
         return NULL;
     }
 
@@ -566,37 +585,49 @@ static PyMethodDef community_methods[] = {
 
 int init_community_module(PyObject* module) {
     // Prepare types
-    if (PyType_Ready(&CommunityStructureType) < 0)
+    if (PyType_Ready(&CommunityStructureType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
-    if (PyType_Ready(&HubStructureType) < 0)
+    }
+    if (PyType_Ready(&HubStructureType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
-    if (PyType_Ready(&TopologyValidationType) < 0)
+    }
+    if (PyType_Ready(&TopologyValidationType) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
+    }
 
     // Add types to module
     Py_INCREF(&CommunityStructureType);
     if (PyModule_AddObject(module, "CommunityStructure", (PyObject*)&CommunityStructureType) < 0) {
         Py_DECREF(&CommunityStructureType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
     }
     Py_INCREF(&HubStructureType);
     if (PyModule_AddObject(module, "HubStructure", (PyObject*)&HubStructureType) < 0) {
         Py_DECREF(&HubStructureType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
     }
     Py_INCREF(&TopologyValidationType);
     if (PyModule_AddObject(module, "TopologyValidation", (PyObject*)&TopologyValidationType) < 0) {
         Py_DECREF(&TopologyValidationType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
         return -1;
     }
 
     // Add methods to module
     for (int i = 0; community_methods[i].ml_name != NULL; i++) {
         PyObject* func = PyCFunction_New(&community_methods[i], NULL);
-        if (func == NULL)
+        if (func == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
             return -1;
+        }
         if (PyModule_AddObject(module, community_methods[i].ml_name, func) < 0) {
             Py_DECREF(func);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_community_module: validation failed");
             return -1;
         }
     }

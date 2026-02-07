@@ -103,6 +103,7 @@ bool bbb_enhanced_detection_init(void)
     g_path_validator = nimcp_path_validator_create(NULL);
     if (!g_path_validator) {
         LOG_ERROR(LOG_MODULE, "Failed to create path validator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_enhanced_detection_init: g_path_validator is NULL");
         return false;
     }
 
@@ -112,6 +113,7 @@ bool bbb_enhanced_detection_init(void)
         LOG_ERROR(LOG_MODULE, "Failed to create shell detector");
         nimcp_path_validator_destroy(g_path_validator);
         g_path_validator = NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_enhanced_detection_init: g_shell_detector is NULL");
         return false;
     }
 
@@ -190,6 +192,7 @@ bool bbb_validate_file_path(bbb_system_t system, const char* path,
             result->severity = BBB_SEVERITY_HIGH;
             snprintf(result->reason, sizeof(result->reason),
                      "Enhanced detection not initialized");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bbb_validate_file_path: bbb_enhanced_detection_init is NULL");
             return false;
         }
     }
@@ -200,6 +203,7 @@ bool bbb_validate_file_path(bbb_system_t system, const char* path,
         result->threat = BBB_THREAT_PATH_TRAVERSAL;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_file_path: path is NULL");
         return false;
     }
 
@@ -246,6 +250,7 @@ bool bbb_validate_file_path(bbb_system_t system, const char* path,
         LOG_WARN(LOG_MODULE, "Path traversal detected: %s (pattern=%s)",
                  path, nimcp_path_pattern_name(path_result.pattern));
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_file_path: validation failed");
         return false;
     }
 
@@ -296,6 +301,7 @@ bool bbb_validate_command(bbb_system_t system, const char* input,
             result->severity = BBB_SEVERITY_HIGH;
             snprintf(result->reason, sizeof(result->reason),
                      "Enhanced detection not initialized");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "bbb_validate_command: bbb_enhanced_detection_init is NULL");
             return false;
         }
     }
@@ -306,6 +312,7 @@ bool bbb_validate_command(bbb_system_t system, const char* input,
         result->threat = BBB_THREAT_SHELL_INJECTION;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL input");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_command: input is NULL");
         return false;
     }
 
@@ -352,6 +359,7 @@ bool bbb_validate_command(bbb_system_t system, const char* input,
         LOG_WARN(LOG_MODULE, "Shell injection detected: %s (pattern=%s)",
                  input, nimcp_shell_pattern_name(shell_result.pattern));
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_validate_command: validation failed");
         return false;
     }
 

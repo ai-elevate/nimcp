@@ -327,6 +327,7 @@ bool nimcp_brain_factory_init_insula_subsystem(brain_t brain) {
     brain->insula = insula_create(&insula_cfg);
     if (!brain->insula) {
         set_error("Failed to create Insula adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_insula_subsystem: brain->insula is NULL");
         return false;
     }
 
@@ -409,6 +410,7 @@ bool nimcp_brain_factory_init_insula_quantum_bridge(brain_t brain) {
 
     if (!brain->insula_quantum_bridge) {
         LOG_WARN(LOG_MODULE, "Failed to create Insula quantum bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_insula_quantum_bridge: brain->insula_quantum_bridge is NULL");
         return false;
     }
 

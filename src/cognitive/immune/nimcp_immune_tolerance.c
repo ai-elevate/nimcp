@@ -166,6 +166,7 @@ const char* tolerance_cell_state_to_string(cell_tolerance_state_t state) {
 int tolerance_default_config(tolerance_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_default_config: config is NULL");
         return -1;
     }
 
@@ -201,6 +202,7 @@ tolerance_system_t* tolerance_create(
 ) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("NULL immune_system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_create: immune_system is NULL");
         return NULL;
     }
 
@@ -211,6 +213,7 @@ tolerance_system_t* tolerance_create(
     tolerance_system_t* sys = nimcp_calloc(1, sizeof(tolerance_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate tolerance system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys is NULL");
         return NULL;
     }
 
@@ -230,6 +233,7 @@ tolerance_system_t* tolerance_create(
     if (!sys->self_patterns) {
         NIMCP_LOGGING_ERROR("Failed to allocate self patterns");
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys->self_patterns is NULL");
         return NULL;
     }
 
@@ -243,6 +247,7 @@ tolerance_system_t* tolerance_create(
         NIMCP_LOGGING_ERROR("Failed to allocate anergic cells");
         nimcp_free(sys->self_patterns);
         nimcp_free(sys);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tolerance_create: sys->anergic_cells is NULL");
         return NULL;
     }
 
@@ -322,6 +327,7 @@ int tolerance_register_self_pattern(
     uint32_t* pattern_id
 ) {
     if (!system || !pattern || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_register_self_pattern: required parameter is NULL (system, pattern)");
         return -1;
     }
 
@@ -332,6 +338,7 @@ int tolerance_register_self_pattern(
     if (len > TOLERANCE_PATTERN_SIZE) {
         NIMCP_LOGGING_WARN("Pattern length %zu exceeds max %d",
                            len, TOLERANCE_PATTERN_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_register_self_pattern: validation failed");
         return -1;
     }
 
@@ -346,6 +353,7 @@ int tolerance_register_self_pattern(
         if (system->config.thread_safe) {
             nimcp_mutex_unlock(system->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_register_self_pattern: validation failed");
         return -1;
     }
 
@@ -399,6 +407,7 @@ bool tolerance_check_self(
     float* affinity
 ) {
     if (!system || !pattern || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_check_self: required parameter is NULL (system, pattern)");
         return false;
     }
 
@@ -494,6 +503,7 @@ int tolerance_remove_self_pattern(
         if (system->config.thread_safe) {
             nimcp_mutex_unlock(system->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_remove_self_pattern: validation failed");
         return -1;
     }
 
@@ -502,6 +512,7 @@ int tolerance_remove_self_pattern(
         if (system->config.thread_safe) {
             nimcp_mutex_unlock(system->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_remove_self_pattern: validation failed");
         return -1;
     }
 
@@ -600,6 +611,7 @@ int tolerance_central_selection(
     selection_outcome_t* outcome
 ) {
     if (!system || !receptor || !outcome || receptor_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_central_selection: required parameter is NULL (system, receptor, outcome)");
         return -1;
     }
 
@@ -688,6 +700,7 @@ int tolerance_delete_cell(
     bool is_b_cell
 ) {
     if (!system || !system->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_delete_cell: required parameter is NULL (system, system->immune_system)");
         return -1;
     }
 
@@ -778,6 +791,7 @@ bool tolerance_is_anergic(
     bool is_b_cell
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_is_anergic: system is NULL");
         return false;
     }
 
@@ -832,6 +846,7 @@ int tolerance_reverse_anergy(
         if (system->config.thread_safe) {
             nimcp_mutex_unlock(system->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_reverse_anergy: validation failed");
         return -1;
     }
 
@@ -841,6 +856,7 @@ int tolerance_reverse_anergy(
         if (system->config.thread_safe) {
             nimcp_mutex_unlock(system->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_reverse_anergy: validation failed");
         return -1;
     }
 
@@ -923,6 +939,7 @@ int tolerance_set_self_threshold(
     float threshold
 ) {
     if (!system || threshold < 0.0f || threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_set_self_threshold: system is NULL");
         return -1;
     }
 
@@ -951,6 +968,7 @@ int tolerance_set_central_threshold(
     float threshold
 ) {
     if (!system || threshold < 0.0f || threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_set_central_threshold: system is NULL");
         return -1;
     }
 
@@ -979,6 +997,7 @@ int tolerance_set_anergy_threshold(
     float threshold
 ) {
     if (!system || threshold < 0.0f || threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "tolerance_set_anergy_threshold: system is NULL");
         return -1;
     }
 
@@ -1011,6 +1030,7 @@ int tolerance_get_stats(
     tolerance_stats_t* stats
 ) {
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tolerance_get_stats: required parameter is NULL (system, stats)");
         return -1;
     }
 
@@ -1115,6 +1135,7 @@ static self_pattern_t* find_pattern_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_pattern_by_id: validation failed");
     return NULL;
 }
 
@@ -1145,6 +1166,7 @@ static anergic_cell_record_t* find_anergic_cell(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_anergic_cell: validation failed");
     return NULL;
 }
 
@@ -1172,6 +1194,7 @@ static int add_anergic_cell(
     /* Check capacity */
     if (sys->anergic_cell_count >= sys->anergic_cell_capacity) {
         NIMCP_LOGGING_ERROR("Anergic cell records full");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "add_anergic_cell: capacity exceeded");
         return -1;
     }
 

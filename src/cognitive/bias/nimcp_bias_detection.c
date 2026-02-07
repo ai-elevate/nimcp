@@ -106,12 +106,18 @@ static inline float exponential_decay(float value, float rate, float dt) {
 }
 
 static bool contains_substring_ci(const char* text, const char* substring) {
-    if (!text || !substring) return false;
+    if (!text || !substring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contains_substring_ci: required parameter is NULL (text, substring)");
+        return false;
+    }
 
     size_t text_len = strlen(text);
     size_t sub_len = strlen(substring);
 
-    if (sub_len > text_len) return false;
+    if (sub_len > text_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "contains_substring_ci: validation failed");
+        return false;
+    }
 
     for (size_t i = 0; i <= text_len - sub_len; i++) {
         bool match = true;
@@ -133,7 +139,10 @@ static bool contains_substring_ci(const char* text, const char* substring) {
 }
 
 static int find_group_index(bias_detection_system_t* system, const social_group_t* group) {
-    if (!system || !group) return -1;
+    if (!system || !group) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_group_index: required parameter is NULL (system, group)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < system->implicit_bias_count; i++) {
         /* Phase 8: Loop progress heartbeat */
@@ -147,6 +156,7 @@ static int find_group_index(bias_detection_system_t* system, const social_group_
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_group_index: validation failed");
     return -1;
 }
 
@@ -177,6 +187,7 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
     if (!system->detected_in_others) {
         LOG_ERROR("Failed to allocate bias detection other-tracking array");
         bias_system_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bias_system_create: system->detected_in_others is NULL");
         return NULL;
     }
 
@@ -494,6 +505,7 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
                                                 const social_group_t* group_a,
                                                 const social_group_t* group_b) {
     if (!system || !group_a || !group_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (system, group_a, group_b)");
         return NULL;
     }
 
@@ -837,7 +849,10 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
                                float* out_lgbtq,
                                float* out_gender,
                                float* out_misogyny) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_detection_heartbeat("bias_detecti_bias_get_detected_in", 0.0f);
@@ -862,11 +877,15 @@ bool bias_get_detected_in_other(const bias_detection_system_t* system,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
     return false;
 }
 
 bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_id) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_should_educate: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_detection_heartbeat("bias_detecti_bias_should_educate", 0.0f);
@@ -884,11 +903,15 @@ bool bias_should_educate(const bias_detection_system_t* system, uint32_t person_
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_educate: validation failed");
     return false;
 }
 
 bool bias_should_disengage(const bias_detection_system_t* system, uint32_t person_id) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_should_disengage: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_detection_heartbeat("bias_detecti_bias_should_disengag", 0.0f);
@@ -906,6 +929,7 @@ bool bias_should_disengage(const bias_detection_system_t* system, uint32_t perso
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_disengage: validation failed");
     return false;
 }
 
@@ -918,7 +942,10 @@ bool bias_apply_intervention(bias_detection_system_t* system,
                              debiasing_strategy_t strategy,
                              const social_group_t* group,
                              uint64_t current_time) {
-    if (!system || !group) return false;
+    if (!system || !group) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_should_disengage: required parameter is NULL (system, group)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     bias_detection_heartbeat("bias_detecti_bias_apply_intervent", 0.0f);
@@ -930,7 +957,10 @@ bool bias_apply_intervention(bias_detection_system_t* system,
     system->in_debiasing = true;
 
     int idx = find_group_index(system, group);
-    if (idx < 0) return false;
+    if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_should_disengage: validation failed");
+        return false;
+    }
 
     implicit_bias_t* implicit = &system->implicit_biases[idx];
     float reduction = 0.3F;
@@ -998,7 +1028,10 @@ bool bias_apply_intervention(bias_detection_system_t* system,
 }
 
 bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
-    if (!system || !system->bias_detected) return false;
+    if (!system || !system->bias_detected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bias_auto_debias: required parameter is NULL (system, system->bias_detected)");
+        return false;
+    }
 
     // Find highest bias
     /* Phase 8: Heartbeat at operation start */
@@ -1021,7 +1054,10 @@ bool bias_auto_debias(bias_detection_system_t* system, uint64_t current_time) {
         }
     }
 
-    if (max_idx < 0) return false;
+    if (max_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bias_auto_debias: validation failed");
+        return false;
+    }
 
     // Use mindfulness as default strategy
     return bias_apply_intervention(system, BIAS_RACIAL,  DEBIAS_MINDFULNESS,

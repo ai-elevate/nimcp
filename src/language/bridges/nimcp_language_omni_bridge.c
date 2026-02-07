@@ -34,7 +34,10 @@ static int init_phoneme_prediction_state(language_omni_bridge_t* bridge) {
     state->max_predictions = LANGUAGE_OMNI_MAX_PHONEME_PREDICTIONS;
     state->predictions = (language_prediction_t*)nimcp_calloc(
         state->max_predictions, sizeof(language_prediction_t));
-    if (!state->predictions) return -1;
+    if (!state->predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_phoneme_prediction_state: state->predictions is NULL");
+        return -1;
+    }
 
     state->num_predictions = 0;
     state->horizon = LANGUAGE_OMNI_DEFAULT_PHONEME_HORIZON;
@@ -52,7 +55,10 @@ static int init_word_prediction_state(language_omni_bridge_t* bridge) {
     state->max_predictions = LANGUAGE_OMNI_MAX_WORD_PREDICTIONS;
     state->predictions = (language_prediction_t*)nimcp_calloc(
         state->max_predictions, sizeof(language_prediction_t));
-    if (!state->predictions) return -1;
+    if (!state->predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_word_prediction_state: state->predictions is NULL");
+        return -1;
+    }
 
     state->num_predictions = 0;
     state->horizon = LANGUAGE_OMNI_DEFAULT_WORD_HORIZON;
@@ -62,6 +68,7 @@ static int init_word_prediction_state(language_omni_bridge_t* bridge) {
     state->context_vector = (float*)nimcp_calloc(state->context_dim, sizeof(float));
     if (!state->context_vector) {
         nimcp_free(state->predictions);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_word_prediction_state: state->context_vector is NULL");
         return -1;
     }
 
@@ -78,7 +85,10 @@ static int init_semantic_prediction_state(language_omni_bridge_t* bridge) {
     state->max_predictions = LANGUAGE_OMNI_MAX_SEMANTIC_PREDICTIONS;
     state->predictions = (language_prediction_t*)nimcp_calloc(
         state->max_predictions, sizeof(language_prediction_t));
-    if (!state->predictions) return -1;
+    if (!state->predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_semantic_prediction_state: state->predictions is NULL");
+        return -1;
+    }
 
     state->num_predictions = 0;
     state->precision_semantic = LANGUAGE_OMNI_DEFAULT_PRECISION;
@@ -87,6 +97,7 @@ static int init_semantic_prediction_state(language_omni_bridge_t* bridge) {
     state->predicted_semantic = (float*)nimcp_calloc(state->semantic_dim, sizeof(float));
     if (!state->predicted_semantic) {
         nimcp_free(state->predictions);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_semantic_prediction_state: state->predicted_semantic is NULL");
         return -1;
     }
 
@@ -102,7 +113,10 @@ static int init_error_queue(language_omni_bridge_t* bridge) {
     queue->max_errors = 64;
     queue->errors = (language_prediction_error_t*)nimcp_calloc(
         queue->max_errors, sizeof(language_prediction_error_t));
-    if (!queue->errors) return -1;
+    if (!queue->errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_error_queue: queue->errors is NULL");
+        return -1;
+    }
 
     queue->num_errors = 0;
     queue->avg_phoneme_error = 0.0f;
@@ -125,6 +139,7 @@ static int init_jepa_state(language_omni_bridge_t* bridge) {
     if (!state->current_embedding || !state->predicted_embedding) {
         nimcp_free(state->current_embedding);
         nimcp_free(state->predicted_embedding);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_jepa_state: required parameter is NULL (state->current_embedding, state->predicted_embedding)");
         return -1;
     }
 
@@ -199,6 +214,7 @@ language_omni_bridge_t* language_omni_bridge_create(const language_omni_config_t
         init_jepa_state(bridge) != 0) {
         cleanup_all(bridge);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "language_omni_bridge_create: validation failed");
         return NULL;
     }
 
@@ -246,7 +262,10 @@ int language_omni_bridge_init(language_omni_bridge_t* bridge) {
 }
 
 int language_omni_bridge_start(language_omni_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) return -1;
+    if (!bridge || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_start: required parameter is NULL (bridge, bridge->initialized)");
+        return -1;
+    }
     bridge->active = true;
     LOG_INFO(LOG_MODULE, "Omni bridge started");
     return 0;
@@ -342,8 +361,14 @@ int language_omni_bridge_connect_fep(
 
 int language_omni_bridge_predict_phonemes(
     language_omni_bridge_t* bridge, const uint32_t* context_phonemes, uint32_t context_length) {
-    if (!bridge || !context_phonemes) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !context_phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: required parameter is NULL (bridge, context_phonemes)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: bridge->active is NULL");
+        return -1;
+    }
 
     phoneme_prediction_state_t* state = &bridge->phoneme_pred;
     state->num_predictions = 0;
@@ -375,8 +400,14 @@ int language_omni_bridge_predict_phonemes(
 
 int language_omni_bridge_predict_words(
     language_omni_bridge_t* bridge, const uint32_t* context_words, uint32_t context_length) {
-    if (!bridge || !context_words) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !context_words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: required parameter is NULL (bridge, context_words)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: bridge->active is NULL");
+        return -1;
+    }
 
     word_prediction_state_t* state = &bridge->word_pred;
     state->num_predictions = 0;
@@ -406,8 +437,14 @@ int language_omni_bridge_predict_words(
 
 int language_omni_bridge_predict_semantic(
     language_omni_bridge_t* bridge, const float* context_vector, uint32_t context_dim) {
-    if (!bridge || !context_vector) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !context_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: required parameter is NULL (bridge, context_vector)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: bridge->active is NULL");
+        return -1;
+    }
 
     semantic_prediction_state_t* state = &bridge->semantic_pred;
 
@@ -425,7 +462,10 @@ int language_omni_bridge_predict_semantic(
 int language_omni_bridge_get_predictions(
     const language_omni_bridge_t* bridge, prediction_level_t level,
     language_prediction_t* predictions, uint32_t max_predictions) {
-    if (!bridge || !predictions) return -1;
+    if (!bridge || !predictions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_stop: required parameter is NULL (bridge, predictions)");
+        return -1;
+    }
 
     const language_prediction_t* src = NULL;
     uint32_t count = 0;
@@ -444,6 +484,7 @@ int language_omni_bridge_get_predictions(
             count = bridge->semantic_pred.num_predictions;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_omni_bridge_stop: operation failed");
             return -1;
     }
 
@@ -515,8 +556,14 @@ language_prediction_error_t language_omni_bridge_compute_error(
 
 int language_omni_bridge_report_error(
     language_omni_bridge_t* bridge, const language_prediction_error_t* error) {
-    if (!bridge || !error) return -1;
-    if (!bridge->active) return -1;
+    if (!bridge || !error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, error)");
+        return -1;
+    }
+    if (!bridge->active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->active is NULL");
+        return -1;
+    }
 
     prediction_error_queue_t* queue = &bridge->error_queue;
 
@@ -541,7 +588,10 @@ int language_omni_bridge_report_error(
 
 int language_omni_bridge_get_errors(
     language_omni_bridge_t* bridge, language_prediction_error_t* errors, uint32_t max_errors) {
-    if (!bridge || !errors) return -1;
+    if (!bridge || !errors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, errors)");
+        return -1;
+    }
 
     prediction_error_queue_t* queue = &bridge->error_queue;
     uint32_t count = queue->num_errors < max_errors ? queue->num_errors : max_errors;
@@ -584,6 +634,7 @@ int language_omni_bridge_set_precision(
             bridge->semantic_pred.precision_semantic = precision;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_omni_bridge_get_free_energy: operation failed");
             return -1;
     }
 
@@ -607,7 +658,10 @@ float language_omni_bridge_get_precision(
 }
 
 int language_omni_bridge_update_precision(language_omni_bridge_t* bridge) {
-    if (!bridge || !bridge->precision.precision_modulation_enabled) return -1;
+    if (!bridge || !bridge->precision.precision_modulation_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_update_precision: required parameter is NULL (bridge, bridge->precision)");
+        return -1;
+    }
 
     float lr = bridge->precision.precision_lr;
     prediction_error_queue_t* queue = &bridge->error_queue;
@@ -711,7 +765,10 @@ int language_omni_bridge_update(language_omni_bridge_t* bridge, uint64_t current
 
 int language_omni_bridge_get_stats(
     const language_omni_bridge_t* bridge, language_omni_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_update: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(language_omni_stats_t));
     return 0;
 }
@@ -722,7 +779,10 @@ int language_omni_bridge_get_stats(
 
 int language_omni_bridge_bio_async_register(
     language_omni_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge || !router) return -1;
+    if (!bridge || !router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "language_omni_bridge_update: required parameter is NULL (bridge, router)");
+        return -1;
+    }
     bridge->bio_router = router;
     bridge->bio_async_registered = true;
     return 0;

@@ -64,7 +64,10 @@ static const char* CHANNEL_NAMES[] = {
 //=============================================================================
 
 int surface_bio_async_default_config(surface_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_bio_async_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -270,8 +273,12 @@ int surface_bio_async_bridge_subscribe(
 ) {
     BRIDGE_NULL_CHECK(bridge);
 
-    if (!callback) return -1;
+    if (!callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_bio_async_bridge_subscribe: callback is NULL");
+        return -1;
+    }
     if (msg_type < BIO_MSG_SURFACE_GEOMETRY_UPDATE || msg_type > BIO_MSG_SURFACE_MAX) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_bio_async_bridge_subscribe: validation failed");
         return -1;
     }
 
@@ -288,6 +295,7 @@ int surface_bio_async_bridge_subscribe(
 
     if (slot < 0) {
         BRIDGE_UNLOCK(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_bio_async_bridge_subscribe: validation failed");
         return -1;  /* No room */
     }
 
@@ -312,6 +320,7 @@ int surface_bio_async_bridge_unsubscribe(
     BRIDGE_NULL_CHECK(bridge);
 
     if (subscription_id < 0 || (uint32_t)subscription_id >= bridge->max_subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "surface_bio_async_bridge_unsubscribe: capacity exceeded");
         return -1;
     }
 
@@ -340,6 +349,7 @@ static int send_message_internal(
 ) {
     if (!bridge->connected) {
         bridge->messages_dropped++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_message_internal: bridge->connected is NULL");
         return -1;
     }
 

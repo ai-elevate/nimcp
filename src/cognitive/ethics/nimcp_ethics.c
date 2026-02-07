@@ -194,8 +194,10 @@ static void init_buffer_pool(feature_buffer_pool_t* pool)
  */
 static float* acquire_buffer(feature_buffer_pool_t* pool)
 {
-    if (!pool)
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_buffer: pool is NULL");
         return NULL;
+    }
 
     // Guard clause: Check for pool exhaustion
     for (uint32_t i = 0; i < OBJECT_POOL_SIZE; i++) {
@@ -213,6 +215,7 @@ static float* acquire_buffer(feature_buffer_pool_t* pool)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acquire_buffer: pool->in_use is NULL");
     return NULL;  // Pool exhausted
 }
 
@@ -269,8 +272,10 @@ typedef struct {
  */
 static bool hash_table_insert_policy(hash_table_t* table, ethics_policy_t* policy)
 {
-    if (!table || !policy)
+    if (!table || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_insert_policy: required parameter is NULL (table, policy)");
         return false;
+    }
 
     policy_value_t value = {.policy = policy};
     return hash_table_insert_uint32(table, policy->policy_id, &value, sizeof(policy_value_t));
@@ -281,8 +286,10 @@ static bool hash_table_insert_policy(hash_table_t* table, ethics_policy_t* polic
  */
 static bool hash_table_remove_policy(hash_table_t* table, uint32_t policy_id)
 {
-    if (!table)
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_table_remove_policy: table is NULL");
         return false;
+    }
 
     return hash_table_remove_uint32(table, policy_id);
 }
@@ -309,8 +316,10 @@ static empathy_network_t create_empathy_network(void)
 
 static bool allocate_policy_storage(ethics_engine_t engine)
 {
-    if (!engine)
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_policy_storage: engine is NULL");
         return false;
+    }
 
     engine->policies_capacity = 100;
     engine->policies = nimcp_calloc(engine->policies_capacity, sizeof(ethics_policy_t));
@@ -320,8 +329,10 @@ static bool allocate_policy_storage(ethics_engine_t engine)
 
 static bool allocate_violation_storage(ethics_engine_t engine)
 {
-    if (!engine)
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_violation_storage: engine is NULL");
         return false;
+    }
 
     engine->violations_capacity = 1000;
     engine->violations = nimcp_calloc(engine->violations_capacity, sizeof(violation_record_t));
@@ -505,6 +516,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: allocate_violation_storage is NULL");
         return NULL;
     }
 
@@ -517,6 +529,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "ethics_engine_create: ethics_init_incident_logging is NULL");
         return NULL;
     }
 
@@ -662,6 +675,7 @@ static bool validate_evaluation_inputs(ethics_engine_t engine, const action_cont
         result->confidence = 1.0F;
         result->primary_violation = ETHICS_VIOLATION_TYPE_HARM;
         snprintf(result->explanation, sizeof(result->explanation), "Null action");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_evaluation_inputs: action is NULL");
         return false;
     }
 
@@ -684,16 +698,20 @@ static float calculate_final_score(float golden_rule_score, float policy_score)
  */
 static bool expand_violations_array(ethics_engine_t engine)
 {
-    if (!engine)
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_violations_array: engine is NULL");
         return false;
+    }
 
     uint32_t new_capacity = engine->violations_capacity > 0 ? engine->violations_capacity * 2 : 1000;
 
     violation_record_t* new_array =
         (violation_record_t*)nimcp_realloc(engine->violations, new_capacity * sizeof(violation_record_t));
 
-    if (!new_array)
+    if (!new_array) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "expand_violations_array: new_array is NULL");
         return false;
+    }
 
     engine->violations = new_array;
     engine->violations_capacity = new_capacity;
@@ -943,8 +961,10 @@ void ethics_print_evaluation(const ethics_evaluation_t* eval)
 
 bool ethics_get_statistics(ethics_engine_t engine, ethics_statistics_t* stats)
 {
-    if (!engine || !stats)
+    if (!engine || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_get_statistics: required parameter is NULL (engine, stats)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_heartbeat("ethics_get_statistics", 0.0f);
@@ -1013,8 +1033,10 @@ uint32_t ethics_engine_get_num_policies(ethics_engine_t engine) {
 }
 
 const ethics_policy_t* ethics_engine_get_policy(ethics_engine_t engine, uint32_t index) {
-    if (!engine || index >= engine->num_policies)
+    if (!engine || index >= engine->num_policies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ethics_engine_get_policy: engine is NULL");
         return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_heartbeat("ethics_engine_get_policy", 0.0f);
@@ -1106,8 +1128,10 @@ void ethics_engine_set_asimov_hash(ethics_engine_t engine, const uint8_t* hash) 
 
 bool ethics_engine_add_policy_internal(ethics_engine_t engine, const ethics_policy_t* policy)
 {
-    if (!engine || !policy)
+    if (!engine || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_engine_add_policy_internal: required parameter is NULL (engine, policy)");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_heartbeat("ethics_engine_add_policy_in", 0.0f);
@@ -1119,8 +1143,10 @@ bool ethics_engine_add_policy_internal(ethics_engine_t engine, const ethics_poli
         ethics_policy_t* new_policies =
             (ethics_policy_t*) nimcp_realloc(engine->policies, new_capacity * sizeof(ethics_policy_t));
 
-        if (!new_policies)
+        if (!new_policies) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_add_policy_internal: new_policies is NULL");
             return false;
+        }
 
         engine->policies = new_policies;
         engine->policies_capacity = new_capacity;
@@ -1140,8 +1166,10 @@ bool ethics_engine_add_policy_internal(ethics_engine_t engine, const ethics_poli
 
 bool ethics_engine_remove_policy_internal(ethics_engine_t engine, uint32_t policy_id)
 {
-    if (!engine)
+    if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_engine_remove_policy_internal: engine is NULL");
         return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     ethics_heartbeat("ethics_engine_remove_policy", 0.0f);
@@ -1161,8 +1189,10 @@ bool ethics_engine_remove_policy_internal(ethics_engine_t engine, uint32_t polic
         }
     }
 
-    if (found_index < 0)
+    if (found_index < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "ethics_engine_remove_policy_internal: validation failed");
         return false;
+    }
 
     // Remove from hash table
     if (engine->policy_table) {

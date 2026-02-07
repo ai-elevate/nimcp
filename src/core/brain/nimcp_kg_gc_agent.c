@@ -202,6 +202,7 @@ static bool should_run_gc(kg_gc_agent_t* agent) {
 
         case KG_GC_SCHEDULE_ON_DEMAND:
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_run_gc: validation failed");
             return false;
     }
 }
@@ -312,6 +313,7 @@ static void* agent_thread_func(void* arg) {
     agent->state = KG_GC_AGENT_STOPPED;
     nimcp_mutex_unlock(agent->mutex);
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_thread_func: operation failed");
     return NULL;
 }
 
@@ -386,6 +388,7 @@ kg_gc_agent_t* kg_gc_agent_create(brain_kg_t* kg, const kg_gc_agent_config_t* co
     agent->gc_ctx = kg_gc_create(kg, &gc_config);
     if (!agent->gc_ctx) {
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gc_agent_create: agent->gc_ctx is NULL");
         return NULL;
     }
 
@@ -396,6 +399,7 @@ kg_gc_agent_t* kg_gc_agent_create(brain_kg_t* kg, const kg_gc_agent_config_t* co
     if (!agent->mutex) {
         kg_gc_destroy(agent->gc_ctx);
         nimcp_free(agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "kg_gc_agent_create: agent->mutex is NULL");
         return NULL;
     }
 
@@ -437,6 +441,7 @@ int kg_gc_agent_start(kg_gc_agent_t* agent) {
 
     if (agent->state != KG_GC_AGENT_STOPPED) {
         nimcp_mutex_unlock(agent->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_agent_start: validation failed");
         return -1; /* Already running */
     }
 
@@ -453,6 +458,7 @@ int kg_gc_agent_start(kg_gc_agent_t* agent) {
         nimcp_mutex_lock(agent->mutex);
         agent->state = KG_GC_AGENT_STOPPED;
         nimcp_mutex_unlock(agent->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_agent_start: validation failed");
         return -1;
     }
 
@@ -523,6 +529,7 @@ int kg_gc_agent_resume(kg_gc_agent_t* agent) {
 
 int kg_gc_agent_set_config(kg_gc_agent_t* agent, const kg_gc_agent_config_t* config) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_agent_set_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -536,6 +543,7 @@ int kg_gc_agent_set_config(kg_gc_agent_t* agent, const kg_gc_agent_config_t* con
 
 int kg_gc_agent_get_config(const kg_gc_agent_t* agent, kg_gc_agent_config_t* config) {
     if (!agent || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_agent_get_config: required parameter is NULL (agent, config)");
         return -1;
     }
 
@@ -581,6 +589,7 @@ int kg_gc_agent_set_targets(kg_gc_agent_t* agent, uint32_t targets) {
 
 int kg_gc_agent_get_status(const kg_gc_agent_t* agent, kg_gc_agent_status_t* status) {
     if (!agent || !status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_agent_get_status: required parameter is NULL (agent, status)");
         return -1;
     }
 
@@ -639,6 +648,7 @@ kg_gc_agent_state_t kg_gc_agent_get_state(const kg_gc_agent_t* agent) {
 
 bool kg_gc_agent_is_running(const kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg_gc_agent_is_running: agent is NULL");
         return false;
     }
 
@@ -664,10 +674,12 @@ int kg_gc_agent_trigger_now(kg_gc_agent_t* agent) {
     }
 
     if (agent->state != KG_GC_AGENT_RUNNING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_agent_trigger_now: validation failed");
         return -1; /* Not in a state to trigger */
     }
 
     if (agent->state == KG_GC_AGENT_COLLECTING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_agent_trigger_now: validation failed");
         return -1; /* Already collecting */
     }
 
@@ -714,6 +726,7 @@ int kg_gc_agent_cancel_current(kg_gc_agent_t* agent) {
     }
 
     if (agent->state != KG_GC_AGENT_COLLECTING) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "kg_gc_agent_cancel_current: validation failed");
         return -1;
     }
 

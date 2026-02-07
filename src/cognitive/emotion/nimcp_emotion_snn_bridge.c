@@ -313,7 +313,10 @@ void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
 }
 
 int emotion_snn_reset(emotion_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_reset", 0.0f);
@@ -353,7 +356,10 @@ int emotion_snn_encode_observation(
     emotion_snn_bridge_t* bridge,
     const emotion_recognition_result_t* result)
 {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_encode_observation: required parameter is NULL (bridge, result)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, result, sizeof(emotion_recognition_result_t));
 
     /* Phase 8: Heartbeat at operation start */
@@ -425,6 +431,7 @@ int emotion_snn_encode_observation(
     if (ret != SNN_SUCCESS) {
         bridge->state = EMOTION_SNN_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_snn_encode_observation: validation failed");
         return -1;
     }
 
@@ -465,7 +472,10 @@ int emotion_snn_encode_features(
     float valence,
     float arousal)
 {
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_encode_features: required parameter is NULL (bridge, features)");
+        return -1;
+    }
     BRIDGE_BBB_VALIDATE(bridge, features, n_features * sizeof(float));
 
     /* Phase 8: Heartbeat at operation start */
@@ -506,6 +516,7 @@ int emotion_snn_encode_features(
     if (ret != SNN_SUCCESS) {
         bridge->state = EMOTION_SNN_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_snn_encode_features: validation failed");
         return -1;
     }
 
@@ -531,7 +542,10 @@ int emotion_snn_encode_valence_arousal(
     float arousal,
     float intensity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_encode_valence_arousal: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_va_encoding) return 0;
 
     /* Clamp values */
@@ -596,7 +610,10 @@ int emotion_snn_encode_valence_arousal(
 //=============================================================================
 
 int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge || !bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_simulate: required parameter is NULL (bridge, bridge->snn)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_simulate", 0.0f);
@@ -625,7 +642,10 @@ int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int emotion_snn_step(emotion_snn_bridge_t* bridge) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge || !bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_step: required parameter is NULL (bridge, bridge->snn)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_step", 0.0f);
@@ -783,7 +803,10 @@ int emotion_snn_get_valence_arousal(
     float* valence,
     float* arousal)
 {
-    if (!bridge || !valence || !arousal) return -1;
+    if (!bridge || !valence || !arousal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_get_valence_arousal: required parameter is NULL (bridge, valence, arousal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_vale", 0.0f);
@@ -851,7 +874,10 @@ int emotion_snn_get_emotion_state(
     emotion_snn_bridge_t* bridge,
     emotion_snn_emotion_state_t* emotion_state)
 {
-    if (!bridge || !emotion_state) return -1;
+    if (!bridge || !emotion_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_get_emotion_state: required parameter is NULL (bridge, emotion_state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_emot", 0.0f);
@@ -903,7 +929,10 @@ int emotion_snn_get_state(
     const emotion_snn_bridge_t* bridge,
     emotion_snn_bridge_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_stat", 0.0f);
@@ -933,7 +962,10 @@ int emotion_snn_get_stats(
     const emotion_snn_bridge_t* bridge,
     emotion_snn_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_get_stat", 0.0f);
@@ -1007,7 +1039,10 @@ int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
 }
 
 bool emotion_snn_is_bio_async_connected(const emotion_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_is_bio_a", 0.0f);
 
@@ -1023,7 +1058,10 @@ int emotion_snn_modulate_by_arousal(
     emotion_snn_bridge_t* bridge,
     float arousal_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_modulate_by_arousal: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_modulate", 0.0f);
@@ -1043,7 +1081,10 @@ int emotion_snn_set_intensity_modulation(
     emotion_snn_bridge_t* bridge,
     float intensity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_snn_set_intensity_modulation: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     emotion_snn_bridge_heartbeat("emotion_snn__emotion_snn_set_inte", 0.0f);

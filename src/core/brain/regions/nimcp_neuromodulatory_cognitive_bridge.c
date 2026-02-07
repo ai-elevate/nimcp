@@ -105,7 +105,10 @@ static uint64_t get_timestamp_us(void) {
  * ============================================================================ */
 
 int neuromod_cognitive_hub_default_config(neuromod_cognitive_hub_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_lc_integration = true;
     config->enable_vta_integration = true;
@@ -168,7 +171,10 @@ int neuromod_cognitive_hub_connect(
     neuromod_cognitive_hub_bridge_t* bridge,
     cognitive_integration_hub_t cog_hub
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_connect: bridge is NULL");
+        return -1;
+    }
 
     bridge->cog_hub = cog_hub;
     bridge->connected = true;
@@ -177,7 +183,10 @@ int neuromod_cognitive_hub_connect(
 }
 
 int neuromod_cognitive_hub_disconnect(neuromod_cognitive_hub_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->cog_hub = NULL;
     bridge->connected = false;
@@ -194,25 +203,37 @@ bool neuromod_cognitive_hub_is_connected(const neuromod_cognitive_hub_bridge_t* 
  * ============================================================================ */
 
 int neuromod_cognitive_hub_register_lc(neuromod_cognitive_hub_bridge_t* bridge, nimcp_lc_adapter_t adapter) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_register_lc: bridge is NULL");
+        return -1;
+    }
     bridge->lc_adapter = adapter;
     return 0;
 }
 
 int neuromod_cognitive_hub_register_vta(neuromod_cognitive_hub_bridge_t* bridge, nimcp_vta_adapter_t adapter) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_register_vta: bridge is NULL");
+        return -1;
+    }
     bridge->vta_adapter = adapter;
     return 0;
 }
 
 int neuromod_cognitive_hub_register_raphe(neuromod_cognitive_hub_bridge_t* bridge, nimcp_raphe_adapter_t adapter) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_register_raphe: bridge is NULL");
+        return -1;
+    }
     bridge->raphe_adapter = adapter;
     return 0;
 }
 
 int neuromod_cognitive_hub_register_habenula(neuromod_cognitive_hub_bridge_t* bridge, nimcp_habenula_adapter_t adapter) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_register_habenula: bridge is NULL");
+        return -1;
+    }
     bridge->habenula_adapter = adapter;
     return 0;
 }
@@ -222,7 +243,10 @@ int neuromod_cognitive_hub_register_habenula(neuromod_cognitive_hub_bridge_t* br
  * ============================================================================ */
 
 int neuromod_cognitive_hub_update(neuromod_cognitive_hub_bridge_t* bridge, float delta_ms) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -236,7 +260,10 @@ int neuromod_cognitive_hub_update(neuromod_cognitive_hub_bridge_t* bridge, float
 }
 
 int neuromod_cognitive_hub_process_events(neuromod_cognitive_hub_bridge_t* bridge, uint32_t max_events) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_process_events: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     /* Process incoming cognitive events - stub for now */
     (void)max_events;
@@ -248,7 +275,10 @@ int neuromod_cognitive_hub_process_events(neuromod_cognitive_hub_bridge_t* bridg
  * ============================================================================ */
 
 int neuromod_cognitive_hub_publish_arousal(neuromod_cognitive_hub_bridge_t* bridge, const neuromod_arousal_payload_t* payload) {
-    if (!bridge || !bridge->connected || !payload) return -1;
+    if (!bridge || !bridge->connected || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_publish_arousal: required parameter is NULL (bridge, bridge->connected, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_lc_integration) return 0;
 
     bridge->state.arousal = payload->arousal_level;
@@ -264,7 +294,10 @@ int neuromod_cognitive_hub_publish_arousal(neuromod_cognitive_hub_bridge_t* brid
 }
 
 int neuromod_cognitive_hub_publish_reward(neuromod_cognitive_hub_bridge_t* bridge, const neuromod_reward_payload_t* payload) {
-    if (!bridge || !bridge->connected || !payload) return -1;
+    if (!bridge || !bridge->connected || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_publish_reward: required parameter is NULL (bridge, bridge->connected, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_vta_integration) return 0;
 
     bridge->state.last_rpe = payload->rpe;
@@ -280,7 +313,10 @@ int neuromod_cognitive_hub_publish_reward(neuromod_cognitive_hub_bridge_t* bridg
 }
 
 int neuromod_cognitive_hub_publish_mood(neuromod_cognitive_hub_bridge_t* bridge, const neuromod_mood_payload_t* payload) {
-    if (!bridge || !bridge->connected || !payload) return -1;
+    if (!bridge || !bridge->connected || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_publish_mood: required parameter is NULL (bridge, bridge->connected, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_raphe_integration) return 0;
 
     bridge->state.mood = payload->mood_level;
@@ -296,7 +332,10 @@ int neuromod_cognitive_hub_publish_mood(neuromod_cognitive_hub_bridge_t* bridge,
 }
 
 int neuromod_cognitive_hub_publish_aversive(neuromod_cognitive_hub_bridge_t* bridge, const neuromod_aversive_payload_t* payload) {
-    if (!bridge || !bridge->connected || !payload) return -1;
+    if (!bridge || !bridge->connected || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_publish_aversive: required parameter is NULL (bridge, bridge->connected, payload)");
+        return -1;
+    }
     if (!bridge->config.enable_habenula_integration) return 0;
 
     bridge->state.negative_rpe = payload->negative_rpe;
@@ -312,7 +351,10 @@ int neuromod_cognitive_hub_publish_aversive(neuromod_cognitive_hub_bridge_t* bri
 }
 
 int neuromod_cognitive_hub_publish_plasticity_gate(neuromod_cognitive_hub_bridge_t* bridge, const neuromod_plasticity_gate_payload_t* payload) {
-    if (!bridge || !bridge->connected || !payload) return -1;
+    if (!bridge || !bridge->connected || !payload) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_publish_plasticity_gate: required parameter is NULL (bridge, bridge->connected, payload)");
+        return -1;
+    }
 
     bridge->stats.plasticity_gates_sent++;
     bridge->stats.total_events_published++;
@@ -326,7 +368,10 @@ int neuromod_cognitive_hub_publish_plasticity_gate(neuromod_cognitive_hub_bridge
  * ============================================================================ */
 
 int neuromod_cognitive_hub_broadcast_state(neuromod_cognitive_hub_bridge_t* bridge) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_broadcast_state: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->state.timestamp_us = get_timestamp_us();
 
@@ -367,13 +412,19 @@ int neuromod_cognitive_hub_broadcast_state(neuromod_cognitive_hub_bridge_t* brid
  * ============================================================================ */
 
 int neuromod_cognitive_hub_get_state(const neuromod_cognitive_hub_bridge_t* bridge, neuromod_cog_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
 
 int neuromod_cognitive_hub_get_feedback(const neuromod_cognitive_hub_bridge_t* bridge, neuromod_cognitive_feedback_t* feedback) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_get_feedback: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
     *feedback = bridge->feedback;
     return 0;
 }
@@ -383,13 +434,19 @@ int neuromod_cognitive_hub_get_feedback(const neuromod_cognitive_hub_bridge_t* b
  * ============================================================================ */
 
 int neuromod_cognitive_hub_get_stats(const neuromod_cognitive_hub_bridge_t* bridge, neuromod_cognitive_hub_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int neuromod_cognitive_hub_reset_stats(neuromod_cognitive_hub_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_cognitive_hub_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }

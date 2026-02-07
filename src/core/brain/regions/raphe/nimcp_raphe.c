@@ -620,6 +620,7 @@ nimcp_raphe_projection_t* nimcp_raphe_get_projection_by_target(nimcp_raphe_syste
             return &raphe->projections[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_raphe_get_projection: validation failed");
     return NULL;
 }
 

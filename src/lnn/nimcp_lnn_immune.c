@@ -61,6 +61,7 @@ static float compute_state_norm(const lnn_network_t* network)
 static bool check_state_validity(const lnn_network_t* network, bool* has_nan, bool* has_inf)
 {
     if (!network || !network->layers || !has_nan || !has_inf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_state_validity: required parameter is NULL (network, network->layers, has_nan, has_inf)");
         return false;
     }
 
@@ -77,10 +78,12 @@ static bool check_state_validity(const lnn_network_t* network, bool* has_nan, bo
 
             if (isnan(x) || isnan(tau)) {
                 *has_nan = true;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_state_validity: validation failed");
                 return false;
             }
             if (isinf(x) || isinf(tau)) {
                 *has_inf = true;
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_state_validity: validation failed");
                 return false;
             }
         }

@@ -226,6 +226,7 @@ static sense_entry_t* get_sense_entry(
     new_bucket->entry.senses = nimcp_calloc(sem->config.max_senses, sizeof(word_sense_t));
     if (!new_bucket->entry.senses) {
         nimcp_free(new_bucket);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_sense_entry: new_bucket->entry is NULL");
         return NULL;
     }
 
@@ -397,6 +398,7 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
     sem->sense_table = nimcp_calloc(sem->sense_table_size, sizeof(sense_bucket_t*));
     if (!sem->sense_table) {
         nimcp_free(sem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_create: sem->sense_table is NULL");
         return NULL;
     }
 
@@ -408,6 +410,7 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
 
     if (!sem->context.words || !sem->context.context_vector) {
         semantic_destroy(sem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_create: required parameter is NULL (sem->context, sem->context)");
         return NULL;
     }
 
@@ -422,6 +425,7 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
     sem->active_concepts = nimcp_calloc(sem->max_active, sizeof(active_concept_t));
     if (!sem->active_concepts) {
         semantic_destroy(sem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_create: sem->active_concepts is NULL");
         return NULL;
     }
 
@@ -432,6 +436,7 @@ semantic_integrator_t* semantic_create(const semantic_config_t* config) {
 
     if (!sem->priming.primed_concepts || !sem->priming.priming_levels) {
         semantic_destroy(sem);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "semantic_create: required parameter is NULL (sem->priming, sem->priming)");
         return NULL;
     }
 
@@ -485,7 +490,10 @@ void semantic_destroy(semantic_integrator_t* sem) {
 }
 
 bool semantic_reset(semantic_integrator_t* sem) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_reset: sem is NULL");
+        return false;
+    }
 
     /* Clear context */
     sem->context.num_words = 0;
@@ -521,7 +529,10 @@ bool semantic_connect_memory(
     semantic_integrator_t* sem,
     void* memory  /* semantic_memory_system_t* */
 ) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_connect_memory: sem is NULL");
+        return false;
+    }
     sem->memory = (semantic_memory_system_t*)memory;
     return true;
 }
@@ -536,10 +547,16 @@ bool semantic_register_senses(
     const word_sense_t* senses,
     uint32_t num_senses
 ) {
-    if (!sem || !senses || num_senses == 0) return false;
+    if (!sem || !senses || num_senses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_register_senses: required parameter is NULL (sem, senses)");
+        return false;
+    }
 
     sense_entry_t* entry = get_sense_entry(sem, word_id, true);
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_register_senses: entry is NULL");
+        return false;
+    }
 
     /* Clear existing senses */
     for (uint32_t i = 0; i < entry->num_senses; i++) {
@@ -584,12 +601,16 @@ bool semantic_get_senses(
     uint32_t max_senses,
     uint32_t* num_senses
 ) {
-    if (!sem || !senses || !num_senses) return false;
+    if (!sem || !senses || !num_senses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_senses: required parameter is NULL (sem, senses, num_senses)");
+        return false;
+    }
 
     sense_entry_t* entry = get_sense_entry((semantic_integrator_t*)sem,
                                            word_id, false);
     if (!entry) {
         *num_senses = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_senses: entry is NULL");
         return false;
     }
 
@@ -653,7 +674,10 @@ bool semantic_integrate_word(
     uint32_t feature_dim,
     semantic_result_t* result
 ) {
-    if (!sem || !result) return false;
+    if (!sem || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_integrate_word: required parameter is NULL (sem, result)");
+        return false;
+    }
 
     uint64_t start_time = 0;  /* TODO: Add timing */
     memset(result, 0, sizeof(semantic_result_t));
@@ -815,7 +839,10 @@ bool semantic_integrate_entry(
     const void* entry_ptr,  /* lexical_entry_t* */
     semantic_result_t* result
 ) {
-    if (!sem || !entry_ptr || !result) return false;
+    if (!sem || !entry_ptr || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_integrate_entry: required parameter is NULL (sem, entry_ptr, result)");
+        return false;
+    }
 
     const lexical_entry_t* entry = (const lexical_entry_t*)entry_ptr;
 
@@ -829,7 +856,10 @@ bool semantic_integrate_entry(
 }
 
 bool semantic_begin_utterance(semantic_integrator_t* sem) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_begin_utterance: sem is NULL");
+        return false;
+    }
 
     /* Clear context but keep priming */
     sem->context.num_words = 0;
@@ -857,7 +887,10 @@ bool semantic_end_utterance(
     semantic_integrator_t* sem,
     float* coherence
 ) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_end_utterance: sem is NULL");
+        return false;
+    }
 
     if (coherence) {
         *coherence = sem->context.coherence_score;
@@ -883,12 +916,16 @@ bool semantic_disambiguate(
     uint32_t* selected_sense,
     float* confidence
 ) {
-    if (!sem || !selected_sense || !confidence) return false;
+    if (!sem || !selected_sense || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_disambiguate: required parameter is NULL (sem, selected_sense, confidence)");
+        return false;
+    }
 
     sense_entry_t* entry = get_sense_entry(sem, word_id, false);
     if (!entry || entry->num_senses == 0) {
         *selected_sense = 0;
         *confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_disambiguate: entry is NULL");
         return false;
     }
 
@@ -941,10 +978,16 @@ bool semantic_select_sense(
     uint32_t word_id,
     uint32_t sense_id
 ) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_select_sense: sem is NULL");
+        return false;
+    }
 
     sense_entry_t* entry = get_sense_entry(sem, word_id, false);
-    if (!entry) return false;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_select_sense: entry is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < entry->num_senses; i++) {
         if (entry->senses[i].sense_id == sense_id) {
@@ -954,6 +997,7 @@ bool semantic_select_sense(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "semantic_select_sense: validation failed");
     return false;
 }
 
@@ -978,7 +1022,10 @@ bool semantic_get_context(
     const semantic_integrator_t* sem,
     const sentence_context_t** context
 ) {
-    if (!sem || !context) return false;
+    if (!sem || !context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_context: required parameter is NULL (sem, context)");
+        return false;
+    }
     *context = &sem->context;
     return true;
 }
@@ -988,7 +1035,10 @@ bool semantic_get_context_vector(
     float* vector,
     uint32_t dim
 ) {
-    if (!sem || !vector || !sem->context.context_vector) return false;
+    if (!sem || !vector || !sem->context.context_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_context_vector: required parameter is NULL (sem, vector, sem->context)");
+        return false;
+    }
 
     uint32_t copy_dim = (dim < sem->context.context_dim) ?
                         dim : sem->context.context_dim;
@@ -1009,7 +1059,10 @@ bool semantic_update_context(
     uint32_t dim,
     float weight
 ) {
-    if (!sem || !features || !sem->context.context_vector) return false;
+    if (!sem || !features || !sem->context.context_vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_update_context: required parameter is NULL (sem, features, sem->context)");
+        return false;
+    }
 
     uint32_t use_dim = (dim < sem->context.context_dim) ?
                        dim : sem->context.context_dim;
@@ -1024,7 +1077,10 @@ bool semantic_update_context(
 }
 
 bool semantic_decay_context(semantic_integrator_t* sem) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_decay_context: sem is NULL");
+        return false;
+    }
 
     /* Decay context vector */
     if (sem->context.context_vector) {
@@ -1045,7 +1101,10 @@ bool semantic_assign_role(
     uint32_t concept_id,
     thematic_role_t role
 ) {
-    if (!sem || role >= ROLE_COUNT) return false;
+    if (!sem || role >= ROLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "semantic_assign_role: sem is NULL");
+        return false;
+    }
 
     sem->role_fillers[role] = concept_id;
     sem->role_confidences[role] = 1.0f;
@@ -1115,7 +1174,10 @@ bool semantic_activate_concept(
     uint32_t concept_id,
     float activation
 ) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_activate_concept: sem is NULL");
+        return false;
+    }
 
     add_active_concept(sem, concept_id, activation, 0, 0);
 
@@ -1143,7 +1205,10 @@ bool semantic_get_active_concepts(
     uint32_t max_concepts,
     uint32_t* num_concepts
 ) {
-    if (!sem || !concepts || !num_concepts) return false;
+    if (!sem || !concepts || !num_concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_active_concepts: required parameter is NULL (sem, concepts, num_concepts)");
+        return false;
+    }
 
     uint32_t copy_count = (sem->num_active < max_concepts) ?
                           sem->num_active : max_concepts;
@@ -1170,7 +1235,10 @@ float semantic_get_activation(
 }
 
 bool semantic_decay_activations(semantic_integrator_t* sem) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_decay_activations: sem is NULL");
+        return false;
+    }
 
     uint32_t write_idx = 0;
 
@@ -1199,7 +1267,10 @@ bool semantic_prime_concept(
     uint32_t concept_id,
     float strength
 ) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_prime_concept: sem is NULL");
+        return false;
+    }
 
     /* Check if already primed */
     for (uint32_t i = 0; i < sem->priming.num_primed; i++) {
@@ -1253,7 +1324,10 @@ float semantic_is_primed(
 }
 
 bool semantic_decay_priming(semantic_integrator_t* sem) {
-    if (!sem) return false;
+    if (!sem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_decay_priming: sem is NULL");
+        return false;
+    }
 
     uint32_t write_idx = 0;
 
@@ -1289,7 +1363,10 @@ bool semantic_compute_anomaly(
     uint32_t concept_id,
     float* anomaly_score
 ) {
-    if (!sem || !anomaly_score) return false;
+    if (!sem || !anomaly_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_compute_anomaly: required parameter is NULL (sem, anomaly_score)");
+        return false;
+    }
 
     /* Anomaly = 1 - context_fit */
     float context_fit = 0.5f;
@@ -1334,7 +1411,10 @@ bool semantic_generate_inferences(
     uint32_t max_inferences,
     uint32_t* num_inferred
 ) {
-    if (!sem || !inferred_concepts || !num_inferred) return false;
+    if (!sem || !inferred_concepts || !num_inferred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_generate_inferences: required parameter is NULL (sem, inferred_concepts, num_inferred)");
+        return false;
+    }
 
     *num_inferred = 0;
 
@@ -1356,7 +1436,10 @@ bool semantic_get_stats(
     const semantic_integrator_t* sem,
     semantic_stats_t* stats
 ) {
-    if (!sem || !stats) return false;
+    if (!sem || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_stats: required parameter is NULL (sem, stats)");
+        return false;
+    }
     *stats = sem->stats;
 
     /* Compute averages */
@@ -1390,7 +1473,10 @@ bool semantic_get_config(
     const semantic_integrator_t* sem,
     semantic_config_t* config
 ) {
-    if (!sem || !config) return false;
+    if (!sem || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "semantic_get_config: required parameter is NULL (sem, config)");
+        return false;
+    }
     *config = sem->config;
     return true;
 }

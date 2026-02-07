@@ -30,17 +30,22 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(oscillations_pink_noise_bridge)
  */
 static bool validate_config(const oscillations_pink_noise_config_t* config)
 {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_config: config is NULL");
+        return false;
+    }
 
     /* Check alpha exponent */
     if (config->alpha_exponent < 0.5f || config->alpha_exponent > 2.0f) {
         NIMCP_LOGGING_ERROR("Invalid alpha exponent (must be 0.5-2.0)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
     /* Check global amplitude */
     if (config->global_amplitude < 0.0f || config->global_amplitude > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid global amplitude (must be 0-0.5)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: validation failed");
         return false;
     }
 
@@ -51,6 +56,7 @@ static bool validate_config(const oscillations_pink_noise_config_t* config)
         config->beta_amplitude < 0.0f || config->beta_amplitude > 0.2f ||
         config->gamma_amplitude < 0.0f || config->gamma_amplitude > 0.2f) {
         NIMCP_LOGGING_ERROR("Invalid band amplitude (must be 0-0.2)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: operation failed");
         return false;
     }
 
@@ -58,6 +64,7 @@ static bool validate_config(const oscillations_pink_noise_config_t* config)
     if (config->coherence_reduction < 0.0f || config->coherence_reduction > 0.5f ||
         config->synchrony_reduction < 0.0f || config->synchrony_reduction > 0.5f) {
         NIMCP_LOGGING_ERROR("Invalid coherence/synchrony reduction (must be 0-0.5)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_config: operation failed");
         return false;
     }
 
@@ -76,6 +83,7 @@ int oscillations_pink_noise_default_config(oscillations_pink_noise_config_t* con
      */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_default_config: config is NULL");
         return -1;
     }
 
@@ -131,6 +139,7 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
 
     /* Guard: invalid config */
     if (!validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_bridge_create: validate_config is NULL");
         return NULL;
     }
 
@@ -153,11 +162,13 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_pink_noise_bridge_create: bridge->base is NULL");
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "oscillations_pink_noise_bridge_create: validation failed");
         return NULL;
     }
 
@@ -177,6 +188,7 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
         NIMCP_LOGGING_ERROR("Failed to create pink noise generator");
         nimcp_mutex_free(bridge->base.mutex);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillations_pink_noise_bridge_create: bridge->pink_noise_gen is NULL");
         return NULL;
     }
 
@@ -249,6 +261,7 @@ int oscillations_pink_noise_enable(oscillations_pink_noise_bridge_t* bridge)
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_enable: bridge is NULL");
         return -1;
     }
 
@@ -272,6 +285,7 @@ int oscillations_pink_noise_disable(oscillations_pink_noise_bridge_t* bridge)
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_disable: bridge is NULL");
         return -1;
     }
 
@@ -289,7 +303,10 @@ bool oscillations_pink_noise_is_enabled(const oscillations_pink_noise_bridge_t* 
      * WHY:  Query current state
      * HOW:  Return enabled flag
      */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_is_enabled: bridge is NULL");
+        return false;
+    }
 
     return bridge->enabled;
 }
@@ -306,6 +323,7 @@ int oscillations_pink_noise_inject(oscillations_pink_noise_bridge_t* bridge)
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_inject: bridge is NULL");
         return -1;
     }
 
@@ -321,6 +339,7 @@ int oscillations_pink_noise_inject(oscillations_pink_noise_bridge_t* bridge)
     if (!pink_noise_generate_sample(bridge->pink_noise_gen, &noise_sample)) {
         NIMCP_LOGGING_ERROR("Failed to generate pink noise sample");
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_pink_noise_inject: pink_noise_generate_sample is NULL");
         return -1;
     }
 
@@ -365,6 +384,7 @@ int oscillations_pink_noise_apply_effects(
      */
     if (!bridge || !analysis) {
         NIMCP_LOGGING_ERROR("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_apply_effects: required parameter is NULL (bridge, analysis)");
         return -1;
     }
 
@@ -404,6 +424,7 @@ int oscillations_pink_noise_bridge_update(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -441,6 +462,7 @@ int oscillations_pink_noise_set_amplitude(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_set_amplitude: bridge is NULL");
         return -1;
     }
 
@@ -466,6 +488,7 @@ int oscillations_pink_noise_set_band_amplitude(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_set_band_amplitude: bridge is NULL");
         return -1;
     }
 
@@ -495,6 +518,7 @@ int oscillations_pink_noise_set_band_amplitude(
         default:
             NIMCP_LOGGING_ERROR("Invalid brain wave band");
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillations_pink_noise_set_band_amplitude: operation failed");
             return -1;
     }
 
@@ -512,6 +536,7 @@ int oscillations_pink_noise_set_alpha(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_set_alpha: bridge is NULL");
         return -1;
     }
 
@@ -532,6 +557,7 @@ int oscillations_pink_noise_set_alpha(
     if (!bridge->pink_noise_gen) {
         NIMCP_LOGGING_ERROR("Failed to recreate pink noise generator");
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_set_alpha: bridge->pink_noise_gen is NULL");
         return -1;
     }
 
@@ -553,6 +579,7 @@ int oscillations_pink_noise_get_params(
      */
     if (!bridge || !params) {
         NIMCP_LOGGING_ERROR("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_get_params: required parameter is NULL (bridge, params)");
         return -1;
     }
 
@@ -591,6 +618,7 @@ int oscillations_pink_noise_get_stats(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillations_pink_noise_get_stats: bridge is NULL");
         return -1;
     }
 

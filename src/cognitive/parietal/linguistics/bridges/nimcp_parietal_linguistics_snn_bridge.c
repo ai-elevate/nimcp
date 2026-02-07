@@ -213,6 +213,7 @@ ling_snn_bridge_t* ling_snn_bridge_create(
     ling_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(ling_snn_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate SNN bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_snn_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -240,6 +241,7 @@ ling_snn_bridge_t* ling_snn_bridge_create(
     if (!bridge->phoneme_rates || !bridge->spatial_rates || !bridge->number_rates) {
         set_error("Failed to allocate population rate buffers");
         ling_snn_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_snn_bridge_create: required parameter is NULL (bridge->phoneme_rates, bridge->spatial_rates, bridge->number_rates)");
         return NULL;
     }
 
@@ -254,6 +256,7 @@ ling_snn_bridge_t* ling_snn_bridge_create(
     if (!bridge->spike_buffer || !bridge->rate_buffer) {
         set_error("Failed to allocate working buffers");
         ling_snn_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ling_snn_bridge_create: required parameter is NULL (bridge->spike_buffer, bridge->rate_buffer)");
         return NULL;
     }
 
@@ -1044,7 +1047,10 @@ const char* ling_snn_phoneme_name(ling_phoneme_t phoneme) {
 }
 
 int ling_snn_parse_phoneme(const char* str, ling_phoneme_t* phoneme) {
-    if (!str || !phoneme) return -1;
+    if (!str || !phoneme) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ling_snn_parse_phoneme: required parameter is NULL (str, phoneme)");
+        return -1;
+    }
 
     for (int i = 0; i < LING_PHONEME_COUNT; i++) {
         if (strcmp(str, PHONEME_NAMES[i]) == 0) {
@@ -1053,6 +1059,7 @@ int ling_snn_parse_phoneme(const char* str, ling_phoneme_t* phoneme) {
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ling_snn_parse_phoneme: validation failed");
     return -1;
 }
 
@@ -1070,6 +1077,9 @@ const char* ling_snn_phoneme_class(ling_phoneme_t phoneme) {
 }
 
 bool ling_snn_phoneme_is_voiced(ling_phoneme_t phoneme) {
-    if (phoneme < 0 || phoneme >= LING_PHONEME_COUNT) return false;
+    if (phoneme < 0 || phoneme >= LING_PHONEME_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "ling_snn_phoneme_is_voiced: capacity exceeded");
+        return false;
+    }
     return PHONEME_VOICED[phoneme];
 }

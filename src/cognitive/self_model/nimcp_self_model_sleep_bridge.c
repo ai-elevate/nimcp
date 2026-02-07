@@ -141,7 +141,10 @@ static void self_model_on_sleep_state_change(sleep_state_t new_state, void* user
 }
 
 int self_model_sleep_default_config(self_model_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_sleep_default_config: config is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_def", 0.0f);
 
@@ -237,7 +240,10 @@ void self_model_sleep_bridge_destroy(self_model_sleep_bridge_t bridge) {
 }
 
 int self_model_sleep_update(self_model_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_upd", 0.0f);
@@ -293,7 +299,10 @@ int self_model_sleep_update(self_model_sleep_bridge_t bridge) {
 }
 
 int self_model_sleep_get_effects(const self_model_sleep_bridge_t bridge, self_model_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_get", 0.0f);
 
@@ -317,7 +326,10 @@ float self_model_sleep_get_awareness(const self_model_sleep_bridge_t bridge) {
 }
 
 bool self_model_sleep_is_offline(const self_model_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_model_sleep_is_offline: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     self_model_sleep_bridge_heartbeat("self_model_s_self_model_sleep_is_", 0.0f);
 

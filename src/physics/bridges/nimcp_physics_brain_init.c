@@ -62,7 +62,10 @@ int physics_init_default_config(physics_init_config_t* config) {
 //=============================================================================
 
 bool nimcp_brain_factory_init_physics_subsystem(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_physics_subsystem: brain is NULL");
+        return false;
+    }
 
     physics_init_config_t config;
     physics_init_default_config(&config);
@@ -73,6 +76,7 @@ bool nimcp_brain_factory_init_physics_subsystem(brain_t brain) {
     if (physics_init_modules(brain, &config, &result) < 0) {
         NIMCP_LOG_ERROR(PHYSICS_INIT_MODULE_NAME,
             "Physics subsystem initialization failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_brain_factory_init_physics_subsystem: validation failed");
         return false;
     }
 
@@ -89,7 +93,10 @@ int physics_init_modules(
     const physics_init_config_t* config,
     physics_init_result_t* result
 ) {
-    if (!brain || !config) return -1;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_modules: required parameter is NULL (brain, config)");
+        return -1;
+    }
 
     physics_init_result_t local_result;
     memset(&local_result, 0, sizeof(local_result));
@@ -194,7 +201,10 @@ bool physics_init_hodgkin_huxley(
     brain_t brain,
     const physics_init_config_t* config
 ) {
-    if (!brain || !config) return false;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_hodgkin_huxley: required parameter is NULL (brain, config)");
+        return false;
+    }
 
     /* Set up HH default config manually */
     nimcp_hh_config_t hh_config = {
@@ -242,6 +252,7 @@ bool physics_init_hodgkin_huxley(
     if (nimcp_hh_population_create(&pop, config->default_hh_population_size, &hh_config) != NIMCP_SUCCESS) {
         NIMCP_LOG_WARN(PHYSICS_INIT_MODULE_NAME,
             "Failed to create HH population");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "physics_init_hodgkin_huxley: validation failed");
         return false;
     }
 
@@ -264,7 +275,10 @@ bool physics_init_thermodynamics(
     brain_t brain,
     const physics_init_config_t* config
 ) {
-    if (!brain || !config) return false;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_thermodynamics: required parameter is NULL (brain, config)");
+        return false;
+    }
 
     /* Get thermo default config - returns struct directly */
     nimcp_thermo_config_t thermo_config = nimcp_thermo_default_config();
@@ -277,6 +291,7 @@ bool physics_init_thermodynamics(
     if (nimcp_thermo_init(&state, &thermo_config) != NIMCP_SUCCESS) {
         NIMCP_LOG_WARN(PHYSICS_INIT_MODULE_NAME,
             "Failed to initialize thermodynamics system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "physics_init_thermodynamics: validation failed");
         return false;
     }
 
@@ -294,7 +309,10 @@ bool physics_init_ephaptic(
     brain_t brain,
     const physics_init_config_t* config
 ) {
-    if (!brain || !config) return false;
+    if (!brain || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_ephaptic: required parameter is NULL (brain, config)");
+        return false;
+    }
 
     /* Get ephaptic default config - returns struct directly */
     nimcp_ephaptic_config_t eph_config = nimcp_ephaptic_default_config();
@@ -304,6 +322,7 @@ bool physics_init_ephaptic(
     if (nimcp_ephaptic_init(&sys, &eph_config) != NIMCP_SUCCESS) {
         NIMCP_LOG_WARN(PHYSICS_INIT_MODULE_NAME,
             "Failed to initialize ephaptic system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "physics_init_ephaptic: validation failed");
         return false;
     }
 
@@ -321,7 +340,10 @@ bool physics_init_ephaptic(
 //=============================================================================
 
 bool physics_init_bio_async_bridges(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_bio_async_bridges: brain is NULL");
+        return false;
+    }
 
     /* Bio-async bridges would connect here */
     /* This requires access to the brain's bio-router */
@@ -332,7 +354,10 @@ bool physics_init_bio_async_bridges(brain_t brain) {
 }
 
 bool physics_init_qmc_bridges(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_qmc_bridges: brain is NULL");
+        return false;
+    }
 
     /* QMC bridges created but not connected until physics modules available */
     NIMCP_LOG_DEBUG(PHYSICS_INIT_MODULE_NAME,
@@ -342,7 +367,10 @@ bool physics_init_qmc_bridges(brain_t brain) {
 }
 
 bool physics_init_fft_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_fft_bridge: brain is NULL");
+        return false;
+    }
 
     /* FFT bridge created for ephaptic LFP analysis */
     NIMCP_LOG_DEBUG(PHYSICS_INIT_MODULE_NAME,
@@ -352,7 +380,10 @@ bool physics_init_fft_bridge(brain_t brain) {
 }
 
 bool physics_init_kg_wiring(brain_t brain, uint64_t admin_token) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_kg_wiring: brain is NULL");
+        return false;
+    }
 
     /* Would access brain's KG and register physics nodes */
     /* brain_kg_t* kg = brain_get_kg(brain); */
@@ -367,7 +398,10 @@ bool physics_init_kg_wiring(brain_t brain, uint64_t admin_token) {
 }
 
 bool physics_init_security(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_security: brain is NULL");
+        return false;
+    }
 
     /* Would access brain's BBB and register physics modules */
     /* bbb_system_t bbb = brain_get_bbb(brain); */
@@ -380,7 +414,10 @@ bool physics_init_security(brain_t brain) {
 }
 
 bool physics_init_immune_bridge(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_init_immune_bridge: brain is NULL");
+        return false;
+    }
 
     /* Would create physics-immune bridge and connect */
     NIMCP_LOG_DEBUG(PHYSICS_INIT_MODULE_NAME,
@@ -394,7 +431,10 @@ bool physics_init_immune_bridge(brain_t brain) {
 //=============================================================================
 
 bool physics_is_initialized(brain_t brain) {
-    if (!brain) return false;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "physics_is_initialized: brain is NULL");
+        return false;
+    }
 
     /* Would check if physics subsystem exists in brain */
     /* return brain_has_physics_subsystem(brain); */

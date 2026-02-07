@@ -126,9 +126,15 @@ static uint64_t datetime_to_timestamp(const hyperthymesia_datetime_t* dt) {
  * @brief Get year index position
  */
 static int32_t get_year_index(hyperthymesia_module_t* module, uint16_t year) {
-    if (year < module->index_year_base) return -1;
+    if (year < module->index_year_base) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "get_year_index: validation failed");
+        return -1;
+    }
     int32_t idx = year - module->index_year_base;
-    if ((uint32_t)idx >= module->index_year_count) return -1;
+    if ((uint32_t)idx >= module->index_year_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_year_index: capacity exceeded");
+        return -1;
+    }
     return idx;
 }
 
@@ -299,14 +305,20 @@ static bool index_memory_by_date(
     const hyperthymesia_datetime_t* timestamp
 ) {
     int32_t year_idx = get_year_index(module, timestamp->year);
-    if (year_idx < 0) return false;
+    if (year_idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "index_memory_by_date: validation failed");
+        return false;
+    }
 
     temporal_node_t* year_node = &module->year_index[year_idx];
 
     /* Ensure month children exist */
     if (!year_node->children) {
         year_node->children = nimcp_calloc(12, sizeof(temporal_node_t));
-        if (!year_node->children) return false;
+        if (!year_node->children) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "index_memory_by_date: year_node->children is NULL");
+            return false;
+        }
         year_node->child_count = 12;
     }
 
@@ -315,7 +327,10 @@ static bool index_memory_by_date(
     /* Ensure day children exist */
     if (!month_node->children) {
         month_node->children = nimcp_calloc(31, sizeof(temporal_node_t));
-        if (!month_node->children) return false;
+        if (!month_node->children) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "index_memory_by_date: month_node->children is NULL");
+            return false;
+        }
         month_node->child_count = 31;
     }
 
@@ -667,6 +682,7 @@ bool hyperthymesia_add_sensory_trace(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_add_sensory_trace: entry is NULL");
         return false;
     }
 
@@ -695,6 +711,7 @@ bool hyperthymesia_add_sensory_trace(
         new_trace->features = nimcp_calloc(trace->feature_count, sizeof(float));
         if (!new_trace->features) {
             set_error(module, HYPERTHYMESIA_ERROR_ENCODING_FAILED);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hyperthymesia_add_sensory_trace: new_trace->features is NULL");
             return false;
         }
         memcpy(new_trace->features, trace->features, trace->feature_count * sizeof(float));
@@ -799,6 +816,7 @@ bool hyperthymesia_link_memories(
 
     if (!entry1 || !entry2) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_link_memories: required parameter is NULL (entry1, entry2)");
         return false;
     }
 
@@ -864,6 +882,7 @@ bool hyperthymesia_retrieve_by_date(
 
     if (!module->config.enable_date_indexing || !module->year_index) {
         set_error(module, HYPERTHYMESIA_ERROR_RETRIEVAL_FAILED);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_retrieve_by_date: required parameter is NULL (module->config, module->year_index)");
         return false;
     }
 
@@ -1089,7 +1108,10 @@ int8_t hyperthymesia_get_day_of_week(
     hyperthymesia_module_t* module,
     const hyperthymesia_datetime_t* datetime
 ) {
-    if (!module || !datetime) return -1;
+    if (!module || !datetime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_get_day_of_week: required parameter is NULL (module, datetime)");
+        return -1;
+    }
 
     return zeller_day_of_week(datetime->year, datetime->month, datetime->day);
 }
@@ -1126,6 +1148,7 @@ bool hyperthymesia_reexperience(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience: entry is NULL");
         return false;
     }
 
@@ -1239,6 +1262,7 @@ bool hyperthymesia_reexperience_modality(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience_modality: entry is NULL");
         return false;
     }
 
@@ -1264,6 +1288,7 @@ bool hyperthymesia_reexperience_modality(
     }
 
     set_error(module, HYPERTHYMESIA_ERROR_REEXPERIENCE_FAILED);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hyperthymesia_reexperience_modality: operation failed");
     return false;
 }
 
@@ -1291,6 +1316,7 @@ bool hyperthymesia_reexperience_emotion(
 
     if (!entry) {
         set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_reexperience_emotion: entry is NULL");
         return false;
     }
 
@@ -1554,6 +1580,7 @@ bool hyperthymesia_get_memory(
         entry = entry->hash_next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hyperthymesia_get_memory: validation failed");
     return false;
 }
 
@@ -1581,6 +1608,7 @@ bool hyperthymesia_update_vividness(
     }
 
     set_error(module, HYPERTHYMESIA_ERROR_DATE_NOT_FOUND);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hyperthymesia_update_vividness: validation failed");
     return false;
 }
 
@@ -1758,11 +1786,17 @@ int hyperthymesia_compare_datetime(
 }
 
 bool hyperthymesia_get_current_datetime(hyperthymesia_datetime_t* datetime) {
-    if (!datetime) return false;
+    if (!datetime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_get_current_datetime: datetime is NULL");
+        return false;
+    }
 
     time_t now = time(NULL);
     struct tm* tm_info = localtime(&now);
-    if (!tm_info) return false;
+    if (!tm_info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hyperthymesia_get_current_datetime: tm_info is NULL");
+        return false;
+    }
 
     datetime->year = tm_info->tm_year + 1900;
     datetime->month = tm_info->tm_mon + 1;

@@ -153,6 +153,7 @@ eligibility_immune_bridge_t* eligibility_immune_bridge_create(
     if (!immune_system || !eligibility_config) {
         LOG_MODULE_ERROR("eligibility_immune_bridge",
                   "Cannot create bridge without immune system and eligibility config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eligibility_immune_bridge_create: required parameter is NULL (immune_system, eligibility_config)");
         return NULL;
     }
 
@@ -231,7 +232,10 @@ int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridg
 
     }
     if (!bridge->enable_cytokine_trace_modulation) return 0;
-    if (!bridge->immune_system || !bridge->eligibility_config) return -1;
+    if (!bridge->immune_system || !bridge->eligibility_config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->eligibility_config)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -292,7 +296,10 @@ int eligibility_immune_apply_inflammation_effects(eligibility_immune_bridge_t* b
 
     }
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -583,7 +590,10 @@ int eligibility_immune_get_cytokine_effects(
     const eligibility_immune_bridge_t* bridge,
     cytokine_trace_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_trace_effects_t));
@@ -596,7 +606,10 @@ int eligibility_immune_get_inflammation_state(
     const eligibility_immune_bridge_t* bridge,
     inflammation_trace_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_trace_state_t));
@@ -611,7 +624,10 @@ float eligibility_immune_get_stress_level(const eligibility_immune_bridge_t* bri
 }
 
 bool eligibility_immune_is_trace_impaired(const eligibility_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_is_trace_impaired: bridge is NULL");
+        return false;
+    }
 
     /* Trace impairment threshold: decay_lambda < 85% of baseline */
     float current_lambda = bridge->eligibility_config->decay_lambda;
@@ -684,6 +700,9 @@ int eligibility_immune_disconnect_bio_async(eligibility_immune_bridge_t* bridge)
  * @brief Check if bio-async is connected
  */
 bool eligibility_immune_is_bio_async_connected(const eligibility_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

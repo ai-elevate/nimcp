@@ -307,6 +307,7 @@ vae_system_t* vae_create(const vae_config_t* config)
 
     if (!config) {
         if (vae_default_config(&default_config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_create: validation failed");
             return NULL;
         }
         config = &default_config;
@@ -343,6 +344,7 @@ vae_system_t* vae_create(const vae_config_t* config)
     if (!vae->mutex) {
         NIMCP_LOG_ERROR("VAE: Failed to create mutex");
         nimcp_free(vae);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_create: vae->mutex is NULL");
         return NULL;
     }
 
@@ -402,6 +404,7 @@ vae_system_t* vae_create(const vae_config_t* config)
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_create: vae->loss_ctx is NULL");
         return NULL;
     }
 
@@ -413,6 +416,7 @@ vae_system_t* vae_create(const vae_config_t* config)
         vae_encoder_destroy(vae->encoder);
         nimcp_mutex_destroy(vae->mutex);
         nimcp_free(vae);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "vae_create: validation failed");
         return NULL;
     }
 
@@ -826,6 +830,7 @@ int vae_compute_loss(vae_system_t* vae,
 
     if (!breakdown) {
         nimcp_mutex_unlock(vae->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_compute_loss: breakdown is NULL");
         return -1;
     }
 
@@ -1037,7 +1042,10 @@ cleanup:
 
 int vae_set_training(vae_system_t* vae, bool training)
 {
-    if (!vae || !vae->is_initialized) return -1;
+    if (!vae || !vae->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_set_training: required parameter is NULL (vae, vae->is_initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(vae->mutex);
 
@@ -1054,14 +1062,23 @@ int vae_set_training(vae_system_t* vae, bool training)
 
 bool vae_is_training(const vae_system_t* vae)
 {
-    if (!vae) return false;
+    if (!vae) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_is_training: vae is NULL");
+        return false;
+    }
     return vae->is_training;
 }
 
 int vae_set_beta(vae_system_t* vae, float beta)
 {
-    if (!vae || !vae->is_initialized) return -1;
-    if (beta < 0.0f) return -1;
+    if (!vae || !vae->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_set_beta: required parameter is NULL (vae, vae->is_initialized)");
+        return -1;
+    }
+    if (beta < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_set_beta: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(vae->mutex);
     vae->loss_ctx->config.beta = beta;
@@ -1082,8 +1099,14 @@ float vae_get_beta(const vae_system_t* vae)
 
 int vae_set_learning_rate(vae_system_t* vae, float lr)
 {
-    if (!vae || !vae->is_initialized) return -1;
-    if (lr <= 0.0f) return -1;
+    if (!vae || !vae->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_set_learning_rate: required parameter is NULL (vae, vae->is_initialized)");
+        return -1;
+    }
+    if (lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_set_learning_rate: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(vae->mutex);
     vae->config.training.learning_rate = lr;
@@ -1126,6 +1149,7 @@ int vae_generate(vae_system_t* vae,
     if (!z) {
         vae_set_state(vae, VAE_STATE_ERROR);
         nimcp_mutex_unlock(vae->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_generate: z is NULL");
         return -1;
     }
 
@@ -1134,6 +1158,7 @@ int vae_generate(vae_system_t* vae,
         nimcp_tensor_destroy(z);
         vae_set_state(vae, VAE_STATE_ERROR);
         nimcp_mutex_unlock(vae->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_generate: validation failed");
         return -1;
     }
 
@@ -1157,8 +1182,14 @@ int vae_sample_prior(vae_system_t* vae,
                      uint32_t num_samples,
                      nimcp_tensor_t* latent_samples)
 {
-    if (!vae || !vae->is_initialized) return -1;
-    if (!latent_samples || num_samples == 0) return -1;
+    if (!vae || !vae->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_sample_prior: required parameter is NULL (vae, vae->is_initialized)");
+        return -1;
+    }
+    if (!latent_samples || num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_sample_prior: latent_samples is NULL");
+        return -1;
+    }
 
     uint32_t latent_dim = vae->config.encoder.latent_dim;
     return vae_latent_sample_prior(num_samples, latent_dim, latent_samples);
@@ -1170,8 +1201,14 @@ int vae_interpolate(vae_system_t* vae,
                     uint32_t num_steps,
                     nimcp_tensor_t* interpolations)
 {
-    if (!vae || !vae->is_initialized) return -1;
-    if (!z1 || !z2 || !interpolations || num_steps == 0) return -1;
+    if (!vae || !vae->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_interpolate: required parameter is NULL (vae, vae->is_initialized)");
+        return -1;
+    }
+    if (!z1 || !z2 || !interpolations || num_steps == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_interpolate: required parameter is NULL (z1, z2, interpolations)");
+        return -1;
+    }
 
     nimcp_mutex_lock(vae->mutex);
 
@@ -1183,6 +1220,7 @@ int vae_interpolate(vae_system_t* vae,
     nimcp_tensor_t* path = nimcp_tensor_create(path_dims, 2, NIMCP_DTYPE_F32);
     if (!path) {
         nimcp_mutex_unlock(vae->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_interpolate: path is NULL");
         return -1;
     }
 
@@ -1190,6 +1228,7 @@ int vae_interpolate(vae_system_t* vae,
     if (result != 0) {
         nimcp_tensor_destroy(path);
         nimcp_mutex_unlock(vae->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_interpolate: validation failed");
         return -1;
     }
 
@@ -1237,7 +1276,10 @@ const char* vae_state_to_string(vae_state_t state)
 
 int vae_get_stats(const vae_system_t* vae, vae_stats_t* stats)
 {
-    if (!vae || !stats) return -1;
+    if (!vae || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_stats: required parameter is NULL (vae, stats)");
+        return -1;
+    }
     *stats = vae->stats;
     stats->last_update_us = get_timestamp_us();
     return 0;
@@ -1245,16 +1287,23 @@ int vae_get_stats(const vae_system_t* vae, vae_stats_t* stats)
 
 int vae_get_health(const vae_system_t* vae, vae_health_t* health)
 {
-    if (!vae || !health) return -1;
+    if (!vae || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_health: required parameter is NULL (vae, health)");
+        return -1;
+    }
     *health = vae->health;
     return 0;
 }
 
 int vae_get_latent_state(const vae_system_t* vae, vae_latent_state_t* latent)
 {
-    if (!vae || !latent) return -1;
+    if (!vae || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_latent_state: required parameter is NULL (vae, latent)");
+        return -1;
+    }
 
     if (latent->latent_dim != vae->current_latent.latent_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_get_latent_state: validation failed");
         return -1;
     }
 
@@ -1278,7 +1327,10 @@ int vae_get_latent_state(const vae_system_t* vae, vae_latent_state_t* latent)
 
 int vae_get_config(const vae_system_t* vae, vae_config_t* config)
 {
-    if (!vae || !config) return -1;
+    if (!vae || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_config: required parameter is NULL (vae, config)");
+        return -1;
+    }
     *config = vae->config;
     return 0;
 }
@@ -1309,19 +1361,26 @@ int vae_compute_anomaly_score(vae_system_t* vae,
                               const nimcp_tensor_t* input,
                               float* anomaly_score)
 {
-    if (!vae || !input || !anomaly_score) return -1;
+    if (!vae || !input || !anomaly_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_compute_anomaly_score: required parameter is NULL (vae, input, anomaly_score)");
+        return -1;
+    }
 
     uint32_t output_dim = vae->config.decoder.output_dim;
     uint32_t batch_size = (input->shape.rank >= 1) ? input->shape.dims[0] : 1;
     uint32_t output_dims[2] = {batch_size, output_dim};
 
     nimcp_tensor_t* recon = nimcp_tensor_create(output_dims, 2, NIMCP_DTYPE_F32);
-    if (!recon) return -1;
+    if (!recon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_compute_anomaly_score: recon is NULL");
+        return -1;
+    }
 
     /* Reconstruct */
     int result = vae_reconstruct(vae, input, recon);
     if (result != 0) {
         nimcp_tensor_destroy(recon);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_compute_anomaly_score: validation failed");
         return -1;
     }
 
@@ -1337,11 +1396,17 @@ int vae_is_anomaly(vae_system_t* vae,
                    const nimcp_tensor_t* input,
                    bool* is_anomaly)
 {
-    if (!vae || !input || !is_anomaly) return -1;
+    if (!vae || !input || !is_anomaly) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_is_anomaly: required parameter is NULL (vae, input, is_anomaly)");
+        return -1;
+    }
 
     float score;
     int result = vae_compute_anomaly_score(vae, input, &score);
-    if (result != 0) return -1;
+    if (result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_is_anomaly: validation failed");
+        return -1;
+    }
 
     *is_anomaly = (score > vae->config.anomaly_threshold);
 
@@ -1364,10 +1429,19 @@ float vae_get_free_energy(const vae_system_t* vae)
 
 int vae_get_precision(const vae_system_t* vae, float* precision, uint32_t dim)
 {
-    if (!vae || !precision) return -1;
-    if (dim != vae->config.encoder.latent_dim) return -1;
+    if (!vae || !precision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_precision: required parameter is NULL (vae, precision)");
+        return -1;
+    }
+    if (dim != vae->config.encoder.latent_dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_get_precision: validation failed");
+        return -1;
+    }
 
-    if (!vae->current_latent.precision) return -1;
+    if (!vae->current_latent.precision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_get_precision: vae->current_latent is NULL");
+        return -1;
+    }
 
     memcpy(precision, vae->current_latent.precision, dim * sizeof(float));
     return 0;

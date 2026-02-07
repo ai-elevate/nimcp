@@ -270,6 +270,7 @@ cingulate_quantum_bridge_t* cingulate_quantum_bridge_create(
     if (!bridge->amplitudes || !bridge->phases || !bridge->encoded_options) {
         LOG_ERROR("[%s] Failed to allocate quantum state buffers", CING_QUANTUM_LOG_MODULE);
         cingulate_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_quantum_default_config: required parameter is NULL (bridge->amplitudes, bridge->phases, bridge->encoded_options)");
         return NULL;
     }
 
@@ -301,7 +302,10 @@ void cingulate_quantum_bridge_destroy(cingulate_quantum_bridge_t* bridge) {
 }
 
 bool cingulate_quantum_bridge_reset(cingulate_quantum_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_reset: bridge is NULL");
+        return false;
+    }
 
     uint32_t max_states = 1u << bridge->config.max_qubits;
 
@@ -326,7 +330,10 @@ bool cingulate_quantum_encode_options(
     const cingulate_response_option_t* options,
     uint32_t num_options) {
 
-    if (!bridge || !options || num_options == 0) return false;
+    if (!bridge || !options || num_options == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_reset: required parameter is NULL (bridge, options)");
+        return false;
+    }
 
     /* Determine number of qubits needed */
     uint32_t qubits_needed = 1;
@@ -387,7 +394,10 @@ bool cingulate_quantum_apply_constraints(
     cingulate_quantum_bridge_t* bridge,
     const cingulate_conflict_t* conflict) {
 
-    if (!bridge || !conflict || !bridge->state_initialized) return false;
+    if (!bridge || !conflict || !bridge->state_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_reset: required parameter is NULL (bridge, conflict, bridge->state_initialized)");
+        return false;
+    }
 
     /* Apply phase to conflicting options based on conflict level */
     uint32_t opt_a = conflict->option_a_id;
@@ -418,7 +428,10 @@ bool cingulate_quantum_resolve_conflict(
     cingulate_quantum_bridge_t* bridge,
     cingulate_quantum_result_t* result) {
 
-    if (!bridge || !result || !bridge->state_initialized) return false;
+    if (!bridge || !result || !bridge->state_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_reset: required parameter is NULL (bridge, result, bridge->state_initialized)");
+        return false;
+    }
 
     memset(result, 0, sizeof(cingulate_quantum_result_t));
 
@@ -426,7 +439,10 @@ bool cingulate_quantum_resolve_conflict(
 
     /* Mark "good" options (those that resolve conflict) */
     bool* marked = (bool*)nimcp_calloc(bridge->num_states, sizeof(bool));
-    if (!marked) return false;
+    if (!marked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cingulate_quantum_bridge_reset: marked is NULL");
+        return false;
+    }
 
     /* Good options: high activation, low conflict contribution */
     uint32_t num_marked = 0;
@@ -524,7 +540,10 @@ bool cingulate_quantum_get_probabilities(
     float* probabilities,
     uint32_t num_options) {
 
-    if (!bridge || !probabilities || !bridge->state_initialized) return false;
+    if (!bridge || !probabilities || !bridge->state_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, probabilities, bridge->state_initialized)");
+        return false;
+    }
 
     uint32_t count = (num_options < bridge->num_states) ? num_options : bridge->num_states;
 
@@ -544,7 +563,10 @@ bool cingulate_quantum_encode_error(
     const cingulate_error_event_t* error,
     cingulate_quantum_error_t* quantum_error) {
 
-    if (!bridge || !error || !quantum_error) return false;
+    if (!bridge || !error || !quantum_error) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, error, quantum_error)");
+        return false;
+    }
 
     memset(quantum_error, 0, sizeof(cingulate_quantum_error_t));
 
@@ -569,7 +591,10 @@ bool cingulate_quantum_propagate_error(
     cingulate_quantum_bridge_t* bridge,
     const cingulate_quantum_error_t* quantum_error) {
 
-    if (!bridge || !quantum_error || !bridge->state_initialized) return false;
+    if (!bridge || !quantum_error || !bridge->state_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, quantum_error, bridge->state_initialized)");
+        return false;
+    }
 
     /* Apply phase rotation to error-causing option */
     uint32_t source = quantum_error->source_option;
@@ -613,7 +638,10 @@ bool cingulate_quantum_error_gradient(
     float* gradients,
     uint32_t num_options) {
 
-    if (!bridge || !quantum_error || !gradients) return false;
+    if (!bridge || !quantum_error || !gradients) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, quantum_error, gradients)");
+        return false;
+    }
 
     uint32_t count = (num_options < bridge->num_encoded_options) ?
                       num_options : bridge->num_encoded_options;
@@ -652,7 +680,10 @@ bool cingulate_quantum_superpose_control(
     float max_control,
     uint32_t num_levels) {
 
-    if (!bridge || num_levels == 0 || num_levels > MAX_QUANTUM_STATES) return false;
+    if (!bridge || num_levels == 0 || num_levels > MAX_QUANTUM_STATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: bridge is NULL");
+        return false;
+    }
 
     /* Allocate control level buffers if needed */
     if (bridge->control_levels) nimcp_free(bridge->control_levels);
@@ -662,6 +693,7 @@ bool cingulate_quantum_superpose_control(
     bridge->control_amplitudes = (float*)nimcp_calloc(num_levels, sizeof(float));
 
     if (!bridge->control_levels || !bridge->control_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: required parameter is NULL (bridge->control_levels, bridge->control_amplitudes)");
         return false;
     }
 
@@ -684,7 +716,10 @@ bool cingulate_quantum_evaluate_control(
     const cingulate_conflict_t* conflict,
     const cingulate_error_event_t* error) {
 
-    if (!bridge || !bridge->control_amplitudes) return false;
+    if (!bridge || !bridge->control_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, bridge->control_amplitudes)");
+        return false;
+    }
 
     /* Evaluate each control level */
     for (uint32_t i = 0; i < bridge->num_control_levels; i++) {
@@ -722,6 +757,7 @@ bool cingulate_quantum_measure_control(
     float* confidence) {
 
     if (!bridge || !optimal_control || !confidence || !bridge->control_amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, optimal_control, confidence, bridge->control_amplitudes)");
         return false;
     }
 
@@ -741,7 +777,10 @@ bool cingulate_quantum_measure_control(
  *===========================================================================*/
 
 bool cingulate_quantum_bridge_update(cingulate_quantum_bridge_t* bridge) {
-    if (!bridge || !bridge->cingulate) return false;
+    if (!bridge || !bridge->cingulate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, bridge->cingulate)");
+        return false;
+    }
 
     /* Could sync state from cingulate adapter here */
     /* For now, just return success */
@@ -753,7 +792,10 @@ bool cingulate_quantum_apply_resolution(
     cingulate_quantum_bridge_t* bridge,
     const cingulate_quantum_result_t* result) {
 
-    if (!bridge || !result) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, result)");
+        return false;
+    }
 
     if (bridge->cingulate) {
         /* Could apply resolution to cingulate adapter */
@@ -774,7 +816,10 @@ bool cingulate_quantum_full_resolution(
     cingulate_quantum_bridge_t* bridge,
     cingulate_quantum_result_t* result) {
 
-    if (!bridge || !result) return false;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, result)");
+        return false;
+    }
 
     /* This would be the complete pipeline:
      * 1. Get current state from cingulate
@@ -789,14 +834,17 @@ bool cingulate_quantum_full_resolution(
     if (!bridge->state_initialized) {
         LOG_WARNING("[%s] Full resolution called but state not initialized",
                     CING_QUANTUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: bridge->state_initialized is NULL");
         return false;
     }
 
     if (!cingulate_quantum_resolve_conflict(bridge, result)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_quantum_bridge_update: cingulate_quantum_resolve_conflict is NULL");
         return false;
     }
 
     if (!cingulate_quantum_apply_resolution(bridge, result)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cingulate_quantum_bridge_update: cingulate_quantum_apply_resolution is NULL");
         return false;
     }
 
@@ -811,7 +859,10 @@ bool cingulate_quantum_get_stats(
     const cingulate_quantum_bridge_t* bridge,
     cingulate_quantum_stats_t* stats) {
 
-    if (!bridge || !stats) return false;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, stats)");
+        return false;
+    }
     *stats = bridge->stats;
     return true;
 }
@@ -820,7 +871,10 @@ bool cingulate_quantum_get_config(
     const cingulate_quantum_bridge_t* bridge,
     cingulate_quantum_config_t* config) {
 
-    if (!bridge || !config) return false;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, config)");
+        return false;
+    }
     *config = bridge->config;
     return true;
 }
@@ -829,7 +883,10 @@ bool cingulate_quantum_get_state(
     const cingulate_quantum_bridge_t* bridge,
     cingulate_quantum_state_t* state) {
 
-    if (!bridge || !state) return false;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_quantum_bridge_update: required parameter is NULL (bridge, state)");
+        return false;
+    }
 
     state->num_qubits = bridge->num_qubits;
     state->num_states = bridge->num_states;

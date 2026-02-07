@@ -89,9 +89,15 @@ static bool phoneme_sequence_matches(
     const phoneme_t* seq2,
     uint32_t len2
 ) {
-    if (len1 != len2) return false;
+    if (len1 != len2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phoneme_sequence_matches: validation failed");
+        return false;
+    }
     for (uint32_t i = 0; i < len1; i++) {
-        if (seq1[i] != seq2[i]) return false;
+        if (seq1[i] != seq2[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phoneme_sequence_matches: validation failed");
+            return false;
+        }
     }
     return true;
 }
@@ -223,6 +229,7 @@ bool multimodal_nlp_process_speech(
         20,
         &num_tokens
     )) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_process_speech: operation failed");
         return false;
     }
 
@@ -240,6 +247,7 @@ bool multimodal_nlp_process_speech(
         output,
         output_dim
     )) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_process_speech: operation failed");
         return false;
     }
 
@@ -265,6 +273,7 @@ bool multimodal_nlp_is_speech(
     // Process audio to extract features
     float features[128];
     if (!audio_cortex_process(audio_cortex, audio_data, num_samples, num_channels, features)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_is_speech: audio_cortex_process is NULL");
         return false;
     }
 
@@ -397,6 +406,7 @@ bool multimodal_nlp_contains_text(
 
     float features[128];
     if (!visual_cortex_process(visual_cortex, image, width, height, channels, features)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_contains_text: visual_cortex_process is NULL");
         return false;
     }
 
@@ -431,6 +441,7 @@ bool multimodal_nlp_process_visual(
     // Step 1: Extract visual features
     float features[128];
     if (!visual_cortex_process(visual_cortex, image, width, height, channels, features)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_process_visual: visual_cortex_process is NULL");
         return false;
     }
 
@@ -439,6 +450,7 @@ bool multimodal_nlp_process_visual(
     uint32_t num_tokens = 0;
 
     if (!multimodal_nlp_visual_to_tokens(features, 128, nlp_network, tokens, 20, &num_tokens)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_process_visual: multimodal_nlp_visual_to_tokens is NULL");
         return false;
     }
 
@@ -450,6 +462,7 @@ bool multimodal_nlp_process_visual(
 
     // Step 3: Process tokens through NLP network
     if (!nlp_network_forward(nlp_network, tokens, num_tokens, output, output_dim)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_nlp_process_visual: nlp_network_forward is NULL");
         return false;
     }
 

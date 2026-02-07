@@ -453,6 +453,7 @@ static trusted_key_entry_t* find_key(const char* key_id)
             return &g_key_store.keys[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_key: operation failed");
     return NULL;
 }
 
@@ -479,18 +480,22 @@ ssize_t bbb_sign_code(bbb_system_t system, const void* data,
 {
     /* Guard: Invalid parameters */
     if (!data || size == 0 || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sign_code: required parameter is NULL (data, signature)");
         return -1;
     }
 
     /* Guard: Signature buffer too small */
     if (sig_size < SIGNATURE_SIZE) {
-        return NIMCP_ERROR_OPERATION_FAILED;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "bbb_sign_code: signature buffer too small");
+        return -1;
     }
 
     /* Guard: Signing key not configured */
     if (!g_signing_key || g_signing_key_len == 0) {
-        LOG_ERROR("BBB signing key not configured - call bbb_set_signing_key() first");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+            "bbb_sign_code: signing key not configured");
+        return -1;
     }
 
     (void)system;  /* Available for future configuration */
@@ -521,17 +526,20 @@ bool bbb_verify_signature(bbb_system_t system, const void* data,
 {
     /* Guard: Invalid parameters */
     if (!data || size == 0 || !signature) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_verify_signature: required parameter is NULL (data, signature)");
         return false;
     }
 
     /* Guard: Incorrect signature size */
     if (sig_size != SIGNATURE_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_signature: validation failed");
         return false;
     }
 
     /* Guard: Signing key not configured */
     if (!g_signing_key || g_signing_key_len == 0) {
         LOG_ERROR("BBB signing key not configured - call bbb_set_signing_key() first");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_verify_signature: g_signing_key is NULL");
         return false;
     }
 
@@ -569,16 +577,19 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
 {
     /* Guard: Invalid parameters */
     if (!key_data || key_size == 0 || !key_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_add_trusted_key: required parameter is NULL (key_data, key_id)");
         return false;
     }
 
     /* Guard: Key too large */
     if (key_size > MAX_KEY_SIZE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_add_trusted_key: validation failed");
         return false;
     }
 
     /* Guard: Key ID too long */
     if (strlen(key_id) >= MAX_KEY_ID_LENGTH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "bbb_add_trusted_key: capacity exceeded");
         return false;
     }
 
@@ -592,6 +603,7 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
     /* Check if key already exists */
     if (find_key(key_id) != NULL) {
         nimcp_mutex_unlock(&g_key_store.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_add_trusted_key: validation failed");
         return false;  /* Duplicate key ID */
     }
 
@@ -606,6 +618,7 @@ bool bbb_add_trusted_key(bbb_system_t system, const uint8_t* key_data,
 
     if (!slot) {
         nimcp_mutex_unlock(&g_key_store.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_add_trusted_key: slot is NULL");
         return false;  /* Key store full */
     }
 
@@ -637,6 +650,7 @@ bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id)
 {
     /* Guard: Invalid parameters */
     if (!key_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_remove_trusted_key: key_id is NULL");
         return false;
     }
 
@@ -651,6 +665,7 @@ bool bbb_remove_trusted_key(bbb_system_t system, const char* key_id)
     trusted_key_entry_t* key = find_key(key_id);
     if (!key) {
         nimcp_mutex_unlock(&g_key_store.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_remove_trusted_key: key is NULL");
         return false;  /* Key not found */
     }
 
@@ -682,18 +697,21 @@ bool bbb_set_signing_key(const uint8_t* key_data, size_t key_size)
     /* Guard: Invalid parameters */
     if (!key_data || key_size == 0) {
         LOG_ERROR("Invalid key parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_set_signing_key: key_data is NULL");
         return false;
     }
 
     /* Guard: Key too short (minimum 16 bytes for security) */
     if (key_size < 16) {
         LOG_ERROR("Key too short (minimum 16 bytes required)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_set_signing_key: validation failed");
         return false;
     }
 
     /* Guard: Key too long */
     if (key_size > MAX_KEY_SIZE) {
         LOG_ERROR("Key too long (maximum %u bytes)", MAX_KEY_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bbb_set_signing_key: validation failed");
         return false;
     }
 
@@ -735,6 +753,7 @@ bool bbb_calculate_hash(const void* data, size_t size, uint8_t* hash)
 {
     /* Guard: Invalid parameters */
     if (!data || size == 0 || !hash) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_calculate_hash: required parameter is NULL (data, hash)");
         return false;
     }
 
@@ -744,4 +763,29 @@ bool bbb_calculate_hash(const void* data, size_t size, uint8_t* hash)
     sha256_final(&ctx, hash);
 
     return true;
+}
+
+//=============================================================================
+// Test Reset Support
+//=============================================================================
+
+/**
+ * @brief Reset code signing state for test isolation
+ *
+ * WHAT: Clear signing key and key store state between tests
+ * WHY:  Prevent signing key state from leaking between tests
+ * HOW:  Clear the global signing key and reset the key store
+ *
+ * NOTE: Called by bbb_reset_test_state() for unified BBB reset
+ */
+void bbb_code_signing_reset_internal(void)
+{
+    /* Clear signing key */
+    g_signing_key = NULL;
+    g_signing_key_len = 0;
+
+    /* Reset key store */
+    memset(g_key_store.keys, 0, sizeof(g_key_store.keys));
+    g_key_store.key_count = 0;
+    /* Leave mutex and initialized state intact */
 }

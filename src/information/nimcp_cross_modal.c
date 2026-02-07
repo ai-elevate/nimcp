@@ -259,6 +259,7 @@ bool cross_modal_is_bottleneck(
     // Guard: Validate channel
     if (!channel) {
         nimcp_log_error("cross_modal_is_bottleneck: NULL channel");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_is_bottleneck: channel is NULL");
         return false;
     }
 
@@ -512,12 +513,14 @@ bool cross_modal_update_routing_graph(
     // Guard: Validate graph
     if (!graph) {
         nimcp_log_error("cross_modal_update_routing_graph: NULL graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_update_routing_graph: graph is NULL");
         return false;
     }
 
     // Guard: Validate channel
     if (!channel) {
         nimcp_log_error("cross_modal_update_routing_graph: NULL channel");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_update_routing_graph: channel is NULL");
         return false;
     }
 
@@ -525,6 +528,7 @@ bool cross_modal_update_routing_graph(
     if (source_id >= graph->num_modalities || dest_id >= graph->num_modalities) {
         nimcp_log_error("cross_modal_update_routing_graph: Invalid indices %u, %u",
                        source_id, dest_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cross_modal_update_routing_graph: capacity exceeded");
         return false;
     }
 
@@ -560,6 +564,7 @@ bool cross_modal_detect_bottlenecks(
     // Guard: Validate inputs
     if (!graph || !bottlenecks || !num_bottlenecks) {
         nimcp_log_error("cross_modal_detect_bottlenecks: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cross_modal_detect_bottlenecks: required parameter is NULL (graph, bottlenecks, num_bottlenecks)");
         return false;
     }
 

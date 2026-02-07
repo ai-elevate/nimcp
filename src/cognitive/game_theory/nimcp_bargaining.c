@@ -171,6 +171,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     bargaining->feasible_set = nimcp_calloc(bargaining->max_feasible, sizeof(nimcp_feasible_point_t));
     if (!bargaining->feasible_set) {
         nimcp_free(bargaining);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bargaining_create: bargaining->feasible_set is NULL");
         return NULL;
     }
 
@@ -179,6 +180,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
     if (!bargaining->offer_history) {
         nimcp_free(bargaining->feasible_set);
         nimcp_free(bargaining);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bargaining_create: bargaining->offer_history is NULL");
         return NULL;
     }
 
@@ -186,6 +188,7 @@ nimcp_bargaining_t nimcp_bargaining_create(const nimcp_bargaining_config_t* conf
         nimcp_free(bargaining->offer_history);
         nimcp_free(bargaining->feasible_set);
         nimcp_free(bargaining);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_bargaining_create: validation failed");
         return NULL;
     }
 
@@ -807,7 +810,10 @@ nimcp_error_t nimcp_bargaining_advance_round(nimcp_bargaining_t bargaining) {
 //=============================================================================
 
 bool nimcp_bargaining_has_agreement(const nimcp_bargaining_t bargaining) {
-    if (!bargaining) return false;
+    if (!bargaining) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_bargaining_has_agreement: bargaining is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     bargaining_heartbeat("bargaining_bargaining_has_agree", 0.0f);
 

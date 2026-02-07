@@ -87,6 +87,7 @@ swarm_immune_sleep_bridge_t swarm_immune_sleep_bridge_create(
 {
     if (!config || !sleep_system) {
         NIMCP_LOGGING_ERROR("Invalid parameters for swarm immune sleep bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_immune_sleep_bridge_create: required parameter is NULL (config, sleep_system)");
         return NULL;
     }
 
@@ -107,6 +108,7 @@ swarm_immune_sleep_bridge_t swarm_immune_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm immune sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_immune_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -168,7 +170,10 @@ int swarm_immune_sleep_update(swarm_immune_sleep_bridge_t bridge)
 int swarm_immune_sleep_get_effects(const swarm_immune_sleep_bridge_t bridge,
                                     swarm_immune_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_immune_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(swarm_immune_sleep_effects_t));

@@ -149,6 +149,7 @@ static substrate_neuromod_effects_t* get_effects_for_type(
         case NEUROMOD_BRIDGE_NOREPINEPHRINE:
             return &bridge->effects.norepinephrine;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_effects_for_type: operation failed");
             return NULL;
     }
 }
@@ -372,6 +373,7 @@ int neuromod_substrate_disconnect_bio_async(neuromod_substrate_bridge_t* bridge)
 bool neuromod_substrate_is_bio_async_connected(const neuromod_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_is_bio_async_connected: bridge is NULL");
         return false;
     }
     return bridge->base.bio_async_enabled;
@@ -810,6 +812,7 @@ bool neuromod_substrate_is_limited(
 )
 {
     if (!bridge || neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neuromod_substrate_is_limited: bridge is NULL");
         return false;
     }
 
@@ -817,6 +820,7 @@ bool neuromod_substrate_is_limited(
         (neuromod_substrate_bridge_t*)bridge, neuromod_type);
 
     if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_is_limited: effects is NULL");
         return false;
     }
 

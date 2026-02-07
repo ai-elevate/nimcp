@@ -120,6 +120,7 @@ visual_sleep_bridge_t visual_sleep_bridge_create(
     if (bridge_base_init(&bridge->base, 0, "visual_cortex_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 

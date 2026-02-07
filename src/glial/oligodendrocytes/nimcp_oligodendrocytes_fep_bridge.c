@@ -32,6 +32,7 @@ oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(
 {
     if (!config || !oligodendrocyte_network || !fep_system) {
         NIMCP_LOGGING_ERROR("oligodendrocytes_fep_create: NULL parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligodendrocytes_fep_create: required parameter is NULL (config, oligodendrocyte_network, fep_system)");
         return NULL;
     }
 
@@ -48,6 +49,7 @@ oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("oligodendrocytes_fep_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oligodendrocytes_fep_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -168,6 +170,7 @@ int oligodendrocytes_fep_connect_bio_async(oligodendrocytes_fep_bridge_t* bridge
         return 0;
     }
     NIMCP_LOGGING_WARN("Bio-async router not available for oligodendrocytes-FEP bridge");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oligodendrocytes_fep_connect_bio_async: validation failed");
     return -1;
 }
 

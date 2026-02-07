@@ -222,35 +222,44 @@ NIMCP_EXPORT pr_audio_quat_config_t pr_audio_quat_config_default(void) {
 NIMCP_EXPORT bool pr_audio_bridge_config_validate(
     const pr_audio_bridge_config_t* config) {
 
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_audio_quat_config_default: config is NULL");
+        return false;
+    }
 
     /* Sample rate */
     if (config->sample_rate < 8000 || config->sample_rate > 96000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* Frame size */
     if (config->frame_size < 64 || config->frame_size > 4096) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* MFCC count */
     if (config->num_mfcc < 1 || config->num_mfcc > PR_AUDIO_MAX_MFCC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* History lengths */
     if (config->mfcc_history_len < 1 ||
         config->mfcc_history_len > PR_AUDIO_MAX_HISTORY_FRAMES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     /* Thresholds */
     if (config->encoding_threshold < 0.0f || config->encoding_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
     if (config->retrieval_threshold < 0.0f || config->retrieval_threshold > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_audio_quat_config_default: validation failed");
         return false;
     }
 
@@ -275,6 +284,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
 
     /* Validate configuration */
     if (!pr_audio_bridge_config_validate(&effective_config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_audio_quat_config_default: pr_audio_bridge_config_validate is NULL");
         return NULL;
     }
 
@@ -301,6 +311,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     bridge->mfcc_history = (float*)nimcp_calloc(1, mfcc_buffer_size);
     if (!bridge->mfcc_history) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->mfcc_history is NULL");
         return NULL;
     }
     bridge->mfcc_history_pos = 0;
@@ -311,6 +322,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     if (!bridge->onset_history) {
         nimcp_free(bridge->mfcc_history);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->onset_history is NULL");
         return NULL;
     }
     bridge->onset_history_pos = 0;
@@ -322,6 +334,7 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
         nimcp_free(bridge->onset_history);
         nimcp_free(bridge->mfcc_history);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_audio_quat_config_default: bridge->current_signature is NULL");
         return NULL;
     }
 

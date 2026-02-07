@@ -125,7 +125,10 @@ hypo_alignment_constraints_t hypo_alignment_constraints_default(void) {
 
 static int init_drive_qubo(hypo_drive_qubo_t* qubo, uint32_t num_drives,
                            uint32_t qubits_per_drive) {
-    if (!qubo) return -1;
+    if (!qubo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_alignment_constraints_default: qubo is NULL");
+        return -1;
+    }
 
     qubo->num_drives = num_drives;
     qubo->qubit_per_drive = qubits_per_drive;
@@ -134,12 +137,16 @@ static int init_drive_qubo(hypo_drive_qubo_t* qubo, uint32_t num_drives,
     /* Allocate Q matrix (upper triangular, flattened) */
     size_t matrix_size = (qubo->num_qubits * (qubo->num_qubits + 1)) / 2;
     qubo->Q_matrix = (float*)nimcp_calloc(matrix_size, sizeof(float));
-    if (!qubo->Q_matrix) return -1;
+    if (!qubo->Q_matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_alignment_constraints_default: qubo->Q_matrix is NULL");
+        return -1;
+    }
 
     /* Allocate h vector */
     qubo->h_vector = (float*)nimcp_calloc(qubo->num_qubits, sizeof(float));
     if (!qubo->h_vector) {
         nimcp_free(qubo->Q_matrix);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_alignment_constraints_default: qubo->h_vector is NULL");
         return -1;
     }
 
@@ -148,6 +155,7 @@ static int init_drive_qubo(hypo_drive_qubo_t* qubo, uint32_t num_drives,
     if (!qubo->drive_qubit_start) {
         nimcp_free(qubo->Q_matrix);
         nimcp_free(qubo->h_vector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_alignment_constraints_default: qubo->drive_qubit_start is NULL");
         return -1;
     }
 
@@ -162,6 +170,7 @@ static int init_drive_qubo(hypo_drive_qubo_t* qubo, uint32_t num_drives,
         nimcp_free(qubo->Q_matrix);
         nimcp_free(qubo->h_vector);
         nimcp_free(qubo->drive_qubit_start);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_alignment_constraints_default: qubo->alignment_penalties is NULL");
         return -1;
     }
 
@@ -265,6 +274,7 @@ hypo_drive_quantum_bridge_t* hypo_drive_quantum_bridge_create(
     if (init_drive_qubo(&bridge->qubo, HYPO_DRIVE_COUNT,
                         bridge->config.qubits_per_drive) < 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_default_config: operation failed");
         return NULL;
     }
 
@@ -390,7 +400,10 @@ hypo_compute_mode_t hypo_drive_quantum_select_mode(
 bool hypo_drive_quantum_is_available(
     const hypo_drive_quantum_bridge_t* bridge) {
 
-    if (!bridge || !bridge->quantum) return false;
+    if (!bridge || !bridge->quantum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: required parameter is NULL (bridge, bridge->quantum)");
+        return false;
+    }
     return hypothalamus_quantum_is_available(bridge->quantum);
 }
 
@@ -398,11 +411,15 @@ bool hypo_drive_quantum_set_mode(
     hypo_drive_quantum_bridge_t* bridge,
     hypo_compute_mode_t mode) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: bridge is NULL");
+        return false;
+    }
 
     /* Validate mode is achievable */
     if (mode == HYPO_COMPUTE_MODE_QUANTUM_ONLY && !bridge->quantum) {
         NIMCP_LOG_WARN("Cannot set QUANTUM_ONLY mode: quantum unavailable");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: bridge->quantum is NULL");
         return false;
     }
 
@@ -428,11 +445,15 @@ void hypo_drive_quantum_set_platform_tier(
 int hypo_drive_quantum_formulate_qubo(
     hypo_drive_quantum_bridge_t* bridge) {
 
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: required parameter is NULL (bridge, bridge->drives)");
+        return -1;
+    }
 
     /* Get current urgencies */
     float urgencies[HYPO_DRIVE_COUNT];
     if (!hypo_drive_get_urgencies(bridge->drives, urgencies)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_drive_quantum_bridge_reset: hypo_drive_get_urgencies is NULL");
         return -1;
     }
 
@@ -488,7 +509,10 @@ int hypo_drive_quantum_add_alignment_constraints(
     hypo_drive_quantum_bridge_t* bridge,
     const hypo_alignment_constraints_t* constraints) {
 
-    if (!bridge || !constraints) return -1;
+    if (!bridge || !constraints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: required parameter is NULL (bridge, constraints)");
+        return -1;
+    }
 
     /* Safety drive gets priority boost */
     uint32_t safety_start = bridge->qubo.drive_qubit_start[HYPO_DRIVE_SAFETY];
@@ -515,7 +539,10 @@ int hypo_drive_quantum_get_qubo(
     const hypo_drive_quantum_bridge_t* bridge,
     hypo_drive_qubo_t* qubo) {
 
-    if (!bridge || !qubo) return -1;
+    if (!bridge || !qubo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_reset: required parameter is NULL (bridge, qubo)");
+        return -1;
+    }
 
     *qubo = bridge->qubo;
     return 0;
@@ -529,7 +556,10 @@ int hypo_drive_quantum_optimize(
     hypo_drive_quantum_bridge_t* bridge,
     hypo_drive_optimization_result_t* result) {
 
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -566,6 +596,7 @@ int hypo_drive_quantum_optimize(
     /* Formulate QUBO */
     if (hypo_drive_quantum_formulate_qubo(bridge) < 0) {
         if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "unknown: validation failed");
         return -1;
     }
 
@@ -640,7 +671,10 @@ int hypo_drive_quantum_apply_result(
     hypo_drive_quantum_bridge_t* bridge,
     const hypo_drive_optimization_result_t* result) {
 
-    if (!bridge || !result || !bridge->drives) return -1;
+    if (!bridge || !result || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, result, bridge->drives)");
+        return -1;
+    }
 
     /* Apply optimal strategy to drives through nucleus inputs */
     const hypo_drive_strategy_t* strategy = &result->best_strategy;
@@ -691,7 +725,10 @@ int hypo_drive_quantum_update(
     hypo_drive_quantum_bridge_t* bridge,
     float dt_ms) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
 
     uint64_t now_us = nimcp_time_get_us();
 
@@ -704,11 +741,13 @@ int hypo_drive_quantum_update(
     /* Run optimization */
     hypo_drive_optimization_result_t result;
     if (hypo_drive_quantum_optimize(bridge, &result) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
     /* Apply result */
     if (hypo_drive_quantum_apply_result(bridge, &result) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return -1;
     }
 
@@ -729,7 +768,10 @@ int hypo_drive_quantum_classical_optimize(
     hypo_drive_quantum_bridge_t* bridge,
     hypo_drive_optimization_result_t* result) {
 
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, result)");
+        return -1;
+    }
 
     /* Generate candidates */
     hypo_drive_strategy_t candidates[HYPO_QUANTUM_MAX_STRATEGIES];
@@ -738,7 +780,10 @@ int hypo_drive_quantum_classical_optimize(
         (bridge->config.classical_candidates < HYPO_QUANTUM_MAX_STRATEGIES) ?
          bridge->config.classical_candidates : HYPO_QUANTUM_MAX_STRATEGIES);
 
-    if (num_candidates == 0) return -1;
+    if (num_candidates == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: num_candidates is zero");
+        return -1;
+    }
 
     /* Evaluate and find best */
     float best_score = -1e9f;
@@ -922,7 +967,10 @@ int hypo_drive_quantum_set_alignment(
     hypo_drive_quantum_bridge_t* bridge,
     const hypo_alignment_constraints_t* constraints) {
 
-    if (!bridge || !constraints) return -1;
+    if (!bridge || !constraints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, constraints)");
+        return -1;
+    }
 
     bridge->config.alignment = *constraints;
     bridge->result_valid = false; /* Invalidate cache */
@@ -941,7 +989,10 @@ bool hypo_drive_quantum_register_bio(
     hypo_drive_quantum_bridge_t* bridge,
     bool use_kg_wiring) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return false;
+    }
 
     (void)use_kg_wiring;
 
@@ -955,6 +1006,7 @@ bool hypo_drive_quantum_register_bio(
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         NIMCP_LOG_ERROR("Failed to register drive-quantum bridge with bio router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 

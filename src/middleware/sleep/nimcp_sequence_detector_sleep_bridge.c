@@ -90,7 +90,10 @@ static void sequence_detector_on_sleep_state_change(sleep_state_t new_state, voi
 }
 
 int sequence_detector_sleep_default_config(sequence_detector_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_sensitivity_modulation = true;
     config->enable_tolerance_modulation = true;
     config->enable_threshold_modulation = true;
@@ -179,7 +182,10 @@ void sequence_detector_sleep_bridge_destroy(sequence_detector_sleep_bridge_t bri
 }
 
 int sequence_detector_sleep_update(sequence_detector_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -221,7 +227,10 @@ int sequence_detector_sleep_get_effects(
     const sequence_detector_sleep_bridge_t bridge,
     sequence_detector_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -261,7 +270,10 @@ float sequence_detector_sleep_get_min_strength(
 bool sequence_detector_sleep_is_replay_enhanced(
     const sequence_detector_sleep_bridge_t bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_detector_sleep_is_replay_enhanced: bridge is NULL");
+        return false;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.replay_detection_enhanced;
     nimcp_mutex_unlock(bridge->base.mutex);

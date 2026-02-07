@@ -169,7 +169,10 @@ static void init_message_header(
  * ============================================================================ */
 
 int lgss_bio_bridge_default_config(lgss_bio_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     config->evaluation_timeout_ms = LGSS_BIO_DEFAULT_EVAL_TIMEOUT_MS;
     config->message_ttl_ms = LGSS_BIO_MESSAGE_TTL_MS;
@@ -245,8 +248,14 @@ int lgss_bio_bridge_connect(
     lgss_bio_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
-    if (bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_connect: bridge is NULL");
+        return -1;
+    }
+    if (bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lgss_bio_bridge_connect: validation failed");
+        return -1;
+    }
 
     bridge->router = router;
     bridge->connected = true;
@@ -255,7 +264,10 @@ int lgss_bio_bridge_connect(
 }
 
 int lgss_bio_bridge_disconnect(lgss_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->router = NULL;
     bridge->connected = false;
@@ -276,7 +288,10 @@ int lgss_bio_bridge_register_evaluate_handler(
     lgss_evaluate_handler_t handler,
     void* user_data
 ) {
-    if (!bridge || !handler) return -1;
+    if (!bridge || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_register_evaluate_handler: required parameter is NULL (bridge, handler)");
+        return -1;
+    }
 
     bridge->evaluate_handler = handler;
     bridge->evaluate_handler_data = user_data;
@@ -289,7 +304,10 @@ int lgss_bio_bridge_register_override_handler(
     lgss_override_handler_t handler,
     void* user_data
 ) {
-    if (!bridge || !handler) return -1;
+    if (!bridge || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_register_override_handler: required parameter is NULL (bridge, handler)");
+        return -1;
+    }
 
     bridge->override_handler = handler;
     bridge->override_handler_data = user_data;
@@ -302,7 +320,10 @@ int lgss_bio_bridge_register_control_handler(
     lgss_control_handler_t handler,
     void* user_data
 ) {
-    if (!bridge || !handler) return -1;
+    if (!bridge || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_register_control_handler: required parameter is NULL (bridge, handler)");
+        return -1;
+    }
 
     bridge->control_handler = handler;
     bridge->control_handler_data = user_data;
@@ -315,7 +336,10 @@ int lgss_bio_bridge_register_audit_handler(
     lgss_audit_handler_t handler,
     void* user_data
 ) {
-    if (!bridge || !handler) return -1;
+    if (!bridge || !handler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_register_audit_handler: required parameter is NULL (bridge, handler)");
+        return -1;
+    }
 
     bridge->audit_handler = handler;
     bridge->audit_handler_data = user_data;
@@ -331,7 +355,10 @@ int lgss_bio_bridge_process_inbox(
     lgss_bio_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;  /* Placeholder for actual message processing */
@@ -344,7 +371,10 @@ int lgss_bio_bridge_update(
     lgss_bio_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_heartbeat_ms += delta_ms;
 
@@ -362,7 +392,10 @@ int lgss_bio_bridge_handle_message(
     const void* msg,
     size_t msg_size
 ) {
-    if (!bridge || !msg || msg_size < sizeof(bio_message_header_t)) return -1;
+    if (!bridge || !msg || msg_size < sizeof(bio_message_header_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_handle_message: required parameter is NULL (bridge, msg)");
+        return -1;
+    }
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
     int result = 0;
@@ -456,7 +489,10 @@ int lgss_bio_bridge_send_evaluate_request(
     bool reversible,
     uint32_t* request_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_send_evaluate_request: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_evaluate_request_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_EVALUATE_REQUEST,
@@ -491,7 +527,10 @@ int lgss_bio_bridge_send_evaluate_response(
     const char* policy_name,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_send_evaluate_response: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_evaluate_response_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_EVALUATE_RESPONSE,
@@ -526,7 +565,10 @@ int lgss_bio_bridge_broadcast_violation(
     const char* action_desc,
     const char* details
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_violation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_policy_violation_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_POLICY_VIOLATION,
@@ -560,7 +602,10 @@ int lgss_bio_bridge_broadcast_blocked(
     const char* policy_name,
     const char* reason
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_blocked: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_action_blocked_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_ACTION_BLOCKED,
@@ -593,7 +638,10 @@ int lgss_bio_bridge_broadcast_escalated(
     lgss_severity_t severity,
     float risk_score
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_escalated: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_action_escalated_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_ACTION_ESCALATED,
@@ -629,7 +677,10 @@ int lgss_bio_bridge_broadcast_uncertainty_alert(
     float uncertainty,
     const char* context
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_uncertainty_alert: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_uncertainty_alert_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_UNCERTAINTY_ALERT,
@@ -657,7 +708,10 @@ int lgss_bio_bridge_broadcast_risk_assessment(
     float harm_severity,
     const char* risk_factors
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_risk_assessment: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_risk_assessment_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_RISK_ASSESSMENT,
@@ -703,7 +757,10 @@ int lgss_bio_bridge_request_integrity_check(
     bool full_check,
     uint32_t* check_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_request_integrity_check: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_integrity_check_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_INTEGRITY_CHECK,
@@ -730,7 +787,10 @@ int lgss_bio_bridge_broadcast_tampering(
     const char* details,
     bool halt_system
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_tampering: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_tampering_detected_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_TAMPERING_DETECTED,
@@ -768,7 +828,10 @@ int lgss_bio_bridge_send_halt(
     const char* operator_id,
     bool immediate
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_send_halt: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     lgss_bio_halt_command_t msg = {0};
     init_message_header(&msg.header, BIO_MSG_LGSS_HALT_COMMAND,
@@ -800,7 +863,10 @@ int lgss_bio_bridge_send_reset(
     const char* reason,
     const char* operator_id
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_send_reset: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bio_message_type_t msg_type = (reset_type == LGSS_RESET_SOFT)
         ? BIO_MSG_LGSS_SOFT_RESET : BIO_MSG_LGSS_HARD_RESET;
@@ -841,7 +907,10 @@ int lgss_bio_bridge_broadcast_safety_event(
     const char* description,
     bool learning_affected
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_broadcast_safety_event: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_plasticity_gating) return 0;
 
     lgss_bio_safety_event_t msg = {0};
@@ -873,7 +942,10 @@ int lgss_bio_bridge_send_neuromod_signal(
     float safety_modulation,
     bool suppress_plasticity
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_send_neuromod_signal: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_plasticity_gating) return 0;
 
     lgss_bio_neuromod_signal_t msg = {0};
@@ -902,7 +974,10 @@ int lgss_bio_bridge_log_telemetry(
     const char* event_type,
     const char* message
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_log_telemetry: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_telemetry) return 0;
 
     lgss_bio_telemetry_log_t msg = {0};
@@ -934,14 +1009,20 @@ int lgss_bio_bridge_get_stats(
     const lgss_bio_bridge_t* bridge,
     lgss_bio_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 int lgss_bio_bridge_reset_stats(lgss_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lgss_bio_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;

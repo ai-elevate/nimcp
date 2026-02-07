@@ -183,6 +183,7 @@ audio_cortical_bridge_t* audio_cortical_bridge_create(
     if (config->num_hypercolumns == 0 ||
         config->num_hypercolumns > AUDIO_CORTICAL_MAX_HYPERCOLUMNS) {
         NIMCP_LOGGING_ERROR("Invalid num_hypercolumns: %u", config->num_hypercolumns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_bridge_create: config is NULL");
         return NULL;
     }
 
@@ -192,6 +193,7 @@ audio_cortical_bridge_t* audio_cortical_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate audio-cortical bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audio_cortical_bridge_create: bridge is NULL");
         return NULL;
     }
     memset(bridge, 0, sizeof(audio_cortical_bridge_t));
@@ -217,6 +219,7 @@ audio_cortical_bridge_t* audio_cortical_bridge_create(
     if (!bridge->hypercolumns) {
         NIMCP_LOGGING_ERROR("Failed to allocate hypercolumns array");
         audio_cortical_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audio_cortical_bridge_create: bridge->hypercolumns is NULL");
         return NULL;
     }
     memset(bridge->hypercolumns, 0,
@@ -253,6 +256,7 @@ audio_cortical_bridge_t* audio_cortical_bridge_create(
         if (!bridge->hypercolumns[i]) {
             NIMCP_LOGGING_ERROR("Failed to create hypercolumn %u", i);
             audio_cortical_bridge_destroy(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audio_cortical_bridge_create: bridge->hypercolumns is NULL");
             return NULL;
         }
 
@@ -832,7 +836,10 @@ const feature_hypercolumn_t* audio_cortical_get_hypercolumn(
     }
 
     uint32_t idx = compute_hypercolumn_index(bridge, frequency_hz);
-    if (idx >= bridge->num_hypercolumns) return NULL;
+    if (idx >= bridge->num_hypercolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_hypercolumn: capacity exceeded");
+        return NULL;
+    }
 
     return bridge->hypercolumns[idx];
 }

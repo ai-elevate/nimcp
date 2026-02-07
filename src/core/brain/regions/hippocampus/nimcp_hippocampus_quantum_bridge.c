@@ -140,6 +140,7 @@ hippocampus_quantum_bridge_t* hippocampus_quantum_bridge_create(
     bridge->quantum_reasoner = qreason_create(&qconfig);
     if (!bridge->quantum_reasoner) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_quantum_bridge_create: bridge->quantum_reasoner is NULL");
         return NULL;
     }
 
@@ -156,6 +157,7 @@ hippocampus_quantum_bridge_t* hippocampus_quantum_bridge_create(
     if (!bridge->memory_candidates || !bridge->pattern_candidates ||
         !bridge->spatial_candidates) {
         hippocampus_quantum_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_bridge_create: operation failed");
         return NULL;
     }
 
@@ -199,8 +201,14 @@ int hippocampus_quantum_search_memory(
     uint32_t memory_count,
     quantum_memory_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_search_memory: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_search_memory: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -222,7 +230,10 @@ int hippocampus_quantum_search_memory(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &search_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_quantum_search_memory: validation failed");
+        return -1;
+    }
 
     /* Generate memory candidates from quantum state */
     uint32_t num_candidates = (bridge->max_candidates < search_cnf.n_variables) ?
@@ -295,8 +306,14 @@ int hippocampus_quantum_match_pattern(
     uint32_t num_patterns,
     quantum_pattern_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_match_pattern: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_match_pattern: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -317,7 +334,10 @@ int hippocampus_quantum_match_pattern(
     /* Solve using quantum search */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &pattern_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_quantum_match_pattern: validation failed");
+        return -1;
+    }
 
     /* Generate pattern candidates */
     quantum_pattern_candidate_t* best = NULL;
@@ -370,8 +390,14 @@ int hippocampus_quantum_search_spatial(
     uint32_t num_locations,
     quantum_spatial_result_t* result
 ) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_search_spatial: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_search_spatial: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -392,7 +418,10 @@ int hippocampus_quantum_search_spatial(
     /* Solve using quantum walk / Grover hybrid */
     qreason_result_t qresult;
     int ret = qreason_solve_sat(bridge->quantum_reasoner, &spatial_cnf, &qresult);
-    if (ret != 0) return -1;
+    if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_quantum_search_spatial: validation failed");
+        return -1;
+    }
 
     /* Generate spatial candidates */
     quantum_spatial_candidate_t* best = NULL;
@@ -463,8 +492,14 @@ int hippocampus_quantum_associative_recall(
     float* association_strengths,
     uint32_t* count
 ) {
-    if (!bridge || !cue || !memory_ids || !association_strengths || !count) return -1;
-    if (!bridge->config.enabled) return -1;
+    if (!bridge || !cue || !memory_ids || !association_strengths || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hippocampus_quantum_associative_recall: required parameter is NULL (bridge, cue, memory_ids, association_strengths, count)");
+        return -1;
+    }
+    if (!bridge->config.enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_associative_recall: bridge->config is NULL");
+        return -1;
+    }
 
     /* Use quantum search to find associated memories */
     quantum_memory_result_t mem_result;
@@ -472,6 +507,7 @@ int hippocampus_quantum_associative_recall(
                                                  bridge->config.memory_search_depth, &mem_result);
     if (ret != 0) {
         *count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hippocampus_quantum_associative_recall: validation failed");
         return -1;
     }
 
@@ -498,7 +534,10 @@ int hippocampus_quantum_get_stats(
     const hippocampus_quantum_bridge_t* bridge,
     hippocampus_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
 
@@ -524,7 +563,10 @@ int hippocampus_quantum_get_config(
     const hippocampus_quantum_bridge_t* bridge,
     hippocampus_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippocampus_quantum_get_config: required parameter is NULL (bridge, config)");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

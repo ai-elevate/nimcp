@@ -121,6 +121,7 @@ static inline float orientation_tuning(float angle_diff, float bandwidth) {
  */
 static bool initialize_spatial_fields(cortical_surround_t* surround) {
     if (!surround) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "initialize_spatial_fields: surround is NULL");
         return false;
     }
 
@@ -134,6 +135,7 @@ static bool initialize_spatial_fields(cortical_surround_t* surround) {
 
     if (!surround->field.suppression_weights || !surround->field.facilitation_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate spatial field weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "initialize_spatial_fields: required parameter is NULL (surround->field, surround->field)");
         return false;
     }
 
@@ -177,6 +179,7 @@ static bool initialize_spatial_fields(cortical_surround_t* surround) {
 bool cortical_surround_default_config(surround_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_default_config: config is NULL");
         return false;
     }
 
@@ -203,11 +206,13 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
     if (config->field_size > SURROUND_MAX_FIELD_SIZE || config->field_size < 3) {
         NIMCP_LOGGING_ERROR("Invalid field_size: %u (must be 3-%u)",
                            config->field_size, SURROUND_MAX_FIELD_SIZE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_surround_create: validation failed");
         return NULL;
     }
 
     if (config->field_size % 2 == 0) {
         NIMCP_LOGGING_ERROR("field_size must be odd for symmetric kernel");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_surround_create: 2 is zero");
         return NULL;
     }
 
@@ -228,6 +233,7 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
     if (!surround->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(surround);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cortical_surround_create: surround->mutex is NULL");
         return NULL;
     }
 
@@ -236,6 +242,7 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
         NIMCP_LOGGING_ERROR("Failed to initialize spatial fields");
         nimcp_platform_mutex_destroy(surround->mutex);
         nimcp_free(surround);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_surround_create: initialize_spatial_fields is NULL");
         return NULL;
     }
 
@@ -307,11 +314,13 @@ bool cortical_surround_connect_orientation_columns(
 {
     if (!surround || !hypercolumns) {
         NIMCP_LOGGING_ERROR("NULL pointer in connect_orientation_columns");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_connect_orientation_columns: required parameter is NULL (surround, hypercolumns)");
         return false;
     }
 
     if (num_hypercolumns == 0) {
         NIMCP_LOGGING_ERROR("num_hypercolumns is zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_surround_connect_orientation_columns: num_hypercolumns is zero");
         return false;
     }
 
@@ -464,11 +473,13 @@ bool cortical_surround_detect_figure_ground(
     // Guard: Validate inputs
     if (!surround || !orientation_map || !response_map) {
         NIMCP_LOGGING_ERROR("NULL pointer in detect_figure_ground");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_detect_figure_ground: required parameter is NULL (surround, orientation_map, response_map)");
         return false;
     }
 
     if (!border_ownership || !texture_contrast) {
         NIMCP_LOGGING_ERROR("NULL output pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_detect_figure_ground: required parameter is NULL (border_ownership, texture_contrast)");
         return false;
     }
 
@@ -480,6 +491,7 @@ bool cortical_surround_detect_figure_ground(
 
     if (center_x >= width || center_y >= height) {
         NIMCP_LOGGING_ERROR("Center position out of bounds");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_surround_detect_figure_ground: capacity exceeded");
         return false;
     }
 
@@ -638,11 +650,13 @@ bool cortical_surround_batch_modulate(
     // Guard: Validate inputs
     if (!surround || !orientation_map || !response_map || !output_map) {
         NIMCP_LOGGING_ERROR("NULL pointer in batch_modulate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_batch_modulate: required parameter is NULL (surround, orientation_map, response_map, output_map)");
         return false;
     }
 
     if (width == 0 || height == 0) {
         NIMCP_LOGGING_ERROR("Invalid dimensions: %ux%u", width, height);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_surround_batch_modulate: width is zero");
         return false;
     }
 
@@ -669,6 +683,7 @@ bool cortical_surround_get_stats(
     // Guard: Validate inputs
     if (!surround || !stats) {
         NIMCP_LOGGING_ERROR("NULL pointer in get_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_get_stats: required parameter is NULL (surround, stats)");
         return false;
     }
 
@@ -691,6 +706,7 @@ bool cortical_surround_reset_stats(cortical_surround_t* surround) {
     // Guard: Validate input
     if (!surround) {
         NIMCP_LOGGING_ERROR("NULL surround pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_reset_stats: surround is NULL");
         return false;
     }
 
@@ -714,6 +730,7 @@ bool cortical_surround_connect_bio_async(cortical_surround_t* surround) {
     // Guard: Validate input
     if (!surround) {
         NIMCP_LOGGING_ERROR("NULL surround pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_connect_bio_async: surround is NULL");
         return false;
     }
 
@@ -724,6 +741,7 @@ bool cortical_surround_connect_bio_async(cortical_surround_t* surround) {
 
     if (!bio_router_is_initialized()) {
         NIMCP_LOGGING_WARN("Bio-async router not available");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_surround_connect_bio_async: bio_router_is_initialized is NULL");
         return false;
     }
 
@@ -737,6 +755,7 @@ bool cortical_surround_connect_bio_async(cortical_surround_t* surround) {
     surround->bio_ctx = bio_router_register_module(&bio_info);
     if (!surround->bio_ctx) {
         NIMCP_LOGGING_ERROR("Failed to register with bio-async router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_connect_bio_async: surround->bio_ctx is NULL");
         return false;
     }
 
@@ -749,6 +768,7 @@ bool cortical_surround_disconnect_bio_async(cortical_surround_t* surround) {
     // Guard: Validate input
     if (!surround) {
         NIMCP_LOGGING_ERROR("NULL surround pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_disconnect_bio_async: surround is NULL");
         return false;
     }
 
@@ -768,6 +788,7 @@ bool cortical_surround_disconnect_bio_async(cortical_surround_t* surround) {
 
 bool cortical_surround_is_bio_async_connected(const cortical_surround_t* surround) {
     if (!surround) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_surround_is_bio_async_connected: surround is NULL");
         return false;
     }
     return surround->bio_async_enabled;

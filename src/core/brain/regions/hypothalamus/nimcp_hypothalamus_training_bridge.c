@@ -998,6 +998,7 @@ int hypo_training_bridge_set_drive(
             bridge->drives.autonomy_activation = activation;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_training_bridge_set_drive: operation failed");
             return -1;
     }
 

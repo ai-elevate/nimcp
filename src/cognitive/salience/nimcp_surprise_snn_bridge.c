@@ -40,6 +40,7 @@
 #include "mesh/nimcp_mesh_adapter.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(surprise_snn)
+void surprise_snn_bridge_set_health_agent_global(struct nimcp_health_agent* agent) { (void)agent; }
 //=============================================================================
 // Mesh Participant Registration
 //=============================================================================

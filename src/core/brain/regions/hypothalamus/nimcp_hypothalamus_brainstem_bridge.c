@@ -126,11 +126,13 @@ static float compute_arousal_target(hypo_brainstem_bridge_t* bridge) {
  */
 static bool check_emergency(hypo_brainstem_bridge_t* bridge) {
     if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_emergency: required parameter is NULL (bridge, bridge->drives)");
         return false;
     }
 
     float urgencies[HYPO_DRIVE_COUNT];
     if (!hypo_drive_get_urgencies(bridge->drives, urgencies)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_emergency: hypo_drive_get_urgencies is NULL");
         return false;
     }
 
@@ -144,6 +146,7 @@ static bool check_emergency(hypo_brainstem_bridge_t* bridge) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_emergency: validation failed");
     return false;
 }
 
@@ -535,6 +538,7 @@ bool hypo_brainstem_bridge_needs_emergency(
     const hypo_brainstem_bridge_t* bridge) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_brainstem_bridge_update: bridge is NULL");
         return false;
     }
 
@@ -550,6 +554,7 @@ bool hypo_brainstem_bridge_connect(
     void* brainstem) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_brainstem_bridge_update: bridge is NULL");
         return false;
     }
 
@@ -562,6 +567,7 @@ int hypo_brainstem_bridge_send_arousal_request(
     const hypo_arousal_request_t* request) {
 
     if (!bridge || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_brainstem_bridge_update: required parameter is NULL (bridge, request)");
         return -1;
     }
 
@@ -592,6 +598,7 @@ int hypo_brainstem_bridge_send_protection_request(
     const hypo_protection_request_t* request) {
 
     if (!bridge || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, request)");
         return -1;
     }
 
@@ -626,6 +633,7 @@ bool hypo_brainstem_bridge_register_bio(
     bool use_kg_wiring) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
         return false;
     }
 
@@ -639,22 +647,26 @@ bool hypo_brainstem_bridge_register_bio(
 
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 
     /* Register handlers for incoming messages */
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_BRAINSTEM_PAIN,
                                      bs_handle_pain) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->bio_ctx is NULL");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_BRAINSTEM_PLEASURE,
                                      bs_handle_pleasure) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 
     if (bio_router_register_handler(bridge->bio_ctx, BIO_MSG_BRAINSTEM_AROUSAL_STATE,
                                      bs_handle_arousal_state) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
         return false;
     }
 

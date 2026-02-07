@@ -107,7 +107,10 @@ static void apply_sparsification(float* vec, uint32_t dim, float sparsity_target
  * ============================================================================ */
 
 int vae_hippo_bridge_default_config(vae_hippo_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_hippo_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -149,6 +152,7 @@ vae_hippo_bridge_t* vae_hippo_bridge_create(const vae_hippo_bridge_config_t* con
     vae_hippo_bridge_t* bridge = (vae_hippo_bridge_t*)nimcp_calloc(1, sizeof(vae_hippo_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_TAG, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_hippo_bridge_create: bridge is NULL");
         return NULL;
     }
 

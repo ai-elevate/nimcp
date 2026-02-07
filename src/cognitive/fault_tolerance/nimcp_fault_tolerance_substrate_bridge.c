@@ -130,12 +130,14 @@ fault_tolerance_substrate_bridge_t* fault_tolerance_substrate_bridge_create(void
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex for fault tolerance substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "fault_tolerance_substrate_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex for fault tolerance substrate bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "fault_tolerance_substrate_bridge_create: validation failed");
         return NULL;
     }
 
@@ -180,6 +182,7 @@ int fault_tolerance_substrate_bridge_update(fault_tolerance_substrate_bridge_t* 
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "fault_tolerance_substrate_bridge_update: validation failed");
         return -1;
     }
 

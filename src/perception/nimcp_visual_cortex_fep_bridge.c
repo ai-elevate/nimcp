@@ -80,6 +80,7 @@ visual_cortex_fep_bridge_t* visual_cortex_fep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_VISUAL_FEP " Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "visual_cortex_fep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -466,6 +467,7 @@ int visual_cortex_fep_bridge_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN(LOG_MODULE_VISUAL_FEP " Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

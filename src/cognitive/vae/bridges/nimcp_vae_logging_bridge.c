@@ -58,7 +58,10 @@ static const char* event_to_string(vae_log_event_t event)
 
 static bool should_log(vae_logging_bridge_t* bridge, vae_log_verbosity_t level)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "should_log: bridge is NULL");
+        return false;
+    }
     return level <= bridge->config.verbosity;
 }
 
@@ -68,7 +71,10 @@ static bool should_log(vae_logging_bridge_t* bridge, vae_log_verbosity_t level)
 
 int vae_logging_bridge_default_config(vae_logging_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(vae_logging_config_t));
 
@@ -108,6 +114,7 @@ vae_logging_bridge_t* vae_logging_bridge_create(const vae_logging_config_t* conf
     vae_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(vae_logging_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR("VAE-Logging Bridge: Failed to allocate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_logging_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -135,7 +142,10 @@ void vae_logging_bridge_destroy(vae_logging_bridge_t* bridge)
 
 int vae_logging_bridge_connect_vae(vae_logging_bridge_t* bridge, vae_system_t* vae)
 {
-    if (!bridge || !vae) return -1;
+    if (!bridge || !vae) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_bridge_connect_vae: required parameter is NULL (bridge, vae)");
+        return -1;
+    }
 
     bridge->vae = vae;
 
@@ -148,7 +158,10 @@ int vae_logging_bridge_connect_vae(vae_logging_bridge_t* bridge, vae_system_t* v
 
 int vae_logging_bridge_disconnect(vae_logging_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->vae = NULL;
 
@@ -511,7 +524,10 @@ void vae_log_bridge_sync(vae_logging_bridge_t* bridge,
 int vae_logging_set_verbosity(vae_logging_bridge_t* bridge,
                                vae_log_verbosity_t verbosity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_set_verbosity: bridge is NULL");
+        return -1;
+    }
     bridge->config.verbosity = verbosity;
     return 0;
 }
@@ -520,7 +536,10 @@ int vae_logging_set_category(vae_logging_bridge_t* bridge,
                               const char* category,
                               bool enabled)
 {
-    if (!bridge || !category) return -1;
+    if (!bridge || !category) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_set_category: required parameter is NULL (bridge, category)");
+        return -1;
+    }
 
     if (strcmp(category, VAE_LOG_CATEGORY_TRAINING) == 0) {
         bridge->config.log_training = enabled;
@@ -535,6 +554,7 @@ int vae_logging_set_category(vae_logging_bridge_t* bridge,
     } else if (strcmp(category, VAE_LOG_CATEGORY_BRIDGE) == 0) {
         bridge->config.log_bridges = enabled;
     } else {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_logging_set_category: operation failed");
         return -1;
     }
 
@@ -544,7 +564,10 @@ int vae_logging_set_category(vae_logging_bridge_t* bridge,
 int vae_logging_get_stats(const vae_logging_bridge_t* bridge,
                            vae_logging_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_logging_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

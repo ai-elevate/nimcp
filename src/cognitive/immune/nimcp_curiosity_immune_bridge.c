@@ -164,7 +164,10 @@ static bool is_chronic_inflammation(
     const brain_immune_system_t* immune,
     uint64_t chronic_threshold_ms
 ) {
-    if (!immune) return false;
+    if (!immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_chronic_inflammation: immune is NULL");
+        return false;
+    }
 
     uint64_t now = nimcp_time_get_ms();
 
@@ -181,6 +184,7 @@ static bool is_chronic_inflammation(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_chronic_inflammation: capacity exceeded");
     return false;
 }
 
@@ -249,6 +253,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     /* Guard: require both systems */
     if (!immune_system || !curiosity_engine) {
         LOG_MODULE_ERROR(LOG_MODULE, "Cannot create bridge without immune and curiosity systems");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_immune_bridge_create: required parameter is NULL (immune_system, curiosity_engine)");
         return NULL;
     }
 
@@ -303,6 +308,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     if (!bridge->base.mutex) {
         LOG_MODULE_ERROR(LOG_MODULE, "Mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -348,7 +354,10 @@ int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge)
 
     }
     if (!bridge->config.enable_sickness_behavior) return 0;
-    if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
+    if (!bridge->immune_system || !bridge->curiosity_engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_update_sickness_behavior: required parameter is NULL (bridge->immune_system, bridge->curiosity_engine)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
@@ -393,7 +402,10 @@ int curiosity_immune_on_cytokine_release(
     const brain_cytokine_t* cytokine
 ) {
     /* Guard clauses */
-    if (!bridge || !cytokine) return -1;
+    if (!bridge || !cytokine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_on_cytokine_release: required parameter is NULL (bridge, cytokine)");
+        return -1;
+    }
     if (!bridge->config.enable_sickness_behavior) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -435,7 +447,10 @@ int curiosity_immune_on_inflammation(
     const brain_inflammation_site_t* site
 ) {
     /* Guard clauses */
-    if (!bridge || !site) return -1;
+    if (!bridge || !site) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_on_inflammation: required parameter is NULL (bridge, site)");
+        return -1;
+    }
     if (!bridge->config.enable_inflammation_suppression) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -598,7 +613,10 @@ int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge)
 
     }
     if (!bridge->config.enable_novelty_vigilance) return 0;
-    if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
+    if (!bridge->immune_system || !bridge->curiosity_engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_update_novelty_vigilance: required parameter is NULL (bridge->immune_system, bridge->curiosity_engine)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_upd", 0.0f);
@@ -669,7 +687,10 @@ int curiosity_immune_on_knowledge_gap(
     const knowledge_gap_t* gap
 ) {
     /* Guard clauses */
-    if (!bridge || !gap) return -1;
+    if (!bridge || !gap) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_on_knowledge_gap: required parameter is NULL (bridge, gap)");
+        return -1;
+    }
     if (!bridge->config.enable_learning_stress_response) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -773,7 +794,10 @@ float curiosity_immune_get_vigilance_boost(
 bool curiosity_immune_is_chronic_inflammation(
     const curiosity_immune_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->immune_system) return false;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_is_chronic_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_is_", 0.0f);
@@ -857,7 +881,10 @@ int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool curiosity_immune_is_bio_async_connected(const curiosity_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     curiosity_immune_bridge_heartbeat("curiosity_im_curiosity_immune_is_", 0.0f);
 

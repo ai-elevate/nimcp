@@ -222,12 +222,14 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > CONSOLIDATION_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "consolidation_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "consolidation_snn_create: validation failed");
         return NULL;
     }
 
@@ -245,6 +247,7 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "consolidation_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -257,6 +260,7 @@ consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_con
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->consolidation_buffer || !bridge->prev_state) {
         consolidation_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_create: operation failed");
         return NULL;
     }
 
@@ -319,7 +323,10 @@ void consolidation_snn_destroy(consolidation_snn_bridge_t* bridge) {
 }
 
 int consolidation_snn_reset(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
@@ -377,8 +384,14 @@ int consolidation_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
@@ -456,7 +469,10 @@ int consolidation_snn_encode_replay(
     float replay_strength,
     uint32_t sequence_idx
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_encode_replay: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
@@ -481,7 +497,10 @@ int consolidation_snn_encode_ltp(
     float ltp_level,
     uint32_t synapse_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_encode_ltp: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
@@ -504,7 +523,10 @@ int consolidation_snn_encode_schema(
     float integration_level,
     uint32_t schema_type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_encode_schema: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_en", 0.0f);
@@ -539,8 +561,14 @@ int consolidation_snn_encode_schema(
 //=============================================================================
 
 int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_simulate: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_si", 0.0f);
@@ -626,7 +654,10 @@ int consolidation_snn_simulate(consolidation_snn_bridge_t* bridge, float duratio
 }
 
 int consolidation_snn_step(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_step: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_st", 0.0f);
 
@@ -639,16 +670,23 @@ int consolidation_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_fo", 0.0f);
 
 
     int spike_count = consolidation_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_forward: validation failed");
+        return -1;
+    }
 
     if (consolidation_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_forward: validation failed");
         return -1;
     }
 
@@ -663,7 +701,10 @@ int consolidation_snn_get_memory_state(
     consolidation_snn_bridge_t* bridge,
     consolidation_memory_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_get_memory_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
@@ -681,8 +722,14 @@ int consolidation_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
@@ -707,7 +754,10 @@ bool consolidation_snn_check_replay(
     consolidation_snn_bridge_t* bridge,
     float* replay_strength
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_replay: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
@@ -728,7 +778,10 @@ bool consolidation_snn_check_stabilization(
     consolidation_snn_bridge_t* bridge,
     float* stabilization_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_stabilization: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
@@ -749,7 +802,10 @@ bool consolidation_snn_check_state_change(
     consolidation_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ch", 0.0f);
@@ -788,8 +844,14 @@ int consolidation_snn_get_dim_state(
     uint32_t dim,
     consolidation_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "consolidation_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
@@ -806,7 +868,10 @@ int consolidation_snn_get_state(
     consolidation_snn_bridge_t* bridge,
     consolidation_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
@@ -840,7 +905,10 @@ int consolidation_snn_get_state(
 }
 
 int consolidation_snn_get_stats(consolidation_snn_bridge_t* bridge, consolidation_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_ge", 0.0f);
@@ -854,7 +922,10 @@ int consolidation_snn_get_stats(consolidation_snn_bridge_t* bridge, consolidatio
 }
 
 int consolidation_snn_reset_stats(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
@@ -913,7 +984,10 @@ int consolidation_snn_register_replay_callback(
     consolidation_snn_replay_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_register_replay_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
@@ -932,7 +1006,10 @@ int consolidation_snn_register_state_callback(
     consolidation_snn_state_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_register_state_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
@@ -951,7 +1028,10 @@ int consolidation_snn_register_stabilization_callback(
     consolidation_snn_stabilization_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_register_stabilization_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_re", 0.0f);
@@ -970,8 +1050,14 @@ int consolidation_snn_register_stabilization_callback(
 //=============================================================================
 
 int consolidation_snn_bio_async_connect(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_bi", 0.0f);
@@ -986,7 +1072,10 @@ int consolidation_snn_bio_async_connect(consolidation_snn_bridge_t* bridge) {
 }
 
 int consolidation_snn_bio_async_disconnect(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_bi", 0.0f);
@@ -1000,7 +1089,10 @@ int consolidation_snn_bio_async_disconnect(consolidation_snn_bridge_t* bridge) {
 }
 
 bool consolidation_snn_is_bio_async_connected(consolidation_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     consolidation_snn_bridge_heartbeat("consolidatio_consolidation_snn_is", 0.0f);

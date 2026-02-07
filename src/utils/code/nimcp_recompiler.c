@@ -122,12 +122,18 @@ static bool run_nm_check(const char* so_path, const char* symbol_name);
  * ============================================================================ */
 
 static bool validate_recompiler(recompiler_t recompiler) {
-    if (!recompiler) return false;
+    if (!recompiler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_recompiler: recompiler is NULL");
+        return false;
+    }
     return (recompiler->magic == NIMCP_RECOMPILER_MAGIC);
 }
 
 static bool ensure_temp_dir(const char* path) {
-    if (!path || !path[0]) return false;
+    if (!path || !path[0]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ensure_temp_dir: required parameter is NULL (path, path)");
+        return false;
+    }
 
     struct stat st;
     if (stat(path, &st) == 0) {
@@ -150,13 +156,19 @@ static bool ensure_temp_dir(const char* path) {
 }
 
 static char* generate_temp_path(recompiler_t recompiler, const char* suffix) {
-    if (!recompiler || !suffix) return NULL;
+    if (!recompiler || !suffix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "generate_temp_path: required parameter is NULL (recompiler, suffix)");
+        return NULL;
+    }
 
     uint32_t counter = __atomic_add_fetch(&recompiler->temp_counter, 1, __ATOMIC_SEQ_CST);
 
     size_t len = strlen(recompiler->config.temp_dir) + strlen(suffix) + 32;
     char* path = nimcp_malloc(len);
-    if (!path) return NULL;
+    if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "generate_temp_path: path is NULL");
+        return NULL;
+    }
 
     snprintf(path, len, "%s/nimcp_tmp_%u%s",
              recompiler->config.temp_dir, counter, suffix);
@@ -164,11 +176,15 @@ static char* generate_temp_path(recompiler_t recompiler, const char* suffix) {
 }
 
 static bool write_temp_source(const char* path, const char* source) {
-    if (!path || !source) return false;
+    if (!path || !source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_temp_source: required parameter is NULL (path, source)");
+        return false;
+    }
 
     FILE* fp = fopen(path, "w");
     if (!fp) {
         LOG_ERROR("Failed to open temp source file: %s", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "write_temp_source: fp is NULL");
         return false;
     }
 
@@ -232,6 +248,7 @@ recompiler_t recompiler_create(const recompiler_config_t* config)
     struct nimcp_recompiler* recompiler = nimcp_calloc(1, sizeof(*recompiler));
     if (!recompiler) {
         LOG_ERROR("Failed to allocate recompiler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recompiler_create: recompiler is NULL");
         return NULL;
     }
 
@@ -253,6 +270,7 @@ recompiler_t recompiler_create(const recompiler_config_t* config)
     if (!ensure_temp_dir(recompiler->config.temp_dir)) {
         LOG_ERROR("Failed to create temp directory: %s", recompiler->config.temp_dir);
         nimcp_free(recompiler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recompiler_create: ensure_temp_dir is NULL");
         return NULL;
     }
 
@@ -263,6 +281,7 @@ recompiler_t recompiler_create(const recompiler_config_t* config)
     if (nimcp_platform_mutex_init(&recompiler->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         nimcp_free(recompiler);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "recompiler_create: validation failed");
         return NULL;
     }
 
@@ -334,6 +353,7 @@ bool recompiler_compile(
 
     if (!request || !result) {
         LOG_ERROR("NULL request or result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_compile: required parameter is NULL (request, result)");
         return false;
     }
 
@@ -352,6 +372,7 @@ bool recompiler_compile(
         snprintf(result->error_msg, sizeof(result->error_msg),
                  "Source file not found: %s", request->source_file);
         LOG_ERROR("%s", result->error_msg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile: validation failed");
         return false;
     }
 
@@ -364,6 +385,7 @@ bool recompiler_compile(
         strncpy(result->error_msg, "Failed to build gcc command",
                 sizeof(result->error_msg) - 1);
         LOG_ERROR("%s", result->error_msg);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile: build_gcc_command is NULL");
         return false;
     }
 
@@ -390,6 +412,7 @@ bool recompiler_compile(
         recompiler->stats.compilations_total++;
         nimcp_platform_mutex_unlock(&recompiler->mutex);
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile: operation failed");
         return false;
     }
 
@@ -417,6 +440,7 @@ bool recompiler_compile(
         recompiler->stats.total_compile_time_ms += result->compile_time_ms;
         nimcp_platform_mutex_unlock(&recompiler->mutex);
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile: operation failed");
         return false;
     }
 
@@ -434,6 +458,7 @@ bool recompiler_compile(
         recompiler->stats.compilations_total++;
         nimcp_platform_mutex_unlock(&recompiler->mutex);
 
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile: operation failed");
         return false;
     }
 
@@ -486,6 +511,7 @@ bool recompiler_compile_patch(
 
     if (!source_code || !fn_name || !result) {
         LOG_ERROR("NULL source_code, fn_name, or result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_compile_patch: required parameter is NULL (source_code, fn_name, result)");
         return false;
     }
 
@@ -499,6 +525,7 @@ bool recompiler_compile_patch(
     if (!temp_source) {
         strncpy(result->error_msg, "Failed to generate temp path",
                 sizeof(result->error_msg) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_compile_patch: temp_source is NULL");
         return false;
     }
 
@@ -510,6 +537,7 @@ bool recompiler_compile_patch(
         snprintf(result->error_msg, sizeof(result->error_msg),
                  "Failed to write temp source: %s", temp_source);
         nimcp_free(temp_source);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile_patch: write_temp_source is NULL");
         return false;
     }
 
@@ -568,6 +596,7 @@ bool recompiler_compile_incremental(
     LOG_DEBUG("Entering recompiler_compile_incremental");
 
     if (!validate_recompiler(recompiler) || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_compile_incremental: required parameter is NULL (validate_recompiler, request, result)");
         return false;
     }
 
@@ -584,6 +613,7 @@ bool recompiler_compile_incremental(
     if (stat(request->source_file, &src_stat) != 0) {
         snprintf(result->error_msg, sizeof(result->error_msg),
                  "Source file not found: %s", request->source_file);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_compile_incremental: validation failed");
         return false;
     }
 
@@ -620,6 +650,7 @@ bool recompiler_verify_symbol(const char* so_path, const char* symbol_name)
     LOG_DEBUG("Entering recompiler_verify_symbol: %s in %s", symbol_name, so_path);
 
     if (!so_path || !symbol_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_verify_symbol: required parameter is NULL (so_path, symbol_name)");
         return false;
     }
 
@@ -634,6 +665,7 @@ bool recompiler_get_symbol_info(
     LOG_DEBUG("Entering recompiler_get_symbol_info");
 
     if (!so_path || !symbol_name || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_get_symbol_info: required parameter is NULL (so_path, symbol_name, info)");
         return false;
     }
 
@@ -649,6 +681,7 @@ bool recompiler_get_symbol_info(
 
     FILE* fp = popen(cmd, "r");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_get_symbol_info: fp is NULL");
         return false;
     }
 
@@ -687,6 +720,7 @@ bool recompiler_test_load(const char* so_path)
     LOG_DEBUG("Entering recompiler_test_load: %s", so_path);
 
     if (!so_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_test_load: so_path is NULL");
         return false;
     }
 
@@ -698,6 +732,7 @@ bool recompiler_test_load(const char* so_path)
     void* handle = dlopen(so_path, RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
         LOG_ERROR("dlopen failed: %s", dlerror());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_test_load: handle is NULL");
         return false;
     }
 
@@ -738,6 +773,7 @@ int recompiler_sandbox_test(
     LOG_DEBUG("Entering recompiler_sandbox_test");
 
     if (!so_path || !test_fn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_sandbox_test: required parameter is NULL (so_path, test_fn)");
         return -1;
     }
 
@@ -748,6 +784,7 @@ int recompiler_sandbox_test(
     pid_t pid = fork();
     if (pid < 0) {
         LOG_ERROR("fork failed: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_sandbox_test: validation failed");
         return -1;
     }
 
@@ -783,6 +820,7 @@ int recompiler_sandbox_test(
 
     if (waited < 0) {
         LOG_ERROR("waitpid failed: %s", strerror(errno));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_sandbox_test: validation failed");
         return -1;
     }
 
@@ -799,9 +837,11 @@ int recompiler_sandbox_test(
     if (WIFSIGNALED(status)) {
         int sig = WTERMSIG(status);
         LOG_ERROR("Sandbox test killed by signal: %d", sig);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_sandbox_test: validation failed");
         return -1;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_sandbox_test: validation failed");
     return -1;
 }
 
@@ -829,6 +869,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->cpu_time_sec + 1;
         if (setrlimit(RLIMIT_CPU, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_CPU) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -842,6 +883,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->memory_bytes;
         if (setrlimit(RLIMIT_AS, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_AS) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -855,6 +897,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->file_descriptors;
         if (setrlimit(RLIMIT_NOFILE, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_NOFILE) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -868,6 +911,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->processes;
         if (setrlimit(RLIMIT_NPROC, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_NPROC) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -881,6 +925,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->file_size_bytes;
         if (setrlimit(RLIMIT_FSIZE, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_FSIZE) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -894,6 +939,7 @@ static bool apply_resource_limits(const sandbox_limits_t* limits)
         rl.rlim_max = limits->stack_size_bytes;
         if (setrlimit(RLIMIT_STACK, &rl) != 0) {
             LOG_ERROR("setrlimit(RLIMIT_STACK) failed: %s", strerror(errno));
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "apply_resource_limits: validation failed");
             return false;
         }
     }
@@ -921,6 +967,7 @@ static ssize_t read_pipe_timeout(int fd, char* buffer, size_t size, uint32_t tim
 
     int ready = select(fd + 1, &readfds, NULL, NULL, &tv);
     if (ready < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "read_pipe_timeout: validation failed");
         return -1;
     }
     if (ready == 0) {
@@ -1016,6 +1063,7 @@ int sandbox_test_enhanced(
      */
     if (!so_path || !test_fn || !result) {
         LOG_ERROR("NULL parameter to sandbox_test_enhanced");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sandbox_test_enhanced: required parameter is NULL (so_path, test_fn, result)");
         return -1;
     }
 
@@ -1046,6 +1094,7 @@ int sandbox_test_enhanced(
     if (pipe(stdout_pipe) != 0) {
         LOG_ERROR("pipe() for stdout failed: %s", strerror(errno));
         result->result = SANDBOX_RESULT_SETUP_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sandbox_test_enhanced: validation failed");
         return -1;
     }
 
@@ -1054,6 +1103,7 @@ int sandbox_test_enhanced(
         close(stdout_pipe[0]);
         close(stdout_pipe[1]);
         result->result = SANDBOX_RESULT_SETUP_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sandbox_test_enhanced: validation failed");
         return -1;
     }
 
@@ -1075,6 +1125,7 @@ int sandbox_test_enhanced(
         close(stderr_pipe[0]);
         close(stderr_pipe[1]);
         result->result = SANDBOX_RESULT_SETUP_ERROR;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sandbox_test_enhanced: validation failed");
         return -1;
     }
 
@@ -1319,38 +1370,56 @@ static bool build_gcc_command(
     char* cmd_buffer,
     size_t buffer_size
 ) {
-    if (!recompiler || !request || !cmd_buffer || buffer_size == 0) return false;
+    if (!recompiler || !request || !cmd_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_gcc_command: required parameter is NULL (recompiler, request, cmd_buffer)");
+        return false;
+    }
 
     /* Start with gcc, shared library output, and PIC */
     int offset = snprintf(cmd_buffer, buffer_size,
         "gcc -shared -o %s", request->output_so);
-    if (offset < 0 || (size_t)offset >= buffer_size) return false;
+    if (offset < 0 || (size_t)offset >= buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: capacity exceeded");
+        return false;
+    }
 
     /* Position independent code */
     if (request->position_independent) {
         int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -fPIC");
-        if (n < 0) return false;
+        if (n < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+            return false;
+        }
         offset += n;
     }
 
     /* Debug symbols */
     if (request->debug_symbols) {
         int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -g");
-        if (n < 0) return false;
+        if (n < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+            return false;
+        }
         offset += n;
     }
 
     /* Optimization */
     if (request->optimize) {
         int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -O2");
-        if (n < 0) return false;
+        if (n < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+            return false;
+        }
         offset += n;
     }
 
     /* Warnings as errors */
     if (request->warnings_as_errors) {
         int n = snprintf(cmd_buffer + offset, buffer_size - offset, " -Werror");
-        if (n < 0) return false;
+        if (n < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+            return false;
+        }
         offset += n;
     }
 
@@ -1358,7 +1427,10 @@ static bool build_gcc_command(
     if (request->extra_cflags && request->extra_cflags[0]) {
         int n = snprintf(cmd_buffer + offset, buffer_size - offset,
                          " %s", request->extra_cflags);
-        if (n < 0) return false;
+        if (n < 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+            return false;
+        }
         offset += n;
     }
 
@@ -1367,7 +1439,10 @@ static bool build_gcc_command(
         if (request->include_paths[i]) {
             int n = snprintf(cmd_buffer + offset, buffer_size - offset,
                              " -I%s", request->include_paths[i]);
-            if (n < 0) return false;
+            if (n < 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+                return false;
+            }
             offset += n;
         }
     }
@@ -1375,7 +1450,10 @@ static bool build_gcc_command(
     /* Source file */
     int n = snprintf(cmd_buffer + offset, buffer_size - offset,
                      " %s", request->source_file);
-    if (n < 0) return false;
+    if (n < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+        return false;
+    }
     offset += n;
 
     /* Library paths */
@@ -1383,7 +1461,10 @@ static bool build_gcc_command(
         if (request->library_paths[i]) {
             int nn = snprintf(cmd_buffer + offset, buffer_size - offset,
                               " -L%s", request->library_paths[i]);
-            if (nn < 0) return false;
+            if (nn < 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+                return false;
+            }
             offset += nn;
         }
     }
@@ -1393,14 +1474,20 @@ static bool build_gcc_command(
         if (request->libraries[i]) {
             int nn = snprintf(cmd_buffer + offset, buffer_size - offset,
                               " -l%s", request->libraries[i]);
-            if (nn < 0) return false;
+            if (nn < 0) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+                return false;
+            }
             offset += nn;
         }
     }
 
     /* Redirect stderr to stdout */
     n = snprintf(cmd_buffer + offset, buffer_size - offset, " 2>&1");
-    if (n < 0) return false;
+    if (n < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "build_gcc_command: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -1412,7 +1499,10 @@ static bool execute_compiler(
     size_t output_size,
     int* exit_code
 ) {
-    if (!command || !output || !exit_code) return false;
+    if (!command || !output || !exit_code) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execute_compiler: required parameter is NULL (command, output, exit_code)");
+        return false;
+    }
     (void)timeout_ms;  /* TODO: implement timeout with alarm/timer */
 
     memset(output, 0, output_size);
@@ -1421,6 +1511,7 @@ static bool execute_compiler(
     FILE* fp = popen(command, "r");
     if (!fp) {
         LOG_ERROR("Failed to execute compiler: popen failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "execute_compiler: fp is NULL");
         return false;
     }
 
@@ -1440,6 +1531,7 @@ static bool execute_compiler(
         *exit_code = WEXITSTATUS(status);
     } else {
         *exit_code = -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "execute_compiler: validation failed");
         return false;
     }
 
@@ -1447,7 +1539,10 @@ static bool execute_compiler(
 }
 
 static bool verify_output_exists(const char* path) {
-    if (!path) return false;
+    if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "verify_output_exists: path is NULL");
+        return false;
+    }
     struct stat st;
     return (stat(path, &st) == 0 && S_ISREG(st.st_mode) && st.st_size > 0);
 }
@@ -1480,7 +1575,10 @@ static void parse_compiler_output(
 }
 
 static bool run_nm_check(const char* so_path, const char* symbol_name) {
-    if (!so_path || !symbol_name) return false;
+    if (!so_path || !symbol_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "run_nm_check: required parameter is NULL (so_path, symbol_name)");
+        return false;
+    }
 
     char cmd[1024];
     snprintf(cmd, sizeof(cmd), "nm -D %s 2>/dev/null | grep -q ' T %s'", so_path, symbol_name);
@@ -1546,6 +1644,7 @@ int sandbox_apply_seccomp(bool allow_network, bool allow_filesystem) {
  */
 bool recompiler_get_stats(recompiler_t recompiler, recompiler_stats_t* stats) {
     if (!validate_recompiler(recompiler) || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recompiler_get_stats: required parameter is NULL (validate_recompiler, stats)");
         return false;
     }
 
@@ -1579,6 +1678,7 @@ void recompiler_reset_stats(recompiler_t recompiler) {
  */
 bool recompiler_remove_output(const char* so_path) {
     if (!so_path || so_path[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_remove_output: so_path is NULL");
         return false;
     }
 
@@ -1592,6 +1692,7 @@ bool recompiler_remove_output(const char* so_path) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recompiler_remove_output: validation failed");
     return false;
 }
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"

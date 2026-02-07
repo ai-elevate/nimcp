@@ -55,6 +55,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
 
     if (lnn_config_validate(config) != LNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Invalid config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: validation failed");
         return NULL;
     }
 
@@ -125,6 +126,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
             nimcp_free(network->layers);
             nimcp_free(network->config);
             nimcp_free(network);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_create: network->layers is NULL");
             return NULL;
         }
     }
@@ -173,6 +175,7 @@ lnn_network_t* lnn_network_create_ncp(
     // Guard: Validate inputs
     if (n_inputs == 0 || n_inter == 0 || n_command == 0 || n_outputs == 0) {
         NIMCP_LOGGING_ERROR("lnn_network_create_ncp: Invalid dimensions");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create_ncp: n_inputs is zero");
         return NULL;
     }
 
@@ -180,6 +183,7 @@ lnn_network_t* lnn_network_create_ncp(
     lnn_config_t config;
     if (lnn_config_ncp(&config, n_inputs, n_inter, n_command, n_outputs) != LNN_SUCCESS) {
         NIMCP_LOGGING_ERROR("lnn_network_create_ncp: Failed to create NCP config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create_ncp: validation failed");
         return NULL;
     }
 
@@ -756,6 +760,7 @@ void lnn_network_set_training(lnn_network_t* network, bool training) {
 bool lnn_network_is_training(const lnn_network_t* network) {
     // Guard: NULL-safe
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_is_training: network is NULL");
         return false;
     }
 
@@ -1277,9 +1282,11 @@ lnn_network_t* lnn_network_load(const char* path) {
     // Guard: Validate input
     if (!path) {
         NIMCP_LOGGING_ERROR("lnn_network_load: NULL path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_load: path is NULL");
         return NULL;
     }
 
     NIMCP_LOGGING_WARN("lnn_network_load: Not yet implemented");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_load: path is NULL");
     return NULL;
 }

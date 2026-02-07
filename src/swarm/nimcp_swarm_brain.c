@@ -201,6 +201,7 @@ static swarm_peer_info_t* find_peer(swarm_brain_t* swarm, uint16_t drone_id) {
             return &swarm->peers[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_peer: validation failed");
     return NULL;
 }
 
@@ -208,7 +209,10 @@ static swarm_peer_info_t* find_peer(swarm_brain_t* swarm, uint16_t drone_id) {
  * @brief Add or update peer
  */
 static bool update_peer(swarm_brain_t* swarm, uint16_t drone_id) {
-    if (!swarm) return false;
+    if (!swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_peer: swarm is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(swarm->peer_lock);
 
@@ -233,6 +237,7 @@ static bool update_peer(swarm_brain_t* swarm, uint16_t drone_id) {
         } else {
             LOG_WARN("Peer list full, cannot add drone_id=%u", drone_id);
             nimcp_platform_mutex_unlock(swarm->peer_lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "update_peer: operation failed");
             return false;
         }
     }
@@ -295,6 +300,7 @@ static collective_workspace_t* create_workspace(uint32_t size) {
     ws->entries = (workspace_entry_t*)nimcp_calloc(size, sizeof(workspace_entry_t));
     if (!ws->entries) {
         nimcp_free(ws);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_workspace: ws->entries is NULL");
         return NULL;
     }
 
@@ -308,6 +314,7 @@ static collective_workspace_t* create_workspace(uint32_t size) {
         if (ws->lock) nimcp_free(ws->lock);
         nimcp_free(ws->entries);
         nimcp_free(ws);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "create_workspace: validation failed");
         return NULL;
     }
 
@@ -513,6 +520,7 @@ static consensus_context_t* create_consensus_context(void) {
     if (!ctx->lock || nimcp_platform_mutex_init(ctx->lock, false) != 0) {
         if (ctx->lock) nimcp_free(ctx->lock);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "create_consensus_context: validation failed");
         return NULL;
     }
 
@@ -535,7 +543,10 @@ static void destroy_consensus_context(consensus_context_t* ctx) {
  * @brief Start new vote
  */
 static bool consensus_start_vote(consensus_context_t* ctx, const vote_proposal_t* proposal) {
-    if (!ctx || !proposal) return false;
+    if (!ctx || !proposal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consensus_start_vote: required parameter is NULL (ctx, proposal)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(ctx->lock);
 
@@ -551,6 +562,7 @@ static bool consensus_start_vote(consensus_context_t* ctx, const vote_proposal_t
     if (!vote) {
         LOG_WARN("No free vote slots available");
         nimcp_platform_mutex_unlock(ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consensus_start_vote: vote is NULL");
         return false;
     }
 
@@ -575,7 +587,10 @@ static bool consensus_start_vote(consensus_context_t* ctx, const vote_proposal_t
  * @brief Cast vote on proposal
  */
 static bool consensus_cast_vote(consensus_context_t* ctx, uint32_t proposal_id, vote_decision_t decision) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consensus_cast_vote: ctx is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(ctx->lock);
 
@@ -590,6 +605,7 @@ static bool consensus_cast_vote(consensus_context_t* ctx, uint32_t proposal_id, 
 
     if (!vote) {
         nimcp_platform_mutex_unlock(ctx->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consensus_cast_vote: vote is NULL");
         return false;
     }
 
@@ -706,7 +722,10 @@ static void handle_threat(swarm_brain_t* swarm, uint8_t* data, uint32_t len, uin
  * @brief Broadcast a vote decision for a proposal
  */
 static bool broadcast_vote(swarm_brain_t* swarm, uint32_t proposal_id, vote_decision_t decision) {
-    if (!swarm || !swarm->signal_adapter) return false;
+    if (!swarm || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broadcast_vote: required parameter is NULL (swarm, swarm->signal_adapter)");
+        return false;
+    }
 
     uint8_t message[16];
     message[0] = SWARM_MSG_VOTE_CAST;
@@ -865,7 +884,10 @@ static void handle_message(swarm_brain_t* swarm, uint8_t* data, uint32_t len, ui
 //=============================================================================
 
 static bool process_incoming_messages(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->signal_adapter) return false;
+    if (!swarm || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_incoming_messages: required parameter is NULL (swarm, swarm->signal_adapter)");
+        return false;
+    }
 
     uint8_t buffer[SWARM_MAX_MESSAGE_SIZE];
     uint32_t received_len;
@@ -883,7 +905,10 @@ static bool process_incoming_messages(swarm_brain_t* swarm) {
 }
 
 static bool send_heartbeat(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->signal_adapter) return false;
+    if (!swarm || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "send_heartbeat: required parameter is NULL (swarm, swarm->signal_adapter)");
+        return false;
+    }
 
     uint64_t now = get_time_ms();
     uint32_t jitter = simple_rand(HEARTBEAT_JITTER_MS);
@@ -909,7 +934,10 @@ static bool send_heartbeat(swarm_brain_t* swarm) {
 }
 
 static bool update_peers(swarm_brain_t* swarm) {
-    if (!swarm) return false;
+    if (!swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_peers: swarm is NULL");
+        return false;
+    }
 
     remove_inactive_peers(swarm);
 
@@ -921,7 +949,10 @@ static bool update_peers(swarm_brain_t* swarm) {
 }
 
 static bool update_workspace(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->workspace) return false;
+    if (!swarm || !swarm->workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_workspace: required parameter is NULL (swarm, swarm->workspace)");
+        return false;
+    }
 
     workspace_decay(swarm->workspace);
     float coherence = workspace_calculate_coherence(swarm->workspace);
@@ -934,7 +965,10 @@ static bool update_workspace(swarm_brain_t* swarm) {
 }
 
 static bool process_votes(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->consensus) return false;
+    if (!swarm || !swarm->consensus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "process_votes: required parameter is NULL (swarm, swarm->consensus)");
+        return false;
+    }
 
     consensus_process_votes(swarm->consensus, swarm->peer_count);
 
@@ -946,7 +980,10 @@ static bool process_votes(swarm_brain_t* swarm) {
 }
 
 static bool update_emergence_tier(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->emergence) return false;
+    if (!swarm || !swarm->emergence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update_emergence_tier: required parameter is NULL (swarm, swarm->emergence)");
+        return false;
+    }
 
     float coherence = swarm->workspace ? swarm->workspace->coherence : 0.0F;
     emergence_update_tier(swarm->emergence, swarm->peer_count, coherence);
@@ -985,6 +1022,7 @@ swarm_brain_config_t swarm_brain_default_config(void) {
 swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!config) {
         LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: config is NULL");
         return NULL;
     }
 
@@ -994,6 +1032,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     swarm_brain_t* swarm = (swarm_brain_t*)nimcp_calloc(1, sizeof(swarm_brain_t));
     if (!swarm) {
         LOG_ERROR("Failed to allocate swarm brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: swarm is NULL");
         return NULL;
     }
 
@@ -1009,6 +1048,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!swarm->state_lock || !swarm->peer_lock || !swarm->stats_lock) {
         LOG_ERROR("Failed to allocate mutexes");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: required parameter is NULL (swarm->state_lock, swarm->peer_lock, swarm->stats_lock)");
         return NULL;
     }
 
@@ -1017,6 +1057,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
         nimcp_platform_mutex_init(swarm->stats_lock, false) != 0) {
         LOG_ERROR("Failed to initialize mutexes");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "swarm_brain_create: validation failed");
         return NULL;
     }
 
@@ -1032,6 +1073,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!swarm->signal_adapter) {
         LOG_ERROR("Failed to create signal adapter");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: swarm->signal_adapter is NULL");
         return NULL;
     }
 
@@ -1040,6 +1082,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!swarm->workspace) {
         LOG_ERROR("Failed to create workspace");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: swarm->workspace is NULL");
         return NULL;
     }
 
@@ -1048,6 +1091,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!swarm->emergence) {
         LOG_ERROR("Failed to create emergence context");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: swarm->emergence is NULL");
         return NULL;
     }
 
@@ -1056,6 +1100,7 @@ swarm_brain_t* swarm_brain_create(const swarm_brain_config_t* config) {
     if (!swarm->consensus) {
         LOG_ERROR("Failed to create consensus context");
         swarm_brain_destroy(swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create: swarm->consensus is NULL");
         return NULL;
     }
 
@@ -1127,7 +1172,10 @@ void swarm_brain_destroy(swarm_brain_t* swarm) {
 }
 
 bool swarm_brain_join(swarm_brain_t* swarm) {
-    if (!swarm) return false;
+    if (!swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_join: swarm is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(swarm->state_lock);
 
@@ -1152,7 +1200,10 @@ bool swarm_brain_join(swarm_brain_t* swarm) {
 }
 
 bool swarm_brain_leave(swarm_brain_t* swarm) {
-    if (!swarm) return false;
+    if (!swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_leave: swarm is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(swarm->state_lock);
 
@@ -1178,7 +1229,10 @@ bool swarm_brain_leave(swarm_brain_t* swarm) {
 }
 
 bool swarm_brain_process(swarm_brain_t* swarm) {
-    if (!swarm || !swarm->operational) return false;
+    if (!swarm || !swarm->operational) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_process: required parameter is NULL (swarm, swarm->operational)");
+        return false;
+    }
 
     // Process incoming messages
     process_incoming_messages(swarm);
@@ -1207,7 +1261,10 @@ bool swarm_brain_process(swarm_brain_t* swarm) {
 }
 
 bool swarm_brain_broadcast_perception(swarm_brain_t* swarm, const perception_data_t* perception) {
-    if (!swarm || !perception || !swarm->signal_adapter) return false;
+    if (!swarm || !perception || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_broadcast_perception: required parameter is NULL (swarm, perception, swarm->signal_adapter)");
+        return false;
+    }
 
     uint8_t message[SWARM_MAX_MESSAGE_SIZE];
     message[0] = SWARM_MSG_PERCEPTION;
@@ -1215,6 +1272,7 @@ bool swarm_brain_broadcast_perception(swarm_brain_t* swarm, const perception_dat
     size_t payload_size = sizeof(perception_data_t);
     if (payload_size + 1 > SWARM_MAX_MESSAGE_SIZE) {
         LOG_ERROR("Perception data too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_broadcast_perception: validation failed");
         return false;
     }
 
@@ -1231,7 +1289,10 @@ bool swarm_brain_broadcast_perception(swarm_brain_t* swarm, const perception_dat
 }
 
 bool swarm_brain_broadcast_threat(swarm_brain_t* swarm, const threat_data_t* threat) {
-    if (!swarm || !threat || !swarm->signal_adapter) return false;
+    if (!swarm || !threat || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_broadcast_threat: required parameter is NULL (swarm, threat, swarm->signal_adapter)");
+        return false;
+    }
 
     uint8_t message[SWARM_MAX_MESSAGE_SIZE];
     message[0] = SWARM_MSG_THREAT;
@@ -1239,6 +1300,7 @@ bool swarm_brain_broadcast_threat(swarm_brain_t* swarm, const threat_data_t* thr
     size_t payload_size = sizeof(threat_data_t);
     if (payload_size + 1 > SWARM_MAX_MESSAGE_SIZE) {
         LOG_ERROR("Threat data too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_broadcast_threat: validation failed");
         return false;
     }
 
@@ -1257,10 +1319,14 @@ bool swarm_brain_broadcast_threat(swarm_brain_t* swarm, const threat_data_t* thr
 }
 
 bool swarm_brain_propose_action(swarm_brain_t* swarm, const vote_proposal_t* proposal) {
-    if (!swarm || !proposal || !swarm->signal_adapter) return false;
+    if (!swarm || !proposal || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_propose_action: required parameter is NULL (swarm, proposal, swarm->signal_adapter)");
+        return false;
+    }
 
     // Start local vote tracking
     if (!consensus_start_vote(swarm->consensus, proposal)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_propose_action: consensus_start_vote is NULL");
         return false;
     }
 
@@ -1271,6 +1337,7 @@ bool swarm_brain_propose_action(swarm_brain_t* swarm, const vote_proposal_t* pro
     size_t payload_size = sizeof(vote_proposal_t);
     if (payload_size + 1 > SWARM_MAX_MESSAGE_SIZE) {
         LOG_ERROR("Vote proposal too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_propose_action: validation failed");
         return false;
     }
 
@@ -1293,7 +1360,10 @@ bool swarm_brain_propose_action(swarm_brain_t* swarm, const vote_proposal_t* pro
 }
 
 bool swarm_brain_sync_neuromodulators(swarm_brain_t* swarm, const neuromod_state_t* local_state) {
-    if (!swarm || !local_state || !swarm->signal_adapter) return false;
+    if (!swarm || !local_state || !swarm->signal_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_sync_neuromodulators: required parameter is NULL (swarm, local_state, swarm->signal_adapter)");
+        return false;
+    }
 
     uint64_t now = get_time_ms();
     uint32_t jitter = simple_rand(SYNC_JITTER_MS);
@@ -1308,6 +1378,7 @@ bool swarm_brain_sync_neuromodulators(swarm_brain_t* swarm, const neuromod_state
     size_t payload_size = sizeof(neuromod_state_t);
     if (payload_size + 1 > SWARM_MAX_MESSAGE_SIZE) {
         LOG_ERROR("Neuromod state too large");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_sync_neuromodulators: validation failed");
         return false;
     }
 
@@ -1331,21 +1402,30 @@ swarm_emergence_tier_t swarm_brain_get_emergence_tier(const swarm_brain_t* swarm
 }
 
 const workspace_entry_t* swarm_brain_get_workspace(const swarm_brain_t* swarm, uint32_t* workspace_size) {
-    if (!swarm || !swarm->workspace || !workspace_size) return NULL;
+    if (!swarm || !swarm->workspace || !workspace_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_get_workspace: required parameter is NULL (swarm, swarm->workspace, workspace_size)");
+        return NULL;
+    }
 
     *workspace_size = swarm->workspace->size;
     return swarm->workspace->entries;
 }
 
 const swarm_peer_info_t* swarm_brain_get_peers(const swarm_brain_t* swarm, uint32_t* peer_count) {
-    if (!swarm || !peer_count) return NULL;
+    if (!swarm || !peer_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_get_peers: required parameter is NULL (swarm, peer_count)");
+        return NULL;
+    }
 
     *peer_count = swarm->peer_count;
     return swarm->peers;
 }
 
 bool swarm_brain_get_stats(const swarm_brain_t* swarm, swarm_stats_t* stats) {
-    if (!swarm || !stats) return false;
+    if (!swarm || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_get_stats: required parameter is NULL (swarm, stats)");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(swarm->stats_lock);
     *stats = swarm->stats;
@@ -1396,7 +1476,10 @@ bool swarm_brain_is_operational(const swarm_brain_t* swarm) {
 }
 
 bool swarm_brain_reset_stats(swarm_brain_t* swarm) {
-    if (!swarm) return false;
+    if (!swarm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_reset_stats: swarm is NULL");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(swarm->stats_lock);
     memset(&swarm->stats, 0, sizeof(swarm_stats_t));
@@ -1451,6 +1534,7 @@ static local_brain_instance_t* find_local_brain(swarm_brain_t* swarm, uint16_t a
             return &brains[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_local_brain: validation failed");
     return NULL;
 }
 
@@ -1469,12 +1553,14 @@ brain_t swarm_brain_create_local(
     // Guard clauses
     if (!swarm || !config) {
         LOG_ERROR("NULL swarm or config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_create_local: required parameter is NULL (swarm, config)");
         return NULL;
     }
 
     if (config->neuron_count == 0 || config->synapse_count == 0) {
         LOG_ERROR("Invalid brain configuration: neuron_count=%u, synapse_count=%u",
                   config->neuron_count, config->synapse_count);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_create_local: config->neuron_count is zero");
         return NULL;
     }
 
@@ -1500,6 +1586,7 @@ brain_t swarm_brain_create_local(
 
     if (!slot) {
         LOG_ERROR("No free local brain slots available (max=%d)", MAX_LOCAL_BRAINS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_create_local: slot is NULL");
         return NULL;
     }
 
@@ -1518,6 +1605,7 @@ brain_t swarm_brain_create_local(
 
     if (!brain) {
         LOG_ERROR("Failed to create local brain for agent %u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_create_local: brain is NULL");
         return NULL;
     }
 
@@ -1551,11 +1639,13 @@ bool swarm_brain_sync_weights(
     // Guard clauses
     if (!swarm || !target_agents || target_count == 0) {
         LOG_ERROR("Invalid parameters for weight sync");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_sync_weights: required parameter is NULL (swarm, target_agents)");
         return false;
     }
 
     if (target_count > SWARM_MAX_PEERS) {
         LOG_ERROR("Too many target agents: %u (max=%d)", target_count, SWARM_MAX_PEERS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_sync_weights: validation failed");
         return false;
     }
 
@@ -1565,6 +1655,7 @@ bool swarm_brain_sync_weights(
     local_brain_instance_t* source = find_local_brain(swarm, source_agent);
     if (!source || !source->active) {
         LOG_ERROR("Source agent %u has no active brain", source_agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_sync_weights: required parameter is NULL (source, source->active)");
         return false;
     }
 
@@ -1598,6 +1689,7 @@ bool swarm_brain_sync_weights(
 
     if (success_count == 0) {
         LOG_ERROR("Weight sync failed: no valid targets");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_sync_weights: success_count is zero");
         return false;
     }
 
@@ -1620,6 +1712,7 @@ bool swarm_brain_collective_learn(
     // Guard clauses
     if (!swarm || !experiences || experience_count == 0) {
         LOG_ERROR("Invalid parameters for collective learning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_collective_learn: required parameter is NULL (swarm, experiences)");
         return false;
     }
 
@@ -1635,11 +1728,13 @@ bool swarm_brain_collective_learn(
 
         if (!exp->input_data || exp->input_size == 0) {
             LOG_ERROR("Invalid experience %u: missing input data", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_collective_learn: exp->input_data is NULL");
             return false;
         }
 
         if (!exp->target_output || exp->target_size == 0) {
             LOG_ERROR("Invalid experience %u: missing target output", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_collective_learn: exp->target_output is NULL");
             return false;
         }
 
@@ -1657,6 +1752,7 @@ bool swarm_brain_collective_learn(
 
     if (total_importance < 0.01F) {
         LOG_ERROR("Total importance too low: %.6f", total_importance);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_collective_learn: validation failed");
         return false;
     }
 
@@ -1678,6 +1774,7 @@ bool swarm_brain_collective_learn(
 
     if (agents_updated == 0) {
         LOG_ERROR("No agents were updated during collective learning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_collective_learn: agents_updated is zero");
         return false;
     }
 
@@ -1702,11 +1799,13 @@ brain_migration_checkpoint_t* swarm_brain_migrate(
     // Guard clauses
     if (!swarm) {
         LOG_ERROR("NULL swarm provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_migrate: swarm is NULL");
         return NULL;
     }
 
     if (agent_id == new_host) {
         LOG_ERROR("Cannot migrate to same host: agent_id=%u", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_migrate: validation failed");
         return NULL;
     }
 
@@ -1716,6 +1815,7 @@ brain_migration_checkpoint_t* swarm_brain_migrate(
     local_brain_instance_t* source = find_local_brain(swarm, agent_id);
     if (!source || !source->active) {
         LOG_ERROR("Source agent %u has no active brain", agent_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_migrate: required parameter is NULL (source, source->active)");
         return NULL;
     }
 
@@ -1730,6 +1830,7 @@ brain_migration_checkpoint_t* swarm_brain_migrate(
         (brain_migration_checkpoint_t*)nimcp_malloc(sizeof(brain_migration_checkpoint_t));
     if (!checkpoint) {
         LOG_ERROR("Failed to allocate migration checkpoint");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_migrate: checkpoint is NULL");
         return NULL;
     }
 
@@ -1740,6 +1841,7 @@ brain_migration_checkpoint_t* swarm_brain_migrate(
     if (!checkpoint->checkpoint_data) {
         LOG_ERROR("Failed to allocate checkpoint data");
         nimcp_free(checkpoint);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_brain_migrate: checkpoint->checkpoint_data is NULL");
         return NULL;
     }
 
@@ -1770,6 +1872,7 @@ bool swarm_brain_restore_migration(
     // Guard clauses
     if (!swarm || !checkpoint || !checkpoint->checkpoint_data) {
         LOG_ERROR("Invalid checkpoint for restoration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_restore_migration: required parameter is NULL (swarm, checkpoint, checkpoint->checkpoint_data)");
         return false;
     }
 
@@ -1780,6 +1883,7 @@ bool swarm_brain_restore_migration(
     swarm_local_brain_config_t config;
     if (checkpoint->checkpoint_size < sizeof(swarm_local_brain_config_t)) {
         LOG_ERROR("Checkpoint too small: %u bytes", checkpoint->checkpoint_size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_brain_restore_migration: validation failed");
         return false;
     }
 
@@ -1789,6 +1893,7 @@ bool swarm_brain_restore_migration(
     brain_t restored = swarm_brain_create_local(swarm, checkpoint->target_agent, &config);
     if (!restored) {
         LOG_ERROR("Failed to create restored brain on agent %u", checkpoint->target_agent);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_restore_migration: restored is NULL");
         return false;
     }
 

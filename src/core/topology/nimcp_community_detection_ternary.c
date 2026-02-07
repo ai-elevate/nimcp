@@ -138,7 +138,10 @@ trit_matrix_t* community_ternary_quantize_adjacency(
     float threshold,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!float_adj || num_nodes == 0) return NULL;
+    if (!float_adj || num_nodes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "community_ternary_quantize_adjacency: float_adj is NULL");
+        return NULL;
+    }
 
     trit_matrix_t* adj = trit_matrix_create(num_nodes, num_nodes, pack_mode);
     if (!adj) {
@@ -180,11 +183,13 @@ community_ternary_result_t* community_ternary_detect(
     /* Guard: validate inputs */
     if (!adjacency || adjacency->magic != TERNARY_MAGIC) {
         NIMCP_LOGGING_ERROR("Invalid adjacency matrix");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: adjacency is NULL");
         return NULL;
     }
 
     if (adjacency->rows != adjacency->cols) {
         NIMCP_LOGGING_ERROR("Adjacency must be square");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: validation failed");
         return NULL;
     }
 
@@ -215,6 +220,7 @@ community_ternary_result_t* community_ternary_detect(
     result->community_ids = nimcp_malloc(n * sizeof(uint32_t));
     if (!result->community_ids) {
         nimcp_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "community_ternary_detect: result->community_ids is NULL");
         return NULL;
     }
 
@@ -287,6 +293,7 @@ community_ternary_result_t* community_ternary_detect(
         if (community_map) nimcp_free(community_map);
         if (seen) nimcp_free(seen);
         community_ternary_result_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: validation failed");
         return NULL;
     }
 
@@ -319,6 +326,7 @@ community_ternary_result_t* community_ternary_detect(
         !result->internal_positive || !result->internal_negative ||
         !result->external_positive || !result->external_negative) {
         community_ternary_result_free(result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_detect: operation failed");
         return NULL;
     }
 
@@ -635,7 +643,10 @@ void community_ternary_config_default(community_ternary_config_t* config) {
 }
 
 int community_ternary_config_validate(const community_ternary_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "community_ternary_config_validate: config is NULL");
+        return -1;
+    }
 
     if (config->max_iterations == 0) {
         NIMCP_LOGGING_ERROR("max_iterations must be > 0");

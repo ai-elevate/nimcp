@@ -322,6 +322,7 @@ financial_metacognition_bridge_t* financial_metacognition_bridge_create(
     if (!bridge->history) {
         set_error("Failed to allocate decision history");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "financial_metacognition_bridge_create: bridge->history is NULL");
         return NULL;
     }
 

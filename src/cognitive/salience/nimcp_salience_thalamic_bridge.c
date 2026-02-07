@@ -122,6 +122,7 @@ salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thal
     if (bridge_base_init(&bridge->base, 0, "salience_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
     bridge->salience = salience;
@@ -147,7 +148,10 @@ void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
 }
 
 int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_reset", 0.0f);
 
@@ -167,7 +171,10 @@ int salience_thalamic_bridge_reset(salience_thalamic_bridge_t* bridge) {
  * HOW: Create routed_signal_t, apply urgency-based priority, call router
  */
 int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const salience_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_detection: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ro", 0.0f);
@@ -226,6 +233,7 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_detection: routed_ok is NULL");
             return -1;  /* Routing failed */
         }
     }
@@ -252,7 +260,10 @@ int salience_thalamic_route_detection(salience_thalamic_bridge_t* bridge, const 
  * HOW: Package priority data, route with bypass if threshold met
  */
 int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const void* stimulus, float priority) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_thalamic_route_priority: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ro", 0.0f);
@@ -295,6 +306,7 @@ int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const v
         bool routed_ok = thalamic_router_route_signal(bridge->router, &routed);
         if (!routed_ok) {
             nimcp_mutex_unlock(bridge->base.mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_route_priority: routed_ok is NULL");
             return -1;
         }
     }
@@ -310,7 +322,10 @@ int salience_thalamic_route_priority(salience_thalamic_bridge_t* bridge, const v
 }
 
 int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_se", 0.0f);
 
@@ -322,7 +337,10 @@ int salience_thalamic_set_attention(salience_thalamic_bridge_t* bridge, float at
 }
 
 int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_salience_thalamic_ge", 0.0f);
 
@@ -334,7 +352,10 @@ int salience_thalamic_get_attention(const salience_thalamic_bridge_t* bridge, fl
 }
 
 int salience_thalamic_bridge_get_stats(const salience_thalamic_bridge_t* bridge, salience_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     salience_thalamic_bridge_heartbeat("salience_tha_get_stats", 0.0f);
 

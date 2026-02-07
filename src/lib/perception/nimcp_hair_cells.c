@@ -56,8 +56,14 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(hair_cells)
 
 nimcp_error_t ihc_bank_set_health(ihc_bank_t* bank, uint32_t channel,
                                    hc_ihc_health_t health) {
-    if (!bank) return -1;
-    if (channel >= bank->config.num_channels) return -1;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bank is NULL");
+        return -1;
+    }
+    if (channel >= bank->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: capacity exceeded");
+        return -1;
+    }
     bank->cells[channel].health = health;
     switch (health) {
     case HC_IHC_HEALTHY:        bank->cells[channel].efficiency = 1.0f; break;
@@ -111,12 +117,21 @@ hc_bank_config_t hc_bank_config_default(uint32_t num_channels,
 }
 
 hair_cell_bank_t* hair_cell_bank_create(const hc_bank_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hair_cell_bank_create: config is NULL");
+        return NULL;
+    }
     uint32_t n = config->ihc_config.num_channels;
-    if (n == 0) return NULL;
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hair_cell_bank_create: n is zero");
+        return NULL;
+    }
 
     hair_cell_bank_t* bank = (hair_cell_bank_t*)nimcp_calloc(1, sizeof(hair_cell_bank_t));
-    if (!bank) return NULL;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hair_cell_bank_create: bank is NULL");
+        return NULL;
+    }
     bank->config = *config;
 
     bank->ihc = (ihc_bank_t*)nimcp_calloc(1, sizeof(ihc_bank_t));
@@ -157,14 +172,20 @@ void hair_cell_bank_destroy(hair_cell_bank_t* bank) {
 nimcp_error_t hair_cell_bank_process(hair_cell_bank_t* bank,
                                        const bm_output_t* bm_output,
                                        hc_bank_output_t* output) {
-    if (!bank || !bm_output || !output) return -1;
+    if (!bank || !bm_output || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hair_cell_bank_destroy: required parameter is NULL (bank, bm_output, output)");
+        return -1;
+    }
     hair_cells_heartbeat("hair_cell_bank_process", 0.5f);
     bank->samples_processed += bm_output->num_samples;
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t hair_cell_bank_reset(hair_cell_bank_t* bank) {
-    if (!bank) return -1;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hair_cell_bank_reset: bank is NULL");
+        return -1;
+    }
     uint32_t n = bank->config.ihc_config.num_channels;
     if (bank->ihc && bank->ihc->cells) {
         for (uint32_t i = 0; i < n; i++) {
@@ -188,10 +209,16 @@ nimcp_error_t hair_cell_bank_reset(hair_cell_bank_t* bank) {
 }
 
 hc_bank_output_t* hc_bank_output_create(uint32_t num_channels) {
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hc_bank_output_create: num_channels is zero");
+        return NULL;
+    }
 
     hc_bank_output_t* out = (hc_bank_output_t*)nimcp_calloc(1, sizeof(hc_bank_output_t));
-    if (!out) return NULL;
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hc_bank_output_create: out is NULL");
+        return NULL;
+    }
     out->num_channels = num_channels;
 
     out->ihc.receptor_potential = (float*)nimcp_calloc(num_channels, sizeof(float));
@@ -217,6 +244,7 @@ hc_bank_output_t* hc_bank_output_create(uint32_t num_channels) {
         nimcp_free(out->ohc.oae_signal);
         nimcp_free(out->neural_drive);
         nimcp_free(out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hc_bank_output_create: operation failed");
         return NULL;
     }
 
@@ -237,19 +265,28 @@ void hc_bank_output_destroy(hc_bank_output_t* output) {
 
 nimcp_error_t hair_cell_bank_get_stats(const hair_cell_bank_t* bank,
                                          hc_bank_stats_t* stats) {
-    if (!bank || !stats) return -1;
+    if (!bank || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hc_bank_output_destroy: required parameter is NULL (bank, stats)");
+        return -1;
+    }
     memset(stats, 0, sizeof(hc_bank_stats_t));
     stats->samples_processed = bank->samples_processed;
     return NIMCP_SUCCESS;
 }
 
 ihc_bank_t* hair_cell_bank_get_ihc(hair_cell_bank_t* bank) {
-    if (!bank) return NULL;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hair_cell_bank_get_ihc: bank is NULL");
+        return NULL;
+    }
     return bank->ihc;
 }
 
 ohc_bank_t* hair_cell_bank_get_ohc(hair_cell_bank_t* bank) {
-    if (!bank) return NULL;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hair_cell_bank_get_ohc: bank is NULL");
+        return NULL;
+    }
     return bank->ohc;
 }
 
@@ -271,9 +308,15 @@ ihc_config_t ihc_config_default(uint32_t num_channels, bm_hearing_mode_t mode) {
 }
 
 ihc_bank_t* ihc_bank_create(const ihc_config_t* config) {
-    if (!config || config->num_channels == 0) return NULL;
+    if (!config || config->num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ihc_bank_create: config is NULL");
+        return NULL;
+    }
     ihc_bank_t* bank = (ihc_bank_t*)nimcp_calloc(1, sizeof(ihc_bank_t));
-    if (!bank) return NULL;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ihc_bank_create: bank is NULL");
+        return NULL;
+    }
     bank->config = *config;
     bank->cells = (ihc_state_t*)nimcp_calloc(config->num_channels, sizeof(ihc_state_t));
     if (!bank->cells) { nimcp_free(bank); return NULL; }
@@ -295,13 +338,19 @@ void ihc_bank_destroy(ihc_bank_t* bank) {
 
 nimcp_error_t ihc_bank_process(ihc_bank_t* bank, const float* bm_velocity,
                                  uint32_t num_samples, ihc_output_t* output) {
-    if (!bank || !bm_velocity || !output) return -1;
+    if (!bank || !bm_velocity || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ihc_bank_destroy: required parameter is NULL (bank, bm_velocity, output)");
+        return -1;
+    }
     (void)num_samples;
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t ihc_bank_reset(ihc_bank_t* bank) {
-    if (!bank) return -1;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ihc_bank_reset: bank is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bank->config.num_channels; i++) {
         bank->cells[i].receptor_potential = 0.0f;
         bank->cells[i].fast_adapt_state = 0.0f;
@@ -314,7 +363,10 @@ nimcp_error_t ihc_bank_reset(ihc_bank_t* bank) {
 
 nimcp_error_t ihc_bank_get_state(const ihc_bank_t* bank, uint32_t channel,
                                    ihc_state_t* state) {
-    if (!bank || !state || channel >= bank->config.num_channels) return -1;
+    if (!bank || !state || channel >= bank->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ihc_bank_reset: required parameter is NULL (bank, state)");
+        return -1;
+    }
     *state = bank->cells[channel];
     return NIMCP_SUCCESS;
 }
@@ -336,9 +388,15 @@ ohc_config_t ohc_config_default(uint32_t num_channels, bm_hearing_mode_t mode) {
 }
 
 ohc_bank_t* ohc_bank_create(const ohc_config_t* config) {
-    if (!config || config->num_channels == 0) return NULL;
+    if (!config || config->num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ohc_bank_create: config is NULL");
+        return NULL;
+    }
     ohc_bank_t* bank = (ohc_bank_t*)nimcp_calloc(1, sizeof(ohc_bank_t));
-    if (!bank) return NULL;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ohc_bank_create: bank is NULL");
+        return NULL;
+    }
     bank->config = *config;
     bank->cells = (ohc_state_t*)nimcp_calloc(config->num_channels, sizeof(ohc_state_t));
     if (!bank->cells) { nimcp_free(bank); return NULL; }
@@ -358,13 +416,19 @@ void ohc_bank_destroy(ohc_bank_t* bank) {
 
 nimcp_error_t ohc_bank_process(ohc_bank_t* bank, const float* bm_input,
                                  uint32_t num_samples, ohc_output_t* output) {
-    if (!bank || !bm_input || !output) return -1;
+    if (!bank || !bm_input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ohc_bank_destroy: required parameter is NULL (bank, bm_input, output)");
+        return -1;
+    }
     (void)num_samples;
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t ohc_bank_reset(ohc_bank_t* bank) {
-    if (!bank) return -1;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ohc_bank_reset: bank is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bank->config.num_channels; i++) {
         bank->cells[i].receptor_potential = 0.0f;
         bank->cells[i].compression_state = 0.0f;
@@ -375,7 +439,10 @@ nimcp_error_t ohc_bank_reset(ohc_bank_t* bank) {
 
 nimcp_error_t ohc_bank_set_health(ohc_bank_t* bank, uint32_t channel,
                                     hc_ohc_health_t health) {
-    if (!bank || channel >= bank->config.num_channels) return -1;
+    if (!bank || channel >= bank->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "ohc_bank_reset: bank is NULL");
+        return -1;
+    }
     bank->cells[channel].health = health;
     switch (health) {
     case HC_OHC_HEALTHY:         bank->cells[channel].survival_fraction = 1.0f; break;
@@ -389,7 +456,10 @@ nimcp_error_t ohc_bank_set_health(ohc_bank_t* bank, uint32_t channel,
 }
 
 nimcp_error_t ohc_bank_set_ach(ohc_bank_t* bank, float ach_level) {
-    if (!bank) return -1;
+    if (!bank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ohc_bank_set_ach: bank is NULL");
+        return -1;
+    }
     for (uint32_t i = 0; i < bank->config.num_channels; i++) {
         bank->cells[i].ach_level = ach_level;
     }
@@ -397,7 +467,10 @@ nimcp_error_t ohc_bank_set_ach(ohc_bank_t* bank, float ach_level) {
 }
 
 nimcp_error_t ohc_bank_get_oae(const ohc_bank_t* bank, float* oae_signal) {
-    if (!bank || !oae_signal) return -1;
+    if (!bank || !oae_signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ohc_bank_get_oae: required parameter is NULL (bank, oae_signal)");
+        return -1;
+    }
     for (uint32_t i = 0; i < bank->config.num_channels; i++) {
         oae_signal[i] = bank->cells[i].oae_contribution;
     }
@@ -405,9 +478,15 @@ nimcp_error_t ohc_bank_get_oae(const ohc_bank_t* bank, float* oae_signal) {
 }
 
 ihc_output_t* ihc_output_create(uint32_t num_channels) {
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ihc_output_create: num_channels is zero");
+        return NULL;
+    }
     ihc_output_t* out = (ihc_output_t*)nimcp_calloc(1, sizeof(ihc_output_t));
-    if (!out) return NULL;
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ihc_output_create: out is NULL");
+        return NULL;
+    }
     out->num_channels = num_channels;
     out->receptor_potential = (float*)nimcp_calloc(num_channels, sizeof(float));
     out->glutamate_release = (float*)nimcp_calloc(num_channels, sizeof(float));
@@ -415,6 +494,7 @@ ihc_output_t* ihc_output_create(uint32_t num_channels) {
     if (!out->receptor_potential || !out->glutamate_release || !out->adaptation_state) {
         nimcp_free(out->receptor_potential); nimcp_free(out->glutamate_release);
         nimcp_free(out->adaptation_state); nimcp_free(out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ihc_output_create: required parameter is NULL (out->receptor_potential, out->glutamate_release, out->adaptation_state)");
         return NULL;
     }
     return out;
@@ -429,9 +509,15 @@ void ihc_output_destroy(ihc_output_t* output) {
 }
 
 ohc_output_t* ohc_output_create(uint32_t num_channels) {
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ohc_output_create: num_channels is zero");
+        return NULL;
+    }
     ohc_output_t* out = (ohc_output_t*)nimcp_calloc(1, sizeof(ohc_output_t));
-    if (!out) return NULL;
+    if (!out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ohc_output_create: out is NULL");
+        return NULL;
+    }
     out->num_channels = num_channels;
     out->gain = (float*)nimcp_calloc(num_channels, sizeof(float));
     out->amplified_bm = (float*)nimcp_calloc(num_channels, sizeof(float));
@@ -439,6 +525,7 @@ ohc_output_t* ohc_output_create(uint32_t num_channels) {
     if (!out->gain || !out->amplified_bm || !out->oae_signal) {
         nimcp_free(out->gain); nimcp_free(out->amplified_bm);
         nimcp_free(out->oae_signal); nimcp_free(out);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ohc_output_create: required parameter is NULL (out->gain, out->amplified_bm, out->oae_signal)");
         return NULL;
     }
     return out;

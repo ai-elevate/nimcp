@@ -78,6 +78,7 @@ static sleep_bio_subscription_t* sleep_find_subscription(
             return &b->subscriptions[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_find_subscription: validation failed");
     return NULL;
 }
 
@@ -128,6 +129,7 @@ sleep_bio_async_bridge_t* sleep_bio_async_bridge_create(
     );
     if (!bridge->subscriptions) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_bio_async_bridge_create: bridge->subscriptions is NULL");
         return NULL;
     }
 
@@ -201,7 +203,10 @@ int sleep_bio_async_process_inbox(
     sleep_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_process_inbox: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     uint32_t processed = 0;
     (void)max_messages;
@@ -214,7 +219,10 @@ int sleep_bio_async_update(
     sleep_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_update: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -241,7 +249,10 @@ int sleep_bio_async_broadcast_stage_transition(
     sleep_state_t previous_stage,
     sleep_state_t current_stage
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_stage_transition: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     sleep_bio_stage_transition_msg_t msg = {0};
     msg.header.type = BIO_MSG_SLEEP_STAGE_CHANGE;
@@ -269,7 +280,10 @@ int sleep_bio_async_broadcast_consolidation_start(
     sleep_bio_async_bridge_t* bridge,
     sleep_state_t during_stage
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_consolidation_start: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_consolidation_routing) return 0;
 
     sleep_bio_consolidation_msg_t msg = {0};
@@ -293,7 +307,10 @@ int sleep_bio_async_broadcast_consolidation_complete(
     uint32_t memories_replayed,
     float efficiency
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_consolidation_complete: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_consolidation_routing) return 0;
 
     sleep_bio_consolidation_msg_t msg = {0};
@@ -319,7 +336,10 @@ int sleep_bio_async_broadcast_replay(
     float replay_strength,
     float emotional_salience
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_replay: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_replay_routing) return 0;
 
     sleep_bio_replay_msg_t msg = {0};
@@ -348,7 +368,10 @@ int sleep_bio_async_broadcast_homeostasis(
     float total_weight_after,
     uint32_t synapses_pruned
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_homeostasis: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_homeostasis_routing) return 0;
 
     sleep_bio_homeostasis_msg_t msg = {0};
@@ -376,7 +399,10 @@ int sleep_bio_async_broadcast_adenosine(
     float adenosine_level,
     float sleep_pressure
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_adenosine: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
 
     sleep_bio_adenosine_msg_t msg = {0};
     msg.header.type = BIO_MSG_ADENOSINE_UPDATE;
@@ -404,7 +430,10 @@ int sleep_bio_async_broadcast_oscillation(
     float dominant_frequency_hz,
     sleep_state_t current_stage
 ) {
-    if (!bridge || !bridge->connected) return -1;
+    if (!bridge || !bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_broadcast_oscillation: required parameter is NULL (bridge, bridge->connected)");
+        return -1;
+    }
     if (!bridge->config.enable_oscillation_routing) return 0;
 
     sleep_bio_oscillation_msg_t msg = {0};
@@ -455,6 +484,7 @@ int sleep_bio_async_subscribe_module(
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "sleep_bio_async_subscribe_module: capacity exceeded");
         return -1;
     }
 
@@ -493,6 +523,7 @@ int sleep_bio_async_unsubscribe_module(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_bio_async_unsubscribe_module: validation failed");
     return -1;
 }
 
@@ -523,7 +554,10 @@ int sleep_bio_async_get_stats(
     const sleep_bio_async_bridge_t* bridge,
     sleep_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_bio_async_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

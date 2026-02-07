@@ -184,6 +184,7 @@ static const nimcp_round_record_t* get_history_record(
     uint32_t rounds_ago
 ) {
     if (!ctx || rounds_ago >= ctx->history_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "get_history_record: ctx is NULL");
         return NULL;
     }
 
@@ -410,6 +411,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
 ) {
     if (!stage_payoffs || !num_actions || num_players == 0 ||
         num_players > NIMCP_GT_MAX_PLAYERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_repeated_create: operation failed");
         return NULL;
     }
 
@@ -445,6 +447,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
     ctx->history = nimcp_calloc(ctx->history_capacity, sizeof(nimcp_round_record_t));
     if (!ctx->history) {
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_repeated_create: ctx->history is NULL");
         return NULL;
     }
 
@@ -468,6 +471,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
     if (!ctx->stage_game.payoff_matrix) {
         nimcp_free(ctx->history);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_repeated_create: ctx->stage_game is NULL");
         return NULL;
     }
     memcpy(ctx->stage_game.payoff_matrix, stage_payoffs, matrix_size * sizeof(float));
@@ -492,6 +496,7 @@ nimcp_repeated_game_t nimcp_repeated_create(
         nimcp_free(ctx->stage_game.payoff_matrix);
         nimcp_free(ctx->history);
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_repeated_create: validation failed");
         return NULL;
     }
 
@@ -769,6 +774,7 @@ bool nimcp_repeated_is_sustainable(
     const float* target_payoffs
 ) {
     if (!ctx || !target_payoffs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_repeated_is_sustainable: required parameter is NULL (ctx, target_payoffs)");
         return false;
     }
 
@@ -788,6 +794,7 @@ bool nimcp_repeated_is_sustainable(
 
         if (target_payoffs[i] < ctx->minmax_payoffs[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_sustainable: validation failed");
             return false;
         }
     }
@@ -851,6 +858,7 @@ bool nimcp_repeated_is_sustainable(
 
         if (target_payoffs[i] > max_payoffs[i]) {
             nimcp_platform_mutex_unlock(&ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_sustainable: validation failed");
             return false;
         }
     }
@@ -872,6 +880,7 @@ bool nimcp_repeated_is_sustainable(
         if (punishment <= 0 && deviation_gain > 0) {
             // Cannot punish, deviation is profitable
             nimcp_platform_mutex_unlock(&ctx->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_sustainable: validation failed");
             return false;
         }
 
@@ -879,6 +888,7 @@ bool nimcp_repeated_is_sustainable(
             float critical_delta = deviation_gain / (deviation_gain + punishment);
             if (delta < critical_delta) {
                 nimcp_platform_mutex_unlock(&ctx->mutex);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_sustainable: validation failed");
                 return false;
             }
         }
@@ -1082,6 +1092,7 @@ bool nimcp_repeated_trigger_activated(
     uint32_t player
 ) {
     if (!ctx || player >= ctx->config.num_players) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_trigger_activated: ctx is NULL");
         return false;
     }
 
@@ -1101,6 +1112,7 @@ int32_t nimcp_repeated_trigger_threshold(
     uint32_t player
 ) {
     if (!ctx || player >= ctx->config.num_players) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_trigger_threshold: ctx is NULL");
         return -1;
     }
 
@@ -1297,6 +1309,7 @@ bool nimcp_repeated_is_stable(
     uint32_t window_size
 ) {
     if (!ctx || window_size == 0 || ctx->history_count < window_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_stable: ctx is NULL");
         return false;
     }
 
@@ -1312,7 +1325,10 @@ bool nimcp_repeated_is_stable(
 
 
     const nimcp_round_record_t* first = get_history_record(ctx, window_size - 1);
-    if (!first) return false;
+    if (!first) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_repeated_is_stable: first is NULL");
+        return false;
+    }
 
     uint32_t first_actions[NIMCP_GT_MAX_PLAYERS];
     for (uint32_t i = 0; i < ctx->config.num_players; i++) {
@@ -1328,7 +1344,10 @@ bool nimcp_repeated_is_stable(
     // Check if all subsequent rounds have same actions
     for (uint32_t r = 1; r < window_size; r++) {
         const nimcp_round_record_t* rec = get_history_record(ctx, window_size - 1 - r);
-        if (!rec) return false;
+        if (!rec) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_repeated_is_stable: rec is NULL");
+            return false;
+        }
 
         for (uint32_t i = 0; i < ctx->config.num_players; i++) {
             /* Phase 8: Loop progress heartbeat */
@@ -1338,6 +1357,7 @@ bool nimcp_repeated_is_stable(
             }
 
             if (rec->actions[i] != first_actions[i]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_repeated_is_stable: validation failed");
                 return false;
             }
         }

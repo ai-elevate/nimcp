@@ -141,6 +141,7 @@ static void compute_differences(const float* seq, uint32_t len, float* diffs) {
 static bool compute_ratios(const float* seq, uint32_t len, float* ratios) {
     for (uint32_t i = 0; i < len - 1; i++) {
         if (fabsf(seq[i]) < EPSILON) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compute_ratios: validation failed");
             return false;  /* Can't compute ratio with zero */
         }
         ratios[i] = seq[i + 1] / seq[i];
@@ -152,7 +153,10 @@ static bool compute_ratios(const float* seq, uint32_t len, float* ratios) {
  * @brief Check if array is approximately constant
  */
 static bool is_constant(const float* arr, uint32_t len, float tolerance, float* value) {
-    if (len == 0) return false;
+    if (len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_constant: len is zero");
+        return false;
+    }
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < len; i++) {
@@ -174,6 +178,7 @@ static bool is_constant(const float* arr, uint32_t len, float tolerance, float* 
         }
 
         if (fabsf(arr[i] - mean) > tolerance) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_constant: validation failed");
             return false;
         }
     }
@@ -363,7 +368,10 @@ math_intuition_config_t math_intuition_default_config(void) {
 }
 
 bool math_intuition_validate_config(const math_intuition_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_validate_config: config is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mathematical_intuition_heartbeat("mathematical_math_intuition_valid", 0.0f);
@@ -372,17 +380,20 @@ bool math_intuition_validate_config(const math_intuition_config_t* config) {
     if (config->pattern_confidence_threshold < 0.0f ||
         config->pattern_confidence_threshold > 1.0f) {
         set_math_error("Pattern confidence threshold must be in [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_validate_config: config is NULL");
         return false;
     }
 
     if (config->symmetry_tolerance <= 0.0f || config->symmetry_tolerance > 1.0f) {
         set_math_error("Symmetry tolerance must be in (0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "math_intuition_validate_config: validation failed");
         return false;
     }
 
     if (config->max_polynomial_degree == 0 ||
         config->max_polynomial_degree > MATH_MAX_POLYNOMIAL_DEGREE) {
         set_math_error("Invalid polynomial degree");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "math_intuition_validate_config: validation failed");
         return false;
     }
 
@@ -406,6 +417,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
 
     if (config) {
         if (!math_intuition_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_create_custom: math_intuition_validate_config is NULL");
             return NULL;
         }
         cfg = *config;
@@ -429,6 +441,7 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
     if (!mi->lock) {
         set_math_error("Failed to create mutex");
         nimcp_free(mi);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "math_intuition_create_custom: mi->lock is NULL");
         return NULL;
     }
 

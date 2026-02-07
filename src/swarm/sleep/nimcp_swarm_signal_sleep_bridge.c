@@ -55,7 +55,10 @@ static void swarm_signal_on_sleep_state_change(sleep_state_t new_state, void* us
 
 int swarm_signal_sleep_default_config(swarm_signal_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_power_modulation = true;
     config->enable_reception_modulation = true;
     config->enable_latency_modulation = true;
@@ -119,7 +122,10 @@ void swarm_signal_sleep_bridge_destroy(swarm_signal_sleep_bridge_t bridge)
 
 int swarm_signal_sleep_update(swarm_signal_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_sleep_update: bridge is NULL");
+        return -1;
+    }
     sleep_state_t state = sleep_get_current_state(bridge->sleep_system);
     swarm_signal_on_sleep_state_change(state, bridge);
     return 0;
@@ -128,7 +134,10 @@ int swarm_signal_sleep_update(swarm_signal_sleep_bridge_t bridge)
 int swarm_signal_sleep_get_effects(const swarm_signal_sleep_bridge_t bridge,
                                     swarm_signal_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);

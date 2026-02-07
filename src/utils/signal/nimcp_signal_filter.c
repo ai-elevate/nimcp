@@ -71,6 +71,7 @@ static void apply_window(float* coeffs, uint32_t n, window_function_t window) {
 
 static bool design_lowpass_filter(float* coeffs, uint32_t order, float cutoff, float sample_rate) {
     if (!coeffs || order == 0 || cutoff <= 0.0F || sample_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "design_lowpass_filter: coeffs is NULL");
         return false;
     }
 
@@ -100,6 +101,7 @@ static bool design_highpass_filter(float* coeffs, uint32_t order, float cutoff, 
 
 static bool design_bandpass_filter(float* coeffs, uint32_t order, float low_freq, float high_freq, float sample_rate) {
     if (!coeffs || order == 0 || low_freq < 0.0F || high_freq <= low_freq || sample_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "design_bandpass_filter: coeffs is NULL");
         return false;
     }
 
@@ -107,12 +109,16 @@ static bool design_bandpass_filter(float* coeffs, uint32_t order, float low_freq
 
     // Design lowpass at high_freq
     float* lp_high = (float*)nimcp_malloc(n * sizeof(float));
-    if (!lp_high) return false;
+    if (!lp_high) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "design_bandpass_filter: lp_high is NULL");
+        return false;
+    }
 
     // Design lowpass at low_freq
     float* lp_low = (float*)nimcp_malloc(n * sizeof(float));
     if (!lp_low) {
         nimcp_free(lp_high);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "design_bandpass_filter: lp_low is NULL");
         return false;
     }
 
@@ -120,6 +126,7 @@ static bool design_bandpass_filter(float* coeffs, uint32_t order, float low_freq
         !design_lowpass_filter(lp_low, order, low_freq, sample_rate)) {
         nimcp_free(lp_high);
         nimcp_free(lp_low);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "design_bandpass_filter: design_lowpass_filter is NULL");
         return false;
     }
 
@@ -181,11 +188,23 @@ signal_filter_config_t signal_filter_highpass_config(float cutoff_freq, float sa
 }
 
 bool signal_filter_validate_config(const signal_filter_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->sample_rate <= 0.0F) return false;
-    if (config->order == 0 || config->order > 1024) return false;
-    if (config->order % 2 != 0) return false;  // Must be even
+    if (config->sample_rate <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: validation failed");
+        return false;
+    }
+    if (config->order == 0 || config->order > 1024) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: config->order is zero");
+        return false;
+    }
+    if (config->order % 2 != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: validation failed");
+        return false;
+    }
 
     float nyquist = config->sample_rate / 2.0F;
 
@@ -193,6 +212,7 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
         case FILTER_LOWPASS:
         case FILTER_HIGHPASS:
             if (config->cutoff_freq <= 0.0F || config->cutoff_freq >= nyquist) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: capacity exceeded");
                 return false;
             }
             break;
@@ -200,9 +220,11 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
         case FILTER_BANDPASS:
         case FILTER_BANDSTOP:
             if (config->low_freq < 0.0F || config->high_freq >= nyquist) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: capacity exceeded");
                 return false;
             }
             if (config->low_freq >= config->high_freq) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_validate_config: capacity exceeded");
                 return false;
             }
             break;
@@ -217,6 +239,7 @@ bool signal_filter_validate_config(const signal_filter_config_t* config) {
 
 signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
     if (!config || !signal_filter_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_filter_create: required parameter is NULL (config, signal_filter_validate_config)");
         return NULL;
     }
 
@@ -236,6 +259,7 @@ signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
     filter->coefficients = (float*)nimcp_calloc(filter->num_coeffs, sizeof(float));
     if (!filter->coefficients) {
         nimcp_free(filter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_filter_create: filter->coefficients is NULL");
         return NULL;
     }
 
@@ -266,6 +290,7 @@ signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
     if (!design_ok) {
         nimcp_free(filter->coefficients);
         nimcp_free(filter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_create: design_ok is NULL");
         return NULL;
     }
 
@@ -291,6 +316,7 @@ signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
     if (!filter->state) {
         nimcp_free(filter->coefficients);
         nimcp_free(filter);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "signal_filter_create: filter->state is NULL");
         return NULL;
     }
 
@@ -312,7 +338,10 @@ void signal_filter_destroy(signal_filter_t* filter) {
 }
 
 bool signal_filter_reset(signal_filter_t* filter) {
-    if (!filter || !filter->state) return false;
+    if (!filter || !filter->state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_reset: required parameter is NULL (filter, filter->state)");
+        return false;
+    }
 
     memset(filter->state, 0, filter->state_size * sizeof(float));
     filter->state_idx = 0;
@@ -325,6 +354,7 @@ bool signal_filter_reset(signal_filter_t* filter) {
 
 bool signal_filter_apply(signal_filter_t* filter, const float* input, float* output, uint32_t n) {
     if (!filter || !input || !output || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_apply: required parameter is NULL (filter, input, output)");
         return false;
     }
 
@@ -351,6 +381,7 @@ bool signal_filter_apply(signal_filter_t* filter, const float* input, float* out
 
 bool signal_filter_apply_envelope(signal_filter_t* filter, const float* input, float* envelope, uint32_t n) {
     if (!signal_filter_apply(filter, input, envelope, n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "signal_filter_apply_envelope: signal_filter_apply is NULL");
         return false;
     }
 
@@ -364,6 +395,7 @@ bool signal_filter_apply_envelope(signal_filter_t* filter, const float* input, f
 
 bool signal_filter_get_coefficients(signal_filter_t* filter, float* coeffs, uint32_t max_coeffs, uint32_t* num_coeffs) {
     if (!filter || !coeffs || !num_coeffs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_get_coefficients: required parameter is NULL (filter, coeffs, num_coeffs)");
         return false;
     }
 
@@ -376,6 +408,7 @@ bool signal_filter_get_coefficients(signal_filter_t* filter, float* coeffs, uint
 
 bool signal_filter_get_response(signal_filter_t* filter, const float* frequencies, float* response, uint32_t n) {
     if (!filter || !frequencies || !response || n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal_filter_get_response: required parameter is NULL (filter, frequencies, response)");
         return false;
     }
 

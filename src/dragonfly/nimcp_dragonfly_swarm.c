@@ -162,21 +162,39 @@ swarm_config_t swarm_default_config(void) {
 }
 
 bool swarm_validate_config(const swarm_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->cluster_distance_m <= 0.0f) return false;
-    if (config->min_cluster_size == 0) return false;
-    if (config->isolation_threshold <= 0.0f) return false;
+    if (config->cluster_distance_m <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
+        return false;
+    }
+    if (config->min_cluster_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: config->min_cluster_size is zero");
+        return false;
+    }
+    if (config->isolation_threshold <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
+        return false;
+    }
 
     /* Weights should sum to approximately 1.0 */
     float weight_sum = config->isolation_weight + config->distance_weight +
                        config->size_weight + config->velocity_weight;
-    if (weight_sum < 0.5f || weight_sum > 1.5f) return false;
+    if (weight_sum < 0.5f || weight_sum > 1.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
+        return false;
+    }
 
     if (config->danger_density_threshold < 0.0f ||
         config->danger_density_threshold > 1.0f) return false;
 
-    if (config->analysis_interval_ms < 0.0f) return false;
+    if (config->analysis_interval_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -819,6 +837,7 @@ int dragonfly_swarm_select_target(
 
     if (best_idx == UINT32_MAX) {
         nimcp_mutex_unlock(detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_select_target: validation failed");
         return -1;  /* No targets */
     }
 
@@ -900,7 +919,10 @@ bool dragonfly_swarm_is_dangerous(
     const dragonfly_swarm_detector_t detector,
     uint32_t target_id
 ) {
-    if (!detector) return false;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_swarm_is_dangerous: detector is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)detector->mutex);
 
@@ -973,6 +995,7 @@ int dragonfly_swarm_get_individual(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_get_individual: operation failed");
     return -1;  /* Not found */
 }
 
@@ -1001,6 +1024,7 @@ int dragonfly_swarm_get_cluster(
     }
 
     nimcp_mutex_unlock((nimcp_mutex_t*)detector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_swarm_get_cluster: validation failed");
     return -1;  /* Not found */
 }
 

@@ -141,6 +141,7 @@ static failure_tracking_entry_t* find_failure_entry(
             return &bridge->failure_tracking[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_failure_entry: validation failed");
     return NULL;
 }
 
@@ -418,6 +419,7 @@ self_repair_health_notify_bridge_t* self_repair_health_notify_create(
         MAX_FAILURE_TRACKING, sizeof(failure_tracking_entry_t));
     if (!bridge->failure_tracking) {
         self_repair_health_notify_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_health_notify_create: bridge->failure_tracking is NULL");
         return NULL;
     }
 
@@ -427,6 +429,7 @@ self_repair_health_notify_bridge_t* self_repair_health_notify_create(
     bridge->mutex = nimcp_mutex_create(&attr);
     if (!bridge->mutex) {
         self_repair_health_notify_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "self_repair_health_notify_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -522,6 +525,7 @@ int self_repair_health_notify_result(
     const self_repair_result_t* result
 ) {
     if (!bridge || !result || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_result: required parameter is NULL (bridge, result, bridge->initialized)");
         return -1;
     }
 
@@ -635,6 +639,7 @@ int self_repair_health_notify_send(
     const self_repair_health_notification_t* notification
 ) {
     if (!bridge || !notification || !bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_send: required parameter is NULL (bridge, notification, bridge->initialized)");
         return -1;
     }
 
@@ -757,6 +762,7 @@ int self_repair_health_notify_get_stats(
     self_repair_health_notify_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -794,6 +800,7 @@ bool self_repair_health_notify_is_ready(
     const self_repair_health_notify_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_is_ready: bridge is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -812,6 +819,7 @@ int self_repair_health_notify_broadcast(
     const self_repair_health_notification_t* notification
 ) {
     if (!bridge || !notification) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self_repair_health_notify_broadcast: required parameter is NULL (bridge, notification)");
         return -1;
     }
 

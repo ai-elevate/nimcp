@@ -95,6 +95,7 @@ brain_pr_memory_config_t brain_pr_memory_config_default(void) {
 bool nimcp_brain_pr_memory_init(struct brain_struct* brain, const brain_pr_memory_config_t* config) {
     if (!brain) {
         fprintf(stderr, "[PR_MEMORY] Init failed: NULL brain\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_pr_memory_init: brain is NULL");
         return false;
     }
 
@@ -168,6 +169,7 @@ cleanup:
         brain->pr_entanglement = NULL;
     }
     brain->pr_memory_enabled = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_pr_memory_init: validation failed");
     return false;
 }
 
@@ -203,6 +205,7 @@ void nimcp_brain_pr_memory_destroy(struct brain_struct* brain) {
 
 bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_time_us) {
     if (!brain || !brain->pr_memory_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_pr_memory_tick: required parameter is NULL (brain, brain->pr_memory_enabled)");
         return false;
     }
 
@@ -218,6 +221,7 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
 
     /* Check if consolidation interval has elapsed */
     if (current_time_us - brain->last_pr_consolidation_us < brain->pr_consolidation_interval_us) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_pr_memory_tick: validation failed");
         return false;  /* Not time for consolidation yet */
     }
 
@@ -238,6 +242,7 @@ bool nimcp_brain_pr_memory_tick(struct brain_struct* brain, uint64_t current_tim
 
 bool nimcp_brain_pr_memory_is_initialized(const struct brain_struct* brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_pr_memory_is_initialized: brain is NULL");
         return false;
     }
     return brain->pr_memory_enabled &&
@@ -289,11 +294,13 @@ struct entangle_graph_struct* nimcp_brain_get_entanglement(struct brain_struct* 
 
 bool nimcp_brain_pr_memory_get_stats(const struct brain_struct* brain, brain_pr_memory_stats_t* stats) {
     if (!brain || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_pr_memory_get_stats: required parameter is NULL (brain, stats)");
         return false;
     }
 
     if (!brain->pr_memory_enabled) {
         memset(stats, 0, sizeof(*stats));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_pr_memory_get_stats: brain->pr_memory_enabled is NULL");
         return false;
     }
 

@@ -525,16 +525,20 @@ static void init_neuron_model(neuron_t* neuron, const network_config_t* config)
 static bool validate_network_config(const network_config_t* config)
 {
     // Guard: Check null pointer
-    if (!config)
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_network_config: config is NULL");
         return false;
+    }
 
     // Guard: Check neuron count
     if (config->num_neurons == 0 || config->num_neurons > MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: config->num_neurons is zero");
         return false;
     }
 
     // Guard: Check input/output dimensions
     if (config->input_size == 0 || config->output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_network_config: config->input_size is zero");
         return false;
     }
 
@@ -1135,8 +1139,10 @@ static float compute_membrane_potential(neuron_t* neuron, neural_network_t netwo
 static bool is_in_refractory_period(neuron_t* neuron, uint64_t timestamp)
 {
     // If neuron has never spiked (last_spike == 0), not in refractory period
-    if (neuron->last_spike == 0)
+    if (neuron->last_spike == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "is_in_refractory_period: neuron->last_spike is zero");
         return false;
+    }
     return (timestamp - neuron->last_spike) < neuron->refractory_period;
 }
 
@@ -1278,18 +1284,23 @@ bool neural_network_update_neuron(neural_network_t network, uint32_t neuron_id, 
                                   uint64_t timestamp)
 {
     // Guard clause: Validate network
-    if (!network)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_update_neuron: network is NULL");
         return false;
+    }
 
     // Guard clause: Validate neuron ID
-    if (neuron_id >= network->num_neurons)
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_update_neuron: capacity exceeded");
         return false;
+    }
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
     // Guard clause: Check refractory period
     if (is_in_refractory_period(neuron, timestamp)) {
         neuron->state = neuron->rest_potential;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_update_neuron: validation failed");
         return false;
     }
 
@@ -1692,6 +1703,7 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
 {
     // Guard: Validate inputs
     if (!network || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_homeostasis: network is NULL");
         return false;
     }
 
@@ -1699,6 +1711,7 @@ bool neural_network_apply_homeostasis(neural_network_t network, uint32_t neuron_
 
     // Skip if too soon since last update
     if (timestamp - neuron->last_update < network->config.update_interval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_apply_homeostasis: validation failed");
         return false;
     }
 
@@ -1835,8 +1848,10 @@ void neural_network_maintain_homeostasis(neural_network_t network, uint64_t time
 bool neural_network_record_spike(neural_network_t network, uint32_t neuron_id, float magnitude,
                                  uint64_t timestamp)
 {
-    if (neuron_id >= network->num_neurons)
+    if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_record_spike: capacity exceeded");
         return false;
+    }
 
     neuron_t* neuron = &network->neurons[neuron_id];
 
@@ -2048,6 +2063,7 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
                                    float weight)
 {
     if (from_id >= network->num_neurons || to_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
@@ -2056,10 +2072,12 @@ bool neural_network_add_connection(neural_network_t network, uint32_t from_id, u
 
     // Check if we have room for new synapse (both forward and reverse)
     if (from_neuron->num_synapses >= MAX_SYNAPSES_PER_NEURON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
     if (to_neuron->num_incoming >= MAX_SYNAPSES_PER_NEURON) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "neural_network_add_connection: capacity exceeded");
         return false;
     }
 
@@ -2322,6 +2340,7 @@ void neural_network_reset(neural_network_t network)
 bool neural_network_get_neuron_state(neural_network_t network, uint32_t neuron_id, float* state)
 {
     if (!network || neuron_id >= network->num_neurons || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_get_neuron_state: required parameter is NULL (network, state)");
         return false;
     }
 
@@ -2363,6 +2382,7 @@ uint32_t neural_network_get_num_neurons(neural_network_t network)
 neuron_t* neural_network_get_neuron(neural_network_t network, uint32_t neuron_id)
 {
     if (!network || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_get_neuron: network is NULL");
         return NULL;
     }
     return &network->neurons[neuron_id];
@@ -2436,8 +2456,10 @@ uint32_t neural_network_update_plasticity(neural_network_t network, uint32_t neu
  */
 bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_id)
 {
-    if (!network || neuron_id >= network->num_neurons)
+    if (!network || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_normalize_weights: network is NULL");
         return false;
+    }
 
     normalize_synaptic_weights(&network->neurons[neuron_id]);
     return true;
@@ -2449,8 +2471,10 @@ bool neural_network_normalize_weights(neural_network_t network, uint32_t neuron_
 bool neural_network_adapt_threshold(neural_network_t network, uint32_t neuron_id,
                                     uint64_t timestamp)
 {
-    if (!network || neuron_id >= network->num_neurons)
+    if (!network || neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_adapt_threshold: network is NULL");
         return false;
+    }
 
     neuron_t* neuron = &network->neurons[neuron_id];
     float activity = neural_network_get_average_activity(network, neuron_id);
@@ -2495,11 +2519,13 @@ bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_i
 {
     // Guard: Validate network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_neuron_model: network is NULL");
         return false;
     }
 
     // Guard: Validate neuron ID
     if (neuron_id >= network->num_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_set_neuron_model: capacity exceeded");
         return false;
     }
 
@@ -2538,12 +2564,14 @@ bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_i
         default:
             // Unknown model type, fall back to LIF
             neuron->model_type = NEURON_MODEL_LIF;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_set_neuron_model: operation failed");
             return false;
     }
 
     // Guard: Check vtable valid
     if (!vtable) {
         neuron->model_type = NEURON_MODEL_LIF;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_neuron_model: vtable is NULL");
         return false;
     }
 
@@ -2553,6 +2581,7 @@ bool neural_network_set_neuron_model(neural_network_t network, uint32_t neuron_i
     // Guard: Check creation succeeded
     if (!neuron->model) {
         neuron->model_type = NEURON_MODEL_LIF;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_neuron_model: neuron->model is NULL");
         return false;
     }
 
@@ -2606,6 +2635,7 @@ void neural_network_get_weight_statistics(neural_network_t network, uint32_t neu
 bool neural_network_get_stats(neural_network_t network, network_stats_t* stats)
 {
     if (!network || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_get_stats: required parameter is NULL (network, stats)");
         return false;
     }
 
@@ -2698,6 +2728,7 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
                             float* outputs, uint32_t output_size)
 {
     if (!network || !inputs || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_forward: required parameter is NULL (network, inputs, outputs)");
         return false;
     }
 
@@ -2708,6 +2739,7 @@ bool neural_network_forward(neural_network_t network, const float* inputs, uint3
         uint32_t expected_output = network->config.layer_sizes[network->config.num_layers - 1];
 
         if (input_size != expected_input || output_size != expected_output) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_forward: validation failed");
             return false;
         }
 
@@ -2890,6 +2922,7 @@ bool neural_network_set_global_state(neural_network_t network, float* global_sta
 {
     // Guard: Validate input
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_global_state: network is NULL");
         return false;
     }
 
@@ -2919,6 +2952,7 @@ bool neural_network_set_neuromodulator_system(neural_network_t network, void* ne
 {
     // Guard: Validate input
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_neuromodulator_system: network is NULL");
         return false;
     }
 
@@ -2943,6 +2977,7 @@ bool neural_network_set_glial_integration(neural_network_t network, void* glial_
 {
     // Guard: Validate input
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_set_glial_integration: network is NULL");
         return false;
     }
 
@@ -3024,6 +3059,7 @@ bool neural_network_add_connection_typed(neural_network_t network, uint32_t from
 {
     // 1. Create standard connection (handles all base initialization)
     if (!neural_network_add_connection(network, from_id, to_id, weight)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_add_connection_typed: neural_network_add_connection is NULL");
         return false;
     }
 
@@ -3129,7 +3165,10 @@ float synapse_ternary_to_weight(trit_t ternary_weight, float positive_scale, flo
  * @brief Enable ternary mode for synapse
  */
 bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float scale) {
-    if (!synapse) return false;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_enable_ternary_weight: synapse is NULL");
+        return false;
+    }
 
     // Quantize current weight to ternary
     synapse->ternary_weight = synapse_weight_to_ternary(synapse->weight, threshold);
@@ -3143,7 +3182,10 @@ bool synapse_enable_ternary_weight(synapse_t* synapse, float threshold, float sc
  * @brief Disable ternary mode for synapse
  */
 bool synapse_disable_ternary_weight(synapse_t* synapse) {
-    if (!synapse) return false;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_disable_ternary_weight: synapse is NULL");
+        return false;
+    }
 
     // Dequantize ternary weight to float if currently in ternary mode
     if (synapse->use_ternary_weight) {
@@ -3197,11 +3239,15 @@ ternary_weight_matrix_t* ternary_weight_matrix_create(
     ternary_pack_mode_t pack_mode
 ) {
     ternary_weight_matrix_t* twm = nimcp_malloc(sizeof(ternary_weight_matrix_t));
-    if (!twm) return NULL;
+    if (!twm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ternary_weight_matrix_create: twm is NULL");
+        return NULL;
+    }
 
     twm->weights = trit_matrix_create(num_neurons, num_neurons, pack_mode);
     if (!twm->weights) {
         nimcp_free(twm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ternary_weight_matrix_create: twm->weights is NULL");
         return NULL;
     }
 
@@ -3235,10 +3281,16 @@ ternary_weight_matrix_t* neural_network_export_ternary_weights(
     float threshold,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!network) return NULL;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_export_ternary_weights: network is NULL");
+        return NULL;
+    }
 
     ternary_weight_matrix_t* twm = ternary_weight_matrix_create(network->num_neurons, pack_mode);
-    if (!twm) return NULL;
+    if (!twm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_network_export_ternary_weights: twm is NULL");
+        return NULL;
+    }
 
     twm->threshold = threshold;
 
@@ -3268,7 +3320,10 @@ int neural_network_import_ternary_weights(
     neural_network_t network,
     const ternary_weight_matrix_t* twm
 ) {
-    if (!network || !twm || !twm->weights) return -1;
+    if (!network || !twm || !twm->weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_network_import_ternary_weights: required parameter is NULL (network, twm, twm->weights)");
+        return -1;
+    }
 
     int imported = 0;
 

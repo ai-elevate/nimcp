@@ -1146,6 +1146,7 @@ void neuromodulator_system_destroy(neuromodulator_system_t system) {
  */
 bool neuromodulator_connect_brain(neuromodulator_system_t system, void* brain) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_connect_brain: system is NULL");
         return false;
     }
 
@@ -2321,86 +2322,100 @@ void neuromodulator_pool_destroy(neuromodulator_pool_t* pool) {
 }
 
 float neuromodulator_pool_get_dopamine(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_dopamine: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_DOPAMINE};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 float neuromodulator_pool_get_serotonin(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_serotonin: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_SEROTONIN};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 float neuromodulator_pool_get_acetylcholine(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_acetylcholine: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_ACETYLCHOLINE};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 float neuromodulator_pool_get_norepinephrine(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_norepinephrine: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_NOREPINEPHRINE};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 float neuromodulator_pool_get_gaba(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_gaba: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_GABA};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 float neuromodulator_pool_get_glutamate(const neuromodulator_pool_t* pool) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_glutamate: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     uint32_t idx[1] = {NEUROMOD_GLUTAMATE};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 void neuromodulator_pool_set_dopamine(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_dopamine: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_DOPAMINE};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 void neuromodulator_pool_set_serotonin(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_serotonin: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_SEROTONIN};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 void neuromodulator_pool_set_acetylcholine(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_acetylcholine: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_ACETYLCHOLINE};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 void neuromodulator_pool_set_norepinephrine(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_norepinephrine: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_NOREPINEPHRINE};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 void neuromodulator_pool_set_gaba(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_gaba: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_GABA};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 void neuromodulator_pool_set_glutamate(neuromodulator_pool_t* pool, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_glutamate: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     uint32_t idx[1] = {NEUROMOD_GLUTAMATE};
     nimcp_tensor_set(pool->concentrations, idx, value);
 }
 
 float neuromodulator_pool_get_by_type(const neuromodulator_pool_t* pool, neuromodulator_type_t type) {
-    if (!pool || !pool->concentrations) return 0.0f;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_get_by_type: pool is NULL"); return 0.0f; }
+    if (!pool->concentrations) return 0.0f;
     if (type >= NEUROMOD_COUNT) return 0.0f;
     uint32_t idx[1] = {(uint32_t)type};
     return (float)nimcp_tensor_get(pool->concentrations, idx);
 }
 
 void neuromodulator_pool_set_by_type(neuromodulator_pool_t* pool, neuromodulator_type_t type, float value) {
-    if (!pool || !pool->concentrations) return;
+    if (!pool) { NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_pool_set_by_type: pool is NULL"); return; }
+    if (!pool->concentrations) return;
     if (type >= NEUROMOD_COUNT) return;
     uint32_t idx[1] = {(uint32_t)type};
     nimcp_tensor_set(pool->concentrations, idx, value);

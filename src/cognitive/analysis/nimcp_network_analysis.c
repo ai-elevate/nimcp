@@ -108,12 +108,14 @@ static inline void network_analysis_heartbeat_instance(
  */
 static NimcpGraph* build_graph_from_network(neural_network_t network) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "build_graph_from_network: network is NULL");
         return NULL;
     }
 
     NimcpGraph* graph = nimcp_graph_create();
     if (!graph) {
         NIMCP_LOGGING_ERROR("build_graph_from_network: failed to create graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_graph_from_network: graph is NULL");
         return NULL;
     }
 
@@ -303,7 +305,10 @@ bool network_analyzer_run(network_analyzer_t* analyzer)
         bio_router_process_inbox(analyzer->bio_ctx, 5);
     }
 
-    if (!analyzer || !analyzer->brain) return false;
+    if (!analyzer || !analyzer->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_run: required parameter is NULL (analyzer, analyzer->brain)");
+        return false;
+    }
 
     NIMCP_LOGGING_INFO("network_analyzer_run: running full network analysis");
 
@@ -346,7 +351,10 @@ bool network_analyzer_run(network_analyzer_t* analyzer)
 
 bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
 {
-    if (!analyzer || !analyzer->brain) return false;
+    if (!analyzer || !analyzer->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_communities: required parameter is NULL (analyzer, analyzer->brain)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_det", 0.0f);
@@ -359,6 +367,7 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
     if (!adaptive_net) {
         NIMCP_LOGGING_ERROR("Failed to get adaptive network from brain");
         strncpy(analyzer->last_error, "Failed to get adaptive network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_communities: adaptive_net is NULL");
         return false;
     }
 
@@ -366,6 +375,7 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
     if (!network) {
         NIMCP_LOGGING_ERROR("Failed to get base network from adaptive network");
         strncpy(analyzer->last_error, "Failed to get base network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_communities: network is NULL");
         return false;
     }
 
@@ -382,6 +392,7 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
     if (!analyzer->communities) {
         NIMCP_LOGGING_WARN("Community detection returned NULL - network may be too small or disconnected");
         strncpy(analyzer->last_error, "Community detection failed", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_communities: analyzer->communities is NULL");
         return false;
     }
 
@@ -395,7 +406,10 @@ bool network_analyzer_detect_communities(network_analyzer_t* analyzer)
 
 bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 {
-    if (!analyzer || !analyzer->brain) return false;
+    if (!analyzer || !analyzer->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_hubs: required parameter is NULL (analyzer, analyzer->brain)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_det", 0.0f);
@@ -408,6 +422,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
     if (!adaptive_net) {
         NIMCP_LOGGING_ERROR("Failed to get adaptive network from brain");
         strncpy(analyzer->last_error, "Failed to get adaptive network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_hubs: adaptive_net is NULL");
         return false;
     }
 
@@ -415,6 +430,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
     if (!network) {
         NIMCP_LOGGING_ERROR("Failed to get base network from adaptive network");
         strncpy(analyzer->last_error, "Failed to get base network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_hubs: network is NULL");
         return false;
     }
 
@@ -432,6 +448,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
     if (!hub_struct) {
         NIMCP_LOGGING_WARN("Hub detection returned NULL - no hubs found or network too small");
         strncpy(analyzer->last_error, "Hub detection failed", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_detect_hubs: hub_struct is NULL");
         return false;
     }
 
@@ -439,6 +456,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
     analyzer->hubs = nimcp_calloc(1, sizeof(hub_detection_t));
     if (!analyzer->hubs) {
         hub_structure_free(hub_struct);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network_analyzer_detect_hubs: analyzer->hubs is NULL");
         return false;
     }
 
@@ -452,6 +470,7 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
             hub_structure_free(hub_struct);
             nimcp_free(analyzer->hubs);
             analyzer->hubs = NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "network_analyzer_detect_hubs: analyzer->hubs->hubs is NULL");
             return false;
         }
 
@@ -483,7 +502,10 @@ bool network_analyzer_detect_hubs(network_analyzer_t* analyzer)
 
 bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
 {
-    if (!analyzer || !analyzer->brain) return false;
+    if (!analyzer || !analyzer->brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_compute_metrics: required parameter is NULL (analyzer, analyzer->brain)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_com", 0.0f);
@@ -496,6 +518,7 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     if (!adaptive_net) {
         NIMCP_LOGGING_ERROR("Failed to get adaptive network from brain");
         strncpy(analyzer->last_error, "Failed to get adaptive network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_compute_metrics: adaptive_net is NULL");
         return false;
     }
 
@@ -503,6 +526,7 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     if (!network) {
         NIMCP_LOGGING_ERROR("Failed to get base network from adaptive network");
         strncpy(analyzer->last_error, "Failed to get base network", sizeof(analyzer->last_error) - 1);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_compute_metrics: network is NULL");
         return false;
     }
 
@@ -510,6 +534,7 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
     uint32_t num_neurons = neural_network_get_num_neurons(network);
     if (num_neurons == 0) {
         NIMCP_LOGGING_WARN("Network has no neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "network_analyzer_compute_metrics: num_neurons is zero");
         return false;
     }
 
@@ -585,13 +610,17 @@ bool network_analyzer_compute_metrics(network_analyzer_t* analyzer)
 
 bool network_analyzer_validate_learning(network_analyzer_t* analyzer)
 {
-    if (!analyzer) return false;
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_validate_learning: analyzer is NULL");
+        return false;
+    }
 
     // Check if analysis has been run
     if (!analyzer->communities || !analyzer->hubs) {
         strncpy(analyzer->last_error, "No analysis results available - run analysis first",
                 sizeof(analyzer->last_error) - 1);
         analyzer->last_error[sizeof(analyzer->last_error) - 1] = '\0';
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_validate_learning: required parameter is NULL (analyzer->communities, analyzer->hubs)");
         return false;
     }
 
@@ -643,7 +672,10 @@ void network_analyzer_set_hub_threshold(network_analyzer_t* analyzer, float thre
 
 const community_structure_t* network_analyzer_get_communities(network_analyzer_t* analyzer)
 {
-    if (!analyzer) return NULL;
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_get_communities: analyzer is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_get", 0.0f);
 
@@ -653,7 +685,10 @@ const community_structure_t* network_analyzer_get_communities(network_analyzer_t
 
 const hub_detection_t* network_analyzer_get_hubs(network_analyzer_t* analyzer)
 {
-    if (!analyzer) return NULL;
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_get_hubs: analyzer is NULL");
+        return NULL;
+    }
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_get", 0.0f);
 
@@ -674,7 +709,10 @@ topology_metrics_t network_analyzer_get_metrics(network_analyzer_t* analyzer)
 
 const float* network_analyzer_get_modularity_history(network_analyzer_t* analyzer, uint32_t* count)
 {
-    if (!analyzer || !count) return NULL;
+    if (!analyzer || !count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_get_modularity_history: required parameter is NULL (analyzer, count)");
+        return NULL;
+    }
 
     *count = analyzer->analysis_count;
     return analyzer->modularity_history;
@@ -760,13 +798,17 @@ void network_analyzer_on_learning_event(network_analyzer_t* analyzer)
 
 bool network_analyzer_check_new_community(network_analyzer_t* analyzer)
 {
-    if (!analyzer) return false;
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_check_new_community: analyzer is NULL");
+        return false;
+    }
 
     // Stub: always return false (no new community)
     /* Phase 8: Heartbeat at operation start */
     network_analysis_heartbeat("network_anal_network_analyzer_che", 0.0f);
 
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_analyzer_check_new_community: analyzer is NULL");
     return false;
 }
 

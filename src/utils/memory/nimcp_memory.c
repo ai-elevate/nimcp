@@ -1539,8 +1539,14 @@ void* nimcp_realloc(void* ptr, size_t new_size)
     init_if_needed();
 
     // Special case: realloc(NULL, size) == malloc(size)
-    if (!ptr)
-        return malloc(new_size);
+    // MUST track the allocation so subsequent nimcp_realloc calls can find old_size
+    if (!ptr) {
+        void* new_ptr = malloc(new_size);
+        if (new_ptr) {
+            track_allocation(new_ptr, new_size, 0, __FILE__, __LINE__, __func__);
+        }
+        return new_ptr;
+    }
 
     // Special case: realloc(ptr, 0) - should free (implementation-defined in C11)
     if (new_size == 0) {

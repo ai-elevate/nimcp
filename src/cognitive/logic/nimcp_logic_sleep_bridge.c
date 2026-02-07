@@ -243,6 +243,7 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for logic-sleep bridge");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -430,7 +431,10 @@ int logic_sleep_get_effects(
     logic_sleep_effects_t* effects)
 {
     /* Guard clauses */
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_get_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_get_effe", 0.0f);
@@ -472,7 +476,10 @@ float logic_sleep_get_inference_capacity(const logic_sleep_bridge_t* bridge)
 bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_offline: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_offli", 0.0f);
@@ -493,7 +500,10 @@ bool logic_sleep_is_offline(const logic_sleep_bridge_t* bridge)
 bool logic_sleep_is_consolidation_mode(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_consolidation_mode: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_conso", 0.0f);
@@ -658,7 +668,10 @@ int logic_sleep_disconnect_bio_async(logic_sleep_bridge_t* bridge)
 bool logic_sleep_is_bio_async_connected(const logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     logic_sleep_bridge_heartbeat("logic_sleep__logic_sleep_is_bio_a", 0.0f);

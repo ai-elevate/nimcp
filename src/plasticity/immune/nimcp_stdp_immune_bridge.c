@@ -160,6 +160,7 @@ stdp_immune_bridge_t* stdp_immune_bridge_create(
     if (!immune_system || !synapses || num_synapses == 0) {
         LOG_MODULE_ERROR("stdp_immune_bridge",
                   "Cannot create bridge without immune system and synapses");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_immune_bridge_create: required parameter is NULL (immune_system, synapses)");
         return NULL;
     }
 
@@ -247,7 +248,10 @@ int stdp_immune_apply_cytokine_effects(stdp_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_stdp_modulation) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_apply_cytokine_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -297,7 +301,10 @@ int stdp_immune_apply_inflammation_effects(stdp_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -358,7 +365,10 @@ int stdp_immune_get_modulation_state(
     const stdp_immune_bridge_t* bridge,
     stdp_modulation_state_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_get_modulation_state: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -401,11 +411,15 @@ int stdp_immune_apply_modulation_to_synapse(
     stdp_immune_bridge_t* bridge,
     stdp_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_apply_modulation_to_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Get current modulation state */
     stdp_modulation_state_t modulation;
     if (stdp_immune_get_modulation_state(bridge, &modulation) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_immune_apply_modulation_to_synapse: validation failed");
         return -1;
     }
 
@@ -532,11 +546,18 @@ int stdp_immune_alert_instability(
     uint32_t* antigen_id
 ) {
     /* Guard clauses */
-    if (!bridge || !antigen_id) return -1;
-    if (!bridge->immune_system) return -1;
+    if (!bridge || !antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_alert_instability: required parameter is NULL (bridge, antigen_id)");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_alert_instability: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Check if instability detected */
     if (bridge->instability_state.instability_severity < 0.5f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_immune_alert_instability: validation failed");
         return -1;  /* No significant instability */
     }
 
@@ -586,7 +607,10 @@ int stdp_immune_signal_balanced_plasticity(stdp_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_homeostatic_feedback) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_signal_balanced_plasticity: bridge->immune_system is NULL");
+        return -1;
+    }
 
     /* Only signal if actually balanced */
     if (!bridge->instability_state.balanced_plasticity) {
@@ -655,7 +679,10 @@ int stdp_immune_get_cytokine_effects(
     const stdp_immune_bridge_t* bridge,
     cytokine_stdp_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_stdp_effects_t));
@@ -668,7 +695,10 @@ int stdp_immune_get_inflammation_state(
     const stdp_immune_bridge_t* bridge,
     inflammation_stdp_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_stdp_state_t));
@@ -681,7 +711,10 @@ int stdp_immune_get_instability_state(
     const stdp_immune_bridge_t* bridge,
     stdp_instability_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_get_instability_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->instability_state, sizeof(stdp_instability_state_t));
@@ -691,7 +724,10 @@ int stdp_immune_get_instability_state(
 }
 
 bool stdp_immune_is_plasticity_impaired(const stdp_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_is_plasticity_impaired: bridge is NULL");
+        return false;
+    }
 
     /* Impaired if learning rate factor < 1.0 */
     return (bridge->cytokine_effects.learning_rate_factor < 1.0f) ||
@@ -769,6 +805,9 @@ int stdp_immune_disconnect_bio_async(stdp_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool stdp_immune_is_bio_async_connected(const stdp_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

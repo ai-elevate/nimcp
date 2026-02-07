@@ -143,6 +143,7 @@ runtime_adaptation_context_t runtime_adaptation_create(brain_t brain) {
     if (!ctx->history) {
         LOG_ERROR("Failed to allocate adaptation history");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "runtime_adaptation_create: ctx->history is NULL");
         return NULL;
     }
 
@@ -172,6 +173,7 @@ bool runtime_adaptation_set_parameter(
 ) {
     if (!ctx || param >= RUNTIME_PARAM_COUNT) {
         LOG_ERROR("Invalid parameters for set_parameter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_set_parameter: ctx is NULL");
         return false;
     }
 
@@ -189,6 +191,7 @@ bool runtime_adaptation_set_parameter(
         if (new_value < info->min_value || new_value > info->max_value) {
             LOG_ERROR("Parameter value %.3f out of bounds [%.3f, %.3f]",
                 new_value, info->min_value, info->max_value);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "runtime_adaptation_set_parameter: validation failed");
             return false;
         }
     }
@@ -217,7 +220,10 @@ bool runtime_adaptation_reset_parameter(
     runtime_adaptation_context_t ctx,
     runtime_parameter_t param
 ) {
-    if (!ctx || param >= RUNTIME_PARAM_COUNT) return false;
+    if (!ctx || param >= RUNTIME_PARAM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_reset_parameter: ctx is NULL");
+        return false;
+    }
 
     // Find default value
     for (size_t i = 0; i < PARAMETER_REGISTRY_SIZE; i++) {
@@ -229,6 +235,7 @@ bool runtime_adaptation_reset_parameter(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "runtime_adaptation_reset_parameter: validation failed");
     return false;
 }
 
@@ -249,7 +256,10 @@ bool runtime_adaptation_enable_feature(
     runtime_feature_t feature,
     const char* reason
 ) {
-    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) return false;
+    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_enable_feature: ctx is NULL");
+        return false;
+    }
 
     ctx->features[feature] = true;
     LOG_INFO("Enabled feature %d: %s", feature, reason ? reason : "no reason");
@@ -261,7 +271,10 @@ bool runtime_adaptation_disable_feature(
     runtime_feature_t feature,
     const char* reason
 ) {
-    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) return false;
+    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_disable_feature: ctx is NULL");
+        return false;
+    }
 
     ctx->features[feature] = false;
     LOG_INFO("Disabled feature %d: %s", feature, reason ? reason : "no reason");
@@ -272,7 +285,10 @@ bool runtime_adaptation_is_feature_enabled(
     runtime_adaptation_context_t ctx,
     runtime_feature_t feature
 ) {
-    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) return false;
+    if (!ctx || feature >= RUNTIME_FEATURE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_is_feature_enabled: ctx is NULL");
+        return false;
+    }
     return ctx->features[feature];
 }
 
@@ -286,12 +302,16 @@ bool runtime_adaptation_apply_batch(
     uint32_t num_changes,
     const char* reason
 ) {
-    if (!ctx || !changes || num_changes == 0) return false;
+    if (!ctx || !changes || num_changes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_apply_batch: required parameter is NULL (ctx, changes)");
+        return false;
+    }
 
     // Validate all changes first
     for (uint32_t i = 0; i < num_changes; i++) {
         if (changes[i].param >= RUNTIME_PARAM_COUNT) {
             LOG_ERROR("Invalid parameter in batch change");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_apply_batch: capacity exceeded");
             return false;
         }
     }
@@ -313,7 +333,10 @@ bool runtime_adaptation_apply_batch(
 //=============================================================================
 
 bool runtime_adaptation_policy_nan_detected(runtime_adaptation_context_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_policy_nan_detected: ctx is NULL");
+        return false;
+    }
 
     LOG_INFO("Applying NaN detection policy");
 
@@ -332,7 +355,10 @@ bool runtime_adaptation_policy_nan_detected(runtime_adaptation_context_t ctx) {
 }
 
 bool runtime_adaptation_policy_memory_pressure(runtime_adaptation_context_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_policy_memory_pressure: ctx is NULL");
+        return false;
+    }
 
     LOG_INFO("Applying memory pressure policy");
 
@@ -350,7 +376,10 @@ bool runtime_adaptation_policy_memory_pressure(runtime_adaptation_context_t ctx)
 }
 
 bool runtime_adaptation_policy_gradient_explosion(runtime_adaptation_context_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_policy_gradient_explosion: ctx is NULL");
+        return false;
+    }
 
     LOG_INFO("Applying gradient explosion policy");
 
@@ -364,7 +393,10 @@ bool runtime_adaptation_policy_gradient_explosion(runtime_adaptation_context_t c
 }
 
 bool runtime_adaptation_policy_slow_convergence(runtime_adaptation_context_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_policy_slow_convergence: ctx is NULL");
+        return false;
+    }
 
     LOG_INFO("Applying slow convergence policy");
 
@@ -377,7 +409,10 @@ bool runtime_adaptation_policy_slow_convergence(runtime_adaptation_context_t ctx
 }
 
 bool runtime_adaptation_policy_overfitting(runtime_adaptation_context_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_policy_overfitting: ctx is NULL");
+        return false;
+    }
 
     LOG_INFO("Applying overfitting policy");
 
@@ -398,7 +433,10 @@ bool runtime_adaptation_get_param_info(
     runtime_parameter_t param,
     parameter_info_t* info
 ) {
-    if (!info || param >= RUNTIME_PARAM_COUNT) return false;
+    if (!info || param >= RUNTIME_PARAM_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "runtime_adaptation_get_param_info: info is NULL");
+        return false;
+    }
 
     for (size_t i = 0; i < PARAMETER_REGISTRY_SIZE; i++) {
         if (PARAMETER_REGISTRY[i].param_type == param) {
@@ -407,6 +445,7 @@ bool runtime_adaptation_get_param_info(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "runtime_adaptation_get_param_info: validation failed");
     return false;
 }
 
@@ -455,10 +494,16 @@ bool runtime_adaptation_save_config(
     runtime_adaptation_context_t ctx,
     const char* filepath
 ) {
-    if (!ctx || !filepath) return false;
+    if (!ctx || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_save_config: required parameter is NULL (ctx, filepath)");
+        return false;
+    }
 
     FILE* f = fopen(filepath, "wb");
-    if (!f) return false;
+    if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_save_config: f is NULL");
+        return false;
+    }
 
     fwrite(&ctx->parameters, sizeof(float), RUNTIME_PARAM_COUNT, f);
     fwrite(&ctx->features, sizeof(bool), RUNTIME_FEATURE_COUNT, f);
@@ -472,10 +517,16 @@ bool runtime_adaptation_load_config(
     runtime_adaptation_context_t ctx,
     const char* filepath
 ) {
-    if (!ctx || !filepath) return false;
+    if (!ctx || !filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_load_config: required parameter is NULL (ctx, filepath)");
+        return false;
+    }
 
     FILE* f = fopen(filepath, "rb");
-    if (!f) return false;
+    if (!f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_load_config: f is NULL");
+        return false;
+    }
 
     fread(&ctx->parameters, sizeof(float), RUNTIME_PARAM_COUNT, f);
     fread(&ctx->features, sizeof(bool), RUNTIME_FEATURE_COUNT, f);
@@ -521,7 +572,10 @@ int32_t runtime_adaptation_export_json(
     char* json_buffer,
     size_t buffer_size
 ) {
-    if (!ctx || !json_buffer || buffer_size == 0) return -1;
+    if (!ctx || !json_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "runtime_adaptation_export_json: required parameter is NULL (ctx, json_buffer)");
+        return -1;
+    }
 
     int written = snprintf(json_buffer, buffer_size,
         "{\n"

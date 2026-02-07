@@ -97,7 +97,10 @@ static float randf(void) {
  * ============================================================================ */
 
 int tactile_motor_default_config(tactile_motor_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(tactile_motor_config_t));
 
@@ -149,7 +152,10 @@ void tactile_motor_bridge_destroy(tactile_motor_bridge_t* bridge) {
  * ============================================================================ */
 
 int tactile_motor_connect(tactile_motor_bridge_t* bridge, nimcp_somatosensory_t* soma, void* motor_cortex) {
-    if (!bridge || !soma) return -1;
+    if (!bridge || !soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_connect: required parameter is NULL (bridge, soma)");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->motor_cortex = motor_cortex;
@@ -160,7 +166,10 @@ int tactile_motor_connect(tactile_motor_bridge_t* bridge, nimcp_somatosensory_t*
 }
 
 int tactile_motor_disconnect(tactile_motor_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->motor_cortex = NULL;
@@ -178,7 +187,10 @@ bool tactile_motor_is_connected(const tactile_motor_bridge_t* bridge) {
  * ============================================================================ */
 
 int tactile_motor_init_grasp(tactile_motor_bridge_t* bridge, uint32_t effector) {
-    if (!bridge || !bridge->is_connected) return -1;
+    if (!bridge || !bridge->is_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_init_grasp: required parameter is NULL (bridge, bridge->is_connected)");
+        return -1;
+    }
 
     bridge->active_effector = effector;
     bridge->mode = TACTILE_MOTOR_MODE_GRASPING;
@@ -197,8 +209,14 @@ int tactile_motor_init_grasp(tactile_motor_bridge_t* bridge, uint32_t effector) 
 
 int tactile_motor_update_grip(tactile_motor_bridge_t* bridge, const touch_event_t* feedback,
                               tactile_motor_grip_t* grip) {
-    if (!bridge || !feedback || !grip) return -1;
-    if (!bridge->config.enable_force_control) return -1;
+    if (!bridge || !feedback || !grip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_init_grasp: required parameter is NULL (bridge, feedback, grip)");
+        return -1;
+    }
+    if (!bridge->config.enable_force_control) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_init_grasp: bridge->config is NULL");
+        return -1;
+    }
 
     /* Update grip based on tactile feedback */
     float pressure = feedback->pressure;
@@ -245,7 +263,10 @@ int tactile_motor_update_grip(tactile_motor_bridge_t* bridge, const touch_event_
 }
 
 int tactile_motor_adjust_grip_force(tactile_motor_bridge_t* bridge, float target_force) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_adjust_grip_force: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_grip.grip_force = target_force;
     if (bridge->current_grip.grip_force > bridge->config.force_limit) {
@@ -262,7 +283,10 @@ int tactile_motor_adjust_grip_force(tactile_motor_bridge_t* bridge, float target
 
 int tactile_motor_detect_slip(tactile_motor_bridge_t* bridge, const touch_event_t* feedback,
                               bool* slipping) {
-    if (!bridge || !feedback || !slipping) return -1;
+    if (!bridge || !feedback || !slipping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_adjust_grip_force: required parameter is NULL (bridge, feedback, slipping)");
+        return -1;
+    }
 
     *slipping = feedback->slip_velocity > bridge->config.slip_threshold;
 
@@ -270,7 +294,10 @@ int tactile_motor_detect_slip(tactile_motor_bridge_t* bridge, const touch_event_
 }
 
 int tactile_motor_release_grasp(tactile_motor_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_release_grasp: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_grip.grip_force = 0.0f;
     bridge->current_grip.stable_grasp = false;
@@ -285,7 +312,10 @@ int tactile_motor_release_grasp(tactile_motor_bridge_t* bridge) {
  * ============================================================================ */
 
 int tactile_motor_send_command(tactile_motor_bridge_t* bridge, const tactile_motor_command_t* cmd) {
-    if (!bridge || !cmd) return -1;
+    if (!bridge || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, cmd)");
+        return -1;
+    }
     (void)cmd;
 
     bridge->stats.commands_sent++;
@@ -295,7 +325,10 @@ int tactile_motor_send_command(tactile_motor_bridge_t* bridge, const tactile_mot
 
 int tactile_motor_receive_feedback(tactile_motor_bridge_t* bridge, uint32_t effector,
                                    float* feedback) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, feedback)");
+        return -1;
+    }
     (void)effector;
 
     /* Simulated feedback */
@@ -308,7 +341,10 @@ int tactile_motor_receive_feedback(tactile_motor_bridge_t* bridge, uint32_t effe
 
 int tactile_motor_compute_prediction_error(tactile_motor_bridge_t* bridge,
                                            tactile_motor_command_t* cmd) {
-    if (!bridge || !cmd) return -1;
+    if (!bridge || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, cmd)");
+        return -1;
+    }
 
     if (cmd->predicted_feedback && cmd->actual_feedback && cmd->command_dim > 0) {
         float error = 0.0f;
@@ -331,8 +367,14 @@ int tactile_motor_compute_prediction_error(tactile_motor_bridge_t* bridge,
 
 int tactile_motor_start_exploration(tactile_motor_bridge_t* bridge, const float* start_pos,
                                     const float* bounds, tactile_motor_exploration_t* exploration) {
-    if (!bridge || !exploration) return -1;
-    if (!bridge->config.enable_exploration) return -1;
+    if (!bridge || !exploration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, exploration)");
+        return -1;
+    }
+    if (!bridge->config.enable_exploration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: bridge->config is NULL");
+        return -1;
+    }
     (void)start_pos;
     (void)bounds;
 
@@ -342,7 +384,10 @@ int tactile_motor_start_exploration(tactile_motor_bridge_t* bridge, const float*
     /* Initialize exploration */
     exploration->num_waypoints = 10;
     exploration->waypoints = (float*)nimcp_calloc(exploration->num_waypoints * 3, sizeof(float));
-    if (!exploration->waypoints) return -1;
+    if (!exploration->waypoints) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tactile_motor_send_command: exploration->waypoints is NULL");
+        return -1;
+    }
 
     /* Generate waypoints */
     for (uint32_t i = 0; i < exploration->num_waypoints; i++) {
@@ -362,7 +407,10 @@ int tactile_motor_start_exploration(tactile_motor_bridge_t* bridge, const float*
 int tactile_motor_step_exploration(tactile_motor_bridge_t* bridge,
                                    tactile_motor_exploration_t* exploration,
                                    touch_event_t* sample) {
-    if (!bridge || !exploration || !sample) return -1;
+    if (!bridge || !exploration || !sample) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, exploration, sample)");
+        return -1;
+    }
 
     if (exploration->current_waypoint >= exploration->num_waypoints) {
         exploration->exploration_complete = true;
@@ -381,7 +429,10 @@ int tactile_motor_step_exploration(tactile_motor_bridge_t* bridge,
 
 int tactile_motor_finish_exploration(tactile_motor_bridge_t* bridge,
                                      tactile_motor_exploration_t* exploration) {
-    if (!bridge || !exploration) return -1;
+    if (!bridge || !exploration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_send_command: required parameter is NULL (bridge, exploration)");
+        return -1;
+    }
 
     exploration->exploration_complete = true;
     bridge->mode = TACTILE_MOTOR_MODE_IDLE;
@@ -397,7 +448,10 @@ int tactile_motor_finish_exploration(tactile_motor_bridge_t* bridge,
  * ============================================================================ */
 
 int tactile_motor_set_mode(tactile_motor_bridge_t* bridge, tactile_motor_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_set_mode: bridge is NULL");
+        return -1;
+    }
     bridge->mode = mode;
     return 0;
 }
@@ -417,13 +471,19 @@ tactile_motor_status_t tactile_motor_get_status(const tactile_motor_bridge_t* br
  * ============================================================================ */
 
 int tactile_motor_get_stats(const tactile_motor_bridge_t* bridge, tactile_motor_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(tactile_motor_stats_t));
     return 0;
 }
 
 int tactile_motor_reset_stats(tactile_motor_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tactile_motor_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(tactile_motor_stats_t));
     return 0;
 }

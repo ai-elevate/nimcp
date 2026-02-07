@@ -284,6 +284,7 @@ static nimcp_gt_q_entry_t* get_q_entry(
     uint32_t action
 ) {
     if (!q_table || state >= q_table->num_states || action >= q_table->num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_q_entry: q_table is NULL");
         return NULL;
     }
     return &q_table->entries[state * q_table->num_actions + action];
@@ -297,6 +298,7 @@ static nimcp_gt_regret_entry_t* get_regret_entry(
     uint32_t info_set
 ) {
     if (!table || info_set >= table->num_info_sets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_regret_entry: table is NULL");
         return NULL;
     }
     return &table->entries[info_set];
@@ -308,6 +310,7 @@ static nimcp_gt_regret_entry_t* get_regret_entry(
 
 static nimcp_gt_q_table_t q_table_create(uint32_t num_states, uint32_t num_actions) {
     if (num_states == 0 || num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "q_table_create: num_states is zero");
         return NULL;
     }
 
@@ -325,6 +328,7 @@ static nimcp_gt_q_table_t q_table_create(uint32_t num_states, uint32_t num_actio
     table->entries = nimcp_calloc(num_entries, sizeof(nimcp_gt_q_entry_t));
     if (!table->entries) {
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "q_table_create: table->entries is NULL");
         return NULL;
     }
 
@@ -349,6 +353,7 @@ static void q_table_reset(nimcp_gt_q_table_t table) {
 
 static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint32_t max_actions) {
     if (num_info_sets == 0 || max_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "regret_table_create: num_info_sets is zero");
         return NULL;
     }
 
@@ -365,6 +370,7 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
     table->entries = nimcp_calloc(num_info_sets, sizeof(nimcp_gt_regret_entry_t));
     if (!table->entries) {
         nimcp_free(table);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "regret_table_create: table->entries is NULL");
         return NULL;
     }
 
@@ -388,6 +394,7 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
             }
             nimcp_free(table->entries);
             nimcp_free(table);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "regret_table_create: required parameter is NULL (table->entries, table->entries)");
             return NULL;
         }
     }
@@ -512,6 +519,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
     uint32_t num_actions
 ) {
     if (!config || num_states == 0 || num_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_gt_learner_create: config is NULL");
         return NULL;
     }
 
@@ -520,6 +528,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
 
 
     if (num_states > NIMCP_GT_MAX_STATES || num_actions > NIMCP_GT_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: validation failed");
         return NULL;
     }
 
@@ -549,6 +558,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         learner->q_table = q_table_create(num_states, num_actions);
         if (!learner->q_table) {
             nimcp_free(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->q_table is NULL");
             return NULL;
         }
     }
@@ -563,6 +573,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         if (!learner->regret_table) {
             q_table_destroy(learner->q_table);
             nimcp_free(learner);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->regret_table is NULL");
             return NULL;
         }
     }
@@ -573,6 +584,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_gt_learner_create: learner->opponent_action_counts is NULL");
         return NULL;
     }
 
@@ -586,6 +598,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: required parameter is NULL (learner->exp3_weights, learner->exp3_probabilities)");
         return NULL;
     }
 
@@ -614,6 +627,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: required parameter is NULL (learner->action_history, learner->our_action_history)");
         return NULL;
     }
 
@@ -631,6 +645,7 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
         regret_table_destroy(learner->regret_table);
         q_table_destroy(learner->q_table);
         nimcp_free(learner);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_create: operation failed");
         return NULL;
     }
 
@@ -2323,7 +2338,10 @@ bool nimcp_gt_learner_has_converged(
     const nimcp_gt_learner_t learner,
     float threshold
 ) {
-    if (!learner) return false;
+    if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_gt_learner_has_converged: learner is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     gt_learning_heartbeat("gt_learning_gt_learner_has_conve", 0.0f);

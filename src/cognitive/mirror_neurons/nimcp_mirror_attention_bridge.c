@@ -193,6 +193,7 @@ static mirror_attention_agent_t* get_or_create_agent(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "get_or_create_agent: operation failed");
     return NULL;
 }
 
@@ -378,6 +379,7 @@ mirror_attention_bridge_t* mirror_attention_create(
                                                       sizeof(mirror_attention_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Attention: Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_attention_create: bridge is NULL");
         return NULL;
     }
 
@@ -401,6 +403,7 @@ mirror_attention_bridge_t* mirror_attention_create(
     if (bridge_base_init(&bridge->base, 0, "mirror_attention") != 0) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-Attention: Failed to initialize bridge base");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "mirror_attention_create: validation failed");
         return NULL;
     }
 
@@ -691,12 +694,14 @@ bool mirror_attention_initiate_joint(
     mirror_attention_agent_t* agent = get_or_create_agent(bridge, agent_id);
     if (!agent) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_attention_initiate_joint: agent is NULL");
         return false;
     }
 
     /* Can only initiate from NONE state */
     if (agent->joint_state != JOINT_ATTENTION_NONE) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_initiate_joint: validation failed");
         return false;
     }
 
@@ -744,6 +749,7 @@ bool mirror_attention_respond_to_joint(
 
     if (!agent || agent->joint_state != JOINT_ATTENTION_RESPONDING) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_respond_to_joint: agent is NULL");
         return false;
     }
 
@@ -1037,7 +1043,10 @@ void mirror_attention_update_validity(
 }
 
 bool mirror_attention_register_bio_async(mirror_attention_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_registered) return false;
+    if (!bridge || bridge->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_register_bio_async: bridge is NULL");
+        return false;
+    }
 
     /* Mark as registered - actual router registration would happen
      * when integrated into a full bio-async context */

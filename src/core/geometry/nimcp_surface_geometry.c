@@ -306,7 +306,10 @@ int surface_compute_branch_params(
     const surface_branch_point_t* branch,
     surface_geometry_params_t* params)
 {
-    if (!ctx || !branch || !params) return -1;
+    if (!ctx || !branch || !params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_branch_params: required parameter is NULL (ctx, branch, params)");
+        return -1;
+    }
 
     memset(params, 0, sizeof(*params));
 
@@ -408,7 +411,10 @@ int surface_compute_area(
     float min_circumference,
     float* total_area)
 {
-    if (!ctx || !branch_points || !total_area) return -1;
+    if (!ctx || !branch_points || !total_area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_area: required parameter is NULL (ctx, branch_points, total_area)");
+        return -1;
+    }
     if (num_points == 0) {
         *total_area = 0.0f;
         return 0;
@@ -451,7 +457,10 @@ int surface_compute_steiner_length(
     uint32_t num_points,
     float* wire_length)
 {
-    if (!branch_points || !wire_length) return -1;
+    if (!branch_points || !wire_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_steiner_length: required parameter is NULL (branch_points, wire_length)");
+        return -1;
+    }
 
     float total_length = 0.0f;
 
@@ -479,8 +488,14 @@ int surface_optimize_network(
     float min_circumference,
     surface_optimization_result_t* result)
 {
-    if (!ctx || !terminals || !result) return -1;
-    if (num_terminals < 2) return -1;
+    if (!ctx || !terminals || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimize_network: required parameter is NULL (ctx, terminals, result)");
+        return -1;
+    }
+    if (num_terminals < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_optimize_network: validation failed");
+        return -1;
+    }
 
     /* Special case for 4 terminals (tetrahedral) */
     if (num_terminals == 4) {
@@ -500,6 +515,7 @@ int surface_optimize_network(
     );
     if (!optimizer) {
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimize_network: optimizer is NULL");
         return -1;
     }
 
@@ -507,6 +523,7 @@ int surface_optimize_network(
     if (surface_optimizer_init(optimizer, terminals, num_terminals, min_circumference) != 0) {
         surface_optimizer_destroy(optimizer);
         nimcp_mutex_unlock(ctx->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "surface_optimize_network: validation failed");
         return -1;
     }
 
@@ -549,7 +566,10 @@ int surface_optimize_tetrahedron(
     float min_circumference,
     surface_optimization_result_t* result)
 {
-    if (!ctx || !terminals || !result) return -1;
+    if (!ctx || !terminals || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_optimize_tetrahedron: required parameter is NULL (ctx, terminals, result)");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -626,7 +646,10 @@ int surface_validate_geometry(
     const surface_geometry_params_t* params,
     surface_validation_result_t* result)
 {
-    if (!ctx || !params || !result) return -1;
+    if (!ctx || !params || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_validate_geometry: required parameter is NULL (ctx, params, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
     result->is_valid = true;
@@ -695,7 +718,10 @@ int surface_validate_branch(
     const surface_branch_point_t* branch,
     surface_validation_result_t* result)
 {
-    if (!ctx || !branch || !result) return -1;
+    if (!ctx || !branch || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_validate_branch: required parameter is NULL (ctx, branch, result)");
+        return -1;
+    }
 
     /* Compute parameters if not already computed */
     surface_geometry_params_t params;
@@ -715,7 +741,10 @@ int surface_compute_spine_geometry(
     const surface_vec3_t* spine_position,
     spine_surface_geometry_t* result)
 {
-    if (!ctx || !result) return -1;
+    if (!ctx || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_spine_geometry: required parameter is NULL (ctx, result)");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -765,7 +794,10 @@ int surface_predict_spine_sprout(
     float spine_diameter,
     bool* is_sprout)
 {
-    if (!ctx || !is_sprout) return -1;
+    if (!ctx || !is_sprout) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_predict_spine_sprout: required parameter is NULL (ctx, is_sprout)");
+        return -1;
+    }
 
     float parent_circ = parent_diameter * M_PI;
     float spine_circ = spine_diameter * M_PI;
@@ -783,8 +815,14 @@ int surface_compute_axon_branch_geometry(
     uint32_t num_children,
     axon_branch_surface_geometry_t* result)
 {
-    if (!ctx || !child_diameters || !result) return -1;
-    if (num_children == 0 || num_children > 4) return -1;
+    if (!ctx || !child_diameters || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_axon_branch_geometry: required parameter is NULL (ctx, child_diameters, result)");
+        return -1;
+    }
+    if (num_children == 0 || num_children > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_compute_axon_branch_geometry: num_children is zero");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -834,13 +872,17 @@ int surface_compute_axon_branch_geometry(
 spine_surface_cache_t* surface_spine_cache_create(uint32_t capacity)
 {
     spine_surface_cache_t* cache = nimcp_malloc(sizeof(*cache));
-    if (!cache) return NULL;
+    if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_spine_cache_create: cache is NULL");
+        return NULL;
+    }
 
     memset(cache, 0, sizeof(*cache));
 
     cache->cache = nimcp_malloc(capacity * sizeof(spine_surface_geometry_t*));
     if (!cache->cache) {
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_spine_cache_create: cache->cache is NULL");
         return NULL;
     }
 
@@ -848,6 +890,7 @@ spine_surface_cache_t* surface_spine_cache_create(uint32_t capacity)
     if (!cache->spine_ids) {
         nimcp_free(cache->cache);
         nimcp_free(cache);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_spine_cache_create: cache->spine_ids is NULL");
         return NULL;
     }
 
@@ -886,7 +929,10 @@ int surface_spine_cache_get(
     uint32_t spine_id,
     spine_surface_geometry_t* geometry)
 {
-    if (!cache || !geometry) return -1;
+    if (!cache || !geometry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_spine_cache_get: required parameter is NULL (cache, geometry)");
+        return -1;
+    }
 
     /* Linear search (could use hash map for larger caches) */
     for (uint32_t i = 0; i < cache->num_cached; i++) {
@@ -896,6 +942,7 @@ int surface_spine_cache_get(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_spine_cache_get: validation failed");
     return -1;  /* Not found */
 }
 
@@ -904,7 +951,10 @@ int surface_spine_cache_put(
     uint32_t spine_id,
     const spine_surface_geometry_t* geometry)
 {
-    if (!cache || !geometry) return -1;
+    if (!cache || !geometry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_spine_cache_put: required parameter is NULL (cache, geometry)");
+        return -1;
+    }
 
     /* Check if already cached */
     for (uint32_t i = 0; i < cache->num_cached; i++) {
@@ -930,7 +980,10 @@ int surface_spine_cache_put(
 
     /* Allocate and copy */
     cache->cache[cache->num_cached] = nimcp_malloc(sizeof(spine_surface_geometry_t));
-    if (!cache->cache[cache->num_cached]) return -1;
+    if (!cache->cache[cache->num_cached]) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_spine_cache_put: cache->cache is NULL");
+        return -1;
+    }
 
     memcpy(cache->cache[cache->num_cached], geometry, sizeof(*geometry));
     cache->spine_ids[cache->num_cached] = spine_id;
@@ -943,7 +996,10 @@ int surface_spine_cache_invalidate(
     spine_surface_cache_t* cache,
     uint32_t spine_id)
 {
-    if (!cache) return -1;
+    if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_spine_cache_invalidate: cache is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < cache->num_cached; i++) {
         if (cache->spine_ids[i] == spine_id) {
@@ -965,7 +1021,10 @@ int surface_spine_cache_invalidate(
 
 int surface_spine_cache_clear(spine_surface_cache_t* cache)
 {
-    if (!cache) return -1;
+    if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_spine_cache_clear: cache is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < cache->num_cached; i++) {
         if (cache->cache[i]) {
@@ -988,7 +1047,10 @@ int surface_geometry_get_stats(
     const surface_geometry_ctx_t* ctx,
     surface_geometry_stats_t* stats)
 {
-    if (!ctx || !stats) return -1;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_get_stats: required parameter is NULL (ctx, stats)");
+        return -1;
+    }
 
     memcpy(stats, &ctx->stats, sizeof(*stats));
 
@@ -1008,7 +1070,10 @@ int surface_geometry_get_stats(
 
 int surface_geometry_reset_stats(surface_geometry_ctx_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_reset_stats: ctx is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     memset(&ctx->stats, 0, sizeof(ctx->stats));
@@ -1027,7 +1092,10 @@ int surface_compute_region_stats(
     uint32_t region_id,
     surface_region_stats_t* stats)
 {
-    if (!branch_points || !stats) return -1;
+    if (!branch_points || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_region_stats: required parameter is NULL (branch_points, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(*stats));
     stats->region_id = region_id;
@@ -1087,8 +1155,14 @@ int surface_layer_send_downstream(
     const void* data,
     size_t data_size)
 {
-    if (!ctx || !data) return -1;
-    if (source_layer < 1 || source_layer > 4) return -1;
+    if (!ctx || !data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_layer_send_downstream: required parameter is NULL (ctx, data)");
+        return -1;
+    }
+    if (source_layer < 1 || source_layer > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_layer_send_downstream: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -1124,8 +1198,14 @@ int surface_layer_send_upstream(
     const void* feedback,
     size_t feedback_size)
 {
-    if (!ctx || !feedback) return -1;
-    if (source_layer < 1 || source_layer > 4) return -1;
+    if (!ctx || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_layer_send_upstream: required parameter is NULL (ctx, feedback)");
+        return -1;
+    }
+    if (source_layer < 1 || source_layer > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_layer_send_upstream: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 

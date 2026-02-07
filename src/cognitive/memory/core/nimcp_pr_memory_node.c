@@ -284,6 +284,7 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
             cfg.max_tracked_nodes, sizeof(pr_memory_node_t*));
         if (!manager->tracked_nodes) {
             nimcp_free(manager);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_node_manager_create: manager->tracked_nodes is NULL");
             return NULL;
         }
         manager->max_tracked = cfg.max_tracked_nodes;
@@ -373,6 +374,7 @@ pr_memory_node_t* pr_memory_node_create(
     }
 
     if (!data && data_size > 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_create: data is NULL");
         return NULL;
     }
 
@@ -416,6 +418,7 @@ pr_memory_node_t* pr_memory_node_create(
         node->data_handle = unified_mem_alloc(manager->mem_manager, &req);
         if (!node->data_handle) {
             nimcp_free(node);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_memory_node_create: node->data_handle is NULL");
             return NULL;
         }
     } else if (data_size > 0) {
@@ -518,6 +521,7 @@ pr_memory_node_t* pr_memory_node_clone(
     pr_node_manager_t manager
 ) {
     if (!node || !manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_clone: required parameter is NULL (node, manager)");
         return NULL;
     }
 
@@ -544,6 +548,7 @@ pr_memory_node_t* pr_memory_node_clone(
         clone->data_handle = unified_mem_clone(node->data_handle);
         if (!clone->data_handle) {
             nimcp_free(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_clone: clone->data_handle is NULL");
             return NULL;
         }
     }
@@ -572,6 +577,7 @@ pr_memory_node_t* pr_memory_node_clone(
 
 const void* pr_memory_node_read(pr_memory_node_t* node) {
     if (!node || !node->data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_read: required parameter is NULL (node, node->data_handle)");
         return NULL;
     }
 
@@ -585,12 +591,14 @@ const void* pr_memory_node_read(pr_memory_node_t* node) {
 
 void* pr_memory_node_write(pr_memory_node_t* node) {
     if (!node || !node->data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_write: required parameter is NULL (node, node->data_handle)");
         return NULL;
     }
 
     // Check if locked
     uint32_t flags = atomic_load(&node->flags);
     if (flags & PR_NODE_FLAG_LOCKED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_memory_node_write: validation failed");
         return NULL;
     }
 
@@ -607,6 +615,7 @@ void* pr_memory_node_write(pr_memory_node_t* node) {
 
 bool pr_memory_node_is_shared(const pr_memory_node_t* node) {
     if (!node || !node->data_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_is_shared: required parameter is NULL (node, node->data_handle)");
         return false;
     }
 
@@ -1029,6 +1038,7 @@ float pr_memory_node_reinforce(pr_memory_node_t* node, float reinforcement) {
 
 bool pr_memory_node_check_eligibility(const pr_memory_node_t* node) {
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_check_eligibility: node is NULL");
         return false;
     }
 
@@ -1038,16 +1048,19 @@ bool pr_memory_node_check_eligibility(const pr_memory_node_t* node) {
 
 
     if (node->tier >= PR_MEMORY_TIER_Z3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_memory_node_check_eligibility: capacity exceeded");
         return false;
     }
 
     // Check promotion eligibility threshold
     if (node->promotion_eligibility < PR_NODE_PROMOTION_THRESHOLD) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_check_eligibility: validation failed");
         return false;
     }
 
     // Check minimum strength
     if (node->current_strength < PR_NODE_PROMOTION_STRENGTH_MIN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_check_eligibility: validation failed");
         return false;
     }
 
@@ -1199,6 +1212,7 @@ uint32_t pr_memory_node_get_flags(const pr_memory_node_t* node) {
 
 bool pr_memory_node_has_flag(const pr_memory_node_t* node, pr_node_flags_t flag) {
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_has_flag: node is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1478,6 +1492,7 @@ pr_memory_node_t* pr_memory_node_deserialize(
     size_t* bytes_read
 ) {
     if (!manager || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_deserialize: required parameter is NULL (manager, buffer)");
         return NULL;
     }
 
@@ -1486,6 +1501,7 @@ pr_memory_node_t* pr_memory_node_deserialize(
 
 
     if (buffer_size < sizeof(pr_node_serial_header_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_deserialize: validation failed");
         return NULL;
     }
 
@@ -1499,16 +1515,19 @@ pr_memory_node_t* pr_memory_node_deserialize(
 
     // Validate magic number
     if (header.magic != PR_NODE_SERIAL_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_deserialize: validation failed");
         return NULL;
     }
 
     // Validate version
     if (header.version > PR_NODE_SERIALIZATION_VERSION) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_deserialize: validation failed");
         return NULL;
     }
 
     // Validate size
     if (buffer_size < header.total_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_memory_node_deserialize: validation failed");
         return NULL;
     }
 
@@ -1516,6 +1535,7 @@ pr_memory_node_t* pr_memory_node_deserialize(
     uint32_t expected_crc = compute_crc32(ptr + sizeof(pr_node_serial_header_t),
                                            header.total_size - sizeof(pr_node_serial_header_t));
     if (header.checksum != expected_crc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_memory_node_deserialize: validation failed");
         return NULL;
     }
 

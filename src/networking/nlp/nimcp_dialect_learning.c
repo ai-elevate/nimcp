@@ -169,6 +169,7 @@ static dialect_entry_t* find_dialect_entry(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_dialect_entry: operation failed");
     return NULL;
 }
 
@@ -186,12 +187,16 @@ static dialect_entry_t* create_dialect_entry(
     uint32_t dim
 ) {
     // Guard clauses
-    if (!dl || dim == 0) return NULL;
+    if (!dl || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "create_dialect_entry: dl is NULL");
+        return NULL;
+    }
 
     // Allocate entry
     dialect_entry_t* entry = (dialect_entry_t*)nimcp_calloc(1, sizeof(dialect_entry_t));
     if (!entry) {
         set_error("Failed to allocate dialect entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_dialect_entry: entry is NULL");
         return NULL;
     }
 
@@ -210,6 +215,7 @@ static dialect_entry_t* create_dialect_entry(
     if (!entry->dialect.translation_matrix) {
         set_error("Failed to allocate translation matrix");
         nimcp_free(entry);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_dialect_entry: entry->dialect is NULL");
         return NULL;
     }
 
@@ -342,6 +348,7 @@ dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config)
     dialect_learner_t dl = (dialect_learner_t)nimcp_malloc(sizeof(dialect_learner_struct));
     if (!dl) {
         set_error("Failed to allocate dialect learner structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dialect_learner_create: dl is NULL");
         return NULL;
     }
     memset(dl, 0, sizeof(dialect_learner_struct));
@@ -361,6 +368,7 @@ dialect_learner_t dialect_learner_create(const dialect_learner_config_t* config)
     if (nimcp_mutex_init(&dl->lock, NULL) != NIMCP_SUCCESS) {
         set_error("Failed to initialize mutex");
         nimcp_free(dl);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "dialect_learner_create: validation failed");
         return NULL;
     }
 
@@ -452,11 +460,13 @@ int dialect_learn_from_pairs(
     // Guard clauses
     if (!dl || !source_signals || !target_signals || num_pairs == 0 || signal_size == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_learn_from_pairs: required parameter is NULL (dl, source_signals, target_signals)");
         return -1;
     }
 
     if (signal_size > dl->config.translation_dim) {
         set_error("Signal size exceeds translation dimension");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_learn_from_pairs: validation failed");
         return -1;
     }
 
@@ -468,12 +478,14 @@ int dialect_learn_from_pairs(
         if (dl->dialect_count >= dl->config.max_dialects) {
             nimcp_mutex_unlock(&dl->lock);
             set_error("Maximum dialects reached");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "dialect_learn_from_pairs: capacity exceeded");
             return -1;
         }
 
         entry = create_dialect_entry(dl, source, target, signal_size);
         if (!entry) {
             nimcp_mutex_unlock(&dl->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_learn_from_pairs: entry is NULL");
             return -1;
         }
         insert_dialect_entry(dl, entry);
@@ -548,6 +560,7 @@ int dialect_update_online(
     // Guard clauses
     if (!dl || !source_signal || !target_signal || signal_size == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_update_online: required parameter is NULL (dl, source_signal, target_signal)");
         return -1;
     }
 
@@ -557,6 +570,7 @@ int dialect_update_online(
     if (!entry) {
         nimcp_mutex_unlock(&dl->lock);
         set_error("Dialect not found");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_update_online: entry is NULL");
         return -1;
     }
 
@@ -592,6 +606,7 @@ int dialect_translate(
     // Guard clauses
     if (!dl || !signal || !translated || !translated_size || signal_size == 0) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_translate: required parameter is NULL (dl, signal, translated, translated_size)");
         return -1;
     }
 
@@ -611,6 +626,7 @@ int dialect_translate(
         }
 
         set_error("No dialect or path found");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_translate: result is zero");
         return -1;
     }
 
@@ -638,6 +654,7 @@ int dialect_translate_with(
     // Guard clauses
     if (!dl || !dialect || !signal || !translated || !translated_size) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_translate_with: required parameter is NULL (dl, dialect, signal, translated, translated_size)");
         return -1;
     }
 
@@ -663,6 +680,7 @@ int dialect_get(
     // Guard clauses
     if (!dl || !dialect) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get: required parameter is NULL (dl, dialect)");
         return -1;
     }
 
@@ -672,6 +690,7 @@ int dialect_get(
     if (!entry) {
         nimcp_mutex_unlock(&dl->lock);
         set_error("Dialect not found");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get: entry is NULL");
         return -1;
     }
 
@@ -685,7 +704,10 @@ int dialect_get(
 
 bool dialect_exists(dialect_learner_t dl, uint32_t source, uint32_t target) {
     // Guard clause
-    if (!dl) return false;
+    if (!dl) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_exists: dl is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&dl->lock);
     bool exists = (find_dialect_entry(dl, source, target) != NULL);
@@ -718,6 +740,7 @@ int dialect_get_bridge_path(
     // Guard clauses
     if (!dl || !path || !path_len) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get_bridge_path: required parameter is NULL (dl, path, path_len)");
         return -1;
     }
 
@@ -736,6 +759,7 @@ int dialect_get_bridge_path(
 
     nimcp_mutex_unlock(&dl->lock);
     set_error("No path found (multi-hop search not yet implemented)");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_get_bridge_path: operation failed");
     return -1;
 }
 
@@ -751,6 +775,7 @@ int dialect_translate_path(
     // Guard clauses
     if (!dl || !path || !signal || !translated || !translated_size || path_len < 2) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_translate_path: required parameter is NULL (dl, path, signal, translated, translated_size)");
         return -1;
     }
 
@@ -801,6 +826,7 @@ int dialect_get_all(
     // Guard clauses
     if (!dl || !dialects || !count) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get_all: required parameter is NULL (dl, dialects, count)");
         return -1;
     }
 
@@ -826,6 +852,7 @@ int dialect_remove(dialect_learner_t dl, uint32_t source, uint32_t target) {
     // Guard clause
     if (!dl) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_remove: dl is NULL");
         return -1;
     }
 
@@ -853,6 +880,7 @@ int dialect_remove(dialect_learner_t dl, uint32_t source, uint32_t target) {
 
     nimcp_mutex_unlock(&dl->lock);
     set_error("Dialect not found");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dialect_remove: operation failed");
     return -1;
 }
 
@@ -860,6 +888,7 @@ int dialect_clear_all(dialect_learner_t dl) {
     // Guard clause
     if (!dl) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_clear_all: dl is NULL");
         return -1;
     }
 
@@ -891,6 +920,7 @@ int dialect_get_stats(dialect_learner_t dl, dialect_learner_stats_t* stats) {
     // Guard clauses
     if (!dl || !stats) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_get_stats: required parameter is NULL (dl, stats)");
         return -1;
     }
 
@@ -906,6 +936,7 @@ int dialect_reset_stats(dialect_learner_t dl) {
     // Guard clause
     if (!dl) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_reset_stats: dl is NULL");
         return -1;
     }
 
@@ -924,6 +955,7 @@ int dialect_clone(const neural_dialect_t* original, neural_dialect_t* clone) {
     // Guard clauses
     if (!original || !clone) {
         set_error("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dialect_clone: required parameter is NULL (original, clone)");
         return -1;
     }
 
@@ -935,6 +967,7 @@ int dialect_clone(const neural_dialect_t* original, neural_dialect_t* clone) {
     clone->translation_matrix = (float*)nimcp_malloc(matrix_size);
     if (!clone->translation_matrix) {
         set_error("Failed to allocate cloned matrix");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dialect_clone: clone->translation_matrix is NULL");
         return -1;
     }
 

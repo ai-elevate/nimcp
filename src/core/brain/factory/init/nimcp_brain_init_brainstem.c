@@ -107,6 +107,7 @@ bool nimcp_brain_init_brainstem(struct brain_struct* brain) {
     if (!brain->brainstem) {
         LOG_ERROR("[%s] Failed to create brainstem adapter", BRAINSTEM_INIT_LOG_MODULE);
         brain->brainstem_enabled = false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_init_brainstem: brain->brainstem is NULL");
         return false;
     }
 
@@ -264,6 +265,7 @@ bool nimcp_brain_update_brainstem(struct brain_struct* brain, float dt) {
     /* Update brainstem adapter */
     if (!brainstem_update(brain->brainstem, dt)) {
         LOG_WARN("[%s] Brainstem update failed", BRAINSTEM_INIT_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_brain_update_brainstem: brainstem_update is NULL");
         return false;
     }
 

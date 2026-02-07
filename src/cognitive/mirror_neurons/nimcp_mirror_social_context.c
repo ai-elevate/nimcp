@@ -157,6 +157,7 @@ static int32_t find_agent_slot(const struct social_context_system* sys,
             return (int32_t)idx;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: validation failed");
     return -1;
 }
 
@@ -181,6 +182,7 @@ static int32_t find_or_create_agent_slot(struct social_context_system* sys,
     if (sys->agent_count >= NIMCP_SOCIAL_MAX_AGENTS) {
         nimcp_log(LOG_LEVEL_WARN, "Social context: max agents (%d) reached",
                   NIMCP_SOCIAL_MAX_AGENTS);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hash_agent_id: capacity exceeded");
         return -1;
     }
 
@@ -209,6 +211,7 @@ static int32_t find_or_create_agent_slot(struct social_context_system* sys,
             return (int32_t)idx;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hash_agent_id: operation failed");
     return -1;
 }
 
@@ -398,7 +401,10 @@ bool social_context_set_affinity(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_default_config: validation failed");
+        return false;
+    }
 
     ctx->agents[slot].modulation.in_group_affinity = clamp_f(affinity, 0.0f, 1.0f);
     ctx->agents[slot].modulation.affinity_confidence = clamp_f(confidence, 0.0f, 1.0f);
@@ -422,7 +428,10 @@ bool social_context_set_hierarchy(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_default_config: validation failed");
+        return false;
+    }
 
     ctx->agents[slot].modulation.social_hierarchy = clamp_f(hierarchy, -1.0f, 1.0f);
     ctx->agents[slot].modulation.hierarchy_confidence = clamp_f(confidence, 0.0f, 1.0f);
@@ -446,7 +455,10 @@ bool social_context_set_cultural(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_default_config: validation failed");
+        return false;
+    }
 
     ctx->agents[slot].modulation.cultural_familiarity = clamp_f(familiarity, 0.0f, 1.0f);
     ctx->agents[slot].modulation.cultural_confidence = clamp_f(confidence, 0.0f, 1.0f);
@@ -470,7 +482,10 @@ bool social_context_set_emotional(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_default_config: validation failed");
+        return false;
+    }
 
     ctx->agents[slot].modulation.emotional_valence = clamp_f(valence, -1.0f, 1.0f);
     ctx->agents[slot].modulation.emotional_confidence = clamp_f(confidence, 0.0f, 1.0f);
@@ -493,7 +508,10 @@ bool social_context_set_modulation(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_default_config: validation failed");
+        return false;
+    }
 
     ctx->agents[slot].modulation = *modulation;
     ctx->agents[slot].modulation.gain_valid = false;
@@ -590,7 +608,10 @@ bool social_context_learn_interaction(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_compute_gain: validation failed");
+        return false;
+    }
 
     (void)interaction_type;  /* Reserved for future context-specific learning */
 
@@ -631,7 +652,10 @@ bool social_context_update_competence(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_compute_gain: validation failed");
+        return false;
+    }
 
     agent_social_context_t* agent = &ctx->agents[slot];
     float skill = clamp_f(demonstrated_skill, 0.0f, 1.0f);
@@ -721,7 +745,10 @@ bool social_context_get_agent(social_context_t ctx,
 
 
     int32_t slot = find_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_decay: validation failed");
+        return false;
+    }
 
     *out_context = ctx->agents[slot];
     return true;
@@ -816,7 +843,10 @@ bool social_context_observe_agent(social_context_t ctx,
 
 
     int32_t slot = find_or_create_agent_slot(ctx, agent_id);
-    if (slot < 0) return false;
+    if (slot < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_has_agent: validation failed");
+        return false;
+    }
 
     agent_social_context_t* agent = &ctx->agents[slot];
 
@@ -833,7 +863,10 @@ bool social_context_observe_agent(social_context_t ctx,
  * ============================================================================ */
 
 bool social_context_register_bio_async(social_context_t ctx) {
-    if (!ctx || ctx->bio_async_registered) return false;
+    if (!ctx || ctx->bio_async_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_register_bio_async: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_register_bio_async", 0.0f);

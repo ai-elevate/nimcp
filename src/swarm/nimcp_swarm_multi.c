@@ -243,7 +243,10 @@ static uint64_t swarm_id_hash(const void* key) {
 static int swarm_id_compare(const void* a, const void* b) {
     uint64_t id_a = *(const uint64_t*)a;
     uint64_t id_b = *(const uint64_t*)b;
-    if (id_a < id_b) return -1;
+    if (id_a < id_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "swarm_id_compare: validation failed");
+        return -1;
+    }
     if (id_a > id_b) return 1;
     return 0;
 }
@@ -775,6 +778,7 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
 
     if (!coordinator) {
         LOG_ERROR("Failed to allocate multi-swarm coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_swarm_create: coordinator is NULL");
         return NULL;
     }
 
@@ -790,6 +794,7 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     if (!coordinator->swarm_registry) {
         LOG_ERROR("Failed to create swarm registry");
         nimcp_free(coordinator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_swarm_create: coordinator->swarm_registry is NULL");
         return NULL;
     }
 
@@ -798,6 +803,7 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
         LOG_ERROR("Failed to create mission registry");
         hash_table_destroy(coordinator->swarm_registry);
         nimcp_free(coordinator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_multi_swarm_create: coordinator->mission_registry is NULL");
         return NULL;
     }
 
@@ -807,6 +813,7 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
         hash_table_destroy(coordinator->mission_registry);
         hash_table_destroy(coordinator->swarm_registry);
         nimcp_free(coordinator);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_multi_swarm_create: validation failed");
         return NULL;
     }
 
@@ -899,6 +906,7 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
 ) {
     if (!coordinator || !name) {
         LOG_ERROR("Invalid parameters for swarm identity creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_identity_create: required parameter is NULL (coordinator, name)");
         return NULL;
     }
 
@@ -907,6 +915,7 @@ nimcp_swarm_identity_t* nimcp_swarm_identity_create(
 
     if (!identity) {
         LOG_ERROR("Failed to allocate swarm identity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_identity_create: identity is NULL");
         return NULL;
     }
 
@@ -1081,6 +1090,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
 ) {
     if (!coordinator || !name) {
         LOG_ERROR("Invalid parameters for super-swarm creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_super_swarm_create: required parameter is NULL (coordinator, name)");
         return NULL;
     }
 
@@ -1089,6 +1099,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
 
     if (!super_swarm) {
         LOG_ERROR("Failed to allocate super-swarm");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_super_swarm_create: super_swarm is NULL");
         return NULL;
     }
 
@@ -1104,6 +1115,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
     if (!super_swarm->resource_requests) {
         LOG_ERROR("Failed to create resource request table");
         nimcp_free(super_swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_super_swarm_create: super_swarm->resource_requests is NULL");
         return NULL;
     }
 
@@ -1113,6 +1125,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
         LOG_ERROR("Failed to create conflicts array");
         hash_table_destroy(super_swarm->resource_requests);
         nimcp_free(super_swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_super_swarm_create: super_swarm->conflicts is NULL");
         return NULL;
     }
 
@@ -1124,6 +1137,7 @@ nimcp_super_swarm_t* nimcp_super_swarm_create(
         conflict_array_destroy((nimcp_darray_t*)super_swarm->conflicts);
         hash_table_destroy(super_swarm->resource_requests);
         nimcp_free(super_swarm);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_super_swarm_create: validation failed");
         return NULL;
     }
 
@@ -1278,6 +1292,7 @@ bool nimcp_territory_overlaps(
     const nimcp_territory_bounds_t* bounds_b
 ) {
     if (!bounds_a || !bounds_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_territory_overlaps: required parameter is NULL (bounds_a, bounds_b)");
         return false;
     }
 
@@ -1713,6 +1728,7 @@ nimcp_mission_assignment_t* nimcp_mission_get(
     uint64_t mission_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_mission_get: coordinator is NULL");
         return NULL;
     }
 
@@ -1985,6 +2001,7 @@ static bool collect_resource_request_cb(const void* key, size_t key_size,
 
     resource_request_collect_ctx_t* ctx = (resource_request_collect_ctx_t*)user_data;
     if (!ctx || ctx->count >= ctx->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "calculate_conflict_severity: ctx is NULL");
         return false;  /* Stop iteration if full */
     }
 
@@ -2497,6 +2514,7 @@ static nimcp_swarm_conflict_t* find_conflict_by_id(
     uint32_t conflict_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict_by_id: coordinator is NULL");
         return NULL;
     }
 
@@ -2514,6 +2532,7 @@ static nimcp_swarm_conflict_t* find_conflict_by_id(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict_by_id: validation failed");
     return NULL;
 }
 
@@ -3114,6 +3133,7 @@ nimcp_swarm_identity_t* nimcp_swarm_get(
     uint64_t swarm_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_get: coordinator is NULL");
         return NULL;
     }
 

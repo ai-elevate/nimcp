@@ -105,6 +105,7 @@ static credential_entry_t* find_credential(mesh_msp_t* msp, mesh_participant_id_
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_credential: validation failed");
     return NULL;
 }
 
@@ -116,6 +117,7 @@ static policy_entry_t* find_policy(mesh_msp_t* msp, const char* name) {
         }
         entry = entry->next;
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_policy: validation failed");
     return NULL;
 }
 
@@ -161,6 +163,7 @@ mesh_msp_t* mesh_msp_create(
 ) {
     mesh_msp_t* msp = nimcp_calloc(1, sizeof(mesh_msp_t));
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_msp_create: msp is NULL");
         return NULL;
     }
 
@@ -455,6 +458,7 @@ const credential_t* mesh_msp_get_credential(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_get_credential: msp is NULL");
         return NULL;
     }
 
@@ -466,6 +470,7 @@ const credential_t* mesh_msp_get_credential(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_get_credential: validation failed");
     return NULL;
 }
 
@@ -475,15 +480,18 @@ bool mesh_msp_is_credential_valid(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_credential_valid: cred is NULL");
         return false;
     }
 
     if (cred->state != CREDENTIAL_STATE_VALID) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_credential_valid: validation failed");
         return false;
     }
 
     uint64_t now = get_time_ns();
     if (cred->expires_at_ns > 0 && now > cred->expires_at_ns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_credential_valid: validation failed");
         return false;
     }
 
@@ -589,6 +597,7 @@ bool mesh_msp_has_channel_membership(
     mesh_channel_id_t channel_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_has_channel_membership: msp is NULL");
         return false;
     }
 
@@ -605,6 +614,7 @@ bool mesh_msp_has_channel_membership(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_has_channel_membership: validation failed");
     return false;
 }
 
@@ -815,6 +825,7 @@ bool mesh_msp_check_capability(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_check_capability: cred is NULL");
         return false;
     }
 
@@ -828,6 +839,7 @@ bool mesh_msp_check_privilege(
 ) {
     const credential_t* cred = mesh_msp_get_credential(msp, participant_id);
     if (!cred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_check_privilege: cred is NULL");
         return false;
     }
 
@@ -917,11 +929,13 @@ bool mesh_msp_evaluate_policy(
     const mesh_transaction_t* tx
 ) {
     if (!msp || !policy_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_evaluate_policy: required parameter is NULL (msp, policy_name)");
         return false;
     }
 
     policy_entry_t* entry = find_policy((mesh_msp_t*)msp, policy_name);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_evaluate_policy: entry is NULL");
         return false;
     }
 
@@ -933,6 +947,7 @@ bool mesh_msp_evaluate_policy(
             return true;
 
         case MSP_POLICY_DENY_ALL:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_evaluate_policy: operation failed");
             return false;
 
         case MSP_POLICY_PRIVILEGE_LEVEL:
@@ -947,6 +962,7 @@ bool mesh_msp_evaluate_policy(
             for (size_t i = 0; i < policy->required_channel_count; i++) {
                 if (!mesh_msp_has_channel_membership(msp, participant_id,
                                                       policy->required_channels[i])) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_evaluate_policy: policy->required_channels is NULL");
                     return false;
                 }
             }
@@ -959,6 +975,7 @@ bool mesh_msp_evaluate_policy(
             return false;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_evaluate_policy: validation failed");
             return false;
     }
 }
@@ -1090,6 +1107,7 @@ bool mesh_msp_is_quarantined(
     mesh_participant_id_t participant_id
 ) {
     if (!msp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_quarantined: msp is NULL");
         return false;
     }
 
@@ -1097,11 +1115,13 @@ bool mesh_msp_is_quarantined(
     while (entry) {
         if (entry->participant_id == participant_id) {
             if (!entry->quarantined) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_msp_is_quarantined: entry->quarantined is NULL");
                 return false;
             }
             /* Check if quarantine expired */
             uint64_t now = get_time_ns();
             if (entry->quarantine_end_ns > 0 && now > entry->quarantine_end_ns) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_quarantined: validation failed");
                 return false;
             }
             return true;
@@ -1109,6 +1129,7 @@ bool mesh_msp_is_quarantined(
         entry = entry->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mesh_msp_is_quarantined: validation failed");
     return false;
 }
 

@@ -222,6 +222,7 @@ static int find_sequence_slot(mirror_prefrontal_bridge_t bridge, uint32_t sequen
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_sequence_slot: validation failed");
     return -1;
 }
 
@@ -378,6 +379,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to create mutex");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_prefrontal_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -414,6 +416,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
             NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate sequence memory");
             bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mirror_prefrontal_bridge_create: bridge->sequences is NULL");
             return NULL;
         }
     }
@@ -795,6 +798,7 @@ int mirror_prefrontal_recall_sequence(
     int slot = find_sequence_slot(bridge, sequence_id);
     if (slot < 0) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_recall_sequence: validation failed");
         return -1;
     }
 

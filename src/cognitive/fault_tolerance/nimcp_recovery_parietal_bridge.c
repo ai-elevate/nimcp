@@ -228,6 +228,7 @@ recovery_parietal_bridge_t* recovery_parietal_bridge_create(
 ) {
     if (!parietal) {
         fprintf(stderr, "[RECOVERY-PARIETAL] ERROR: NULL parietal handle\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_bridge_create: parietal is NULL");
         return NULL;
     }
 
@@ -238,6 +239,7 @@ recovery_parietal_bridge_t* recovery_parietal_bridge_create(
     recovery_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(recovery_parietal_bridge_t));
     if (!bridge) {
         fprintf(stderr, "[RECOVERY-PARIETAL] ERROR: Failed to allocate bridge\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_parietal_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -308,6 +310,7 @@ int recovery_parietal_bridge_attach_executive(
     recovery_executive_t* exec
 ) {
     if (!bridge || !exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_bridge_attach_executive: required parameter is NULL (bridge, exec)");
         return -1;
     }
 
@@ -325,6 +328,7 @@ int recovery_executive_attach_parietal(
     parietal_lobe_t* parietal
 ) {
     if (!exec || !parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_attach_parietal: required parameter is NULL (exec, parietal)");
         return -1;
     }
 
@@ -359,6 +363,7 @@ parietal_lobe_t* recovery_executive_get_parietal(const recovery_executive_t* exe
 
 
     (void)exec;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_executive_get_parietal: operation failed");
     return NULL;
 }
 
@@ -372,10 +377,12 @@ int recovery_parietal_analyze_code(
     code_analysis_result_t* result
 ) {
     if (!bridge || !request || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_analyze_code: required parameter is NULL (bridge, request, result)");
         return -1;
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_analyze_code: recovery_parietal_bridge_is_ready is NULL");
         return -1;
     }
 
@@ -510,10 +517,12 @@ int recovery_parietal_analyze_impact(
     uint32_t max_modules
 ) {
     if (!bridge || !location || !affected_modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_analyze_impact: required parameter is NULL (bridge, location, affected_modules)");
         return -1;
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_analyze_impact: recovery_parietal_bridge_is_ready is NULL");
         return -1;
     }
 
@@ -548,10 +557,12 @@ int recovery_parietal_detect_smells(
     uint32_t max_smells
 ) {
     if (!bridge || !location || !smells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_detect_smells: required parameter is NULL (bridge, location, smells)");
         return -1;
     }
 
     if (!recovery_parietal_bridge_is_ready(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_parietal_detect_smells: recovery_parietal_bridge_is_ready is NULL");
         return -1;
     }
 
@@ -595,6 +606,7 @@ int recovery_parietal_find_similar_failures(
     uint32_t max_patterns
 ) {
     if (!bridge || !diagnosis || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_find_similar_failures: required parameter is NULL (bridge, diagnosis, result)");
         return -1;
     }
 
@@ -632,6 +644,7 @@ int recovery_parietal_learn_pattern(
     bool success
 ) {
     if (!bridge || !diagnosis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_learn_pattern: required parameter is NULL (bridge, diagnosis)");
         return -1;
     }
 
@@ -706,6 +719,7 @@ int recovery_parietal_enhance_plan(
     recovery_enhancement_t* enhancement
 ) {
     if (!bridge || !exec || !diagnosis || !enhancement) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_enhance_plan: required parameter is NULL (bridge, exec, diagnosis, enhancement)");
         return -1;
     }
 
@@ -822,6 +836,7 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     const code_location_t* location
 ) {
     if (!bridge || !exec || !diagnosis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_create_enhanced_plan: required parameter is NULL (bridge, exec, diagnosis)");
         return NULL;
     }
 
@@ -833,6 +848,7 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     recovery_enhancement_t enhancement;
     int ret = recovery_parietal_enhance_plan(bridge, exec, diagnosis, location, &enhancement);
     if (ret != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_create_enhanced_plan: validation failed");
         return NULL;
     }
 
@@ -929,6 +945,7 @@ int recovery_parietal_create_hypothesis(
     float* confidence
 ) {
     if (!bridge || !diagnosis || !hypothesis || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_create_hypothesis: required parameter is NULL (bridge, diagnosis, hypothesis, confidence)");
         return -1;
     }
 
@@ -984,6 +1001,7 @@ int recovery_parietal_test_hypothesis(
     float* updated_confidence
 ) {
     if (!bridge || !hypothesis || !evidence || !updated_confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_test_hypothesis: required parameter is NULL (bridge, hypothesis, evidence, updated_confidence)");
         return -1;
     }
 
@@ -1023,6 +1041,7 @@ int recovery_parietal_get_stats(
     recovery_parietal_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_get_stats: required parameter is NULL (bridge, stats)");
         return -1;
     }
 
@@ -1085,10 +1104,12 @@ int recovery_parietal_generate_fix(
     size_t explanation_size
 ) {
     if (!bridge || !diagnosis || !fix_code || fix_code_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_generate_fix: required parameter is NULL (bridge, diagnosis, fix_code)");
         return -1;
     }
 
     if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_generate_fix: bridge->initialized is NULL");
         return -1;
     }
 
@@ -1191,6 +1212,7 @@ int recovery_parietal_generate_fix_candidates(
     uint32_t* generated_count
 ) {
     if (!bridge || !diagnosis || !candidates || max_candidates == 0 || !generated_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_generate_fix_candidates: required parameter is NULL (bridge, diagnosis, candidates, generated_count)");
         return -1;
     }
 
@@ -1223,6 +1245,7 @@ int recovery_parietal_learn_fix_outcome(
     bool success
 ) {
     if (!bridge || !diagnosis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_parietal_learn_fix_outcome: required parameter is NULL (bridge, diagnosis)");
         return -1;
     }
 

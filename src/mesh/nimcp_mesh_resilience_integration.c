@@ -110,6 +110,7 @@ mesh_resilience_integration_t* mesh_resilience_integration_create(
 ) {
     if (!bootstrap) {
         LOG_ERROR("Cannot create resilience integration without bootstrap");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_resilience_integration_create: bootstrap is NULL");
         return NULL;
     }
 
@@ -122,6 +123,7 @@ mesh_resilience_integration_t* mesh_resilience_integration_create(
     mesh_resilience_integration_t* res = nimcp_calloc(1, sizeof(*res));
     if (!res) {
         LOG_ERROR("Failed to allocate resilience integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_resilience_integration_create: res is NULL");
         return NULL;
     }
 
@@ -140,6 +142,7 @@ mesh_resilience_integration_t* mesh_resilience_integration_create(
     if (!res->mutex) {
         LOG_ERROR("Failed to create resilience mutex");
         nimcp_free(res);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_resilience_integration_create: res->mutex is NULL");
         return NULL;
     }
 
@@ -176,6 +179,7 @@ static int find_agent_by_id(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_agent_by_id: validation failed");
     return -1;
 }
 
@@ -214,6 +218,7 @@ static bool dequeue_recovery(
     mesh_recovery_action_t* action
 ) {
     if (res->recovery_queue_head == res->recovery_queue_tail) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dequeue_recovery: validation failed");
         return false;  /* Empty */
     }
     *action = res->recovery_queue[res->recovery_queue_head];

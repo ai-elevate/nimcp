@@ -424,6 +424,7 @@ static rcog_task_node_t* steal_task(rcog_worker_queue_t* queue) {
     /* Steal from tail (lowest priority) */
     if (!queue->head || !queue->head->next) {
         nimcp_mutex_unlock(queue->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "steal_task: required parameter is NULL (queue->head, queue->head->next)");
         return NULL;
     }
 
@@ -541,6 +542,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     pool->mutex = nimcp_mutex_create(&attr);
     if (!pool->mutex) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_delegation_pool_create: pool->mutex is NULL");
         return NULL;
     }
 
@@ -549,6 +551,7 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     if (!pool->workers) {
         nimcp_mutex_free(pool->mutex);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rcog_delegation_pool_create: pool->workers is NULL");
         return NULL;
     }
 
@@ -1129,7 +1132,10 @@ bool rcog_delegation_pool_poll_batch(
     size_t* completed,
     size_t* total
 ) {
-    if (!pool || !handle) return false;
+    if (!pool || !handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_delegation_pool_poll_batch: required parameter is NULL (pool, handle)");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     rcog_delegation_pool_heartbeat("rcog_delegat_poll_batch", 0.0f);
@@ -1928,7 +1934,10 @@ uint32_t rcog_delegation_pool_estimate_wait_time(
 }
 
 bool rcog_delegation_pool_has_capacity(const rcog_delegation_pool_t* pool) {
-    if (!pool) return false;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rcog_delegation_pool_has_capacity: pool is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     rcog_delegation_pool_heartbeat("rcog_delegat_has_capacity", 0.0f);
@@ -2234,7 +2243,10 @@ static void execute_task(rcog_worker_t* worker, rcog_task_node_t* node) {
 
 static void* worker_thread_func(void* arg) {
     rcog_worker_t* worker = (rcog_worker_t*)arg;
-    if (!worker || !worker->pool) return NULL;
+    if (!worker || !worker->pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread_func: required parameter is NULL (worker, worker->pool)");
+        return NULL;
+    }
 
     rcog_delegation_pool_t* pool = worker->pool;
 
@@ -2281,6 +2293,7 @@ static void* worker_thread_func(void* arg) {
     }
 
     worker->state = RCOG_WORKER_STOPPED;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "worker_thread_func: validation failed");
     return NULL;
 }
 

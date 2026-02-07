@@ -142,6 +142,7 @@ static NimcpDroneRoleState* find_drone_state(
     uint32_t drone_id
 ) {
     if (!morph || !morph->drone_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_drone_state: required parameter is NULL (morph, morph->drone_states)");
         return NULL;
     }
 
@@ -151,6 +152,7 @@ static NimcpDroneRoleState* find_drone_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_drone_state: validation failed");
     return NULL;
 }
 
@@ -270,17 +272,20 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
 
     if (max_drones == 0 || max_drones > 100000) {
         LOG_ERROR("Invalid max_drones: %u", max_drones);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_swarm_morphogenesis_create: max_drones is zero");
         return NULL;
     }
 
     if (transition_cooldown < NIMCP_MORPH_MIN_COOLDOWN ||
         transition_cooldown > NIMCP_MORPH_MAX_COOLDOWN) {
         LOG_ERROR("Invalid transition_cooldown: %.2f", transition_cooldown);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_swarm_morphogenesis_create: max_drones is zero");
         return NULL;
     }
 
     if (rebalance_threshold < 0.0F || rebalance_threshold > 1.0F) {
         LOG_ERROR("Invalid rebalance_threshold: %.2f", rebalance_threshold);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_swarm_morphogenesis_create: validation failed");
         return NULL;
     }
 
@@ -309,6 +314,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     if (!morph->drone_states) {
         LOG_ERROR("Failed to allocate drone states");
         nimcp_free(morph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_morphogenesis_create: morph->drone_states is NULL");
         return NULL;
     }
     memset(morph->drone_states, 0, max_drones * sizeof(NimcpDroneRoleState));
@@ -321,6 +327,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
         LOG_ERROR("Failed to allocate global gradients");
         nimcp_free(morph->drone_states);
         nimcp_free(morph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_morphogenesis_create: morph->global_gradients is NULL");
         return NULL;
     }
     memset(morph->global_gradients, 0,
@@ -343,6 +350,7 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
         nimcp_free(morph->global_gradients);
         nimcp_free(morph->drone_states);
         nimcp_free(morph);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_swarm_morphogenesis_create: validation failed");
         return NULL;
     }
 
@@ -1093,6 +1101,7 @@ bool nimcp_swarm_morphogenesis_role_has_capability(
     NimcpRoleCapability capability
 ) {
     if (role < 0 || role >= NIMCP_SWARM_ROLE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "nimcp_swarm_morphogenesis_role_has_capability: capacity exceeded");
         return false;
     }
     return (ROLE_SPECS[role].capabilities & capability) != 0;

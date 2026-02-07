@@ -134,6 +134,7 @@ incremental_processor_t* incremental_create(const incremental_config_t* config) 
         nimcp_free(processor->output_buffer);
         nimcp_free(processor->revisions);
         nimcp_free(processor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incremental_create: required parameter is NULL (processor->input_buffer, processor->output_buffer, processor->revisions)");
         return NULL;
     }
 
@@ -341,7 +342,10 @@ bool incremental_get_output(
     }
 
     output->units = (incremental_unit_t*)nimcp_calloc(processor->output_count, sizeof(incremental_unit_t));
-    if (!output->units) return false;
+    if (!output->units) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "incremental_force_commit: output->units is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < processor->output_count; i++) {
         uint32_t slot = (processor->output_head + i) % processor->config.output_buffer_size;
@@ -413,6 +417,7 @@ bool incremental_revise_unit(
 
     processor->last_error = INCREMENTAL_ERROR_REVISION_FAILED;
     processor->stats.revisions_failed++;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incremental_free_output: operation failed");
     return false;
 }
 
@@ -445,7 +450,10 @@ bool incremental_can_revise(
     const incremental_processor_t* processor,
     uint32_t unit_id) {
 
-    if (!processor || !processor->config.enable_revision) return false;
+    if (!processor || !processor->config.enable_revision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "incremental_free_output: required parameter is NULL (processor, processor->config)");
+        return false;
+    }
 
     for (uint32_t i = 0; i < processor->input_count; i++) {
         uint32_t slot = (processor->input_head + i) % processor->config.input_buffer_size;
@@ -456,6 +464,7 @@ bool incremental_can_revise(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "incremental_free_output: validation failed");
     return false;
 }
 

@@ -179,9 +179,15 @@ static void compute_strides(
  */
 static bool shapes_equal(const nimcp_tensor_shape_t* a, const nimcp_tensor_shape_t* b)
 {
-    if (a->rank != b->rank) return false;
+    if (a->rank != b->rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shapes_equal: validation failed");
+        return false;
+    }
     for (uint32_t i = 0; i < a->rank; i++) {
-        if (a->dims[i] != b->dims[i]) return false;
+        if (a->dims[i] != b->dims[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "shapes_equal: validation failed");
+            return false;
+        }
     }
     return true;
 }
@@ -213,6 +219,7 @@ static bool can_broadcast(
         } else if (db == 1) {
             result->dims[ri] = da;
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "can_broadcast: validation failed");
             return false;  /* Cannot broadcast */
         }
     }
@@ -295,6 +302,7 @@ nimcp_tensor_t* nimcp_tensor_create(
     /* Validate inputs */
     if (rank > NIMCP_TENSOR_MAX_RANK) {
         LOG_ERROR(LOG_MODULE, "Rank %u exceeds max %d", rank, NIMCP_TENSOR_MAX_RANK);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_create: validation failed");
         return NULL;
     }
 
@@ -302,6 +310,7 @@ nimcp_tensor_t* nimcp_tensor_create(
     nimcp_tensor_t* t = nimcp_calloc(1, sizeof(nimcp_tensor_t));
     if (!t) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate tensor structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_create: t is NULL");
         return NULL;
     }
 
@@ -317,6 +326,7 @@ nimcp_tensor_t* nimcp_tensor_create(
     if (nimcp_mutex_init(&t->lock, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize tensor mutex");
         nimcp_free(t);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_tensor_create: validation failed");
         return NULL;
     }
 
@@ -334,6 +344,7 @@ nimcp_tensor_t* nimcp_tensor_create(
         /* compute_numel already logged the error */
         nimcp_mutex_destroy(&t->lock);
         nimcp_free(t);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_create: t->shape.numel is zero");
         return NULL;
     }
 
@@ -343,6 +354,7 @@ nimcp_tensor_t* nimcp_tensor_create(
                  t->shape.numel, elem_size);
         nimcp_mutex_destroy(&t->lock);
         nimcp_free(t);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_create: validation failed");
         return NULL;
     }
 
@@ -358,6 +370,7 @@ nimcp_tensor_t* nimcp_tensor_create(
             nimcp_mutex_destroy(&t->lock);
             /* Clean up: struct was allocated at line 266 */
             nimcp_free(t);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_create: t->data is NULL");
             return NULL;
         }
         /* Note: Data is uninitialized. Use nimcp_tensor_zeros() if zero initialization is needed. */
@@ -608,10 +621,16 @@ nimcp_tensor_t* nimcp_tensor_arange(
     nimcp_dtype_t dtype
 )
 {
-    if (step == 0) return NULL;
+    if (step == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_arange: step is zero");
+        return NULL;
+    }
 
     uint32_t n = (uint32_t)ceil((stop - start) / step);
-    if (n == 0) return NULL;
+    if (n == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_arange: n is zero");
+        return NULL;
+    }
 
     nimcp_tensor_t* t = nimcp_tensor_create(&n, 1, dtype);
     if (!t) {
@@ -637,7 +656,10 @@ nimcp_tensor_t* nimcp_tensor_linspace(
     nimcp_dtype_t dtype
 )
 {
-    if (num == 0) return NULL;
+    if (num == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_linspace: num is zero");
+        return NULL;
+    }
 
     nimcp_tensor_t* t = nimcp_tensor_create(&num, 1, dtype);
     if (!t) {
@@ -659,7 +681,10 @@ nimcp_tensor_t* nimcp_tensor_linspace(
 
 nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_clone: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* clone = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
     if (!clone) {
@@ -760,7 +785,10 @@ void nimcp_tensor_destroy(nimcp_tensor_t* t)
 
 const nimcp_tensor_shape_t* nimcp_tensor_shape(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_shape: tensor_is_valid is NULL");
+        return NULL;
+    }
     return &t->shape;
 }
 
@@ -784,26 +812,38 @@ nimcp_dtype_t nimcp_tensor_dtype(const nimcp_tensor_t* t)
 
 void* nimcp_tensor_data(nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_data: tensor_is_valid is NULL");
+        return NULL;
+    }
     return t->data;
 }
 
 const void* nimcp_tensor_data_const(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_data_const: tensor_is_valid is NULL");
+        return NULL;
+    }
     return t->data;
 }
 
 bool nimcp_tensor_is_contiguous(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return false;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_is_contiguous: tensor_is_valid is NULL");
+        return false;
+    }
 
     /* Check if strides match row-major layout */
     size_t elem_size = nimcp_dtype_size(t->dtype);
     int64_t expected_stride = elem_size;
 
     for (int i = (int)t->shape.rank - 1; i >= 0; i--) {
-        if (t->shape.strides[i] != expected_stride) return false;
+        if (t->shape.strides[i] != expected_stride) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_is_contiguous: validation failed");
+            return false;
+        }
         expected_stride *= t->shape.dims[i];
     }
 
@@ -812,7 +852,10 @@ bool nimcp_tensor_is_contiguous(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_contiguous(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_contiguous: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     if (nimcp_tensor_is_contiguous(t)) {
         /* Already contiguous, return clone */
@@ -848,7 +891,10 @@ nimcp_tensor_t* nimcp_tensor_contiguous(const nimcp_tensor_t* t)
 
 bool nimcp_tensor_requires_grad(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return false;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_requires_grad: tensor_is_valid is NULL");
+        return false;
+    }
     return t->requires_grad;
 }
 
@@ -949,12 +995,16 @@ nimcp_tensor_t* nimcp_tensor_reshape(
     uint32_t new_rank
 )
 {
-    if (!tensor_is_valid(t) || !new_dims) return NULL;
+    if (!tensor_is_valid(t) || !new_dims) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_reshape: required parameter is NULL (tensor_is_valid, new_dims)");
+        return NULL;
+    }
 
     /* Verify element count matches */
     size_t new_numel = compute_numel(new_dims, new_rank);
     if (new_numel != t->shape.numel) {
         LOG_ERROR(LOG_MODULE, "Reshape: numel mismatch %zu vs %zu", new_numel, t->shape.numel);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_reshape: validation failed");
         return NULL;
     }
 
@@ -982,7 +1032,10 @@ nimcp_tensor_t* nimcp_tensor_reshape(
 
 nimcp_tensor_t* nimcp_tensor_transpose(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_transpose: tensor_is_valid is NULL");
+        return NULL;
+    }
     if (t->shape.rank < 2) return nimcp_tensor_clone(t);
 
     /* Swap last two dimensions */
@@ -1002,13 +1055,22 @@ nimcp_tensor_t* nimcp_tensor_permute(
     uint32_t rank
 )
 {
-    if (!tensor_is_valid(t) || !perm) return NULL;
-    if (rank != t->shape.rank) return NULL;
+    if (!tensor_is_valid(t) || !perm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_permute: required parameter is NULL (tensor_is_valid, perm)");
+        return NULL;
+    }
+    if (rank != t->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_permute: validation failed");
+        return NULL;
+    }
 
     /* Create new shape with permuted dimensions */
     uint32_t new_dims[NIMCP_TENSOR_MAX_RANK];
     for (uint32_t i = 0; i < rank; i++) {
-        if (perm[i] >= rank) return NULL;
+        if (perm[i] >= rank) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_permute: capacity exceeded");
+            return NULL;
+        }
         new_dims[i] = t->shape.dims[perm[i]];
     }
 
@@ -1047,7 +1109,10 @@ nimcp_tensor_t* nimcp_tensor_permute(
 
 nimcp_tensor_t* nimcp_tensor_squeeze(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_squeeze: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     /* Count non-singleton dimensions */
     uint32_t new_dims[NIMCP_TENSOR_MAX_RANK];
@@ -1069,11 +1134,17 @@ nimcp_tensor_t* nimcp_tensor_squeeze(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_unsqueeze(const nimcp_tensor_t* t, int dim)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_unsqueeze: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     /* Handle negative indexing */
     if (dim < 0) dim = (int)t->shape.rank + 1 + dim;
-    if (dim < 0 || dim > (int)t->shape.rank) return NULL;
+    if (dim < 0 || dim > (int)t->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_unsqueeze: validation failed");
+        return NULL;
+    }
 
     uint32_t new_dims[NIMCP_TENSOR_MAX_RANK];
     uint32_t new_rank = t->shape.rank + 1;
@@ -1091,7 +1162,10 @@ nimcp_tensor_t* nimcp_tensor_unsqueeze(const nimcp_tensor_t* t, int dim)
 
 nimcp_tensor_t* nimcp_tensor_flatten(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_flatten: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     uint32_t new_dim = (uint32_t)t->shape.numel;
     return nimcp_tensor_reshape(t, &new_dim, 1);
@@ -1103,14 +1177,23 @@ nimcp_tensor_t* nimcp_tensor_cat(
     int dim
 )
 {
-    if (!tensors || count == 0) return NULL;
+    if (!tensors || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_cat: tensors is NULL");
+        return NULL;
+    }
 
     const nimcp_tensor_t* first = tensors[0];
-    if (!tensor_is_valid(first)) return NULL;
+    if (!tensor_is_valid(first)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_cat: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     /* Handle negative indexing */
     if (dim < 0) dim = (int)first->shape.rank + dim;
-    if (dim < 0 || dim >= (int)first->shape.rank) return NULL;
+    if (dim < 0 || dim >= (int)first->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_cat: capacity exceeded");
+        return NULL;
+    }
 
     /* Compute output shape */
     uint32_t out_dims[NIMCP_TENSOR_MAX_RANK];
@@ -1118,12 +1201,19 @@ nimcp_tensor_t* nimcp_tensor_cat(
 
     uint32_t total_dim = 0;
     for (uint32_t i = 0; i < count; i++) {
-        if (!tensor_is_valid(tensors[i])) return NULL;
-        if (tensors[i]->shape.rank != first->shape.rank) return NULL;
+        if (!tensor_is_valid(tensors[i])) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_cat: tensor_is_valid is NULL");
+            return NULL;
+        }
+        if (tensors[i]->shape.rank != first->shape.rank) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_cat: validation failed");
+            return NULL;
+        }
 
         /* Verify all dims match except concat dim */
         for (uint32_t j = 0; j < first->shape.rank; j++) {
             if ((int)j != dim && tensors[i]->shape.dims[j] != first->shape.dims[j]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_cat: validation failed");
                 return NULL;
             }
         }
@@ -1173,7 +1263,10 @@ nimcp_tensor_t* nimcp_tensor_stack(
     int dim
 )
 {
-    if (!tensors || count == 0) return NULL;
+    if (!tensors || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_stack: tensors is NULL");
+        return NULL;
+    }
 
     /* First unsqueeze all tensors, then cat */
     nimcp_tensor_t** unsqueezed = nimcp_calloc(count, sizeof(nimcp_tensor_t*));
@@ -1192,6 +1285,7 @@ nimcp_tensor_t* nimcp_tensor_stack(
                 nimcp_tensor_destroy(unsqueezed[j]);
             }
             nimcp_free(unsqueezed);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_stack: unsqueezed is NULL");
             return NULL;
         }
     }
@@ -1219,11 +1313,15 @@ static nimcp_tensor_t* binary_op(
     double (*op)(double, double)
 )
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "binary_op: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
 
     nimcp_tensor_shape_t result_shape;
     if (!can_broadcast(&a->shape, &b->shape, &result_shape)) {
         LOG_ERROR(LOG_MODULE, "Cannot broadcast shapes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "binary_op: can_broadcast is NULL");
         return NULL;
     }
 
@@ -1312,7 +1410,10 @@ nimcp_tensor_t* nimcp_tensor_min_binary(const nimcp_tensor_t* a, const nimcp_ten
 
 nimcp_tensor_t* nimcp_tensor_add_scalar(const nimcp_tensor_t* t, double s)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_add_scalar: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
     if (!result) {
@@ -1333,7 +1434,10 @@ nimcp_tensor_t* nimcp_tensor_add_scalar(const nimcp_tensor_t* t, double s)
 
 nimcp_tensor_t* nimcp_tensor_mul_scalar(const nimcp_tensor_t* t, double s)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_mul_scalar: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
     if (!result) {
@@ -1361,7 +1465,10 @@ nimcp_tensor_t* nimcp_tensor_mul_scalar(const nimcp_tensor_t* t, double s)
  */
 static nimcp_tensor_t* unary_op(const nimcp_tensor_t* t, double (*op)(double))
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unary_op: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* result = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
     if (!result) {
@@ -1421,7 +1528,10 @@ nimcp_tensor_t* nimcp_tensor_softplus(const nimcp_tensor_t* t) { return unary_op
 
 nimcp_tensor_t* nimcp_tensor_sum(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_sum: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     // Use SIMD-optimized sum for large tensors
     float* data = (float*)t->data;
@@ -1443,7 +1553,10 @@ nimcp_tensor_t* nimcp_tensor_sum(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_mean(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_mean: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* s = nimcp_tensor_sum(t);
     if (!s) {
@@ -1462,8 +1575,14 @@ nimcp_tensor_t* nimcp_tensor_mean(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_max(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
-    if (t->shape.numel == 0) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_max: tensor_is_valid is NULL");
+        return NULL;
+    }
+    if (t->shape.numel == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_max: t->shape.numel is zero");
+        return NULL;
+    }
 
     // Use SIMD-optimized max
     float* data = (float*)t->data;
@@ -1485,8 +1604,14 @@ nimcp_tensor_t* nimcp_tensor_max(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_min(const nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
-    if (t->shape.numel == 0) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_min: tensor_is_valid is NULL");
+        return NULL;
+    }
+    if (t->shape.numel == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_min: t->shape.numel is zero");
+        return NULL;
+    }
 
     // Use SIMD-optimized min
     float* data = (float*)t->data;
@@ -1508,11 +1633,17 @@ nimcp_tensor_t* nimcp_tensor_min(const nimcp_tensor_t* t)
 
 nimcp_tensor_t* nimcp_tensor_sum_dim(const nimcp_tensor_t* t, int dim, bool keepdim)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_sum_dim: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     /* Handle negative indexing */
     if (dim < 0) dim = (int)t->shape.rank + dim;
-    if (dim < 0 || dim >= (int)t->shape.rank) return NULL;
+    if (dim < 0 || dim >= (int)t->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_sum_dim: capacity exceeded");
+        return NULL;
+    }
 
     /* Compute output shape */
     uint32_t out_dims[NIMCP_TENSOR_MAX_RANK];
@@ -1572,8 +1703,14 @@ nimcp_tensor_t* nimcp_tensor_sum_dim(const nimcp_tensor_t* t, int dim, bool keep
 
 nimcp_tensor_t* nimcp_tensor_var(const nimcp_tensor_t* t, bool unbiased)
 {
-    if (!tensor_is_valid(t)) return NULL;
-    if (t->shape.numel == 0) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_var: tensor_is_valid is NULL");
+        return NULL;
+    }
+    if (t->shape.numel == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_var: t->shape.numel is zero");
+        return NULL;
+    }
 
     /* Compute mean first */
     double mean = 0.0;
@@ -1632,7 +1769,10 @@ nimcp_tensor_t* nimcp_tensor_std(const nimcp_tensor_t* t, bool unbiased)
 
 nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_t* b)
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_matmul: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Handle 1D cases */
     if (a->shape.rank == 1 && b->shape.rank == 1) {
@@ -1642,6 +1782,7 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
     /* Ensure 2D minimum */
     if (a->shape.rank < 2 || b->shape.rank < 2) {
         LOG_ERROR(LOG_MODULE, "matmul requires at least 2D tensors");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_matmul: validation failed");
         return NULL;
     }
 
@@ -1653,6 +1794,7 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
 
     if (K != K2) {
         LOG_ERROR(LOG_MODULE, "matmul: inner dimensions don't match (%u vs %u)", K, K2);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_matmul: validation failed");
         return NULL;
     }
 
@@ -1692,11 +1834,15 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
 
 nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t* vec)
 {
-    if (!tensor_is_valid(mat) || !tensor_is_valid(vec)) return NULL;
+    if (!tensor_is_valid(mat) || !tensor_is_valid(vec)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_mv: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Matrix must be 2D, vector must be 1D */
     if (mat->shape.rank != 2 || vec->shape.rank != 1) {
         LOG_ERROR(LOG_MODULE, "mv: matrix must be 2D, vector must be 1D");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_mv: validation failed");
         return NULL;
     }
 
@@ -1705,6 +1851,7 @@ nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t*
 
     if (N != vec->shape.dims[0]) {
         LOG_ERROR(LOG_MODULE, "mv: matrix cols (%u) must match vector size (%u)", N, vec->shape.dims[0]);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_mv: validation failed");
         return NULL;
     }
 
@@ -1737,11 +1884,15 @@ nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t*
 
 nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t* mat)
 {
-    if (!tensor_is_valid(vec) || !tensor_is_valid(mat)) return NULL;
+    if (!tensor_is_valid(vec) || !tensor_is_valid(mat)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_vm: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Vector must be 1D, matrix must be 2D */
     if (vec->shape.rank != 1 || mat->shape.rank != 2) {
         LOG_ERROR(LOG_MODULE, "vm: vector must be 1D, matrix must be 2D");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_vm: validation failed");
         return NULL;
     }
 
@@ -1750,6 +1901,7 @@ nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t*
 
     if (M != vec->shape.dims[0]) {
         LOG_ERROR(LOG_MODULE, "vm: vector size (%u) must match matrix rows (%u)", vec->shape.dims[0], M);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_vm: validation failed");
         return NULL;
     }
 
@@ -1782,8 +1934,14 @@ nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t*
 
 nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* b)
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
-    if (a->shape.numel != b->shape.numel) return NULL;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_dot: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
+    if (a->shape.numel != b->shape.numel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_dot: validation failed");
+        return NULL;
+    }
 
     // Use SIMD-optimized dot product
     float* da = (float*)a->data;
@@ -1805,7 +1963,10 @@ nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* 
 
 nimcp_tensor_t* nimcp_tensor_outer(const nimcp_tensor_t* a, const nimcp_tensor_t* b)
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_outer: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Flatten both inputs */
     nimcp_tensor_t* a_flat = nimcp_tensor_flatten(a);
@@ -1813,6 +1974,7 @@ nimcp_tensor_t* nimcp_tensor_outer(const nimcp_tensor_t* a, const nimcp_tensor_t
     if (!a_flat || !b_flat) {
         nimcp_tensor_destroy(a_flat);
         nimcp_tensor_destroy(b_flat);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_outer: required parameter is NULL (a_flat, b_flat)");
         return NULL;
     }
 
@@ -1824,6 +1986,7 @@ nimcp_tensor_t* nimcp_tensor_outer(const nimcp_tensor_t* a, const nimcp_tensor_t
     if (!result) {
         nimcp_tensor_destroy(a_flat);
         nimcp_tensor_destroy(b_flat);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_outer: result is NULL");
         return NULL;
     }
 
@@ -1922,15 +2085,20 @@ nimcp_tensor_t* nimcp_tensor_contract(
     uint32_t num_dims
 )
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return NULL;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_contract: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return NULL;
+    }
     if (num_dims == 0) return nimcp_tensor_outer(a, b);
 
     /* Verify contracted dimensions have same size */
     for (uint32_t i = 0; i < num_dims; i++) {
         if (dims_a[i] >= a->shape.rank || dims_b[i] >= b->shape.rank) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_contract: capacity exceeded");
             return NULL;
         }
         if (a->shape.dims[dims_a[i]] != b->shape.dims[dims_b[i]]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_contract: validation failed");
             return NULL;
         }
     }
@@ -2000,7 +2168,10 @@ nimcp_tensor_t* nimcp_tensor_einsum(
     uint32_t num_tensors
 )
 {
-    if (!equation || !tensors || num_tensors == 0) return NULL;
+    if (!equation || !tensors || num_tensors == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_einsum: required parameter is NULL (equation, tensors)");
+        return NULL;
+    }
 
     /* Parse einsum equation */
     /* Format: "ij,jk->ik" or "ii->" (trace) */
@@ -2022,6 +2193,7 @@ nimcp_tensor_t* nimcp_tensor_einsum(
     }
 
     LOG_WARN(LOG_MODULE, "Einsum equation '%s' not yet implemented", equation);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_einsum: validation failed");
     return NULL;
 }
 
@@ -2076,7 +2248,10 @@ nimcp_tensor_t* nimcp_tensor_numerical_gradient(
     void* ctx
 )
 {
-    if (!f || !tensor_is_valid(x)) return NULL;
+    if (!f || !tensor_is_valid(x)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_numerical_gradient: required parameter is NULL (f, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Use adaptive step size if not specified */
     if (h == 0) {
@@ -2099,6 +2274,7 @@ nimcp_tensor_t* nimcp_tensor_numerical_gradient(
         nimcp_tensor_destroy(x_plus);
         nimcp_tensor_destroy(x_minus);
         nimcp_tensor_destroy(grad);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_numerical_gradient: required parameter is NULL (x_plus, x_minus)");
         return NULL;
     }
 
@@ -2133,7 +2309,10 @@ nimcp_tensor_t* nimcp_tensor_jacobian(
     void* ctx
 )
 {
-    if (!f || !tensor_is_valid(x)) return NULL;
+    if (!f || !tensor_is_valid(x)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_jacobian: required parameter is NULL (f, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Use adaptive step size if not specified */
     if (h == 0) {
@@ -2157,6 +2336,7 @@ nimcp_tensor_t* nimcp_tensor_jacobian(
     nimcp_tensor_t* jac = nimcp_tensor_create(jac_dims, 2, x->dtype);
     if (!jac) {
         nimcp_tensor_destroy(f_x);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_jacobian: jac is NULL");
         return NULL;
     }
 
@@ -2164,6 +2344,7 @@ nimcp_tensor_t* nimcp_tensor_jacobian(
     if (!x_pert) {
         nimcp_tensor_destroy(f_x);
         nimcp_tensor_destroy(jac);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_jacobian: x_pert is NULL");
         return NULL;
     }
 
@@ -2216,7 +2397,10 @@ nimcp_tensor_t* nimcp_tensor_hessian(
     void* ctx
 )
 {
-    if (!f || !tensor_is_valid(x)) return NULL;
+    if (!f || !tensor_is_valid(x)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_hessian: required parameter is NULL (f, tensor_is_valid)");
+        return NULL;
+    }
 
     /* Use adaptive step size if not specified.
      * Hessian uses slightly larger step than gradient for stability
@@ -2240,6 +2424,7 @@ nimcp_tensor_t* nimcp_tensor_hessian(
     nimcp_tensor_t* x_work = nimcp_tensor_clone(x);
     if (!x_work) {
         nimcp_tensor_destroy(hess);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_hessian: x_work is NULL");
         return NULL;
     }
 
@@ -2294,10 +2479,16 @@ nimcp_tensor_t* nimcp_tensor_gradient_dim(
     double spacing
 )
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_gradient_dim: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     if (dim < 0) dim = (int)t->shape.rank + dim;
-    if (dim < 0 || dim >= (int)t->shape.rank) return NULL;
+    if (dim < 0 || dim >= (int)t->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_gradient_dim: capacity exceeded");
+        return NULL;
+    }
     if (spacing == 0) spacing = 1.0;
 
     nimcp_tensor_t* grad = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
@@ -2357,7 +2548,10 @@ nimcp_tensor_t* nimcp_tensor_divergence(
     const double* spacing
 )
 {
-    if (!components || num_dims == 0) return NULL;
+    if (!components || num_dims == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_divergence: components is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* div = nimcp_tensor_zeros(
         components[0]->shape.dims,
@@ -2378,6 +2572,7 @@ nimcp_tensor_t* nimcp_tensor_divergence(
         nimcp_tensor_t* df = nimcp_tensor_gradient_dim(components[i], i, h);
         if (!df) {
             nimcp_tensor_destroy(div);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_divergence: df is NULL");
             return NULL;
         }
 
@@ -2432,7 +2627,10 @@ nimcp_tensor_t* nimcp_tensor_laplacian(
     const double* spacing
 )
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_laplacian: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     nimcp_tensor_t* lap = nimcp_tensor_zeros(t->shape.dims, t->shape.rank, t->dtype);
     if (!lap) {
@@ -2452,6 +2650,7 @@ nimcp_tensor_t* nimcp_tensor_laplacian(
         nimcp_tensor_t* d2f = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
         if (!d2f) {
             nimcp_tensor_destroy(lap);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_tensor_laplacian: d2f is NULL");
             return NULL;
         }
 
@@ -2566,10 +2765,16 @@ int nimcp_tensor_add_scalar_(nimcp_tensor_t* t, double s)
 
 nimcp_tensor_t* nimcp_tensor_softmax(const nimcp_tensor_t* t, int dim)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_softmax: tensor_is_valid is NULL");
+        return NULL;
+    }
 
     if (dim < 0) dim = (int)t->shape.rank + dim;
-    if (dim < 0 || dim >= (int)t->shape.rank) return NULL;
+    if (dim < 0 || dim >= (int)t->shape.rank) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_softmax: capacity exceeded");
+        return NULL;
+    }
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
     if (!result) {
@@ -2624,6 +2829,7 @@ nimcp_tensor_t* nimcp_tensor_attention(
 )
 {
     if (!tensor_is_valid(query) || !tensor_is_valid(key) || !tensor_is_valid(value)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_attention: required parameter is NULL (tensor_is_valid, tensor_is_valid, tensor_is_valid)");
         return NULL;
     }
 
@@ -2699,8 +2905,14 @@ bool nimcp_tensor_allclose(
     double atol
 )
 {
-    if (!tensor_is_valid(a) || !tensor_is_valid(b)) return false;
-    if (!shapes_equal(&a->shape, &b->shape)) return false;
+    if (!tensor_is_valid(a) || !tensor_is_valid(b)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_allclose: required parameter is NULL (tensor_is_valid, tensor_is_valid)");
+        return false;
+    }
+    if (!shapes_equal(&a->shape, &b->shape)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_allclose: shapes_equal is NULL");
+        return false;
+    }
 
     float* da = (float*)a->data;
     float* db = (float*)b->data;
@@ -2708,7 +2920,10 @@ bool nimcp_tensor_allclose(
     for (size_t i = 0; i < a->shape.numel; i++) {
         double diff = fabs(da[i] - db[i]);
         double tol = atol + rtol * fabs(db[i]);
-        if (diff > tol) return false;
+        if (diff > tol) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_tensor_allclose: validation failed");
+            return false;
+        }
     }
 
     return true;
@@ -2733,6 +2948,7 @@ nimcp_autodiff_ctx_t* nimcp_autodiff_create(void)
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize autodiff context mutex");
         nimcp_free(ctx);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "nimcp_autodiff_create: validation failed");
         return NULL;
     }
     return ctx;
@@ -2771,7 +2987,10 @@ int nimcp_autodiff_stop(nimcp_autodiff_ctx_t* ctx)
 
 nimcp_tensor_t* nimcp_tensor_grad(nimcp_tensor_t* t)
 {
-    if (!tensor_is_valid(t)) return NULL;
+    if (!tensor_is_valid(t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_tensor_grad: tensor_is_valid is NULL");
+        return NULL;
+    }
     return t->grad;
 }
 

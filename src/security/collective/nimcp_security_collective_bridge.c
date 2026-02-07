@@ -139,6 +139,7 @@ static int find_agent_index(
             return (int)i;
         }
     }
+    /* Agent not found - normal case during registration checks, not an error */
     return -1;
 }
 
@@ -373,6 +374,10 @@ int security_collective_detect_byzantine(
                     result->status = BYZANTINE_STATUS_QUARANTINED;
                     bridge->state.quarantined_count++;
                     bridge->stats.agents_quarantined++;
+
+                    /* Apply trust penalty for auto-quarantine */
+                    bridge->agent_trust_scores[idx].trust_score *= 0.1f;
+                    bridge->agent_trust_scores[idx].level = TRUST_LEVEL_UNTRUSTED;
                 }
             } else {
                 result->status = BYZANTINE_STATUS_SUSPECTED;
@@ -383,6 +388,20 @@ int security_collective_detect_byzantine(
 
     /* Update tracking */
     bridge->agent_byzantine_status[idx] = *result;
+
+    /* Recalculate swarm health if quarantine state changed */
+    if (result->is_quarantined && bridge->state.total_agents > 0) {
+        float total_trust = 0.0f;
+        for (uint32_t j = 0; j < bridge->tracked_agent_count; j++) {
+            total_trust += bridge->agent_trust_scores[j].trust_score;
+        }
+        bridge->state.avg_trust_score = total_trust / (float)bridge->tracked_agent_count;
+
+        float health = 1.0f;
+        health -= (float)bridge->state.quarantined_count / (float)bridge->state.total_agents;
+        health *= bridge->state.avg_trust_score;
+        bridge->state.swarm_health = clamp_float(health, 0.0f, 1.0f);
+    }
 
     uint64_t elapsed = get_timestamp_ns() - start_time;
     bridge->stats.avg_detection_time_ns = update_running_avg(
@@ -527,6 +546,20 @@ int security_collective_quarantine_agent(
     bridge->agent_trust_scores[idx].negative_actions++;
     bridge->agent_trust_scores[idx].level = TRUST_LEVEL_UNTRUSTED;
 
+    /* Recalculate swarm health after quarantine */
+    if (bridge->state.total_agents > 0) {
+        float total_trust = 0.0f;
+        for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
+            total_trust += bridge->agent_trust_scores[i].trust_score;
+        }
+        bridge->state.avg_trust_score = total_trust / (float)bridge->tracked_agent_count;
+
+        float health = 1.0f;
+        health -= (float)bridge->state.quarantined_count / (float)bridge->state.total_agents;
+        health *= bridge->state.avg_trust_score;
+        bridge->state.swarm_health = clamp_float(health, 0.0f, 1.0f);
+    }
+
     (void)reason;  /* Used for logging in full implementation */
 
     BRIDGE_UNLOCK(bridge);
@@ -613,8 +646,11 @@ int security_collective_validate_emergent(
 
     result->contributing_agents = contributing;
 
-    if (contributing > 0) {
-        result->authenticity_score = total_trust / (float)contributing;
+    if (contributing > 0 && bridge->tracked_agent_count > 0) {
+        float avg_trust = total_trust / (float)contributing;
+        /* Scale by ratio of contributing agents to total agents */
+        float participation_ratio = (float)contributing / (float)bridge->tracked_agent_count;
+        result->authenticity_score = avg_trust * participation_ratio;
     } else {
         result->authenticity_score = 0.0f;
     }
@@ -962,8 +998,6 @@ int security_collective_apply_security_effects(
     security_collective_bridge_t* bridge
 ) {
     BRIDGE_NULL_CHECK(bridge);
-
-    if (!bridge->collective) return 0;
 
     BRIDGE_LOCK(bridge);
 

@@ -67,6 +67,7 @@ static bool query_ram_linux(system_resources_t* res)
 {
     struct sysinfo info;
     if (sysinfo(&info) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_ram_linux: validation failed");
         return false;
     }
 
@@ -101,6 +102,7 @@ static bool query_disk_linux(system_resources_t* res)
 {
     struct statvfs stat;
     if (statvfs(".", &stat) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_disk_linux: validation failed");
         return false;
     }
 
@@ -124,6 +126,7 @@ static bool query_ram_macos(system_resources_t* res)
     size_t length = sizeof(memsize);
 
     if (sysctl(mib, 2, &memsize, &length, NULL, 0) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_ram_macos: validation failed");
         return false;
     }
 
@@ -141,6 +144,7 @@ static bool query_cpu_macos(system_resources_t* res)
     size_t length = sizeof(ncpu);
 
     if (sysctl(mib, 2, &ncpu, &length, NULL, 0) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_cpu_macos: validation failed");
         return false;
     }
 
@@ -155,6 +159,7 @@ static bool query_disk_macos(system_resources_t* res)
 {
     struct statvfs stat;
     if (statvfs(".", &stat) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_disk_macos: validation failed");
         return false;
     }
 
@@ -177,6 +182,7 @@ static bool query_ram_windows(system_resources_t* res)
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
 
     if (!GlobalMemoryStatusEx(&memInfo)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "query_ram_windows: GlobalMemoryStatusEx is NULL");
         return false;
     }
 
@@ -203,6 +209,7 @@ static bool query_disk_windows(system_resources_t* res)
 {
     ULARGE_INTEGER freeBytesAvailable;
     if (!GetDiskFreeSpaceEx(NULL, &freeBytesAvailable, NULL, NULL)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "query_disk_windows: GetDiskFreeSpaceEx is NULL");
         return false;
     }
 
@@ -274,17 +281,44 @@ bool system_resources_query(system_resources_t* resources)
 
     // Query platform-specific resources
 #ifdef __linux__
-    if (!query_ram_linux(resources)) return false;
-    if (!query_cpu_linux(resources)) return false;
-    if (!query_disk_linux(resources)) return false;
+    if (!query_ram_linux(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_ram_linux is NULL");
+        return false;
+    }
+    if (!query_cpu_linux(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_cpu_linux is NULL");
+        return false;
+    }
+    if (!query_disk_linux(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_disk_linux is NULL");
+        return false;
+    }
 #elif defined(__APPLE__)
-    if (!query_ram_macos(resources)) return false;
-    if (!query_cpu_macos(resources)) return false;
-    if (!query_disk_macos(resources)) return false;
+    if (!query_ram_macos(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_ram_macos is NULL");
+        return false;
+    }
+    if (!query_cpu_macos(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_cpu_macos is NULL");
+        return false;
+    }
+    if (!query_disk_macos(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_disk_macos is NULL");
+        return false;
+    }
 #elif defined(_WIN32)
-    if (!query_ram_windows(resources)) return false;
-    if (!query_cpu_windows(resources)) return false;
-    if (!query_disk_windows(resources)) return false;
+    if (!query_ram_windows(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_ram_windows is NULL");
+        return false;
+    }
+    if (!query_cpu_windows(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_cpu_windows is NULL");
+        return false;
+    }
+    if (!query_disk_windows(resources)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "system_resources_query: query_disk_windows is NULL");
+        return false;
+    }
 #else
     // Unsupported platform - return safe defaults
     resources->total_ram_mb = 4096;       // 4GB default

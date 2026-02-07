@@ -163,6 +163,7 @@ static uint64_t get_time_us(void) {
 static bool sliding_window_init(sliding_window_t* window, uint32_t capacity) {
     window->timestamps = nimcp_calloc(capacity, sizeof(uint64_t));
     if (!window->timestamps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sliding_window_init: window->timestamps is NULL");
         return false;
     }
     window->capacity = capacity;
@@ -215,6 +216,7 @@ static uint32_t sliding_window_count_within(sliding_window_t* window,
 static bool stability_tracker_init(stability_tracker_t* tracker, uint32_t capacity) {
     tracker->eigenvalue_history = nimcp_calloc(capacity, sizeof(float));
     if (!tracker->eigenvalue_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stability_tracker_init: tracker->eigenvalue_history is NULL");
         return false;
     }
     tracker->eigenvalue_capacity = capacity;
@@ -298,9 +300,11 @@ static meta_stability_state_t assess_stability(stability_tracker_t* tracker, flo
  */
 static param_registry_entry_t* find_param(struct meta_learning_guard_internal* g, uint32_t param_id) {
     if (param_id >= g->param_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_param: capacity exceeded");
         return NULL;
     }
     if (!g->params[param_id].registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_param: g->params is NULL");
         return NULL;
     }
     return &g->params[param_id];
@@ -311,6 +315,7 @@ static param_registry_entry_t* find_param(struct meta_learning_guard_internal* g
  */
 static bool detect_oscillation(param_registry_entry_t* param, uint32_t window_size, float threshold) {
     if (param->history_count < window_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_oscillation: validation failed");
         return false;
     }
 
@@ -429,6 +434,7 @@ meta_learning_guard_t meta_learning_guard_create(
     guard->params = nimcp_calloc(guard->param_capacity, sizeof(param_registry_entry_t));
     if (!guard->params) {
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_learning_guard_create: guard->params is NULL");
         return NULL;
     }
 
@@ -442,6 +448,7 @@ meta_learning_guard_t meta_learning_guard_create(
             }
             nimcp_free(guard->params);
             nimcp_free(guard);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_create: guard->params is NULL");
             return NULL;
         }
     }
@@ -454,6 +461,7 @@ meta_learning_guard_t meta_learning_guard_create(
         }
         nimcp_free(guard->params);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_create: guard->frozen_flags is NULL");
         return NULL;
     }
 
@@ -468,6 +476,7 @@ meta_learning_guard_t meta_learning_guard_create(
         }
         nimcp_free(guard->params);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "meta_learning_guard_create: sliding_window_init is NULL");
         return NULL;
     }
 
@@ -480,6 +489,7 @@ meta_learning_guard_t meta_learning_guard_create(
         }
         nimcp_free(guard->params);
         nimcp_free(guard);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "meta_learning_guard_create: stability_tracker_init is NULL");
         return NULL;
     }
 
@@ -993,12 +1003,21 @@ int meta_learning_guard_unfreeze_param(meta_learning_guard_t guard, uint32_t par
 }
 
 bool meta_learning_guard_is_param_frozen(meta_learning_guard_t guard, uint32_t param_id) {
-    if (!guard) return false;
+    if (!guard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_learning_guard_is_param_frozen: guard is NULL");
+        return false;
+    }
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return false;
+    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "meta_learning_guard_is_param_frozen: validation failed");
+        return false;
+    }
 
-    if (param_id >= g->param_capacity) return false;
+    if (param_id >= g->param_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "meta_learning_guard_is_param_frozen: capacity exceeded");
+        return false;
+    }
 
     return g->frozen_flags[param_id];
 }

@@ -478,6 +478,7 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     if (nimcp_platform_mutex_init(&system->mutex, false) != 0) {
         LOG_ERROR(LOG_MODULE, "Failed to initialize mutex");
         nimcp_free(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "emotion_system_create: validation failed");
         return NULL;
     }
     LOG_DEBUG(LOG_MODULE, "Initialized mutex for thread safety");
@@ -634,6 +635,7 @@ void emotion_system_destroy(emotional_system_t* system) {
 
 bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t* state) {
     if (!system || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_state: required parameter is NULL (system, state)");
         return false;
     }
 
@@ -652,6 +654,7 @@ bool emotion_system_get_state(const emotional_system_t* system, emotion_state_t*
 
 bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* tag) {
     if (!system || !tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: required parameter is NULL (system, tag)");
         return false;
     }
 
@@ -673,6 +676,7 @@ bool emotion_system_get_tag(const emotional_system_t* system, emotional_tag_t* t
 bool emotion_system_is_active(const emotional_system_t* system, uint32_t emotion_id,
                               float threshold) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: system is NULL");
         return false;
     }
 
@@ -699,6 +703,7 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
                               uint64_t timestamp_ms) {
     if (!system) {
         LOG_ERROR(LOG_MODULE, "emotion_system_set_state called with NULL system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: system is NULL");
         return false;
     }
 
@@ -768,6 +773,7 @@ bool emotion_system_set_state(emotional_system_t* system, float valence, float a
 bool emotion_system_decay(emotional_system_t* system, float delta_time,
                          uint64_t current_time_ms) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: system is NULL");
         return false;
     }
 
@@ -801,6 +807,7 @@ bool emotion_system_update_multimodal(emotional_system_t* system,
                                       const float* audio_data, uint32_t audio_dim,
                                       const char* text, uint64_t timestamp_ms) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_tag: system is NULL");
         return false;
     }
 
@@ -873,6 +880,7 @@ static bool emotion_system_regulate_unlocked(emotional_system_t* system, uint32_
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "emotion_system_regulate_unlocked: validation failed");
             return false;
     }
 
@@ -889,10 +897,12 @@ static bool emotion_system_regulate_unlocked(emotional_system_t* system, uint32_
 
 bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_regulate: system is NULL");
         return false;
     }
 
     if (!system->config.enable_emotion_regulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_regulate: system->config is NULL");
         return false;
     }
 
@@ -911,10 +921,12 @@ bool emotion_system_regulate(emotional_system_t* system, uint32_t strategy) {
 
 bool emotion_system_auto_regulate(emotional_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_auto_regulate: system is NULL");
         return false;
     }
 
     if (!system->config.enable_emotion_regulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_auto_regulate: system->config is NULL");
         return false;
     }
 
@@ -941,6 +953,7 @@ bool emotion_system_auto_regulate(emotional_system_t* system) {
     if (!needs_regulation) {
         system->state.in_self_regulation = false;
         nimcp_platform_mutex_unlock(&system->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_auto_regulate: needs_regulation is NULL");
         return false;
     }
 
@@ -1135,6 +1148,7 @@ float emotion_system_get_mental_health_impact(const emotional_system_t* system) 
 
 bool emotion_system_get_stats(const emotional_system_t* system, emotion_stats_t* stats) {
     if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system_get_stats: required parameter is NULL (system, stats)");
         return false;
     }
 

@@ -343,6 +343,7 @@ int nimcp_platform_time_to_string(uint64_t time_ms, char* buffer, size_t size)
 
     /* Check for formatting errors */
     if (written < 0 || (size_t)written >= size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_platform_time_to_string: capacity exceeded");
         return -1;  /* Formatting error or buffer overflow */
     }
 

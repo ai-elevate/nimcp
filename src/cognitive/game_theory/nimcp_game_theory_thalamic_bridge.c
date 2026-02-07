@@ -123,7 +123,10 @@ void game_theory_thalamic_bridge_destroy(game_theory_thalamic_bridge_t* bridge) 
 }
 
 int game_theory_thalamic_bridge_reset(game_theory_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__reset", 0.0f);
 
@@ -134,7 +137,10 @@ int game_theory_thalamic_bridge_reset(game_theory_thalamic_bridge_t* bridge) {
 }
 
 int game_theory_thalamic_route_strategy(game_theory_thalamic_bridge_t* bridge, const game_theory_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_route_strategy: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
@@ -149,7 +155,10 @@ int game_theory_thalamic_route_strategy(game_theory_thalamic_bridge_t* bridge, c
 }
 
 int game_theory_thalamic_route_outcome(game_theory_thalamic_bridge_t* bridge, const void* outcome, float payoff) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_route_outcome: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
@@ -159,7 +168,10 @@ int game_theory_thalamic_route_outcome(game_theory_thalamic_bridge_t* bridge, co
 }
 
 int game_theory_thalamic_set_attention(game_theory_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
 
@@ -169,7 +181,10 @@ int game_theory_thalamic_set_attention(game_theory_thalamic_bridge_t* bridge, fl
 }
 
 int game_theory_thalamic_get_attention(const game_theory_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     *attention = bridge->attention_weight;
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__game_theory_thalamic", 0.0f);
@@ -179,7 +194,10 @@ int game_theory_thalamic_get_attention(const game_theory_thalamic_bridge_t* brid
 }
 
 int game_theory_thalamic_bridge_get_stats(const game_theory_thalamic_bridge_t* bridge, game_theory_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game_theory_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     game_theory_thalamic_bridge_heartbeat("game_theory__get_stats", 0.0f);

@@ -359,6 +359,7 @@ static void update_state_internals(struct theta_gamma_manager_internal* mgr) {
 static bool allocate_workspace(struct theta_gamma_manager_internal* mgr, uint32_t size) {
     if (size == 0 || size > THETA_GAMMA_MAX_SIGNAL_LEN) {
         set_error("Invalid workspace size: %u", size);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "allocate_workspace: size is zero");
         return false;
     }
 
@@ -374,6 +375,7 @@ static bool allocate_workspace(struct theta_gamma_manager_internal* mgr, uint32_
 
         if (!mgr->work_theta_phase || !mgr->work_gamma_amplitude || !mgr->work_envelope) {
             set_error("Failed to allocate workspace buffers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_workspace: required parameter is NULL (mgr->work_theta_phase, mgr->work_gamma_amplitude, mgr->work_envelope)");
             return false;
         }
 
@@ -394,6 +396,7 @@ static bool init_pac_histogram(struct theta_gamma_manager_internal* mgr) {
 
     if (!mgr->pac_histogram || !mgr->pac_bin_counts) {
         set_error("Failed to allocate PAC histogram");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_pac_histogram: required parameter is NULL (mgr->pac_histogram, mgr->pac_bin_counts)");
         return false;
     }
 
@@ -460,6 +463,7 @@ theta_gamma_config_t theta_gamma_config_default(void) {
 bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     if (!config) {
         set_error("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_config_validate: config is NULL");
         return false;
     }
 
@@ -472,6 +476,7 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     if (config->theta_freq_max > 12.0f) config->theta_freq_max = 12.0f;
     if (config->theta_freq_min >= config->theta_freq_max) {
         set_error("Invalid theta frequency range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "theta_gamma_config_validate: capacity exceeded");
         return false;
     }
     config->theta_freq_default = clampf(config->theta_freq_default,
@@ -484,6 +489,7 @@ bool theta_gamma_config_validate(theta_gamma_config_t* config) {
     if (config->gamma_freq_low_min >= config->gamma_freq_low_max ||
         config->gamma_freq_high_min >= config->gamma_freq_high_max) {
         set_error("Invalid gamma frequency ranges");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "theta_gamma_config_validate: validation failed");
         return false;
     }
 
@@ -543,6 +549,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Validate configuration */
     if (!theta_gamma_config_validate(&mgr->config)) {
         nimcp_free(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_create: theta_gamma_config_validate is NULL");
         return NULL;
     }
 
@@ -564,6 +571,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Initialize PAC histogram */
     if (!init_pac_histogram(mgr)) {
         nimcp_free(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "theta_gamma_create: init_pac_histogram is NULL");
         return NULL;
     }
 
@@ -576,6 +584,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
         nimcp_free(mgr->pac_histogram);
         nimcp_free(mgr->pac_bin_counts);
         nimcp_free(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "theta_gamma_create: mgr->hilbert is NULL");
         return NULL;
     }
 
@@ -600,6 +609,7 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
     /* Allocate initial workspace */
     if (!allocate_workspace(mgr, 1024)) {
         theta_gamma_destroy(mgr);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "theta_gamma_create: allocate_workspace is NULL");
         return NULL;
     }
 
@@ -646,6 +656,7 @@ void theta_gamma_destroy(theta_gamma_manager_t manager) {
 bool theta_gamma_reset(theta_gamma_manager_t manager) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_reset: manager is NULL");
         return false;
     }
 
@@ -687,6 +698,7 @@ bool theta_gamma_reset(theta_gamma_manager_t manager) {
 bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_update: manager is NULL");
         return false;
     }
 
@@ -764,6 +776,7 @@ bool theta_gamma_update(theta_gamma_manager_t manager, uint64_t dt_ns) {
 bool theta_gamma_set_theta_freq(theta_gamma_manager_t manager, float freq) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_set_theta_freq: manager is NULL");
         return false;
     }
 
@@ -784,6 +797,7 @@ bool theta_gamma_set_theta_freq(theta_gamma_manager_t manager, float freq) {
 bool theta_gamma_set_gamma_freq(theta_gamma_manager_t manager, float freq) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_set_gamma_freq: manager is NULL");
         return false;
     }
 
@@ -804,6 +818,7 @@ bool theta_gamma_set_gamma_freq(theta_gamma_manager_t manager, float freq) {
 bool theta_gamma_sync_to_external(theta_gamma_manager_t manager, float phase) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_sync_to_external: manager is NULL");
         return false;
     }
 
@@ -885,7 +900,10 @@ theta_op_type_t theta_gamma_get_operation(const theta_gamma_manager_t manager) {
 //=============================================================================
 
 bool theta_gamma_can_encode(const theta_gamma_manager_t manager) {
-    if (!manager) return false;
+    if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_can_encode: manager is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     theta_gamma_heartbeat("theta_gamma_can_encode", 0.0f);
@@ -896,7 +914,10 @@ bool theta_gamma_can_encode(const theta_gamma_manager_t manager) {
 }
 
 bool theta_gamma_can_retrieve(const theta_gamma_manager_t manager) {
-    if (!manager) return false;
+    if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_can_retrieve: manager is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     theta_gamma_heartbeat("theta_gamma_can_retrieve", 0.0f);
@@ -1226,6 +1247,7 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
                                gamma_burst_t* burst) {
     if (!manager || !gamma_signal || !burst) {
         set_error("NULL pointer in burst detection");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (manager, gamma_signal, burst)");
         return false;
     }
 
@@ -1235,11 +1257,13 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
 
     if (n == 0 || n > THETA_GAMMA_MAX_SIGNAL_LEN) {
         set_error("Invalid signal length: %u", n);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: n is zero");
         return false;
     }
 
     if (sample_rate <= 0.0f) {
         set_error("Invalid sample rate: %.2f", sample_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1250,6 +1274,7 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
 
     /* Ensure workspace is large enough */
     if (!allocate_workspace(mgr, n)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: allocate_workspace is NULL");
         return false;
     }
 
@@ -1257,6 +1282,7 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
     if (!hilbert_extract_amplitude(mgr->hilbert, gamma_signal,
                                     mgr->work_envelope, n)) {
         set_error("Failed to extract amplitude envelope");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "unknown: allocate_workspace is NULL");
         return false;
     }
 
@@ -1320,6 +1346,7 @@ bool theta_gamma_detect_burst(theta_gamma_manager_t manager,
     /* No valid burst found */
     if (best_length < mgr->config.burst_min_samples) {
         clear_error();
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
         return false;
     }
 
@@ -1435,11 +1462,13 @@ bool theta_gamma_integrate_kuramoto(theta_gamma_manager_t manager,
                                       uint32_t module_id) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: manager is NULL");
         return false;
     }
 
     if (!kuramoto) {
         set_error("NULL Kuramoto system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: kuramoto is NULL");
         return false;
     }
 
@@ -1452,6 +1481,7 @@ bool theta_gamma_integrate_kuramoto(theta_gamma_manager_t manager,
     /* Set theta-gamma oscillator phase in Kuramoto system */
     if (!kuramoto_set_phase(kuramoto, module_id, mgr->state.theta_phase)) {
         set_error("Failed to set Kuramoto phase");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: kuramoto_set_phase is NULL");
         return false;
     }
 
@@ -1459,6 +1489,7 @@ bool theta_gamma_integrate_kuramoto(theta_gamma_manager_t manager,
     if (!kuramoto_set_frequency(kuramoto, module_id,
                                  mgr->state.theta_frequency * M_2PI)) {
         set_error("Failed to set Kuramoto frequency");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: kuramoto_set_phase is NULL");
         return false;
     }
 
@@ -1470,6 +1501,7 @@ bool theta_gamma_get_state(const theta_gamma_manager_t manager,
                              theta_gamma_state_t* state) {
     if (!manager || !state) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (manager, state)");
         return false;
     }
 
@@ -1492,6 +1524,7 @@ bool theta_gamma_get_stats(const theta_gamma_manager_t manager,
                              theta_gamma_stats_t* stats) {
     if (!manager || !stats) {
         set_error("NULL pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (manager, stats)");
         return false;
     }
 
@@ -1509,6 +1542,7 @@ bool theta_gamma_get_stats(const theta_gamma_manager_t manager,
 bool theta_gamma_reset_stats(theta_gamma_manager_t manager) {
     if (!manager) {
         set_error("NULL manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theta_gamma_reset_stats: manager is NULL");
         return false;
     }
 

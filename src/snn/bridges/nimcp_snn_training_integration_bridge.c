@@ -442,6 +442,7 @@ int snn_training_integration_disconnect_context(
 
     if (!bridge->contexts[context_id].active) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_disconnect_context: bridge->contexts is NULL");
         return -1;
     }
 

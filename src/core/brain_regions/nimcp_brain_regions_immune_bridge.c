@@ -175,6 +175,7 @@ static region_inflammation_state_t* get_or_create_inflammation_state(
 
     /* Create new if space available */
     if (bridge->inflammation_state_count >= bridge->max_inflammation_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_inflammation_state: capacity exceeded");
         return NULL;
     }
 
@@ -219,6 +220,7 @@ static region_abnormality_state_t* get_or_create_abnormality_state(
 
     /* Create new if space available */
     if (bridge->abnormality_state_count >= bridge->max_abnormality_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "get_or_create_abnormality_state: capacity exceeded");
         return NULL;
     }
 
@@ -260,6 +262,7 @@ static const region_cytokine_sensitivity_t* find_sensitivity(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_sensitivity: validation failed");
     return NULL;
 }
 
@@ -296,7 +299,10 @@ static size_t create_region_epitope(
  * ============================================================================ */
 
 int brain_regions_immune_default_config(brain_regions_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_default_config: config is NULL");
+        return -1;
+    }
 
     /* All features enabled by default */
     config->enable_region_specific_sensitivity = true;
@@ -331,6 +337,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     /* Guard: require brain module */
     if (!brain_module) {
         NIMCP_LOGGING_ERROR("Cannot create bridge without brain module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: brain_module is NULL");
         return NULL;
     }
 
@@ -339,6 +346,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
         nimcp_calloc(1, sizeof(brain_regions_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Bridge allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -360,6 +368,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     if (!bridge->sensitivities) {
         NIMCP_LOGGING_ERROR("Sensitivity allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge->sensitivities is NULL");
         return NULL;
     }
     bridge->sensitivity_count = 0;
@@ -371,6 +380,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     if (!bridge->inflammation_states) {
         NIMCP_LOGGING_ERROR("Inflammation state allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge->inflammation_states is NULL");
         return NULL;
     }
     bridge->inflammation_state_count = 0;
@@ -382,6 +392,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     if (!bridge->abnormality_states) {
         NIMCP_LOGGING_ERROR("Abnormality state allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge->abnormality_states is NULL");
         return NULL;
     }
     bridge->abnormality_state_count = 0;
@@ -393,6 +404,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     if (!bridge->propagations) {
         NIMCP_LOGGING_ERROR("Propagation allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge->propagations is NULL");
         return NULL;
     }
     bridge->propagation_count = 0;
@@ -402,6 +414,7 @@ brain_regions_immune_bridge_t* brain_regions_immune_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         brain_regions_immune_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_regions_immune_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -451,7 +464,10 @@ void brain_regions_immune_bridge_destroy(brain_regions_immune_bridge_t* bridge) 
  * ============================================================================ */
 
 int brain_regions_immune_connect_bio_async(brain_regions_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -469,11 +485,15 @@ int brain_regions_immune_connect_bio_async(brain_regions_immune_bridge_t* bridge
     }
 
     NIMCP_LOGGING_WARN("Bio-async router not available");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_connect_bio_async: validation failed");
     return -1;
 }
 
 int brain_regions_immune_disconnect_bio_async(brain_regions_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -487,7 +507,10 @@ int brain_regions_immune_disconnect_bio_async(brain_regions_immune_bridge_t* bri
 }
 
 bool brain_regions_immune_is_bio_async_connected(const brain_regions_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -499,7 +522,10 @@ int brain_regions_immune_set_sensitivity(
     brain_regions_immune_bridge_t* bridge,
     const region_cytokine_sensitivity_t* sensitivity
 ) {
-    if (!bridge || !sensitivity) return -1;
+    if (!bridge || !sensitivity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_set_sensitivity: required parameter is NULL (bridge, sensitivity)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -520,6 +546,7 @@ int brain_regions_immune_set_sensitivity(
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_set_sensitivity: validation failed");
     return -1;
 }
 
@@ -528,7 +555,10 @@ int brain_regions_immune_get_sensitivity(
     brain_region_type_t region_type,
     region_cytokine_sensitivity_t* sensitivity
 ) {
-    if (!bridge || !sensitivity) return -1;
+    if (!bridge || !sensitivity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_get_sensitivity: required parameter is NULL (bridge, sensitivity)");
+        return -1;
+    }
 
     const region_cytokine_sensitivity_t* found = find_sensitivity(bridge, region_type);
     if (found) {
@@ -546,7 +576,10 @@ int brain_regions_immune_get_sensitivity(
  * ============================================================================ */
 
 int brain_regions_immune_apply_effects(brain_regions_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->brain_module) return -1;
+    if (!bridge || !bridge->brain_module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_effects: required parameter is NULL (bridge, bridge->brain_module)");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -567,16 +600,25 @@ int brain_regions_immune_apply_to_region(
     brain_regions_immune_bridge_t* bridge,
     uint32_t region_id
 ) {
-    if (!bridge || !bridge->brain_module) return -1;
+    if (!bridge || !bridge->brain_module) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_to_region: required parameter is NULL (bridge, bridge->brain_module)");
+        return -1;
+    }
 
     /* Find region */
     brain_region_t* region = brain_module_get_region(bridge->brain_module, region_id);
-    if (!region) return -1;
+    if (!region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_to_region: region is NULL");
+        return -1;
+    }
 
     /* Get or create inflammation state */
     region_inflammation_state_t* state =
         get_or_create_inflammation_state(bridge, region_id, region->type);
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_to_region: state is NULL");
+        return -1;
+    }
 
     /* Skip if no immune system */
     if (!bridge->immune_system) {
@@ -641,7 +683,10 @@ int brain_regions_immune_apply_layer_effects(
     brain_regions_immune_bridge_t* bridge,
     uint32_t region_id
 ) {
-    if (!bridge || !bridge->config.enable_layer_effects) return -1;
+    if (!bridge || !bridge->config.enable_layer_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_layer_effects: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     /* Find inflammation state */
     region_inflammation_state_t* state = NULL;
@@ -652,7 +697,10 @@ int brain_regions_immune_apply_layer_effects(
         }
     }
 
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_apply_layer_effects: state is NULL");
+        return -1;
+    }
 
     /* Apply layer-specific effects */
     float intensity = state->intensity;
@@ -722,7 +770,10 @@ int brain_regions_immune_restore_region(
     uint32_t region_id,
     float il10_concentration
 ) {
-    if (!bridge || !bridge->config.enable_il10_recovery) return -1;
+    if (!bridge || !bridge->config.enable_il10_recovery) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_restore_region: required parameter is NULL (bridge, bridge->config)");
+        return -1;
+    }
 
     /* Find inflammation state */
     region_inflammation_state_t* state = NULL;
@@ -733,7 +784,10 @@ int brain_regions_immune_restore_region(
         }
     }
 
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_restore_region: state is NULL");
+        return -1;
+    }
 
     /* Get responsiveness */
     region_cytokine_sensitivity_t sens;
@@ -852,7 +906,10 @@ int brain_regions_immune_trigger_response(
     brain_regions_immune_bridge_t* bridge,
     uint32_t region_id
 ) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_trigger_response: required parameter is NULL (bridge, bridge->immune_system)");
+        return -1;
+    }
 
     /* Find abnormality state */
     region_abnormality_state_t* state = NULL;
@@ -863,7 +920,10 @@ int brain_regions_immune_trigger_response(
         }
     }
 
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_trigger_response: state is NULL");
+        return -1;
+    }
 
     /* Check persistence threshold */
     if (state->consecutive_abnormal < bridge->config.persistence_threshold) {
@@ -881,7 +941,10 @@ int brain_regions_immune_trigger_response(
         sizeof(epitope)
     );
 
-    if (epitope_len == 0) return -1;
+    if (epitope_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_trigger_response: epitope_len is zero");
+        return -1;
+    }
 
     /* Calculate severity */
     state->immune_severity = brain_regions_immune_compute_severity(bridge, region_id);
@@ -963,7 +1026,10 @@ int brain_regions_immune_bridge_update(
     brain_regions_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1029,7 +1095,10 @@ int brain_regions_immune_get_inflammation_state(
     uint32_t region_id,
     region_inflammation_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
         if (bridge->inflammation_states[i].region_id == region_id) {
@@ -1038,6 +1107,7 @@ int brain_regions_immune_get_inflammation_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_get_inflammation_state: validation failed");
     return -1;
 }
 
@@ -1046,7 +1116,10 @@ int brain_regions_immune_get_abnormality_state(
     uint32_t region_id,
     region_abnormality_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_get_abnormality_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->abnormality_state_count; i++) {
         if (bridge->abnormality_states[i].region_id == region_id) {
@@ -1055,6 +1128,7 @@ int brain_regions_immune_get_abnormality_state(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_get_abnormality_state: validation failed");
     return -1;
 }
 
@@ -1092,7 +1166,10 @@ bool brain_regions_immune_is_region_modulated(
     const brain_regions_immune_bridge_t* bridge,
     uint32_t region_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_is_region_modulated: bridge is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
         if (bridge->inflammation_states[i].region_id == region_id) {
@@ -1100,6 +1177,7 @@ bool brain_regions_immune_is_region_modulated(
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_regions_immune_is_region_modulated: validation failed");
     return false;
 }
 
@@ -1107,7 +1185,10 @@ int brain_regions_immune_get_stats(
     const brain_regions_immune_bridge_t* bridge,
     brain_regions_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_regions_immune_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     *stats = bridge->stats;
     stats->regions_monitored = bridge->inflammation_state_count;

@@ -582,6 +582,7 @@ bool harm_prevention_would_block(
 {
     /* Guard clauses */
     if (!system || !action_desc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_prevention_would_block: required parameter is NULL (system, action_desc)");
         return false;
     }
 
@@ -595,6 +596,7 @@ bool harm_prevention_would_block(
 
     /* Check for error */
     if (harm_score < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "harm_prevention_would_block: validation failed");
         return false;
     }
 
@@ -687,6 +689,7 @@ bool harm_prevention_is_bio_async_connected(
 {
     /* Guard clause */
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_prevention_is_bio_async_connected: system is NULL");
         return false;
     }
 

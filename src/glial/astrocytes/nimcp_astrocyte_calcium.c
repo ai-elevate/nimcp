@@ -191,6 +191,7 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     if (!system->calcium || !system->ip3 || !system->calcium_er || !system->last_wave_time ||
         !system->workspace_dCa || !system->workspace_dIP3 || !system->workspace_dCaER) {
         astrocyte_calcium_system_destroy(system);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_calcium_system_create: operation failed");
         return NULL;
     }
 

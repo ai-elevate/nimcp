@@ -755,6 +755,7 @@ omni_wm_substrate_bridge_t* omni_wm_substrate_bridge_create(
     omni_wm_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_wm_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "log_metabolic_state: bridge is NULL");
         return NULL;
     }
 
@@ -763,6 +764,7 @@ omni_wm_substrate_bridge_t* omni_wm_substrate_bridge_create(
                          "wm_substrate_bridge") != 0) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "log_metabolic_state: operation failed");
         return NULL;
     }
 
@@ -999,7 +1001,10 @@ nimcp_error_t omni_wm_substrate_bridge_connect_metabolic(
 }
 
 bool omni_wm_substrate_bridge_is_connected(const omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_substrate_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_substrate_bridge_heartbeat("omni_wm_subs_is_connected", 0.0f);
 
@@ -1113,7 +1118,10 @@ nimcp_error_t omni_wm_substrate_bridge_get_availability(
 }
 
 bool omni_wm_substrate_bridge_can_train(const omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_substrate_bridge_can_train: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_substrate_bridge_heartbeat("omni_wm_subs_can_train", 0.0f);
 
@@ -1122,7 +1130,10 @@ bool omni_wm_substrate_bridge_can_train(const omni_wm_substrate_bridge_t* bridge
 }
 
 bool omni_wm_substrate_bridge_can_predict(const omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_substrate_bridge_can_predict: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_substrate_bridge_heartbeat("omni_wm_subs_can_predict", 0.0f);
 
@@ -1287,7 +1298,10 @@ uint32_t omni_wm_substrate_bridge_get_active_alerts(
 }
 
 bool omni_wm_substrate_bridge_has_alert(const omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_substrate_bridge_has_alert: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_substrate_bridge_heartbeat("omni_wm_subs_has_alert", 0.0f);
 
@@ -1299,7 +1313,10 @@ bool omni_wm_substrate_bridge_check_alert(
     const omni_wm_substrate_bridge_t* bridge,
     uint32_t alert_bit) {
 
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "omni_wm_substrate_bridge_has_alert: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     omni_wm_substrate_bridge_heartbeat("omni_wm_subs_check_alert", 0.0f);
 

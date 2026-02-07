@@ -193,18 +193,21 @@ bool axon_validate_params(float length, float diameter)
 {
     if (length <= 0.0f) {
         LOG_MODULE_ERROR(MODULE_NAME, "Invalid axon length: %f", length);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 
     if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon diameter too small: %f < %f",
                         diameter, NIMCP_AXON_MIN_DIAMETER_UM);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 
     if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon diameter too large: %f > %f",
                         diameter, NIMCP_AXON_MAX_DIAMETER_UM);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
         return false;
     }
 
@@ -382,6 +385,7 @@ axon_t* axon_create(uint32_t id,
     if (!nimcp_future_wait_timeout(future, timeout_ms)) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon creation timed out after %u ms", timeout_ms);
         nimcp_future_destroy(future);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_create: nimcp_future_wait_timeout is NULL");
         return NULL;
     }
 
@@ -391,6 +395,7 @@ axon_t* axon_create(uint32_t id,
     if (err != NIMCP_SUCCESS) {
         LOG_MODULE_ERROR(MODULE_NAME, "Axon creation failed with error: %d", err);
         nimcp_future_destroy(future);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_create: validation failed");
         return NULL;
     }
 
@@ -548,22 +553,26 @@ bool axon_initiate_spike(axon_t* axon,
 {
     if (!axon) {
         LOG_MODULE_ERROR(MODULE_NAME, "NULL axon in initiate_spike");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_initiate_spike: axon is NULL");
         return false;
     }
 
     if (!axon->is_functional) {
         LOG_MODULE_WARN(MODULE_NAME, "Axon %u: Cannot spike - not functional", axon->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_initiate_spike: axon->is_functional is NULL");
         return false;
     }
 
     if (axon->damage >= 1.0f) {
         LOG_MODULE_WARN(MODULE_NAME, "Axon %u: Cannot spike - fully damaged", axon->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: capacity exceeded");
         return false;
     }
 
     // Check refractory period
     if (axon_is_refractory(axon, current_time)) {
         LOG_MODULE_TRACE(MODULE_NAME, "Axon %u: Cannot spike - in refractory period", axon->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
         return false;
     }
 
@@ -572,6 +581,7 @@ bool axon_initiate_spike(axon_t* axon,
     if (axon->atp_level < min_atp) {
         LOG_MODULE_WARN(MODULE_NAME, "Axon %u: Cannot spike - insufficient ATP (%f < %f)",
                        axon->id, axon->atp_level, min_atp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
         return false;
     }
 

@@ -131,6 +131,7 @@ bool nimcp_layers_are_adjacent(nimcp_layer_id_t a, nimcp_layer_id_t b) {
         return true;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layers_are_adjacent: validation failed");
     return false;
 }
 
@@ -190,6 +191,7 @@ nimcp_layer_msg_t* nimcp_layer_msg_create(
         msg->payload = nimcp_malloc(payload_size);
         if (!msg->payload) {
             nimcp_free(msg);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layer_msg_create: msg->payload is NULL");
             return NULL;
         }
         memcpy(msg->payload, payload, payload_size);
@@ -227,6 +229,7 @@ nimcp_layer_msg_t* nimcp_layer_msg_clone(const nimcp_layer_msg_t* msg) {
         clone->payload = nimcp_malloc(msg->header.payload_size);
         if (!clone->payload) {
             nimcp_free(clone);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_layer_msg_clone: clone->payload is NULL");
             return NULL;
         }
         memcpy(clone->payload, msg->payload, msg->header.payload_size);

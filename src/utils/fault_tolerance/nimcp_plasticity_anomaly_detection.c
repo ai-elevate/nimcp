@@ -350,6 +350,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
     detector->mutex = nimcp_mutex_create(&attr);
     if (!detector->mutex) {
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_anomaly_create: detector->mutex is NULL");
         return NULL;
     }
 
@@ -360,6 +361,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
     if (!detector->rules) {
         nimcp_mutex_destroy(detector->mutex);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_anomaly_create: detector->rules is NULL");
         return NULL;
     }
 
@@ -370,6 +372,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
         nimcp_free(detector->rules);
         nimcp_mutex_destroy(detector->mutex);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_anomaly_create: detector->trackers is NULL");
         return NULL;
     }
 
@@ -382,6 +385,7 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
         nimcp_free(detector->rules);
         nimcp_mutex_destroy(detector->mutex);
         nimcp_free(detector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_create: detector->anomaly_history is NULL");
         return NULL;
     }
 
@@ -432,6 +436,7 @@ int plasticity_anomaly_add_rule(
     const plasticity_detection_rule_t* rule
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !rule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_add_rule: required parameter is NULL (detector, rule)");
         return -1;
     }
 
@@ -439,6 +444,7 @@ int plasticity_anomaly_add_rule(
 
     if (detector->rule_count >= detector->rule_capacity) {
         nimcp_mutex_unlock(detector->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "plasticity_anomaly_add_rule: capacity exceeded");
         return -1;
     }
 
@@ -456,6 +462,7 @@ int plasticity_anomaly_remove_rule(
     uint32_t rule_id
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_remove_rule: detector is NULL");
         return -1;
     }
 
@@ -474,6 +481,7 @@ int plasticity_anomaly_remove_rule(
     }
 
     nimcp_mutex_unlock(detector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_remove_rule: operation failed");
     return -1;
 }
 
@@ -483,6 +491,7 @@ int plasticity_anomaly_set_rule_enabled(
     bool enabled
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_set_rule_enabled: detector is NULL");
         return -1;
     }
 
@@ -497,6 +506,7 @@ int plasticity_anomaly_set_rule_enabled(
     }
 
     nimcp_mutex_unlock(detector->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_set_rule_enabled: validation failed");
     return -1;
 }
 
@@ -505,6 +515,7 @@ int plasticity_anomaly_load_default_rules(
     plasticity_anomaly_category_t category
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_load_default_rules: detector is NULL");
         return -1;
     }
 
@@ -552,6 +563,7 @@ int plasticity_anomaly_load_default_rules(
 
 int plasticity_anomaly_load_all_default_rules(plasticity_anomaly_detector_t* detector) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_load_all_default_rules: detector is NULL");
         return -1;
     }
 
@@ -573,6 +585,7 @@ int plasticity_anomaly_load_all_default_rules(plasticity_anomaly_detector_t* det
 
 int plasticity_anomaly_detect(plasticity_anomaly_detector_t* detector) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_detect: detector is NULL");
         return -1;
     }
 
@@ -670,6 +683,7 @@ int plasticity_anomaly_submit_metric(
     plasticity_anomaly_category_t category
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !metric_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_submit_metric: required parameter is NULL (detector, metric_name)");
         return -1;
     }
 
@@ -688,6 +702,7 @@ int plasticity_anomaly_analyze_weights(
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC ||
         !weights || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_analyze_weights: operation failed");
         return -1;
     }
 
@@ -763,6 +778,7 @@ int plasticity_anomaly_analyze_timing(
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC ||
         !pre_times || !post_times || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_analyze_timing: operation failed");
         return -1;
     }
 
@@ -799,6 +815,7 @@ int plasticity_anomaly_set_callback(
     void* user_data
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_set_callback: detector is NULL");
         return -1;
     }
 
@@ -816,6 +833,7 @@ int plasticity_anomaly_set_health_callback(
     void* user_data
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_set_health_callback: detector is NULL");
         return -1;
     }
 
@@ -836,6 +854,7 @@ int plasticity_anomaly_get_stats(
     plasticity_detection_stats_t* stats
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_get_stats: required parameter is NULL (detector, stats)");
         return -1;
     }
 
@@ -859,6 +878,7 @@ int plasticity_anomaly_get_reports(
     size_t max_reports
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC || !reports) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_anomaly_get_reports: required parameter is NULL (detector, reports)");
         return -1;
     }
 
@@ -912,6 +932,7 @@ int plasticity_anomaly_connect_bio_async(
     bio_router_t router
 ) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_connect_bio_async: detector is NULL");
         return -1;
     }
 
@@ -925,6 +946,7 @@ int plasticity_anomaly_connect_bio_async(
 
 int plasticity_anomaly_broadcast(plasticity_anomaly_detector_t* detector) {
     if (!detector || detector->magic != PLASTICITY_ANOMALY_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_anomaly_broadcast: detector is NULL");
         return -1;
     }
 
@@ -1127,6 +1149,7 @@ static metric_tracker_t* find_or_create_tracker(
 
     /* Create new */
     if (detector->tracker_count >= detector->tracker_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_tracker: capacity exceeded");
         return NULL;
     }
 
@@ -1139,6 +1162,7 @@ static metric_tracker_t* find_or_create_tracker(
     tracker->history = nimcp_calloc(tracker->history_size, sizeof(metric_sample_t));
 
     if (!tracker->history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_or_create_tracker: tracker->history is NULL");
         return NULL;
     }
 

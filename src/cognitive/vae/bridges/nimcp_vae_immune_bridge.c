@@ -66,7 +66,10 @@ static void update_ema(float* avg, float value, float alpha)
  */
 static bool check_rate_limit(vae_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_rate_limit: bridge is NULL");
+        return false;
+    }
 
     uint64_t now = get_timestamp_us();
     uint64_t current_second = now / 1000000ULL;
@@ -78,11 +81,13 @@ static bool check_rate_limit(vae_immune_bridge_t* bridge)
 
     /* Check cooldown */
     if (now - bridge->last_report_time_us < bridge->config.cooldown_ms * 1000ULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "check_rate_limit: validation failed");
         return false;
     }
 
     /* Check rate limit */
     if (bridge->reports_this_second >= bridge->config.max_reports_per_second) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "check_rate_limit: capacity exceeded");
         return false;
     }
 
@@ -213,6 +218,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
 
     if (!config) {
         if (vae_immune_bridge_default_config(&default_config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_create: validation failed");
             return NULL;
         }
         config = &default_config;
@@ -235,6 +241,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
                                            sizeof(vae_anomaly_record_t));
     if (!bridge->anomaly_history) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_immune_bridge_create: bridge->anomaly_history is NULL");
         return NULL;
     }
 
@@ -245,6 +252,7 @@ vae_immune_bridge_t* vae_immune_bridge_create(const vae_immune_bridge_config_t* 
         NIMCP_LOG_ERROR("VAE-Immune Bridge: Failed to create mutex");
         nimcp_free(bridge->anomaly_history);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vae_immune_bridge_create: bridge->mutex is NULL");
         return NULL;
     }
 
@@ -412,7 +420,10 @@ int vae_immune_bridge_connect_immune(vae_immune_bridge_t* bridge,
 
 int vae_immune_bridge_disconnect(vae_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -429,7 +440,10 @@ int vae_immune_bridge_disconnect(vae_immune_bridge_t* bridge)
 
 bool vae_immune_bridge_is_connected(const vae_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return (bridge->vae != NULL) && (bridge->immune != NULL);
 }
 
@@ -440,8 +454,14 @@ bool vae_immune_bridge_is_connected(const vae_immune_bridge_t* bridge)
 int vae_immune_check_anomalies(vae_immune_bridge_t* bridge,
                                 const vae_loss_t* loss)
 {
-    if (!bridge || !loss) return -1;
-    if (!vae_immune_bridge_is_connected(bridge)) return -1;
+    if (!bridge || !loss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_anomalies: required parameter is NULL (bridge, loss)");
+        return -1;
+    }
+    if (!vae_immune_bridge_is_connected(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vae_immune_check_anomalies: vae_immune_bridge_is_connected is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -527,7 +547,10 @@ int vae_immune_check_anomalies(vae_immune_bridge_t* bridge,
 int vae_immune_check_latent(vae_immune_bridge_t* bridge,
                              const vae_latent_state_t* latent)
 {
-    if (!bridge || !latent) return -1;
+    if (!bridge || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_latent: required parameter is NULL (bridge, latent)");
+        return -1;
+    }
     if (!bridge->config.enable_latent_monitoring) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -611,7 +634,10 @@ int vae_immune_report_anomaly(vae_immune_bridge_t* bridge,
                                vae_anomaly_severity_t severity,
                                float value)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_report_anomaly: bridge is NULL");
+        return -1;
+    }
 
     /* Get appropriate threshold */
     float threshold = 0.0f;
@@ -682,9 +708,13 @@ bool vae_immune_check_ood(vae_immune_bridge_t* bridge,
                            const nimcp_tensor_t* latent,
                            float* ood_score)
 {
-    if (!bridge || !latent || !ood_score) return false;
+    if (!bridge || !latent || !ood_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_ood: required parameter is NULL (bridge, latent, ood_score)");
+        return false;
+    }
     if (!bridge->baseline_established) {
         *ood_score = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_check_ood: bridge->baseline_established is NULL");
         return false;
     }
 
@@ -745,7 +775,10 @@ uint32_t vae_immune_present_antigen(vae_immune_bridge_t* bridge,
 
 int vae_immune_send_danger_signal(vae_immune_bridge_t* bridge, float free_energy)
 {
-    if (!bridge || !bridge->immune) return -1;
+    if (!bridge || !bridge->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_send_danger_signal: required parameter is NULL (bridge, bridge->immune)");
+        return -1;
+    }
 
     /* Calculate signal strength based on how much threshold is exceeded */
     float ratio = free_energy / bridge->config.danger_signal_threshold;
@@ -775,7 +808,10 @@ int vae_immune_handle_response(vae_immune_bridge_t* bridge,
                                 vae_immune_response_t response,
                                 float strength)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_handle_response: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_immune_modulation) return 0;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -824,7 +860,10 @@ int vae_immune_handle_response(vae_immune_bridge_t* bridge,
 int vae_immune_set_thresholds(vae_immune_bridge_t* bridge,
                                const vae_immune_thresholds_t* thresholds)
 {
-    if (!bridge || !thresholds) return -1;
+    if (!bridge || !thresholds) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_set_thresholds: required parameter is NULL (bridge, thresholds)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->config.thresholds = *thresholds;
@@ -836,14 +875,20 @@ int vae_immune_set_thresholds(vae_immune_bridge_t* bridge,
 int vae_immune_get_thresholds(const vae_immune_bridge_t* bridge,
                                vae_immune_thresholds_t* thresholds)
 {
-    if (!bridge || !thresholds) return -1;
+    if (!bridge || !thresholds) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_get_thresholds: required parameter is NULL (bridge, thresholds)");
+        return -1;
+    }
     *thresholds = bridge->config.thresholds;
     return 0;
 }
 
 int vae_immune_adapt_thresholds(vae_immune_bridge_t* bridge, float num_std_devs)
 {
-    if (!bridge || !bridge->baseline_established) return -1;
+    if (!bridge || !bridge->baseline_established) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_adapt_thresholds: required parameter is NULL (bridge, bridge->baseline_established)");
+        return -1;
+    }
 
     /* Adapt based on baseline statistics - placeholder implementation */
     /* Full implementation would use running mean/std of metrics */
@@ -858,8 +903,14 @@ int vae_immune_adapt_thresholds(vae_immune_bridge_t* bridge, float num_std_devs)
 int vae_immune_update_baseline(vae_immune_bridge_t* bridge,
                                 const vae_latent_state_t* latent)
 {
-    if (!bridge || !latent) return -1;
-    if (!bridge->baseline_latent_mean || !bridge->baseline_latent_var) return -1;
+    if (!bridge || !latent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_update_baseline: required parameter is NULL (bridge, latent)");
+        return -1;
+    }
+    if (!bridge->baseline_latent_mean || !bridge->baseline_latent_var) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_update_baseline: required parameter is NULL (bridge->baseline_latent_mean, bridge->baseline_latent_var)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -901,7 +952,10 @@ int vae_immune_update_baseline(vae_immune_bridge_t* bridge,
 
 int vae_immune_reset_baseline(vae_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_reset_baseline: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -924,7 +978,10 @@ int vae_immune_reset_baseline(vae_immune_bridge_t* bridge)
 
 bool vae_immune_has_baseline(const vae_immune_bridge_t* bridge)
 {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_has_baseline: bridge is NULL");
+        return false;
+    }
     return bridge->baseline_established;
 }
 
@@ -935,7 +992,10 @@ bool vae_immune_has_baseline(const vae_immune_bridge_t* bridge)
 int vae_immune_bridge_get_stats(const vae_immune_bridge_t* bridge,
                                  vae_immune_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     stats->uptime_us = get_timestamp_us() - bridge->creation_time_us;
     return 0;
@@ -944,7 +1004,10 @@ int vae_immune_bridge_get_stats(const vae_immune_bridge_t* bridge,
 int vae_immune_bridge_get_health(const vae_immune_bridge_t* bridge,
                                   vae_immune_bridge_health_t* health)
 {
-    if (!bridge || !health) return -1;
+    if (!bridge || !health) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_get_health: required parameter is NULL (bridge, health)");
+        return -1;
+    }
     *health = bridge->health;
     return 0;
 }
@@ -959,7 +1022,10 @@ int vae_immune_get_anomaly_history(const vae_immune_bridge_t* bridge,
                                     vae_anomaly_record_t* records,
                                     uint32_t max_records)
 {
-    if (!bridge || !records || max_records == 0) return -1;
+    if (!bridge || !records || max_records == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_get_anomaly_history: required parameter is NULL (bridge, records)");
+        return -1;
+    }
 
     uint32_t count = (max_records < bridge->history_count) ?
                       max_records : bridge->history_count;
@@ -997,7 +1063,10 @@ uint32_t vae_immune_get_recent_anomaly_count(const vae_immune_bridge_t* bridge,
 
 int vae_immune_bridge_update(vae_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge || !bridge->is_initialized) return -1;
+    if (!bridge || !bridge->is_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_bridge_update: required parameter is NULL (bridge, bridge->is_initialized)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1025,7 +1094,10 @@ int vae_immune_bridge_update(vae_immune_bridge_t* bridge, uint64_t delta_ms)
 
 int vae_immune_process_responses(vae_immune_bridge_t* bridge)
 {
-    if (!bridge || !bridge->immune) return -1;
+    if (!bridge || !bridge->immune) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vae_immune_process_responses: required parameter is NULL (bridge, bridge->immune)");
+        return -1;
+    }
 
     /* Check for pending immune responses - placeholder */
     /* Full implementation would query immune system for VAE-relevant responses */

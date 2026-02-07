@@ -59,7 +59,10 @@ static endorsement_collection_t* find_collection(
     mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return NULL;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_collection: required parameter is NULL (collector, tx_id)");
+        return NULL;
+    }
 
     for (size_t i = 0; i < collector->collection_count; i++) {
         if (collector->collections[i].tx_id.sequence == tx_id->sequence &&
@@ -67,14 +70,19 @@ static endorsement_collection_t* find_collection(
             return &collector->collections[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_collection: required parameter is NULL (collector, tx_id)");
     return NULL;
 }
 
 static endorsement_collection_t* allocate_collection(
     mesh_endorsement_collector_t* collector
 ) {
-    if (!collector) return NULL;
+    if (!collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_collection: collector is NULL");
+        return NULL;
+    }
     if (collector->collection_count >= collector->collection_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "allocate_collection: capacity exceeded");
         return NULL;
     }
     return &collector->collections[collector->collection_count++];
@@ -182,6 +190,7 @@ mesh_endorsement_collector_t* mesh_endorsement_collector_create(
     mesh_endorsement_collector_t* collector = nimcp_calloc(1, sizeof(*collector));
     if (!collector) {
         LOG_ERROR("Failed to allocate endorsement collector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement_collector_create: collector is NULL");
         return NULL;
     }
 
@@ -195,6 +204,7 @@ mesh_endorsement_collector_t* mesh_endorsement_collector_create(
     );
     if (!collector->collections) {
         nimcp_free(collector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement_collector_create: collector->collections is NULL");
         return NULL;
     }
 
@@ -204,6 +214,7 @@ mesh_endorsement_collector_t* mesh_endorsement_collector_create(
     if (!collector->mutex) {
         nimcp_free(collector->collections);
         nimcp_free(collector);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "mesh_endorsement_collector_create: collector->mutex is NULL");
         return NULL;
     }
 
@@ -511,7 +522,10 @@ bool mesh_endorsement_is_complete(
     const mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return false;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_is_complete: required parameter is NULL (collector, tx_id)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)((mesh_endorsement_collector_t*)collector)->mutex);
 
@@ -529,7 +543,10 @@ bool mesh_endorsement_quorum_met(
     const mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return false;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_quorum_met: required parameter is NULL (collector, tx_id)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)((mesh_endorsement_collector_t*)collector)->mutex);
 
@@ -547,7 +564,10 @@ bool mesh_endorsement_is_vetoed(
     const mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return false;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_is_vetoed: required parameter is NULL (collector, tx_id)");
+        return false;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)((mesh_endorsement_collector_t*)collector)->mutex);
 
@@ -565,7 +585,10 @@ const endorsement_set_t* mesh_endorsement_get_collected(
     const mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return NULL;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_get_collected: required parameter is NULL (collector, tx_id)");
+        return NULL;
+    }
 
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
@@ -577,7 +600,10 @@ const endorser_set_t* mesh_endorsement_get_selected(
     const mesh_endorsement_collector_t* collector,
     const mesh_tx_id_t* tx_id
 ) {
-    if (!collector || !tx_id) return NULL;
+    if (!collector || !tx_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_get_selected: required parameter is NULL (collector, tx_id)");
+        return NULL;
+    }
 
     const endorsement_collection_t* coll = find_collection(
         (mesh_endorsement_collector_t*)collector, tx_id
@@ -687,7 +713,10 @@ bool mesh_endorsement_verify_signature(
     mesh_participant_registry_t* registry
 ) {
     /* Simple verification - in production would verify crypto signature */
-    if (!endorsement || !tx) return false;
+    if (!endorsement || !tx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mesh_endorsement_verify_signature: required parameter is NULL (endorsement, tx)");
+        return false;
+    }
     (void)registry;
     return endorsement->endorser_id != 0;
 }

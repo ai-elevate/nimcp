@@ -209,12 +209,14 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > SLEEP_WAKE_SNN_MAX_DIMENSIONS) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_create: operation failed");
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "sleep_wake_snn") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "sleep_wake_snn_create: validation failed");
         return NULL;
     }
 
@@ -232,6 +234,7 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
     if (!bridge->snn) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sleep_wake_snn_create: bridge->snn is NULL");
         return NULL;
     }
 
@@ -244,6 +247,7 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->arousal_buffer || !bridge->prev_state) {
         sleep_wake_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_create: operation failed");
         return NULL;
     }
 
@@ -297,7 +301,10 @@ void sleep_wake_snn_destroy(sleep_wake_snn_bridge_t* bridge) {
 }
 
 int sleep_wake_snn_reset(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -346,8 +353,14 @@ int sleep_wake_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_encode_state: required parameter is NULL (bridge, dimensions)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_encode_state: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SLEEP_WAKE_SNN_STATE_ENCODING;
@@ -403,7 +416,10 @@ int sleep_wake_snn_encode_pressure(
     float pressure,
     float circadian_phase
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_encode_pressure: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -429,7 +445,10 @@ int sleep_wake_snn_encode_arousal(
     float arousal,
     float wake_drive
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_encode_arousal: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -448,8 +467,14 @@ int sleep_wake_snn_encode_stage(
     uint32_t stage,
     float stage_depth
 ) {
-    if (!bridge) return -1;
-    if (stage > 4) return -1; /* 0=awake, 1=N1, 2=N2, 3=N3, 4=REM */
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_encode_stage: bridge is NULL");
+        return -1;
+    }
+    if (stage > 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_encode_stage: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -509,8 +534,14 @@ int sleep_wake_snn_encode_stage(
 //=============================================================================
 
 int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_simulate: bridge is NULL");
+        return -1;
+    }
+    if (duration_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_simulate: validation failed");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SLEEP_WAKE_SNN_STATE_SIMULATING;
@@ -608,7 +639,10 @@ int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) 
 }
 
 int sleep_wake_snn_step(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_step: bridge is NULL");
+        return -1;
+    }
     return sleep_wake_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -617,12 +651,19 @@ int sleep_wake_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_forward: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     int spike_count = sleep_wake_snn_encode_state(bridge, inputs, input_count);
-    if (spike_count < 0) return -1;
+    if (spike_count < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_forward: validation failed");
+        return -1;
+    }
 
     if (sleep_wake_snn_simulate(bridge, bridge->config.encoding_window_ms) < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_forward: validation failed");
         return -1;
     }
 
@@ -637,7 +678,10 @@ int sleep_wake_snn_get_arousal(
     sleep_wake_snn_bridge_t* bridge,
     sleep_wake_arousal_t* arousal
 ) {
-    if (!bridge || !arousal) return -1;
+    if (!bridge || !arousal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_get_arousal: required parameter is NULL (bridge, arousal)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *arousal = bridge->last_arousal;
@@ -651,8 +695,14 @@ int sleep_wake_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    if (!bridge || !activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_get_activations: required parameter is NULL (bridge, activations)");
+        return -1;
+    }
+    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_get_activations: num_dims is zero");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
@@ -667,7 +717,10 @@ bool sleep_wake_snn_check_sleep_onset(
     sleep_wake_snn_bridge_t* bridge,
     float* sleep_pressure
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_sleep_onset: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float pressure = bridge->last_arousal.sleep_pressure;
@@ -684,7 +737,10 @@ bool sleep_wake_snn_check_high_arousal(
     sleep_wake_snn_bridge_t* bridge,
     float* arousal_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_high_arousal: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_arousal.arousal_level;
@@ -701,7 +757,10 @@ bool sleep_wake_snn_check_stage_change(
     sleep_wake_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_check_stage_change: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
@@ -730,8 +789,14 @@ int sleep_wake_snn_get_dim_state(
     uint32_t dim,
     sleep_wake_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_get_dim_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
+    if (dim >= bridge->config.num_dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sleep_wake_snn_get_dim_state: capacity exceeded");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
@@ -744,7 +809,10 @@ int sleep_wake_snn_get_state(
     sleep_wake_snn_bridge_t* bridge,
     sleep_wake_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -768,7 +836,10 @@ int sleep_wake_snn_get_state(
 }
 
 int sleep_wake_snn_get_stats(sleep_wake_snn_bridge_t* bridge, sleep_wake_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -778,7 +849,10 @@ int sleep_wake_snn_get_stats(sleep_wake_snn_bridge_t* bridge, sleep_wake_snn_sta
 }
 
 int sleep_wake_snn_reset_stats(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(sleep_wake_snn_stats_t));
@@ -819,7 +893,10 @@ int sleep_wake_snn_register_sleep_callback(
     sleep_wake_snn_sleep_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_register_sleep_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_callback = callback;
@@ -834,7 +911,10 @@ int sleep_wake_snn_register_arousal_callback(
     sleep_wake_snn_arousal_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_register_arousal_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->arousal_callback = callback;
@@ -849,7 +929,10 @@ int sleep_wake_snn_register_stage_callback(
     sleep_wake_snn_stage_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_register_stage_callback: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stage_callback = callback;
@@ -864,8 +947,14 @@ int sleep_wake_snn_register_stage_callback(
 //=============================================================================
 
 int sleep_wake_snn_bio_async_connect(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
@@ -876,7 +965,10 @@ int sleep_wake_snn_bio_async_connect(sleep_wake_snn_bridge_t* bridge) {
 }
 
 int sleep_wake_snn_bio_async_disconnect(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -886,7 +978,10 @@ int sleep_wake_snn_bio_async_disconnect(sleep_wake_snn_bridge_t* bridge) {
 }
 
 bool sleep_wake_snn_is_bio_async_connected(sleep_wake_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_wake_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

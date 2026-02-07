@@ -113,6 +113,7 @@ sequence_immune_bridge_t* sequence_immune_bridge_create(
     if (!immune_system || !sequence_detector) {
         LOG_MODULE_ERROR("sequence_immune_bridge",
                   "Cannot create bridge without immune and sequence detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_immune_bridge_create: required parameter is NULL (immune_system, sequence_detector)");
         return NULL;
     }
 
@@ -192,7 +193,10 @@ int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
 
     }
     if (!bridge->enable_cytokine_modulation) return 0;
-    if (!bridge->immune_system || !bridge->sequence_detector) return -1;
+    if (!bridge->immune_system || !bridge->sequence_detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_apply_cytokine_effects: required parameter is NULL (bridge->immune_system, bridge->sequence_detector)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -251,7 +255,10 @@ int sequence_immune_apply_inflammation_effects(sequence_immune_bridge_t* bridge)
 
     }
     if (!bridge->enable_inflammation_impairment) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_apply_inflammation_effects: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -331,9 +338,15 @@ int sequence_immune_trigger_from_anomaly(
     const sequence_detection_t* detection
 ) {
     /* Guard clauses */
-    if (!bridge || !detection) return -1;
+    if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_trigger_from_anomaly: required parameter is NULL (bridge, detection)");
+        return -1;
+    }
     if (!bridge->enable_anomaly_immune_trigger) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_trigger_from_anomaly: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -471,7 +484,10 @@ int sequence_immune_boost_from_learning_success(sequence_immune_bridge_t* bridge
 
     }
     if (!bridge->enable_positive_feedback) return 0;
-    if (!bridge->immune_system) return -1;
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_boost_from_learning_success: bridge->immune_system is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -546,7 +562,10 @@ int sequence_immune_get_cytokine_effects(
     const sequence_immune_bridge_t* bridge,
     cytokine_sequence_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_sequence_effects_t));
@@ -559,7 +578,10 @@ int sequence_immune_get_inflammation_state(
     const sequence_immune_bridge_t* bridge,
     inflammation_sequence_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_sequence_state_t));
@@ -569,7 +591,10 @@ int sequence_immune_get_inflammation_state(
 }
 
 bool sequence_immune_is_detection_impaired(const sequence_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_is_detection_impaired: bridge is NULL");
+        return false;
+    }
 
     /* Detection is impaired if accuracy < 0.8 or timing tolerance increased >100ms */
     float accuracy = sequence_immune_compute_accuracy_factor(bridge);
@@ -677,6 +702,9 @@ int sequence_immune_disconnect_bio_async(sequence_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool sequence_immune_is_bio_async_connected(const sequence_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }

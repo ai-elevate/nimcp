@@ -92,6 +92,7 @@ p2p_immune_bridge_t* p2p_immune_bridge_create(
 ) {
     if (!immune_system || !p2p_node) {
         NIMCP_LOGGING_ERROR("p2p_immune_bridge_create: immune_system and p2p_node required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "p2p_immune_bridge_create: required parameter is NULL (immune_system, p2p_node)");
         return NULL;
     }
 
@@ -157,6 +158,7 @@ void p2p_immune_bridge_destroy(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_apply_cytokine_effects(p2p_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_apply_cytokine_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -197,6 +199,7 @@ int p2p_immune_apply_cytokine_effects(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_apply_inflammation_effects(p2p_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_apply_inflammation_effects: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -219,6 +222,7 @@ int p2p_immune_apply_inflammation_effects(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_create_antibody_peer_filter(p2p_immune_bridge_t* bridge, uint32_t antibody_id) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_create_antibody_peer_filter: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -230,6 +234,7 @@ int p2p_immune_create_antibody_peer_filter(p2p_immune_bridge_t* bridge, uint32_t
 
     if (bridge->p2p_modulation.filter_count >= bridge->p2p_modulation.filter_capacity) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "p2p_immune_create_antibody_peer_filter: capacity exceeded");
         return -1;
     }
 
@@ -248,6 +253,7 @@ int p2p_immune_create_antibody_peer_filter(p2p_immune_bridge_t* bridge, uint32_t
 
 bool p2p_immune_peer_filtered(const p2p_immune_bridge_t* bridge, uint32_t peer_id) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_peer_filtered: bridge is NULL");
         return false;
     }
 
@@ -261,6 +267,7 @@ bool p2p_immune_peer_filtered(const p2p_immune_bridge_t* bridge, uint32_t peer_i
     }
 
     nimcp_platform_mutex_unlock(bridge->base.mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "p2p_immune_peer_filtered: validation failed");
     return false;
 }
 
@@ -270,6 +277,7 @@ bool p2p_immune_peer_filtered(const p2p_immune_bridge_t* bridge, uint32_t peer_i
 
 int p2p_immune_update_health_metrics(p2p_immune_bridge_t* bridge) {
     if (!bridge || !bridge->p2p_node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_update_health_metrics: required parameter is NULL (bridge, bridge->p2p_node)");
         return -1;
     }
 
@@ -289,6 +297,7 @@ int p2p_immune_update_health_metrics(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_trigger_unhealthy_inflammation(p2p_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_trigger_unhealthy_inflammation: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -312,6 +321,7 @@ int p2p_immune_trigger_unhealthy_inflammation(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_present_peer_failure(p2p_immune_bridge_t* bridge, uint32_t peer_id, uint8_t failure_type) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_present_peer_failure: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -348,6 +358,7 @@ int p2p_immune_present_peer_failure(p2p_immune_bridge_t* bridge, uint32_t peer_i
 
 int p2p_immune_release_il10_from_recovery(p2p_immune_bridge_t* bridge) {
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_release_il10_from_recovery: required parameter is NULL (bridge, bridge->immune_system)");
         return -1;
     }
 
@@ -403,6 +414,7 @@ int p2p_immune_bridge_update(p2p_immune_bridge_t* bridge, uint64_t delta_ms) {
 
 int p2p_immune_get_cytokine_effects(const p2p_immune_bridge_t* bridge, cytokine_p2p_effects_t* effects) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_get_cytokine_effects: required parameter is NULL (bridge, effects)");
         return -1;
     }
 
@@ -415,6 +427,7 @@ int p2p_immune_get_cytokine_effects(const p2p_immune_bridge_t* bridge, cytokine_
 
 int p2p_immune_get_inflammation_state(const p2p_immune_bridge_t* bridge, inflammation_p2p_state_t* state) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_get_inflammation_state: required parameter is NULL (bridge, state)");
         return -1;
     }
 
@@ -427,6 +440,7 @@ int p2p_immune_get_inflammation_state(const p2p_immune_bridge_t* bridge, inflamm
 
 bool p2p_immune_has_unhealthy_peers(const p2p_immune_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_has_unhealthy_peers: bridge is NULL");
         return false;
     }
     return bridge->p2p_modulation.health.unhealthy_peers >= UNHEALTHY_PEERS_LOCAL_THRESHOLD;
@@ -448,6 +462,7 @@ uint32_t p2p_immune_get_max_peers(const p2p_immune_bridge_t* bridge) {
 int p2p_immune_connect_bio_async(p2p_immune_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("p2p_immune_connect_bio_async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 

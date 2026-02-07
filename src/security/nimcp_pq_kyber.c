@@ -297,7 +297,7 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
         return err;
     }
 
-    /* Secret key: vector s and public key */
+    /* Secret key: random vector s, followed by embedded public key (as in real Kyber) */
     err = secure_random_bytes(secret_key, secret_key_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(seed, sizeof(seed));
@@ -305,6 +305,12 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
         _local_secure_zero(secret_key, secret_key_len);
         nimcp_free(secret_key);
         return err;
+    }
+
+    /* Embed public key at end of secret key (matches real Kyber layout) */
+    if (secret_key_len >= public_key_len) {
+        memcpy(secret_key + (secret_key_len - public_key_len),
+               public_key, public_key_len);
     }
 
     /* Initialize keypair structure */
@@ -372,9 +378,10 @@ nimcp_error_t nimcp_kyber_encapsulate(
     }
 
     /*
-     * Simplified Kyber encapsulation:
-     * Production would implement Kyber.CPAPKE.Enc and KDF
-     * We generate a random shared secret and derive ciphertext
+     * Simplified Kyber encapsulation (PLACEHOLDER - NOT SECURE):
+     * Production would implement Kyber.CPAPKE.Enc and KDF.
+     * We generate a random shared secret and embed it in the ciphertext
+     * so that decapsulate can recover it deterministically.
      */
 
     /* Generate shared secret */
@@ -384,12 +391,17 @@ nimcp_error_t nimcp_kyber_encapsulate(
         return err;
     }
 
-    /* Generate ciphertext (would be encryption of message under public key) */
+    /* Generate random ciphertext padding */
     err = secure_random_bytes(ciphertext, expected_ct_len);
     if (err != NIMCP_OK) {
         _local_secure_zero(message, sizeof(message));
         _local_secure_zero(shared_secret, shared_secret_len);
         return err;
+    }
+
+    /* Embed shared secret XOR'd with public key into ciphertext (PLACEHOLDER) */
+    for (size_t i = 0; i < shared_secret_len && i < expected_ct_len; i++) {
+        ciphertext[i] = shared_secret[i] ^ public_key[i % expected_pk_len];
     }
 
     *ciphertext_len = expected_ct_len;
@@ -441,16 +453,19 @@ nimcp_error_t nimcp_kyber_decapsulate(
     }
 
     /*
-     * Simplified Kyber decapsulation:
-     * Production would implement Kyber.CPAPKE.Dec and KDF
-     * We derive the shared secret from the ciphertext
+     * Simplified Kyber decapsulation (PLACEHOLDER - NOT SECURE):
+     * Production would implement Kyber.CPAPKE.Dec and KDF.
+     * We recover the shared secret that was embedded in the ciphertext
+     * by encapsulate, using the public key stored in the secret key.
      */
 
-    /* Derive shared secret (would be decryption + KDF in real implementation) */
-    err = secure_random_bytes(shared_secret, shared_secret_len);
-    if (err != NIMCP_OK) {
-        LOG_ERROR("nimcp_kyber_decapsulate: Secret derivation failed");
-        return err;
+    /* Extract public key from end of secret key (as embedded by keygen) */
+    size_t pk_offset = expected_sk_len - expected_pk_len;
+    const uint8_t* embedded_pk = secret_key + pk_offset;
+
+    /* Recover shared secret by reversing the XOR with public key (PLACEHOLDER) */
+    for (size_t i = 0; i < shared_secret_len && i < expected_ct_len; i++) {
+        shared_secret[i] = ciphertext[i] ^ embedded_pk[i % expected_pk_len];
     }
 
     LOG_DEBUG("nimcp_kyber_decapsulate: Recovered shared secret (ss=%zu)",

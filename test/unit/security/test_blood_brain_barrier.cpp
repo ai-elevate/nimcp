@@ -200,11 +200,11 @@ TEST_F(BloodBrainBarrierTest, ValidateStringSafe)
 
 TEST_F(BloodBrainBarrierTest, ValidateStringNullSystem)
 {
-    // Standalone validation (NULL system) is allowed for basic security checks
+    // NULL system is rejected - validation requires system context
     bbb_validation_result_t result;
     bool valid = bbb_validate_string(nullptr, "test", &result);
-    EXPECT_TRUE(valid);  // Safe string passes even without system context
-    EXPECT_TRUE(result.valid);
+    EXPECT_FALSE(valid);
+    EXPECT_FALSE(result.valid);
 }
 
 TEST_F(BloodBrainBarrierTest, ValidateStringNullInput)
@@ -323,11 +323,11 @@ TEST_F(BloodBrainBarrierTest, DetectIntegerOverflowMin)
 
 TEST_F(BloodBrainBarrierTest, ValidateIntegerNullSystem)
 {
-    // Standalone validation (NULL system) is allowed for basic range checks
+    // NULL system is rejected - validation requires system context
     bbb_validation_result_t result;
     bool valid = bbb_validate_integer(nullptr, 42, &result);
-    EXPECT_TRUE(valid);  // Normal integer passes without system context
-    EXPECT_TRUE(result.valid);
+    EXPECT_FALSE(valid);
+    EXPECT_FALSE(result.valid);
 }
 
 //=============================================================================
@@ -367,13 +367,13 @@ TEST_F(BloodBrainBarrierTest, ValidatePointerZeroSize)
 
 TEST_F(BloodBrainBarrierTest, ValidatePointerNullSystem)
 {
-    // Standalone validation (NULL system) is allowed for basic pointer checks
+    // NULL system is rejected - validation requires system context
     int data = 42;
     bbb_validation_result_t result;
 
     bool valid = bbb_validate_pointer(nullptr, &data, sizeof(data), &result);
-    EXPECT_TRUE(valid);  // Valid pointer passes without system context
-    EXPECT_TRUE(result.valid);
+    EXPECT_FALSE(valid);
+    EXPECT_FALSE(result.valid);
 }
 
 //=============================================================================

@@ -133,6 +133,7 @@ static bool cholesky_decompose_4x4(
 {
     /* Guard: NULL inputs */
     if (!A || !L) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cholesky_decompose_4x4: required parameter is NULL (A, L)");
         return false;
     }
 
@@ -165,6 +166,7 @@ static bool cholesky_decompose_4x4(
 
                 /* Guard: Not positive-definite */
                 if (diag <= EPSILON) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decompose_4x4: validation failed");
                     return false;
                 }
 
@@ -183,6 +185,7 @@ static bool cholesky_decompose_4x4(
 
                 /* Guard: Division by zero */
                 if (fabsf(L[j][j]) < EPSILON) {
+                    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cholesky_decompose_4x4: validation failed");
                     return false;
                 }
 
@@ -318,6 +321,7 @@ bool pr_quat_pink_validate_correlation(
     /* Guard: NULL input */
     if (!correlation_matrix) {
         set_error("Correlation matrix is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_validate_correlation: correlation_matrix is NULL");
         return false;
     }
 
@@ -335,6 +339,7 @@ bool pr_quat_pink_validate_correlation(
 
         if (fabsf(correlation_matrix[i][i] - 1.0f) > EPSILON) {
             set_error("Diagonal elements must be 1.0");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
             return false;
         }
     }
@@ -356,6 +361,7 @@ bool pr_quat_pink_validate_correlation(
 
             if (fabsf(correlation_matrix[i][j] - correlation_matrix[j][i]) > EPSILON) {
                 set_error("Correlation matrix must be symmetric");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
                 return false;
             }
         }
@@ -378,6 +384,7 @@ bool pr_quat_pink_validate_correlation(
 
             if (correlation_matrix[i][j] < -1.0f || correlation_matrix[i][j] > 1.0f) {
                 set_error("Correlation values must be in [-1, 1]");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: validation failed");
                 return false;
             }
         }
@@ -387,6 +394,7 @@ bool pr_quat_pink_validate_correlation(
     float L[PR_QUAT_DIM][PR_QUAT_DIM];
     if (!cholesky_decompose_4x4(correlation_matrix, L)) {
         set_error("Correlation matrix is not positive-definite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_validate_correlation: cholesky_decompose_4x4 is NULL");
         return false;
     }
 
@@ -417,6 +425,7 @@ pr_quat_pink_state_t* pr_quat_pink_create(
     /* Validate correlation matrix */
     if (!pr_quat_pink_validate_correlation(correlation_matrix)) {
         /* Error already set by validate */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_create: pr_quat_pink_validate_correlation is NULL");
         return NULL;
     }
 
@@ -445,6 +454,7 @@ pr_quat_pink_state_t* pr_quat_pink_create(
     if (!cholesky_decompose_4x4(state->correlation_matrix, state->cholesky_L)) {
         set_error("Cholesky decomposition failed");
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_create: cholesky_decompose_4x4 is NULL");
         return NULL;
     }
 
@@ -481,6 +491,7 @@ pr_quat_pink_state_t* pr_quat_pink_create(
         if (state->gen_y) pink_noise_destroy(state->gen_y);
         if (state->gen_z) pink_noise_destroy(state->gen_z);
         nimcp_free(state);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_create: validation failed");
         return NULL;
     }
 
@@ -524,6 +535,7 @@ bool pr_quat_pink_next(
     /* Guard: NULL inputs */
     if (!state || !sample) {
         set_error("Invalid state or sample pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_next: required parameter is NULL (state, sample)");
         return false;
     }
 
@@ -539,6 +551,7 @@ bool pr_quat_pink_next(
         !pink_noise_generate_sample(state->gen_y, &independent[PR_QUAT_Y]) ||
         !pink_noise_generate_sample(state->gen_z, &independent[PR_QUAT_Z])) {
         set_error("Failed to generate independent samples");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_next: pink_noise_generate_sample is NULL");
         return false;
     }
 
@@ -584,6 +597,7 @@ bool pr_quat_pink_path(
     /* Guard: NULL inputs */
     if (!state || !path || !path->samples) {
         set_error("Invalid state, path, or samples array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_path: required parameter is NULL (state, path, path->samples)");
         return false;
     }
 
@@ -594,6 +608,7 @@ bool pr_quat_pink_path(
 
     if (steps == 0) {
         set_error("Steps must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_path: steps is zero");
         return false;
     }
 
@@ -607,6 +622,7 @@ bool pr_quat_pink_path(
     /* Generate first sample */
     pr_quat_sample_t raw;
     if (!pr_quat_pink_next(state, &raw)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_path: pr_quat_pink_next is NULL");
         return false;
     }
     path->samples[0] = raw;
@@ -615,6 +631,7 @@ bool pr_quat_pink_path(
     float total_length = 0.0f;
     for (size_t i = 1; i < steps; i++) {
         if (!pr_quat_pink_next(state, &raw)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_path: pr_quat_pink_next is NULL");
             return false;
         }
 
@@ -651,6 +668,7 @@ bool pr_quat_pink_set_theta_coupling(
     /* Guard: NULL state */
     if (!state) {
         set_error("State is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_set_theta_coupling: state is NULL");
         return false;
     }
 
@@ -704,6 +722,7 @@ bool pr_quat_pink_reset(
     /* Guard: NULL state */
     if (!state) {
         set_error("State is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_quat_pink_reset: state is NULL");
         return false;
     }
 
@@ -722,6 +741,7 @@ bool pr_quat_pink_reset(
         !pink_noise_reset(state->gen_y, base_seed + 2000) ||
         !pink_noise_reset(state->gen_z, base_seed + 3000)) {
         set_error("Failed to reset generators");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_quat_pink_reset: pink_noise_reset is NULL");
         return false;
     }
 
@@ -767,6 +787,7 @@ pr_fractal_timing_t* pr_fractal_timing_create_ex(
     if (base_interval_ms <= 0.0f || min_interval_ms <= 0.0f ||
         max_interval_ms <= min_interval_ms) {
         set_error("Invalid interval parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_fractal_timing_create_ex: operation failed");
         return NULL;
     }
 
@@ -804,6 +825,7 @@ pr_fractal_timing_t* pr_fractal_timing_create_ex(
     if (!timing->interval_gen) {
         set_error("Failed to create interval generator");
         nimcp_free(timing);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_fractal_timing_create_ex: timing->interval_gen is NULL");
         return NULL;
     }
 
@@ -888,6 +910,7 @@ bool pr_fractal_event_due(
 {
     /* Guard: NULL timing */
     if (!timing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_fractal_event_due: timing is NULL");
         return false;
     }
 
@@ -932,12 +955,14 @@ bool pr_fractal_timing_reset(
     /* Guard: NULL timing */
     if (!timing) {
         set_error("Timing is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_fractal_timing_reset: timing is NULL");
         return false;
     }
 
     /* Reset generator */
     if (!pink_noise_reset(timing->interval_gen, new_seed)) {
         set_error("Failed to reset interval generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_fractal_timing_reset: pink_noise_reset is NULL");
         return false;
     }
 
@@ -989,6 +1014,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
 
     if (sample_count == 0 || sample_rate_hz <= 0.0f) {
         set_error("Invalid buffer parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_buffer_create_ex: sample_count is zero");
         return NULL;
     }
 
@@ -1043,6 +1069,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         pink_noise_destroy(gen);
         nimcp_free(samples);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: pink_noise_generate is NULL");
         return NULL;
     }
 
@@ -1076,6 +1103,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         }
         nimcp_free(samples);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: validation failed");
         return NULL;
     }
 
@@ -1089,6 +1117,7 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         }
         nimcp_free(samples);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_create_ex: validation failed");
         return NULL;
     }
     memcpy(cow_data, samples, sample_count * sizeof(float));
@@ -1107,6 +1136,7 @@ pr_pink_buffer_t* pr_pink_buffer_clone(const pr_pink_buffer_t* buffer) {
     /* Guard: NULL buffer */
     if (!buffer || !buffer->cow_manager) {
         set_error("Cannot clone NULL buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_clone: required parameter is NULL (buffer, buffer->cow_manager)");
         return NULL;
     }
 
@@ -1138,6 +1168,7 @@ pr_pink_buffer_t* pr_pink_buffer_clone(const pr_pink_buffer_t* buffer) {
     if (!clone->noise_handle) {
         set_error("Failed to acquire COW handle for clone");
         nimcp_free(clone);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_pink_buffer_clone: clone->noise_handle is NULL");
         return NULL;
     }
 
@@ -1179,6 +1210,7 @@ bool pr_pink_buffer_next(
     /* Guard: NULL inputs */
     if (!buffer || !sample) {
         set_error("Invalid buffer or sample pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_next: required parameter is NULL (buffer, sample)");
         return false;
     }
 
@@ -1190,6 +1222,7 @@ bool pr_pink_buffer_next(
     const float* data = (const float*)cow_read(buffer->noise_handle);
     if (!data) {
         set_error("Failed to read COW buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_next: data is NULL");
         return false;
     }
 
@@ -1210,6 +1243,7 @@ bool pr_pink_buffer_get(
     /* Guard: NULL inputs */
     if (!buffer || !sample) {
         set_error("Invalid buffer or sample pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_get: required parameter is NULL (buffer, sample)");
         return false;
     }
 
@@ -1220,6 +1254,7 @@ bool pr_pink_buffer_get(
 
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_pink_buffer_get: capacity exceeded");
         return false;
     }
 
@@ -1227,6 +1262,7 @@ bool pr_pink_buffer_get(
     const float* data = (const float*)cow_read(buffer->noise_handle);
     if (!data) {
         set_error("Failed to read COW buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_get: data is NULL");
         return false;
     }
 
@@ -1242,6 +1278,7 @@ bool pr_pink_buffer_write(
     /* Guard: NULL buffer */
     if (!buffer) {
         set_error("Buffer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_write: buffer is NULL");
         return false;
     }
 
@@ -1252,6 +1289,7 @@ bool pr_pink_buffer_write(
 
     if (index >= buffer->sample_count) {
         set_error("Index out of range");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "pr_pink_buffer_write: capacity exceeded");
         return false;
     }
 
@@ -1259,6 +1297,7 @@ bool pr_pink_buffer_write(
     float* data = (float*)cow_write(buffer->noise_handle);
     if (!data) {
         set_error("Failed to get writable COW pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_write: data is NULL");
         return false;
     }
 
@@ -1284,6 +1323,7 @@ void pr_pink_buffer_reset_index(pr_pink_buffer_t* buffer) {
 
 bool pr_pink_buffer_is_shared(const pr_pink_buffer_t* buffer) {
     if (!buffer || !buffer->noise_handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_buffer_is_shared: required parameter is NULL (buffer, buffer->noise_handle)");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -1306,6 +1346,7 @@ bool pr_pink_modulate_resonance(
     /* Guard: NULL inputs */
     if (!buffer || !resonance_out) {
         set_error("Invalid buffer or output pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_modulate_resonance: required parameter is NULL (buffer, resonance_out)");
         return false;
     }
 
@@ -1321,6 +1362,7 @@ bool pr_pink_modulate_resonance(
     float noise;
     if (!pr_pink_buffer_next(buffer, &noise)) {
         *resonance_out = base_resonance;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_resonance: pr_pink_buffer_next is NULL");
         return false;
     }
 
@@ -1348,6 +1390,7 @@ bool pr_pink_modulate_quaternion(
     /* Guard: NULL inputs */
     if (!quat_state || !base_quat || !out_quat) {
         set_error("Invalid state or quaternion pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_modulate_quaternion: required parameter is NULL (quat_state, base_quat, out_quat)");
         return false;
     }
 
@@ -1364,6 +1407,7 @@ bool pr_pink_modulate_quaternion(
     if (!pr_quat_pink_next(quat_state, &noise)) {
         /* On error, return base unchanged */
         memcpy(out_quat, base_quat, sizeof(float) * PR_QUAT_DIM);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_pink_modulate_quaternion: pr_quat_pink_next is NULL");
         return false;
     }
 
@@ -1416,6 +1460,7 @@ void pr_pink_noise_reset_stats(void) {
 
 const char* pr_pink_noise_get_last_error(void) {
     if (last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_pink_noise_get_last_error: validation failed");
         return NULL;
     }
     return last_error;

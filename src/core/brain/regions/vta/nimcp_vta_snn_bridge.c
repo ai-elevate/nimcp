@@ -175,6 +175,7 @@ nimcp_vta_snn_bridge_t* nimcp_vta_snn_create(const nimcp_vta_snn_config_t* confi
 
     if (!bridge->input_spikes || !bridge->output_spikes) {
         nimcp_vta_snn_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_vta_snn_create: required parameter is NULL (bridge->input_spikes, bridge->output_spikes)");
         return NULL;
     }
 
@@ -201,7 +202,10 @@ void nimcp_vta_snn_destroy(nimcp_vta_snn_bridge_t* bridge) {
 }
 
 int nimcp_vta_snn_reset(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_reset: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->state, 0, sizeof(bridge->state));
     bridge->state.state = VTA_SNN_STATE_IDLE;
@@ -223,7 +227,10 @@ int nimcp_vta_snn_connect_vta(
     nimcp_vta_snn_bridge_t* bridge,
     nimcp_vta_adapter_t vta_adapter
 ) {
-    if (!bridge || !vta_adapter) return -1;
+    if (!bridge || !vta_adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_connect_vta: required parameter is NULL (bridge, vta_adapter)");
+        return -1;
+    }
     bridge->vta_adapter = vta_adapter;
     return 0;
 }
@@ -232,7 +239,10 @@ int nimcp_vta_snn_connect_snn(
     nimcp_vta_snn_bridge_t* bridge,
     struct nimcp_snn_network* snn
 ) {
-    if (!bridge || !snn) return -1;
+    if (!bridge || !snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_connect_snn: required parameter is NULL (bridge, snn)");
+        return -1;
+    }
     bridge->snn = snn;
     return 0;
 }
@@ -242,7 +252,10 @@ int nimcp_vta_snn_connect_snn(
  *===========================================================================*/
 
 int nimcp_vta_snn_encode_da_state(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_encode_da_state: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = VTA_SNN_STATE_ENCODING;
     int spikes = 0;
@@ -268,7 +281,10 @@ int nimcp_vta_snn_encode_reward(
     float reward,
     float expected_reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_encode_reward: bridge is NULL");
+        return -1;
+    }
 
     float rpe = reward - expected_reward;
     bridge->state.da.current_rpe = rpe;
@@ -290,7 +306,10 @@ int nimcp_vta_snn_encode_burst(
     nimcp_vta_snn_bridge_t* bridge,
     float intensity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_encode_burst: bridge is NULL");
+        return -1;
+    }
 
     int spikes = 0;
     float burst_rate = intensity * bridge->config.burst_rate_hz;
@@ -309,7 +328,10 @@ int nimcp_vta_snn_encode_pause(
     nimcp_vta_snn_bridge_t* bridge,
     float suppression
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_encode_pause: bridge is NULL");
+        return -1;
+    }
 
     /* Pause encoding - suppress activity */
     float suppression_factor = 1.0f - (suppression * bridge->config.pause_suppression);
@@ -327,7 +349,10 @@ int nimcp_vta_snn_encode_motivation(
     float motivation,
     float wanting
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_encode_motivation: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.da.motivation = clamp(motivation, 0.0f, 1.0f);
     bridge->state.da.wanting = clamp(wanting, 0.0f, 1.0f);
@@ -342,7 +367,10 @@ int nimcp_vta_snn_encode_motivation(
  *===========================================================================*/
 
 int nimcp_vta_snn_simulate(nimcp_vta_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_simulate: bridge is NULL");
+        return -1;
+    }
 
     bridge->state.state = VTA_SNN_STATE_SIMULATING;
 
@@ -357,7 +385,10 @@ int nimcp_vta_snn_simulate(nimcp_vta_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int nimcp_vta_snn_step(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_step: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.total_updates++;
     bridge->current_time_us = get_timestamp_us();
@@ -395,7 +426,10 @@ int nimcp_vta_snn_get_modulation(
     nimcp_vta_snn_bridge_t* bridge,
     nimcp_vta_snn_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_get_modulation: required parameter is NULL (bridge, modulation)");
+        return -1;
+    }
     *modulation = bridge->current_modulation;
     return 0;
 }
@@ -411,7 +445,10 @@ float nimcp_vta_snn_get_reward_prediction(nimcp_vta_snn_bridge_t* bridge) {
 }
 
 bool nimcp_vta_snn_goal_achieved(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_goal_achieved: bridge is NULL");
+        return false;
+    }
     return bridge->current_modulation.goal_achieved;
 }
 
@@ -423,7 +460,10 @@ int nimcp_vta_snn_get_state(
     const nimcp_vta_snn_bridge_t* bridge,
     nimcp_vta_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -432,7 +472,10 @@ int nimcp_vta_snn_get_stats(
     const nimcp_vta_snn_bridge_t* bridge,
     nimcp_vta_snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -447,19 +490,28 @@ void nimcp_vta_snn_reset_stats(nimcp_vta_snn_bridge_t* bridge) {
  *===========================================================================*/
 
 int nimcp_vta_snn_connect_bio_async(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = true;
     return 0;
 }
 
 int nimcp_vta_snn_disconnect_bio_async(nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     bridge->state.bio_async_connected = false;
     return 0;
 }
 
 bool nimcp_vta_snn_is_bio_async_connected(const nimcp_vta_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->state.bio_async_connected;
 }
 
@@ -471,7 +523,10 @@ int nimcp_vta_snn_set_reward(
     nimcp_vta_snn_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_set_reward: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.reward_events++;
     bridge->stats.total_reward += reward;
@@ -485,7 +540,10 @@ int nimcp_vta_snn_set_goal(
     float value,
     float distance
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_vta_snn_set_goal: bridge is NULL");
+        return -1;
+    }
 
     /* Update motivation based on goal value and distance */
     float proximity = 1.0f - clamp(distance, 0.0f, 1.0f);

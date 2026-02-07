@@ -284,6 +284,7 @@ phonological_processor_t* phonological_create(const phonological_config_t* confi
     proc->phoneme_buffer = (phoneme_t*)nimcp_calloc(proc->phoneme_capacity, sizeof(phoneme_t));
     if (!proc->phoneme_buffer) {
         nimcp_free(proc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_create: proc->phoneme_buffer is NULL");
         return NULL;
     }
 
@@ -293,6 +294,7 @@ phonological_processor_t* phonological_create(const phonological_config_t* confi
     if (!proc->syllable_buffer) {
         nimcp_free(proc->phoneme_buffer);
         nimcp_free(proc);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phonological_create: proc->syllable_buffer is NULL");
         return NULL;
     }
 
@@ -373,6 +375,7 @@ bool phonological_add_phoneme(phonological_processor_t* processor, uint8_t phone
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phonological_add_phoneme: capacity exceeded");
         return false;
     }
 
@@ -443,6 +446,7 @@ bool phonological_add_phoneme_detailed(phonological_processor_t* processor,
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "phonological_add_phoneme: capacity exceeded");
         return false;
     }
 
@@ -814,7 +818,10 @@ bool phonological_is_ready(const phonological_processor_t* processor) {
      * WHY:  Signal when processing is complete
      * HOW:  Check syllables generated and prosody applied (if enabled) */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonological_is_ready: processor is NULL");
+        return false;
+    }
 
     bool syllables_ready = (processor->syllable_count > 0);
     bool prosody_ready = (!processor->config.enable_prosody || processor->prosody_generated);

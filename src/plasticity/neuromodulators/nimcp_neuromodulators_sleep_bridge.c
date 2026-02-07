@@ -202,6 +202,7 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_sleep_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -357,6 +358,7 @@ int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
         neuromodulator_pool_destroy(&pool);
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_WARN("neuromod_sleep_apply_modulation: failed to get levels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromod_sleep_apply_modulation: neuromodulator_get_levels is NULL");
         return -1;
     }
 
@@ -464,6 +466,7 @@ float neuromod_sleep_get_factor(
  */
 bool neuromod_sleep_is_inhibited(const neuromod_sleep_bridge_t bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_is_inhibited: bridge is NULL");
         return false;
     }
 

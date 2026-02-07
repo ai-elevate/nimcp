@@ -76,6 +76,7 @@ static route_node_t* find_route(const routing_table_t* table,
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hash_source_id: operation failed");
     return NULL;
 }
 
@@ -84,11 +85,15 @@ static bool create_route(routing_table_t* table,
                         uint32_t dest_id,
                         float strength) {
     if (table->num_routes >= table->config.max_routes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "hash_source_id: capacity exceeded");
         return false;
     }
 
     route_node_t* node = (route_node_t*)nimcp_calloc(1, sizeof(route_node_t));
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hash_source_id: node is NULL");
+        return false;
+    }
 
     node->rule.source_id = source_id;
     node->rule.dest_id = dest_id;
@@ -181,6 +186,7 @@ bool routing_table_add_route(routing_table_t* table,
                              uint32_t dest_id,
                              float initial_strength) {
     if (!table || initial_strength < 0.0F || initial_strength > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "routing_table_destroy: table is NULL");
         return false;
     }
 
@@ -205,7 +211,10 @@ bool routing_table_add_route(routing_table_t* table,
 bool routing_table_query_routes(const routing_table_t* table,
                                 uint32_t source_id,
                                 route_query_t* result) {
-    if (!table || !result) return false;
+    if (!table || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: required parameter is NULL (table, result)");
+        return false;
+    }
 
     // Count routes for this source
     uint32_t hash = hash_source_id(source_id);
@@ -224,6 +233,7 @@ bool routing_table_query_routes(const routing_table_t* table,
         result->dest_ids = NULL;
         result->strengths = NULL;
         result->num_dests = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_table_destroy: count is zero");
         return false;
     }
 
@@ -234,6 +244,7 @@ bool routing_table_query_routes(const routing_table_t* table,
     if (!result->dest_ids || !result->strengths) {
         nimcp_free(result->dest_ids);
         nimcp_free(result->strengths);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "routing_table_destroy: required parameter is NULL (result->dest_ids, result->strengths)");
         return false;
     }
 
@@ -282,12 +293,16 @@ bool routing_table_get_strength(const routing_table_t* table,
                                 uint32_t source_id,
                                 uint32_t dest_id,
                                 float* strength) {
-    if (!table || !strength) return false;
+    if (!table || !strength) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: required parameter is NULL (table, strength)");
+        return false;
+    }
 
     const route_node_t* node = find_route(table, source_id, dest_id);
 
     if (!node) {
         *strength = 0.0F;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: node is NULL");
         return false;
     }
 
@@ -299,11 +314,17 @@ bool routing_table_set_priority(routing_table_t* table,
                                 uint32_t source_id,
                                 uint32_t dest_id,
                                 uint32_t priority) {
-    if (!table) return false;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: table is NULL");
+        return false;
+    }
 
     route_node_t* node = find_route(table, source_id, dest_id);
 
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: node is NULL");
+        return false;
+    }
 
     node->rule.priority = priority;
     return true;
@@ -312,11 +333,17 @@ bool routing_table_set_priority(routing_table_t* table,
 bool routing_table_use_route(routing_table_t* table,
                              uint32_t source_id,
                              uint32_t dest_id) {
-    if (!table) return false;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: table is NULL");
+        return false;
+    }
 
     route_node_t* node = find_route(table, source_id, dest_id);
 
-    if (!node) return false;
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: node is NULL");
+        return false;
+    }
 
     node->rule.usage_count++;
     node->rule.last_used_ms++;  // Placeholder timestamp
@@ -341,7 +368,10 @@ bool routing_table_use_route(routing_table_t* table,
 bool routing_table_remove_route(routing_table_t* table,
                                 uint32_t source_id,
                                 uint32_t dest_id) {
-    if (!table) return false;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_destroy: table is NULL");
+        return false;
+    }
 
     uint32_t hash = hash_source_id(source_id);
     route_node_t** prev = &table->hash_table[hash];
@@ -359,11 +389,15 @@ bool routing_table_remove_route(routing_table_t* table,
         node = node->next;
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_table_destroy: operation failed");
     return false;
 }
 
 bool routing_table_prune(routing_table_t* table, uint32_t* num_pruned) {
-    if (!table) return false;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_prune: table is NULL");
+        return false;
+    }
 
     uint32_t pruned = 0;
 
@@ -397,7 +431,10 @@ bool routing_table_get_stats(const routing_table_t* table,
                              uint32_t* num_routes,
                              float* avg_strength,
                              uint64_t* total_usage) {
-    if (!table) return false;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "routing_table_prune: table is NULL");
+        return false;
+    }
 
     if (num_routes) *num_routes = table->num_routes;
     if (total_usage) *total_usage = table->total_usage;

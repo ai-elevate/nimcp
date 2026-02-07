@@ -140,23 +140,59 @@ environment_config_t environment_default_config(void) {
 }
 
 bool environment_validate_config(const environment_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "environment_validate_config: config is NULL");
+        return false;
+    }
 
-    if (config->max_hunting_wind_ms < 0.0f) return false;
-    if (config->wind_compensation_gain < 0.0f || config->wind_compensation_gain > 1.0f) return false;
-    if (config->gust_safety_margin < 1.0f) return false;
+    if (config->max_hunting_wind_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
+    if (config->wind_compensation_gain < 0.0f || config->wind_compensation_gain > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
+    if (config->gust_safety_margin < 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_hunting_light < 0.0f || config->min_hunting_light > 1.0f) return false;
-    if (config->glare_sensitivity < 0.0f || config->glare_sensitivity > 1.0f) return false;
+    if (config->min_hunting_light < 0.0f || config->min_hunting_light > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
+    if (config->glare_sensitivity < 0.0f || config->glare_sensitivity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_temp_c >= config->max_temp_c) return false;
-    if (config->optimal_temp_min_c < config->min_temp_c) return false;
-    if (config->optimal_temp_max_c > config->max_temp_c) return false;
+    if (config->min_temp_c >= config->max_temp_c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "environment_validate_config: capacity exceeded");
+        return false;
+    }
+    if (config->optimal_temp_min_c < config->min_temp_c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
+    if (config->optimal_temp_max_c > config->max_temp_c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->min_altitude_margin_m < 0.0f) return false;
-    if (config->water_surface_margin_m < 0.0f) return false;
+    if (config->min_altitude_margin_m < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
+    if (config->water_surface_margin_m < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
 
-    if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) return false;
+    if (config->adaptation_rate < 0.0f || config->adaptation_rate > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "environment_validate_config: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -539,7 +575,10 @@ int dragonfly_environment_get_compensation(
 }
 
 bool dragonfly_environment_hunting_ok(const dragonfly_environment_t env) {
-    if (!env) return false;
+    if (!env) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dragonfly_environment_hunting_ok: env is NULL");
+        return false;
+    }
 
     environment_compensation_t comp;
     dragonfly_environment_get_compensation(env, NULL, &comp);

@@ -197,6 +197,7 @@ static int find_memory_index(
             return (int)i;
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_memory_index: validation failed");
     return -1;
 }
 
@@ -284,6 +285,7 @@ pr_attention_bridge_config_t pr_attention_bridge_config_default(void) {
 
 bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attention_bridge_config_validate: config is NULL");
         return false;
     }
 
@@ -293,14 +295,17 @@ bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* con
 
 
     if (config->spatial_width == 0 || config->spatial_height == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: config->spatial_width is zero");
         return false;
     }
     if (config->temporal_depth == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: config->temporal_depth is zero");
         return false;
     }
 
     // Balance must be in [0, 1]
     if (config->bu_td_balance < 0.0f || config->bu_td_balance > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: validation failed");
         return false;
     }
 
@@ -308,27 +313,32 @@ bool pr_attention_bridge_config_validate(const pr_attention_bridge_config_t* con
     if (config->visual_weight < 0.0f || config->audio_weight < 0.0f ||
         config->speech_weight < 0.0f || config->omni_weight < 0.0f ||
         config->memory_weight < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: validation failed");
         return false;
     }
 
     // Gains must be non-negative
     if (config->resonance_attention_gain < 0.0f ||
         config->novelty_attention_gain < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: operation failed");
         return false;
     }
 
     // IOR parameters
     if (config->ior_decay_ms <= 0.0f || config->ior_strength < 0.0f ||
         config->ior_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: operation failed");
         return false;
     }
 
     // Memory attention
     if (config->max_attended_memories == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: config->max_attended_memories is zero");
         return false;
     }
     if (config->memory_attention_decay < 0.0f ||
         config->memory_attention_decay > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_config_validate: config->max_attended_memories is zero");
         return false;
     }
 
@@ -357,6 +367,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     // Validate configuration
     if (!pr_attention_bridge_config_validate(&cfg)) {
         set_last_error("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attention_bridge_create: pr_attention_bridge_config_validate is NULL");
         return NULL;
     }
 
@@ -381,6 +392,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     if (!bridge->unified_attention_map) {
         set_last_error("Failed to allocate unified attention map");
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->unified_attention_map is NULL");
         return NULL;
     }
 
@@ -390,6 +402,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         set_last_error("Failed to allocate bottom-up map");
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->bottom_up_map is NULL");
         return NULL;
     }
 
@@ -400,6 +413,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         nimcp_free(bridge->bottom_up_map);
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->top_down_map is NULL");
         return NULL;
     }
 
@@ -412,6 +426,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
         nimcp_free(bridge->bottom_up_map);
         nimcp_free(bridge->unified_attention_map);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_attention_bridge_create: bridge->attended_memories is NULL");
         return NULL;
     }
     bridge->num_attended = 0;
@@ -433,6 +448,7 @@ pr_attention_bridge_t* pr_attention_bridge_create(
             nimcp_free(bridge->bottom_up_map);
             nimcp_free(bridge->unified_attention_map);
             nimcp_free(bridge);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attention_bridge_create: validation failed");
             return NULL;
         }
     }
@@ -1384,6 +1400,7 @@ int pr_attention_bridge_get_top_k_peaks(
     pr_attn_peak_t* peaks
 ) {
     if (!bridge || !peaks || k == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attention_bridge_get_top_k_peaks: required parameter is NULL (bridge, peaks)");
         return -1;
     }
 
@@ -1914,6 +1931,7 @@ pr_memory_node_t* pr_attention_bridge_get_most_attended_memory(
     const pr_attention_bridge_t* bridge
 ) {
     if (!bridge || bridge->num_attended == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_attention_bridge_get_most_attended_memory: bridge is NULL");
         return NULL;
     }
 
@@ -2039,6 +2057,7 @@ const char* pr_attn_error_string(pr_attn_error_t error) {
 
 const char* pr_attn_get_last_error(void) {
     if (g_last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_attn_get_last_error: validation failed");
         return NULL;
     }
     return g_last_error;

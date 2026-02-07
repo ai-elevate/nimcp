@@ -238,6 +238,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     soma->receptors = (soma_receptor_t*)nimcp_calloc(config->max_receptors, sizeof(soma_receptor_t));
     if (!soma->receptors) {
         nimcp_free(soma);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_create: soma->receptors is NULL");
         return NULL;
     }
     soma->num_receptors = 0;
@@ -248,6 +249,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     if (!soma->active_touch_events) {
         nimcp_free(soma->receptors);
         nimcp_free(soma);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_create: soma->active_touch_events is NULL");
         return NULL;
     }
     soma->num_active_touch = 0;
@@ -259,6 +261,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
         nimcp_free(soma->active_touch_events);
         nimcp_free(soma->receptors);
         nimcp_free(soma);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "soma_create: soma->active_pain_events is NULL");
         return NULL;
     }
     soma->num_active_pain = 0;
@@ -277,6 +280,7 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     if (!soma->area_3a_activation || !soma->area_3b_activation ||
         !soma->area_1_activation || !soma->area_2_activation || !soma->s2_activation) {
         soma_destroy(soma);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_create: operation failed");
         return NULL;
     }
 
@@ -351,7 +355,10 @@ void soma_destroy(nimcp_somatosensory_t* soma) {
 }
 
 int soma_reset(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_reset: soma is NULL");
+        return -1;
+    }
 
     /* Reset activation buffers */
     memset(soma->area_3a_activation, 0, soma->config.num_area_3a_neurons * sizeof(float));
@@ -384,8 +391,14 @@ int soma_reset(nimcp_somatosensory_t* soma) {
 }
 
 int soma_update(nimcp_somatosensory_t* soma, float dt) {
-    if (!soma) return -1;
-    if (soma->status == SOMA_STATUS_ERROR) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_update: soma is NULL");
+        return -1;
+    }
+    if (soma->status == SOMA_STATUS_ERROR) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_update: validation failed");
+        return -1;
+    }
 
     /* Decay all activations */
     float decay = expf(-dt / 0.1f);  /* 100ms time constant */
@@ -465,9 +478,18 @@ int soma_process_touch(nimcp_somatosensory_t* soma,
                        float intensity,
                        touch_modality_t modality,
                        uint32_t* event_id_out) {
-    if (!soma) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
-    if (intensity < 0.0f) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_update: soma is NULL");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_update: capacity exceeded");
+        return -1;
+    }
+    if (intensity < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_update: validation failed");
+        return -1;
+    }
 
     soma->status = SOMA_STATUS_PROCESSING_TOUCH;
 
@@ -532,7 +554,10 @@ int soma_process_touch(nimcp_somatosensory_t* soma,
 int soma_process_touch_full(nimcp_somatosensory_t* soma,
                             const soma_touch_event_t* event,
                             uint32_t* event_id_out) {
-    if (!soma || !event) return -1;
+    if (!soma || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_update: required parameter is NULL (soma, event)");
+        return -1;
+    }
 
     return soma_process_touch(soma, event->segment, event->position,
                               event->intensity, event->modality, event_id_out);
@@ -542,7 +567,10 @@ int soma_get_active_touches(nimcp_somatosensory_t* soma,
                             soma_touch_event_t* events,
                             uint32_t max_events,
                             uint32_t* num_events) {
-    if (!soma || !events || !num_events) return -1;
+    if (!soma || !events || !num_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_update: required parameter is NULL (soma, events, num_events)");
+        return -1;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < soma->num_active_touch && count < max_events; i++) {
@@ -562,8 +590,14 @@ int soma_two_point_discrimination(nimcp_somatosensory_t* soma,
                                   const float* point2,
                                   bool* can_discriminate,
                                   float* discrimination_confidence) {
-    if (!soma || !point1 || !point2 || !can_discriminate) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
+    if (!soma || !point1 || !point2 || !can_discriminate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_update: required parameter is NULL (soma, point1, point2, can_discriminate)");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_update: capacity exceeded");
+        return -1;
+    }
 
     /* Calculate distance */
     float dx = point2[0] - point1[0];
@@ -596,9 +630,18 @@ int soma_process_pain(nimcp_somatosensory_t* soma,
                       pain_type_t type,
                       float intensity,
                       uint32_t* event_id_out) {
-    if (!soma) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
-    if (intensity < 0.0f) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: soma is NULL");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "unknown: capacity exceeded");
+        return -1;
+    }
+    if (intensity < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: validation failed");
+        return -1;
+    }
 
     soma->status = SOMA_STATUS_PROCESSING_PAIN;
 
@@ -670,8 +713,14 @@ int soma_update_proprioception(nimcp_somatosensory_t* soma,
                                const float* velocity,
                                float muscle_tension,
                                float muscle_length) {
-    if (!soma) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_pain_level: soma is NULL");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_pain_level: capacity exceeded");
+        return -1;
+    }
 
     soma->status = SOMA_STATUS_PROCESSING_PROPRIO;
 
@@ -703,8 +752,14 @@ int soma_update_proprioception(nimcp_somatosensory_t* soma,
 int soma_get_proprioception(nimcp_somatosensory_t* soma,
                             body_segment_t segment,
                             soma_proprio_state_t* state) {
-    if (!soma || !state) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
+    if (!soma || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_pain_level: required parameter is NULL (soma, state)");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_pain_level: capacity exceeded");
+        return -1;
+    }
 
     memcpy(state, &soma->proprio_state[segment], sizeof(soma_proprio_state_t));
     return 0;
@@ -714,7 +769,10 @@ int soma_get_body_position(nimcp_somatosensory_t* soma,
                            float* positions,
                            uint32_t max_segments,
                            uint32_t* num_segments) {
-    if (!soma || !positions || !num_segments) return -1;
+    if (!soma || !positions || !num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_pain_level: required parameter is NULL (soma, positions, num_segments)");
+        return -1;
+    }
 
     uint32_t count = max_segments < BODY_SEG_COUNT ? max_segments : BODY_SEG_COUNT;
 
@@ -739,8 +797,14 @@ int soma_process_temperature(nimcp_somatosensory_t* soma,
                              body_segment_t segment,
                              float temperature,
                              temp_sensation_t* sensation_out) {
-    if (!soma) return -1;
-    if (segment >= BODY_SEG_COUNT) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_joint_angle: soma is NULL");
+        return -1;
+    }
+    if (segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: capacity exceeded");
+        return -1;
+    }
 
     soma->status = SOMA_STATUS_PROCESSING_TEMP;
 
@@ -790,7 +854,10 @@ temp_sensation_t soma_get_temperature_sensation(nimcp_somatosensory_t* soma,
 
 const soma_body_map_entry_t* soma_get_body_map_entry(nimcp_somatosensory_t* soma,
                                                       body_segment_t segment) {
-    if (!soma || segment >= BODY_SEG_COUNT) return NULL;
+    if (!soma || segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: soma is NULL");
+        return NULL;
+    }
     return &soma->body_map[segment];
 }
 
@@ -803,7 +870,10 @@ float soma_get_cortical_magnification(nimcp_somatosensory_t* soma,
 int soma_update_body_map(nimcp_somatosensory_t* soma,
                          body_segment_t segment,
                          float sensitivity_change) {
-    if (!soma || segment >= BODY_SEG_COUNT) return -1;
+    if (!soma || segment >= BODY_SEG_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "soma_get_joint_angle: soma is NULL");
+        return -1;
+    }
 
     soma->body_map[segment].sensitivity_modifier *= (1.0f + sensitivity_change);
     if (soma->body_map[segment].sensitivity_modifier < 0.1f) {
@@ -823,7 +893,10 @@ float soma_get_two_point_threshold(nimcp_somatosensory_t* soma,
 }
 
 int soma_calibrate_body_map(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_calibrate_body_map: soma is NULL");
+        return -1;
+    }
 
     soma->status = SOMA_STATUS_CALIBRATING;
 
@@ -852,7 +925,10 @@ int soma_get_area_activation(nimcp_somatosensory_t* soma,
                              float* activation,
                              uint32_t max_size,
                              uint32_t* actual_size) {
-    if (!soma || !activation || !actual_size) return -1;
+    if (!soma || !activation || !actual_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_calibrate_body_map: required parameter is NULL (soma, activation, actual_size)");
+        return -1;
+    }
 
     float* source;
     uint32_t size;
@@ -879,6 +955,7 @@ int soma_get_area_activation(nimcp_somatosensory_t* soma,
             size = soma->config.num_s2_neurons;
             break;
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_calibrate_body_map: operation failed");
             return -1;
     }
 
@@ -894,19 +971,28 @@ int soma_get_area_activation(nimcp_somatosensory_t* soma,
  *===========================================================================*/
 
 int soma_process_incoming(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_process_incoming: soma is NULL");
+        return -1;
+    }
     /* Process messages from connected modules */
     return 0;
 }
 
 int soma_send_outgoing(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_send_outgoing: soma is NULL");
+        return -1;
+    }
     /* Send updates to connected modules */
     return 0;
 }
 
 int soma_bidirectional_update(nimcp_somatosensory_t* soma, float dt) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_bidirectional_update: soma is NULL");
+        return -1;
+    }
 
     soma_process_incoming(soma);
     soma_update(soma, dt);
@@ -916,28 +1002,40 @@ int soma_bidirectional_update(nimcp_somatosensory_t* soma, float dt) {
 }
 
 int soma_sync_thalamus(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_sync_thalamus: soma is NULL");
+        return -1;
+    }
     if (!soma->thalamus_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Sync with VPL/VPM thalamic nuclei */
     return 0;
 }
 
 int soma_sync_motor_cortex(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_sync_motor_cortex: soma is NULL");
+        return -1;
+    }
     if (!soma->motor_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Process efference copy and sensorimotor integration */
     return 0;
 }
 
 int soma_sync_parietal(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_sync_parietal: soma is NULL");
+        return -1;
+    }
     if (!soma->parietal_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Update body schema in parietal cortex */
     return 0;
 }
 
 int soma_sync_hypothalamus(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_sync_hypothalamus: soma is NULL");
+        return -1;
+    }
     if (!soma->hypothalamus_bridge.initialized) return 0;  /* No-op if not initialized */
     /* Temperature regulation and homeostasis */
     return 0;
@@ -948,14 +1046,20 @@ int soma_sync_hypothalamus(nimcp_somatosensory_t* soma) {
  *===========================================================================*/
 
 int soma_init_prime_resonance_bridge(nimcp_somatosensory_t* soma, void* pr_memory) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_prime_resonance_bridge: soma is NULL");
+        return -1;
+    }
     soma->prime_resonance_bridge.pr_memory_ctx = pr_memory;
     soma->prime_resonance_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_immune_bridge(nimcp_somatosensory_t* soma, void* immune) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_immune_bridge: soma is NULL");
+        return -1;
+    }
     soma->immune_bridge.immune_system = immune;
     soma->immune_bridge.initialized = true;
     soma->immune_bridge.health_score = 1.0f;
@@ -963,21 +1067,30 @@ int soma_init_immune_bridge(nimcp_somatosensory_t* soma, void* immune) {
 }
 
 int soma_init_bio_async_bridge(nimcp_somatosensory_t* soma, void* runtime) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_bio_async_bridge: soma is NULL");
+        return -1;
+    }
     soma->bio_async_bridge.runtime = runtime;
     soma->bio_async_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_brain_init_bridge(nimcp_somatosensory_t* soma, void* brain_init) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_brain_init_bridge: soma is NULL");
+        return -1;
+    }
     soma->brain_init_bridge.brain_init_ctx = brain_init;
     soma->brain_init_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_security_bridge(nimcp_somatosensory_t* soma, void* security_ctx, void* security_ops) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_security_bridge: soma is NULL");
+        return -1;
+    }
     soma->security_bridge.security_ctx = security_ctx;
     soma->security_bridge.security_ops = security_ops;
     soma->security_bridge.initialized = true;
@@ -985,7 +1098,10 @@ int soma_init_security_bridge(nimcp_somatosensory_t* soma, void* security_ctx, v
 }
 
 int soma_init_logging_bridge(nimcp_somatosensory_t* soma, void* logger) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_logging_bridge: soma is NULL");
+        return -1;
+    }
     soma->logging_bridge.logger = logger;
     soma->logging_bridge.initialized = true;
     strncpy(soma->logging_bridge.log_prefix, "SOMA", sizeof(soma->logging_bridge.log_prefix) - 1);
@@ -993,70 +1109,100 @@ int soma_init_logging_bridge(nimcp_somatosensory_t* soma, void* logger) {
 }
 
 int soma_init_cognitive_bridge(nimcp_somatosensory_t* soma, void* cognitive) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_cognitive_bridge: soma is NULL");
+        return -1;
+    }
     soma->cognitive_bridge.cognitive_ctx = cognitive;
     soma->cognitive_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_training_bridge(nimcp_somatosensory_t* soma, void* training) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_training_bridge: soma is NULL");
+        return -1;
+    }
     soma->training_bridge.training_ctx = training;
     soma->training_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_omni_bridge(nimcp_somatosensory_t* soma, void* omni) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_omni_bridge: soma is NULL");
+        return -1;
+    }
     soma->omni_bridge.omni_ctx = omni;
     soma->omni_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_hypothalamus_bridge(nimcp_somatosensory_t* soma, void* hypothalamus) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_hypothalamus_bridge: soma is NULL");
+        return -1;
+    }
     soma->hypothalamus_bridge.hypothalamus = hypothalamus;
     soma->hypothalamus_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_substrate_bridge(nimcp_somatosensory_t* soma, void* substrate) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_substrate_bridge: soma is NULL");
+        return -1;
+    }
     soma->substrate_bridge.substrate = substrate;
     soma->substrate_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_thalamus_bridge(nimcp_somatosensory_t* soma, void* thalamus) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_thalamus_bridge: soma is NULL");
+        return -1;
+    }
     soma->thalamus_bridge.thalamus = thalamus;
     soma->thalamus_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_motor_bridge(nimcp_somatosensory_t* soma, void* motor) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_motor_bridge: soma is NULL");
+        return -1;
+    }
     soma->motor_bridge.motor_ctx = motor;
     soma->motor_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_parietal_bridge(nimcp_somatosensory_t* soma, void* parietal) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_parietal_bridge: soma is NULL");
+        return -1;
+    }
     soma->parietal_bridge.parietal_ctx = parietal;
     soma->parietal_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_snn_bridge(nimcp_somatosensory_t* soma, void* snn) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_snn_bridge: soma is NULL");
+        return -1;
+    }
     soma->snn_bridge.snn_network = snn;
     soma->snn_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_plasticity_bridge(nimcp_somatosensory_t* soma, void* plasticity, void* stdp) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_plasticity_bridge: soma is NULL");
+        return -1;
+    }
     soma->plasticity_bridge.plasticity_ctx = plasticity;
     soma->plasticity_bridge.stdp_ctx = stdp;
     soma->plasticity_bridge.initialized = true;
@@ -1064,28 +1210,40 @@ int soma_init_plasticity_bridge(nimcp_somatosensory_t* soma, void* plasticity, v
 }
 
 int soma_init_portia_bridge(nimcp_somatosensory_t* soma, void* portia) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_portia_bridge: soma is NULL");
+        return -1;
+    }
     soma->portia_bridge.portia_ctx = portia;
     soma->portia_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_dragonfly_bridge(nimcp_somatosensory_t* soma, void* dragonfly) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_dragonfly_bridge: soma is NULL");
+        return -1;
+    }
     soma->dragonfly_bridge.dragonfly_ctx = dragonfly;
     soma->dragonfly_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_perception_bridge(nimcp_somatosensory_t* soma, void* perception) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_perception_bridge: soma is NULL");
+        return -1;
+    }
     soma->perception_bridge.perception_ctx = perception;
     soma->perception_bridge.initialized = true;
     return 0;
 }
 
 int soma_init_all_bridges(nimcp_somatosensory_t* soma, void** bridge_contexts) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_init_all_bridges: soma is NULL");
+        return -1;
+    }
 
     if (bridge_contexts) {
         /* Initialize all bridges from context array */
@@ -1180,7 +1338,10 @@ const char* soma_status_string(soma_status_t status) {
 }
 
 int soma_get_stats(nimcp_somatosensory_t* soma, soma_stats_t* stats) {
-    if (!soma || !stats) return -1;
+    if (!soma || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_stats: required parameter is NULL (soma, stats)");
+        return -1;
+    }
 
     stats->touch_events_processed = soma->touch_events_total;
     stats->pain_events_processed = soma->pain_events_total;
@@ -1217,7 +1378,10 @@ int soma_get_stats(nimcp_somatosensory_t* soma, soma_stats_t* stats) {
 }
 
 int soma_get_config(nimcp_somatosensory_t* soma, soma_config_t* config) {
-    if (!soma || !config) return -1;
+    if (!soma || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_get_config: required parameter is NULL (soma, config)");
+        return -1;
+    }
     memcpy(config, &soma->config, sizeof(soma_config_t));
     return 0;
 }
@@ -1242,7 +1406,10 @@ float soma_get_health_status(nimcp_somatosensory_t* soma) {
 }
 
 int soma_log_diagnostics(nimcp_somatosensory_t* soma) {
-    if (!soma) return -1;
+    if (!soma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_log_diagnostics: soma is NULL");
+        return -1;
+    }
     /* Would log to logging bridge if initialized */
     return 0;
 }
@@ -1335,10 +1502,16 @@ size_t soma_get_serialization_size(nimcp_somatosensory_t* soma) {
 }
 
 int soma_serialize(nimcp_somatosensory_t* soma, uint8_t* buffer, size_t size, size_t* written) {
-    if (!soma || !buffer || !written) return -1;
+    if (!soma || !buffer || !written) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_serialize: required parameter is NULL (soma, buffer, written)");
+        return -1;
+    }
 
     size_t needed = soma_get_serialization_size(soma);
-    if (size < needed) return -1;
+    if (size < needed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_serialize: validation failed");
+        return -1;
+    }
 
     /* Simplified serialization */
     size_t offset = 0;
@@ -1353,9 +1526,15 @@ int soma_serialize(nimcp_somatosensory_t* soma, uint8_t* buffer, size_t size, si
 }
 
 nimcp_somatosensory_t* soma_deserialize(const uint8_t* buffer, size_t size, size_t* bytes_read) {
-    if (!buffer || !bytes_read) return NULL;
+    if (!buffer || !bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma_deserialize: required parameter is NULL (buffer, bytes_read)");
+        return NULL;
+    }
 
-    if (size < sizeof(soma_config_t)) return NULL;
+    if (size < sizeof(soma_config_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "soma_deserialize: validation failed");
+        return NULL;
+    }
 
     soma_config_t config;
     memcpy(&config, buffer, sizeof(soma_config_t));

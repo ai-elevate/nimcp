@@ -235,6 +235,7 @@ brain_module_t* brain_module_create(uint32_t max_regions) {
     brain->regions = (brain_region_t**)nimcp_calloc(max_regions, sizeof(brain_region_t*));
     if (!brain->regions) {
         nimcp_free(brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_module_create: brain->regions is NULL");
         return NULL;
     }
 
@@ -308,6 +309,7 @@ brain_region_t* brain_module_get_region(brain_module_t* brain, uint32_t region_i
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_module_get_region: validation failed");
     return NULL;
 }
 
@@ -327,6 +329,7 @@ brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_module_get_region: validation failed");
     return NULL;
 }
 
@@ -367,6 +370,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
     region->network = neural_network_create(&config);
     if (!region->network) {
         nimcp_free(region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_region_create: region->network is NULL");
         return NULL;
     }
 
@@ -395,6 +399,7 @@ brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neuro
         nimcp_free(region->neuron_type_params);
         neural_network_destroy(region->network);
         nimcp_free(region);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_region_create: required parameter is NULL (region->neuron_extended_types, region->neuron_type_params)");
         return NULL;
     }
 

@@ -186,6 +186,7 @@ static int write_metric_header(
         name, help, name, type);
 
     if (written < 0 || (size_t)written >= buffer_size - *offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_metric_header: capacity exceeded");
         return -1;
     }
 
@@ -220,6 +221,7 @@ static int write_counter(
     }
 
     if (written < 0 || (size_t)written >= buffer_size - *offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_counter: capacity exceeded");
         return -1;
     }
 
@@ -254,6 +256,7 @@ static int write_gauge(
     }
 
     if (written < 0 || (size_t)written >= buffer_size - *offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_gauge: capacity exceeded");
         return -1;
     }
 
@@ -298,6 +301,7 @@ static int write_histogram(
                 (unsigned long)hist->buckets[i].count);
         }
         if (written < 0 || (size_t)written >= buffer_size - *offset) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_histogram: capacity exceeded");
             return -1;
         }
         *offset += (size_t)written;
@@ -308,6 +312,7 @@ static int write_histogram(
         "%s_bucket{le=\"+Inf\"} %lu\n",
         name, (unsigned long)hist->total_count);
     if (written < 0 || (size_t)written >= buffer_size - *offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_histogram: capacity exceeded");
         return -1;
     }
     *offset += (size_t)written;
@@ -317,6 +322,7 @@ static int write_histogram(
         "%s_sum %.6f\n%s_count %lu\n",
         name, hist->sum, name, (unsigned long)hist->total_count);
     if (written < 0 || (size_t)written >= buffer_size - *offset) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "write_histogram: capacity exceeded");
         return -1;
     }
     *offset += (size_t)written;
@@ -378,6 +384,7 @@ immune_metrics_t* immune_metrics_create(const immune_metrics_config_t* config)
     immune_metrics_t* metrics = nimcp_calloc(1, sizeof(immune_metrics_t));
     if (metrics == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to allocate metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_metrics_create: validation failed");
         return NULL;
     }
 
@@ -393,6 +400,7 @@ immune_metrics_t* immune_metrics_create(const immune_metrics_config_t* config)
     if (metrics->mutex == NULL) {
         LOG_MODULE_ERROR(LOG_TAG, "Failed to create mutex");
         nimcp_free(metrics);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "immune_metrics_create: validation failed");
         return NULL;
     }
 
@@ -990,6 +998,7 @@ int immune_metrics_export_prometheus(
 
 error:
     nimcp_mutex_unlock(metrics->mutex);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "unknown: operation failed");
     return -1;
 }
 
@@ -1143,6 +1152,7 @@ int immune_metrics_export_json(
     nimcp_mutex_unlock(metrics->mutex);
 
     if (written < 0 || (size_t)written >= buffer_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_metrics_export_json: capacity exceeded");
         return -1;
     }
 
@@ -1221,6 +1231,7 @@ int immune_metrics_start_http_server(immune_metrics_t* metrics)
         "HTTP server not fully implemented - use export functions directly");
 
     metrics->http_running = false;
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "immune_metrics_start_http_server: operation failed");
     return -1;  /* Not implemented */
 }
 

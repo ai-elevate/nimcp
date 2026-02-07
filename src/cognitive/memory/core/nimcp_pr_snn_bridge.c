@@ -266,7 +266,10 @@ static uint64_t get_time_ms(void) {
 static int compare_floats(const void* a, const void* b) {
     float fa = *(const float*)a;
     float fb = *(const float*)b;
-    if (fa < fb) return -1;
+    if (fa < fb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_floats: validation failed");
+        return -1;
+    }
     if (fa > fb) return 1;
     return 0;
 }
@@ -282,7 +285,10 @@ typedef struct {
 static int compare_spikes(const void* a, const void* b) {
     const spike_entry_t* sa = (const spike_entry_t*)a;
     const spike_entry_t* sb = (const spike_entry_t*)b;
-    if (sa->time < sb->time) return -1;
+    if (sa->time < sb->time) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_spikes: validation failed");
+        return -1;
+    }
     if (sa->time > sb->time) return 1;
     return 0;
 }
@@ -323,25 +329,52 @@ NIMCP_EXPORT pr_snn_bridge_config_t pr_snn_bridge_config_default(void) {
 }
 
 NIMCP_EXPORT bool pr_snn_bridge_config_validate(const pr_snn_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_snn_bridge_config_validate: config is NULL");
+        return false;
+    }
 
     /* Population size */
-    if (config->population_size == 0) return false;
-    if (config->population_size > PR_SNN_MAX_NEURONS_PER_POP) return false;
+    if (config->population_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: config->population_size is zero");
+        return false;
+    }
+    if (config->population_size > PR_SNN_MAX_NEURONS_PER_POP) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
 
     /* Timing */
-    if (config->simulation_dt_ms <= 0.0f) return false;
-    if (config->max_rate_hz <= 0.0f || config->max_rate_hz > 1000.0f) return false;
+    if (config->simulation_dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
+    if (config->max_rate_hz <= 0.0f || config->max_rate_hz > 1000.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
 
     /* Latency */
-    if (config->min_latency_ms < 0.0f) return false;
-    if (config->max_latency_ms <= config->min_latency_ms) return false;
+    if (config->min_latency_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
+    if (config->max_latency_ms <= config->min_latency_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
 
     /* Noise */
-    if (config->noise_level < 0.0f || config->noise_level > 1.0f) return false;
+    if (config->noise_level < 0.0f || config->noise_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
 
     /* Encoding window */
-    if (config->encoding_window_ms <= 0.0f) return false;
+    if (config->encoding_window_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_snn_bridge_config_validate: validation failed");
+        return false;
+    }
 
     return true;
 }
@@ -372,6 +405,7 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     /* Validate */
     if (!pr_snn_bridge_config_validate(&cfg)) {
         set_error("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_snn_bridge_create: pr_snn_bridge_config_validate is NULL");
         return NULL;
     }
 
@@ -379,6 +413,7 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     pr_snn_bridge_t bridge = (pr_snn_bridge_t)nimcp_calloc(1, sizeof(struct pr_snn_bridge_struct));
     if (!bridge) {
         set_error("Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_snn_bridge_create: bridge is NULL");
         return NULL;
     }
 
@@ -398,6 +433,7 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
         !bridge->active_mask || !bridge->isi_buffer) {
         set_error("Buffer allocation failed");
         pr_snn_bridge_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_snn_bridge_create: operation failed");
         return NULL;
     }
 
@@ -511,6 +547,7 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_create_with_capacity(
 {
     if (num_neurons == 0 || duration_ms <= 0.0f) {
         set_error("Invalid pattern parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_spike_pattern_create_with_capacity: num_neurons is zero");
         return NULL;
     }
 
@@ -521,6 +558,7 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_create_with_capacity(
     pr_spike_pattern_t* pattern = (pr_spike_pattern_t*)nimcp_calloc(1, sizeof(pr_spike_pattern_t));
     if (!pattern) {
         set_error("Pattern allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_spike_pattern_create_with_capacity: pattern is NULL");
         return NULL;
     }
 
@@ -530,6 +568,7 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_create_with_capacity(
     if (!pattern->spike_times || !pattern->neuron_ids) {
         set_error("Pattern buffer allocation failed");
         pr_spike_pattern_destroy(pattern);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_spike_pattern_create_with_capacity: required parameter is NULL (pattern->spike_times, pattern->neuron_ids)");
         return NULL;
     }
 
@@ -620,7 +659,10 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_merge(
     const pr_spike_pattern_t* const* patterns,
     size_t count)
 {
-    if (!patterns || count == 0) return NULL;
+    if (!patterns || count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_spike_pattern_merge: patterns is NULL");
+        return NULL;
+    }
 
     /* Count total spikes and find max params */
     size_t total_spikes = 0;
@@ -2083,6 +2125,7 @@ NIMCP_EXPORT int pr_snn_retrieve_via_snn(
     float* result_scores)
 {
     if (!bridge || !query_signature || !snn || !result_ids || !result_scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_snn_retrieve_via_snn: required parameter is NULL (bridge, query_signature, snn, result_ids, result_scores)");
         return -1;
     }
 
@@ -2504,7 +2547,10 @@ NIMCP_EXPORT const char* pr_snn_error_string(pr_snn_error_t error) {
 }
 
 NIMCP_EXPORT const char* pr_snn_get_last_error(void) {
-    if (g_last_error[0] == '\0') return NULL;
+    if (g_last_error[0] == '\0') {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr_snn_get_last_error: validation failed");
+        return NULL;
+    }
     return g_last_error;
 }
 
@@ -2543,6 +2589,7 @@ NIMCP_EXPORT pr_snn_component_patterns_t* pr_snn_component_patterns_create(
     if (!patterns->w_pattern || !patterns->x_pattern ||
         !patterns->y_pattern || !patterns->z_pattern || !patterns->combined) {
         pr_snn_component_patterns_destroy(patterns);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_snn_component_patterns_create: operation failed");
         return NULL;
     }
 

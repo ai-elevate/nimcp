@@ -70,7 +70,10 @@ brain_temporal_buffer_t* brain_create_temporal_buffer(
     brain_buffer_size_t size_preset
 ) {
     // Guard: validate inputs
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_temporal_buffer: num_channels is zero");
+        return NULL;
+    }
 
     // Allocate structure
     brain_temporal_buffer_t* buffer = (brain_temporal_buffer_t*)nimcp_calloc(1, sizeof(brain_temporal_buffer_t));
@@ -98,6 +101,7 @@ brain_temporal_buffer_t* brain_create_temporal_buffer(
     // Check allocation
     if (!buffer->window || !buffer->multiscale || !buffer->accumulator) {
         brain_destroy_temporal_buffer(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_temporal_buffer: required parameter is NULL (buffer->window, buffer->multiscale, buffer->accumulator)");
         return NULL;
     }
 
@@ -124,6 +128,7 @@ bool brain_buffer_activity(
 ) {
     // Guard: validate inputs
     if (!buffer || !activity || num_channels != buffer->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_buffer_activity: required parameter is NULL (buffer, activity)");
         return false;
     }
 
@@ -207,7 +212,10 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
     brain_normalize_type_t type
 ) {
     // Guard: validate inputs
-    if (num_features == 0) return NULL;
+    if (num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_feature_normalizer: num_features is zero");
+        return NULL;
+    }
 
     // Allocate structure
     brain_feature_normalizer_t* normalizer = (brain_feature_normalizer_t*)nimcp_calloc(1, sizeof(brain_feature_normalizer_t));
@@ -225,6 +233,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             normalizer->zscore = zscore_normalizer_create(num_features, 0, 3.0F);
             if (!normalizer->zscore) {
                 nimcp_free(normalizer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_feature_normalizer: normalizer->zscore is NULL");
                 return NULL;
             }
             break;
@@ -233,6 +242,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             normalizer->minmax = minmax_normalizer_create(num_features, 0.0F, 1.0F, false);
             if (!normalizer->minmax) {
                 nimcp_free(normalizer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_feature_normalizer: normalizer->minmax is NULL");
                 return NULL;
             }
             break;
@@ -241,6 +251,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             normalizer->adaptive = adaptive_normalizer_create(num_features, 0.01F, 0.001F);
             if (!normalizer->adaptive) {
                 nimcp_free(normalizer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_feature_normalizer: normalizer->adaptive is NULL");
                 return NULL;
             }
             break;
@@ -249,6 +260,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
             normalizer->homeo = homeostatic_normalizer_create(num_features, 0.5F, 10.0F);
             if (!normalizer->homeo) {
                 nimcp_free(normalizer);
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_feature_normalizer: normalizer->homeo is NULL");
                 return NULL;
             }
             break;
@@ -259,6 +271,7 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
 
         default:
             nimcp_free(normalizer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_create_feature_normalizer: operation failed");
             return NULL;
     }
 
@@ -284,8 +297,14 @@ bool brain_normalize_features(
     size_t num_features
 ) {
     // Guard: validate inputs
-    if (!normalizer || !features || num_features == 0) return false;
-    if (num_features > normalizer->num_features) return false;
+    if (!normalizer || !features || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_normalize_features: required parameter is NULL (normalizer, features)");
+        return false;
+    }
+    if (num_features > normalizer->num_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_normalize_features: validation failed");
+        return false;
+    }
 
     // Apply normalization based on type
     switch (normalizer->type) {
@@ -329,6 +348,7 @@ bool brain_normalize_features(
             break;
 
         default:
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_normalize_features: operation failed");
             return false;
     }
 
@@ -402,6 +422,7 @@ brain_spike_feature_extractor_t brain_create_spike_feature_extractor(
 ) {
     // Guard clauses
     if (max_neurons == 0 || max_neurons > FEATURE_EXTRACTOR_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_create_spike_feature_extractor: max_neurons is zero");
         return NULL;
     }
 
@@ -431,6 +452,7 @@ brain_spike_feature_extractor_t brain_create_spike_feature_extractor(
     extractor->extractor = feature_extractor_create(&config);
     if (!extractor->extractor) {
         nimcp_free(extractor);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_spike_feature_extractor: extractor->extractor is NULL");
         return NULL;
     }
 
@@ -451,9 +473,11 @@ bool brain_extract_spike_features(
 ) {
     // Guard clauses
     if (!extractor || !spike_data || !features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_extract_spike_features: required parameter is NULL (extractor, spike_data, features_out)");
         return false;
     }
     if (spike_data->num_neurons > extractor->max_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_extract_spike_features: validation failed");
         return false;
     }
 
@@ -490,6 +514,7 @@ brain_population_analyzer_t brain_create_population_analyzer(void) {
     analyzer->encoder = population_coding_create(&config);
     if (!analyzer->encoder) {
         nimcp_free(analyzer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brain_create_population_analyzer: analyzer->encoder is NULL");
         return NULL;
     }
 
@@ -511,9 +536,11 @@ bool brain_compute_population_vector(
 ) {
     // Guard clauses
     if (!analyzer || !rates || !tuning_curves || !vector_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_population_vector: required parameter is NULL (analyzer, rates, tuning_curves, vector_out)");
         return false;
     }
     if (num_neurons == 0 || num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compute_population_vector: num_neurons is zero");
         return false;
     }
 
@@ -535,9 +562,11 @@ bool brain_compute_population_synchrony(
 ) {
     // Guard clauses
     if (!analyzer || !spike_trains || !synchrony_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_population_synchrony: required parameter is NULL (analyzer, spike_trains, synchrony_out)");
         return false;
     }
     if (num_neurons < 2 || num_neurons > POPULATION_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compute_population_synchrony: validation failed");
         return false;
     }
 

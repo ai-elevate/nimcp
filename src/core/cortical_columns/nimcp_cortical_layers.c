@@ -195,6 +195,7 @@ static bool init_layer_state(layer_state_t* layer,
     // Guard clause
     if (!layer || !config) {
         LOG_ERROR("Invalid parameters to init_layer_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_sum_squares: required parameter is NULL (layer, config)");
         return false;
     }
 
@@ -219,6 +220,7 @@ static bool init_layer_state(layer_state_t* layer,
         nimcp_free(layer->neurons);
         nimcp_free(layer->inputs);
         nimcp_free(layer->outputs);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "compute_sum_squares: required parameter is NULL (layer->neurons, layer->inputs, layer->outputs)");
         return false;
     }
 
@@ -552,6 +554,7 @@ laminar_structure_t* laminar_structure_create(
     if (nimcp_platform_mutex_init(&ls->mutex, false) != 0) {
         LOG_ERROR("Failed to initialize mutex");
         nimcp_free(ls);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "cortical_layer_get_description: validation failed");
         return NULL;
     }
 

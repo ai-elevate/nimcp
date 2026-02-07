@@ -70,6 +70,7 @@ static int PinkNoiseGenerator_init(PinkNoiseGeneratorObject* self, PyObject* arg
                                       &alpha, &amplitude, &min_frequency,
                                       &max_frequency, &sample_rate,
                                       &method_str, &seed)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PinkNoiseGenerator_init: operation failed");
         return -1;
     }
 
@@ -85,6 +86,7 @@ static int PinkNoiseGenerator_init(PinkNoiseGeneratorObject* self, PyObject* arg
         method = PINK_NOISE_WHITE;
     } else {
         PyErr_SetString(PyExc_ValueError, "Invalid method. Use 'voss', 'iir', 'fft', or 'white'");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "PinkNoiseGenerator_init: operation failed");
         return -1;
     }
 
@@ -104,6 +106,7 @@ static int PinkNoiseGenerator_init(PinkNoiseGeneratorObject* self, PyObject* arg
     if (!self->generator) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Failed to create generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_init: self->generator is NULL");
         return -1;
     }
 
@@ -115,11 +118,13 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     int num_samples;
 
     if (!PyArg_ParseTuple(args, "i", &num_samples)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     if (num_samples <= 0) {
         PyErr_SetString(PyExc_ValueError, "Number of samples must be positive");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate: validation failed");
         return NULL;
     }
 
@@ -139,6 +144,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
         nimcp_free(samples);
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Generation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate: success is NULL");
         return NULL;
     }
 
@@ -146,6 +152,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
     PyObject* result = PyList_New(num_samples);
     if (!result) {
         nimcp_free(samples);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "PinkNoiseGenerator_generate: result is NULL");
         return NULL;
     }
 
@@ -154,6 +161,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
         if (!item) {
             Py_DECREF(result);
             nimcp_free(samples);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate: item is NULL");
             return NULL;
         }
         // PyList_SetItem steals reference on success
@@ -162,6 +170,7 @@ static PyObject* PinkNoiseGenerator_generate(PinkNoiseGeneratorObject* self, PyO
             Py_DECREF(item);
             Py_DECREF(result);
             nimcp_free(samples);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate: validation failed");
             return NULL;
         }
     }
@@ -178,6 +187,7 @@ static PyObject* PinkNoiseGenerator_generate_sample(PinkNoiseGeneratorObject* se
     if (!success) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Generation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_generate_sample: success is NULL");
         return NULL;
     }
 
@@ -189,6 +199,7 @@ static PyObject* PinkNoiseGenerator_reset(PinkNoiseGeneratorObject* self, PyObje
     unsigned int seed = 0;
 
     if (!PyArg_ParseTuple(args, "|I", &seed)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_reset: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -197,6 +208,7 @@ static PyObject* PinkNoiseGenerator_reset(PinkNoiseGeneratorObject* self, PyObje
     if (!success) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Reset failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_reset: success is NULL");
         return NULL;
     }
 
@@ -208,6 +220,7 @@ static PyObject* PinkNoiseGenerator_modulate(PinkNoiseGeneratorObject* self, PyO
     float base_level;
 
     if (!PyArg_ParseTuple(args, "f", &base_level)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_modulate: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -217,6 +230,7 @@ static PyObject* PinkNoiseGenerator_modulate(PinkNoiseGeneratorObject* self, PyO
     if (!success) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Modulation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_modulate: success is NULL");
         return NULL;
     }
 
@@ -228,6 +242,7 @@ static PyObject* PinkNoiseGenerator_modulate_multiplicative(PinkNoiseGeneratorOb
     float value, strength;
 
     if (!PyArg_ParseTuple(args, "ff", &value, &strength)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_modulate_multiplicative: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
@@ -237,6 +252,7 @@ static PyObject* PinkNoiseGenerator_modulate_multiplicative(PinkNoiseGeneratorOb
     if (!success) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Modulation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "PinkNoiseGenerator_modulate_multiplicative: success is NULL");
         return NULL;
     }
 
@@ -306,18 +322,21 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
     float sample_rate;
 
     if (!PyArg_ParseTuple(args, "Of", &sample_list, &sample_rate)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: PyArg_ParseTuple is NULL");
         return NULL;
     }
 
     // Convert Python list to C array
     if (!PyList_Check(sample_list)) {
         PyErr_SetString(PyExc_TypeError, "First argument must be a list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: PyList_Check is NULL");
         return NULL;
     }
 
     Py_ssize_t num_samples = PyList_Size(sample_list);
     if (num_samples < 64) {
         PyErr_SetString(PyExc_ValueError, "Too few samples (minimum 64)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: validation failed");
         return NULL;
     }
 
@@ -331,6 +350,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         samples[i] = (float)PyFloat_AsDouble(item);
         if (PyErr_Occurred()) {
             nimcp_free(samples);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: validation failed");
             return NULL;
         }
     }
@@ -347,6 +367,7 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
     if (!success) {
         const char* error = pink_noise_get_last_error();
         PyErr_SetString(PyExc_RuntimeError, error ? error : "Stats computation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: success is NULL");
         return NULL;
     }
 
@@ -363,11 +384,13 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
         PyObject* _val = (value_expr); \
         if (!_val) { \
             Py_DECREF(result); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: _val is NULL"); \
             return NULL; \
         } \
         if (PyDict_SetItemString(result, (key), _val) < 0) { \
             Py_DECREF(_val); \
             Py_DECREF(result); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "py_compute_pink_noise_stats: validation failed"); \
             return NULL; \
         } \
         Py_DECREF(_val); \
@@ -408,6 +431,7 @@ int init_pink_noise_module(PyObject* module) {
     // Prepare type
     if (PyType_Ready(&PinkNoiseGeneratorType) < 0) {
         LOG_MODULE_ERROR("bindings.python.pink_noise", "Failed to initialize PinkNoiseGenerator type");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pink_noise_module: validation failed");
         return -1;
     }
 
@@ -415,16 +439,20 @@ int init_pink_noise_module(PyObject* module) {
     Py_INCREF(&PinkNoiseGeneratorType);
     if (PyModule_AddObject(module, "PinkNoiseGenerator", (PyObject*)&PinkNoiseGeneratorType) < 0) {
         Py_DECREF(&PinkNoiseGeneratorType);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pink_noise_module: validation failed");
         return -1;
     }
 
     // Add methods to module
     for (int i = 0; pink_noise_methods[i].ml_name != NULL; i++) {
         PyObject* func = PyCFunction_New(&pink_noise_methods[i], NULL);
-        if (func == NULL)
+        if (func == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pink_noise_module: validation failed");
             return -1;
+        }
         if (PyModule_AddObject(module, pink_noise_methods[i].ml_name, func) < 0) {
             Py_DECREF(func);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "init_pink_noise_module: validation failed");
             return -1;
         }
     }

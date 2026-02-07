@@ -109,6 +109,7 @@ empathetic_response_thalamic_bridge_t* empathetic_response_thalamic_bridge_creat
     if (bridge_base_init(&bridge->base, 0, "empathetic_response_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_bridge_create: bridge->base is NULL");
         return NULL;
     }
 
@@ -135,7 +136,10 @@ void empathetic_response_thalamic_bridge_destroy(empathetic_response_thalamic_br
 }
 
 int empathetic_response_thalamic_bridge_reset(empathetic_response_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_bridge_reset: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_reset", 0.0f);
 
@@ -148,7 +152,10 @@ int empathetic_response_thalamic_bridge_reset(empathetic_response_thalamic_bridg
 }
 
 int empathetic_response_thalamic_route_recognition(empathetic_response_thalamic_bridge_t* bridge, const empathetic_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_route_recognition: required parameter is NULL (bridge, signal)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
@@ -166,7 +173,10 @@ int empathetic_response_thalamic_route_recognition(empathetic_response_thalamic_
 }
 
 int empathetic_response_thalamic_route_response(empathetic_response_thalamic_bridge_t* bridge, const void* response, float intensity) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_route_response: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
@@ -178,7 +188,10 @@ int empathetic_response_thalamic_route_response(empathetic_response_thalamic_bri
 }
 
 int empathetic_response_thalamic_set_attention(empathetic_response_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_set_attention: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
@@ -190,7 +203,10 @@ int empathetic_response_thalamic_set_attention(empathetic_response_thalamic_brid
 }
 
 int empathetic_response_thalamic_get_attention(const empathetic_response_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_get_attention: required parameter is NULL (bridge, attention)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_empathetic_response_", 0.0f);
 
@@ -202,7 +218,10 @@ int empathetic_response_thalamic_get_attention(const empathetic_response_thalami
 }
 
 int empathetic_response_thalamic_bridge_get_stats(const empathetic_response_thalamic_bridge_t* bridge, empathetic_response_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "empathetic_response_thalamic_bridge_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     empathetic_response_thalamic_bridge_heartbeat("empathetic_r_get_stats", 0.0f);
 

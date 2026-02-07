@@ -355,6 +355,7 @@ int metabolic_pink_noise_disconnect(metabolic_pink_noise_bridge_t* bridge) {
 bool metabolic_pink_noise_is_connected(const metabolic_pink_noise_bridge_t* bridge) {
     // Guard: NULL bridge
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_is_connected: bridge is NULL");
         return false;
     }
 

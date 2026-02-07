@@ -274,6 +274,7 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
         !bridge->batch_words || !bridge->batch_activations) {
         LOG_ERROR("Failed to allocate batch buffers");
         wernicke_gpu_bio_destroy(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_create: operation failed");
         return NULL;
     }
 
@@ -367,6 +368,7 @@ int wernicke_gpu_bio_connect(wernicke_gpu_bio_bridge_t* bridge) {
     bridge->bio_ctx = bio_router_register_module(&info);
     if (!bridge->bio_ctx) {
         LOG_ERROR("Failed to register with bio router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_connect: bridge->bio_ctx is NULL");
         return -1;
     }
 
@@ -443,6 +445,7 @@ int wernicke_gpu_bio_process_batch(wernicke_gpu_bio_bridge_t* bridge) {
     if (!success) {
         LOG_WARN("GPU comprehension failed for batch of %u frames", bridge->batch_count);
         bridge->batch_count = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_process_batch: success is NULL");
         return -1;
     }
 
@@ -485,13 +488,17 @@ int wernicke_gpu_bio_add_frame(
     wernicke_gpu_bio_bridge_t* bridge,
     const wernicke_gpu_spectral_frame_t* frame)
 {
-    if (!bridge || !frame) return -1;
+    if (!bridge || !frame) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_add_frame: required parameter is NULL (bridge, frame)");
+        return -1;
+    }
 
     if (bridge->batch_count >= MAX_GPU_BATCH_SIZE) {
         /* Auto-process if enabled */
         if (bridge->config.auto_process_batch) {
             wernicke_gpu_bio_process_batch(bridge);
         } else {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "wernicke_gpu_bio_add_frame: validation failed");
             return -1;  /* Batch full */
         }
     }
@@ -538,7 +545,10 @@ int wernicke_gpu_bio_get_stats(
     const wernicke_gpu_bio_bridge_t* bridge,
     wernicke_gpu_bio_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke_gpu_bio_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(wernicke_gpu_bio_stats_t));
     stats->messages_processed = bridge->messages_processed;

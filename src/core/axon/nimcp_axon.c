@@ -150,9 +150,18 @@ float axon_distance_3d(const float a[3], const float b[3])
  */
 bool axon_validate_params(float length, float diameter)
 {
-    if (length <= 0.0F) return false;
-    if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) return false;
-    if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) return false;
+    if (length <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
+        return false;
+    }
+    if (diameter < NIMCP_AXON_MIN_DIAMETER_UM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
+        return false;
+    }
+    if (diameter > NIMCP_AXON_MAX_DIAMETER_UM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_validate_params: validation failed");
+        return false;
+    }
     return true;
 }
 
@@ -261,7 +270,10 @@ axon_t* axon_create_with_positions(uint32_t id,
     // Create base axon
     axon_t* axon = axon_create(id, type, source_neuron_id, target_synapse_id,
                                 length, diameter);
-    if (!axon) return NULL;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_create_with_positions: axon is NULL");
+        return NULL;
+    }
 
     // Set positions
     memcpy(axon->start_pos, start_pos, 3 * sizeof(float));
@@ -423,14 +435,26 @@ bool axon_set_segment_myelination(axon_t* axon,
                                    uint32_t oligo_id)
 {
     // Guard clauses
-    if (!axon) return false;
-    if (!axon->segments) return false;
-    if (segment_index >= axon->num_segments) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_set_segment_myelination: axon is NULL");
+        return false;
+    }
+    if (!axon->segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_set_segment_myelination: axon->segments is NULL");
+        return false;
+    }
+    if (segment_index >= axon->num_segments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "axon_set_segment_myelination: capacity exceeded");
+        return false;
+    }
 
     axon_segment_t* seg = &axon->segments[segment_index];
 
     // Only internodes can be myelinated
-    if (seg->type != SEGMENT_TYPE_INTERNODE) return false;
+    if (seg->type != SEGMENT_TYPE_INTERNODE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_set_segment_myelination: validation failed");
+        return false;
+    }
 
     // Update myelination
     seg->myelination = clamp_f(myelination, 0.0F, 1.0F);
@@ -544,17 +568,28 @@ bool axon_initiate_spike(axon_t* axon,
                          float amplitude)
 {
     // Guard clauses
-    if (!axon) return false;
-    if (!axon->is_functional) return false;
-    if (axon->damage >= 1.0F) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_initiate_spike: axon is NULL");
+        return false;
+    }
+    if (!axon->is_functional) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_initiate_spike: axon->is_functional is NULL");
+        return false;
+    }
+    if (axon->damage >= 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: capacity exceeded");
+        return false;
+    }
 
     // Check refractory period
     if (axon_is_refractory(axon, current_time)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
         return false;
     }
 
     // Check ATP level (metabolic gating)
     if (axon->atp_level < 0.1F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_initiate_spike: validation failed");
         return false;
     }
 
@@ -590,8 +625,14 @@ bool axon_initiate_spike(axon_t* axon,
 
 bool axon_spike_arrived(axon_t* axon, uint64_t current_time)
 {
-    if (!axon) return false;
-    if (axon->state != AXON_STATE_ACTIVE) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_spike_arrived: axon is NULL");
+        return false;
+    }
+    if (axon->state != AXON_STATE_ACTIVE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_arrived: validation failed");
+        return false;
+    }
 
     // Check if enough time has passed for spike to arrive
     uint64_t delay_us = (uint64_t)(axon->propagation_delay_ms * 1000.0F);
@@ -760,7 +801,10 @@ void axon_step(axon_t* axon, uint64_t current_time, float dt)
 
 bool axon_is_refractory(const axon_t* axon, uint64_t current_time)
 {
-    if (!axon) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_is_refractory: axon is NULL");
+        return false;
+    }
     return (axon->state == AXON_STATE_REFRACTORY ||
             (axon->state == AXON_STATE_ACTIVE &&
              current_time < axon->refractory_end));
@@ -900,12 +944,16 @@ axon_spike_queue_t* axon_spike_queue_create(uint32_t capacity)
 
     axon_spike_queue_t* queue = (axon_spike_queue_t*)nimcp_calloc(1,
                                                                    sizeof(axon_spike_queue_t));
-    if (!queue) return NULL;
+    if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_queue_create: queue is NULL");
+        return NULL;
+    }
 
     queue->events = (axon_spike_event_t*)nimcp_calloc(capacity,
                                                        sizeof(axon_spike_event_t));
     if (!queue->events) {
         nimcp_free(queue);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_queue_create: queue->events is NULL");
         return NULL;
     }
 
@@ -935,7 +983,10 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
                            const axon_spike_event_t* event)
 {
     // Guard clauses
-    if (!queue || !event) return false;
+    if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_spike_queue_push: required parameter is NULL (queue, event)");
+        return false;
+    }
 
     // Security: Validate spike amplitude for NaN/Inf
     // WHAT: Prevent corrupted floating point values from propagating
@@ -947,6 +998,7 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
         nimcp_mutex_lock(&queue->lock);
         queue->stats.total_dropped_invalid++;
         nimcp_mutex_unlock(&queue->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_queue_push: validation failed");
         return false;
     }
 
@@ -958,6 +1010,7 @@ bool axon_spike_queue_push(axon_spike_queue_t* queue,
         LOG_WARN(LOG_MODULE, "Spike queue full, dropping spike from axon=%u",
                  event->axon_id);
         nimcp_mutex_unlock(&queue->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "axon_spike_queue_push: capacity exceeded");
         return false;
     }
 
@@ -986,13 +1039,17 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
                           axon_spike_event_t* event)
 {
     // Guard clauses
-    if (!queue || !event) return false;
+    if (!queue || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_spike_queue_pop: required parameter is NULL (queue, event)");
+        return false;
+    }
 
     nimcp_mutex_lock(&queue->lock);
 
     // Check if queue is empty
     if (queue->count == 0) {
         nimcp_mutex_unlock(&queue->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_queue_pop: queue->count is zero");
         return false;
     }
 
@@ -1002,6 +1059,7 @@ bool axon_spike_queue_pop(axon_spike_queue_t* queue,
     // HOW:  Compare root arrival_time with current_time
     if (queue->events[0].arrival_time > current_time) {
         nimcp_mutex_unlock(&queue->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "axon_spike_queue_pop: validation failed");
         return false;
     }
 
@@ -1084,11 +1142,15 @@ axon_network_t* axon_network_create(uint32_t capacity)
 
     axon_network_t* network = (axon_network_t*)nimcp_calloc(1,
                                                              sizeof(axon_network_t));
-    if (!network) return NULL;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_network_create: network is NULL");
+        return NULL;
+    }
 
     network->axons = (axon_t**)nimcp_calloc(capacity, sizeof(axon_t*));
     if (!network->axons) {
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_network_create: network->axons is NULL");
         return NULL;
     }
 
@@ -1096,6 +1158,7 @@ axon_network_t* axon_network_create(uint32_t capacity)
     if (!network->spike_queue) {
         nimcp_free(network->axons);
         nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_network_create: network->spike_queue is NULL");
         return NULL;
     }
 
@@ -1146,12 +1209,16 @@ void axon_network_destroy(axon_network_t* network)
 
 bool axon_network_add(axon_network_t* network, axon_t* axon)
 {
-    if (!network || !axon) return false;
+    if (!network || !axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_add: required parameter is NULL (network, axon)");
+        return false;
+    }
 
     nimcp_mutex_lock(&network->lock);
 
     if (network->count >= network->capacity) {
         nimcp_mutex_unlock(&network->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "axon_network_add: capacity exceeded");
         return false;
     }
 
@@ -1168,7 +1235,10 @@ bool axon_network_add(axon_network_t* network, axon_t* axon)
 
 axon_t* axon_network_remove(axon_network_t* network, uint32_t axon_id)
 {
-    if (!network) return NULL;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_remove: network is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1196,7 +1266,10 @@ axon_t* axon_network_remove(axon_network_t* network, uint32_t axon_id)
 
 axon_t* axon_network_find(axon_network_t* network, uint32_t axon_id)
 {
-    if (!network) return NULL;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_find: network is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < network->count; i++) {
         if (network->axons[i] && network->axons[i]->id == axon_id) {
@@ -1204,6 +1277,7 @@ axon_t* axon_network_find(axon_network_t* network, uint32_t axon_id)
         }
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_find: validation failed");
     return NULL;
 }
 
@@ -1324,13 +1398,17 @@ axon_spike_pool_t* axon_spike_pool_create(uint32_t capacity)
 
     axon_spike_pool_t* pool = (axon_spike_pool_t*)nimcp_calloc(1,
                                                                 sizeof(axon_spike_pool_t));
-    if (!pool) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_pool_create: pool is NULL");
+        return NULL;
+    }
 
     // Allocate spike events array
     pool->events = (axon_spike_event_t*)nimcp_calloc(capacity,
                                                       sizeof(axon_spike_event_t));
     if (!pool->events) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_pool_create: pool->events is NULL");
         return NULL;
     }
 
@@ -1341,6 +1419,7 @@ axon_spike_pool_t* axon_spike_pool_create(uint32_t capacity)
     if (!pool->allocation_bitmap) {
         nimcp_free(pool->events);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_pool_create: pool->allocation_bitmap is NULL");
         return NULL;
     }
 
@@ -1368,8 +1447,14 @@ void axon_spike_pool_destroy(axon_spike_pool_t* pool)
 axon_spike_event_t* axon_spike_pool_alloc(axon_spike_pool_t* pool)
 {
     // Guard clauses
-    if (!pool) return NULL;
-    if (pool->allocated_count >= pool->capacity) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_pool_alloc: pool is NULL");
+        return NULL;
+    }
+    if (pool->allocated_count >= pool->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_spike_pool_alloc: capacity exceeded");
+        return NULL;
+    }
 
     // Search for free slot starting from next_search_pos
     // WHAT: Find first free slot in bitmap efficiently
@@ -1421,6 +1506,7 @@ axon_spike_event_t* axon_spike_pool_alloc(axon_spike_pool_t* pool)
         return &pool->events[slot];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_spike_pool_alloc: operation failed");
     return NULL;
 }
 
@@ -1477,12 +1563,16 @@ axon_segment_pool_t* axon_segment_pool_create(uint32_t capacity)
 
     axon_segment_pool_t* pool = (axon_segment_pool_t*)nimcp_calloc(1,
                                                                     sizeof(axon_segment_pool_t));
-    if (!pool) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_segment_pool_create: pool is NULL");
+        return NULL;
+    }
 
     // Allocate segments array
     pool->segments = (axon_segment_t*)nimcp_calloc(capacity, sizeof(axon_segment_t));
     if (!pool->segments) {
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_segment_pool_create: pool->segments is NULL");
         return NULL;
     }
 
@@ -1493,6 +1583,7 @@ axon_segment_pool_t* axon_segment_pool_create(uint32_t capacity)
     if (!pool->allocation_bitmap) {
         nimcp_free(pool->segments);
         nimcp_free(pool);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_segment_pool_create: pool->allocation_bitmap is NULL");
         return NULL;
     }
 
@@ -1519,8 +1610,14 @@ void axon_segment_pool_destroy(axon_segment_pool_t* pool)
 axon_segment_t* axon_segment_pool_alloc(axon_segment_pool_t* pool)
 {
     // Guard clauses
-    if (!pool) return NULL;
-    if (pool->allocated_count >= pool->capacity) return NULL;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_segment_pool_alloc: pool is NULL");
+        return NULL;
+    }
+    if (pool->allocated_count >= pool->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_segment_pool_alloc: capacity exceeded");
+        return NULL;
+    }
 
     // Search for free slot using optimized bit scanning
     uint32_t start_word = pool->next_search_pos / 64;
@@ -1560,6 +1657,7 @@ axon_segment_t* axon_segment_pool_alloc(axon_segment_pool_t* pool)
         return &pool->segments[slot];
     }
 
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_segment_pool_alloc: operation failed");
     return NULL;
 }
 
@@ -1594,7 +1692,10 @@ void axon_segment_pool_free(axon_segment_pool_t* pool, axon_segment_t* segment)
 
 bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity)
 {
-    if (!network) return false;
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_network_enable_spike_pool: network is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1614,7 +1715,10 @@ bool axon_network_enable_spike_pool(axon_network_t* network, uint32_t capacity)
 
 bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity)
 {
-    if (!axon) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_enable_segment_pool: axon is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&axon->lock);
 
@@ -1638,7 +1742,10 @@ bool axon_enable_segment_pool(axon_t* axon, uint32_t capacity)
 
 axon_t* axon_cow_copy(axon_t* axon)
 {
-    if (!axon) return NULL;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_cow_copy: axon is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(&axon->lock);
 
@@ -1646,6 +1753,7 @@ axon_t* axon_cow_copy(axon_t* axon)
     axon_t* copy = (axon_t*)nimcp_calloc(1, sizeof(axon_t));
     if (!copy) {
         nimcp_mutex_unlock(&axon->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_cow_copy: copy is NULL");
         return NULL;
     }
 
@@ -1696,7 +1804,10 @@ axon_t* axon_cow_copy(axon_t* axon)
 
 bool axon_cow_prepare_write(axon_t* axon)
 {
-    if (!axon) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_cow_prepare_write: axon is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&axon->lock);
 
@@ -1717,6 +1828,7 @@ bool axon_cow_prepare_write(axon_t* axon)
         if (!axon->segments) {
             axon->segments = old_segments;  // Restore
             nimcp_mutex_unlock(&axon->lock);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_cow_prepare_write: axon->segments is NULL");
             return false;
         }
 
@@ -1780,7 +1892,10 @@ void axon_cow_release(axon_t* axon)
 
 bool axon_is_cow_copy(const axon_t* axon)
 {
-    if (!axon) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_is_cow_copy: axon is NULL");
+        return false;
+    }
     return (axon->cow_original != NULL);
 }
 
@@ -1796,7 +1911,10 @@ uint32_t axon_cow_ref_count(const axon_t* axon)
 
 bool axon_init_biophysics(axon_t* axon, bool use_stochastic, uint64_t seed)
 {
-    if (!axon) return false;
+    if (!axon) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_init_biophysics: axon is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&axon->lock);
 
@@ -1804,6 +1922,7 @@ bool axon_init_biophysics(axon_t* axon, bool use_stochastic, uint64_t seed)
     axon->biophysics = nimcp_myelin_biophysics_create(use_stochastic, seed);
     if (!axon->biophysics) {
         nimcp_mutex_unlock(&axon->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_init_biophysics: axon->biophysics is NULL");
         return false;
     }
 

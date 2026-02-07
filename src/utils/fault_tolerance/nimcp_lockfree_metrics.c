@@ -148,6 +148,7 @@ lockfree_metrics_buffer_t* lockfree_metrics_create(
     if (capacity > LOCKFREE_METRICS_MAX_CAPACITY) {
         nimcp_log(LOG_LEVEL_ERROR, "Capacity %u exceeds maximum %u",
                   capacity, LOCKFREE_METRICS_MAX_CAPACITY);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "lockfree_metrics_create: validation failed");
         return NULL;
     }
 
@@ -178,6 +179,7 @@ lockfree_metrics_buffer_t* lockfree_metrics_create(
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate metrics entries (%u entries)",
                   capacity);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lockfree_metrics_create: buffer->entries is NULL");
         return NULL;
     }
 
@@ -241,6 +243,7 @@ void lockfree_metrics_destroy(lockfree_metrics_buffer_t* buffer) {
 bool lockfree_metrics_reset(lockfree_metrics_buffer_t* buffer) {
     if (!buffer) {
         nimcp_log(LOG_LEVEL_ERROR, "Cannot reset NULL buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_reset: buffer is NULL");
         return false;
     }
 
@@ -414,6 +417,7 @@ int32_t lockfree_metrics_read_batch(
     uint32_t max_count
 ) {
     if (!buffer || !output || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_read_batch: required parameter is NULL (buffer, output)");
         return -1;
     }
 
@@ -471,6 +475,7 @@ int32_t lockfree_metrics_read_batch(
 
     nimcp_log(LOG_LEVEL_WARN, "Metrics read exceeded max retries (%u)",
               LOCKFREE_METRICS_CAS_MAX_RETRIES);
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lockfree_metrics_read_batch: operation failed");
     return -1;
 }
 
@@ -481,6 +486,7 @@ int32_t lockfree_metrics_read_batch_timeout(
     uint64_t timeout_us
 ) {
     if (!buffer || !output || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_read_batch_timeout: required parameter is NULL (buffer, output)");
         return -1;
     }
 
@@ -517,6 +523,7 @@ int32_t lockfree_metrics_peek(
     uint32_t max_count
 ) {
     if (!buffer || !output || max_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_peek: required parameter is NULL (buffer, output)");
         return -1;
     }
 
@@ -551,6 +558,7 @@ bool lockfree_metrics_get_stats(
     metrics_stats_t* stats
 ) {
     if (!buffer || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_get_stats: required parameter is NULL (buffer, stats)");
         return false;
     }
 
@@ -596,12 +604,18 @@ uint32_t lockfree_metrics_size(const lockfree_metrics_buffer_t* buffer) {
 }
 
 bool lockfree_metrics_is_empty(const lockfree_metrics_buffer_t* buffer) {
-    if (!buffer) return false;  // NULL buffer is not empty (error state)
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_is_empty: buffer is NULL");
+        return false;
+    }
     return lockfree_metrics_size(buffer) == 0;
 }
 
 bool lockfree_metrics_is_full(const lockfree_metrics_buffer_t* buffer) {
-    if (!buffer) return false;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_is_full: buffer is NULL");
+        return false;
+    }
     return lockfree_metrics_size(buffer) >= buffer->capacity;
 }
 
@@ -708,11 +722,13 @@ int32_t lockfree_metrics_export_json(
     size_t buffer_size
 ) {
     if (!buffer || !json_buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lockfree_metrics_export_json: required parameter is NULL (buffer, json_buffer)");
         return -1;
     }
 
     metrics_stats_t stats;
     if (!lockfree_metrics_get_stats(buffer, &stats)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "lockfree_metrics_export_json: lockfree_metrics_get_stats is NULL");
         return -1;
     }
 

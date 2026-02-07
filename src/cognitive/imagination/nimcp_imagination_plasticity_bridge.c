@@ -136,6 +136,7 @@ static synapse_entry_t* find_synapse(imagination_plasticity_bridge_t* bridge, ui
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_synapse: operation failed");
     return NULL;
 }
 
@@ -151,6 +152,7 @@ static synapse_entry_t* find_free_slot(imagination_plasticity_bridge_t* bridge) 
             return &bridge->synapses[i];
         }
     }
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->synapses is NULL");
     return NULL;
 }
 
@@ -224,6 +226,7 @@ imagination_plasticity_bridge_t* imagination_plasticity_create(
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "imagination_plasticity") != 0) {
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "imagination_plasticity_create: validation failed");
         return NULL;
     }
 
@@ -233,6 +236,7 @@ imagination_plasticity_bridge_t* imagination_plasticity_create(
     if (!bridge->synapses) {
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "imagination_plasticity_create: bridge->synapses is NULL");
         return NULL;
     }
 
@@ -272,7 +276,10 @@ void imagination_plasticity_destroy(imagination_plasticity_bridge_t* bridge) {
 }
 
 int imagination_plasticity_reset(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -321,7 +328,10 @@ int imagination_plasticity_register_synapse(
     imagination_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_register_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -332,6 +342,7 @@ int imagination_plasticity_register_synapse(
     /* Check for duplicate */
     if (find_synapse(bridge, synapse_id)) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_plasticity_register_synapse: validation failed");
         return -1;
     }
 
@@ -339,6 +350,7 @@ int imagination_plasticity_register_synapse(
     synapse_entry_t* slot = find_free_slot(bridge);
     if (!slot) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_register_synapse: slot is NULL");
         return -1;
     }
 
@@ -368,7 +380,10 @@ int imagination_plasticity_unregister_synapse(
     imagination_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -379,6 +394,7 @@ int imagination_plasticity_unregister_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_unregister_synapse: entry is NULL");
         return -1;
     }
 
@@ -394,7 +410,10 @@ int imagination_plasticity_get_synapse(
     uint32_t synapse_id,
     imagination_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    if (!bridge || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_get_synapse: required parameter is NULL (bridge, synapse)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -405,6 +424,7 @@ int imagination_plasticity_get_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_get_synapse: entry is NULL");
         return -1;
     }
 
@@ -419,7 +439,10 @@ int imagination_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_protect_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -430,6 +453,7 @@ int imagination_plasticity_protect_synapse(
     synapse_entry_t* entry = find_synapse(bridge, synapse_id);
     if (!entry) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_protect_synapse: entry is NULL");
         return -1;
     }
 
@@ -450,7 +474,10 @@ int imagination_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -463,6 +490,7 @@ int imagination_plasticity_learn(
     if (!entry) {
         bridge->state = IMAGINATION_PLASTICITY_STATE_IDLE;
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_learn: entry is NULL");
         return -1;
     }
 
@@ -624,7 +652,10 @@ int imagination_plasticity_apply_reward(
     imagination_plasticity_bridge_t* bridge,
     float reward
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_apply_reward: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -665,8 +696,14 @@ int imagination_plasticity_update_bcm(
     imagination_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_update_bcm: bridge is NULL");
+        return -1;
+    }
+    if (dt_ms <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_plasticity_update_bcm: validation failed");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -702,7 +739,10 @@ int imagination_plasticity_homeostatic_update(
     imagination_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_homeostatic_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -767,7 +807,10 @@ int imagination_plasticity_update_traces(
     imagination_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_update_traces: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -794,7 +837,10 @@ int imagination_plasticity_update_traces(
 }
 
 int imagination_plasticity_consolidate(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_consolidate: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -889,7 +935,10 @@ int imagination_plasticity_get_imagery_state(
     imagination_plasticity_bridge_t* bridge,
     imagination_imagery_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_get_imagery_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -906,7 +955,10 @@ int imagination_plasticity_get_state(
     imagination_plasticity_bridge_t* bridge,
     imagination_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_get_state: required parameter is NULL (bridge, state)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -952,7 +1004,10 @@ int imagination_plasticity_get_stats(
     imagination_plasticity_bridge_t* bridge,
     imagination_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_get_stats: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -966,7 +1021,10 @@ int imagination_plasticity_get_stats(
 }
 
 int imagination_plasticity_reset_stats(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -988,7 +1046,10 @@ int imagination_plasticity_register_learn_callback(
     imagination_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_register_learn_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -1007,7 +1068,10 @@ int imagination_plasticity_register_imagery_callback(
     imagination_plasticity_imagery_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_register_imagery_callback: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -1026,8 +1090,14 @@ int imagination_plasticity_register_imagery_callback(
 //=============================================================================
 
 int imagination_plasticity_bio_async_connect(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_bio_async_connect: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_bio_async) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_bio_async_connect: bridge->config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -1042,7 +1112,10 @@ int imagination_plasticity_bio_async_connect(imagination_plasticity_bridge_t* br
 }
 
 int imagination_plasticity_bio_async_disconnect(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_bio_async_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);
@@ -1056,7 +1129,10 @@ int imagination_plasticity_bio_async_disconnect(imagination_plasticity_bridge_t*
 }
 
 bool imagination_plasticity_is_bio_async_connected(imagination_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     imagination_plasticity_bridge_heartbeat("imagination__imagination_plastici", 0.0f);

@@ -131,7 +131,10 @@ static temp_perception_t classify_temperature(float temp_c) {
  * ============================================================================ */
 
 int trigeminal_oral_default_config(trigeminal_oral_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(trigeminal_oral_config_t));
 
@@ -201,7 +204,10 @@ void trigeminal_oral_bridge_destroy(trigeminal_oral_bridge_t* bridge) {
 int trigeminal_oral_connect(trigeminal_oral_bridge_t* bridge,
                             nimcp_somatosensory_t* soma,
                             nimcp_gustatory_t* gust) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_bridge_destroy: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = soma;
     bridge->gust = gust;
@@ -212,7 +218,10 @@ int trigeminal_oral_connect(trigeminal_oral_bridge_t* bridge,
 }
 
 int trigeminal_oral_disconnect(trigeminal_oral_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_disconnect: bridge is NULL");
+        return -1;
+    }
 
     bridge->soma = NULL;
     bridge->gust = NULL;
@@ -236,8 +245,14 @@ trigeminal_status_t trigeminal_oral_get_status(const trigeminal_oral_bridge_t* b
 
 int trigeminal_oral_process_input(trigeminal_oral_bridge_t* bridge,
                                   const oral_soma_input_t* input) {
-    if (!bridge || !input) return -1;
-    if (input->region >= ORAL_REGION_COUNT) return -1;
+    if (!bridge || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_status: required parameter is NULL (bridge, input)");
+        return -1;
+    }
+    if (input->region >= ORAL_REGION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "trigeminal_oral_get_status: capacity exceeded");
+        return -1;
+    }
 
     bridge->status = TRIGEMINAL_STATUS_PROCESSING;
 
@@ -253,7 +268,10 @@ int trigeminal_oral_process_input(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_process_multi(trigeminal_oral_bridge_t* bridge,
                                   const oral_soma_input_t* inputs,
                                   uint32_t num_inputs) {
-    if (!bridge || !inputs) return -1;
+    if (!bridge || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_status: required parameter is NULL (bridge, inputs)");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_inputs; i++) {
         int ret = trigeminal_oral_process_input(bridge, &inputs[i]);
@@ -264,7 +282,10 @@ int trigeminal_oral_process_multi(trigeminal_oral_bridge_t* bridge,
 }
 
 int trigeminal_oral_update(trigeminal_oral_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_update: bridge is NULL");
+        return -1;
+    }
 
     /* Update adaptation */
     bridge->spice_adaptation *= (1.0f - bridge->config.adaptation_rate * dt);
@@ -296,8 +317,14 @@ int trigeminal_oral_detect_chemesthesis(trigeminal_oral_bridge_t* bridge,
                                         float concentration,
                                         oral_region_t region,
                                         chemesthesis_t* result) {
-    if (!bridge || !result) return -1;
-    if (!bridge->config.enable_chemesthesis) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_update: required parameter is NULL (bridge, result)");
+        return -1;
+    }
+    if (!bridge->config.enable_chemesthesis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_update: bridge->config is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(chemesthesis_t));
     result->type = compound_type;
@@ -380,7 +407,10 @@ int trigeminal_oral_detect_chemesthesis(trigeminal_oral_bridge_t* bridge,
 
 int trigeminal_oral_get_spiciness(trigeminal_oral_bridge_t* bridge,
                                   spiciness_perception_t* spiciness) {
-    if (!bridge || !spiciness) return -1;
+    if (!bridge || !spiciness) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_update: required parameter is NULL (bridge, spiciness)");
+        return -1;
+    }
 
     memcpy(spiciness, &bridge->current_spiciness, sizeof(spiciness_perception_t));
     return 0;
@@ -389,7 +419,10 @@ int trigeminal_oral_get_spiciness(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_update_spice_tolerance(trigeminal_oral_bridge_t* bridge,
                                            float exposure_intensity,
                                            float duration_s) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_update: bridge is NULL");
+        return -1;
+    }
 
     /* Tolerance increases with exposure */
     float tolerance_gain = exposure_intensity * duration_s * 0.001f;
@@ -417,8 +450,14 @@ float trigeminal_oral_get_cooling_intensity(const trigeminal_oral_bridge_t* brid
 int trigeminal_oral_analyze_texture(trigeminal_oral_bridge_t* bridge,
                                     const oral_soma_input_t* input,
                                     texture_perception_t* texture) {
-    if (!bridge || !input || !texture) return -1;
-    if (!bridge->config.enable_texture) return -1;
+    if (!bridge || !input || !texture) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: required parameter is NULL (bridge, input, texture)");
+        return -1;
+    }
+    if (!bridge->config.enable_texture) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: bridge->config is NULL");
+        return -1;
+    }
 
     memset(texture, 0, sizeof(texture_perception_t));
 
@@ -495,8 +534,14 @@ int trigeminal_oral_classify_texture(trigeminal_oral_bridge_t* bridge,
                                      uint32_t num_features,
                                      texture_category_t* category,
                                      float* confidence) {
-    if (!bridge || !texture_features || !category || !confidence) return -1;
-    if (num_features < 3) return -1;
+    if (!bridge || !texture_features || !category || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: required parameter is NULL (bridge, texture_features, category, confidence)");
+        return -1;
+    }
+    if (num_features < 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "trigeminal_oral_get_cooling_intensity: validation failed");
+        return -1;
+    }
 
     float roughness = texture_features[0];
     float hardness = texture_features[1];
@@ -525,7 +570,10 @@ int trigeminal_oral_classify_texture(trigeminal_oral_bridge_t* bridge,
 
 int trigeminal_oral_get_texture(trigeminal_oral_bridge_t* bridge,
                                 texture_perception_t* texture) {
-    if (!bridge || !texture) return -1;
+    if (!bridge || !texture) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: required parameter is NULL (bridge, texture)");
+        return -1;
+    }
 
     memcpy(texture, &bridge->current_texture, sizeof(texture_perception_t));
     texture->texture_profile = NULL;  /* Don't expose internal pointer */
@@ -540,8 +588,14 @@ int trigeminal_oral_get_texture(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_compute_temp_taste(trigeminal_oral_bridge_t* bridge,
                                        float temperature_c,
                                        temp_taste_interaction_t* interaction) {
-    if (!bridge || !interaction) return -1;
-    if (!bridge->config.enable_temp_taste) return -1;
+    if (!bridge || !interaction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: required parameter is NULL (bridge, interaction)");
+        return -1;
+    }
+    if (!bridge->config.enable_temp_taste) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: bridge->config is NULL");
+        return -1;
+    }
 
     memset(interaction, 0, sizeof(temp_taste_interaction_t));
 
@@ -590,7 +644,10 @@ int trigeminal_oral_modulate_taste(trigeminal_oral_bridge_t* bridge,
                                    float* sweet, float* salty,
                                    float* sour, float* bitter,
                                    float* umami) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_get_cooling_intensity: bridge is NULL");
+        return -1;
+    }
 
     temp_taste_interaction_t interaction;
     int ret = trigeminal_oral_compute_temp_taste(bridge, temperature_c, &interaction);
@@ -608,7 +665,10 @@ int trigeminal_oral_modulate_taste(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_optimal_temperature(trigeminal_oral_bridge_t* bridge,
                                         const taste_perception_t* taste,
                                         float* optimal_temp_c) {
-    if (!bridge || !taste || !optimal_temp_c) return -1;
+    if (!bridge || !taste || !optimal_temp_c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, taste, optimal_temp_c)");
+        return -1;
+    }
 
     /* Heuristic for optimal serving temperature based on taste profile */
     float sweet_weight = taste->perceived_sweet;
@@ -637,8 +697,14 @@ int trigeminal_oral_compute_mouthfeel(trigeminal_oral_bridge_t* bridge,
                                       const oral_soma_input_t* soma_input,
                                       const taste_perception_t* taste_input,
                                       mouthfeel_t* mouthfeel) {
-    if (!bridge || !mouthfeel) return -1;
-    if (!bridge->config.enable_mouthfeel) return -1;
+    if (!bridge || !mouthfeel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, mouthfeel)");
+        return -1;
+    }
+    if (!bridge->config.enable_mouthfeel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge->config is NULL");
+        return -1;
+    }
 
     memset(mouthfeel, 0, sizeof(mouthfeel_t));
 
@@ -752,7 +818,10 @@ int trigeminal_oral_compute_mouthfeel(trigeminal_oral_bridge_t* bridge,
 
 int trigeminal_oral_get_mouthfeel(trigeminal_oral_bridge_t* bridge,
                                   mouthfeel_t* mouthfeel) {
-    if (!bridge || !mouthfeel) return -1;
+    if (!bridge || !mouthfeel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, mouthfeel)");
+        return -1;
+    }
 
     memcpy(mouthfeel, &bridge->current_mouthfeel, sizeof(mouthfeel_t));
     mouthfeel->mouthfeel_profile = NULL;
@@ -764,7 +833,10 @@ int trigeminal_oral_get_mouthfeel(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_predict_pleasantness(trigeminal_oral_bridge_t* bridge,
                                          const mouthfeel_t* mouthfeel,
                                          float* pleasantness) {
-    if (!bridge || !mouthfeel || !pleasantness) return -1;
+    if (!bridge || !mouthfeel || !pleasantness) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, mouthfeel, pleasantness)");
+        return -1;
+    }
 
     /* Simple pleasantness prediction */
     *pleasantness = mouthfeel->pleasantness;
@@ -776,7 +848,10 @@ int trigeminal_oral_flavor_texture_synergy(trigeminal_oral_bridge_t* bridge,
                                            const taste_perception_t* taste,
                                            const texture_perception_t* texture,
                                            float* synergy_score) {
-    if (!bridge || !taste || !texture || !synergy_score) return -1;
+    if (!bridge || !taste || !texture || !synergy_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, taste, texture, synergy_score)");
+        return -1;
+    }
 
     /* Compute synergy between flavor and texture */
     float synergy = 0.5f;
@@ -817,7 +892,10 @@ int trigeminal_oral_flavor_texture_synergy(trigeminal_oral_bridge_t* bridge,
 
 int trigeminal_oral_start_mastication(trigeminal_oral_bridge_t* bridge,
                                       float initial_hardness) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
 
     bridge->masticating = true;
     bridge->chew_count = 0;
@@ -831,7 +909,10 @@ int trigeminal_oral_start_mastication(trigeminal_oral_bridge_t* bridge,
 int trigeminal_oral_update_mastication(trigeminal_oral_bridge_t* bridge,
                                        float bite_force,
                                        float jaw_position) {
-    if (!bridge || !bridge->masticating) return -1;
+    if (!bridge || !bridge->masticating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (bridge, bridge->masticating)");
+        return -1;
+    }
 
     (void)jaw_position;
 
@@ -853,7 +934,10 @@ int trigeminal_oral_get_mastication_state(trigeminal_oral_bridge_t* bridge,
                                           uint32_t* chew_count,
                                           float* breakdown_progress,
                                           bool* ready_to_swallow) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: bridge is NULL");
+        return -1;
+    }
 
     if (chew_count) *chew_count = bridge->chew_count;
     if (breakdown_progress) *breakdown_progress = bridge->breakdown_progress;
@@ -863,7 +947,10 @@ int trigeminal_oral_get_mastication_state(trigeminal_oral_bridge_t* bridge,
 }
 
 int trigeminal_oral_end_mastication(trigeminal_oral_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_end_mastication: bridge is NULL");
+        return -1;
+    }
 
     bridge->masticating = false;
 
@@ -876,13 +963,19 @@ int trigeminal_oral_end_mastication(trigeminal_oral_bridge_t* bridge) {
 
 int trigeminal_oral_get_stats(const trigeminal_oral_bridge_t* bridge,
                               trigeminal_oral_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_end_mastication: required parameter is NULL (bridge, stats)");
+        return -1;
+    }
     memcpy(stats, &bridge->stats, sizeof(trigeminal_oral_stats_t));
     return 0;
 }
 
 int trigeminal_oral_reset_stats(trigeminal_oral_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trigeminal_oral_reset_stats: bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(trigeminal_oral_stats_t));
     return 0;
 }
