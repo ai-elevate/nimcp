@@ -69,10 +69,7 @@ static int compare_by_phase(const void* a, const void* b) {
     const phase_coded_item_t* item_a = (const phase_coded_item_t*)a;
     const phase_coded_item_t* item_b = (const phase_coded_item_t*)b;
 
-    if (item_a->phase < item_b->phase) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_by_phase: validation failed");
-        return -1;
-    }
+    if (item_a->phase < item_b->phase) return -1;
     if (item_a->phase > item_b->phase) return 1;
     return 0;
 }

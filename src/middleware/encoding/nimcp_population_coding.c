@@ -180,10 +180,7 @@ static int compare_rate_index_desc(const void* a, const void* b) {
     const rate_index_pair_t* pair_a = (const rate_index_pair_t*)a;
     const rate_index_pair_t* pair_b = (const rate_index_pair_t*)b;
 
-    if (pair_a->rate > pair_b->rate) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_rate_index_desc: validation failed");
-        return -1;
-    }
+    if (pair_a->rate > pair_b->rate) return -1;
     if (pair_a->rate < pair_b->rate) return 1;
     return 0;
 }

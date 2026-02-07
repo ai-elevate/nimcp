@@ -658,6 +658,21 @@ TEST_F(BBBBioRouterIntegrationTest, SecurityValidationOverhead)
     auto duration_no_validation_us = std::chrono::duration_cast<std::chrono::microseconds>(
         end_no_validation - start_no_validation).count();
 
+    // Drain receiver inbox between measurements to ensure fair comparison.
+    // Without this, the second loop hits a full queue (from the first loop)
+    // and creates expensive exception objects for every failed enqueue,
+    // inflating the "with validation" timing far beyond actual validation cost.
+    {
+        auto drain_start = std::chrono::steady_clock::now();
+        int drained = 0;
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - drain_start).count() < 500) {
+            int processed = bio_router_process_inbox(receiver_ctx_, 100);
+            if (processed <= 0) break;
+            drained += processed;
+        }
+    }
+
     // Measure routing with validation
     auto start_with_validation = std::chrono::high_resolution_clock::now();
 

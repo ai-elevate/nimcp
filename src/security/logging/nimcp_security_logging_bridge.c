@@ -370,8 +370,8 @@ const char* security_log_format_name(security_log_format_t format) {
 
 security_log_severity_t security_threat_to_severity(nimcp_threat_level_t threat) {
     switch (threat) {
-        case NIMCP_THREAT_NONE:     return SECURITY_LOG_SEV_DEBUG;
-        case NIMCP_THREAT_LOW:      return SECURITY_LOG_SEV_INFO;
+        case NIMCP_THREAT_NONE:     return SECURITY_LOG_SEV_INFO;
+        case NIMCP_THREAT_LOW:      return SECURITY_LOG_SEV_NOTICE;
         case NIMCP_THREAT_MEDIUM:   return SECURITY_LOG_SEV_WARNING;
         case NIMCP_THREAT_HIGH:     return SECURITY_LOG_SEV_ERROR;
         case NIMCP_THREAT_CRITICAL: return SECURITY_LOG_SEV_CRITICAL;
@@ -381,7 +381,7 @@ security_log_severity_t security_threat_to_severity(nimcp_threat_level_t threat)
 
 security_log_severity_t security_bbb_to_log_severity(bbb_severity_t bbb_severity) {
     switch (bbb_severity) {
-        case BBB_SEVERITY_NONE:     return SECURITY_LOG_SEV_DEBUG;
+        case BBB_SEVERITY_NONE:     return SECURITY_LOG_SEV_INFO;
         case BBB_SEVERITY_LOW:      return SECURITY_LOG_SEV_NOTICE;
         case BBB_SEVERITY_MEDIUM:   return SECURITY_LOG_SEV_WARNING;
         case BBB_SEVERITY_HIGH:     return SECURITY_LOG_SEV_ERROR;
@@ -486,7 +486,7 @@ int security_logging_default_config(security_logging_bridge_config_t* config) {
     config->overwrite_on_full = true;
 
     /* Filtering */
-    config->min_severity = SECURITY_LOG_SEV_DEBUG;
+    config->min_severity = SECURITY_LOG_SEV_INFO;
     config->enabled_categories = SECURITY_LOG_CAT_ALL;
 
     /* Output settings */
@@ -1390,11 +1390,14 @@ int security_logging_register_pattern_callback(
     void* user_data
 ) {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NIMCP_ERROR_NULL_POINTER;
+    }
 
+    if (!callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "security_logging_register_pattern_callback: callback is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     BRIDGE_LOCK(bridge);
@@ -1413,11 +1416,8 @@ int security_logging_register_pattern_callback(
 
 int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-        return NIMCP_ERROR_NULL_POINTER;
-
+        return -1;
     }
     if (!bridge->config.pattern_analysis.enabled) return 0;
 
