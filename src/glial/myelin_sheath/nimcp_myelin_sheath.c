@@ -602,8 +602,7 @@ myelin_segment_t* myelin_sheath_find_segment_at(myelin_sheath_t* sheath,
             }
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_sheath_find_segment_at: capacity exceeded");
-    return NULL;
+    return NULL;  /* Not found - no segment at this position */
 }
 
 //=============================================================================
@@ -1504,8 +1503,7 @@ myelin_sheath_t* myelin_network_find_sheath(myelin_sheath_network_t* network,
             return network->sheaths[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_network_find_sheath: validation failed");
-    return NULL;
+    return NULL;  /* Not found - no sheath with this ID */
 }
 
 myelin_sheath_t* myelin_network_find_by_axon(myelin_sheath_network_t* network,
@@ -1524,8 +1522,7 @@ myelin_sheath_t* myelin_network_find_by_axon(myelin_sheath_network_t* network,
             return network->sheaths[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "myelin_network_find_by_axon: validation failed");
-    return NULL;
+    return NULL;  /* Not found - no sheath for this axon */
 }
 
 uint32_t myelin_network_find_by_oligo(myelin_sheath_network_t* network,

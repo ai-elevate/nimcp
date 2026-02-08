@@ -160,8 +160,7 @@ static task_node_t* find_task_node(
         node = node->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_task_node: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

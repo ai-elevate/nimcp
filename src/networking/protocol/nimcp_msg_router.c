@@ -79,8 +79,7 @@ static nimcp_msg_handler_entry_t* find_handler(
             return &router->handlers[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_handler: validation failed");
-    return NULL;
+    return NULL;  // Not found - normal behavior
 }
 
 /**

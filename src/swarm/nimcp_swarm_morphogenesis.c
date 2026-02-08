@@ -152,8 +152,7 @@ static NimcpDroneRoleState* find_drone_state(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_drone_state: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

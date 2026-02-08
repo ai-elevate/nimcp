@@ -508,7 +508,9 @@ int mtl_compute_loss(
     }
 
     *total_loss = weighted_sum;
-    ctx->stats.avg_loss = weighted_sum / (float)batch->num_active_tasks;
+    ctx->stats.avg_loss = batch->num_active_tasks > 0
+                             ? weighted_sum / (float)batch->num_active_tasks
+                             : 0.0f;
     ctx->stats.total_steps++;
 
     nimcp_mutex_unlock(ctx->mutex);
@@ -529,6 +531,13 @@ int mtl_process_gradients(
     nimcp_mutex_lock(ctx->mutex);
 
     uint32_t num_tasks = ctx->num_active;
+
+    /* Guard: prevent division by zero when no tasks are active */
+    if (num_tasks == 0) {
+        memset(combined_gradient, 0, num_params * sizeof(float));
+        nimcp_mutex_unlock(ctx->mutex);
+        return 0;
+    }
 
     /* Initialize combined gradient to zero */
     memset(combined_gradient, 0, num_params * sizeof(float));
@@ -576,7 +585,9 @@ int mtl_process_gradients(
             }
             nimcp_free(projected);
 
-            ctx->stats.conflict_ratio /= (float)(num_tasks * (num_tasks - 1));
+            if (num_tasks > 1) {
+                ctx->stats.conflict_ratio /= (float)(num_tasks * (num_tasks - 1));
+            }
             break;
         }
 
@@ -724,13 +735,15 @@ int mtl_update_weights(
                     (ctx->gradnorm.initial_losses[i] + MTL_EPSILON);
                 avg_ratio += ctx->gradnorm.loss_ratios[i];
             }
-            avg_ratio /= (float)ctx->num_tasks;
+            if (ctx->num_tasks > 0) {
+                avg_ratio /= (float)ctx->num_tasks;
+            }
             ctx->gradnorm.avg_loss_ratio = avg_ratio;
 
             /* Compute relative inverse training rates */
             float* r_i = nimcp_calloc(ctx->num_tasks, sizeof(float));
             for (uint32_t i = 0; i < ctx->num_tasks; i++) {
-                r_i[i] = powf(ctx->gradnorm.loss_ratios[i] / avg_ratio,
+                r_i[i] = powf(ctx->gradnorm.loss_ratios[i] / (avg_ratio + MTL_EPSILON),
                               ctx->config.gradnorm.alpha);
             }
 
@@ -739,7 +752,9 @@ int mtl_update_weights(
             for (uint32_t i = 0; i < ctx->num_tasks; i++) {
                 avg_gnorm += task_grad_norms[i] * ctx->gradnorm.weights[i];
             }
-            avg_gnorm /= (float)ctx->num_tasks;
+            if (ctx->num_tasks > 0) {
+                avg_gnorm /= (float)ctx->num_tasks;
+            }
 
             /* Update weights to match target gradient norms with momentum damping */
             float momentum_coef = ctx->gradnorm.damping_factor;

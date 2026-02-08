@@ -221,8 +221,10 @@ void nlp_broadcast_error(uint64_t peer_id, uint32_t error_code,
     msg.error_code = error_code;
     msg.severity = severity;
     strncpy(msg.module_name, NLP_MODULE_NAME, sizeof(msg.module_name) - 1);
+    msg.module_name[sizeof(msg.module_name) - 1] = '\0';
     if (message) {
         strncpy(msg.error_message, message, sizeof(msg.error_message) - 1);
+        msg.error_message[sizeof(msg.error_message) - 1] = '\0';
     }
 
     bio_router_broadcast(g_nlp_bio_ctx, &msg, sizeof(msg));

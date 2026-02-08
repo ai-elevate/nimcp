@@ -54,7 +54,7 @@ NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(portia_learning)
 static habituation_entry_t* find_habituation_entry(portia_learning_state_t* state,
                                                     uint32_t stimulus_id) {
     if (!state || !state->habituation_table) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (state, state->habituation_table)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_habituation_entry: required parameter is NULL (state, state->habituation_table)");
         return NULL;
     }
 
@@ -64,8 +64,7 @@ static habituation_entry_t* find_habituation_entry(portia_learning_state_t* stat
             return &state->habituation_table[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -75,7 +74,7 @@ static association_entry_t* find_association_entry(portia_learning_state_t* stat
                                                     uint32_t stimulus_id,
                                                     uint32_t response_id) {
     if (!state || !state->association_table) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: required parameter is NULL (state, state->association_table)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_association_entry: required parameter is NULL (state, state->association_table)");
         return NULL;
     }
 
@@ -86,8 +85,7 @@ static association_entry_t* find_association_entry(portia_learning_state_t* stat
             return &state->association_table[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unknown: operation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -148,8 +146,7 @@ static habituation_entry_t* find_empty_habituation_slot(portia_learning_state_t*
             return &state->habituation_table[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_habituation_slot: state->habituation_table is NULL");
-    return NULL;
+    return NULL;  /* No empty slot available */
 }
 
 /**
@@ -166,8 +163,7 @@ static association_entry_t* find_empty_association_slot(portia_learning_state_t*
             return &state->association_table[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_empty_association_slot: state->association_table is NULL");
-    return NULL;
+    return NULL;  /* No empty slot available */
 }
 
 /**

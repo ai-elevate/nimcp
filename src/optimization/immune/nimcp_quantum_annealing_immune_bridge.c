@@ -218,7 +218,6 @@ qa_immune_bridge_t* qa_immune_create(
         nimcp_free(bridge->history);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "qa_immune_create: bridge->events is NULL");
         return NULL;
     }
 
@@ -622,8 +621,7 @@ int qa_immune_trigger_immune_response(
 
     if (!event) {
         nimcp_platform_mutex_unlock(bridge->base.mutex);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_trigger_immune_response: event is NULL");
-        return -1;
+        return -1;  /* Event not found - normal search miss */
     }
 
     /* Create epitope from problem type */
@@ -763,8 +761,7 @@ const qa_immune_problem_event_t* qa_immune_get_event(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qa_immune_get_event: validation failed");
-    return NULL;
+    return NULL;  /* Event not found - normal search miss */
 }
 
 /* ============================================================================

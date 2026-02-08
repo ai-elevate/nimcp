@@ -236,8 +236,7 @@ static bool should_trigger_correction(language_cingulate_bridge_t* bridge,
         return true;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "should_trigger_correction: capacity exceeded");
-    return false;
+    return false;  /* Error does not meet correction threshold - normal behavior */
 }
 
 static correction_action_t determine_correction_action(speech_error_type_t type,

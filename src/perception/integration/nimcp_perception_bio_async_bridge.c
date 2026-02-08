@@ -84,8 +84,7 @@ static percept_bio_subscription_t* find_subscription(
             return &b->subscriptions[modality][i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "find_subscription: capacity exceeded");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 static int count_subscribers_for_type(

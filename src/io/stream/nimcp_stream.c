@@ -1195,6 +1195,23 @@ nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
         return NIMCP_SUCCESS;  // Already initialized
     }
 
+    // Prevent concurrent initialization: only one thread proceeds
+    bool expected = false;
+    if (!nimcp_atomic_compare_exchange_bool(&g_stream_initializing, &expected, true,
+                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
+        // Another thread is initializing, spin-wait for completion
+        while (!nimcp_atomic_load_bool(&g_stream_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+            // busy wait
+        }
+        return NIMCP_SUCCESS;
+    }
+
+    // Double-check after acquiring the initializing flag
+    if (nimcp_atomic_load_bool(&g_stream_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+        nimcp_atomic_store_bool(&g_stream_initializing, false, NIMCP_MEMORY_ORDER_RELEASE);
+        return NIMCP_SUCCESS;
+    }
+
     // Store security context
     g_stream_security_ctx = security_ctx;
 
@@ -1209,6 +1226,7 @@ nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
 
         if (result != NIMCP_SUCCESS) {
             stream_set_error("Failed to register Stream module with security");
+            nimcp_atomic_store_bool(&g_stream_initializing, false, NIMCP_MEMORY_ORDER_RELEASE);
             return result;
         }
 
@@ -1216,6 +1234,7 @@ nimcp_result_t stream_init(nimcp_sec_integration_t* security_ctx)
     }
 
     nimcp_atomic_store_bool(&g_stream_initialized, true, NIMCP_MEMORY_ORDER_RELEASE);
+    nimcp_atomic_store_bool(&g_stream_initializing, false, NIMCP_MEMORY_ORDER_RELEASE);
     return NIMCP_SUCCESS;
 }
 

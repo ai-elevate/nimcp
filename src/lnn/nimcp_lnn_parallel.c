@@ -745,8 +745,7 @@ lnn_pipeline_ctx_t* lnn_pipeline_create(
      */
 
     NIMCP_LOGGING_WARN("Layer pipeline not fully implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_pipeline_create: operation failed");
-    return NULL;
+    return NULL;  /* Not implemented */
 }
 
 void lnn_pipeline_destroy(lnn_pipeline_ctx_t* ctx) {

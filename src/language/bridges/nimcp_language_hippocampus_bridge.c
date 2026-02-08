@@ -103,8 +103,7 @@ static int find_memory_slot(language_hippocampus_bridge_t* bridge)
     for (uint32_t i = 0; i < bridge->config.max_word_memories; i++) {
         if (!bridge->memories[i].is_valid) return (int)i;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_slot: bridge->memories is NULL");
-    return -1;
+    return -1;  /* No empty slot - normal capacity behavior */
 }
 
 static word_memory_entry_t* find_memory_by_id(language_hippocampus_bridge_t* bridge, uint32_t id)
@@ -114,8 +113,7 @@ static word_memory_entry_t* find_memory_by_id(language_hippocampus_bridge_t* bri
             return &bridge->memories[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "find_memory_by_id: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 static word_memory_entry_t* find_memory_by_word(language_hippocampus_bridge_t* bridge, const char* word)
@@ -126,8 +124,7 @@ static word_memory_entry_t* find_memory_by_word(language_hippocampus_bridge_t* b
             return &bridge->memories[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_memory_by_word: operation failed");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 static void apply_decay(language_hippocampus_bridge_t* bridge)
@@ -653,8 +650,7 @@ int language_hippocampus_get_memory(const language_hippocampus_bridge_t* bridge,
             return 0;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_get_memory: validation failed");
-    return -1;
+    return -1;  /* Not found - normal lookup behavior */
 }
 
 int language_hippocampus_delete_memory(language_hippocampus_bridge_t* bridge, uint32_t memory_id)
@@ -674,8 +670,7 @@ int language_hippocampus_delete_memory(language_hippocampus_bridge_t* bridge, ui
             return 0;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "language_hippocampus_delete_memory: validation failed");
-    return -1;
+    return -1;  /* Not found - normal lookup behavior */
 }
 
 uint32_t language_hippocampus_get_memory_count(const language_hippocampus_bridge_t* bridge)

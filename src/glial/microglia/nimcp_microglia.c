@@ -431,8 +431,7 @@ static int32_t find_synapse_index(const microglia_t* mg, uint32_t synapse_id)
             return (int32_t)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_synapse_index: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 /**
@@ -548,7 +547,7 @@ microglia_t* microglia_create(uint32_t id, float x, float y, float z,
 
     if (surveillance_radius <= 0.0F) {
         LOG_MODULE_ERROR("MICROGLIA", "Invalid surveillance radius: %.2f", surveillance_radius);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_create: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "microglia_create: invalid surveillance_radius");
         return NULL;
     }
 
@@ -1516,8 +1515,7 @@ microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
     }
 
     nimcp_mutex_unlock(&network->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "microglia_network_find_by_synapse: capacity exceeded");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 microglia_t* microglia_network_find_nearest(microglia_network_t* network,

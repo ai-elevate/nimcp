@@ -176,10 +176,7 @@ static int compare_timestamps(const char* key1, const char* key2)
     uint64_t ts1 = strtoull(key1, NULL, 10);
     uint64_t ts2 = strtoull(key2, NULL, 10);
 
-    if (ts1 < ts2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compare_timestamps: validation failed");
-        return -1;
-    }
+    if (ts1 < ts2) return -1;
     if (ts1 > ts2) return 1;
     return 0;
 }
@@ -192,8 +189,6 @@ static int compare_timestamps(const char* key1, const char* key2)
 static const char* extract_timestamp_key(const void* data)
 {
     if (!data) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "data is NULL");
-
         return NULL;
     }
 

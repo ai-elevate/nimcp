@@ -48,8 +48,7 @@ static int flocking_find_boid_index(const nimcp_flocking_engine_t *engine, uint3
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "flocking_find_boid_index: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 /**

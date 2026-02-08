@@ -160,8 +160,7 @@ static swarm_connection_t* find_swarm(swarm_gateway_t* gateway,
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "get_timestamp_ms: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

@@ -40,8 +40,7 @@ static swarm_agent_info_t* find_agent_unlocked(swarm_bio_bridge_t* bridge, swarm
             return &bridge->agents[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_agent_unlocked: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

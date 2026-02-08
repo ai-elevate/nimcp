@@ -348,8 +348,7 @@ static target_record_t* find_target(swarm_dragonfly_bridge_t* bridge, uint32_t t
             return &bridge->targets[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_target: operation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -361,8 +360,7 @@ static target_record_t* find_free_slot(swarm_dragonfly_bridge_t* bridge) {
             return &bridge->targets[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: bridge->targets is NULL");
-    return NULL;
+    return NULL;  /* No free slot available */
 }
 
 /**

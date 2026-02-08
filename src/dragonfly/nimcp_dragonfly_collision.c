@@ -235,8 +235,7 @@ static int find_obstacle_by_id(const dragonfly_collision_t collision, uint32_t i
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_obstacle_by_id: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 static float compute_ttc(

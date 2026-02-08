@@ -93,6 +93,25 @@ static void shannon_init_once(void)
     nimcp_platform_once(&g_shannon_init_once, shannon_init_internal);
 }
 
+/**
+ * @brief Shutdown Shannon module, allowing reinitialization
+ *
+ * WHAT: Resets module state so it can be reinitialized
+ * WHY:  Without resetting g_shannon_init_once, nimcp_platform_once
+ *       will not trigger re-initialization after shutdown
+ */
+void shannon_shutdown(void)
+{
+    if (!nimcp_atomic_load_bool(&g_shannon_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
+        return;
+    }
+    g_bio_ctx = NULL;
+    g_bio_async_enabled = false;
+    g_security_context = NULL;
+    nimcp_atomic_store_bool(&g_shannon_initialized, false, NIMCP_MEMORY_ORDER_RELEASE);
+    g_shannon_init_once = (nimcp_platform_once_t)NIMCP_PLATFORM_ONCE_INIT;
+}
+
 //=============================================================================
 // Internal Helper Functions
 //=============================================================================

@@ -78,8 +78,7 @@ static glial_bio_subscription_t* glial_find_subscription(
             return &b->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "glial_find_subscription: validation failed");
-    return NULL;
+    return NULL;  /* Not found - no active subscription for this module */
 }
 
 /* ============================================================================

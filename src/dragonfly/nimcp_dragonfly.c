@@ -106,8 +106,7 @@ static target_entry_t* find_target(dragonfly_system_t* system, uint32_t id) {
             return &system->targets[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_target: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 static target_entry_t* find_free_slot(dragonfly_system_t* system) {
@@ -116,8 +115,7 @@ static target_entry_t* find_free_slot(dragonfly_system_t* system) {
             return &system->targets[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_free_slot: system->targets is NULL");
-    return NULL;
+    return NULL;  /* No free slot available */
 }
 
 static target_entry_t* get_primary_target_entry(dragonfly_system_t* system) {

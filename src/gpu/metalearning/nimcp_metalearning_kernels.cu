@@ -1138,6 +1138,11 @@ bool nimcp_gpu_task_embed_similarity(
     size_t n = task_embed1->numel;
     float* h_embed1 = (float*)malloc(n * sizeof(float));
     float* h_embed2 = (float*)malloc(n * sizeof(float));
+    if (!h_embed1 || !h_embed2) {
+        free(h_embed1);
+        free(h_embed2);
+        return false;
+    }
 
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_embed1, task_embed1->data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);
     NIMCP_CUDA_RECOVER(cudaMemcpy(h_embed2, task_embed2->data, n * sizeof(float), cudaMemcpyDeviceToHost), GPU_ERROR_CUDA_RUNTIME);

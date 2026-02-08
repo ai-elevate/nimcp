@@ -808,6 +808,11 @@ void shannon_print_network_metrics(
     const char* label
 );
 
+/**
+ * @brief Shutdown Shannon module, allowing reinitialization
+ */
+void shannon_shutdown(void);
+
 #ifdef __cplusplus
 }
 #endif

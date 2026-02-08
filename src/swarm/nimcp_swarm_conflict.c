@@ -1611,8 +1611,7 @@ static negotiation_state_t* find_negotiation(
             return &resolver->negotiations[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conflict_stats_print: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 static conflict_t* find_active_conflict(
@@ -1624,8 +1623,7 @@ static conflict_t* find_active_conflict(
             return &resolver->active_conflicts[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conflict_stats_print: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 static bool territories_overlap(

@@ -924,8 +924,7 @@ int language_orchestrator_register_callback(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_orchestrator_register_callback: No callback slots available");
-    return -1;  /* No space */
+    return -1;  /* No callback slots available - normal capacity behavior */
 }
 
 int language_orchestrator_unregister_callback(
@@ -948,8 +947,7 @@ int language_orchestrator_unregister_callback(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "language_orchestrator_unregister_callback: Callback not found");
-    return -1;  /* Not found */
+    return -1;  /* Callback not found - normal lookup behavior */
 }
 
 //=============================================================================

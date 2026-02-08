@@ -535,8 +535,7 @@ int language_bio_async_register_handler(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "language_bio_async_register_handler: No handler slots available");
-    return -1;  /* No space */
+    return -1;  /* No handler slots available - normal capacity behavior */
 }
 
 //=============================================================================

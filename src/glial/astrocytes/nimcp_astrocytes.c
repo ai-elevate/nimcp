@@ -1049,7 +1049,11 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity)
     // Spatial index (NULL for now)
     network->spatial_index = NULL;
 
-    nimcp_mutex_init(&network->lock, NULL);
+    if (nimcp_mutex_init(&network->lock, NULL) != NIMCP_SUCCESS) {
+        nimcp_free(network);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "astrocyte_network_create: mutex init failed");
+        return NULL;
+    }
 
     return network;
 }

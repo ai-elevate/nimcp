@@ -665,7 +665,8 @@ wm_guard_result_t wm_guard_sanitize(
             /* Record matched pattern */
             if (strlen(result->matched_patterns) < sizeof(result->matched_patterns) - 50) {
                 if (patterns_matched > 1) {
-                    strcat(result->matched_patterns, ", ");
+                    strncat(result->matched_patterns, ", ",
+                            sizeof(result->matched_patterns) - strlen(result->matched_patterns) - 1);
                 }
                 strncat(result->matched_patterns, guard->patterns[i].pattern,
                         sizeof(result->matched_patterns) - strlen(result->matched_patterns) - 1);

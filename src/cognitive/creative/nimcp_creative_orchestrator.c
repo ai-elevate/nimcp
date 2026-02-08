@@ -83,7 +83,7 @@ creative_orchestrator_t* creative_orchestrator_create(
     creative_orchestrator_t* orch = nimcp_calloc(1, sizeof(creative_orchestrator_t));
     if (!orch) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate orchestrator");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_orchestrator_heartbeat_instance: orch is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "creative_orchestrator_create: allocation failed");
         return NULL;
     }
 

@@ -145,13 +145,11 @@ static bool validate_ip_address(const char* ip)
 {
     // Guard clause: NULL check
     if (!ip) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_ip_address: ip is NULL");
         return false;
     }
 
     // Validate as string field (NULL termination, UTF-8, control chars)
     if (!nimcp_validate_string_field(ip, strnlen(ip, MAX_IP_LENGTH) + 1)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: nimcp_validate_string_field is NULL");
         return false;
     }
 
@@ -159,7 +157,6 @@ static bool validate_ip_address(const char* ip)
 
     // Guard clause: Length check (minimum: "0.0.0.0" = 7, maximum: "255.255.255.255" = 15)
     if (len < 7 || len > 15) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: validation failed");
         return false;
     }
 
@@ -167,7 +164,6 @@ static bool validate_ip_address(const char* ip)
     // WHY: Ensures IP can be converted to network format
     struct in_addr addr;
     if (inet_aton(ip, &addr) == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_ip_address: validation failed");
         return false;
     }
 

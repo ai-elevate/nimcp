@@ -148,8 +148,7 @@ static int find_entry_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_entry_index: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 //=============================================================================

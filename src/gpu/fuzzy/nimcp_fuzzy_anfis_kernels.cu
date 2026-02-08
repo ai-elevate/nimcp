@@ -819,26 +819,20 @@ nimcp_gpu_anfis_state_t* nimcp_gpu_anfis_create(
         nimcp_gpu_recovery_init(NULL);
     }
 
-    // Parameter validation with recovery attempt
+    // Parameter validation - non-recoverable errors (recovery can't fix bad params)
     if (!ctx || !nimcp_gpu_context_is_valid(ctx)) {
-        nimcp_gpu_recovery_result_t result;
-        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_CONTEXT_INVALID, cudaSuccess, &result)) {
-            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS creation");
-            return NULL;
-        }
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0, "Invalid GPU context for ANFIS creation");
+        return NULL;
     }
     if (!params) {
         NIMCP_THROW_GPU(NIMCP_ERROR_NULL_POINTER, 0, 0, "NULL parameters for ANFIS creation");
         return NULL;
     }
     if (params->num_inputs == 0 || params->num_mfs_per_input == 0) {
-        nimcp_gpu_recovery_result_t result;
-        if (!nimcp_gpu_try_recover(NULL, GPU_ERROR_INVALID_PARAMS, cudaSuccess, &result)) {
-            NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0,
-                "Invalid ANFIS config: num_inputs=%u, num_mfs=%u",
-                params->num_inputs, params->num_mfs_per_input);
-            return NULL;
-        }
+        NIMCP_THROW_GPU(NIMCP_ERROR_INVALID_PARAM, 0, 0,
+            "Invalid ANFIS config: num_inputs=%u, num_mfs=%u",
+            params->num_inputs, params->num_mfs_per_input);
+        return NULL;
     }
 
     anfis_gpu_state_t* state = (anfis_gpu_state_t*)calloc(1, sizeof(anfis_gpu_state_t));

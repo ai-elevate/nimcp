@@ -19,6 +19,7 @@
 #include "gpu/fuzzy/nimcp_fuzzy_anfis_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include <cuda_runtime.h>
 #endif
 
 namespace {
@@ -30,7 +31,15 @@ class FuzzyControllerE2ETest : public ::testing::Test {
 protected:
     void SetUp() override {
 #ifdef NIMCP_ENABLE_CUDA
+        int device_count = 0;
+        cudaError_t cuda_err = cudaGetDeviceCount(&device_count);
+        if (cuda_err != cudaSuccess || device_count == 0) {
+            GTEST_SKIP() << "No CUDA devices available";
+        }
         ctx_ = nimcp_gpu_context_create(0);
+        if (!ctx_) {
+            GTEST_SKIP() << "Failed to create GPU context";
+        }
 #endif
     }
 

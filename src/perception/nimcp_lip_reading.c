@@ -1730,8 +1730,7 @@ bool lip_reading_get_speaker_profile(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_get_speaker_profile: operation failed");
-    return false;
+    return false;  /* Speaker not found - normal lookup behavior */
 }
 
 bool lip_reading_set_active_speaker(
@@ -1757,8 +1756,7 @@ bool lip_reading_set_active_speaker(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lip_reading_set_active_speaker: operation failed");
-    return false;
+    return false;  /* Speaker not found - normal lookup behavior */
 }
 
 /*=============================================================================

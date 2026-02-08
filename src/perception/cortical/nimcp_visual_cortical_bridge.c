@@ -512,7 +512,16 @@ bool visual_cortical_is_bio_async_connected(const visual_cortical_bridge_t* brid
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_is_bio_async_connected: bridge is NULL");
         return false;
     }
-    return bridge->base.bio_async_enabled;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    bool connected;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    connected = bridge->base.bio_async_enabled;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return connected;
 }
 
 /* ============================================================================
@@ -839,20 +848,26 @@ const orientation_hypercolumn_t* visual_cortical_get_hypercolumn(
     float retino_y)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t idx = compute_hypercolumn_index(bridge, retino_x, retino_y);
     if (idx >= bridge->num_hypercolumns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_hypercolumn: capacity exceeded");
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "visual_cortical_get_hypercolumn: index out of range");
         return NULL;
     }
 
-    return bridge->hypercolumns[idx];
+    const orientation_hypercolumn_t* hcol = bridge->hypercolumns[idx];
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 const orientation_hypercolumn_t* visual_cortical_get_hypercolumn_by_index(
@@ -863,8 +878,18 @@ const orientation_hypercolumn_t* visual_cortical_get_hypercolumn_by_index(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_hypercolumn_by_index: bridge is NULL");
         return NULL;
     }
-    if (index >= bridge->num_hypercolumns) return NULL;
-    return bridge->hypercolumns[index];
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    const orientation_hypercolumn_t* hcol = NULL;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    if (index < bridge->num_hypercolumns) {
+        hcol = bridge->hypercolumns[index];
+    }
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 uint32_t visual_cortical_get_num_hypercolumns(const visual_cortical_bridge_t* bridge)
@@ -873,7 +898,16 @@ uint32_t visual_cortical_get_num_hypercolumns(const visual_cortical_bridge_t* br
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_num_hypercolumns: bridge is NULL");
         return 0;
     }
-    return bridge->num_hypercolumns;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    uint32_t count;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    count = bridge->num_hypercolumns;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return count;
 }
 
 /* ============================================================================
@@ -936,7 +970,16 @@ float visual_cortical_get_immune_factor(const visual_cortical_bridge_t* bridge)
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_immune_factor: bridge is NULL");
         return 0.0f;
     }
-    return bridge->immune_modulation_factor;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    float factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    factor = bridge->immune_modulation_factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return factor;
 }
 
 /* ============================================================================
@@ -978,7 +1021,16 @@ visual_cortical_state_t visual_cortical_get_state(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_state: bridge is NULL");
         return VISUAL_CORTICAL_STATE_UNINITIALIZED;
     }
-    return bridge->state;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    visual_cortical_state_t state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    state = bridge->state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return state;
 }
 
 const topographic_map_t* visual_cortical_get_retinotopic_map(
@@ -988,7 +1040,16 @@ const topographic_map_t* visual_cortical_get_retinotopic_map(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortical_get_retinotopic_map: bridge is NULL");
         return NULL;
     }
-    return bridge->retinotopic_map;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
+
+    const topographic_map_t* map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    map = bridge->retinotopic_map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return map;
 }
 
 /* ============================================================================

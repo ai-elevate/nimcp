@@ -2261,8 +2261,10 @@ uint32_t adaptive_network_rank_neurons(adaptive_network_t network, neuron_import
                                    (network->neuron_states[i].sample_count - 1)
                              : 1.0F;
 
-        rankings[i].importance = rankings[i].avg_activation *
-                                 sqrtf((float) rankings[i].activation_count) / (variance + 1e-6F);
+        float act_count = (float) rankings[i].activation_count;
+        float importance = rankings[i].avg_activation *
+                           sqrtf(act_count > 0.0f ? act_count : 0.0f) / (variance + 1e-6F);
+        rankings[i].importance = isfinite(importance) ? importance : 0.0f;
 
         rankings[i].most_active_for = NULL;  // TODO: Track pattern associations
     }
@@ -2511,12 +2513,6 @@ const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t 
 
         return NULL;
     }
-
-    /* DEBUG: Log config state before returning */
-    fprintf(stderr, "[DEBUG] adaptive_network_get_config: num_layers=%u, layer_sizes=%p, k_factor=%f\n",
-            network->config.base_config.num_layers,
-            (void*)network->config.base_config.layer_sizes,
-            network->config.spike_params.k_factor);
 
     /* WHAT: Return pointer to internal config */
     /* NOTE: Returned as const to prevent modification */

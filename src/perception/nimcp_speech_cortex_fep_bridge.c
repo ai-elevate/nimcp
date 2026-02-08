@@ -494,7 +494,7 @@ int speech_cortex_fep_bridge_connect_bio_async(
         return NIMCP_SUCCESS;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Bio-async router not available for speech_cortex_fep_bridge");
+    NIMCP_LOGGING_WARN("Bio-async router not available for speech_cortex_fep_bridge");
     return -1;
 }
 

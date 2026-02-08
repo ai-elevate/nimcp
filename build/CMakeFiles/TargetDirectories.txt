@@ -80,6 +80,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_resizing.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_version.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_api_working_memory.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_api_test_brain_api_returns.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_analysis_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analysis.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_cognitive_analysis_test_network_analyzer_integration.dir
@@ -335,9 +336,11 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_tensor_networks_test_mps_compression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_api_consistency.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_exception_immune.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_exception_recursion.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_health_agent_atomic.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_kdtree.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_memory_safety.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_memory_strdup.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_mutex_safety.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_overflow_checks.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_utils_test_overflow_protection.dir
@@ -503,6 +506,7 @@
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_buffer_overflow_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_memory_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_mutex_regression.dir
+/home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_utils_infrastructure_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/regression_utils_test_utils_regression.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_oscillations_sleep_bridge.dir
 /home/bbrelin/nimcp/build/test/CMakeFiles/unit_core_brain_kg_message_index.dir
@@ -872,6 +876,7 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_creative_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_amplifier_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_surprise_bridges_e2e.dir
@@ -1106,6 +1111,7 @@
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_mesh_security.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_bbb_immune_pipeline.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_bbb_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/e2e_security_test_bbb_quarantine.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/security/CMakeFiles/rebuild_cache.dir
@@ -1132,7 +1138,16 @@
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/e2e/genius/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/e2e_middleware_test_circular_buffer_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/e2e/middleware/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/e2e_utils_test_memory_health_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/e2e_utils_test_memory_tracking_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/utils/CMakeFiles/rebuild_cache.dir
@@ -1165,6 +1180,7 @@
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/unit_middleware_buffering_temporal_accumulator.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/unit_middleware_buffering_phase_coded_buffer.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/unit_middleware_buffering_buffer_immune_integration.dir
+/home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/unit_middleware_buffering_circular_buffer_batch.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/middleware/buffering/CMakeFiles/rebuild_cache.dir
@@ -1364,6 +1380,7 @@
 /home/bbrelin/nimcp/build/test/regression/middleware/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/regression_middleware_buffering_integration_buffer.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/regression_middleware_buffering_temporal_accumulator.dir
+/home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/regression_middleware_buffering_circular_buffer.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/middleware/buffering/CMakeFiles/rebuild_cache.dir
@@ -1724,6 +1741,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_gw_plasticity_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_jepa_fep_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_symbolic_logic_integration.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_creative_validation.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_creative.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_self_awareness_feedback.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/CMakeFiles/unit_cognitive_test_shadow_emotions.dir
@@ -2820,6 +2838,7 @@
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_parahippocampal_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_mammillary_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_speech_enhancement_backward_compat.dir
+/home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/regression_brain_regions_test_brain_region_alloc_regression.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/rebuild_cache.dir
@@ -3463,6 +3482,7 @@
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/integration_utils_exception_test_exception_immune_integration.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/integration_utils_exception_test_exception_memory_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/rebuild_cache.dir
@@ -4124,6 +4144,7 @@
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_thalamic_routing.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_guardian_intervention.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_world_model.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/regression_cognitive_creative.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/CMakeFiles/rebuild_cache.dir
@@ -4684,6 +4705,7 @@
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_artifact_verify.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_bbb_api_validation.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_error_codes.dir
+/home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/unit_security_test_bbb_quarantine_refcount.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/security/CMakeFiles/rebuild_cache.dir
@@ -4876,6 +4898,7 @@
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_orchestrator.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_bbb_immune.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_immune_error_routing.dir
+/home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/integration_security_test_bbb_refcount.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/security/CMakeFiles/rebuild_cache.dir
@@ -4939,6 +4962,7 @@
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_rate_limiter_v2.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_p0_fixes.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_return_codes.dir
+/home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/regression_security_test_bbb_quarantine.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/security/CMakeFiles/rebuild_cache.dir
@@ -5031,6 +5055,7 @@
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/unit_async_wiring_diagram_validation.dir
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/unit_async_self_assembly.dir
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/unit_async_plasticity_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/unit_async_bio_router_registration.dir
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/async/CMakeFiles/rebuild_cache.dir
@@ -5638,6 +5663,7 @@
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_execution_mode.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_gpu_neuron.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_spike_event.dir
+/home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_multigpu_bounds.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_quantum_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_inference_kernels.dir
 /home/bbrelin/nimcp/build/test/unit/gpu/CMakeFiles/unit_gpu_test_tensor_kernels.dir
@@ -6023,6 +6049,7 @@
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_neuron_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_multigpu_regression.dir
+/home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_bounds_regression.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_spike_event_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_gpu_execution_mode_backward_compat.dir
 /home/bbrelin/nimcp/build/test/regression/gpu/CMakeFiles/regression_gpu_test_broca_gpu_regression.dir

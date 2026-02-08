@@ -35,6 +35,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -349,8 +350,9 @@ nimcp_ct_context_t nimcp_ct_create(void)
     nimcp_ct_context_t ctx = (nimcp_ct_context_t)calloc(1, sizeof(struct nimcp_ct_context));
     if (!ctx) {
         LOG_ERROR("Failed to allocate constant-time context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        if (nimcp_exception_system_is_initialized()) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_ct_create: context allocation failed");
+        }
         return NULL;
     }
 

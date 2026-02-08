@@ -120,8 +120,7 @@ static nimcp_drone_commitment_t* find_commitment(
             return &quorum->commitments[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_commitment: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

@@ -201,8 +201,7 @@ static swarm_peer_info_t* find_peer(swarm_brain_t* swarm, uint16_t drone_id) {
             return &swarm->peers[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_peer: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -1534,8 +1533,7 @@ static local_brain_instance_t* find_local_brain(swarm_brain_t* swarm, uint16_t a
             return &brains[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_local_brain: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

@@ -464,8 +464,7 @@ static bool evaluate_local_decision(
     if (bridge->config.mode == PSL_MODE_DISABLED ||
         bridge->config.mode == PSL_MODE_SWARM_ONLY) {
         if (confidence_out) *confidence_out = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_local_decision: validation failed");
-        return false;
+        return false;  /* Normal flow - local evaluation skipped in this mode */
     }
 
     // TODO: When portia_logic_bridge API is available, evaluate actual gates
@@ -501,8 +500,7 @@ static bool evaluate_swarm_decision(
         bridge->config.mode == PSL_MODE_PORTIA_ONLY) {
         if (consensus_count_out) *consensus_count_out = 0;
         if (confidence_out) *confidence_out = 0.0f;
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "evaluate_swarm_decision: validation failed");
-        return false;
+        return false;  /* Normal flow - swarm evaluation skipped in this mode */
     }
 
     // TODO: When swarm_logic_bridge API expands, evaluate actual consensus

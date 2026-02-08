@@ -37,7 +37,6 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
-#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_bbb_input_gate"
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
@@ -202,7 +201,6 @@ static const char* format_patterns[] = {
 static const char* case_insensitive_strstr(const char* text, const char* pattern)
 {
     if (!text || !pattern) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "case_insensitive_strstr: required parameter is NULL (text, pattern)");
         return NULL;
     }
     if (!*pattern) return text;
@@ -243,7 +241,6 @@ static const char* case_insensitive_strstr(const char* text, const char* pattern
 static bool check_patterns(const char* input, const char* patterns[])
 {
     if (!input || !patterns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "check_patterns: required parameter is NULL (input, patterns)");
         return false;
     }
 
@@ -269,7 +266,6 @@ static bool check_patterns(const char* input, const char* patterns[])
 static bool detect_shellcode(const void* data, size_t size)
 {
     if (!data || size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "detect_shellcode: data is NULL");
         return false;
     }
 
@@ -327,14 +323,8 @@ static bool detect_shellcode(const void* data, size_t size)
 static bool detect_dangerous_format_specifier(const char* str)
 {
     if (!str) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "detect_dangerous_format_specifier: str is NULL");
-
-            return false;
-
-        }
+        return false;
+    }
 
     const int DANGEROUS_WIDTH_THRESHOLD = 10000;
 
@@ -425,14 +415,8 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
 {
     /* Guard: NULL parameters */
     if (!result) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "bbb_validate_input: result is NULL");
-
-            return false;
-
-        }
+        return false;
+    }
 
     /* Initialize result to valid */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -445,7 +429,6 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason),
                  "NULL BBB system - validation requires system context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_input: system is NULL");
         return false;
     }
 
@@ -458,7 +441,6 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         result->threat = BBB_THREAT_BUFFER_OVERFLOW;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL data pointer");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_input: data is NULL");
         return false;
     }
 
@@ -515,8 +497,6 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason),
                  "Memory allocation failed during input validation");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
-            "bbb_validate_input: failed to allocate safe_str for validation");
         return false;
     }
 
@@ -540,14 +520,8 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
 {
     /* Guard: NULL result */
     if (!result) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "bbb_validate_string: result is NULL");
-
-            return false;
-
-        }
+        return false;
+    }
 
     /* Initialize result */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -560,7 +534,6 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
         result->severity = BBB_SEVERITY_MEDIUM;
         snprintf(result->reason, sizeof(result->reason),
                  "NULL BBB system - string validation requires system context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_string: system is NULL");
         return false;
     }
 
@@ -573,7 +546,6 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
         result->threat = BBB_THREAT_BUFFER_OVERFLOW;
         result->severity = BBB_SEVERITY_HIGH;
         snprintf(result->reason, sizeof(result->reason), "NULL string pointer");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_string: str is NULL");
         return false;
     }
 
@@ -683,14 +655,8 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
 {
     /* Guard: NULL result */
     if (!result) {
-
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
-
-                "bbb_validate_integer: result is NULL");
-
-            return false;
-
-        }
+        return false;
+    }
 
     /* Initialize result */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -703,7 +669,6 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
         result->severity = BBB_SEVERITY_MEDIUM;
         snprintf(result->reason, sizeof(result->reason),
                  "NULL BBB system - integer validation requires system context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_integer: system is NULL");
         return false;
     }
 
@@ -743,7 +708,6 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
 {
     /* Require valid result pointer */
     if (!result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: result is NULL");
         return false;
     }
     bbb_validation_result_t* res = result;
@@ -759,7 +723,6 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
         res->severity = BBB_SEVERITY_MEDIUM;
         snprintf(res->reason, sizeof(res->reason),
                  "NULL BBB system - pointer validation requires system context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: system is NULL");
         return false;
     }
 
@@ -770,7 +733,6 @@ bool bbb_validate_pointer(bbb_system_t system, const void* ptr,
         res->severity = BBB_SEVERITY_HIGH;
         snprintf(res->reason, sizeof(res->reason),
                  "NULL pointer detected");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_validate_pointer: ptr is NULL");
         return false;
     }
 
@@ -827,11 +789,7 @@ ssize_t bbb_sanitize_string(bbb_system_t system, const char* input,
 {
     /* Guard: Invalid parameters */
     if (!input || !output || output_size == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "bbb_sanitize_string: invalid parameters");
-
-            return -1;
+        return -1;
     }
 
     (void)system;  /* Available for future configuration */

@@ -467,7 +467,6 @@ int visual_cortex_fep_bridge_connect_bio_async(
     }
 
     NIMCP_LOGGING_WARN(LOG_MODULE_VISUAL_FEP " Bio-async router not available");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "visual_cortex_fep_bridge_connect_bio_async: validation failed");
     return -1;
 }
 

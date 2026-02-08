@@ -2532,8 +2532,7 @@ static nimcp_swarm_conflict_t* find_conflict_by_id(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_conflict_by_id: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

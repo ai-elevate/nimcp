@@ -664,8 +664,7 @@ bool nlp_network_get_attention_weights(
     // For now, return false to indicate feature not available
 
     LOG_WARN(LOG_MODULE, "get_attention_weights: Feature not yet implemented");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_network_get_attention_weights: operation failed");
-    return false;
+    return false;  /* Not implemented - normal behavior */
 }
 
 //=============================================================================
@@ -879,8 +878,7 @@ bool nlp_network_save(nlp_network_t network, const char* filepath) {
     (void)network;
     (void)filepath;
     LOG_WARN(LOG_MODULE, "save: Not implemented (use brain-level persistence)");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nlp_network_save: operation failed");
-    return false;
+    return false;  /* Not implemented - use brain-level persistence */
 }
 
 nlp_network_t nlp_network_load(const char* filepath) {
@@ -888,6 +886,5 @@ nlp_network_t nlp_network_load(const char* filepath) {
     // Rationale: Brain-level persistence is handled at higher architectural layers.
     (void)filepath;
     LOG_WARN(LOG_MODULE, "load: Not implemented (use brain-level persistence)");
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nlp_network_load: operation failed");
-    return NULL;
+    return NULL;  /* Not implemented - use brain-level persistence */
 }

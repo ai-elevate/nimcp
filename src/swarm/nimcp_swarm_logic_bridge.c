@@ -168,8 +168,7 @@ static swarm_logic_rule_t* find_rule(swarm_logic_bridge_t* bridge, uint32_t rule
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_rule: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**

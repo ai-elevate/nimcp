@@ -90,13 +90,11 @@ static bool phoneme_sequence_matches(
     uint32_t len2
 ) {
     if (len1 != len2) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phoneme_sequence_matches: validation failed");
-        return false;
+        return false;  /* Different lengths - normal mismatch */
     }
     for (uint32_t i = 0; i < len1; i++) {
         if (seq1[i] != seq2[i]) {
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phoneme_sequence_matches: validation failed");
-            return false;
+            return false;  /* Phoneme mismatch - normal comparison result */
         }
     }
     return true;

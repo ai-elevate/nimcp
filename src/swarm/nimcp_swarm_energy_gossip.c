@@ -153,8 +153,7 @@ static NimcpRelayNode* find_relay_node(NimcpEnergyGossip* gossip, uint32_t node_
             return &gossip->relay_nodes[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_relay_node: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -200,8 +199,7 @@ static NimcpHarvestOpportunity* find_harvest_opportunity(
             return &gossip->opportunities[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_harvest_opportunity: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /* ============================================================================
@@ -728,8 +726,7 @@ bool nimcp_energy_gossip_should_forward(
 
     /* Never forward in emergency mode unless critical */
     if (gossip->reserve.emergency_mode) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_energy_gossip_should_forward: validation failed");
-        return false;
+        return false;  /* Normal policy - conserve energy in emergency mode */
     }
 
     /* Probabilistic forwarding based on energy state */

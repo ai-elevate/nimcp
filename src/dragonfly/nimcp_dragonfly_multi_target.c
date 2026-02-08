@@ -247,8 +247,7 @@ static int find_target_by_id(const dragonfly_multi_target_t mt, uint32_t id) {
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_target_by_id: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 static void compute_priority_scores(

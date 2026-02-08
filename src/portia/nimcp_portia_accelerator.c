@@ -893,8 +893,7 @@ bool portia_accelerator_get_by_type(portia_accelerator_system_t system,
     }
 
     nimcp_mutex_unlock(&system->lock);
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "portia_accelerator_detect_tpu: validation failed");
-    return false;
+    return false;  /* Not found - requested accelerator type not registered */
 }
 
 uint32_t portia_accelerator_get_count(portia_accelerator_system_t system) {

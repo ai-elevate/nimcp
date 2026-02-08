@@ -106,6 +106,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     if (!network->layers) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate layer array");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to allocate layer array");
+        lnn_config_destroy(network->config);
         nimcp_free(network->config);
         nimcp_free(network);
         return NULL;
@@ -124,9 +125,10 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
                 lnn_layer_destroy(network->layers[j]);
             }
             nimcp_free(network->layers);
+            lnn_config_destroy(network->config);
             nimcp_free(network->config);
             nimcp_free(network);
-            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_create: network->layers is NULL");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to create layer");
             return NULL;
         }
     }

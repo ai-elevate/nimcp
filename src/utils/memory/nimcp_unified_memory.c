@@ -45,6 +45,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -55,6 +56,27 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(unified_memory)
+
+//=============================================================================
+// Recursion-Safe Throw for Unified Memory Module
+//=============================================================================
+/**
+ * WHAT: Thread-local guard preventing infinite recursion when throwing
+ * WHY:  NIMCP_THROW_TO_IMMUNE -> nimcp_exception_create -> nimcp_calloc ->
+ *       unified_mem_alloc -> throw -> ... infinite loop
+ *       The guard breaks this cycle: the first failure reports to immune,
+ *       but recursive calls during exception allocation skip the throw.
+ */
+static _Thread_local bool g_umm_throw_active = false;
+
+#define UMM_SAFE_THROW(code, fmt, ...)                                   \
+    do {                                                                  \
+        if (!g_umm_throw_active && nimcp_exception_system_is_initialized()) { \
+            g_umm_throw_active = true;                                   \
+            NIMCP_THROW_TO_IMMUNE(code, fmt, ##__VA_ARGS__);             \
+            g_umm_throw_active = false;                                  \
+        }                                                                \
+    } while (0)
 
 //=============================================================================
 // Constants and Magic Numbers
@@ -391,11 +413,8 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
     // Allocate manager
     unified_mem_manager_t manager = calloc(1, sizeof(struct unified_mem_manager_struct));
     if (!manager) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
-
+        UMM_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "unified_mem_create: manager allocation failed");
         return NULL;
-
     }
 
     manager->magic = UNIFIED_MANAGER_MAGIC;
@@ -518,11 +537,8 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
     // Allocate handle structure
     unified_mem_handle_t handle = calloc(1, sizeof(struct unified_mem_handle_struct));
     if (!handle) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
-
+        UMM_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "unified_mem_alloc: handle allocation failed");
         return NULL;
-
     }
 
     handle->magic = UNIFIED_HANDLE_MAGIC;
@@ -700,11 +716,8 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
     // Allocate new handle
     unified_mem_handle_t clone = calloc(1, sizeof(struct unified_mem_handle_struct));
     if (!clone) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
-
+        UMM_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "unified_mem_share: clone allocation failed");
         return NULL;
-
     }
 
     clone->magic = UNIFIED_HANDLE_MAGIC;
@@ -1013,11 +1026,8 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
 
     unified_mem_snapshot_t snap = calloc(1, sizeof(struct unified_mem_snapshot_struct));
     if (!snap) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
-
+        UMM_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "unified_mem_snapshot: snapshot allocation failed");
         return NULL;
-
     }
 
     snap->magic = UNIFIED_SNAP_MAGIC;

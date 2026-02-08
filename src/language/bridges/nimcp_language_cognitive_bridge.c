@@ -725,8 +725,7 @@ int language_cognitive_bridge_get_concept_for_word(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cognitive_bridge_get_concept_for_word: validation failed");
-    return -1;  /* Not found */
+    return -1;  /* Not found - normal lookup behavior */
 }
 
 //=============================================================================
@@ -883,8 +882,7 @@ int language_cognitive_bridge_resolve_reference(
         }
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_cognitive_bridge_resolve_reference: validation failed");
-    return -1;  /* Unresolved */
+    return -1;  /* Unresolved - normal behavior when no referent found */
 }
 
 //=============================================================================

@@ -272,8 +272,7 @@ static int find_instance_index(
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_instance_index: validation failed");
-    return -1;
+    return -1;  /* Not found - normal search miss */
 }
 
 static void update_local_state(portia_collective_bridge_t* bridge) {

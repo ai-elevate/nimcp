@@ -442,7 +442,16 @@ bool audio_cortical_is_bio_async_connected(const audio_cortical_bridge_t* bridge
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_is_bio_async_connected: bridge is NULL");
         return false;
     }
-    return bridge->base.bio_async_enabled;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    bool connected;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    connected = bridge->base.bio_async_enabled;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return connected;
 }
 
 /* ============================================================================
@@ -828,20 +837,26 @@ const feature_hypercolumn_t* audio_cortical_get_hypercolumn(
     float frequency_hz)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t idx = compute_hypercolumn_index(bridge, frequency_hz);
     if (idx >= bridge->num_hypercolumns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_hypercolumn: capacity exceeded");
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "audio_cortical_get_hypercolumn: index out of range");
         return NULL;
     }
 
-    return bridge->hypercolumns[idx];
+    const feature_hypercolumn_t* hcol = bridge->hypercolumns[idx];
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 int audio_cortical_set_hypercolumn_gain(
@@ -867,7 +882,16 @@ uint32_t audio_cortical_get_num_hypercolumns(const audio_cortical_bridge_t* brid
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_num_hypercolumns: bridge is NULL");
         return 0;
     }
-    return bridge->num_hypercolumns;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    uint32_t count;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    count = bridge->num_hypercolumns;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return count;
 }
 
 const feature_hypercolumn_t* audio_cortical_get_hypercolumn_by_index(
@@ -878,8 +902,18 @@ const feature_hypercolumn_t* audio_cortical_get_hypercolumn_by_index(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_hypercolumn_by_index: bridge is NULL");
         return NULL;
     }
-    if (index >= bridge->num_hypercolumns) return NULL;
-    return bridge->hypercolumns[index];
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    const feature_hypercolumn_t* hcol = NULL;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    if (index < bridge->num_hypercolumns) {
+        hcol = bridge->hypercolumns[index];
+    }
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 /* ============================================================================
@@ -907,7 +941,16 @@ float audio_cortical_get_immune_modulation(const audio_cortical_bridge_t* bridge
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_immune_modulation: bridge is NULL");
         return 0.0f;
     }
-    return bridge->immune_modulation_factor;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    float factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    factor = bridge->immune_modulation_factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return factor;
 }
 
 /* API aliases for header compatibility */
@@ -948,8 +991,12 @@ int audio_cortical_get_stats(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
-    /* Note: Accessing stats without lock for read-only operation */
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(audio_cortical_stats_t));
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -973,7 +1020,16 @@ audio_cortical_state_t audio_cortical_get_state(const audio_cortical_bridge_t* b
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_state: bridge is NULL");
         return AUDIO_CORTICAL_STATE_UNINITIALIZED;
     }
-    return bridge->state;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    audio_cortical_state_t state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    state = bridge->state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return state;
 }
 
 /* ============================================================================
@@ -987,7 +1043,16 @@ const topographic_map_t* audio_cortical_get_tonotopic_map(
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audio_cortical_get_tonotopic_map: bridge is NULL");
         return NULL;
     }
-    return bridge->tonotopic_map;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    audio_cortical_bridge_t* mutable_bridge = (audio_cortical_bridge_t*)bridge;
+
+    const topographic_map_t* map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    map = bridge->tonotopic_map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return map;
 }
 
 /* ============================================================================

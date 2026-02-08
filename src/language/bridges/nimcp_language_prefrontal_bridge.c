@@ -107,15 +107,13 @@ static goal_entry_t* find_goal(language_prefrontal_bridge_t* bridge, uint32_t go
         }
         entry = entry->next;
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_goal: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 static bool queue_utterance(language_prefrontal_bridge_t* bridge, const utterance_plan_t* plan) {
     uint32_t next_tail = (bridge->queue_tail + 1) % bridge->queue_size;
     if (next_tail == bridge->queue_head) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "queue_utterance: validation failed");
-        return false; /* Queue full */
+        return false; /* Queue full - normal capacity behavior */
     }
     bridge->utterance_queue[bridge->queue_tail] = *plan;
     bridge->queue_tail = next_tail;
@@ -527,8 +525,7 @@ int language_prefrontal_modify_plan(
             return 0;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_modify_plan: validation failed");
-    return -1;
+    return -1;  /* Plan not found - normal lookup behavior */
 }
 
 //=============================================================================
@@ -561,8 +558,7 @@ int language_prefrontal_apply_inhibition(
             return 0;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "language_prefrontal_apply_inhibition: validation failed");
-    return -1; /* No slots available */
+    return -1;  /* No inhibition slots available - normal capacity behavior */
 }
 
 int language_prefrontal_release_inhibition(

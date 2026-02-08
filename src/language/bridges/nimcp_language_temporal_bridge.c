@@ -124,8 +124,7 @@ static concept_cache_entry_t* cache_find(
             return &bridge->concept_cache[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache_find: bridge->concept_cache is NULL");
-    return NULL;
+    return NULL;  /* Not found - normal cache miss */
 }
 
 /**

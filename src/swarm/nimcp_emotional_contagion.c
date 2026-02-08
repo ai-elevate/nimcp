@@ -119,7 +119,6 @@ static agent_entry_t* find_agent(
     uint32_t agent_id) {
 
     if (!ec || !ec->agent_hash) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_hash_function: required parameter is NULL (ec, ec->agent_hash)");
         return NULL;
     }
 
@@ -133,8 +132,7 @@ static agent_entry_t* find_agent(
         entry = entry->next;
     }
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent_hash_function: validation failed");
-    return NULL;
+    return NULL;  /* Not found - normal search miss */
 }
 
 /**
@@ -387,7 +385,6 @@ emotional_contagion_t* emotional_contagion_create(
 
     /* Validate configuration */
     if (emotional_contagion_validate_config(config) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "emotional_contagion_get_default_config: validation failed");
         return NULL;
     }
 
@@ -1011,7 +1008,7 @@ nimcp_result_t emotional_contagion_apply_decay(
 
     NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
-    /* Already locked by propagate function, or lock here if called directly */
+    nimcp_platform_mutex_lock(&ec->mutex);
 
     for (size_t h = 0; h < ec->hash_size; h++) {
         agent_entry_t* entry = ec->agent_hash[h];
@@ -1031,6 +1028,8 @@ nimcp_result_t emotional_contagion_apply_decay(
             entry = entry->next;
         }
     }
+
+    nimcp_platform_mutex_unlock(&ec->mutex);
 
     return NIMCP_SUCCESS;
 }

@@ -448,14 +448,12 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     // Guard: null config
     if (!config) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: null config");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
-
         return NULL;
     }
 
     // Guard: invalid configuration
     if (!validate_config(config)) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: validate_config is NULL");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "quantum_annealer_create: invalid config");
         return NULL;
     }
 
@@ -465,8 +463,6 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     if (!annealer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct quantum_annealer_struct),
                           "Failed to allocate quantum annealer structure");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "annealer is NULL");
-
         return NULL;
     }
 
@@ -477,7 +473,7 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     init_rng(annealer);
     if (!annealer->rng_state) {
         nimcp_free(annealer);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: annealer->rng_state is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "quantum_annealer_create: failed to allocate RNG state");
         return NULL;
     }
 

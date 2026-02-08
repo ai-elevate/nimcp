@@ -854,36 +854,63 @@ const feature_hypercolumn_t* speech_cortical_get_hypercolumn(
     float tono_y)
 {
     if (!bridge) {
-
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
-
     }
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t idx = compute_hypercolumn_index(bridge, tono_x, tono_y);
     if (idx >= bridge->num_hypercolumns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortical_get_hypercolumn: capacity exceeded");
+        if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortical_get_hypercolumn: index out of range");
         return NULL;
     }
 
-    return bridge->hypercolumns[idx];
+    const feature_hypercolumn_t* hcol = bridge->hypercolumns[idx];
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 const feature_hypercolumn_t* speech_cortical_get_hypercolumn_by_index(
     const speech_cortical_bridge_t* bridge,
     uint32_t index)
 {
-    if (!bridge || index >= bridge->num_hypercolumns) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "speech_cortical_get_hypercolumn_by_index: bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "speech_cortical_get_hypercolumn_by_index: bridge is NULL");
         return NULL;
     }
-    return bridge->hypercolumns[index];
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    const feature_hypercolumn_t* hcol = NULL;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    if (index < bridge->num_hypercolumns) {
+        hcol = bridge->hypercolumns[index];
+    }
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return hcol;
 }
 
 uint32_t speech_cortical_get_num_hypercolumns(const speech_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->num_hypercolumns : 0;
+    if (!bridge) return 0;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    uint32_t count;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    count = bridge->num_hypercolumns;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return count;
 }
 
 /* ============================================================================
@@ -942,7 +969,17 @@ int speech_cortical_set_immune_factor(
 
 float speech_cortical_get_immune_factor(const speech_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->immune_modulation_factor : 0.0f;
+    if (!bridge) return 0.0f;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    float factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    factor = bridge->immune_modulation_factor;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return factor;
 }
 
 /* ============================================================================
@@ -981,13 +1018,33 @@ int speech_cortical_reset_stats(speech_cortical_bridge_t* bridge)
 speech_cortical_state_t speech_cortical_get_state(
     const speech_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->state : SPEECH_CORTICAL_STATE_UNINITIALIZED;
+    if (!bridge) return SPEECH_CORTICAL_STATE_UNINITIALIZED;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    speech_cortical_state_t state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    state = bridge->state;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return state;
 }
 
 const topographic_map_t* speech_cortical_get_tonotopic_map(
     const speech_cortical_bridge_t* bridge)
 {
-    return bridge ? bridge->tonotopic_map : NULL;
+    if (!bridge) return NULL;
+
+    /* Cast away const for mutex operations - mutex is logically const but physically modified */
+    speech_cortical_bridge_t* mutable_bridge = (speech_cortical_bridge_t*)bridge;
+
+    const topographic_map_t* map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(mutable_bridge->base.mutex);
+    map = bridge->tonotopic_map;
+    if ((bridge->base.mutex != NULL)) nimcp_mutex_unlock(mutable_bridge->base.mutex);
+
+    return map;
 }
 
 /* ============================================================================

@@ -283,7 +283,19 @@ lnn_training_ctx_t* lnn_training_create(
     if (output_size > 0) {
         uint32_t dims[1] = { output_size };
         ctx->output_buffer = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+        if (!ctx->output_buffer) {
+            NIMCP_LOGGING_ERROR("Failed to allocate output buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to allocate output buffer");
+            lnn_training_destroy(ctx);
+            return NULL;
+        }
         ctx->loss_gradient = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
+        if (!ctx->loss_gradient) {
+            NIMCP_LOGGING_ERROR("Failed to allocate loss gradient buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to allocate loss gradient buffer");
+            lnn_training_destroy(ctx);
+            return NULL;
+        }
     } else {
         ctx->output_buffer = NULL;
         ctx->loss_gradient = NULL;

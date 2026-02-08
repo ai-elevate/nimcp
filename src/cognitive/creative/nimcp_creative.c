@@ -318,11 +318,11 @@ int style_embedding_interpolate(const style_embedding_t* a,
                                  float t,
                                  style_embedding_t* result) {
     if (!a || !b || !result) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_embedding_clone: required parameter is NULL (a, b, result)");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "style_embedding_interpolate: required parameter is NULL (a, b, result)");
         return -1;
     }
     if (a->embedding_dim != b->embedding_dim || a->embedding_dim != result->embedding_dim) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_embedding_clone: validation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "style_embedding_interpolate: dimension mismatch");
         return -1;
     }
 

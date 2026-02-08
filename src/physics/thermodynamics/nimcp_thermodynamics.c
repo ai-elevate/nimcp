@@ -369,6 +369,9 @@ nimcp_error_t nimcp_thermo_update(
      * 2. Irreversible chemical processes (ATP hydrolysis, ion transport)
      */
     double temperature = internal->config.temperature_k;
+    if (temperature < MIN_VALID_TEMP_K) {
+        temperature = MIN_VALID_TEMP_K;
+    }
     double entropy_heat = heat_this_step / temperature;
 
     /* Irreversible entropy from chemical processes

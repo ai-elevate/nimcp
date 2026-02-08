@@ -212,6 +212,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception.h"
 
 /**
  * WHAT: Undefine macro redirections
@@ -232,6 +233,28 @@
 #include "utils/fault_tolerance/nimcp_health_agent_macros.h"
 
 NIMCP_DECLARE_HEALTH_AGENT_ATOMIC(memory)
+
+//=============================================================================
+// Recursion-Safe Throw for Memory Module
+//=============================================================================
+/**
+ * WHAT: Thread-local guard preventing infinite recursion when throwing
+ * WHY:  NIMCP_THROW_TO_IMMUNE -> nimcp_exception_create -> nimcp_calloc -> throw -> ...
+ *       The guard breaks this cycle: the first failure reports to immune,
+ *       but recursive calls during exception allocation skip the throw.
+ * HOW:  _Thread_local flag set before throw, cleared after. If already set,
+ *       we're in a recursive call from the exception system - skip the throw.
+ */
+static _Thread_local bool g_memory_throw_active = false;
+
+#define MEMORY_SAFE_THROW(code, fmt, ...)                                \
+    do {                                                                  \
+        if (!g_memory_throw_active && nimcp_exception_system_is_initialized()) { \
+            g_memory_throw_active = true;                                \
+            NIMCP_THROW_TO_IMMUNE(code, fmt, ##__VA_ARGS__);             \
+            g_memory_throw_active = false;                               \
+        }                                                                \
+    } while (0)
 
 //=============================================================================
 // Global Unified Memory Manager
@@ -559,11 +582,7 @@ static void init_if_needed(void)
 static void* add_memory_guards(void* ptr, size_t size)
 {
     if (!ptr) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
-
         return NULL;
-
     }
 
     // Write head canary (8 bytes for proper alignment)
@@ -1160,11 +1179,7 @@ static void track_allocation_with_handle(void* ptr, size_t size, unified_mem_han
 static unified_mem_handle_t get_umm_handle(void* ptr)
 {
     if (!ptr) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
-
         return NULL;
-
     }
 
     // Note: We intentionally DO NOT check tracking_enabled here.
@@ -1454,6 +1469,7 @@ void* nimcp_malloc(size_t size)
     if (g_memory_state.debug_output) {
         fprintf(stderr, "[MEMORY] Allocation failed: %zu bytes\n", size);
     }
+    MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_malloc: allocation failed for %zu bytes", size);
     return NULL;
 }
 
@@ -1519,6 +1535,7 @@ void* nimcp_calloc(size_t count, size_t size)
         if (g_memory_state.debug_output) {
             fprintf(stderr, "[MEMORY] Allocation failed (calloc): %zu bytes\n", user_size);
         }
+        MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_calloc: allocation failed for %zu bytes", user_size);
     }
 
     return ptr;
@@ -1661,11 +1678,7 @@ void* nimcp_realloc(void* ptr, size_t new_size)
 char* nimcp_strdup(const char* str)
 {
     if (!str) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_strdup: str is NULL");
-
         return NULL;
-
     }
 
     size_t len = strlen(str) + 1;  // Include null terminator
@@ -1677,13 +1690,8 @@ char* nimcp_strdup(const char* str)
      * on the result without warnings about untracked pointers. */
     char* new_str = (char*) nimcp_malloc(len);
     if (!new_str) {
-
-        /* P1-3 FIX: Use NIMCP_ERROR_NO_MEMORY instead of NIMCP_ERROR_NULL_POINTER
-         * for allocation failure - the error is out-of-memory, not null input. */
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_strdup: allocation failed for %zu bytes", len);
-
+        MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_strdup: allocation failed for %zu bytes", len);
         return NULL;
-
     }
 
     memcpy(new_str, str, len);
@@ -1807,6 +1815,7 @@ void* nimcp_aligned_malloc(size_t size, size_t alignment)
         nimcp_mutex_lock(&g_memory_state.lock);
         g_memory_state.stats.failed_allocations++;
         nimcp_mutex_unlock(&g_memory_state.lock);
+        MEMORY_SAFE_THROW(NIMCP_ERROR_NO_MEMORY, "nimcp_aligned_malloc: allocation failed for %zu bytes", size);
         return NULL;
     }
 

@@ -75,8 +75,7 @@ static lang_bio_subscription_t* find_subscription(
             return &bridge->subscriptions[i];
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "find_subscription: bridge is NULL");
-    return NULL;
+    return NULL;  /* Not found - normal lookup behavior */
 }
 
 static int count_subscribers_for_type(

@@ -345,8 +345,7 @@ static int find_next_rr_agent(
         current = (current + 1) % SWARM_SCHEDULER_MAX_AGENTS;
     } while (current != start);
 
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_next_rr_agent: operation failed");
-    return -1;
+    return -1;  /* No suitable agent found - normal search miss */
 }
 
 /**

@@ -101,8 +101,7 @@ static int32_t sparse_find_col(
             end = mid;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sparse_find_col: validation failed");
-    return -1;  /* Not found */
+    return -1;  /* Not found - column not in sparse row */
 }
 
 /*=============================================================================

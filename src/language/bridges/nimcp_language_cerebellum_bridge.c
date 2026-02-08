@@ -88,8 +88,7 @@ static int find_phoneme_entry(language_cerebellum_bridge_t* bridge, const char* 
             return (int)i;
         }
     }
-    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "find_phoneme_entry: validation failed");
-    return -1;
+    return -1;  /* Not found - normal lookup behavior */
 }
 
 static float get_default_phoneme_duration(const char* phoneme) {
